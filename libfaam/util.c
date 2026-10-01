@@ -19,6 +19,17 @@
 
 #include "libfaam_internal.h"
 
+FAAMAPI faam_status faam_get_library_info(faam_library_info *out)
+{
+    if (!out || out->struct_size < sizeof(faam_library_info))
+        return FAAM_ERR_INVALID_ARG;
+
+    out->struct_size = sizeof(faam_library_info);
+    out->version = "1.0.0";
+    out->copyright = "Copyright (C) 2026 Nils Schimmelmann";
+    return FAAM_OK;
+}
+
 const char *faam_strerror(faam_status status)
 {
     switch (status) {
