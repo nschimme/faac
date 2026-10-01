@@ -14,11 +14,11 @@ git_version_h = vcs_tag(
     fallback: '',
 )
 
-frontend_link_libs = [libfaac, libfaam_lib]
+frontend_link_libs = [libfaac]
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
 
 libfrontend = static_library('frontend',
-    ['input.c', 'mp4write.c', 'charset.c', 'cli_common.c', 'output.c', 'encode_engine.c', 'progress.c',
+    ['input.c', 'mp4write.c', 'mp4mux.c', 'mp4meta.c', 'mp4util.c', 'charset.c', 'cli_common.c', 'output.c', 'encode_engine.c', 'progress.c',
      'input.h', 'mp4write.h', 'charset.h', 'cli_common.h', 'progress.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
     include_directories: ['..', '../include', '../common'],
     link_with: frontend_link_libs,
@@ -36,18 +36,8 @@ faac = executable('faac',
     install: true
 )
 
-if get_option('muxer')
-    faam = executable('faam',
-        ['faam_main.c', 'charset.c', 'cli_common.c', git_version_h],
-        include_directories: ['..', '../include', '../common'],
-        link_with: [libfaam_lib],
-        dependencies: [libshell32, libiconv],
-        install: true
-    )
-endif
-
 if get_option('decoder')
-    decoder_link_libs = [libfaad, libfaam_lib]
+    decoder_link_libs = [libfaad]
     gc_args = []
     if cc.has_link_argument('-Wl,--gc-sections')
         gc_args += ['-Wl,--gc-sections']

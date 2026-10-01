@@ -56,7 +56,7 @@ shared_library(
     },
 )
 ```
-This produces `libfaad.so.3.0.0` and symlink `libfaad.so.3` on Linux, clearly isolating FAAD3's modern ABI. Other libraries in the mono-repo remain undisturbed (`libfaac.so.2` and the new `libfaam.so.0`).
+This produces `libfaad.so.3.0.0` and symlink `libfaad.so.3` on Linux, clearly isolating FAAD3's modern ABI. The encoder library remains undisturbed (`libfaac.so.2`).
 
 ### 3.2 Comparison of C APIs
 
