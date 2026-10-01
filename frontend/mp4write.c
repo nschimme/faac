@@ -57,6 +57,7 @@ typedef struct {
 
 static struct {
     FILE *f;
+    char iobuf[64 * 1024];
     bool error;
 
     /* Format, set before or after open */
@@ -92,13 +93,33 @@ static struct {
     uint32_t window_max;
     uint64_t window_bytes, window_ticks;
     bool finalized;
+
+    /* moov under construction */
+    bool in_moov;
+    uint8_t *moov;
+    size_t moov_len, moov_cap;
 } g = { .rate = 44100, .sample_bits = 16 };
 
 static uint32_t track_rate(void) { return g.rate ? g.rate : 44100; }
 
+/* The moov is assembled in memory and written once: patching atom sizes in
+ * the file would turn every atom into a flush and two seeks. */
 static void put(const void *data, size_t size) {
     if (g.error || !size) return;
-    if (fwrite(data, 1, size, g.f) != size) g.error = true;
+    if (!g.in_moov) {
+        if (fwrite(data, 1, size, g.f) != size) g.error = true;
+        return;
+    }
+    if (size > g.moov_cap - g.moov_len) {
+        size_t cap = g.moov_cap ? g.moov_cap : 4096;
+        while (size > cap - g.moov_len) cap *= 2;
+        uint8_t *tmp = (uint8_t *)realloc(g.moov, cap);
+        if (!tmp) { g.error = true; return; }
+        g.moov = tmp;
+        g.moov_cap = cap;
+    }
+    memcpy(g.moov + g.moov_len, data, size);
+    g.moov_len += size;
 }
 
 static void put_u8(uint8_t v) { put(&v, 1); }
@@ -138,19 +159,19 @@ static uint64_t tell_pos(void) {
 #endif
 }
 
-static uint64_t start_atom(const char *name) {
-    uint64_t pos = tell_pos();
+static size_t start_atom(const char *name) {
+    size_t pos = g.moov_len;
     put_u32(0);
     put(name, 4);
     return pos;
 }
 
-static void end_atom(uint64_t pos) {
+static void end_atom(size_t pos) {
     if (g.error) return;
-    uint64_t end = tell_pos();
-    if (end - pos > UINT32_MAX || !seek_to(pos)) { g.error = true; return; }
-    put_u32((uint32_t)(end - pos));
-    if (!seek_to(end)) g.error = true;
+    size_t size = g.moov_len - pos;
+    if (size > UINT32_MAX) { g.error = true; return; }
+    uint32_t be = htobe32((uint32_t)size);
+    memcpy(g.moov + pos, &be, 4);
 }
 
 static uint16_t pack_language(const char *lang) {
@@ -179,8 +200,8 @@ static void put_descriptor(uint8_t tag, uint32_t size) {
 
 static void data_tag(const char *name, uint32_t type, const void *data, size_t len) {
     if (!data) return;
-    uint64_t tag = start_atom(name);
-    uint64_t box = start_atom("data");
+    size_t tag = start_atom(name);
+    size_t box = start_atom("data");
     put_u32(type);
     put_u32(0);
     put(data, len);
@@ -198,8 +219,8 @@ static void index_tag(const char *name, uint16_t num, uint16_t total) {
 }
 
 static void freeform_tag(const char *mean, const char *name, const char *value) {
-    uint64_t tag = start_atom("----");
-    uint64_t box = start_atom("mean");
+    size_t tag = start_atom("----");
+    size_t box = start_atom("mean");
     put_u32(0);
     put(mean, strlen(mean));
     end_atom(box);
@@ -216,7 +237,7 @@ static void freeform_tag(const char *mean, const char *name, const char *value) 
 }
 
 static void write_ilst(void) {
-    uint64_t ilst = start_atom("ilst");
+    size_t ilst = start_atom("ilst");
     text_tag("\251too", g.encoder);
     text_tag("\251ART", g.artist); text_tag("soar", g.artist_sort);
     text_tag("\251wrt", g.composer); text_tag("soco", g.composer_sort);
@@ -264,7 +285,7 @@ uint32_t mp4_max_bitrate(void) {
     return g.window_max;
 }
 
-static void write_moov(void) {
+static void build_moov(void) {
     const uint32_t ts = track_rate();
     const uint32_t channels = g.channels ? g.channels : 2;
     const uint32_t now = g.creation_time ? g.creation_time + MP4_EPOCH_OFFSET : 0;
@@ -273,8 +294,8 @@ static void write_moov(void) {
     const uint32_t time_flags = use64_time ? (1U << 24) : 0;
     const uint32_t max_bitrate = mp4_max_bitrate(), avg_bitrate = average_bitrate();
 
-    uint64_t moov = start_atom("moov");
-    uint64_t mvhd = start_atom("mvhd");
+    size_t moov = start_atom("moov");
+    size_t mvhd = start_atom("mvhd");
     put_u32(time_flags);
     put_time(now, use64_time); put_time(now, use64_time);
     put_u32(ts); put_time(duration, use64_time);
@@ -286,8 +307,8 @@ static void write_moov(void) {
     put_u32(2); /* next track id */
     end_atom(mvhd);
 
-    uint64_t trak = start_atom("trak");
-    uint64_t tkhd = start_atom("tkhd");
+    size_t trak = start_atom("trak");
+    size_t tkhd = start_atom("tkhd");
     put_u32(time_flags | 1);
     put_time(now, use64_time); put_time(now, use64_time);
     put_u32(1); put_u32(0);
@@ -301,8 +322,8 @@ static void write_moov(void) {
     end_atom(tkhd);
 
     if (g.gapless.delay > 0) {
-        uint64_t edts = start_atom("edts");
-        uint64_t elst = start_atom("elst");
+        size_t edts = start_atom("edts");
+        size_t elst = start_atom("elst");
         put_u32(time_flags);
         put_u32(1);
         put_time(g.gapless.total, use64_time);
@@ -312,38 +333,38 @@ static void write_moov(void) {
         end_atom(edts);
     }
 
-    uint64_t mdia = start_atom("mdia");
-    uint64_t mdhd = start_atom("mdhd");
+    size_t mdia = start_atom("mdia");
+    size_t mdhd = start_atom("mdhd");
     put_u32(time_flags);
     put_time(now, use64_time); put_time(now, use64_time);
     put_u32(ts); put_time(g.samples, use64_time);
     put_u16(pack_language(g.language)); put_u16(0);
     end_atom(mdhd);
 
-    uint64_t hdlr = start_atom("hdlr");
+    size_t hdlr = start_atom("hdlr");
     put_u32(0); put_u32(0);
     put("soun", 4);
     put_u32(0); put_u32(0); put_u32(0); put_u8(0);
     end_atom(hdlr);
 
-    uint64_t minf = start_atom("minf");
-    uint64_t smhd = start_atom("smhd");
+    size_t minf = start_atom("minf");
+    size_t smhd = start_atom("smhd");
     put_u32(0); put_u16(0); put_u16(0);
     end_atom(smhd);
 
-    uint64_t dinf = start_atom("dinf");
-    uint64_t dref = start_atom("dref");
+    size_t dinf = start_atom("dinf");
+    size_t dref = start_atom("dref");
     put_u32(0); put_u32(1);
-    uint64_t url = start_atom("url ");
+    size_t url = start_atom("url ");
     put_u32(1); /* self-contained */
     end_atom(url);
     end_atom(dref);
     end_atom(dinf);
 
-    uint64_t stbl = start_atom("stbl");
-    uint64_t stsd = start_atom("stsd");
+    size_t stbl = start_atom("stbl");
+    size_t stsd = start_atom("stsd");
     put_u32(0); put_u32(1);
-    uint64_t mp4a = start_atom("mp4a");
+    size_t mp4a = start_atom("mp4a");
     for (int i = 0; i < 6; i++) put_u8(0);
     put_u16(1); put_u32(0); put_u32(0);
     put_u16((uint16_t)channels);
@@ -352,7 +373,7 @@ static void write_moov(void) {
     put_u16((uint16_t)(ts > UINT16_MAX ? UINT16_MAX : ts));
     put_u16(0);
 
-    uint64_t esds = start_atom("esds");
+    size_t esds = start_atom("esds");
     put_u32(0);
     put_descriptor(3, 3 + MP4_DESC_HDR + 13 + MP4_DESC_HDR + g.asc_len + MP4_DESC_HDR + 1);
     put_u16(0); put_u8(0);
@@ -370,7 +391,7 @@ static void write_moov(void) {
     end_atom(mp4a);
     end_atom(stsd);
 
-    uint64_t stts = start_atom("stts");
+    size_t stts = start_atom("stts");
     put_u32(0); put_u32(g.nstts);
     for (uint32_t i = 0; i < g.nstts; i++) {
         put_u32(g.stts[i].count);
@@ -379,22 +400,22 @@ static void write_moov(void) {
     end_atom(stts);
 
     /* One chunk holds every sample. */
-    uint64_t stsc = start_atom("stsc");
+    size_t stsc = start_atom("stsc");
     put_u32(0); put_u32(1);
     put_u32(1); put_u32(g.nsamples); put_u32(1);
     end_atom(stsc);
 
-    uint64_t stsz = start_atom("stsz");
+    size_t stsz = start_atom("stsz");
     put_u32(0); put_u32(0); put_u32(g.nsamples);
     for (uint32_t i = 0; i < g.nsamples; i++) put_u32(g.sizes[i]);
     end_atom(stsz);
 
     if (MDAT_DATA_POS + g.mdat_size > UINT32_MAX) {
-        uint64_t co64 = start_atom("co64");
+        size_t co64 = start_atom("co64");
         put_u32(0); put_u32(1); put_u64(MDAT_DATA_POS);
         end_atom(co64);
     } else {
-        uint64_t stco = start_atom("stco");
+        size_t stco = start_atom("stco");
         put_u32(0); put_u32(1); put_u32(MDAT_DATA_POS);
         end_atom(stco);
     }
@@ -403,10 +424,10 @@ static void write_moov(void) {
     end_atom(mdia);
     end_atom(trak);
 
-    uint64_t udta = start_atom("udta");
-    uint64_t meta = start_atom("meta");
+    size_t udta = start_atom("udta");
+    size_t meta = start_atom("meta");
     put_u32(0);
-    uint64_t hdlr2 = start_atom("hdlr");
+    size_t hdlr2 = start_atom("hdlr");
     put_u32(0); put_u32(0); put("mdirappl", 8);
     put_u32(0); put_u32(0); put_u8(0);
     end_atom(hdlr2);
@@ -414,6 +435,14 @@ static void write_moov(void) {
     end_atom(meta);
     end_atom(udta);
     end_atom(moov);
+}
+
+static void write_moov(void) {
+    g.in_moov = true;
+    g.moov_len = 0;
+    build_moov();
+    g.in_moov = false;
+    if (!g.error && fwrite(g.moov, 1, g.moov_len, g.f) != g.moov_len) g.error = true;
 }
 
 static bool start_file(void) {
@@ -441,6 +470,9 @@ int mp4_open(const char *path, bool overwrite) {
     g.f = cli_fopen(path, "wb");
     if (!g.f) return 1;
 
+    /* Frames are a few hundred bytes each; batch them into large sequential
+     * writes instead of the platform's default stdio buffer. */
+    setvbuf(g.f, g.iobuf, _IOFBF, sizeof(g.iobuf));
     g.rate = 44100;
     g.channels = 0;
     g.language[0] = 0;
@@ -604,6 +636,9 @@ int mp4_close(void) {
     free(g.custom);
     g.custom = NULL;
     g.ncustom = g.custom_cap = 0;
+    free(g.moov);
+    g.moov = NULL;
+    g.moov_len = g.moov_cap = 0;
     free(g.sizes);
     g.sizes = NULL;
     free(g.stts);
