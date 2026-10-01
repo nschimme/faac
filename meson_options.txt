@@ -33,6 +33,16 @@ option('embedded',
     type: 'boolean',
     value: false)
 
+option('muxer-video',
+    description: 'libfaam: H.264/H.265 video tracks (avc1/hvc1 entries, stss, ctts, Annex-B conversion); off leaves an audio-only muxer/demuxer',
+    type: 'boolean',
+    value: true)
+
+option('muxer-fragmented',
+    description: 'libfaam: fragmented MP4 (moof/mdat) crash-safe recording and demuxing',
+    type: 'boolean',
+    value: true)
+
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.
