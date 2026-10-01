@@ -254,7 +254,7 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
         if (faam_muxer_open(&g_cfg, &g_io, &g_muxer) != FAAM_OK) return -1;
         if (faam_muxer_set_audio_sample_size(g_muxer, 1, g_sample_size) != FAAM_OK) return -1;
     }
-    return faam_muxer_write_frame(g_muxer, 1, data, size, samples, true) == FAAM_OK ? 0 : -1;
+    return faam_muxer_write_frame(g_muxer, 1, data, size, samples, 0, true) == FAAM_OK ? 0 : -1;
 #else
     (void)data; (void)size; (void)samples;
     return -1;

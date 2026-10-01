@@ -186,7 +186,11 @@ static void test_virtual_mux(void) {
     assert(st == FAAM_OK && cfg.gapless.encoder_delay == 0);
     faam_track_config invalid = {0};
     invalid.track_type = FAAM_TRACK_VIDEO; invalid.codec_id = FAAM_CODEC_H264;
+#ifdef FAAM_MUXER_VIDEO
     st = faam_muxer_config_add_track(&cfg, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARG);
+#else
+    st = faam_muxer_config_add_track(&cfg, &invalid, NULL); assert(st == FAAM_ERR_UNSUPPORTED);
+#endif
     invalid.track_type = FAAM_TRACK_AUDIO; invalid.codec_id = FAAM_CODEC_GENERIC;
     st = faam_muxer_config_add_track(&cfg, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARG);
     faam_muxer_config validation = cfg;
@@ -218,20 +222,20 @@ static void test_virtual_mux(void) {
         if (mode == 6) io.seek = NULL;
         faam_muxer *m;
         st = faam_muxer_init(mem, state_size, &cfg, &io, &m); assert(st == FAAM_OK);
-        st = faam_muxer_write_frame(m, 999, &payload, 1, 1, true); assert(st == FAAM_ERR_NO_TRACK);
+        st = faam_muxer_write_frame(m, 999, &payload, 1, 1, 0, true); assert(st == FAAM_ERR_NO_TRACK);
         if (mode == 0) {
             for (unsigned i = 0; i < 5; i++) {
-                st = faam_muxer_write_frame(m, 77, &payload, 0x40000000, 44100, true); assert(st == FAAM_OK);
+                st = faam_muxer_write_frame(m, 77, &payload, 0x40000000, 44100, 0, true); assert(st == FAAM_OK);
             }
         } else {
-            st = faam_muxer_write_frame(m, 77, &payload, 100, 44100, true); assert(st == FAAM_OK);
+            st = faam_muxer_write_frame(m, 77, &payload, 100, 44100, 0, true); assert(st == FAAM_OK);
         }
         if (mode == 2) v.fail_write = true;
         if (mode == 5) v.fail_moov = true;
         if (mode == 3) v.fail_seek = true;
         if (mode == 4) {
             v.fail_write = true;
-            st = faam_muxer_write_frame(m, 77, &payload, 1, 1, true); assert(st == FAAM_ERR_IO_WRITE);
+            st = faam_muxer_write_frame(m, 77, &payload, 1, 1, 0, true); assert(st == FAAM_ERR_IO_WRITE);
             v.fail_write = false;
         }
         v.moov_start = v.pos;
@@ -241,7 +245,7 @@ static void test_virtual_mux(void) {
             assert(st == expected);
             v.fail_write = v.fail_seek = v.fail_moov = false;
             st = faam_muxer_finalize(m); assert(st == expected);
-            st = faam_muxer_write_frame(m, 77, &payload, 1, 1, true); assert(st == expected);
+            st = faam_muxer_write_frame(m, 77, &payload, 1, 1, 0, true); assert(st == expected);
         } else if (mode == 0) {
             assert(st == FAAM_OK);
             assert(test_u32(v.header + 28) == 1 && !memcmp(v.header + 32, "mdat", 4));
@@ -326,6 +330,7 @@ int main(void)
     assert(a_track_id == 1);
 
     /* Track 2: Video (H.264 Security Camera) */
+#ifdef FAAM_MUXER_VIDEO
     uint8_t dummy_avcc[10] = { 0x01, 0x64, 0x00, 0x1F, 0xFF, 0xE1, 0x00, 0x02, 0x67, 0x64 };
     faam_track_config v_tr;
     memset(&v_tr, 0, sizeof(v_tr));
@@ -342,6 +347,9 @@ int main(void)
     st = faam_muxer_config_add_track(&cfg, &v_tr, &v_track_id);
     assert(st == FAAM_OK);
     assert(v_track_id == 2);
+#else
+    uint32_t v_track_id = 0;
+#endif
 
     uint32_t muxer_size = 0;
     st = faam_muxer_get_state_size(&cfg, &muxer_size);
@@ -359,10 +367,12 @@ int main(void)
     uint8_t dummy_frame[512];
     memset(dummy_frame, 0xAB, sizeof(dummy_frame));
     for (int i = 0; i < 10; i++) {
-        st = faam_muxer_write_frame(m, a_track_id, dummy_frame, sizeof(dummy_frame), 1024, true);
+        st = faam_muxer_write_frame(m, a_track_id, dummy_frame, sizeof(dummy_frame), 1024, 0, true);
         assert(st == FAAM_OK);
-        st = faam_muxer_write_frame(m, v_track_id, dummy_frame, sizeof(dummy_frame), 3000, (i % 5 == 0));
-        assert(st == FAAM_OK);
+        if (v_track_id) {
+            st = faam_muxer_write_frame(m, v_track_id, dummy_frame, sizeof(dummy_frame), 3000, 0, (i % 5 == 0));
+            assert(st == FAAM_OK);
+        }
     }
 
     st = faam_muxer_finalize(m);
@@ -393,18 +403,22 @@ int main(void)
     uint32_t num_tracks = 0;
     st = faam_demuxer_get_num_tracks(d, &num_tracks);
     assert(st == FAAM_OK);
-    assert(num_tracks == 2);
+    assert(num_tracks == (v_track_id ? 2u : 1u));
 
-    faam_track_info t1 = {0}, t2 = {0};
-    t1.struct_size = t2.struct_size = sizeof(t1);
+    faam_track_info t1 = {0};
+    t1.struct_size = sizeof(t1);
     st = faam_demuxer_get_track_info(d, 0, &t1);
     assert(st == FAAM_OK);
     assert(t1.track_type == FAAM_TRACK_AUDIO);
 
-    st = faam_demuxer_get_track_info(d, 1, &t2);
-    assert(st == FAAM_OK);
-    assert(t2.track_type == FAAM_TRACK_VIDEO);
-    assert(t2.width == 1920 && t2.height == 1080);
+    if (v_track_id) {
+        faam_track_info t2 = {0};
+        t2.struct_size = sizeof(t2);
+        st = faam_demuxer_get_track_info(d, 1, &t2);
+        assert(st == FAAM_OK);
+        assert(t2.track_type == FAAM_TRACK_VIDEO);
+        assert(t2.width == 1920 && t2.height == 1080);
+    }
 
     uint8_t read_codec_data[64];
     uint32_t read_cdata_len = 0;
@@ -487,7 +501,7 @@ int main(void)
         uint8_t frame_buf[TEST_FRAME_SIZE];
         for (int i = 0; i < TEST_FRAME_COUNT; i++) {
             memset(frame_buf, (uint8_t)(i * 7 + 3), sizeof(frame_buf));
-            st = faam_muxer_write_frame(gm, g_track_id, frame_buf, sizeof(frame_buf), 1024, true);
+            st = faam_muxer_write_frame(gm, g_track_id, frame_buf, sizeof(frame_buf), 1024, 0, true);
             assert(st == FAAM_OK);
         }
 

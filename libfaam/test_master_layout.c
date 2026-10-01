@@ -50,7 +50,7 @@ static void run_case(unsigned count, bool constant, bool wide_time) {
     for (unsigned i = 0; i < count; i++) {
         uint32_t size = i < 44 ? 100 : 200;
         uint32_t duration = wide_time ? UINT32_MAX : (i + 1 == count ? 512 : 1024);
-        CHECK(faam_muxer_write_frame(m, 1, frame, size, duration, true) == FAAM_OK);
+        CHECK(faam_muxer_write_frame(m, 1, frame, size, duration, 0, true) == FAAM_OK);
         bytes += size; ticks += duration;
         if (duration >= 1024) {
             window_bytes += size; window_ticks += duration;
