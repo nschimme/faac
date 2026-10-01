@@ -227,7 +227,7 @@ static struct {
     {0}
 };
 
-char *license =
+static const char *license =
     "\nPlease note that the use of this software may require the payment of patent\n"
     "royalties. You need to consider this issue before you start building derivative\n"
     "works. We are not warranting or indemnifying you in any way for patent\n"
@@ -241,18 +241,7 @@ char *license =
     "Copyright (C) 2002-2017, Krzysztof Nikiel\n"
     "Copyright (C) 2004, Dan Villiom P. Christiansen\n"
     "Copyright (C) 2005-2026, Fabian Greffrath\n"
-    "Copyright (C) 2026, Nils Schimmelmann\n"
-    "\n"
-    "This library is free software; you can redistribute it and/or\n"
-    "modify it under the terms of the GNU Lesser General Public\n"
-    "License as published by the Free Software Foundation; either\n"
-    "version 2.1 of the License, or (at your option) any later version.\n"
-    "\n"
-    "This library is distributed in the hope that it will be useful,\n"
-    "but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
-    "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU\n"
-    "Lesser General Public License for more details.\n"
-    "\n";
+    "Copyright (C) 2026, Nils Schimmelmann\n";
 
 #ifndef _WIN32
 volatile int running = 1;
@@ -617,6 +606,7 @@ int main(int argc, char *argv[])
             if (libinfo.copyright)
                 fprintf(stderr, "%s", libinfo.copyright);
             fprintf(stderr, "%s", license);
+            cli_print_lgpl_notice(stderr);
             ret = 0;
             goto cleanup;
         case 'X':

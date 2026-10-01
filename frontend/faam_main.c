@@ -60,8 +60,12 @@ static uint64_t file_tell_cb(void *user_data) {
 
 static void print_usage(void)
 {
-    printf("FAAM - Freeware Advanced Audio/Video Muxer (v%d.%d.%d)\n",
-           FAAM_VERSION_MAJOR, FAAM_VERSION_MINOR, FAAM_VERSION_PATCH);
+    char version_buf[128];
+    char version[32];
+    snprintf(version, sizeof(version), "%d.%d.%d",
+             FAAM_VERSION_MAJOR, FAAM_VERSION_MINOR, FAAM_VERSION_PATCH);
+    printf("FAAM %s\n",
+           cli_version_string(version_buf, sizeof(version_buf), version));
     printf("Usage: faam <subcommand> [options]\n\n");
     printf("Subcommands:\n");
     printf("  info <file.mp4>             Print container and track summaries (Video/Audio)\n");
@@ -74,6 +78,7 @@ static void print_usage(void)
     printf("                               (no subcommand word; ffmpeg-style -i/-o)\n");
     printf("                               --codec:N <h264|h265|aac>  Codec for the Nth -i (0-based)\n\n");
     printf("Options:\n\n");
+    printf("  --license                    Display copyright and license information\n\n");
     printf("Tag options (faam tag <input.mp4> ...):\n");
     printf("  --title/--artist/--album/--albumartist/--composer <text>\n");
     printf("  --titlesort is not supported; --artistsort/--albumsort/--albumartistsort/--composersort <text>\n");
@@ -1578,7 +1583,11 @@ int main(int argc, char **argv)
 
     int ret = 0;
     const char *cmd = argv[1];
-    if (strcmp(cmd, "info") == 0) {
+    if (strcmp(cmd, "--license") == 0) {
+        cli_print_license("FAAM - Freeware Advanced Audio/Video Muxer",
+                          "Copyright (C) 2026 Nils Schimmelmann");
+        ret = 0;
+    } else if (strcmp(cmd, "info") == 0) {
         ret = cmd_info(argc - 1, argv + 1);
     } else if (strcmp(cmd, "dump") == 0) {
         ret = cmd_dump(argc - 1, argv + 1);
