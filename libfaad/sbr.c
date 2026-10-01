@@ -809,6 +809,9 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
             if (id == PS_EXTENSION_DATA) {
                 uint32_t here = bits_get_consumed(bs);
                 ps_read_data(dec, bs, end > here ? end - here : 0);
+#ifdef FAAD_STATS
+                dec->stats.framePsBits += bits_get_consumed(bs) - here;
+#endif
                 break;
             }
 #endif
