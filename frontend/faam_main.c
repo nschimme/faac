@@ -840,7 +840,7 @@ static int cmd_mux(int argc, char **argv)
                         uint8_t header_len = (buf[offset + 1] & 0x01) ? 7 : 9;
 
                         if (frame_length >= header_len && offset + frame_length <= buf_len) {
-                            faam_muxer_write_frame(m, track_id[i], buf + offset + header_len, frame_length - header_len, 1024, true);
+                            faam_muxer_write_frame(m, track_id[i], buf + offset + header_len, frame_length - header_len, 1024, 0, true);
                             offset += frame_length;
                         } else if (frame_length > sizeof(buf)) {
                             offset += 1;
@@ -901,7 +901,7 @@ static int cmd_mux(int argc, char **argv)
 
                     /* If a new VCL slice or AUD starts after we already have a slice, emit current access unit frame */
                     if ((is_vcl && has_slice) || (is_aud && sample_len > 0)) {
-                        faam_muxer_write_frame(m, track_id[i], sample_mem, sample_len, 3000, sample_is_key);
+                        faam_muxer_write_frame(m, track_id[i], sample_mem, sample_len, 3000, 0, sample_is_key);
                         sample_len = 0;
                         sample_is_key = false;
                         has_slice = false;
@@ -918,7 +918,7 @@ static int cmd_mux(int argc, char **argv)
                 }
 
                 if (sample_len > 0) {
-                    faam_muxer_write_frame(m, track_id[i], sample_mem, sample_len, 3000, sample_is_key);
+                    faam_muxer_write_frame(m, track_id[i], sample_mem, sample_len, 3000, 0, sample_is_key);
                 }
 
                 free(sample_mem);
