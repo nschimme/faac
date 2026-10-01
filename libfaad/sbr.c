@@ -40,15 +40,9 @@ static const float sbr_h_smooth[5] = {
 
 static float ana_pre_c[64], ana_pre_s[64];   /* exp(+j*pi*n/64) */
 static float ana_post_c[32], ana_post_s[32]; /* exp(-j*pi*(k+1/2)/128) */
-#ifndef FAAD_D_SBR
 static float syn_rot_c[32], syn_rot_s[32];   /* exp(-j*pi*(n+1/8)/64) */
 static float syn_a_c[32], syn_a_s[32];       /* the same, over 128 */
 static float syn_b_c[32], syn_b_s[32];       /* the same times exp(+j*2*pi*k/64), over 128 */
-#endif
-#ifdef FAAD_D_SBR
-static float ds_pre_c[32], ds_pre_s[32];     /* exp(-j*127.5*pi*k/64) */
-static float ds_post_c[64], ds_post_s[64];   /* exp(+j*pi*(2n-127.5)/128) */
-#endif
 void init_qmf_twiddles(void)
 {
     fft_init();
@@ -60,7 +54,6 @@ void init_qmf_twiddles(void)
         ana_post_c[k] = (float)cos(-0.5 * M_PI * (k + 0.5) / 64.0);
         ana_post_s[k] = (float)sin(-0.5 * M_PI * (k + 0.5) / 64.0);
     }
-#ifndef FAAD_D_SBR
     for (int n = 0; n < 32; n++) {
         double a = -M_PI * (n + 0.125) / 64.0, b = a + 2.0 * M_PI * n / 64.0;
         syn_rot_c[n] = (float)cos(a);
@@ -70,17 +63,6 @@ void init_qmf_twiddles(void)
         syn_b_c[n] = (float)(cos(b) / 128.0);
         syn_b_s[n] = (float)(sin(b) / 128.0);
     }
-#endif
-#ifdef FAAD_D_SBR
-    for (int k = 0; k < 32; k++) {
-        ds_pre_c[k] = (float)cos(-127.5 * M_PI * k / 64.0);
-        ds_pre_s[k] = (float)sin(-127.5 * M_PI * k / 64.0);
-    }
-    for (int n = 0; n < 64; n++) {
-        ds_post_c[n] = (float)cos(M_PI * (2 * n - 127.5) / 128.0);
-        ds_post_s[n] = (float)sin(M_PI * (2 * n - 127.5) / 128.0);
-    }
-#endif
 }
 
 /* ------------------------------------------------------------------------ */
@@ -142,7 +124,6 @@ static inline void mac64(float * restrict acc, const float * restrict x, const f
     for (int n = 0; n < 64; n++) acc[n] += x[n] * c[n];
 }
 
-#ifndef FAAD_D_SBR
 /* 64-band synthesis of one slot: 64 output samples.
  * v(n) = 1/64 sum_k Re{X(k) exp(j*pi/64*(k+1/2)(n-127.5))}, n = 0..127,
  * which is C(n-128) - S(n-128) for C the DCT-IV of Re X and S the DST-IV
@@ -195,40 +176,7 @@ static void qmf_synthesis_slot(SBRChannel *ch, float X[64][2], float *out)
     for (int n = 0; n < 64; n++) out[n] = run[0][n] * qmf_c[n];
     for (int i = 1; i < 10; i++) mac64(out, run[i], qmf_c + 64 * i);
 }
-#endif
 
-#ifdef FAAD_D_SBR
-/* 32-band synthesis of one slot at the core rate (§4.6.18.8.2.3): only the
- * lower half of X is used, with the decimated prototype. */
-static void qmf_synthesis_slot_ds(SBRChannel *ch, float X[64][2], float *out)
-{
-    float *v = ch->qmf_v;
-    memmove(v + 64, v, 576 * sizeof(float));
-
-    float z[128], w[128];
-    memset(z, 0, sizeof(z));
-    for (int k = 0; k < 32; k++) {
-        float br = X[k][0] * ds_pre_c[k] - X[k][1] * ds_pre_s[k];
-        float bi = X[k][0] * ds_pre_s[k] + X[k][1] * ds_pre_c[k];
-        z[k] = br;
-        z[64 + k] = -bi;
-    }
-    fft(z, w, 6);
-    const float *re = w, *im = w + 64;
-    for (int n = 0; n < 64; n++) {
-        float cr = re[n], ci = -im[n];
-        v[n] = (cr * ds_post_c[n] - ci * ds_post_s[n]) * (1.0f / 64.0f);
-    }
-    for (int n = 0; n < 32; n++) {
-        float acc = 0.0f;
-        for (int i = 0; i < 5; i++) {
-            acc += v[128 * i + n]      * qmf_c[2 * (64 * i + n)];
-            acc += v[128 * i + 96 + n] * qmf_c[2 * (64 * i + 32 + n)];
-        }
-        out[n] = acc;
-    }
-}
-#endif
 
 /* ------------------------------------------------------------------------ */
 /* Frequency band tables (§4.6.18.3.2) and patches (§4.6.18.6.3)            */
@@ -1351,11 +1299,7 @@ static void sbr_dump_frame(FILE *df, unsigned int frame_idx, uint32_t ch, const 
 
 /* In place: channel c's core frame is read from, and its SBR output
  * written to, pcm + c * SBR_OUT_LEN (the PS path writes channel 1 there too). */
-#ifdef FAAD_D_SBR
-#define SBR_OUT_LEN 1024
-#else
 #define SBR_OUT_LEN 2048
-#endif
 void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 {
     float *pcm_in = pcm, *pcm_out = pcm;
@@ -1394,13 +1338,8 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
                     ps_slot(dec, t, sc->x, L, R);
                     l = L; r = R;
                 }
-#ifdef FAAD_D_SBR
-                qmf_synthesis_slot_ds(&dec->sbr[0], l, pcm_out + t * 32);
-                qmf_synthesis_slot_ds(&dec->sbr[1], r, pcm_out + 1024 + t * 32);
-#else
                 qmf_synthesis_slot(&dec->sbr[0], l, pcm_out + t * 64);
                 qmf_synthesis_slot(&dec->sbr[1], r, pcm_out + 2048 + t * 64);
-#endif
             }
             return;
         }
@@ -1408,20 +1347,14 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
         for (int c = 0; c < nch; c++) {
             SBRChannel *sch = &dec->sbr[ch + c];
             sbr_process_channel(el, sch, sc, pcm_in + (ch + c) * SBR_OUT_LEN, c ? E1 : E0, c ? Q1 : Q0, have_hf, SBR_SLOTS);
-#ifdef FAAD_D_SBR
-            for (int t = 0; t < SBR_SLOTS; t++)
-                qmf_synthesis_slot_ds(sch, sc->x[t], pcm_out + (ch + c) * 1024 + t * 32);
-#else
             for (int t = 0; t < SBR_SLOTS; t++)
                 qmf_synthesis_slot(sch, sc->x[t], pcm_out + (ch + c) * 2048 + t * 64);
-#endif
         }
         ch += (uint32_t)nch;
     }
 #else
     (void)dec;
     (void)pcm_in; (void)pcm_out;
-#ifndef FAAD_D_SBR
     /* no SBR decoder: linear 2x upsampling, backwards so it can run in place */
     for (uint32_t ch = 0; ch < num_ch; ch++) {
         float *p = pcm + ch * SBR_OUT_LEN;
@@ -1431,8 +1364,5 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
             p[i * 2]     = 0.5f * (prev + sample);
         }
     }
-#else
-    (void)num_ch; (void)pcm;
-#endif
 #endif
 }
