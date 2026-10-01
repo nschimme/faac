@@ -1,4 +1,4 @@
-# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-30, updated after Stage S6)
+# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-30, updated after Stage S9)
 
 You are picking up a research programme on the FAAC AAC encoder (`nschimme/faac`).
 The goal is to reach the perceptual quality (MOS) of Apple's AAC encoder, the
@@ -9,6 +9,56 @@ running anything.
 
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
+
+## 0-S9. Status after Stages S8-L and S9 (2026-10-01) — read this first
+
+Details: `LADDER_RESULT.md` → "Stage S8-L", "Stage S9". Scripts `scripts/s8l/`, `scripts/s9/`; results `results/s8l/`,
+`results/s9/` (pre-registered rules in each `prereg.md`). Both stages ran locally on the Mac (Codex built the harness,
+the main session ran the 49-clip jobs); §0-S8 below is history.
+
+**Landed since S8:** the stack is on FreewareAdvancedAudio/faac master (#1–#6 = fork #600 #597 #596 #595 #599 #601;
+#599's drop ratio is gated to ≥ 44.1 kHz). SBR time deltas + coupling (upstream #7, fork #579) is held back: about
++2.5 KB for about +0.01 MOS. **The bar from now on is MOS per byte of library code:** a lever that needs more than ~1 KB
+must show ≥ +0.015 in CI.
+
+**What S8-L / S9 settled:**
+- **LC 128k vs Apple (+0.007):** Apple's scalefactors on the regular-in-both set are still worth +0.0145 (42/6) at
+  128k and +0.0103 at 96k on the stack base (0–2 kHz 44 %, 2–6 kHz 40 %); S4-B2 reproduces because LC output has not
+  changed since. The residual is in the scalefactors, but level, shape, offsets and feature fits are dead, so no rule
+  is left from these signals. Parked.
+- **HE core: no decision to copy.** With the core injector repaired (below) and alignment taken from audio, the
+  references' windows lose inside FAAC's HE 48k core (fdk −0.254, 6/43; Apple −0.216, 7/42), their M/S decisions are
+  ≈ 0 (−0.001 / −0.023), windows + M/S −0.27 / −0.29. Every injection took (short 44 → 7–8 %, M/S 67 → 82–88 %). As at
+  LC (Stage H), the references' long windows only pay with an efficient long-block path; the HE windows + sf arm can't
+  be built inside the rate loop. The HE gap is FAAC's long-path coding efficiency.
+- **Short-window sf smoothing** (`FAAC_SF_SMOOTH_SHORT` 0.3/0.6/0.9, on master): ≤ +0.003 at HE 48k/32k, LC flat. Dead.
+- **HE PNS threshold** (fork PR #612, pnslevel 3 only at 24 ≤ bitRate < 28 kbps/ch): CI ABR 48k_stereo_48k +0.010
+  (25/18, significant), CBR +0.008, VBR identical, +160 B, two clips at −0.05/−0.06. The wider variants (HE-wide, ≥ 24)
+  lost clips at 32k and 64k. Awaiting the user's merge decision.
+
+**Injector state (probe libfaac):** `cls` is now accepted (S8-W's `win,cls,...` silently skipped class injection);
+M/S on PNS bands keeps the pre-quantisation decision. Self-inject PCM-identical for win, sf, ms; cls fails (its early
+zero-band forcing changes the rate loop) and tns is not implemented. HE alignment (48 kHz output): FAAC 3042, fdk 5057,
+Apple 5186 samples ⇒ fdk pad 2015 / `FAAC_CORE_INJECT_OFFSET` 1, Apple pad 96 / offset 2 (`scripts/s9/inject_ctl.py`
+checks it per clip). Padding changes FAAC's own decisions (speech MOS ±0.04), so read every arm against F at the same
+pad.
+
+**Next steps, in order:**
+1. **HE long-block side-info ceiling, measured before any build.** 09-24 dumps: FAAC spends 16–20 % of a long CPE
+   frame on side info vs fdk (ch1 IS/spectral/PNS flip-flop, ch0 PNS interleave, sf jumps). Count the section + sf bits
+   a coherent layout would save per long frame on the 49 clips (offline, from FAAD dumps), and price it in MOS with
+   the 40/56 slope. Build only if the ceiling clears the MOS-per-byte bar (≥ +0.015 for > 1 KB). IS-contiguity alone
+   is dead (+0.008, stereo image worse).
+2. If (1) clears: a section-cost-aware IS/PNS run decision in the HE core, probe knob first, then CI.
+3. Parked: LC 128k residual, LC 64k, SBR stop/crossover/constants, cls/tns injection.
+
+### S9 session facts (local Mac)
+- Codex: pass `--model gpt-6-sol`; the config default `gpt-6.1-sol` is rejected on a ChatGPT account. Codex's runner
+  kills commands after ~30 s, so it builds and smoke-tests and the main session runs the corpus jobs.
+- `score_clip.py` (zimtohrli) is one process, ~2.3 s per clip here. Run arms in parallel, one process and one JSON per
+  arm (`xargs -P5`); a 17-arm sweep takes ~12 min. The serial-only rule below is for ViSQOL pools on the homelab host.
+- fdk HE 48k reference streams: `fdkaac -p 5 -b 48000` (cached by `he_arms.py`); `ref/fdk` is LC 128k, not HE.
+- Keep encodes and dumps under `results/s9/arms/{enc,cache}` (git-ignored) or `probe_tmp/`; never commit audio.
 
 ## 0-S8. Status after Stage S7 (2026-09-30) — read this first
 
@@ -617,13 +667,18 @@ loop: both are dead.
   (`FAAC_CORE_INJECT` `sf`/`win,sf`/`class`): it loses on every clip (up to −2 MOS).
   Use step1 (absolute scalefactors, no rate loop) for scalefactor swaps.
 - Blanket "go long" (girl and Mohicans prove it).
+- HE core: the references' windows, M/S, or both injected into FAAC's rate loop (S9: −0.22..−0.29; M/S ≈ 0).
+- Short-window scalefactor smoothing (S9, `FAAC_SF_SMOOTH_SHORT`).
+- A global PNS threshold change at HE beyond 24–28 kbps/ch (S8-P, #612 CI).
+- Uninjected FAAC-vs-reference window match as an alignment check: FAAC's natural windows differ too much (~10 %
+  agreement on speech) to show a peak; align from decoded PCM instead.
 
 ## 6. Gotchas
 
 - **Apple alignment:** prepend 64 zero samples to the input (Apple delay
   2112 = 2 frames + 64), and pair Apple frame n+1 with FAAC frame n.
   `FAAC_STEP1_OFFSET=1` for Apple. `FAAC_CORE_INJECT_OFFSET=2` for Apple and 1 for
-  FAAC's own dump. fdk: delay 2048, no pad.
+  FAAC's own dump. fdk: delay 2048, no pad. (LC. For HE 48k see §0-S9: fdk pad 2015 / offset 1, Apple pad 96 / offset 2.)
 - `FAAC_CORE_INJECT` needs C records with a ` g=` group token. Build them from
   FAAD_LADDER_DUMP with `probe/ladder/scripts/h/h_conv.py`. Apple codes max_sfb
   46 vs FAAC's 44 on long blocks, so set `FAAC_CORE_INJECT_LOOSE_SFB=1`.
@@ -643,7 +698,8 @@ loop: both are dead.
 - afconvert without `@48000` silently lowers the output rate at ≤96k LC and at HE.
 - The faac CLI won't overwrite `-o` unless you pass `--overwrite`. Delete outputs
   first.
-- Serial MOS scoring only: parallel ViSQOL/zimtohrli pools have OOM'd hosts.
+- Serial MOS scoring on the homelab/cloud hosts: parallel ViSQOL pools have OOM'd them. On the Mac, per-arm
+  `score_clip.py` processes in parallel are fine (S9 session facts).
 
 ## 7. Reporting and style
 
