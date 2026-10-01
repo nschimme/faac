@@ -1,4 +1,4 @@
-# FAAD3 Decoder and FAAM Container Benchmark
+# FAAD3 Decoder Benchmark
 
 Measured with the faac-benchmark decoder phase (`tests/faad_benchmark.py --full`)
 on 2026-09-21, libfaad at `4c089193`, against FAAD2 2.11.3, FFmpeg 7.1.5 and
@@ -134,18 +134,6 @@ An error exit on a corrupted stream is acceptable; a timeout or a decode that
 runs away past the intact stream's length is not. FAAD3 resyncs on bad ADTS
 headers and conceals the rest, so it reaches the end of 99.9 % of the
 corrupted streams.
-
-## 7. Container operations (FAAM)
-
-| Tool | Operation | Mean (ms) |
-| :--- | :--- | ---: |
-| faam | Mux AAC → M4A | 21.3 |
-| ffmpeg | Mux AAC → M4A | 74.8 |
-| faam | Demux M4A → AAC | 21.9 |
-| faam | Inject iTunes tags | 17.7 |
-
-Process launch dominates all four figures; `libfaam` itself is 51.7 KB of
-`.text` and works over stream callbacks.
 
 ## Gate
 

@@ -41,17 +41,6 @@ extern "C" {
 #define FAAM_VERSION_STRING \
     FAAM_STR(FAAM_VERSION_MAJOR) "." FAAM_STR(FAAM_VERSION_MINOR) "." FAAM_STR(FAAM_VERSION_PATCH)
 
-#ifndef FAAMAPI
-# if defined(_WIN32)
-#  define FAAMAPI __declspec(dllexport)
-# elif defined(__GNUC__) && (__GNUC__ >= 4)
-#  define FAAMAPI __attribute__((visibility("default")))
-# else
-#  define FAAMAPI
-# endif
-#endif
-
-typedef struct faam_demuxer faam_demuxer;
 typedef struct faam_muxer   faam_muxer;
 
 typedef enum faam_status {
@@ -68,14 +57,6 @@ typedef enum faam_status {
     FAAM_STATUS_MAX           = 0x7fffffff
 } faam_status;
 
-/* Global library metadata; set struct_size to sizeof(faam_library_info) before the call. */
-typedef struct faam_library_info {
-    uint32_t                struct_size;
-    const char             *version;
-    const char             *copyright;
-} faam_library_info;
-
-FAAMAPI faam_status faam_get_library_info(faam_library_info *out);
 
 typedef enum faam_track_type {
     FAAM_TRACK_AUDIO = 1,
@@ -142,33 +123,6 @@ typedef struct faam_track_config {
  * with FAAM_ERR_INVALID_ARG if none was seen. width and height are still required.
  * H.265 needs a caller-supplied hvcC. */
 
-/* Information about a parsed track in a container */
-typedef struct faam_track_info {
-    uint32_t        struct_size;
-    uint32_t        track_id;
-    faam_track_type track_type;
-    faam_codec_id   codec_id;
-    uint32_t        timescale;
-    uint16_t        width;            /* Video width in pixels */
-    uint16_t        height;           /* Video height in pixels */
-    uint32_t        sample_rate;      /* Audio sample rate in Hz */
-    uint32_t        channels;         /* Audio channels */
-    uint32_t        total_frames;     /* Frame/sample count; 0 for fragmented files (not known without scanning) */
-    uint64_t        total_duration;   /* Total duration in timescale units; fragmented files: from mehd, 0 if the writer never finalized */
-    uint32_t        max_frame_bytes;
-    char            language[4];
-} faam_track_info;
-
-/* Frame location metadata returned by streaming demuxer */
-typedef struct faam_frame_loc {
-    uint32_t track_id;         /* Track identifier for this frame */
-    uint64_t file_offset;      /* Byte offset of payload frame in stream */
-    uint32_t frame_bytes;      /* Length of the payload frame in bytes */
-    uint32_t duration_ticks;   /* Frame duration (DTS delta) in timescale ticks */
-    int32_t  cts_offset;       /* PTS - DTS in timescale ticks (ctts); 0 for audio and I/P-only video */
-    bool     is_keyframe;      /* True if sync sample / keyframe / IDR frame */
-} faam_frame_loc;
-
 /* Custom key-value tag entry */
 typedef struct faam_custom_tag {
     const char *name;
@@ -212,37 +166,16 @@ typedef struct faam_metadata {
  * moof at a time and a fragment whose data was cut short is ignored, so a crashed
  * recording yields exactly its completed fragments. */
 
-FAAMAPI faam_status faam_demuxer_get_state_size(uint32_t *state_bytes);
 
-FAAMAPI faam_status faam_demuxer_init(void *mem_buf, uint32_t mem_bytes,
-                                      const faam_io *io,
-                                      faam_demuxer **out_demuxer);
 
-FAAMAPI faam_status faam_demuxer_open(const faam_io *io, faam_demuxer **out_demuxer);
-FAAMAPI void faam_demuxer_close(faam_demuxer **d);
 
-FAAMAPI faam_status faam_demuxer_get_num_tracks(faam_demuxer *d, uint32_t *out_num_tracks);
 
-/* Set out_info->struct_size to sizeof(faam_track_info) before the call. */
-FAAMAPI faam_status faam_demuxer_get_track_info(faam_demuxer *d, uint32_t track_index,
-                                                faam_track_info *out_info);
 
-FAAMAPI faam_status faam_demuxer_get_codec_data(faam_demuxer *d, uint32_t track_id,
-                                                uint8_t *out_buf, uint32_t buf_cap,
-                                                uint32_t *out_len);
 
-FAAMAPI faam_status faam_demuxer_get_gapless(faam_demuxer *d, faam_gapless_info *out_gapless);
 
-FAAMAPI faam_status faam_demuxer_get_metadata(faam_demuxer *d, faam_metadata *out_meta);
 
-FAAMAPI faam_status faam_demuxer_get_chapters(faam_demuxer *d, faam_chapter *out_chapters,
-                                               uint32_t cap, uint32_t *out_count);
 
-FAAMAPI faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc);
 
-FAAMAPI faam_status faam_demuxer_read_frame(faam_demuxer *d,
-                                            uint8_t *out_frame, uint32_t frame_cap,
-                                            uint32_t *frame_bytes);
 
 
 /* --- Stream Muxer API (Muxer -> MP4/M4A/M4B/MP4V) --- */
@@ -263,9 +196,9 @@ typedef struct faam_muxer_config {
     uint32_t            num_tracks;      /* Number of configured tracks */
 } faam_muxer_config;
 
-FAAMAPI faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size);
+faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size);
 
-FAAMAPI faam_status faam_muxer_config_add_track(faam_muxer_config *cfg,
+faam_status faam_muxer_config_add_track(faam_muxer_config *cfg,
                                                  const faam_track_config *track,
                                                  uint32_t *out_track_id);
 
@@ -283,21 +216,21 @@ FAAMAPI faam_status faam_muxer_config_add_track(faam_muxer_config *cfg,
  * finalize closes the last fragment and records the total duration in mehd. B-frame
  * offsets travel in the trun boxes; no edit list shifts the first frame to t=0, so such
  * video starts at its first cts_offset. */
-FAAMAPI faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *state_bytes);
+faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *state_bytes);
 
-FAAMAPI faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes,
+faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes,
                                     const faam_muxer_config *cfg,
                                     const faam_io *io,
                                     faam_muxer **out_muxer);
 
-FAAMAPI faam_status faam_muxer_set_creation_time(faam_muxer *m, uint32_t unix_time);
-FAAMAPI faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless);
+faam_status faam_muxer_set_creation_time(faam_muxer *m, uint32_t unix_time);
+faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless);
 
 /* duration_ticks is the DTS delta to the next frame in track timescale units.
  * cts_offset is PTS - DTS (negative allowed) for B-frame video; pass 0 for audio and
  * I/P-only video, which then writes no ctts box. Non-zero offsets need the muxer-video
  * build option (FAAM_ERR_UNSUPPORTED otherwise) and are invalid on audio tracks. */
-FAAMAPI faam_status faam_muxer_write_frame(faam_muxer *m,
+faam_status faam_muxer_write_frame(faam_muxer *m,
                                            uint32_t track_id,
                                            const uint8_t *frame_buf, uint32_t frame_bytes,
                                            uint32_t duration_ticks,
@@ -305,15 +238,15 @@ FAAMAPI faam_status faam_muxer_write_frame(faam_muxer *m,
                                            bool is_keyframe);
 
 /* Requires working seek/tell callbacks; I/O/allocation failures remain sticky. */
-FAAMAPI faam_status faam_muxer_finalize(faam_muxer *m);
+faam_status faam_muxer_finalize(faam_muxer *m);
 
-FAAMAPI faam_status faam_muxer_open(const faam_muxer_config *cfg, const faam_io *io,
+faam_status faam_muxer_open(const faam_muxer_config *cfg, const faam_io *io,
                                     faam_muxer **out_muxer);
-FAAMAPI void faam_muxer_close(faam_muxer **m);
+void faam_muxer_close(faam_muxer **m);
 
 /* Preserve the source PCM sample-size field used by the faac container writer.
  * AAC defaults to 16; this informational field does not alter encoded audio. */
-FAAMAPI faam_status faam_muxer_set_audio_sample_size(faam_muxer *m, uint32_t track_id, uint16_t bits);
+faam_status faam_muxer_set_audio_sample_size(faam_muxer *m, uint32_t track_id, uint16_t bits);
 
 /* Querying Muxer Statistics */
 typedef struct faam_muxer_info {
@@ -326,12 +259,10 @@ typedef struct faam_muxer_info {
     uint32_t max_frame_size;
 } faam_muxer_info;
 
-FAAMAPI faam_status faam_muxer_get_info(const faam_muxer *m, uint32_t track_id, faam_muxer_info *out_info);
+faam_status faam_muxer_get_info(const faam_muxer *m, uint32_t track_id, faam_muxer_info *out_info);
 
-FAAMAPI const char *faam_strerror(faam_status status);
+const char *faam_strerror(faam_status status);
 
-FAAMAPI faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta);
-FAAMAPI faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *chapters, uint32_t count);
 
 #ifdef __cplusplus
 }

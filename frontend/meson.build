@@ -14,7 +14,7 @@ git_version_h = vcs_tag(
     fallback: '',
 )
 
-frontend_link_libs = [libfaac, libfaam_lib]
+frontend_link_libs = [libfaac]
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
 
 libfrontend = static_library('frontend',
@@ -36,18 +36,8 @@ faac = executable('faac',
     install: true
 )
 
-if get_option('muxer')
-    faam = executable('faam',
-        ['faam_main.c', 'charset.c', 'cli_common.c', git_version_h],
-        include_directories: ['..', '../include', '../common'],
-        link_with: [libfaam_lib],
-        dependencies: [libshell32, libiconv],
-        install: true
-    )
-endif
-
 if get_option('decoder')
-    decoder_link_libs = [libfaad, libfaam_lib]
+    decoder_link_libs = [libfaad]
     gc_args = []
     if cc.has_link_argument('-Wl,--gc-sections')
         gc_args += ['-Wl,--gc-sections']

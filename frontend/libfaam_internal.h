@@ -66,65 +66,6 @@ typedef struct {
 } faam_ctts_entry;
 
 typedef struct {
-    faam_track_info info;
-    uint8_t codec_data[256];
-    uint32_t codec_data_len;
-    faam_sample *samples;
-    uint32_t total_frames;   /* in the loaded table: the whole file, or the current fragment */
-    uint32_t current_frame;
-    uint32_t samples_cap;
-    uint64_t elst_media_time;
-    uint64_t elst_segment_duration;
-    bool has_elst;
-} faam_demuxer_track;
-
-typedef struct faam_owned_string {
-    struct faam_owned_string *next;
-    char text[];
-} faam_owned_string;
-
-typedef struct {
-    uint32_t track_id;
-    uint32_t duration;
-    uint32_t size;
-    uint32_t flags;
-} faam_trex;
-
-struct faam_demuxer {
-    bool heap_owned;
-    faam_status error;
-    faam_owned_string *strings;
-    faam_custom_tag *custom_tags;
-    faam_io io;
-
-    faam_gapless_info gapless;
-    bool has_gapless;
-
-    uint64_t elst_media_time;
-    uint64_t elst_segment_duration;
-    bool has_elst;
-
-    faam_metadata metadata;
-    uint8_t *cover_art_owned; /* heap copy backing metadata.cover_art; the ilst-source
-                                * buffer it was parsed from is freed right after init() */
-    faam_chapter chapters[64];
-    uint32_t num_chapters;
-
-    faam_demuxer_track tracks[FAAM_MAX_TRACKS];
-    uint32_t num_tracks;
-    uint32_t movie_timescale;
-
-    /* Fragmented files: samples arrive one moof at a time, so only the
-     * current fragment's table is in memory. */
-    bool fragmented;
-    bool frag_done;
-    uint64_t frag_pos;       /* next top-level box to scan for a moof */
-    uint64_t mehd_duration;  /* movie timescale; 0 when the writer never finalized */
-    faam_trex trex[FAAM_MAX_TRACKS];
-    uint32_t num_trex;
-};
-
-typedef struct {
     faam_track_config cfg;
     uint8_t codec_data[256];
     uint32_t codec_data_len;

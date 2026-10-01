@@ -67,5 +67,4 @@ Library integration: [FAAC encoder API](docs/libfaac.md).
 ```bash
 faac input.wav -o output.m4a        # encode
 ```
-The `faam` muxer CLI is off by default; enable it with `-Dmuxer=true` (libfaam itself is always built).
 

@@ -59,8 +59,6 @@ subdir('include')
 subdir('common')
 subdir('libfaac')
 
-subdir('libfaam')
-
 if get_option('decoder')
     subdir('libfaad')
 endif

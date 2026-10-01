@@ -62,7 +62,6 @@ def main():
 
     faad3 = os.path.join(REPO_ROOT, "build", "frontend", "faad")
     faac = os.path.join(REPO_ROOT, "build", "frontend", "faac")
-    faam = os.path.join(REPO_ROOT, "build", "frontend", "faam")
     if not os.path.exists(faad3):
         print(f"faad3 binary not found at {faad3}; build this repo first.", file=sys.stderr)
         sys.exit(1)
@@ -79,8 +78,6 @@ def main():
         rev = ""
     cmd = [python_bin, compare_codecs, "--faad-bin", faad3,
            "--faad-bin-version", f"git {rev}" if rev else "", "--faac-bin", faac]
-    if os.path.exists(faam):
-        cmd += ["--faam-bin", faam, "--muxer-bench"]
     if not args.full:
         cmd.append("--gate")
     cmd += extra

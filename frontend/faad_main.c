@@ -39,26 +39,7 @@
 #include "cli_common.h"
 #include "endian.h"
 #include "asc_codec.h"
-
-typedef struct {
-    uint64_t offset;
-    uint32_t size;
-} MP4Sample;
-
-typedef struct {
-    uint8_t *asc_buf;
-    uint32_t asc_len;
-    uint32_t delay;
-    uint32_t padding;
-    uint32_t timescale;
-    MP4Sample *samples;
-    uint32_t num_samples;
-    char major_brand[16];
-    char encoder_tag[64];
-} MP4Track;
-
-extern bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track);
-extern void mp4_free_track(MP4Track *track);
+#include "mp4read.h"
 
 typedef struct {
     uint8_t *data;
@@ -67,6 +48,18 @@ typedef struct {
     uint32_t tail;
     uint32_t fill;
 } PCMFifo;
+
+static void json_str(const char *s)
+{
+    putchar('"');
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (c == '"' || c == '\\') printf("\\%c", c);
+        else if (c < 0x20) printf("\\u%04x", c);
+        else putchar(c);
+    }
+    putchar('"');
+}
 
 static void fifo_init(PCMFifo *f, uint32_t capacity)
 {
@@ -736,11 +729,13 @@ int main(int argc, char **argv)
     double duration_sec = (double)(frames_decoded * (obj_type == FAAD_OBJ_HE_AAC_V1 ? 2048 : 1024)) / (sample_rate ? sample_rate : 44100);
     double avg_bitrate_kbps = (file_len * 8.0) / (duration_sec > 0 ? duration_sec * 1000.0 : 1.0);
 
+    const char *brand = track.major_brand[0] ? track.major_brand : "M4A";
     if (json_info) {
         printf("{\n");
-        printf("  \"file\": \"%s\",\n", infile);
-        printf("  \"container\": \"%s\",\n", is_mp4 ? "MP4 / M4A" : "ADTS Bitstream");
-        printf("  \"major_brand\": \"%s\",\n", track.major_brand[0] ? track.major_brand : "M4A");
+        printf("  \"file\": ");
+        json_str(infile);
+        printf(",\n  \"container\": \"%s\",\n", is_mp4 ? "MP4 / M4A" : "ADTS Bitstream");
+        if (is_mp4) printf("  \"major_brand\": \"%s\",\n", brand);
         printf("  \"duration_seconds\": %.2f,\n", duration_sec);
         printf("  \"audio\": {\n");
         printf("    \"profile\": \"%s\",\n", (obj_type == FAAD_OBJ_HE_AAC_V1) ? "HE-AAC v1 (AAC-LC + SBR)" : "AAC-LC");
@@ -749,13 +744,19 @@ int main(int argc, char **argv)
         printf("    \"bitrate_avg_kbps\": %.1f,\n", avg_bitrate_kbps);
         printf("    \"total_frames\": %u\n", frames_decoded);
         printf("  },\n");
-        printf("  \"metadata\": {\n");
-        printf("    \"encoder\": \"%s\"\n", track.encoder_tag[0] ? track.encoder_tag : "FAAC");
-        printf("  }\n");
-        printf("}\n");
+        printf("  \"gapless\": { \"encoder_delay\": %u, \"trailing_padding\": %u },\n", track.delay, track.padding);
+        printf("  \"cover_art_bytes\": %u,\n", track.cover_bytes);
+        printf("  \"metadata\": {");
+        for (uint32_t i = 0; i < track.num_tags; i++) {
+            printf(i ? ",\n    " : "\n    ");
+            json_str(track.tags[i].name);
+            printf(": ");
+            json_str(track.tags[i].value);
+        }
+        printf("%s}\n}\n", track.num_tags ? "\n  " : "");
     } else if (info_only) {
         printf("File:        %s\n", infile);
-        printf("Container:   %s (Major Brand: %s)\n", is_mp4 ? "MP4 / M4A" : "ADTS Bitstream", track.major_brand[0] ? track.major_brand : "M4A");
+        printf("Container:   %s%s%s\n", is_mp4 ? "MP4 / M4A (Major Brand: " : "ADTS Bitstream", is_mp4 ? brand : "", is_mp4 ? ")" : "");
         printf("Duration:    %02d:%02d:%02d.%02d (%.2f seconds)\n\n",
                (int)duration_sec / 3600, ((int)duration_sec % 3600) / 60, (int)duration_sec % 60, (int)(duration_sec * 100) % 100, duration_sec);
         printf("Audio Stream:\n");
@@ -763,9 +764,18 @@ int main(int argc, char **argv)
         printf("  Channels:  %u (%s)\n", num_channels, (num_channels == 1) ? "Mono" : ((num_channels == 2) ? "Stereo" : "Multichannel"));
         printf("  Sample Rate: %.1f kHz\n", sample_rate / 1000.0f);
         printf("  Bitrate:   %.1f kbps (Avg)\n", avg_bitrate_kbps);
-        printf("  Frames:    %u frames\n\n", frames_decoded);
-        printf("Metadata (Tags):\n");
-        printf("  Encoder:   %s\n", track.encoder_tag[0] ? track.encoder_tag : "FAAC");
+        printf("  Frames:    %u frames\n", frames_decoded);
+        if (track.delay || track.padding) {
+            printf("\nGapless:\n");
+            printf("  Encoder Delay:    %u samples\n", track.delay);
+            printf("  Trailing Padding: %u samples\n", track.padding);
+        }
+        if (track.num_tags || track.cover_bytes) {
+            printf("\nMetadata (Tags):\n");
+            for (uint32_t i = 0; i < track.num_tags; i++)
+                printf("  %s: %s\n", track.tags[i].name, track.tags[i].value);
+            if (track.cover_bytes) printf("  Cover Art: present (%u bytes)\n", track.cover_bytes);
+        }
     } else if (fout) {
         if (!raw_format && fout != stdout) {
             if (!header_pending) num_channels = header_channels;
