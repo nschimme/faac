@@ -31,6 +31,12 @@ typedef struct faadDecStats {
     unsigned int fillElementCount, fillElementPadBitsSum, fillElementMaxPad;
     unsigned int errorConcealmentFrames;
 
+    /* This frame's bits by syntax part, reset per frame and written as the
+     * 'B' dump record; the parts are disjoint, the remainder is element and
+     * ics headers. */
+    unsigned int frameSectBits, frameSfBits, frameSpecBits, frameAuxBits;
+    unsigned int frameSbrBits, framePsBits, frameFillBits;
+
     /* Per-decoder decision dump, opened lazily from FAAD_DUMP. */
     FILE *dumpFile;
     bool dumpOpenTried;
