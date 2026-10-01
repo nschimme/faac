@@ -36,11 +36,19 @@ static int32_t file_write_cb(void *user_data, const void *buf, uint32_t bytes) {
 }
 
 static bool file_seek_cb(void *user_data, uint64_t offset) {
-    return fseek((FILE *)user_data, (long)offset, SEEK_SET) == 0;
+#ifdef _WIN32
+    return _fseeki64((FILE *)user_data, (int64_t)offset, SEEK_SET) == 0;
+#else
+    return fseeko((FILE *)user_data, (off_t)offset, SEEK_SET) == 0;
+#endif
 }
 
 static uint64_t file_tell_cb(void *user_data) {
-    return (uint64_t)ftell((FILE *)user_data);
+#ifdef _WIN32
+    return (uint64_t)_ftelli64((FILE *)user_data);
+#else
+    return (uint64_t)ftello((FILE *)user_data);
+#endif
 }
 #endif
 
@@ -295,6 +303,6 @@ uint32_t mp4_avg_bitrate(void) {
     faam_muxer_info info; get_info_helper(&info); return info.avg_bitrate;
 }
 
-uint16_t mp4_max_frame_size(void) {
+uint32_t mp4_max_frame_size(void) {
     faam_muxer_info info; get_info_helper(&info); return info.max_frame_size;
 }

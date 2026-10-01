@@ -19,7 +19,7 @@
  *
  * Lightweight ISO BMFF (MP4/M4A/M4B/MP4V) container parser and builder.
  * Operates strictly over abstract faam_io stream callbacks (zero file path dependency).
- * Supports video (H.264/AVC, H.265/HEVC) and audio (AAC, PCM) tracks, metadata, and chapters.
+ * Supports video (H.264/AVC, H.265/HEVC) and audio (AAC) tracks, metadata, and chapters.
  */
 
 #ifndef FAAM_H
@@ -98,7 +98,7 @@ typedef struct faam_io {
 
 /* Gapless audio parameters (corresponds to iTunSMPB atom) */
 typedef struct faam_gapless_info {
-    uint32_t encoder_delay;    /* Leading priming samples to discard (usually 1024) */
+    uint32_t encoder_delay;    /* Leading priming samples to discard; defaults to 0, caller supplies codec delay */
     uint32_t end_padding;      /* Trailing zero-padding samples to discard */
     uint64_t total_samples;    /* Original unpadded PCM sample count */
 } faam_gapless_info;
@@ -122,7 +122,7 @@ typedef struct faam_track_config {
     uint32_t        sample_rate;      /* Audio sample rate in Hz (audio tracks) */
     uint32_t        channels;         /* Audio channel count (audio tracks) */
     uint32_t        bits_per_sample;  /* Sample bit depth (16, 24, 32 for audio) */
-    const uint8_t  *codec_data;       /* Codec extradata (e.g. esds / avcC / hvcC payload) */
+    const uint8_t  *codec_data;       /* Decoder config (AAC ASC / avcC / hvcC payload), at most 256 bytes */
     uint32_t        codec_data_len;   /* Length of codec extradata in bytes */
 } faam_track_config;
 
@@ -228,12 +228,12 @@ FAAMAPI faam_status faam_demuxer_seek_sample(faam_demuxer *d, uint32_t track_id,
 typedef struct faam_muxer_config {
     uint32_t            struct_size;
     uint32_t            creation_time;   /* MP4 creation time timestamp */
-    bool                faststart;       /* True to reserve space and place moov atom at front */
+    bool                faststart;       /* Reserved; currently ignored (moov is written last) */
     bool                is_m4b;          /* True to write M4B brand headers */
     faam_gapless_info   gapless;         /* Priming/padding metadata for iTunSMPB */
     faam_metadata       metadata;        /* Initial metadata tags */
     const faam_chapter *chapters;        /* Chapters list to inject */
-    uint32_t            num_chapters;    /* Chapter count */
+    uint32_t            num_chapters;    /* Chapter count, at most 255 (demuxer returns at most 64) */
     faam_track_config   tracks[8];       /* Up to 8 tracks (video / audio) */
     uint32_t            num_tracks;      /* Number of configured tracks */
 } faam_muxer_config;
@@ -260,6 +260,7 @@ FAAMAPI faam_status faam_muxer_write_frame(faam_muxer *m,
                                            uint32_t duration_ticks,
                                            bool is_keyframe);
 
+/* Requires working seek/tell callbacks; I/O/allocation failures remain sticky. */
 FAAMAPI faam_status faam_muxer_finalize(faam_muxer *m);
 
 FAAMAPI void faam_muxer_close(faam_muxer *m);
@@ -271,13 +272,14 @@ typedef struct faam_muxer_info {
     uint64_t sample_count;
     uint32_t max_bitrate;
     uint32_t avg_bitrate;
-    uint16_t max_frame_size;
+    uint32_t max_frame_size;
 } faam_muxer_info;
 
 FAAMAPI faam_status faam_muxer_get_info(const faam_muxer *m, faam_muxer_info *out_info);
 
 FAAMAPI const char *faam_strerror(faam_status status);
 
+/* Retrofit APIs return FAAM_ERR_UNSUPPORTED in embedded builds. */
 FAAMAPI faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta);
 FAAMAPI faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *chapters, uint32_t count);
 
