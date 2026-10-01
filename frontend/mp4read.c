@@ -8,9 +8,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef HAVE_LIBFAAM
 #include "faam.h"
-#endif
 
 typedef struct {
     uint64_t offset;
@@ -29,7 +27,6 @@ typedef struct {
     char encoder_tag[64];
 } MP4Track;
 
-#ifdef HAVE_LIBFAAM
 typedef struct {
     const uint8_t *buf;
     uint64_t size;
@@ -57,12 +54,10 @@ static uint64_t mem_tell_cb(void *user_data) {
     memory_stream *ms = (memory_stream *)user_data;
     return ms->pos;
 }
-#endif
 
 bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
 {
     memset(track, 0, sizeof(*track));
-#ifdef HAVE_LIBFAAM
     if (!buf || file_size < 32) return false;
 
     memory_stream ms = { buf, (uint64_t)file_size, 0 };
@@ -144,10 +139,6 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
      * Without any track the input is not a container at all (e.g. ADTS), so
      * hand it back to be treated as a raw stream. */
     return num_tracks > 0;
-#else
-    (void)buf; (void)file_size;
-    return false;
-#endif
 }
 
 void mp4_free_track(MP4Track *track)

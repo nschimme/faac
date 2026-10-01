@@ -19,14 +19,9 @@ option('decoder',
     value: true)
 
 option('muxer',
-    description: 'Build the FAAM media manipulator library and faam CLI tool',
+    description: 'Build the faam CLI tool (libfaam itself is always built)',
     type: 'boolean',
     value: true)
-
-option('embedded',
-    description: 'Trim for flash-constrained targets: drops libfaam tag/chapter retrofit APIs',
-    type: 'boolean',
-    value: false)
 
 option('muxer-video',
     description: 'libfaam: H.264/H.265 video tracks (avc1/hvc1 entries, stss, ctts, Annex-B conversion); off leaves an audio-only muxer/demuxer',
