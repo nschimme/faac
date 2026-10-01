@@ -14,7 +14,7 @@
  */
 
 #include "bitstream.h"
-#include "util.h"
+#include "faac_util.h"
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>

@@ -53,7 +53,7 @@
 
 
 #include "faad.h"
-#include "stats.h"
+#include "faad_stats.h"
 #include "huffdata.h"
 #include "sbr_tables.h"
 
@@ -69,9 +69,8 @@
 #define FRAME_LEN_SHORT 128
 #define NUM_WINDOWS 8
 
-/* ISO/IEC 14496-3 Table 1.16 sampling_frequency_index, shared by asc.c
- * (parsing) and sfb_tables.c (scale-factor-band table selection). */
-extern const uint32_t faad_sample_rates[16];
+/* Index into the SFB tables for a sample rate (asc.c). */
+int get_sr_index(uint32_t sample_rate);
 
 /* Syntactic Element IDs per ISO 14496-3 */
 #define ID_SCE 0x0

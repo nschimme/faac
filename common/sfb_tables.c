@@ -13,7 +13,7 @@
  */
 
 /*
- * ISO/IEC 14496-3 Scale Factor Band (SFB) Tables
+ * ISO/IEC 14496-3 Scale Factor Band (SFB) Tables (non-copyrightable facts)
  *
  * Generated from libfaac's own per-rate band-width tables (SR_INFO in
  * libfaac/frame.c) rather than transcribed independently: that table is the
