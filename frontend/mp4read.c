@@ -89,13 +89,15 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
      * audio track by its parsed type and codec instead of assuming ID 1. */
     uint32_t num_tracks = 0;
     uint32_t audio_track_id = 0;
+    uint32_t total_frames = 0;
     faam_demuxer_get_num_tracks(d, &num_tracks);
     for (uint32_t i = 0; i < num_tracks; i++) {
-        faam_track_info info;
+        faam_track_info info = {0}; info.struct_size = sizeof(info);
         if (faam_demuxer_get_track_info(d, i, &info) == FAAM_OK &&
             info.track_type == FAAM_TRACK_AUDIO && info.codec_id == FAAM_CODEC_AAC) {
             audio_track_id = info.track_id;
             track->timescale = info.timescale;
+            total_frames = info.total_frames;
             break;
         }
     }
@@ -120,7 +122,6 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
     /* The frame iterator merges samples from every track by file offset.
      * Consume the merged sequence, retaining only locations from our AAC
      * track; otherwise interleaved video packets get fed to the decoder. */
-    uint32_t total_frames = audio_track_id ? faam_demuxer_get_total_frames(d, audio_track_id) : 0;
     if (total_frames > 0) {
         track->samples = (MP4Sample *)calloc(total_frames, sizeof(MP4Sample));
         if (track->samples) {
@@ -137,7 +138,7 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
         }
     }
 
-    faam_demuxer_close(d);
+    faam_demuxer_close(&d);
     free(mem);
     /* A valid MP4 without AAC audio is still an MP4: the caller reports that.
      * Without any track the input is not a container at all (e.g. ADTS), so

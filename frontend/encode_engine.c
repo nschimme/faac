@@ -602,6 +602,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         mp4_is_open = true;
         mp4_set_format(rc_scalar(rc, sample_rate), num_channels, infile->samplebytes * 8);
         mp4_set_constant_rate(opts->cbr);
+        mp4_set_language(opts->metadata.language);
     }
     else if (opts->output_filename)
     {

@@ -47,6 +47,10 @@ const char *faam_strerror(faam_status status)
         return "Insufficient memory arena or allocation buffer";
     case FAAM_ERR_NO_TRACK:
         return "No matching video/audio track found in container";
+    case FAAM_ERR_OUTPUT_TOO_SMALL:
+        return "Output buffer too small";
+    case FAAM_END_OF_STREAM:
+        return "End of stream";
     case FAAM_ERR_UNSUPPORTED:
         return "Feature or operation not supported or disabled";
     default:

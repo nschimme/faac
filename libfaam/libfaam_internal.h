@@ -67,7 +67,16 @@ typedef struct {
     uint32_t current_frame;
 } faam_demuxer_track;
 
+typedef struct faam_owned_string {
+    struct faam_owned_string *next;
+    char text[];
+} faam_owned_string;
+
 struct faam_demuxer {
+    bool heap_owned;
+    faam_status error;
+    faam_owned_string *strings;
+    faam_custom_tag *custom_tags;
     faam_io io;
 
     faam_gapless_info gapless;
@@ -95,7 +104,8 @@ typedef struct {
     uint8_t codec_data[256];
     uint32_t codec_data_len;
 
-    faam_sample *samples;
+    uint32_t *sample_sizes;
+    uint64_t *sample_offsets;
     uint32_t sample_count;
     uint32_t sample_capacity;
 
@@ -117,24 +127,44 @@ typedef struct {
         uint64_t samples;
     } bitrate_window;
     uint32_t last_frame_samples;
+    uint16_t audio_sample_size;
+    uint64_t total_bytes;
+    uint64_t window_ticks;
 } faam_muxer_track;
+
+typedef struct {
+    uint32_t creation_time;
+    bool constant_rate;
+    bool is_m4b;
+    faam_gapless_info gapless;
+    const faam_metadata *metadata;
+    const faam_chapter *chapters;
+    uint32_t num_chapters;
+} faam_muxer_settings;
 
 struct faam_muxer {
     faam_io io;
 
-    faam_muxer_config cfg;
-    faam_muxer_track tracks[FAAM_MAX_TRACKS];
+    faam_muxer_settings cfg;
     uint32_t num_tracks;
 
     uint64_t mdat_pos;
     uint64_t mdat_size;
 
-    uint8_t *membuf;
-    size_t mempos;
-    size_t memcap;
-    int mem_error;
+    uint8_t staging[1024];
+    uint32_t staged_bytes;
     faam_status error;
+    bool gapless_present;
+    bool heap_owned;
+    bool finalized;
+    uint64_t file_bytes;
+    faam_muxer_track tracks[];
 };
+
+typedef faam_status (*faam_bytes_writer)(void *user, const void *data, uint32_t bytes);
+faam_status faam_write_ilst(const faam_metadata *metadata, const faam_gapless_info *gapless,
+                            const uint8_t *smpb, uint32_t smpb_bytes,
+                            faam_bytes_writer write, void *user, uint32_t *out_size);
 
 /* Endian utilities */
 static inline uint16_t read_u16_be(const uint8_t *b) {
