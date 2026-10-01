@@ -114,6 +114,9 @@ typedef struct faam_chapter {
     const char *title;        /* Borrowed through finalize/update; demux output lives until close */
 } faam_chapter;
 
+/* faam_track_config.flags */
+#define FAAM_TRACK_ANNEXB 0x1 /* Video frames arrive as Annex-B (start-code) access units */
+
 /* Track configuration parameters for muxer initialization */
 typedef struct faam_track_config {
     uint32_t        struct_size;
@@ -128,7 +131,16 @@ typedef struct faam_track_config {
     char            language[4];     /* ISO 639-2/T, empty defaults to und */
     const uint8_t  *codec_data;       /* Decoder config (AAC ASC / avcC / hvcC payload), at most 256 bytes */
     uint32_t        codec_data_len;   /* Length of codec extradata in bytes */
+    uint32_t        flags;            /* FAAM_TRACK_* bits */
 } faam_track_config;
+
+/* FAAM_TRACK_ANNEXB (video only, needs the muxer-video build option): write_frame takes one
+ * access unit with 00 00 01 / 00 00 00 01 start codes and stores it as 4-byte length-prefixed
+ * NAL units; the caller's buffer is never modified and nothing is allocated. For H.264 the
+ * track may then omit codec_data (NULL, 0): the avcC is built from the first SPS and the
+ * first PPS that follows it, so the first access unit must carry them, and finalize fails
+ * with FAAM_ERR_INVALID_ARG if none was seen. width and height are still required.
+ * H.265 needs a caller-supplied hvcC. */
 
 /* Information about a parsed track in a container */
 typedef struct faam_track_info {
@@ -141,8 +153,8 @@ typedef struct faam_track_info {
     uint16_t        height;           /* Video height in pixels */
     uint32_t        sample_rate;      /* Audio sample rate in Hz */
     uint32_t        channels;         /* Audio channels */
-    uint32_t        total_frames;     /* Frame/sample count */
-    uint64_t        total_duration;   /* Total duration in timescale units */
+    uint32_t        total_frames;     /* Frame/sample count; 0 for fragmented files (not known without scanning) */
+    uint64_t        total_duration;   /* Total duration in timescale units; fragmented files: from mehd, 0 if the writer never finalized */
     uint32_t        max_frame_bytes;
     char            language[4];
 } faam_track_info;
@@ -152,7 +164,8 @@ typedef struct faam_frame_loc {
     uint32_t track_id;         /* Track identifier for this frame */
     uint64_t file_offset;      /* Byte offset of payload frame in stream */
     uint32_t frame_bytes;      /* Length of the payload frame in bytes */
-    uint32_t duration_ticks;   /* Frame duration in timescale ticks */
+    uint32_t duration_ticks;   /* Frame duration (DTS delta) in timescale ticks */
+    int32_t  cts_offset;       /* PTS - DTS in timescale ticks (ctts); 0 for audio and I/P-only video */
     bool     is_keyframe;      /* True if sync sample / keyframe / IDR frame */
 } faam_frame_loc;
 
@@ -193,6 +206,11 @@ typedef struct faam_metadata {
 
 
 /* --- Stream Demuxer API (MP4/M4A/MP4V -> Demuxer) --- */
+
+/* The demuxer needs read and seek. It keeps only moov in memory; samples of progressive
+ * files are indexed up front, fragmented files (muxer-fragmented option) are read one
+ * moof at a time and a fragment whose data was cut short is ignored, so a crashed
+ * recording yields exactly its completed fragments. */
 
 FAAMAPI faam_status faam_demuxer_get_state_size(uint32_t *state_bytes);
 
@@ -238,6 +256,9 @@ typedef struct faam_muxer_config {
     const faam_metadata *metadata;       /* Borrowed, may be populated until finalize */
     const faam_chapter *chapters;        /* Chapters list to inject */
     uint32_t            num_chapters;    /* Chapter count, at most 255 (demuxer returns at most 64) */
+    uint32_t            fragment_ms;     /* 0: progressive file, moov written by finalize.
+                                          * >0: fragmented MP4 (needs the muxer-fragmented build option),
+                                          * see faam_muxer_init */
     faam_track_config   tracks[8];       /* Up to 8 tracks (video / audio) */
     uint32_t            num_tracks;      /* Number of configured tracks */
 } faam_muxer_config;
@@ -248,6 +269,20 @@ FAAMAPI faam_status faam_muxer_config_add_track(faam_muxer_config *cfg,
                                                  const faam_track_config *track,
                                                  uint32_t *out_track_id);
 
+/* Fragmented recording (cfg->fragment_ms > 0) is meant for crash-safe capture to SD:
+ * ftyp and a moov with empty sample tables are written at init, then [moof][mdat]
+ * fragments follow, each closed at the first video keyframe once fragment_ms of video
+ * (audio-only files: of audio) has accumulated, or earlier when its sample index
+ * (about 128 samples per second of fragment_ms, at least 64) or 1 GiB fills. A fragment's
+ * moof is written when it closes, so a crash loses at most the open fragment and every
+ * completed one stays playable. The sample index is carved from the caller's arena:
+ * get_state_size is exact and no heap allocation happens while muxing. In this mode
+ * the io needs seek and tell, video tracks need codec_data (the moov precedes any frame),
+ * metadata, chapters and gapless are written at init from cfg (the set_* calls return
+ * FAAM_ERR_UNSUPPORTED afterwards), io.flush runs after every completed fragment, and
+ * finalize closes the last fragment and records the total duration in mehd. B-frame
+ * offsets travel in the trun boxes; no edit list shifts the first frame to t=0, so such
+ * video starts at its first cts_offset. */
 FAAMAPI faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *state_bytes);
 
 FAAMAPI faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes,
@@ -258,10 +293,15 @@ FAAMAPI faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes,
 FAAMAPI faam_status faam_muxer_set_creation_time(faam_muxer *m, uint32_t unix_time);
 FAAMAPI faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless);
 
+/* duration_ticks is the DTS delta to the next frame in track timescale units.
+ * cts_offset is PTS - DTS (negative allowed) for B-frame video; pass 0 for audio and
+ * I/P-only video, which then writes no ctts box. Non-zero offsets need the muxer-video
+ * build option (FAAM_ERR_UNSUPPORTED otherwise) and are invalid on audio tracks. */
 FAAMAPI faam_status faam_muxer_write_frame(faam_muxer *m,
                                            uint32_t track_id,
                                            const uint8_t *frame_buf, uint32_t frame_bytes,
                                            uint32_t duration_ticks,
+                                           int32_t cts_offset,
                                            bool is_keyframe);
 
 /* Requires working seek/tell callbacks; I/O/allocation failures remain sticky. */
