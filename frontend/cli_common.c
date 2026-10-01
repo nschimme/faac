@@ -27,17 +27,19 @@ void cli_print_license(const char *name, const char *copyright) {
     printf("%s\n", name);
     if (copyright)
         printf("%s\n", copyright);
-    cli_print_lgpl_notice(stdout);
+    printf("\n");
+    cli_print_lgpl_notice(stdout, "software");
 }
 
-void cli_print_lgpl_notice(FILE *stream) {
-    fprintf(stream, "\nThis software is free software; you can redistribute it and/or\n"
+void cli_print_lgpl_notice(FILE *stream, const char *subject) {
+    fprintf(stream, "This %s is free software; you can redistribute it and/or\n", subject);
+    fprintf(stream,
                     "modify it under the terms of the GNU Lesser General Public\n"
                     "License as published by the Free Software Foundation; either\n"
                     "version 2.1 of the License, or (at your option) any later version.\n"
                     "\n"
-                    "This software is distributed in the hope that it will be useful,\n"
+                    "This %s is distributed in the hope that it will be useful,\n"
                     "but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
                     "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU\n"
-                    "Lesser General Public License for more details.\n\n");
+                    "Lesser General Public License for more details.\n\n", subject);
 }
