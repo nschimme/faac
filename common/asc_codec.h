@@ -43,12 +43,14 @@ static const uint32_t asc_codec_sample_rates[16] = {
     16000, 12000, 11025, 8000, 7350, 0, 0, 0
 };
 
-static inline uint8_t asc_codec_sr_idx(uint32_t rate)
+/* Table 1.16 index of a rate, or -1 when the table has none (an ASC can
+ * carry any rate explicitly; an index-only field such as ADTS cannot). */
+static inline int asc_codec_sr_idx(uint32_t rate)
 {
-    for (uint8_t i = 0; i < 13; i++) {
+    for (int i = 0; i < 13; i++) {
         if (asc_codec_sample_rates[i] == rate) return i;
     }
-    return 4; /* default 44100 */
+    return -1;
 }
 
 typedef struct {
