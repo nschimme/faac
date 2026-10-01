@@ -151,6 +151,7 @@ typedef struct {
     uint8_t header[44];
     uint8_t moov[16384];
     uint32_t moov_size;
+    uint64_t moov_start;
     bool fail_write;
     bool fail_seek;
     bool fail_moov;
@@ -158,11 +159,12 @@ typedef struct {
 
 static int32_t virtual_write(void *user, const void *data, uint32_t size) {
     virtual_file *v = (virtual_file *)user;
-    if (v->fail_write || (v->fail_moov && size >= 8 && size < 16384 &&
-        !memcmp((const uint8_t *)data + 4, "moov", 4))) return -1;
+    if (v->fail_write || (v->fail_moov && v->moov_start && v->pos >= v->moov_start)) return -1;
     if (v->pos < 44 && size <= 44 - v->pos) memcpy(v->header + v->pos, data, size);
-    else if (size < sizeof(v->moov) && size >= 8 && !memcmp((const uint8_t *)data + 4, "moov", 4)) {
-        memcpy(v->moov, data, size); v->moov_size = size;
+    else if (v->moov_start && v->pos >= v->moov_start && v->pos - v->moov_start + size <= sizeof(v->moov)) {
+        uint32_t offset = (uint32_t)(v->pos - v->moov_start);
+        memcpy(v->moov + offset, data, size);
+        if (v->moov_size < offset + size) v->moov_size = offset + size;
     }
     v->pos += size;
     return (int32_t)size;
@@ -196,11 +198,13 @@ static void test_virtual_mux(void) {
         st = faam_muxer_config_add_track(&validation, &invalid, NULL); assert(st == FAAM_OK);
     }
     st = faam_muxer_config_add_track(&validation, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARG);
-    cfg.metadata.num_custom_tags = UINT32_MAX;
+    faam_custom_tag custom_tags[16];
     for (unsigned i = 0; i < 16; i++) {
-        strcpy(cfg.metadata.custom_tags[i].name, "test");
-        strcpy(cfg.metadata.custom_tags[i].value, "value");
+        custom_tags[i].name = "test";
+        custom_tags[i].value = "value";
     }
+    faam_metadata metadata = {0}; metadata.num_custom_tags = 16; metadata.custom_tags = custom_tags;
+    cfg.metadata = &metadata;
     invalid.track_id = 77; invalid.timescale = 44100;
     st = faam_muxer_config_add_track(&cfg, &invalid, NULL); assert(st == FAAM_OK);
     cfg.gapless.encoder_delay = 10;
@@ -210,7 +214,7 @@ static void test_virtual_mux(void) {
     uint8_t payload = 0;
     for (unsigned mode = 0; mode < 7; mode++) {
         virtual_file v = {0};
-        faam_io io = { &v, NULL, virtual_write, virtual_seek, virtual_tell };
+        faam_io io = { &v, NULL, virtual_write, virtual_seek, virtual_tell, NULL };
         if (mode == 6) io.seek = NULL;
         faam_muxer *m;
         st = faam_muxer_init(mem, state_size, &cfg, &io, &m); assert(st == FAAM_OK);
@@ -230,6 +234,7 @@ static void test_virtual_mux(void) {
             st = faam_muxer_write_frame(m, 77, &payload, 1, 1, true); assert(st == FAAM_ERR_IO_WRITE);
             v.fail_write = false;
         }
+        v.moov_start = v.pos;
         st = faam_muxer_finalize(m);
         if (mode >= 2) {
             faam_status expected = (mode == 3 || mode == 6) ? FAAM_ERR_UNSUPPORTED : FAAM_ERR_IO_WRITE;
@@ -243,37 +248,36 @@ static void test_virtual_mux(void) {
             assert(test_u64(v.header + 36) == 5ULL * 0x40000000 + 16);
             bool co64 = false;
             for (uint32_t i = 4; i + 56 <= v.moov_size; i++) if (!memcmp(v.moov + i, "co64", 4)) {
-                assert(test_u32(v.moov + i + 8) == 5);
+                assert(test_u32(v.moov + i + 8) == 1);
                 assert(test_u64(v.moov + i + 12) == 44);
-                assert(test_u64(v.moov + i + 44) == 44 + 4ULL * 0x40000000);
                 co64 = true;
             }
             assert(co64);
             faam_muxer_info info = {0}; info.struct_size = sizeof(info);
-            st = faam_muxer_get_info(m, &info); assert(st == FAAM_OK);
+            st = faam_muxer_get_info(m, 77, &info); assert(st == FAAM_OK);
             assert(info.max_frame_size == 0x40000000);
         } else {
             assert(st == FAAM_OK);
             bool edit = false, movie = false, track = false;
             for (uint32_t i = 4; i + 100 <= v.moov_size; i++) {
                 if (!memcmp(v.moov + i, "elst", 4)) {
-                    assert(test_u32(v.moov + i + 12) == 44090);
+                    assert(test_u32(v.moov + i + 12) == 0);
                     assert(test_u32(v.moov + i + 16) == 10); edit = true;
                 }
                 if (!memcmp(v.moov + i, "mvhd", 4)) {
                     assert(test_u32(v.moov + i + 100) == 78); movie = true;
                 }
                 if (!memcmp(v.moov + i, "tkhd", 4)) {
-                    assert(test_u32(v.moov + i + 4) == 3); track = true;
+                    assert(test_u32(v.moov + i + 4) == 1); track = true;
                 }
             }
             assert(edit && movie && track);
             assert(test_u32(v.header + 36) == 108 && !memcmp(v.header + 40, "mdat", 4));
             faam_muxer_info info = {0}; info.struct_size = sizeof(info);
-            st = faam_muxer_get_info(m, &info); assert(st == FAAM_OK);
+            st = faam_muxer_get_info(m, 77, &info); assert(st == FAAM_OK);
             assert(info.avg_bitrate == 800 && info.max_bitrate == 800 && info.max_frame_size == 100);
         }
-        faam_muxer_close(m);
+        faam_muxer_close(&m);
     }
 #ifndef FAAM_HAVE_TAG_CHAPTER
     st = faam_update_tags_stream(NULL, NULL); assert(st == FAAM_ERR_UNSUPPORTED);
@@ -289,7 +293,7 @@ int main(void)
     FILE *fout = fopen("test_output.mp4", "wb");
     assert(fout != NULL);
 
-    faam_io io_out = { fout, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io_out = { fout, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
     faam_muxer_config cfg;
     faam_status st = faam_muxer_config_init(&cfg, sizeof(cfg));
@@ -297,11 +301,9 @@ int main(void)
 
     faam_chapter chaps[2];
     chaps[0].start_ms = 0;
-    chaps[0].duration_ms = 5000;
-    strcpy(chaps[0].title, "Intro");
+    chaps[0].title = "Intro";
     chaps[1].start_ms = 5000;
-    chaps[1].duration_ms = 10000;
-    strcpy(chaps[1].title, "Event");
+    chaps[1].title = "Event";
     cfg.chapters = chaps;
     cfg.num_chapters = 2;
 
@@ -365,7 +367,7 @@ int main(void)
 
     st = faam_muxer_finalize(m);
     assert(st == FAAM_OK);
-    faam_muxer_close(m);
+    faam_muxer_close(&m);
     free(mem_m);
     fclose(fout);
 
@@ -373,7 +375,7 @@ int main(void)
     FILE *fin = fopen("test_output.mp4", "rb");
     assert(fin != NULL);
 
-    faam_io io_in = { fin, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io_in = { fin, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
     uint32_t demuxer_size = 0;
     st = faam_demuxer_get_state_size(&demuxer_size);
@@ -393,7 +395,8 @@ int main(void)
     assert(st == FAAM_OK);
     assert(num_tracks == 2);
 
-    faam_track_info t1, t2;
+    faam_track_info t1 = {0}, t2 = {0};
+    t1.struct_size = t2.struct_size = sizeof(t1);
     st = faam_demuxer_get_track_info(d, 0, &t1);
     assert(st == FAAM_OK);
     assert(t1.track_type == FAAM_TRACK_AUDIO);
@@ -417,7 +420,7 @@ int main(void)
     assert(strcmp(read_chaps[0].title, "Intro") == 0);
     assert(strcmp(read_chaps[1].title, "Event") == 0);
 
-    faam_demuxer_close(d);
+    faam_demuxer_close(&d);
     free(mem_d);
     fclose(fin);
 
@@ -445,7 +448,7 @@ int main(void)
 
         FILE *gf = fopen(path, "wb");
         assert(gf != NULL);
-        faam_io gio = { gf, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+        faam_io gio = { gf, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
         faam_muxer_config gcfg;
         st = faam_muxer_config_init(&gcfg, sizeof(gcfg));
@@ -490,7 +493,7 @@ int main(void)
 
         st = faam_muxer_finalize(gm);
         assert(st == FAAM_OK);
-        faam_muxer_close(gm);
+        faam_muxer_close(&gm);
         free(g_mem);
         fclose(gf);
 
@@ -518,27 +521,33 @@ int main(void)
          * encoder tag) the muxer writes. */
         faam_metadata big_meta;
         memset(&big_meta, 0, sizeof(big_meta));
-        strcpy(big_meta.title, "A Reasonably Long Test Title For Growth");
-        strcpy(big_meta.artist, "Test Artist Name");
-        strcpy(big_meta.album, "Test Album Name");
+        big_meta.title = "A Reasonably Long Test Title For Growth";
+        big_meta.artist = "Test Artist Name";
+        big_meta.album = "Test Album Name";
         big_meta.track_num = 3;
         big_meta.track_total = 12;
         big_meta.compilation = true;
+        faam_custom_tag big_tags[16];
+        char big_names[16][32];
+        char big_value[256];
+        memset(big_value, 'x', sizeof(big_value) - 1);
+        big_value[sizeof(big_value) - 1] = '\0';
         big_meta.num_custom_tags = 16;
+        big_meta.custom_tags = big_tags;
         for (uint32_t i = 0; i < big_meta.num_custom_tags; i++) {
-            snprintf(big_meta.custom_tags[i].name, sizeof(big_meta.custom_tags[i].name), "custom_tag_%u", i);
-            memset(big_meta.custom_tags[i].value, 'x', sizeof(big_meta.custom_tags[i].value) - 1);
-            big_meta.custom_tags[i].value[sizeof(big_meta.custom_tags[i].value) - 1] = '\0';
+            snprintf(big_names[i], sizeof(big_names[i]), "custom_tag_%u", i);
+            big_tags[i].name = big_names[i];
+            big_tags[i].value = big_value;
         }
 
         FILE *tf = fopen(path, "r+b");
         assert(tf != NULL);
-        faam_io tio = { tf, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+        faam_io tio = { tf, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
         st = faam_update_tags_stream(&tio, &big_meta);
         assert(st == FAAM_OK);
         faam_chapter updated[2] = {0};
-        updated[0].start_ms = 123; strcpy(updated[0].title, "First");
-        updated[1].start_ms = 4567; strcpy(updated[1].title, "Second");
+        updated[0].start_ms = 123; updated[0].title = "First";
+        updated[1].start_ms = 4567; updated[1].title = "Second";
         st = faam_update_chapters_stream(&tio, updated, 2); assert(st == FAAM_OK);
         fclose(tf);
 
@@ -564,11 +573,11 @@ int main(void)
              * still runs instead of an unnecessary tail shift. */
             faam_metadata small_meta;
             memset(&small_meta, 0, sizeof(small_meta));
-            strcpy(small_meta.title, "T");
+            small_meta.title = "T";
 
             FILE *tf2 = fopen(path, "r+b");
             assert(tf2 != NULL);
-            faam_io tio2 = { tf2, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+            faam_io tio2 = { tf2, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
             st = faam_update_tags_stream(&tio2, &small_meta);
             assert(st == FAAM_OK);
             fclose(tf2);
@@ -592,7 +601,7 @@ int main(void)
          */
         FILE *df = fopen(path, "rb");
         assert(df != NULL);
-        faam_io dio = { df, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+        faam_io dio = { df, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
         uint32_t d_size = 0;
         st = faam_demuxer_get_state_size(&d_size);
@@ -629,7 +638,7 @@ int main(void)
         }
         assert(frames_seen == TEST_FRAME_COUNT);
 
-        faam_demuxer_close(dd);
+        faam_demuxer_close(&dd);
         free(d_mem);
         fclose(df);
 

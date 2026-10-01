@@ -58,6 +58,8 @@ static uint64_t file_tell_cb(void *user_data) {
     return (uint64_t)ftell((FILE *)user_data);
 }
 
+#define HAS(s) ((s) && (s)[0])
+
 static void print_usage(void)
 {
     char version_buf[128];
@@ -123,6 +125,7 @@ enum {
     OPT_CHAPTERS
 };
 
+#define FAAM_CLI_TITLE_MAX 256 /* title buffer incl. NUL; longer titles are truncated */
 #define FAAM_CLI_MAX_CHAPTERS 64 /* matches faam_chapter chapters[64] used elsewhere in this file */
 #define FAAM_CLI_MAX_COVER_ART_BYTES ((size_t)32 * 1024 * 1024)
 #define FAAM_TAG_MAX_REMOVE 32
@@ -153,7 +156,7 @@ static int cmd_info(int argc, char **argv)
         return 1;
     }
 
-    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
     uint32_t demux_size = 0;
     faam_demuxer_get_state_size(&demux_size);
@@ -178,7 +181,7 @@ static int cmd_info(int argc, char **argv)
     printf("Tracks Count: %u\n", num_tracks);
 
     for (uint32_t t = 0; t < num_tracks; t++) {
-        faam_track_info ti;
+        faam_track_info ti = {0}; ti.struct_size = sizeof(ti);
         faam_demuxer_get_track_info(d, t, &ti);
         printf("\nTrack #%u (ID %u):\n", t + 1, ti.track_id);
         printf("  Type: %s\n", ti.track_type == FAAM_TRACK_VIDEO ? "Video" : "Audio");
@@ -211,27 +214,27 @@ static int cmd_info(int argc, char **argv)
     faam_metadata meta;
     memset(&meta, 0, sizeof(meta));
     if (faam_demuxer_get_metadata(d, &meta) == FAAM_OK) {
-        bool has_any = meta.title[0] || meta.title_sort[0] || meta.artist[0] || meta.artist_sort[0] ||
-                       meta.album[0] || meta.album_sort[0] || meta.album_artist[0] || meta.album_artist_sort[0] ||
-                       meta.composer[0] || meta.composer_sort[0] || meta.year[0] || meta.comment[0] ||
-                       meta.genre_code || meta.genre_str[0] || meta.compilation || meta.track_num ||
+        bool has_any = HAS(meta.title) || HAS(meta.title_sort) || HAS(meta.artist) || HAS(meta.artist_sort) ||
+                       HAS(meta.album) || HAS(meta.album_sort) || HAS(meta.album_artist) || HAS(meta.album_artist_sort) ||
+                       HAS(meta.composer) || HAS(meta.composer_sort) || HAS(meta.year) || HAS(meta.comment) ||
+                       meta.genre_code || HAS(meta.genre_str) || meta.compilation || meta.track_num ||
                        meta.disc_num || meta.cover_bytes > 0 || meta.num_custom_tags > 0;
         if (has_any) {
             printf("\nMetadata Tags:\n");
-            if (meta.title[0]) printf("  Title: %s\n", meta.title);
-            if (meta.title_sort[0]) printf("  Title Sort: %s\n", meta.title_sort);
-            if (meta.artist[0]) printf("  Artist: %s\n", meta.artist);
-            if (meta.artist_sort[0]) printf("  Artist Sort: %s\n", meta.artist_sort);
-            if (meta.album[0]) printf("  Album: %s\n", meta.album);
-            if (meta.album_sort[0]) printf("  Album Sort: %s\n", meta.album_sort);
-            if (meta.album_artist[0]) printf("  Album Artist: %s\n", meta.album_artist);
-            if (meta.album_artist_sort[0]) printf("  Album Artist Sort: %s\n", meta.album_artist_sort);
-            if (meta.composer[0]) printf("  Composer: %s\n", meta.composer);
-            if (meta.composer_sort[0]) printf("  Composer Sort: %s\n", meta.composer_sort);
+            if (HAS(meta.title)) printf("  Title: %s\n", meta.title);
+            if (HAS(meta.title_sort)) printf("  Title Sort: %s\n", meta.title_sort);
+            if (HAS(meta.artist)) printf("  Artist: %s\n", meta.artist);
+            if (HAS(meta.artist_sort)) printf("  Artist Sort: %s\n", meta.artist_sort);
+            if (HAS(meta.album)) printf("  Album: %s\n", meta.album);
+            if (HAS(meta.album_sort)) printf("  Album Sort: %s\n", meta.album_sort);
+            if (HAS(meta.album_artist)) printf("  Album Artist: %s\n", meta.album_artist);
+            if (HAS(meta.album_artist_sort)) printf("  Album Artist Sort: %s\n", meta.album_artist_sort);
+            if (HAS(meta.composer)) printf("  Composer: %s\n", meta.composer);
+            if (HAS(meta.composer_sort)) printf("  Composer Sort: %s\n", meta.composer_sort);
             if (meta.genre_code) printf("  Genre: #%u\n", meta.genre_code - 1);
-            else if (meta.genre_str[0]) printf("  Genre: %s\n", meta.genre_str);
-            if (meta.year[0]) printf("  Year: %s\n", meta.year);
-            if (meta.comment[0]) printf("  Comment: %s\n", meta.comment);
+            else if (HAS(meta.genre_str)) printf("  Genre: %s\n", meta.genre_str);
+            if (HAS(meta.year)) printf("  Year: %s\n", meta.year);
+            if (HAS(meta.comment)) printf("  Comment: %s\n", meta.comment);
             if (meta.compilation) printf("  Compilation: Yes\n");
             if (meta.track_num) printf("  Track: %u/%u\n", meta.track_num, meta.track_total);
             if (meta.disc_num) printf("  Disc: %u/%u\n", meta.disc_num, meta.disc_total);
@@ -261,7 +264,7 @@ static int cmd_info(int argc, char **argv)
         }
     }
 
-    faam_demuxer_close(d);
+    faam_demuxer_close(&d);
     free(mem);
     fclose(f);
     return 0;
@@ -629,7 +632,7 @@ static int cmd_mux(int argc, char **argv)
         return 1;
     }
 
-    faam_io io = { fout, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io = { fout, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
     faam_muxer_config cfg;
     faam_muxer_config_init(&cfg, sizeof(cfg));
@@ -744,7 +747,7 @@ static int cmd_mux(int argc, char **argv)
             tc[i].timescale = 44100;
             tc[i].sample_rate = 44100;
             tc[i].channels = 2;
-            tc[i].bits_per_sample = 16;
+            memcpy(tc[i].language, "und", 4);
             has_audio_track = true;
 
             /* Inspect first ADTS header to determine real sample rate & channels */
@@ -870,7 +873,7 @@ static int cmd_mux(int argc, char **argv)
             if (vbuf && file_size > 0) {
                 uint8_t *sample_mem = (uint8_t *)malloc(file_size + 65536);
                 if (!sample_mem) {
-                    faam_muxer_close(m); free(mem);
+                    faam_muxer_close(&m); free(mem);
                     for (int j = 0; j < num_inputs; j++) { fclose(fin[j]); free(vbuf_store[j]); }
                     fclose(fout);
                     return 1;
@@ -926,7 +929,7 @@ static int cmd_mux(int argc, char **argv)
     }
 
     faam_muxer_finalize(m);
-    faam_muxer_close(m);
+    faam_muxer_close(&m);
     free(mem);
     for (int i = 0; i < num_inputs; i++) fclose(fin[i]);
     fclose(fout);
@@ -975,7 +978,7 @@ static int cmd_demux(int argc, char **argv)
         return 1;
     }
 
-    faam_io io_in = { fin, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io_in = { fin, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
     uint32_t demux_size = 0;
     faam_demuxer_get_state_size(&demux_size);
@@ -992,12 +995,12 @@ static int cmd_demux(int argc, char **argv)
     uint32_t num_tracks = 0;
     faam_demuxer_get_num_tracks(d, &num_tracks);
 
-    faam_track_info ti;
+    faam_track_info ti = {0}; ti.struct_size = sizeof(ti);
     memset(&ti, 0, sizeof(ti));
 
     if (selected_track_id > 0) {
         for (uint32_t t = 0; t < num_tracks; t++) {
-            faam_track_info tmp_info;
+            faam_track_info tmp_info = {0}; tmp_info.struct_size = sizeof(tmp_info);
             if (faam_demuxer_get_track_info(d, t, &tmp_info) == FAAM_OK && tmp_info.track_id == selected_track_id) {
                 ti = tmp_info;
                 break;
@@ -1022,7 +1025,7 @@ static int cmd_demux(int argc, char **argv)
     FILE *fout = cli_fopen(output_file, "wb");
     if (!fout) {
         fprintf(stderr, "Error opening output %s\n", output_file);
-        faam_demuxer_close(d); free(mem); fclose(fin);
+        faam_demuxer_close(&d); free(mem); fclose(fin);
         return 1;
     }
 
@@ -1088,7 +1091,7 @@ static int cmd_demux(int argc, char **argv)
     }
 
     fclose(fout);
-    faam_demuxer_close(d);
+    faam_demuxer_close(&d);
     free(mem);
     fclose(fin);
 
@@ -1108,12 +1111,26 @@ static bool looks_like_image(const uint8_t *data, size_t len) {
 /* argv tag text arrives in whatever the shell/locale handed us, not
  * guaranteed UTF-8; iTunes atoms require UTF-8. Mirrors encode_engine.c's
  * SETTAG/add_custom_tag use of utf8_ensure() for the same class of values. */
-static void copy_utf8_field(char *dst, size_t cap, const char *src)
+/* Owned UTF-8 copies of CLI strings; faam_metadata only borrows them, so they
+ * must outlive faam_update_tags_stream. */
+typedef struct { char **v; size_t n; } owned_list;
+
+static const char *own_utf8(owned_list *l, const char *src)
 {
     char *u = utf8_ensure(src);
-    strncpy(dst, u ? u : src, cap - 1);
-    dst[cap - 1] = '\0';
-    free(u);
+    char *c = u ? u : strdup(src);
+    char **nv = c ? realloc(l->v, (l->n + 1) * sizeof(*nv)) : NULL;
+    if (!nv) { free(c); return NULL; }
+    l->v = nv;
+    l->v[l->n++] = c;
+    return c;
+}
+
+static void owned_free(owned_list *l)
+{
+    for (size_t i = 0; i < l->n; i++) free(l->v[i]);
+    free(l->v);
+    l->v = NULL; l->n = 0;
 }
 
 static uint8_t *read_cover_art_file(const char *path, uint32_t *out_len, const char **err)
@@ -1156,18 +1173,18 @@ static uint8_t *read_cover_art_file(const char *path, uint32_t *out_len, const c
  * addressable too since they're just as easy to zero individually. */
 static bool remove_metadata_field(faam_metadata *meta, const char *name)
 {
-    if (!strcmp(name, "title")) memset(meta->title, 0, sizeof(meta->title));
-    else if (!strcmp(name, "artistsort")) memset(meta->artist_sort, 0, sizeof(meta->artist_sort));
-    else if (!strcmp(name, "artist")) memset(meta->artist, 0, sizeof(meta->artist));
-    else if (!strcmp(name, "albumsort")) memset(meta->album_sort, 0, sizeof(meta->album_sort));
-    else if (!strcmp(name, "albumartistsort")) memset(meta->album_artist_sort, 0, sizeof(meta->album_artist_sort));
-    else if (!strcmp(name, "albumartist")) memset(meta->album_artist, 0, sizeof(meta->album_artist));
-    else if (!strcmp(name, "album")) memset(meta->album, 0, sizeof(meta->album));
-    else if (!strcmp(name, "composersort")) memset(meta->composer_sort, 0, sizeof(meta->composer_sort));
-    else if (!strcmp(name, "composer")) memset(meta->composer, 0, sizeof(meta->composer));
-    else if (!strcmp(name, "year")) memset(meta->year, 0, sizeof(meta->year));
-    else if (!strcmp(name, "comment")) memset(meta->comment, 0, sizeof(meta->comment));
-    else if (!strcmp(name, "genre")) { memset(meta->genre_str, 0, sizeof(meta->genre_str)); meta->genre_code = 0; }
+    if (!strcmp(name, "title")) meta->title = NULL;
+    else if (!strcmp(name, "artistsort")) meta->artist_sort = NULL;
+    else if (!strcmp(name, "artist")) meta->artist = NULL;
+    else if (!strcmp(name, "albumsort")) meta->album_sort = NULL;
+    else if (!strcmp(name, "albumartistsort")) meta->album_artist_sort = NULL;
+    else if (!strcmp(name, "albumartist")) meta->album_artist = NULL;
+    else if (!strcmp(name, "album")) meta->album = NULL;
+    else if (!strcmp(name, "composersort")) meta->composer_sort = NULL;
+    else if (!strcmp(name, "composer")) meta->composer = NULL;
+    else if (!strcmp(name, "year")) meta->year = NULL;
+    else if (!strcmp(name, "comment")) meta->comment = NULL;
+    else if (!strcmp(name, "genre")) { meta->genre_str = NULL; meta->genre_code = 0; }
     else if (!strcmp(name, "compilation")) meta->compilation = false;
     else if (!strcmp(name, "track")) { meta->track_num = 0; meta->track_total = 0; }
     else if (!strcmp(name, "disc")) { meta->disc_num = 0; meta->disc_total = 0; }
@@ -1187,6 +1204,10 @@ static int cmd_tag(int argc, char **argv)
     char remove_names[FAAM_TAG_MAX_REMOVE][32];
     int num_remove = 0;
     uint8_t *cover_buf = NULL;
+    owned_list owned = {0};
+    faam_custom_tag tags[16];
+    void *dmem = NULL;
+    faam_demuxer *d = NULL;
 
     static struct option long_options[] = {
         {"title", required_argument, 0, OPT_TITLE},
@@ -1250,18 +1271,19 @@ static int cmd_tag(int argc, char **argv)
         return 1;
     }
 
-    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
     if (!want_clear) {
         uint32_t demux_size = 0;
         faam_demuxer_get_state_size(&demux_size);
-        void *dmem = malloc(demux_size);
-        faam_demuxer *d = NULL;
+        dmem = malloc(demux_size);
+        /* Kept open until the update: the metadata strings are borrowed from it. */
         if (dmem && faam_demuxer_init(dmem, demux_size, &io, &d) == FAAM_OK) {
             faam_demuxer_get_metadata(d, &meta);
-            faam_demuxer_close(d);
+            if (meta.num_custom_tags > 16) meta.num_custom_tags = 16;
+            for (uint32_t i = 0; i < meta.num_custom_tags; i++) tags[i] = meta.custom_tags[i];
+            meta.custom_tags = tags;
         }
-        free(dmem);
     }
 
     for (int i = 0; i < num_remove; i++) {
@@ -1277,18 +1299,18 @@ static int cmd_tag(int argc, char **argv)
     optind = 1;
     while ((opt = getopt_long(argc, argv, "h", long_options, NULL)) != -1) {
         switch (opt) {
-        case OPT_TITLE: copy_utf8_field(meta.title, sizeof(meta.title), optarg); break;
-        case OPT_ARTIST: copy_utf8_field(meta.artist, sizeof(meta.artist), optarg); break;
-        case OPT_ARTIST_SORT: copy_utf8_field(meta.artist_sort, sizeof(meta.artist_sort), optarg); break;
-        case OPT_ALBUM: copy_utf8_field(meta.album, sizeof(meta.album), optarg); break;
-        case OPT_ALBUM_SORT: copy_utf8_field(meta.album_sort, sizeof(meta.album_sort), optarg); break;
-        case OPT_ALBUM_ARTIST: copy_utf8_field(meta.album_artist, sizeof(meta.album_artist), optarg); break;
-        case OPT_ALBUM_ARTIST_SORT: copy_utf8_field(meta.album_artist_sort, sizeof(meta.album_artist_sort), optarg); break;
-        case OPT_COMPOSER: copy_utf8_field(meta.composer, sizeof(meta.composer), optarg); break;
-        case OPT_COMPOSER_SORT: copy_utf8_field(meta.composer_sort, sizeof(meta.composer_sort), optarg); break;
-        case OPT_YEAR: copy_utf8_field(meta.year, sizeof(meta.year), optarg); break;
-        case OPT_COMMENT: copy_utf8_field(meta.comment, sizeof(meta.comment), optarg); break;
-        case OPT_LANG: strncpy(meta.language, optarg, sizeof(meta.language) - 1); break;
+        case OPT_TITLE: meta.title = own_utf8(&owned, optarg); break;
+        case OPT_ARTIST: meta.artist = own_utf8(&owned, optarg); break;
+        case OPT_ARTIST_SORT: meta.artist_sort = own_utf8(&owned, optarg); break;
+        case OPT_ALBUM: meta.album = own_utf8(&owned, optarg); break;
+        case OPT_ALBUM_SORT: meta.album_sort = own_utf8(&owned, optarg); break;
+        case OPT_ALBUM_ARTIST: meta.album_artist = own_utf8(&owned, optarg); break;
+        case OPT_ALBUM_ARTIST_SORT: meta.album_artist_sort = own_utf8(&owned, optarg); break;
+        case OPT_COMPOSER: meta.composer = own_utf8(&owned, optarg); break;
+        case OPT_COMPOSER_SORT: meta.composer_sort = own_utf8(&owned, optarg); break;
+        case OPT_YEAR: meta.year = own_utf8(&owned, optarg); break;
+        case OPT_COMMENT: meta.comment = own_utf8(&owned, optarg); break;
+        case OPT_LANG: break;
         case OPT_COMPILATION: meta.compilation = true; break;
         case OPT_GENRE: {
             char *endptr = NULL;
@@ -1297,7 +1319,7 @@ static int cmd_tag(int argc, char **argv)
                 if (g < 0 || g > 255) err_msg = "Genre number out of range (0-255)";
                 else meta.genre_code = (uint16_t)(g + 1);
             } else {
-                copy_utf8_field(meta.genre_str, sizeof(meta.genre_str), optarg);
+                meta.genre_str = own_utf8(&owned, optarg);
             }
             break;
         }
@@ -1336,16 +1358,24 @@ static int cmd_tag(int argc, char **argv)
                 } else {
                     /* Matches encode_engine.c's add_custom_tag(): only the
                      * value is UTF-8-ensured, the name is a fixed identifier. */
-                    strncpy(meta.custom_tags[meta.num_custom_tags].name, tagname, sizeof(meta.custom_tags[0].name) - 1);
-                    copy_utf8_field(meta.custom_tags[meta.num_custom_tags].value, sizeof(meta.custom_tags[0].value), tagval);
-                    meta.num_custom_tags++;
+                    const char *n = own_utf8(&owned, tagname);
+                    const char *v = own_utf8(&owned, tagval);
+                    if (!n || !v) {
+                        err_msg = "Out of memory";
+                    } else {
+                        tags[meta.num_custom_tags].name = n;
+                        tags[meta.num_custom_tags].value = v;
+                        meta.num_custom_tags++;
+                        meta.custom_tags = tags;
+                    }
                 }
             }
             break;
         }
         case OPT_REMOVE: /* handled in pass 1 */
         case OPT_CLEAR:  /* handled in pass 1 */
-        case 'h': print_usage(); free(cover_buf); fclose(f); return 0;
+            break;
+        case 'h': print_usage(); free(cover_buf); owned_free(&owned); faam_demuxer_close(&d); free(dmem); fclose(f); return 0;
         default: break;
         }
         if (err_msg) break;
@@ -1354,12 +1384,18 @@ static int cmd_tag(int argc, char **argv)
     if (err_msg) {
         fprintf(stderr, "Error: %s\n", err_msg);
         free(cover_buf);
+        owned_free(&owned);
+        faam_demuxer_close(&d);
+        free(dmem);
         fclose(f);
         return 1;
     }
 
     faam_status st = faam_update_tags_stream(&io, &meta);
     free(cover_buf);
+    owned_free(&owned);
+    faam_demuxer_close(&d);
+    free(dmem);
     fclose(f);
 
     if (st != FAAM_OK) {
@@ -1374,7 +1410,7 @@ static int cmd_tag(int argc, char **argv)
 /* Chapter file format: one chapter per line, "HH:MM:SS.mmm<TAB>Title". No
  * duration field -- Nero's chpl atom (chapter.c) doesn't store one
  * either; a chapter's extent is implicitly "until the next chapter starts". */
-static bool parse_chapter_line(const char *line, faam_chapter *out)
+static bool parse_chapter_line(const char *line, faam_chapter *out, char *title)
 {
     unsigned hh, mm, ms;
     unsigned ss_i;
@@ -1386,14 +1422,13 @@ static bool parse_chapter_line(const char *line, faam_chapter *out)
     if (*rest != '\t') return false;
     rest++;
 
-    memset(out, 0, sizeof(*out));
-    out->start_ms = ((uint64_t)hh * 3600 + (uint64_t)mm * 60 + ss_i) * 1000 + ms;
-
     size_t len = strlen(rest);
     while (len > 0 && (rest[len - 1] == '\n' || rest[len - 1] == '\r')) len--;
-    if (len >= sizeof(out->title)) len = sizeof(out->title) - 1;
-    memcpy(out->title, rest, len);
-    out->title[len] = '\0';
+    if (len >= FAAM_CLI_TITLE_MAX) len = FAAM_CLI_TITLE_MAX - 1;
+    memcpy(title, rest, len);
+    title[len] = '\0';
+    out->start_ms = ((uint64_t)hh * 3600 + (uint64_t)mm * 60 + ss_i) * 1000 + ms;
+    out->title = title;
     return true;
 }
 
@@ -1406,6 +1441,7 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
     }
 
     faam_chapter chapters[FAAM_CLI_MAX_CHAPTERS];
+    char titles[FAAM_CLI_MAX_CHAPTERS][FAAM_CLI_TITLE_MAX];
     uint32_t count = 0;
     char line[512];
     int lineno = 0;
@@ -1420,7 +1456,7 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
             bad = true;
             break;
         }
-        if (!parse_chapter_line(line, &chapters[count])) {
+        if (!parse_chapter_line(line, &chapters[count], titles[count])) {
             fprintf(stderr, "%s:%d: malformed chapter line (expected HH:MM:SS.mmm<TAB>Title)\n", chapters_path, lineno);
             bad = true;
             break;
@@ -1441,7 +1477,7 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
         return 1;
     }
 
-    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
     faam_status st = faam_update_chapters_stream(&io, chapters, count);
     fclose(f);
 
@@ -1462,7 +1498,7 @@ static int cmd_chapter_export(const char *filepath, const char *output_path)
         return 1;
     }
 
-    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
     uint32_t demux_size = 0;
     faam_demuxer_get_state_size(&demux_size);
@@ -1479,13 +1515,15 @@ static int cmd_chapter_export(const char *filepath, const char *output_path)
     faam_chapter chapters[FAAM_CLI_MAX_CHAPTERS];
     uint32_t count = 0;
     faam_demuxer_get_chapters(d, chapters, FAAM_CLI_MAX_CHAPTERS, &count);
-    faam_demuxer_close(d);
-    free(mem);
-    fclose(f);
+    if (count > FAAM_CLI_MAX_CHAPTERS) count = FAAM_CLI_MAX_CHAPTERS;
 
+    /* Chapter titles are borrowed from the demuxer; keep it open while writing. */
     FILE *of = cli_fopen(output_path, "w");
     if (!of) {
         fprintf(stderr, "Error creating %s\n", output_path);
+        faam_demuxer_close(&d);
+        free(mem);
+        fclose(f);
         return 1;
     }
 
@@ -1495,9 +1533,13 @@ static int cmd_chapter_export(const char *filepath, const char *output_path)
         unsigned mm = (unsigned)((ms / 60000) % 60);
         unsigned ss = (unsigned)((ms / 1000) % 60);
         unsigned mmm = (unsigned)(ms % 1000);
-        fprintf(of, "%02u:%02u:%02u.%03u\t%s\n", hh, mm, ss, mmm, chapters[i].title);
+        fprintf(of, "%02u:%02u:%02u.%03u\t%s\n", hh, mm, ss, mmm,
+                chapters[i].title ? chapters[i].title : "");
     }
     fclose(of);
+    faam_demuxer_close(&d);
+    free(mem);
+    fclose(f);
 
     printf("Successfully exported %u chapters from %s to %s\n", count, filepath, output_path);
     return 0;
