@@ -62,6 +62,10 @@
  * hearing. VBR, having no rate, codes at the top. */
 #define BANDWIDTH_CEILING     18750
 
+/* Float PCM is in 16-bit sample units; 2^23 is the most 32-bit input can reach
+ * after its scaling, so anything beyond it is not audio. */
+#define FLOAT_INPUT_LIMIT     8388608.0f
+
 /* From this rate (bps per channel) the quantizer's treble de-emphasis is
  * steepened by TREBLE_SLOPE_RICH; below it the steeper slope starves the
  * treble of some material. */
@@ -564,6 +568,12 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
             case INPUT_FLOAT: {
                 float *src = (float *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
+                /* Not audio: silence NaN, Inf and anything past the limit. A
+                 * separate pass because the conditional store keeps the
+                 * compiler from unrolling it. */
+                for (i = 0; i < spch; i++)
+                    if (!(fabsf(dst[i]) < FLOAT_INPUT_LIMIT))
+                        dst[i] = 0.0f;
                 break;
             }
             default: return -1;
@@ -1040,8 +1050,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (!bitStream)
             return -1;
 
-        if (WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream) < 0)
+        if (WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream) < 0) {
+            CloseBitStream(bitStream);
             return -1;
+        }
 
         /* Close the bitstream and return the number of bytes written */
         frameBytes = CloseBitStream(bitStream);

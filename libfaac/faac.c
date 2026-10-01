@@ -136,6 +136,9 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     return FAAC_OK;
 }
 
+#define FAAC_MIN_SAMPLE_RATE 7350u
+#define FAAC_MAX_SAMPLE_RATE 96000u
+
 /* Validate the enumerated/range fields the caller supplied. Returns FAAC_OK,
  * FAAC_ERR_INVALID_ARGUMENT for out-of-range values, or FAAC_ERR_UNSUPPORTED
  * for values that are valid but not implemented in this build. */
@@ -173,7 +176,10 @@ static faac_status validate_params(const faac_params *p)
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
     }
-    if (p->sample_rate == 0)
+    /* The ADTS/ASC rate table spans 7350..96000 Hz. Outside it the rate index
+     * would lie, and the rate-derived tables and bit budgets are only sized for
+     * it. */
+    if (p->sample_rate < FAAC_MIN_SAMPLE_RATE || p->sample_rate > FAAC_MAX_SAMPLE_RATE)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (GetChannelConfig((int)p->num_channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
