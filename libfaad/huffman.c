@@ -39,6 +39,10 @@ void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
     memset(ics->sfb_offsets, 0, sizeof(ics->sfb_offsets));
     int sr_idx = get_sr_index(sample_rate);
     ics->sample_rate_index = (int8_t)sr_idx;
+    if (sr_idx < 0) {
+        ics->num_sfbs = 0;      /* faad_decoder_init() rejects such rates */
+        return;
+    }
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         ics->num_sfbs = num_sfbs_128[sr_idx];
         const uint16_t *offsets = sfb_offsets_128[sr_idx];

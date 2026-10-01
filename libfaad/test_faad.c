@@ -143,6 +143,22 @@ static void test_asc_drm_rejection(void)
     }
 }
 
+static void test_asc_unlisted_core_rate_rejection(void)
+{
+    /* AAC-LC, sampling_frequency_index 15 (escape) with an explicit 40000 Hz:
+     * no sfb layout exists for it, so it must be refused, not decoded with
+     * the 44.1 kHz tables */
+    static const uint8_t lc_40000[] = { 0x17, 0x80, 0x4e, 0x20, 0x08 };
+
+    faad_config cfg;
+    assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
+    cfg.stream_format = FAAD_STREAM_RAW;
+
+    faad_decoder *dec = NULL;
+    assert(faad_decoder_open(&cfg, lc_40000, sizeof(lc_40000), &dec) == FAAD_ERR_UNSUPPORTED);
+    assert(dec == NULL);
+}
+
 static void test_struct_sizes_and_enums(void)
 {
     struct { faad_config cfg; uint32_t guard; } c;
@@ -188,6 +204,7 @@ int main(void)
     test_struct_sizes_and_enums();
     test_asc_sbr_signalling();
     test_asc_drm_rejection();
+    test_asc_unlisted_core_rate_rejection();
 
     faad_config cfg;
     faad_status st = faad_config_init(&cfg, sizeof(cfg));
