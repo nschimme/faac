@@ -11,7 +11,6 @@ if config_h.get('HAVE_SSE2')
 endif
 
 common_src = [
-    'asc_codec.h',
     'bitstream.c',
     'bitstream.h',
     'blockswitch.c',
@@ -45,8 +44,8 @@ common_src = [
     'stereo.h',
     'tns.c',
     'tns.h',
-    'util.c',
-    'util.h',
+    'faac_util.c',
+    'faac_util.h',
 ]
 
 libfaac = disabler()
@@ -55,9 +54,9 @@ libfaac = disabler()
 project_ver = meson.project_version()
 
 common_args = {
-    'include_directories' : ['..', '../include', '../common'],
+    'include_directories' : ['..', '../include', common_inc],
     'c_args' : c_args,
-    'dependencies' : [libm, faab_dep],
+    'dependencies' : [libm, codec_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',

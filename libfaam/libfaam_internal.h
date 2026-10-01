@@ -27,12 +27,8 @@
 
 #include "faam.h"
 
-/* Ports that supply their own allocators define FAAM_CUSTOM_ALLOC and provide faam_alloc.h. */
-#ifdef FAAM_CUSTOM_ALLOC
-#include "faam_alloc.h"
-#endif
-
-/* Memory management macros (overridable for embedded PSRAM / fast internal SRAM) */
+/* Memory management macros; ports override them with -D or a force-included
+ * header (embedded PSRAM / fast internal SRAM) */
 #ifndef AllocMemory
 #define AllocMemory(size) malloc(size)
 #endif

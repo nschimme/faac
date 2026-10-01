@@ -56,7 +56,7 @@ endif
 
 subdir('docs')
 subdir('include')
-subdir('libfaab')
+subdir('common')
 subdir('libfaac')
 
 subdir('libfaam')

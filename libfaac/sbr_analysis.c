@@ -16,7 +16,7 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "sbr_internal.h"
-#include "util.h"
+#include "faac_util.h"
 #include <string.h>
 
 /* Which envelope a QMF slot falls in; slots before tEnv[0] fold into
