@@ -26,6 +26,12 @@ faam_args = []
 if get_option('embedded')
     faam_args += ['-DFAAM_EMBEDDED=1']
 endif
+if get_option('muxer-video')
+    faam_args += ['-DFAAM_MUXER_VIDEO=1']
+endif
+if get_option('muxer-fragmented')
+    faam_args += ['-DFAAM_MUXER_FRAGMENTED=1']
+endif
 
 libfaam_shared = shared_library(
   'faam',
@@ -67,7 +73,7 @@ pkg.generate(
   version: '1.0.0',
 )
 
-test_faam_args = []
+test_faam_args = faam_args
 if not get_option('embedded')
     test_faam_args += ['-DFAAM_HAVE_TAG_CHAPTER=1']
 endif
@@ -89,3 +95,24 @@ test_master_layout = executable(
   link_with: libfaam_shared,
 )
 test('faam_master_layout_test', test_master_layout)
+
+test_faam_media = executable(
+  'test_faam_media',
+  'test_faam_media.c',
+  include_directories: libfaam_inc,
+  link_with: libfaam_shared,
+  c_args: faam_args,
+)
+test('faam_media_test', test_faam_media)
+
+# Links the library sources directly so the allocator hook in alloc_hook/faam_alloc.h
+# counts every allocation; the shared library is built without it.
+if get_option('muxer-fragmented')
+    test_faam_alloc = executable(
+      'test_faam_alloc',
+      ['test_faam_alloc.c'] + libfaam_sources,
+      include_directories: [include_directories('alloc_hook'), libfaam_inc],
+      c_args: faam_args + ['-DFAAM_CUSTOM_ALLOC=1'],
+    )
+    test('faam_alloc_test', test_faam_alloc)
+endif

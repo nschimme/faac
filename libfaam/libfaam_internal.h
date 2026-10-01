@@ -27,6 +27,11 @@
 
 #include "faam.h"
 
+/* Ports that supply their own allocators define FAAM_CUSTOM_ALLOC and provide faam_alloc.h. */
+#ifdef FAAM_CUSTOM_ALLOC
+#include "faam_alloc.h"
+#endif
+
 /* Memory management macros (overridable for embedded PSRAM / fast internal SRAM) */
 #ifndef AllocMemory
 #define AllocMemory(size) malloc(size)
@@ -50,6 +55,7 @@ typedef struct {
     uint64_t offset;
     uint32_t size;
     uint32_t duration;
+    int32_t cts_offset;
     bool is_keyframe;
 } faam_sample;
 
@@ -59,18 +65,34 @@ typedef struct {
 } faam_stts_entry;
 
 typedef struct {
+    uint32_t count;
+    int32_t offset;
+} faam_ctts_entry;
+
+typedef struct {
     faam_track_info info;
     uint8_t codec_data[256];
     uint32_t codec_data_len;
     faam_sample *samples;
-    uint32_t total_frames;
+    uint32_t total_frames;   /* in the loaded table: the whole file, or the current fragment */
     uint32_t current_frame;
+    uint32_t samples_cap;
+    uint64_t elst_media_time;
+    uint64_t elst_segment_duration;
+    bool has_elst;
 } faam_demuxer_track;
 
 typedef struct faam_owned_string {
     struct faam_owned_string *next;
     char text[];
 } faam_owned_string;
+
+typedef struct {
+    uint32_t track_id;
+    uint32_t duration;
+    uint32_t size;
+    uint32_t flags;
+} faam_trex;
 
 struct faam_demuxer {
     bool heap_owned;
@@ -96,13 +118,21 @@ struct faam_demuxer {
     uint32_t num_tracks;
     uint32_t movie_timescale;
 
-    uint64_t mdat_start_offset;
+    /* Fragmented files: samples arrive one moof at a time, so only the
+     * current fragment's table is in memory. */
+    bool fragmented;
+    bool frag_done;
+    uint64_t frag_pos;       /* next top-level box to scan for a moof */
+    uint64_t mehd_duration;  /* movie timescale; 0 when the writer never finalized */
+    faam_trex trex[FAAM_MAX_TRACKS];
+    uint32_t num_trex;
 };
 
 typedef struct {
     faam_track_config cfg;
     uint8_t codec_data[256];
     uint32_t codec_data_len;
+    uint32_t sps_len; /* Annex-B avcC capture: SPS parked in codec_data until the PPS arrives */
 
     uint32_t *sample_sizes;
     uint64_t *sample_offsets;
@@ -117,6 +147,14 @@ typedef struct {
     uint32_t stss_count;
     uint32_t stss_capacity;
 
+    /* Run-length ctts, allocated only once a non-zero offset arrives so
+     * I/P-only streams cost nothing. */
+    faam_ctts_entry *ctts_entries;
+    uint32_t ctts_count;
+    uint32_t ctts_capacity;
+    int64_t min_pts;
+    bool cts_negative;
+
     uint32_t max_frame_size;
     uint32_t max_bitrate;
     uint32_t avg_bitrate;
@@ -130,6 +168,7 @@ typedef struct {
     uint16_t audio_sample_size;
     uint64_t total_bytes;
     uint64_t window_ticks;
+    uint64_t frag_dts0; /* decode time at the start of the open fragment (tfdt) */
 } faam_muxer_track;
 
 typedef struct {
@@ -158,6 +197,25 @@ struct faam_muxer {
     bool heap_owned;
     bool finalized;
     uint64_t file_bytes;
+
+    /* Fragmented mode (fragment_ms > 0). The per-fragment sample index lives
+     * in the caller's arena right behind tracks[], so nothing is allocated. */
+    bool fragmented;
+    bool frag_open;
+    bool has_video;
+    uint32_t fragment_ms;
+    uint32_t frag_cap;       /* index entries */
+    uint32_t frag_count;
+    uint32_t frag_bytes;     /* mdat payload so far */
+    uint32_t frag_reserve;   /* bytes held back ahead of mdat for the moof */
+    uint32_t frag_seq;
+    uint64_t frag_moof_pos;
+    uint64_t mehd_pos;
+    uint32_t *fi_off;        /* payload offset of each indexed sample */
+    uint32_t *fi_dur;
+    int32_t *fi_cts;         /* NULL unless the file has a video track */
+    uint8_t *fi_flags;       /* bit 0: sync sample */
+    uint8_t *fi_track;       /* index into tracks[] */
     faam_muxer_track tracks[];
 };
 
