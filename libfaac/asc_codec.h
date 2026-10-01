@@ -147,15 +147,22 @@ typedef struct { uint8_t *buf; uint32_t cap_bits; uint32_t pos; } asc_bitwriter;
 
 static inline void asc_bw_put(asc_bitwriter *bw, uint32_t val, uint32_t n)
 {
-    for (uint32_t i = 0; i < n; i++) {
-        uint32_t bitpos = bw->pos + i;
-        if (bitpos >= bw->cap_bits) break;
-        uint32_t bit = (val >> (n - 1 - i)) & 1;
-        uint8_t *byte = &bw->buf[bitpos >> 3];
-        uint8_t mask = (uint8_t)(1u << (7 - (bitpos & 7)));
-        if (bit) *byte |= mask; else *byte &= (uint8_t)~mask;
+    /* Whole byte-sized chunks rather than bit-at-a-time: the constant widths
+     * at each call site made the compiler unroll a per-bit loop into
+     * roughly 3 KB of straight-line code. */
+    while (n > 0) {
+        uint32_t byte_idx = bw->pos >> 3;
+        uint32_t room = 8 - (bw->pos & 7);
+        uint32_t take = n < room ? n : room;
+        if ((byte_idx << 3) >= bw->cap_bits) {
+            bw->pos += n;
+            return;
+        }
+        uint32_t chunk = (val >> (n - take)) & ((1u << take) - 1);
+        bw->buf[byte_idx] |= (uint8_t)(chunk << (room - take));
+        bw->pos += take;
+        n -= take;
     }
-    bw->pos += n;
 }
 
 typedef struct {
