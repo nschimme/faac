@@ -52,7 +52,7 @@ faac = executable('faac',
 # anyway -- skip it under the embedded profile.
 if get_option('muxer') and not get_option('embedded')
     faam = executable('faam',
-        ['faam_main.c', 'charset.c', 'cli_common.c'],
+        ['faam_main.c', 'charset.c', 'cli_common.c', git_version_h],
         include_directories: ['..', '../include', '../libfaac', '../common'],
         link_with: [libfaam_shared],
         dependencies: [libshell32, libiconv],
@@ -72,7 +72,7 @@ if get_option('decoder')
         gc_args += ['-Wl,-dead_strip']
     endif
     faad = executable('faad',
-        ['faad_main.c', 'mp4read.c', 'charset.c', 'cli_common.c'],
+        ['faad_main.c', 'mp4read.c', 'charset.c', 'cli_common.c', git_version_h],
         include_directories: ['..', '../include', '../libfaac', '../common'],
         link_with: decoder_link_libs,
         c_args: c_args_list,
