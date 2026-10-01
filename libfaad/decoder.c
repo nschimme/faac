@@ -424,11 +424,15 @@ static void core_dump_ics(struct faad_decoder *dec, int ch, const ICSInfo *ics, 
  * an LSB of error against any rounding decoder, on every sample. */
 static inline int16_t pcm_to_s16(float v)
 {
-    /* written as selects so they map to min/max and the loops vectorise */
-    v += copysignf(0.5f, v);
+    /* Clamp, then let the FPU round: adding 1.5*2^23 leaves the rounded
+     * integer in the low mantissa bits. Straight-line float ops and one
+     * narrowing, so the loops vectorise where copysign + convert did not. */
     v = v < 32767.0f ? v : 32767.0f;
     v = v > -32768.0f ? v : -32768.0f;
-    return (int16_t)(int)v;
+    v += 12582912.0f;
+    int32_t bits;
+    memcpy(&bits, &v, sizeof(bits));
+    return (int16_t)bits;
 }
 
 FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
