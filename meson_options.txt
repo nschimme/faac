@@ -21,7 +21,7 @@ option('decoder',
 option('muxer',
     description: 'Build the faam CLI tool (libfaam itself is always built)',
     type: 'boolean',
-    value: true)
+    value: false)
 
 option('muxer-video',
     description: 'libfaam: H.264/H.265 video tracks (avc1/hvc1 entries, stss, ctts, Annex-B conversion); off leaves an audio-only muxer/demuxer',

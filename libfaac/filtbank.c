@@ -21,7 +21,7 @@
 #include "filtbank.h"
 #include "frame.h"
 #include "fft.h"
-#include "util.h"
+#include "faac_util.h"
 
 /* Sine windows, ISO/IEC 13818-7 4.6.4, and the MDCT pre/post-twiddles
  * cos/sin(freq*(i+1/8)) for both block sizes, short slice first. Built once

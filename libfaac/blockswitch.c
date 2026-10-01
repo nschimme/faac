@@ -19,7 +19,7 @@
 
 #include "blockswitch.h"
 #include "coder.h"
-#include "util.h"
+#include "faac_util.h"
 #include "faac_internal.h"
 
 typedef float psyfloat;

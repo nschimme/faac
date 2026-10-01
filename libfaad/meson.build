@@ -10,7 +10,6 @@ faad_src = [
     'imdct.c',
     'sbr.c',
     'ps.c',
-    'sfb_tables.c',
     'sbr_dec_tables.c',
 ]
 
@@ -25,9 +24,9 @@ endif
 project_ver = meson.project_version()
 
 common_args = {
-    'include_directories' : ['..', '../include', '../libfaac'],
+    'include_directories' : ['..', '../include', common_inc],
     'c_args' : faad_c_args,
-    'dependencies' : [libm, faab_dep],
+    'dependencies' : [libm, codec_dep],
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
 }

@@ -1,4 +1,19 @@
 /*
+ * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ */
+
+/*
  * Shared AudioSpecificConfig (ISO/IEC 14496-3 1.6) codec.
  *
  * Parses/builds the core-LC-plus-implicit-SBR/PS-sync-extension bitstream
@@ -9,8 +24,7 @@
  * Header-only with static-inline internal linkage on purpose: libfaac,
  * libfaad and libfaam each compile their own private copy of this code from
  * source. No library links against another here; only CLI frontends combine
- * them (see libfaac/meson.build's libfaac_common_static comment for the
- * general pattern this deliberately does NOT use, and why).
+ * them.
  */
 
 #ifndef FAAC_ASC_CODEC_H

@@ -22,7 +22,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
-#include "stats.h"
+#include "faac_stats.h"
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n4, float sfacfix);
 

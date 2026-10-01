@@ -17,7 +17,7 @@
 
 #include "resample.h"
 #include "coder.h"
-#include "util.h"
+#include "faac_util.h"
 
 /* Equiripple half-band FIR for 2:1 decimation.
  * Leverages the zero-valued odd-indexed taps and symmetric even-indexed taps
