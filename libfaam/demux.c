@@ -19,6 +19,7 @@
  */
 
 #include <stdio.h>
+#include <inttypes.h>
 #include "libfaam_internal.h"
 
 typedef struct {
@@ -95,7 +96,7 @@ static void parse_ilst_children(const uint8_t *buf, long offset, long end, struc
                 char str_buf[128] = { 0 };
                 uint32_t slen = tval_len < sizeof(str_buf) - 1 ? tval_len : (uint32_t)sizeof(str_buf) - 1;
                 memcpy(str_buf, tval, slen);
-                if (sscanf(str_buf, " %*x %x %x", &d->gapless.encoder_delay, &d->gapless.end_padding) == 2)
+                if (sscanf(str_buf, " %*x %x %x %" SCNx64, &d->gapless.encoder_delay, &d->gapless.end_padding, &d->gapless.total_samples) >= 2)
                     d->has_gapless = true;
             } else if (tagname[0] && tval && meta->num_custom_tags < 16) {
                 faam_custom_tag *ct = &meta->custom_tags[meta->num_custom_tags];
@@ -216,10 +217,9 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
              * instead of recursing -- this is the reverse of tag.c's/mux.c's
              * ilst writers. */
             parse_ilst_children(buf, payload_offset, payload_end, d);
-        } else if (memcmp(type, "chpl", 4) == 0 && payload_offset + 8 <= payload_end) {
-            long p = payload_offset + 4;
-            uint32_t entry_count = read_u32_be(buf + p);
-            p += 4;
+        } else if (memcmp(type, "chpl", 4) == 0 && payload_offset + 9 <= payload_end) {
+            long p = payload_offset + 8;
+            uint32_t entry_count = buf[p++];
             for (uint32_t c = 0; c < entry_count && c < 64 && p + 9 <= payload_end; c++) {
                 d->chapters[c].start_ms = read_u64_be(buf + p) / 10000;
                 p += 8;
@@ -320,23 +320,25 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                     break;
                 } else pos += tag_len;
             }
-        } else if (memcmp(type, "stts", 4) == 0 && current_trak_idx >= 0 && payload_offset + 4 <= payload_end) {
+        } else if (memcmp(type, "stts", 4) == 0 && current_trak_idx >= 0 && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
-            if (entries > 0 && entries < 1000000) {
+            if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 8) {
                 num_stts_entries[current_trak_idx] = entries;
                 stts_tables[current_trak_idx] = (STTSEntry *)AllocMemory(entries * sizeof(STTSEntry));
-                for (uint32_t e = 0; e < entries && (payload_offset + 8 + e * 8) <= payload_end - 8; e++) {
-                    stts_tables[current_trak_idx][e].sample_count = read_u32_be(buf + payload_offset + 8 + e * 8);
-                    stts_tables[current_trak_idx][e].sample_delta = read_u32_be(buf + payload_offset + 8 + e * 8 + 4);
+                if (!stts_tables[current_trak_idx]) { num_stts_entries[current_trak_idx] = 0; cur = payload_end; continue; }
+                for (uint32_t e = 0; e < entries; e++) {
+                    stts_tables[current_trak_idx][e].sample_count = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 8);
+                    stts_tables[current_trak_idx][e].sample_delta = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 8 + 4);
                 }
             }
-        } else if (memcmp(type, "stss", 4) == 0 && current_trak_idx >= 0 && payload_offset + 4 <= payload_end) {
+        } else if (memcmp(type, "stss", 4) == 0 && current_trak_idx >= 0 && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
-            if (entries > 0 && entries < 1000000) {
+            if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 4) {
                 num_stss_entries[current_trak_idx] = entries;
                 stss_tables[current_trak_idx] = (uint32_t *)AllocMemory(entries * sizeof(uint32_t));
-                for (uint32_t e = 0; e < entries && (payload_offset + 8 + e * 4) <= payload_end - 4; e++) {
-                    stss_tables[current_trak_idx][e] = read_u32_be(buf + payload_offset + 8 + e * 4);
+                if (!stss_tables[current_trak_idx]) { num_stss_entries[current_trak_idx] = 0; cur = payload_end; continue; }
+                for (uint32_t e = 0; e < entries; e++) {
+                    stss_tables[current_trak_idx][e] = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 4);
                 }
             }
         } else if (memcmp(type, "elst", 4) == 0 && !d->has_elst && payload_offset + 8 <= payload_end) {
@@ -365,47 +367,48 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
         } else if (memcmp(type, "stsz", 4) == 0 && current_trak_idx >= 0 && payload_offset + 12 <= payload_end) {
             fixed_sample_sizes[current_trak_idx] = read_u32_be(buf + payload_offset + 4);
             uint32_t sample_count = read_u32_be(buf + payload_offset + 8);
-            if (sample_count > 0 && sample_count < 1000000) {
+            if (sample_count > 0 && (fixed_sample_sizes[current_trak_idx] || sample_count <= (uint64_t)(payload_end - payload_offset - 12) / 4) && (uint64_t)sample_count * sizeof(faam_sample) <= SIZE_MAX) {
                 num_stsz_samples[current_trak_idx] = sample_count;
                 if (fixed_sample_sizes[current_trak_idx] == 0) {
                     stsz_tables[current_trak_idx] = (uint32_t *)AllocMemory(sample_count * sizeof(uint32_t));
                     if (stsz_tables[current_trak_idx]) {
-                        for (uint32_t s = 0; s < sample_count && (payload_offset + 12 + s * 4) <= payload_end - 4; s++) {
-                            stsz_tables[current_trak_idx][s] = read_u32_be(buf + payload_offset + 12 + s * 4);
+                        for (uint32_t s = 0; s < sample_count; s++) {
+                            stsz_tables[current_trak_idx][s] = read_u32_be(buf + payload_offset + 12 + (uint64_t)s * 4);
                         }
                     }
                 }
             }
         } else if (memcmp(type, "stsc", 4) == 0 && current_trak_idx >= 0 && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
-            if (entries > 0 && entries < 100000) {
+            if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 12) {
                 num_stsc_entries[current_trak_idx] = entries;
                 stsc_tables[current_trak_idx] = (STSCEntry *)AllocMemory(entries * sizeof(STSCEntry));
-                for (uint32_t e = 0; e < entries && (payload_offset + 8 + e * 12) <= payload_end - 12; e++) {
-                    stsc_tables[current_trak_idx][e].first_chunk = read_u32_be(buf + payload_offset + 8 + e * 12);
-                    stsc_tables[current_trak_idx][e].samples_per_chunk = read_u32_be(buf + payload_offset + 8 + e * 12 + 4);
-                    stsc_tables[current_trak_idx][e].sample_description_index = read_u32_be(buf + payload_offset + 8 + e * 12 + 8);
+                if (!stsc_tables[current_trak_idx]) { num_stsc_entries[current_trak_idx] = 0; cur = payload_end; continue; }
+                for (uint32_t e = 0; e < entries; e++) {
+                    stsc_tables[current_trak_idx][e].first_chunk = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 12);
+                    stsc_tables[current_trak_idx][e].samples_per_chunk = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 12 + 4);
+                    stsc_tables[current_trak_idx][e].sample_description_index = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 12 + 8);
                 }
             }
         } else if (memcmp(type, "stco", 4) == 0 && current_trak_idx >= 0 && payload_offset + 8 <= payload_end) {
             uint32_t chunks = read_u32_be(buf + payload_offset + 4);
-            if (chunks > 0 && chunks < 1000000) {
+            if (chunks > 0 && chunks <= (uint64_t)(payload_end - payload_offset - 8) / 4 && (uint64_t)chunks * sizeof(uint64_t) <= SIZE_MAX) {
                 num_stco_chunks[current_trak_idx] = chunks;
                 stco_tables[current_trak_idx] = (uint64_t *)AllocMemory(chunks * sizeof(uint64_t));
                 if (stco_tables[current_trak_idx]) {
-                    for (uint32_t c = 0; c < chunks && (payload_offset + 8 + c * 4) <= payload_end - 4; c++) {
-                        stco_tables[current_trak_idx][c] = read_u32_be(buf + payload_offset + 8 + c * 4);
+                    for (uint32_t c = 0; c < chunks; c++) {
+                        stco_tables[current_trak_idx][c] = read_u32_be(buf + payload_offset + 8 + (uint64_t)c * 4);
                     }
                 }
             }
         } else if (memcmp(type, "co64", 4) == 0 && current_trak_idx >= 0 && payload_offset + 8 <= payload_end) {
             uint32_t chunks = read_u32_be(buf + payload_offset + 4);
-            if (chunks > 0 && chunks < 1000000) {
+            if (chunks > 0 && chunks <= (uint64_t)(payload_end - payload_offset - 8) / 8) {
                 num_stco_chunks[current_trak_idx] = chunks;
                 stco_tables[current_trak_idx] = (uint64_t *)AllocMemory(chunks * sizeof(uint64_t));
                 if (stco_tables[current_trak_idx]) {
-                    for (uint32_t c = 0; c < chunks && (payload_offset + 8 + c * 8) <= payload_end - 8; c++) {
-                        stco_tables[current_trak_idx][c] = read_u64_be(buf + payload_offset + 8 + c * 8);
+                    for (uint32_t c = 0; c < chunks; c++) {
+                        stco_tables[current_trak_idx][c] = read_u64_be(buf + payload_offset + 8 + (uint64_t)c * 8);
                     }
                 }
             }
@@ -451,6 +454,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
         tr->total_frames = n_samples;
         tr->info.total_frames = n_samples;
 
+        uint32_t sync_idx = 0;
         uint32_t stts_entry_idx = 0;
         uint32_t stts_run_remaining = num_stts_entries[t] > 0 ? stts_tables[t][0].sample_count : 0;
 
@@ -488,12 +492,9 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
                     bool is_keyframe = (tr->info.track_type == FAAM_TRACK_AUDIO);
                     if (num_stss_entries[t] > 0 && stss_tables[t]) {
                         is_keyframe = false;
-                        for (uint32_t k = 0; k < num_stss_entries[t]; k++) {
-                            if (stss_tables[t][k] == sample_idx + 1) {
-                                is_keyframe = true;
-                                break;
-                            }
-                        }
+                        while (sync_idx < num_stss_entries[t] && stss_tables[t][sync_idx] < sample_idx + 1)
+                            sync_idx++;
+                        is_keyframe = sync_idx < num_stss_entries[t] && stss_tables[t][sync_idx] == sample_idx + 1;
                     }
 
                     tr->samples[sample_idx].offset = chunk_offset + sample_offset_in_chunk;
@@ -537,7 +538,7 @@ faam_status faam_demuxer_init(void *mem_buf, uint32_t mem_bytes, const faam_io *
     struct faam_demuxer *d = (struct faam_demuxer *)mem_buf;
     memset(d, 0, sizeof(*d));
     d->io = *io;
-    d->gapless.encoder_delay = 1024;
+    d->gapless.encoder_delay = 0;
 
     if (d->io.read) {
         if (d->io.seek) d->io.seek(d->io.user_data, 0);

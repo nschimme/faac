@@ -133,6 +133,7 @@ struct faam_muxer {
     size_t mempos;
     size_t memcap;
     int mem_error;
+    faam_status error;
 };
 
 /* Endian utilities */
