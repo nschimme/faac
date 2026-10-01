@@ -29,6 +29,7 @@
 #endif
 
 #include "faad.h"
+#include "config.h"
 
 #define NUM_THREADS 8
 #define ITERATIONS_PER_THREAD 100
@@ -40,18 +41,18 @@ static void run_decoder_iteration(void)
     assert(st == FAAD_OK);
 
     faad_decoder *dec = NULL;
-    st = faad_decoder_create(&cfg, NULL, 0, &dec);
+    st = faad_decoder_open(&cfg, NULL, 0, &dec);
     assert(st == FAAD_OK);
     assert(dec != NULL);
 
-    faad_stream_info info;
+    faad_stream_info info = { .struct_size = sizeof(faad_stream_info) };
     st = faad_decoder_get_info(dec, &info);
     assert(st == FAAD_OK);
 
     st = faad_decoder_flush(dec);
     assert(st == FAAD_OK);
 
-    faad_decoder_destroy(dec);
+    faad_decoder_close(&dec);
 }
 
 #if defined(_WIN32) && !defined(__MINGW32__)
@@ -91,20 +92,30 @@ static void test_asc_sbr_signalling(void)
         { lc_plain,           sizeof(lc_plain),           FAAD_OBJ_LC,        16000 },
         { he_sbr_present,     sizeof(he_sbr_present),     FAAD_OBJ_HE_AAC_V1, 32000 },
         { he_hierarchical,    sizeof(he_hierarchical),    FAAD_OBJ_HE_AAC_V1, 32000 },
-        { hev2_hierarchical,  sizeof(hev2_hierarchical),  FAAD_OBJ_HE_AAC_V1, 32000 },
+        { hev2_hierarchical,  sizeof(hev2_hierarchical),  FAAD_OBJ_HE_AAC_V2, 32000 },
     };
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
         faad_config cfg;
         assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
         cfg.stream_format = FAAD_STREAM_RAW;
         faad_decoder *dec = NULL;
-        assert(faad_decoder_create(&cfg, cases[i].asc, cases[i].len, &dec) == FAAD_OK);
-        faad_stream_info info;
+        assert(faad_decoder_open(&cfg, cases[i].asc, cases[i].len, &dec) == FAAD_OK);
+        faad_stream_info info = { .struct_size = sizeof(faad_stream_info) };
         assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+#if defined(FAAD_DISABLE_SBR) || defined(FAAD_D_SBR)
+        assert(info.sample_rate == 16000);
+        assert(info.frame_samples == 1024);
+#else
         assert(info.sample_rate == cases[i].rate);
+        assert(info.frame_samples == (cases[i].obj == FAAD_OBJ_LC ? 1024u : 2048u));
+#endif
+#if defined(FAAD_DISABLE_PS) || defined(FAAD_DISABLE_SBR) || MAX_CHANNELS < 2
         assert(info.channels == 1);
+#else
+        assert(info.channels == (cases[i].obj == FAAD_OBJ_HE_AAC_V2 ? 2u : 1u));
+#endif
         assert(info.object_type == cases[i].obj);
-        faad_decoder_destroy(dec);
+        faad_decoder_close(&dec);
     }
 }
 
@@ -126,14 +137,55 @@ static void test_asc_drm_rejection(void)
 
     for (size_t i = 0; i < sizeof(drm_cases) / sizeof(drm_cases[0]); i++) {
         faad_decoder *dec = NULL;
-        faad_status st = faad_decoder_create(&cfg, drm_cases[i].asc, drm_cases[i].len, &dec);
+        faad_status st = faad_decoder_open(&cfg, drm_cases[i].asc, drm_cases[i].len, &dec);
         assert(st == FAAD_ERR_UNSUPPORTED);
         assert(dec == NULL);
     }
 }
 
+static void test_struct_sizes_and_enums(void)
+{
+    struct { faad_config cfg; uint32_t guard; } c;
+    memset(&c, 0xa5, sizeof(c));
+    assert(faad_config_init(&c.cfg, sizeof(c.cfg) - 1) == FAAD_ERR_INVALID_ARGUMENT);
+    assert(c.cfg.struct_size == 0xa5a5a5a5u);
+    assert(faad_config_init(&c.cfg, sizeof(c)) == FAAD_OK);
+    assert(c.cfg.struct_size == sizeof(c.cfg));
+    assert(c.guard == 0xa5a5a5a5u);
+    faad_decoder *dec = NULL;
+    c.cfg.struct_size = sizeof(c);
+    assert(faad_decoder_open(&c.cfg, NULL, 0, &dec) == FAAD_OK);
+    struct { faad_stream_info info; uint32_t guard; } out;
+    memset(&out, 0xa5, sizeof(out));
+    out.info.struct_size = sizeof(out.info) - 1;
+    assert(faad_decoder_get_info(dec, &out.info) == FAAD_ERR_INVALID_ARGUMENT);
+    assert(out.info.sample_rate == 0xa5a5a5a5u);
+    out.info.struct_size = sizeof(out);
+    assert(faad_decoder_get_info(dec, &out.info) == FAAD_OK);
+    assert(out.info.struct_size == sizeof(out.info));
+    assert(out.guard == 0xa5a5a5a5u);
+    assert(faad_decoder_close(&dec) == FAAD_OK && dec == NULL);
+    uint32_t bytes;
+    assert(faad_get_state_size(NULL, &bytes) == FAAD_OK);
+    void *mem = malloc(bytes);
+    assert(mem != NULL);
+    for (int i = 0; i < 4; i++) {
+        faad_config_init(&c.cfg, sizeof(c.cfg));
+        if (i == 0) c.cfg.struct_size--;
+        if (i == 1) c.cfg.stream_format = FAAD_STREAM_MAX;
+        if (i == 2) c.cfg.output_format = FAAD_OUTPUT_MAX;
+        if (i == 3) c.cfg.downmix_mode = FAAD_DOWNMIX_MAX;
+        assert(faad_decoder_open(&c.cfg, NULL, 0, &dec) == FAAD_ERR_INVALID_ARGUMENT);
+        assert(dec == NULL);
+        assert(faad_decoder_init(mem, bytes, &c.cfg, NULL, 0, &dec) == FAAD_ERR_INVALID_ARGUMENT);
+        assert(dec == NULL);
+    }
+    free(mem);
+}
+
 int main(void)
 {
+    test_struct_sizes_and_enums();
     test_asc_sbr_signalling();
     test_asc_drm_rejection();
 
@@ -156,7 +208,7 @@ int main(void)
     assert(st == FAAD_OK);
     assert(dec_static != NULL);
 
-    faad_stream_info info;
+    faad_stream_info info = { .struct_size = sizeof(faad_stream_info) };
     st = faad_decoder_get_info(dec_static, &info);
     assert(st == FAAD_OK);
     assert(info.channels == 2);
@@ -164,18 +216,23 @@ int main(void)
     st = faad_decoder_flush(dec_static);
     assert(st == FAAD_OK);
 
+    assert(faad_decoder_close(&dec_static) == FAAD_OK);
+    assert(dec_static == NULL);
     free(static_mem);
 
     /* Test 2: Heap Wrapper Initialization */
     faad_decoder *dec_heap = NULL;
-    st = faad_decoder_create(&cfg, NULL, 0, &dec_heap);
+    st = faad_decoder_open(&cfg, NULL, 0, &dec_heap);
     assert(st == FAAD_OK);
     assert(dec_heap != NULL);
 
     st = faad_decoder_flush(dec_heap);
     assert(st == FAAD_OK);
 
-    faad_decoder_destroy(dec_heap);
+    assert(faad_decoder_close(&dec_heap) == FAAD_OK);
+    assert(dec_heap == NULL);
+    assert(faad_decoder_close(&dec_heap) == FAAD_OK);
+    assert(faad_decoder_close(NULL) == FAAD_ERR_INVALID_ARGUMENT);
 
     /* Test 3: Concurrent Multi-Threaded Stress Test */
 #if defined(_WIN32) && !defined(__MINGW32__)

@@ -86,7 +86,8 @@ enum faad_output_format {
 enum faad_downmix_mode {
     FAAD_DOWNMIX_NONE   = 0,          /* Preserve native channel layout */
     FAAD_DOWNMIX_STEREO = 1,          /* Downmix surround channels to 2-channel stereo */
-    FAAD_DOWNMIX_MONO   = 2           /* Downmix all channels to mono */
+    FAAD_DOWNMIX_MONO   = 2,          /* Downmix all channels to mono */
+    FAAD_DOWNMIX_MAX    = 0x7fffffff
 };
 
 /* Decoder configuration provided at initialization */
@@ -98,24 +99,32 @@ typedef struct faad_config {
 } faad_config;
 
 /* SBR QMF analysis+synthesis delay in core-rate samples. Apple and fdk-aac
- * priming values exclude it, so a gapless trim of an SBR stream skips
- * (priming + FAAD_SBR_DELAY) core samples and pads FAAD_SBR_DELAY fewer. */
+ * priming values exclude it. Convert track priming/padding from track ticks
+ * and this delay from core samples to output samples before trimming. */
 #define FAAD_SBR_DELAY 481
 
 /* Static stream information (derived from ASC or ADTS headers) */
+/* Set struct_size before get_info; it is updated to the bytes populated.
+ * Configured output order: mono FC; stereo FL FR; surround FL FR FC,
+ * then BC (4), BL BR (5), LFE BL BR (6), or LFE BL BR SL SR (8).
+ * PCE surround element order has no fixed WAVE layout and reports mask 0. */
 typedef struct faad_stream_info {
-    uint32_t                sample_rate;      /* Base sample rate in Hz */
-    uint32_t                channels;         /* Base channel count */
+    uint32_t                struct_size;
+    uint32_t                sample_rate;      /* Resolved output sample rate in Hz */
+    uint32_t                channels;         /* Resolved output channel count */
     enum faad_object_type   object_type;      /* Detected object type */
     uint32_t                delay_samples;    /* Decoder delay at the core rate that MP4/iTunSMPB priming
-                                               * excludes: FAAD_SBR_DELAY with explicit SBR, else 0 */
+                                               * excludes: FAAD_SBR_DELAY with detected SBR, else 0 */
+    uint32_t                frame_samples;    /* 1024, or 2048 with upsampled SBR output */
+    uint32_t                max_output_bytes; /* Lifetime PCM capacity, including implicit SBR/PS */
+    uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
 } faad_stream_info;
 
 /* Dynamic frame metadata returned after every decoded packet */
 typedef struct faad_frame_info {
     uint32_t                sample_rate;      /* Effective frame sample rate (reflects SBR upsampling) */
     uint32_t                samples_per_ch;   /* Decoded samples per channel (1024 or 2048) */
-    uint8_t                 channels;         /* Active output channel count */
+    uint32_t                channels;         /* Active output channel count */
     bool                    sbr_active;       /* True if SBR extension was applied */
     bool                    ps_active;        /* True if Parametric Stereo was applied */
 } faad_frame_info;
@@ -150,19 +159,25 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
                                       faad_decoder **out_dec);
 
 /* Convenience wrapper for desktop: Allocates memory internally via malloc(). */
-FAADAPI faad_status faad_decoder_create(const faad_config *cfg,
+FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
                                         const uint8_t *asc_buf, uint32_t asc_len,
                                         faad_decoder **out_dec);
 
-/* Destroys the decoder. Only calls free() if created via faad_decoder_create(). */
-FAADAPI void faad_decoder_destroy(faad_decoder *dec);
+/* Releases and nulls *dec; frees only memory allocated by open.
+ * A pointer to NULL succeeds; a NULL pointer is invalid. */
+FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
 
 
 /* --- Execution & Control --- */
 
 /*
  * Extracts static stream metadata. Safe to call immediately after init
- * if ASC was provided, or after the first ADTS frame is parsed.
+ * if ASC was provided, or after the first ADTS frame is parsed. Set
+ * out_info->struct_size to sizeof(faad_stream_info); smaller baseline layouts
+ * are rejected, larger layouts are accepted and only known bytes are written.
+ * max_output_bytes is valid even before the first frame and across flushes;
+ * ADTS/PCE use the build's channel capacity, fixed RAW layouts use their count
+ * (at least two with PS support), and downmix reduces that bound.
  */
 FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_info *out_info);
 

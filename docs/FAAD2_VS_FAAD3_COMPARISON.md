@@ -62,17 +62,17 @@ This produces `libfaad.so.3.0.0` and symlink `libfaad.so.3` on Linux, clearly is
 
 | FAAD2 C API (`neaacdec.h`) | FAAD3 C API (`include/faad.h`) | Architectural Improvement in FAAD3 |
 | :--- | :--- | :--- |
-| `NeAACDecOpen()` | `faad_decoder_create()` / `faad_decoder_init()` | Supports zero-allocation static memory init via `faad_decoder_init()`. |
+| `NeAACDecOpen()` | `faad_decoder_open()` / `faad_decoder_init()` | Supports zero-allocation static memory init via `faad_decoder_init()`. |
 | `NeAACDecInit()`, `NeAACDecInit2()` | `faad_config_init()`, `faad_decoder_get_info()` | Separates configuration setup from static metadata querying. |
 | `NeAACDecDecode()`, `NeAACDecDecode2()` | `faad_decode_frame()` | Zero-copy single-frame Access Unit decoding with explicit `bytes_consumed` and `bytes_written`. |
-| `NeAACDecClose()` | `faad_decoder_destroy()` | Safe cleanup; no op when using static caller-allocated memory. |
+| `NeAACDecClose()` | `faad_decoder_close()` | Nulls the handle; frees only heap-owned memory. Pass the address of the handle. |
 | `NeAACDecPostSeekReset()` | `faad_decoder_flush()` | Flushes IMDCT overlap and SBR delay history cleanly upon seeking. |
 | `NeAACDecGetErrorMessage()` | `faad_strerror()` | Thread-safe, constant string mapping for status codes (`faad_status`). |
 | `NeAACDecGetVersion()` | `faad_get_library_info()` | Structured library capabilities and metadata query with `struct_size` versioning. |
 
 ### 3.3 Modern ABI Architectural Strengths
 1. **Zero-Allocation Execution**: Calling `faad_get_state_size()` queries the exact memory requirements (~128 KB for stereo HE-AAC). Embedded or RTOS callers pass a static `.bss` memory pointer to `faad_decoder_init()`, completely eliminating dynamic heap allocation (`malloc`/`free`) during decoder lifetime.
-2. **Struct Size Versioning**: Public structures (`faad_config`, `faad_library_info`) require callers to populate `struct_size = sizeof(struct_size)`. This guarantees future ABI field expansion without breaking existing binaries.
+2. **Struct Size Versioning**: Public structures (`faad_config`, `faad_library_info`, `faad_stream_info`) use `struct_size = sizeof(the_structure)`. This guarantees future ABI field expansion without breaking existing binaries.
 3. **Deterministic Single-Frame Decoding**: `faad_decode_frame()` decodes exactly one Access Unit per call, returning `bytes_consumed` and `bytes_written`. Callers maintain full control over bitstream buffering without hidden internal FIFO state.
 4. **Thread Safety & Hidden Visibility**: All internal lookup tables are pre-initialized during single-threaded decoder creation (`faad_init_global_tables()`), making decoding threads 100% reentrant. Library symbols use `gnu_symbol_visibility: hidden` with explicit `FAADAPI` export attributes.
 
