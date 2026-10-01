@@ -191,6 +191,16 @@ static inline void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, 
     }
 }
 
+/* The escape prefix has at most 8 ones, so a magnitude never exceeds 8191; a
+ * longer run is corrupt and is clamped instead of shifting out of range. */
+static inline int decode_escape(BitReader *bs)
+{
+    int prefix = 0;
+    while (prefix < 8 && bits_get_1(bs)) prefix++;
+    if (prefix == 8) bits_get_1(bs); /* the terminating zero */
+    return (1 << (prefix + 4)) + (int)bits_get_fast(bs, (uint32_t)prefix + 4);
+}
+
 static inline void decode_pair(BitReader *bs, int book, int *x, int *y
 #ifdef FAAD_STATS
     , struct faad_decoder *dec
@@ -212,17 +222,13 @@ static inline void decode_pair(BitReader *bs, int book, int *x, int *y
         bool neg_x = abs_x && bits_get_1(bs);
         bool neg_y = abs_y && bits_get_1(bs);
         if (abs_x == 16) {
-            int prefix = 0;
-            while (bits_get_1(bs) == 1) prefix++;
-            abs_x = (1 << (prefix + 4)) + bits_get_fast(bs, prefix + 4);
+            abs_x = decode_escape(bs);
 #ifdef FAAD_STATS
             dec->stats.escbookMagnitudeEscapes++;
 #endif
         }
         if (abs_y == 16) {
-            int prefix = 0;
-            while (bits_get_1(bs) == 1) prefix++;
-            abs_y = (1 << (prefix + 4)) + bits_get_fast(bs, prefix + 4);
+            abs_y = decode_escape(bs);
 #ifdef FAAD_STATS
             dec->stats.escbookMagnitudeEscapes++;
 #endif
