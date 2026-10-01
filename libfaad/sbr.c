@@ -284,18 +284,21 @@ static bool sbr_build_patches(SBRElement *el, uint32_t sr)
     int goal_sb = (int)((2048000 + (sr >> 1)) / sr);
     int k;
     if (goal_sb < kx + M) {
-        for (k = 0; el->f_master[k] < goal_sb; k++) ;
+        for (k = 0; k < el->n_master && el->f_master[k] < goal_sb; k++) ;
     } else {
         k = el->n_master;
     }
     int sb;
-    do {
+    /* Passes that add no patch only reset msb, so a malformed table can
+     * revisit the same state forever; a valid one needs few passes. */
+    for (int pass = 0;; pass++) {
+        if (pass >= 4 * SBR_MAX_PATCHES) return false;
         int j = k + 1, odd;
         do {
             j--;
             sb = el->f_master[j];
             odd = (sb - 2 + k0) & 1;
-        } while (sb > k0 - 1 + msb - odd);
+        } while (sb > k0 - 1 + msb - odd && j > 0);
 
         if (np >= SBR_MAX_PATCHES) return false;
         int num = sb - usb > 0 ? sb - usb : 0;
@@ -309,7 +312,8 @@ static bool sbr_build_patches(SBRElement *el, uint32_t sr)
             msb = kx;
         }
         if (el->f_master[k] - sb < 3) k = el->n_master;
-    } while (sb != kx + M);
+        if (sb == kx + M) break;
+    }
 
     if (np > 1 && el->patch_num[np - 1] < 3) np--;
     el->num_patches = (uint8_t)np;
@@ -365,6 +369,8 @@ static bool sbr_build_limiter(SBRElement *el)
 
 static bool sbr_build_tables(SBRElement *el, uint32_t sr)
 {
+    /* the band tables divide by sr; an explicit ASC rate can be anything */
+    if (sr < 8000 || sr > 192000) return false;
     int k0 = sbr_start_band(sr, el->start_freq);
     int k2 = sbr_stop_band(sr, k0, el->stop_freq);
     int max_span = (sr <= 32000) ? 48 : (sr <= 44100) ? 35 : 32;
@@ -741,6 +747,8 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
 
     SBRChannel *chs[2] = { &dec->sbr[ch0], &dec->sbr[ch0 + (nch > 1 ? 1 : 0)] };
     el->nch = (uint8_t)nch;
+    /* a frame that fails part-way has half-written grids, so it must not reach HF */
+    for (int c = 0; c < nch; c++) chs[c]->have_frame = false;
 
     /* sbr_single_channel_element / sbr_channel_pair_element (§4.6.18.3.4) */
     bool data_extra = bits_get(bs, 1);
@@ -1315,7 +1323,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
         SBRElement *el = &dec->sbr_el[ch];
         bool pair = el->header_present && el->nch == 2 && (ch + 1 < num_ch);
         int nch = pair ? 2 : 1;
-        bool have_hf = el->header_present && dec->sbr[ch].have_frame;
+        bool have_hf = el->header_present && dec->sbr[ch].have_frame && (!pair || dec->sbr[ch + 1].have_frame);
 
         if (have_hf) sbr_dequant(el, &dec->sbr[ch], pair ? &dec->sbr[ch + 1] : NULL, E0, Q0, E1, Q1);
 
