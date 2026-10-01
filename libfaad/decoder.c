@@ -201,6 +201,7 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
         dec->num_channels = config_channels(dec->asc.num_channels);
         if (dec->num_channels > MAX_CHANNELS) return FAAD_ERR_UNSUPPORTED;
         dec->core_sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
+        if (get_sr_index(dec->core_sample_rate) < 0) return FAAD_ERR_UNSUPPORTED;
         dec->sample_rate = dec->asc.is_sbr ? dec->asc.sbr_sample_rate : dec->core_sample_rate;
         dec->frame_samples = dec->asc.is_sbr ? 2048 : 1024;
         dec->asc_parsed = true;

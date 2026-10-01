@@ -443,7 +443,16 @@ int main(int argc, char **argv)
         AscInfo asc;
         asc_codec_parse(track.asc_buf, track.asc_len, &asc);
         uint8_t profile = (asc.object_type >= 1 && asc.object_type <= 4) ? (uint8_t)(asc.object_type - 1) : 1;
-        uint8_t sr_idx = asc_codec_sr_idx(asc.sample_rate);
+        int sr_idx = asc_codec_sr_idx(asc.sample_rate);
+        if (sr_idx < 0) {
+            fprintf(stderr, "%s: core sample rate %u Hz has no ADTS sampling frequency index\n",
+                    infile, (unsigned)asc.sample_rate);
+            fclose(fadts);
+            remove(adts_outfile);
+            free(inbuf);
+            mp4_free_track(&track);
+            return 1;
+        }
         uint8_t ch = asc.num_channels & 7;
         for (uint32_t s = 0; s < track.num_samples; s++) {
             uint64_t offset = track.samples[s].offset;
