@@ -382,7 +382,11 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
  *     limiter_bands limiter_gains interpol smoothing reset kx M n_low n_high n_q e1 e2
  *   F frame ch class L_E L_Q freq_res amp_res invf harm_flag n_harm coupling -1 E_dB Q_dB
  *   G frame ch class L_E pointer t_E...
- *   P frame iid icc num_env */
+ *   P frame iid icc num_env
+ *   B frame total hdr sect sf spec aux sbr ps fill
+ *       bits by syntax part; sect/sf/spec/aux (pulse, TNS) sum over the ics,
+ *       sbr excludes ps, fill is pad after the SBR payload, and the
+ *       remainder of total is element and ics headers */
 FILE *faad_dump_file(struct faad_decoder *dec)
 {
     faadDecStats *st = &dec->stats;
@@ -496,6 +500,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         adts_frame_len = in_bytes;
     }
 
+#ifdef FAAD_STATS
+    dec->stats.frameSectBits = dec->stats.frameSfBits = dec->stats.frameSpecBits = 0;
+    dec->stats.frameAuxBits = dec->stats.frameSbrBits = dec->stats.framePsBits = 0;
+    dec->stats.frameFillBits = 0;
+    unsigned frame_hdr_bits = bits_get_consumed(&bs);
+#endif
     uint32_t ch_idx = 0;
     uint32_t last_elem_type = ID_SCE;
     ICSInfo ics_list[MAX_CHANNELS]; /* each entry is cleared by the element that fills it */
@@ -590,6 +600,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                         } else {
                             ch0 = (ch_idx >= 1) ? (ch_idx - 1) : 0;
                         }
+#ifdef FAAD_STATS
+                        unsigned sbr_mark = bits_get_consumed(&bs);
+                        unsigned ps_mark = dec->stats.framePsBits;
+#endif
                         faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
 #ifndef FAAD_DISABLE_SBR
                         if (sbr_st != FAAD_OK) {
@@ -606,12 +620,14 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                         uint32_t consumed = bits_get_consumed(&bs);
 #ifdef FAAD_STATS
                         dec->stats.fillElementCount++;
+                        dec->stats.frameSbrBits += consumed - sbr_mark - (dec->stats.framePsBits - ps_mark);
 #endif
                         if (consumed < fill_end) {
                             uint32_t pad = fill_end - consumed;
                             bits_skip(&bs, pad);
 #ifdef FAAD_STATS
                             dec->stats.fillElementPadBitsSum += pad;
+                            dec->stats.frameFillBits += pad;
                             if (pad > dec->stats.fillElementMaxPad) {
                                 dec->stats.fillElementMaxPad = pad;
                             }
@@ -626,6 +642,13 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #ifdef FAAD_STATS
         if (!saw_end) {
             dec->stats.nonEndTermination++;
+        }
+        FILE *df = faad_dump_file(dec);
+        if (df) {
+            const faadDecStats *s = &dec->stats;
+            fprintf(df, "B %u %u %u %u %u %u %u %u %u %u\n", s->totalFrames, bits_get_consumed(&bs),
+                    frame_hdr_bits, s->frameSectBits, s->frameSfBits, s->frameSpecBits, s->frameAuxBits,
+                    s->frameSbrBits, s->framePsBits, s->frameFillBits);
         }
 #endif
     }

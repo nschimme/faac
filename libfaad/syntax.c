@@ -179,14 +179,25 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     }
 #endif
 
+#ifdef FAAD_STATS
+    unsigned bits_mark = bits_get_consumed(bs);
+#endif
     faad_status st = decode_section_data(bs, ics);
     if (st != FAAD_OK) return st;
+#ifdef FAAD_STATS
+    dec->stats.frameSectBits += bits_get_consumed(bs) - bits_mark;
+    bits_mark = bits_get_consumed(bs);
+#endif
 
     decode_scale_factor_data(bs, ics, dec->core_sample_rate
 #ifdef FAAD_STATS
         , dec
 #endif
     );
+#ifdef FAAD_STATS
+    dec->stats.frameSfBits += bits_get_consumed(bs) - bits_mark;
+    bits_mark = bits_get_consumed(bs);
+#endif
 
     ics->pulse_data_present = bits_get(bs, 1);
     ics->pulse_count = 0;
@@ -248,11 +259,15 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     if (ics->gain_control_present) {
     }
 
-    return decode_spectral_data(bs, ics, spec
 #ifdef FAAD_STATS
-        , dec
+    dec->stats.frameAuxBits += bits_get_consumed(bs) - bits_mark;
+    bits_mark = bits_get_consumed(bs);
+    st = decode_spectral_data(bs, ics, spec, dec);
+    dec->stats.frameSpecBits += bits_get_consumed(bs) - bits_mark;
+    return st;
+#else
+    return decode_spectral_data(bs, ics, spec);
 #endif
-    );
 }
 
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch)
