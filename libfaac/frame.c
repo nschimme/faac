@@ -31,7 +31,6 @@
 #include "sbr.h"
 #include "ratecontrol.h"
 #include "atomic.h"
-#include "asc_codec.h"
 #include "endian.h"
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
@@ -159,11 +158,11 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
     *ppBuffer = (unsigned char *)AllocMemory(2);
 
     if(*ppBuffer != NULL){
-        AscBuildInfo info = {0};
-        info.object_type = (uint8_t)hEncoder->config.aacObjectType;
-        info.sr_idx = (uint8_t)hEncoder->sampleRateIdx;
-        info.channels = (uint8_t)hEncoder->numChannels;
-        asc_codec_build(&info, *ppBuffer, 2);
+        BitStream bs;
+        InitBitStream(&bs, *ppBuffer, 2); /* zeroes the buffer, so the 3 trailing pad bits need no write */
+        PutBit(&bs, hEncoder->config.aacObjectType, 5);
+        PutBit(&bs, hEncoder->sampleRateIdx,        4);
+        PutBit(&bs, GetChannelConfig((int)hEncoder->numChannels), 4);
         return 0;
     } else {
         return -3;
@@ -471,7 +470,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     unsigned int channel;
     faacEncStruct* hEncoder;
 
-    if (numChannels < 1 || numChannels > MAX_CHANNELS)
+    if (GetChannelConfig((int)numChannels) == 0)
 	return NULL;
 
     *inputSamples = FRAME_LEN*numChannels;
