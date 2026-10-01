@@ -31,7 +31,7 @@
 #include "bitstream.h"
 #include "sbr.h"
 #include "resample.h"
-#include "util.h"
+#include "faac_util.h"
 
 /* The public enums are width-pinned to 32 bits by their FAAC_*_MAX sentinels;
  * verify the compiler honored that so the ABI matches the documented layout. */

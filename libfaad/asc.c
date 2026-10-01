@@ -20,9 +20,16 @@
 #include "faad_internal.h"
 #include "asc_codec.h"
 
-const uint32_t faad_sample_rates[16] = {
-    96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350, 0, 0, 0
-};
+/* SFB tables cover only the first 12 rates, so 7350 Hz falls to the default. */
+int get_sr_index(uint32_t sample_rate)
+{
+    for (int i = 0; i < 12; i++) {
+        if (asc_codec_sample_rates[i] == sample_rate) {
+            return i;
+        }
+    }
+    return 4; /* Default 44.1 kHz */
+}
 
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
 {
@@ -84,14 +91,14 @@ faad_status adts_decode_header(BitReader *bs, AudioSpecificConfig *asc, uint32_t
         return FAAD_ERR_UNSUPPORTED;
     }
 
-    if (sr_idx >= 12 || faad_sample_rates[sr_idx] == 0 || flen < min_hdr) {
+    if (sr_idx >= 12 || asc_codec_sample_rates[sr_idx] == 0 || flen < min_hdr) {
         return FAAD_ERR_DECODE_FAILED;
     }
 
     if (asc) {
         memset(asc, 0, sizeof(*asc));
         asc->object_type = (enum faad_object_type)(profile + 1);
-        asc->sample_rate = faad_sample_rates[sr_idx];
+        asc->sample_rate = asc_codec_sample_rates[sr_idx];
         asc->num_channels = channel_config;
     }
 
