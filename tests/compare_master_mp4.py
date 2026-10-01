@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FAAM byte regression: MASTER_FAAC=/path/to/faac python3 tests/compare_master_mp4.py."""
+"""MP4 writer byte regression vs a master faac: MASTER_FAAC=/path/to/faac python3 tests/compare_master_mp4.py."""
 import argparse
 import math
 import os
@@ -70,7 +70,7 @@ def main():
     master = os.environ['MASTER_FAAC']
     if args.artifacts:
         args.artifacts.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='faam-compare-') as td:
+    with tempfile.TemporaryDirectory(prefix='mp4-compare-') as td:
         root = Path(td)
         for name, rate, channels, seconds in [('stereo',44100,2,3), ('mono',48000,1,3), ('short',44100,2,.2), ('surround',48000,6,3)]:
             with wave.open(str(root / (name+'.wav')), 'wb') as w:

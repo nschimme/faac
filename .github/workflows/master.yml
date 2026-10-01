@@ -46,7 +46,6 @@ jobs:
               os: macos-latest,
               compiler: clang,
               shell: bash,
-              options: -Dmuxer=true,
             }
           - {
               name: MSYS2 UCRT64,

@@ -47,5 +47,3 @@ Lesser General Public License for more details.
    meson install
    ```
 
-The `faam` muxer CLI is off by default; enable it with `-Dmuxer=true` (libfaam itself is always built).
-

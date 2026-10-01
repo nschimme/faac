@@ -39,11 +39,7 @@ enum {
     ISO639_UND_PACKED  = 0x55C4,
 };
 
-#ifdef FAAM_MUXER_FRAGMENTED
-#define FRAGMENTED(m) ((m)->fragmented)
-#else
 #define FRAGMENTED(m) false
-#endif
 
 static void flush_staging(faam_muxer *m) {
     if (m->error || !m->staged_bytes) return;
@@ -110,14 +106,6 @@ static void end_atom(faam_muxer *m, uint64_t pos) {
     if (!m->io.seek(m->io.user_data, curr)) m->error = FAAM_ERR_UNSUPPORTED;
 }
 
-#ifdef FAAM_MUXER_VIDEO
-/* With B-frames the first displayed frame trails the first decoded one; the
- * edit list starts the media at that frame so it plays at t=0. */
-static uint64_t edit_media_time(const faam_muxer_track *tr)
-{
-    return tr->ctts_entries && tr->min_pts > 0 ? (uint64_t)tr->min_pts : 0;
-}
-#endif
 
 static uint32_t track_timescale(const faam_muxer_track *tr)
 {
@@ -128,10 +116,6 @@ static uint32_t track_timescale(const faam_muxer_track *tr)
 static uint64_t presentation_samples(const faam_muxer *m, const faam_muxer_track *tr) {
     (void)m;
     uint64_t ticks = tr->bitrate_window.samples;
-#ifdef FAAM_MUXER_VIDEO
-    uint64_t skip = edit_media_time(tr);
-    ticks = ticks > skip ? ticks - skip : 0;
-#endif
     return ticks;
 }
 
@@ -174,9 +158,7 @@ faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size)
 
 /* Video is a compile-time option; a disabled build reports UNSUPPORTED, not a malformed track. */
 static faam_status check_track(const faam_track_config *tr) {
-#ifndef FAAM_MUXER_VIDEO
     if (tr->track_type == FAAM_TRACK_VIDEO) return FAAM_ERR_UNSUPPORTED;
-#endif
     if (tr->track_id == UINT32_MAX || tr->codec_data_len > 256 ||
         (tr->codec_data_len && !tr->codec_data)) return FAAM_ERR_INVALID_ARG;
     if (tr->track_type == FAAM_TRACK_AUDIO)
@@ -209,43 +191,6 @@ faam_status faam_muxer_config_add_track(faam_muxer_config *cfg, const faam_track
     return FAAM_OK;
 }
 
-#ifdef FAAM_MUXER_FRAGMENTED
-enum {
-    FRAG_SAMPLES_PER_SEC = 128,
-    FRAG_MIN_SAMPLES = 64,
-    FRAG_MAX_SAMPLES = 1 << 18,
-    FRAG_MAX_BYTES = 1 << 30, /* keeps trun data offsets inside int32 */
-    SAMPLE_FLAGS_SYNC = 0x02000000,     /* depends on no other sample */
-    SAMPLE_FLAGS_NON_SYNC = 0x01010000, /* depends on others, not a sync sample */
-    TRUN_FLAGS = 0x701,                 /* data offset, duration, size and flags per sample */
-    TRUN_CTS = 0x800,
-    TFHD_DEFAULT_BASE_IS_MOOF = 0x20000,
-};
-
-static uint32_t frag_capacity(uint32_t ms)
-{
-    uint64_t n = (uint64_t)ms * FRAG_SAMPLES_PER_SEC / 1000;
-    return n < FRAG_MIN_SAMPLES ? FRAG_MIN_SAMPLES : n > FRAG_MAX_SAMPLES ? FRAG_MAX_SAMPLES : (uint32_t)n;
-}
-
-/* Index bytes per sample: offset, duration, flags, track, plus cts for video files. */
-static uint32_t frag_index_bytes(const faam_muxer_config *cfg)
-{
-    bool video = false;
-    for (uint32_t t = 0; t < cfg->num_tracks; t++)
-        if (cfg->tracks[t].track_type == FAAM_TRACK_VIDEO) video = true;
-    return frag_capacity(cfg->fragment_ms) * (video ? 14 : 10);
-}
-
-/* The moof is written once the fragment closes, so room for the largest one the
- * index can describe is held back ahead of mdat: moof + mfhd, a traf per track and,
- * in the worst case, a run (trun header plus a full entry) per sample, and a free
- * box header so the unused tail is always a valid box. */
-static uint32_t frag_reserve_bytes(uint32_t tracks, uint32_t cap)
-{
-    return 8 + 16 + tracks * 44 + cap * (20 + 16) + 8;
-}
-#endif
 
 faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *state_bytes)
 {
@@ -253,11 +198,7 @@ faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *st
     uint32_t count = cfg->num_tracks ? cfg->num_tracks : 1;
     uint64_t bytes = sizeof(struct faam_muxer) + count * sizeof(faam_muxer_track);
     if (cfg->fragment_ms) {
-#ifdef FAAM_MUXER_FRAGMENTED
-        bytes += frag_index_bytes(cfg);
-#else
         return FAAM_ERR_UNSUPPORTED;
-#endif
     }
     *state_bytes = (uint32_t)bytes;
     return FAAM_OK;
@@ -274,9 +215,6 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
     }
 
     *out_muxer = NULL;
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (cfg->fragment_ms && (!io->seek || !io->tell)) return FAAM_ERR_UNSUPPORTED;
-#endif
     if (!io->write || cfg->num_tracks > FAAM_MAX_TRACKS || cfg->num_chapters > 255 ||
         (cfg->num_chapters && !cfg->chapters)) return FAAM_ERR_INVALID_ARG;
     for (uint32_t t = 0; t < cfg->num_tracks; t++) {
@@ -300,22 +238,6 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
     m->cfg.num_chapters = cfg->num_chapters;
     m->gapless_present = cfg->gapless.encoder_delay || cfg->gapless.end_padding || cfg->gapless.total_samples;
     m->io = *io;
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (cfg->fragment_ms) {
-        m->fragmented = true;
-        m->fragment_ms = cfg->fragment_ms;
-        m->frag_cap = frag_capacity(cfg->fragment_ms);
-        m->frag_reserve = frag_reserve_bytes(cfg->num_tracks ? cfg->num_tracks : 1, m->frag_cap);
-        for (uint32_t t = 0; t < cfg->num_tracks; t++)
-            if (cfg->tracks[t].track_type == FAAM_TRACK_VIDEO) m->has_video = true;
-        uint8_t *arena = (uint8_t *)&m->tracks[cfg->num_tracks ? cfg->num_tracks : 1];
-        m->fi_off = (uint32_t *)arena; arena += m->frag_cap * sizeof(uint32_t);
-        m->fi_dur = (uint32_t *)arena; arena += m->frag_cap * sizeof(uint32_t);
-        if (m->has_video) { m->fi_cts = (int32_t *)arena; arena += m->frag_cap * sizeof(int32_t); }
-        m->fi_flags = arena; arena += m->frag_cap;
-        m->fi_track = arena;
-    }
-#endif
 
     faam_track_config def_track = {0};
     def_track.track_type = FAAM_TRACK_AUDIO;
@@ -334,9 +256,6 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
             tr->codec_data_len = len;
         }
 
-#ifdef FAAM_MUXER_FRAGMENTED
-        if (m->fragmented) continue;
-#endif
         tr->sample_capacity = 1024;
         tr->sample_sizes = (uint32_t *)AllocMemory(tr->sample_capacity * sizeof(uint32_t));
         if (m->num_tracks > 1)
@@ -354,15 +273,6 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
         }
         memset(tr->stts_entries, 0, tr->stts_capacity * sizeof(faam_stts_entry));
 
-#ifdef FAAM_MUXER_VIDEO
-        tr->stss_capacity = 16;
-        tr->stss_entries = (uint32_t *)AllocMemoryFast(tr->stss_capacity * sizeof(uint32_t));
-        if (!tr->stss_entries) {
-            faam_muxer_close(&m);
-            return FAAM_ERR_INSUFFICIENT_MEM;
-        }
-        memset(tr->stss_entries, 0, tr->stss_capacity * sizeof(uint32_t));
-#endif
     }
 
     /* Apple's decoders only honour iTunSMPB/edit-list gapless trimming in
@@ -370,22 +280,6 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
     bool audio_only = true;
     for (uint32_t t = 0; t < m->num_tracks; t++)
         if (m->tracks[t].cfg.track_type != FAAM_TRACK_AUDIO) audio_only = false;
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (m->fragmented) {
-        /* iso5 is the first brand that allows default-base-is-moof. */
-        put_data(m, "\0\0\0\x20" "ftypisom\0\0\x02\0isomiso5iso6mp41", 32);
-        write_moov(m, true);
-        flush_staging(m);
-        if (!m->error && m->io.flush && !m->io.flush(m->io.user_data)) m->error = FAAM_ERR_IO_WRITE;
-        if (m->error) {
-            faam_status st = m->error;
-            faam_muxer_close(&m);
-            return st;
-        }
-        *out_muxer = m;
-        return FAAM_OK;
-    }
-#endif
     const char *brands = !audio_only    ? "isom\0\0\0\0isomiso2mp41"
                        : m->cfg.is_m4b  ? "M4B \0\0\0\0M4B mp42isom"
                                         : "M4A \0\0\0\0M4A mp42isom";
@@ -414,7 +308,7 @@ faam_status faam_muxer_set_creation_time(faam_muxer *m, uint32_t unix_time) {
     return FAAM_OK;
 }
 
-FAAMAPI faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless) {
+faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless) {
     if (!m || !gapless) return FAAM_ERR_INVALID_ARG;
     if (FRAGMENTED(m)) return FAAM_ERR_UNSUPPORTED;
     m->cfg.gapless = *gapless;
@@ -434,239 +328,8 @@ faam_status faam_muxer_set_audio_sample_size(faam_muxer *m, uint32_t track_id, u
     return FAAM_ERR_NO_TRACK;
 }
 
-#ifdef FAAM_MUXER_VIDEO
-/* Zero offsets are only counted until the first non-zero one, at which point
- * the leading zero run becomes the first entry. */
-static bool add_ctts(faam_muxer *m, faam_muxer_track *tr, int32_t offset)
-{
-    if (!tr->ctts_entries && offset == 0) return true;
-    if (!tr->ctts_entries) {
-        tr->ctts_capacity = 16;
-        tr->ctts_entries = (faam_ctts_entry *)AllocMemory(tr->ctts_capacity * sizeof(faam_ctts_entry));
-        if (!tr->ctts_entries) { m->error = FAAM_ERR_INSUFFICIENT_MEM; return false; }
-        if (tr->sample_count) {
-            tr->ctts_entries[0].count = tr->sample_count;
-            tr->ctts_entries[0].offset = 0;
-            tr->ctts_count = 1;
-        }
-    }
-    if (tr->ctts_count && tr->ctts_entries[tr->ctts_count - 1].offset == offset) {
-        tr->ctts_entries[tr->ctts_count - 1].count++;
-        return true;
-    }
-    if (tr->ctts_count >= tr->ctts_capacity) {
-        uint32_t new_cap = tr->ctts_capacity * 2;
-        faam_ctts_entry *tmp = (faam_ctts_entry *)ReallocMemory(tr->ctts_entries, new_cap * sizeof(faam_ctts_entry));
-        if (!tmp) { m->error = FAAM_ERR_INSUFFICIENT_MEM; return false; }
-        tr->ctts_entries = tmp;
-        tr->ctts_capacity = new_cap;
-    }
-    tr->ctts_entries[tr->ctts_count].count = 1;
-    tr->ctts_entries[tr->ctts_count].offset = offset;
-    tr->ctts_count++;
-    return true;
-}
 
-#endif
 
-#ifdef FAAM_MUXER_VIDEO
-/* Returns 1 with the next NAL unit's payload in [*start, *start + *len), 0 at the end
- * and -1 when non-zero bytes precede the first start code. Zero bytes ahead of the
- * next start code (zero_byte, trailing_zero_8bits) are not part of the NAL unit
- * because an RBSP never ends in 0x00. */
-static int annexb_next(const uint8_t *b, uint32_t n, uint32_t *pos, uint32_t *start, uint32_t *len)
-{
-    uint32_t i = *pos;
-    while (i + 3 <= n && !(b[i] == 0 && b[i + 1] == 0 && b[i + 2] == 1)) i++;
-    if (i + 3 > n) return 0;
-    if (!*pos)
-        for (uint32_t k = 0; k < i; k++)
-            if (b[k]) return -1;
-    uint32_t s = i + 3, e = s;
-    while (e + 3 <= n && !(b[e] == 0 && b[e + 1] == 0 && b[e + 2] == 1)) e++;
-    if (e + 3 > n) e = n;
-    *pos = e;
-    while (e > s && b[e - 1] == 0) e--;
-    *start = s;
-    *len = e - s;
-    return 1;
-}
-
-/* avcC wants the first SPS and the first PPS after it; both are held in
- * codec_data (SPS in its final place) until the PPS completes the record. */
-static void capture_avcc(faam_muxer_track *tr, const uint8_t *nal, uint32_t n)
-{
-    if (tr->codec_data_len || n < 4) return;
-    uint32_t type = nal[0] & 0x1F;
-    if (type == 7 && !tr->sps_len && 8 + n + 3 < sizeof(tr->codec_data)) {
-        memcpy(tr->codec_data + 8, nal, n);
-        tr->sps_len = n;
-    } else if (type == 8 && tr->sps_len && 8 + tr->sps_len + 3 + n <= sizeof(tr->codec_data)) {
-        uint8_t *c = tr->codec_data;
-        c[0] = 1;
-        memcpy(c + 1, c + 9, 3);   /* profile, compatibility, level follow the NAL header byte */
-        c[4] = 0xFF;               /* 4-byte NAL lengths */
-        c[5] = 0xE1;               /* one SPS */
-        write_u16_be(c + 6, (uint16_t)tr->sps_len);
-        uint32_t o = 8 + tr->sps_len;
-        c[o++] = 1;                /* one PPS */
-        write_u16_be(c + o, (uint16_t)n);
-        memcpy(c + o + 2, nal, n);
-        tr->codec_data_len = o + 2 + n;
-    }
-}
-
-/* Validates the access unit and reports its length-prefixed size. */
-static faam_status annexb_scan(faam_muxer_track *tr, const uint8_t *buf, uint32_t n, uint32_t *out_bytes)
-{
-    uint64_t total = 0;
-    uint32_t pos = 0, start, len;
-    int r;
-    while ((r = annexb_next(buf, n, &pos, &start, &len)) > 0) {
-        if (!len) continue;
-        total += 4 + (uint64_t)len;
-        if (tr->cfg.codec_id == FAAM_CODEC_H264) capture_avcc(tr, buf + start, len);
-    }
-    if (r < 0 || !total || total > UINT32_MAX) return FAAM_ERR_INVALID_ARG;
-    *out_bytes = (uint32_t)total;
-    return FAAM_OK;
-}
-
-/* Small NAL units share a staging block with their length so they cost one
- * write; large ones go straight to the output. */
-static void write_annexb(faam_muxer *m, const uint8_t *buf, uint32_t n)
-{
-    uint32_t pos = 0, start, len;
-    while (!m->error && annexb_next(buf, n, &pos, &start, &len) > 0) {
-        if (!len) continue;
-        put_u32(m, len);
-        if (len > sizeof(m->staging)) {
-            flush_staging(m);
-            if (!m->error && m->io.write(m->io.user_data, buf + start, len) != (int32_t)len)
-                m->error = FAAM_ERR_IO_WRITE;
-        } else {
-            mem_write(m, buf + start, len);
-        }
-    }
-    flush_staging(m);
-}
-#endif
-
-#ifdef FAAM_MUXER_FRAGMENTED
-/* [*start, *end) is the next stretch of consecutive index entries of track t at or after *from. */
-static bool next_run(const faam_muxer *m, uint32_t t, uint32_t *from, uint32_t *start, uint32_t *end)
-{
-    uint32_t i = *from;
-    while (i < m->frag_count && m->fi_track[i] != t) i++;
-    if (i == m->frag_count) return false;
-    uint32_t j = i;
-    while (j < m->frag_count && m->fi_track[j] == t) j++;
-    *start = i; *end = j; *from = j;
-    return true;
-}
-
-static uint32_t trun_size(const faam_muxer *m, uint32_t s, uint32_t e, bool *cts, bool *negative)
-{
-    *cts = *negative = false;
-    for (uint32_t i = s; m->fi_cts && i < e; i++) {
-        if (m->fi_cts[i]) *cts = true;
-        if (m->fi_cts[i] < 0) *negative = true;
-    }
-    return 20 + (e - s) * (*cts ? 16 : 12);
-}
-
-static uint32_t traf_size(const faam_muxer *m, uint32_t t)
-{
-    uint32_t from = 0, s, e, size = 0;
-    bool cts, negative;
-    while (next_run(m, t, &from, &s, &e)) size += trun_size(m, s, e, &cts, &negative);
-    return size ? size + 44 : 0;
-}
-
-/* Samples of different tracks interleave in mdat, so a track's samples form one
- * trun per consecutive run, all inside that track's single traf. */
-static void write_moof(faam_muxer *m, uint32_t moof_bytes)
-{
-    put_u32(m, moof_bytes); put_data(m, "moof", 4);
-    put_u32(m, 16); put_data(m, "mfhd", 4); put_u32(m, 0); put_u32(m, m->frag_seq + 1);
-    for (uint32_t t = 0; t < m->num_tracks; t++) {
-        uint32_t traf = traf_size(m, t);
-        if (!traf) continue;
-        const faam_muxer_track *tr = &m->tracks[t];
-        put_u32(m, traf); put_data(m, "traf", 4);
-        put_u32(m, 16); put_data(m, "tfhd", 4); put_u32(m, TFHD_DEFAULT_BASE_IS_MOOF); put_u32(m, tr->cfg.track_id);
-        put_u32(m, 20); put_data(m, "tfdt", 4); put_u32(m, 1U << 24); put_u64(m, tr->frag_dts0);
-        uint32_t from = 0, s, e;
-        bool cts, negative;
-        while (next_run(m, t, &from, &s, &e)) {
-            put_u32(m, trun_size(m, s, e, &cts, &negative)); put_data(m, "trun", 4);
-            put_u32(m, (negative ? 1U << 24 : 0) | TRUN_FLAGS | (cts ? TRUN_CTS : 0));
-            put_u32(m, e - s);
-            put_u32(m, m->frag_reserve + 8 + m->fi_off[s]); /* from the moof start to this run */
-            for (uint32_t i = s; i < e; i++) {
-                put_u32(m, m->fi_dur[i]);
-                put_u32(m, (i + 1 < m->frag_count ? m->fi_off[i + 1] : m->frag_bytes) - m->fi_off[i]);
-                put_u32(m, m->fi_flags[i] & 1 ? SAMPLE_FLAGS_SYNC : SAMPLE_FLAGS_NON_SYNC);
-                if (cts) put_u32(m, (uint32_t)m->fi_cts[i]);
-            }
-        }
-    }
-}
-
-static void open_fragment(faam_muxer *m)
-{
-    uint64_t pos = m->io.tell(m->io.user_data);
-    put_u32(m, m->frag_reserve); put_data(m, "free", 4);
-    flush_staging(m);
-    uint32_t left = m->frag_reserve - 8;
-    memset(m->staging, 0, sizeof(m->staging));
-    while (left && !m->error) {
-        uint32_t n = left < sizeof(m->staging) ? left : (uint32_t)sizeof(m->staging);
-        if (m->io.write(m->io.user_data, m->staging, n) != (int32_t)n) m->error = FAAM_ERR_IO_WRITE;
-        left -= n;
-    }
-    put_u32(m, 0); put_data(m, "mdat", 4); /* size patched when the fragment closes */
-    flush_staging(m);
-    if (m->error) return;
-    m->frag_moof_pos = pos;
-    m->frag_open = true;
-    m->frag_count = m->frag_bytes = 0;
-    for (uint32_t t = 0; t < m->num_tracks; t++) m->tracks[t].frag_dts0 = m->tracks[t].bitrate_window.samples;
-}
-
-/* Completes the open fragment in the order that keeps earlier ones intact: moof
- * and filler into the reserved space, then the mdat size, then back to the end. */
-static void close_fragment(faam_muxer *m)
-{
-    if (!m->frag_open || !m->frag_count) return;
-    uint32_t moof = 24;
-    for (uint32_t t = 0; t < m->num_tracks; t++) moof += traf_size(m, t);
-    uint64_t mdat_pos = m->frag_moof_pos + m->frag_reserve;
-    uint64_t end = mdat_pos + 8 + m->frag_bytes;
-    if (!m->io.seek(m->io.user_data, m->frag_moof_pos)) { m->error = FAAM_ERR_UNSUPPORTED; return; }
-    write_moof(m, moof);
-    put_u32(m, m->frag_reserve - moof); put_data(m, "free", 4);
-    flush_staging(m);
-    if (m->error) return;
-    if (!m->io.seek(m->io.user_data, mdat_pos)) { m->error = FAAM_ERR_UNSUPPORTED; return; }
-    put_u32(m, m->frag_bytes + 8);
-    flush_staging(m);
-    if (m->error) return;
-    if (!m->io.seek(m->io.user_data, end)) { m->error = FAAM_ERR_UNSUPPORTED; return; }
-    if (m->io.flush && !m->io.flush(m->io.user_data)) { m->error = FAAM_ERR_IO_WRITE; return; }
-    m->frag_open = false;
-    m->frag_seq++;
-}
-
-/* A video keyframe is where a fragment can start independently, so video drives the
- * cut; without video the audio clock does. A full index or byte budget cuts regardless. */
-static bool frag_should_close(const faam_muxer *m, const faam_muxer_track *tr, uint32_t bytes, bool keyframe)
-{
-    if (m->frag_count >= m->frag_cap || bytes > (uint32_t)FRAG_MAX_BYTES - m->frag_bytes) return true;
-    if (tr->cfg.track_type == FAAM_TRACK_VIDEO ? !keyframe : m->has_video) return false;
-    return (tr->bitrate_window.samples - tr->frag_dts0) * 1000 >= (uint64_t)m->fragment_ms * track_timescale(tr);
-}
-#endif /* FAAM_MUXER_FRAGMENTED */
 
 faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8_t *frame_buf, uint32_t frame_bytes, uint32_t duration_ticks, int32_t cts_offset, bool is_keyframe)
 {
@@ -682,39 +345,14 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
     }
     if (!tr) return FAAM_ERR_NO_TRACK;
     if (cts_offset != 0) {
-#ifdef FAAM_MUXER_VIDEO
-        if (tr->cfg.track_type != FAAM_TRACK_VIDEO) return FAAM_ERR_INVALID_ARG;
-#else
         return FAAM_ERR_UNSUPPORTED;
-#endif
     }
 
     /* Annex-B input shrinks or grows once length-prefixed; every size below is the stored one. */
     uint32_t out_bytes = frame_bytes;
-#ifdef FAAM_MUXER_VIDEO
-    bool annexb = tr->cfg.flags & FAAM_TRACK_ANNEXB;
-    if (annexb) {
-        faam_status st = annexb_scan(tr, frame_buf, frame_bytes, &out_bytes);
-        if (st != FAAM_OK) return st;
-    }
-#endif
 
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (m->fragmented) {
-        if (out_bytes > FRAG_MAX_BYTES) return FAAM_ERR_INVALID_ARG;
-        if (m->frag_open && frag_should_close(m, tr, out_bytes, is_keyframe)) close_fragment(m);
-        if (!m->error && !m->frag_open) open_fragment(m);
-        if (m->error) return m->error;
-    }
-#endif
 
     if (m->io.write) {
-#ifdef FAAM_MUXER_VIDEO
-        if (annexb) {
-            write_annexb(m, frame_buf, frame_bytes);
-            if (m->error) return m->error;
-        } else
-#endif
         if (m->io.write(m->io.user_data, frame_buf, frame_bytes) != (int32_t)frame_bytes) return m->error = FAAM_ERR_IO_WRITE;
     }
 
@@ -722,17 +360,6 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
     uint64_t dts = tr->bitrate_window.samples;
     tr->bitrate_window.samples += duration_ticks;
 
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (m->fragmented) {
-        uint32_t i = m->frag_count++;
-        m->fi_off[i] = m->frag_bytes;
-        m->fi_dur[i] = duration_ticks;
-        if (m->fi_cts) m->fi_cts[i] = cts_offset;
-        m->fi_flags[i] = tr->cfg.track_type == FAAM_TRACK_VIDEO ? is_keyframe : 1;
-        m->fi_track[i] = (uint8_t)(tr - m->tracks);
-        m->frag_bytes += out_bytes;
-    } else
-#endif
     {
         if (tr->sample_count >= tr->sample_capacity) {
             uint32_t new_cap = tr->sample_capacity * 2;
@@ -771,32 +398,10 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
         tr->sample_count++;
         return FAAM_OK;
     }
-#ifdef FAAM_MUXER_VIDEO
-    if (tr->cfg.track_type == FAAM_TRACK_VIDEO) {
-        int64_t pts = (int64_t)dts + cts_offset;
-        if (!tr->sample_count || pts < tr->min_pts) tr->min_pts = pts;
-        if (cts_offset < 0) tr->cts_negative = true;
-        if (!add_ctts(m, tr, cts_offset)) return m->error;
-    }
-#else
     (void)dts;
-#endif
     tr->sample_count++;
 
-#ifdef FAAM_MUXER_VIDEO
-    if (is_keyframe && tr->cfg.track_type == FAAM_TRACK_VIDEO) {
-        if (tr->stss_count >= tr->stss_capacity) {
-            uint32_t new_cap = tr->stss_capacity * 2;
-            uint32_t *tmp = (uint32_t *)ReallocMemory(tr->stss_entries, new_cap * sizeof(uint32_t));
-            if (!tmp) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
-            tr->stss_entries = tmp;
-            tr->stss_capacity = new_cap;
-        }
-        tr->stss_entries[tr->stss_count++] = tr->sample_count; /* 1-based index */
-    }
-#else
     (void)is_keyframe;
-#endif
 
     if (tr->stts_count > 0 && tr->stts_entries[tr->stts_count - 1].delta == duration_ticks) {
         tr->stts_entries[tr->stts_count - 1].count++;
@@ -906,13 +511,6 @@ static void write_moov(faam_muxer *m, bool frag)
             edit_duration = m->cfg.gapless.total_samples;
             edit_start = m->cfg.gapless.encoder_delay;
         }
-#ifdef FAAM_MUXER_VIDEO
-        else if (edit_media_time(tr)) {
-            edit = true;
-            edit_duration = track_dur_mv;
-            edit_start = edit_media_time(tr);
-        }
-#endif
         if (edit) {
             uint64_t edts = start_atom(m, "edts");
             uint64_t elst = start_atom(m, "elst");
@@ -935,22 +533,11 @@ static void write_moov(faam_muxer *m, bool frag)
 
         uint64_t hdlr = start_atom(m, "hdlr");
         put_u32(m, 0); put_u32(m, 0);
-#ifdef FAAM_MUXER_VIDEO
-        if (tr->cfg.track_type == FAAM_TRACK_VIDEO) put_data(m, "vide", 4);
-        else
-#endif
         put_data(m, "soun", 4);
         put_u32(m, 0); put_u32(m, 0); put_u32(m, 0); put_u8(m, 0);
         end_atom(m, hdlr);
 
         uint64_t minf = start_atom(m, "minf");
-#ifdef FAAM_MUXER_VIDEO
-        if (tr->cfg.track_type == FAAM_TRACK_VIDEO) {
-            uint64_t vmhd = start_atom(m, "vmhd");
-            put_u32(m, 1); put_u16(m, 0); put_u16(m, 0); put_u16(m, 0); put_u16(m, 0);
-            end_atom(m, vmhd);
-        } else
-#endif
         {
             uint64_t smhd = start_atom(m, "smhd");
             put_u32(m, 0); put_u16(m, 0); put_u16(m, 0);
@@ -970,30 +557,6 @@ static void write_moov(faam_muxer *m, bool frag)
         uint64_t stsd = start_atom(m, "stsd");
         put_u32(m, 0); put_u32(m, 1);
 
-#ifdef FAAM_MUXER_VIDEO
-        if (tr->cfg.track_type == FAAM_TRACK_VIDEO) {
-            const char *v_tag = (tr->cfg.codec_id == FAAM_CODEC_H265) ? "hvc1" : "avc1";
-            const char *cfg_tag = (tr->cfg.codec_id == FAAM_CODEC_H265) ? "hvcC" : "avcC";
-            uint64_t v_box = start_atom(m, v_tag);
-            put_u8(m, 0); put_u8(m, 0); put_u8(m, 0); put_u8(m, 0); put_u8(m, 0); put_u8(m, 0);
-            put_u16(m, 1); put_u16(m, 0); put_u16(m, 0);
-            put_u32(m, 0); put_u32(m, 0); put_u32(m, 0);
-            put_u16(m, tr->cfg.width ? tr->cfg.width : 1920);
-            put_u16(m, tr->cfg.height ? tr->cfg.height : 1080);
-            put_u32(m, 0x00480000); put_u32(m, 0x00480000);
-            put_u32(m, 0); put_u16(m, 1);
-            put_u8(m, 0); put_data(m, "FAAM Video", 10);
-            for (int k = 10; k < 31; k++) put_u8(m, 0);
-            put_u16(m, 0x0018); put_u16(m, 0xFFFF);
-
-            if (tr->codec_data_len > 0) {
-                uint64_t c_box = start_atom(m, cfg_tag);
-                put_data(m, tr->codec_data, tr->codec_data_len);
-                end_atom(m, c_box);
-            }
-            end_atom(m, v_box);
-        } else
-#endif
         {
             uint64_t mp4a = start_atom(m, "mp4a");
             put_u8(m, 0); put_u8(m, 0); put_u8(m, 0); put_u8(m, 0); put_u8(m, 0); put_u8(m, 0);
@@ -1031,25 +594,6 @@ static void write_moov(faam_muxer *m, bool frag)
         }
         end_atom(m, stts);
 
-#ifdef FAAM_MUXER_VIDEO
-        if (tr->stss_count > 0) {
-            uint64_t stss = start_atom(m, "stss");
-            put_u32(m, 0); put_u32(m, tr->stss_count);
-            for (uint32_t i = 0; i < tr->stss_count; i++) {
-                put_u32(m, tr->stss_entries[i]);
-            }
-            end_atom(m, stss);
-        }
-        if (tr->ctts_entries) {
-            uint64_t ctts = start_atom(m, "ctts");
-            put_u32(m, tr->cts_negative ? 1U << 24 : 0); put_u32(m, tr->ctts_count);
-            for (uint32_t i = 0; i < tr->ctts_count; i++) {
-                put_u32(m, tr->ctts_entries[i].count);
-                put_u32(m, (uint32_t)tr->ctts_entries[i].offset);
-            }
-            end_atom(m, ctts);
-        }
-#endif
 
         uint64_t stsc = start_atom(m, "stsc");
         put_u32(m, 0); put_u32(m, frag ? 0 : 1); /* ver/flags (0), entry count */
@@ -1094,23 +638,6 @@ static void write_moov(faam_muxer *m, bool frag)
         end_atom(m, trak);
     }
 
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (frag) {
-        uint64_t mvex = start_atom(m, "mvex");
-        uint64_t mehd = start_atom(m, "mehd");
-        put_u32(m, 1U << 24);
-        m->mehd_pos = mehd + 12;
-        put_u64(m, 0);
-        end_atom(m, mehd);
-        for (uint32_t t = 0; t < m->num_tracks; t++) {
-            uint64_t trex = start_atom(m, "trex");
-            put_u32(m, 0); put_u32(m, m->tracks[t].cfg.track_id);
-            put_u32(m, 1); put_u32(m, 0); put_u32(m, 0); put_u32(m, 0);
-            end_atom(m, trex);
-        }
-        end_atom(m, mvex);
-    }
-#endif
 
     uint64_t udta = start_atom(m, "udta");
 
@@ -1155,27 +682,6 @@ faam_status faam_muxer_finalize(faam_muxer *m)
         if (m->tracks[t].cfg.track_type == FAAM_TRACK_VIDEO && !m->tracks[t].codec_data_len)
             return m->error = FAAM_ERR_INVALID_ARG; /* Annex-B stream never carried SPS and PPS */
     uint64_t pos = m->io.tell(m->io.user_data);
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (m->fragmented) {
-        close_fragment(m);
-        if (m->error) return m->error;
-        uint64_t movie_ticks = 0, end = m->io.tell(m->io.user_data);
-        uint32_t movie_ts = movie_timescale_of(m);
-        for (uint32_t t = 0; t < m->num_tracks; t++) {
-            uint64_t dur = m->tracks[t].bitrate_window.samples * movie_ts / track_timescale(&m->tracks[t]);
-            if (dur > movie_ticks) movie_ticks = dur;
-        }
-        uint8_t dur[8];
-        write_u64_be(dur, movie_ticks);
-        if (!m->io.seek(m->io.user_data, m->mehd_pos)) return m->error = FAAM_ERR_UNSUPPORTED;
-        if (m->io.write(m->io.user_data, dur, 8) != 8) return m->error = FAAM_ERR_IO_WRITE;
-        if (!m->io.seek(m->io.user_data, end)) return m->error = FAAM_ERR_UNSUPPORTED;
-        if (m->io.flush && !m->io.flush(m->io.user_data)) return m->error = FAAM_ERR_IO_WRITE;
-        m->file_bytes = end;
-        m->finalized = true;
-        return FAAM_OK;
-    }
-#endif
     bool large = m->mdat_size > UINT32_MAX - 8ULL;
     uint8_t header[16];
     write_u32_be(header, large ? 1 : (uint32_t)(m->mdat_size + 8));
@@ -1242,9 +748,6 @@ faam_status faam_muxer_get_info(const faam_muxer *m, uint32_t track_id, faam_mux
     out_info->frame_count = tr->sample_count;
     out_info->duration_ticks = tr->bitrate_window.samples;
     out_info->file_bytes = m->finalized ? m->file_bytes : m->mdat_pos + m->mdat_size;
-#ifdef FAAM_MUXER_FRAGMENTED
-    if (m->fragmented && !m->finalized) out_info->file_bytes = m->io.tell(m->io.user_data);
-#endif
     out_info->max_bitrate = stats.max_bitrate;
     out_info->avg_bitrate = stats.avg_bitrate;
     out_info->max_frame_size = tr->max_frame_size;

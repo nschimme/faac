@@ -1,5 +1,5 @@
 /*
- * Shared CLI helpers for the faac/faad/faam frontends.
+ * Shared CLI helpers for the faac/faad frontends.
  */
 
 #ifndef CLI_COMMON_H
