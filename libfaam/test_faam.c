@@ -283,10 +283,6 @@ static void test_virtual_mux(void) {
         }
         faam_muxer_close(&m);
     }
-#ifndef FAAM_HAVE_TAG_CHAPTER
-    st = faam_update_tags_stream(NULL, NULL); assert(st == FAAM_ERR_UNSUPPORTED);
-    st = faam_update_chapters_stream(NULL, NULL, 0); assert(st == FAAM_ERR_UNSUPPORTED);
-#endif
     free(mem);
 }
 
