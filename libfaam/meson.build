@@ -26,7 +26,7 @@ libfaam_shared = shared_library(
   libfaam_sources,
   include_directories: libfaam_inc,
   version: '1.0.0',
-  soversion: '1',
+  soversion: '0',
   gnu_symbol_visibility: 'hidden',
   install: true,
 )
