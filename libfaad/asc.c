@@ -20,7 +20,8 @@
 #include "faad_internal.h"
 #include "asc_codec.h"
 
-/* SFB tables cover only the first 12 rates, so 7350 Hz falls to the default. */
+/* SFB tables cover only the first 12 rates; any other rate (7350 Hz
+ * included) has no layout to decode with, so it is -1 and never guessed. */
 int get_sr_index(uint32_t sample_rate)
 {
     for (int i = 0; i < 12; i++) {
@@ -28,7 +29,7 @@ int get_sr_index(uint32_t sample_rate)
             return i;
         }
     }
-    return 4; /* Default 44.1 kHz */
+    return -1;
 }
 
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
