@@ -232,11 +232,7 @@ static const char *license =
     "royalties. You need to consider this issue before you start building derivative\n"
     "works. We are not warranting or indemnifying you in any way for patent\n"
     "royalities! YOU ARE SOLELY RESPONSIBLE FOR YOUR OWN ACTIONS!\n"
-    "\n"
-    "FAAC is free software, licensed under the GNU Lesser General Public\n"
-    "License (LGPL), version 2.1 or later:\n"
-    "\n"
-    "";
+    "\n";
 
 #ifndef _WIN32
 volatile int running = 1;
