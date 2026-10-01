@@ -236,12 +236,7 @@ static const char *license =
     "FAAC is free software, licensed under the GNU Lesser General Public\n"
     "License (LGPL), version 2.1 or later:\n"
     "\n"
-    "FAAC - Freeware Advanced Audio Coder\n"
-    "Copyright (C) 1999-2001, Menno Bakker\n"
-    "Copyright (C) 2002-2017, Krzysztof Nikiel\n"
-    "Copyright (C) 2004, Dan Villiom P. Christiansen\n"
-    "Copyright (C) 2005-2026, Fabian Greffrath\n"
-    "Copyright (C) 2026, Nils Schimmelmann\n";
+    "";
 
 #ifndef _WIN32
 volatile int running = 1;
@@ -606,7 +601,7 @@ int main(int argc, char *argv[])
             if (libinfo.copyright)
                 fprintf(stderr, "%s", libinfo.copyright);
             fprintf(stderr, "%s", license);
-            cli_print_lgpl_notice(stderr);
+            cli_print_lgpl_notice(stderr, "library");
             ret = 0;
             goto cleanup;
         case 'X':
