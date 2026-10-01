@@ -228,6 +228,22 @@ static struct {
     {0}
 };
 
+static const char *license =
+    "\nPlease note that the use of this software may require the payment of patent\n"
+    "royalties. You need to consider this issue before you start building derivative\n"
+    "works. We are not warranting or indemnifying you in any way for patent\n"
+    "royalities! YOU ARE SOLELY RESPONSIBLE FOR YOUR OWN ACTIONS!\n"
+    "\n"
+    "FAAC is free software, licensed under the GNU Lesser General Public\n"
+    "License (LGPL), version 2.1 or later:\n"
+    "\n"
+    "FAAC - Freeware Advanced Audio Coder\n"
+    "Copyright (C) 1999-2001, Menno Bakker\n"
+    "Copyright (C) 2002-2017, Krzysztof Nikiel\n"
+    "Copyright (C) 2004, Dan Villiom P. Christiansen\n"
+    "Copyright (C) 2005-2026, Fabian Greffrath\n"
+    "Copyright (C) 2026, Nils Schimmelmann\n";
+
 #ifndef _WIN32
 volatile int running = 1;
 static void signal_handler(int signal)
@@ -590,8 +606,8 @@ int main(int argc, char *argv[])
         case 'L':
             if (libinfo.copyright)
                 fprintf(stderr, "%s", libinfo.copyright);
-            cli_print_patent_notice(stderr);
-            cli_print_lgpl_notice(stderr, "library");
+            fprintf(stderr, "%s", license);
+            cli_print_lgpl_notice(stderr);
             ret = 0;
             goto cleanup;
         case 'X':
