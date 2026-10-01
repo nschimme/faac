@@ -3,6 +3,7 @@
 libfaam_sources = files(
   'demux.c',
   'mux.c',
+  'metadata.c',
   'util.c',
 )
 
@@ -80,3 +81,11 @@ test_faam = executable(
 )
 
 test('faam_smoke_test', test_faam)
+
+test_master_layout = executable(
+  'test_master_layout',
+  'test_master_layout.c',
+  include_directories: libfaam_inc,
+  link_with: libfaam_shared,
+)
+test('faam_master_layout_test', test_master_layout)
