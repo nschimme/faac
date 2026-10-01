@@ -20,14 +20,14 @@
 
 #include "sbr.h"
 #include "sbr_tables.h"
-#include "util.h"
+#include "faac_util.h"
 #include "sbr_analysis.h"
 #include "resample.h"
 #include "bitstream.h"
 #include "sbr_internal.h"
 #include "faac_internal.h"
 #include "channels.h"
-#include "stats.h"
+#include "faac_stats.h"
 
 /* SBR master frequency band table (ISO/IEC 14496-3:2005 §4.6.18.3.2). kx/k2 are
  * spec-mandatory: the decoder reconstructs them from the sample rate alone, so

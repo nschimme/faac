@@ -39,7 +39,7 @@ extern "C" {
 #include "fft.h"
 #include "quantize.h"
 #include "sbr.h"
-#include "stats.h"
+#include "faac_stats.h"
 #include "ratecontrol.h"
 #include "stereo.h"
 
