@@ -201,13 +201,8 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
         dec->num_channels = config_channels(dec->asc.num_channels);
         if (dec->num_channels > MAX_CHANNELS) return FAAD_ERR_UNSUPPORTED;
         dec->core_sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
-#ifdef FAAD_D_SBR
-        dec->sample_rate = dec->core_sample_rate;
-        dec->frame_samples = 1024;
-#else
         dec->sample_rate = dec->asc.is_sbr ? dec->asc.sbr_sample_rate : dec->core_sample_rate;
         dec->frame_samples = dec->asc.is_sbr ? 2048 : 1024;
-#endif
         dec->asc_parsed = true;
     } else {
         dec->num_channels = MAX_CHANNELS < 2 ? 1 : 2;
@@ -320,7 +315,7 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
     bool sbr = dec->asc.is_sbr || dec->sbr_seen;
     info.sample_rate = dec->core_sample_rate;
     info.frame_samples = 1024;
-#if !defined(FAAD_DISABLE_SBR) && !defined(FAAD_D_SBR)
+#ifndef FAAD_DISABLE_SBR
     if (sbr) { info.sample_rate *= 2; info.frame_samples = 2048; }
 #endif
     info.channels = dec->num_channels;
@@ -343,7 +338,7 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
     if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO) channels = 1;
     else if (dec->config.downmix_mode == FAAD_DOWNMIX_STEREO && channels > 2) channels = 2;
     uint32_t samples = 1024;
-#if !defined(FAAD_DISABLE_SBR) && !defined(FAAD_D_SBR)
+#ifndef FAAD_DISABLE_SBR
     samples = 2048; /* RAW LC can carry implicit SBR later in its lifetime. */
 #endif
     info.max_output_bytes = samples * channels * (dec->config.output_format == FAAD_OUTPUT_16BIT ? 2 : 4);
@@ -687,11 +682,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #ifdef FAAD_DISABLE_SBR
     sbr_frame = false;
 #endif
-#ifdef FAAD_D_SBR
-    dec->frame_samples = 1024;
-#else
     dec->frame_samples = sbr_frame ? 2048 : 1024;
-#endif
     float *pcm_final = dec->pcm;
     for (uint32_t c = 0; c < dec->num_channels; c++) {
         imdct_and_window(dec, c, &ics_list[c], dec->spec[c], pcm_final + c * dec->frame_samples);
@@ -754,11 +745,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #endif
 
     if (frame_info) {
-#ifdef FAAD_D_SBR
-        frame_info->sample_rate = dec->core_sample_rate;
-#else
         frame_info->sample_rate = sbr_active ? 2 * dec->core_sample_rate : dec->core_sample_rate;
-#endif
         frame_info->samples_per_ch = dec->frame_samples;
         frame_info->channels = num_chs;
         frame_info->sbr_active = sbr_active;
