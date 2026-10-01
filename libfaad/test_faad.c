@@ -102,7 +102,7 @@ static void test_asc_sbr_signalling(void)
         assert(faad_decoder_open(&cfg, cases[i].asc, cases[i].len, &dec) == FAAD_OK);
         faad_stream_info info = { .struct_size = sizeof(faad_stream_info) };
         assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
-#if defined(FAAD_DISABLE_SBR) || defined(FAAD_D_SBR)
+#ifdef FAAD_DISABLE_SBR
         assert(info.sample_rate == 16000);
         assert(info.frame_samples == 1024);
 #else
