@@ -75,3 +75,5 @@ experiments/
 /libfaac/faac.pc
 /probe_tmp/
 __pycache__/
+probe/ladder/results/s9/arms/enc/
+probe/ladder/results/s9/arms/cache/

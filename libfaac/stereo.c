@@ -248,7 +248,20 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                                 cl->groups.len,
                                                 NULL, NULL, &donor_ms);
                 CoreInjectNoteFrame(cinj, matched);
-                if (matched) use_ms = donor_ms;
+                if (matched) {
+                    int left_cb = 0, right_cb = 0;
+                    int left_ok = CoreInjectLookup(cinj, cl->ciFrame, 0, band,
+                                                   is_short, cl->sfbn, cl->groups.n,
+                                                   cl->groups.len, &left_cb, NULL, NULL);
+                    int right_ok = CoreInjectLookup(cinj, cl->ciFrame, 1, band,
+                                                    is_short, cl->sfbn, cl->groups.n,
+                                                    cl->groups.len, &right_cb, NULL, NULL);
+                    /* The dump records M/S after noise substitution clears
+                     * it; preserve the pre-quantization decision in that case. */
+                    if (donor_ms || !((left_ok && left_cb == HCB_PNS) ||
+                                      (right_ok && right_cb == HCB_PNS)))
+                        use_ms = donor_ms;
+                }
             }
             if (use_ms) {
                 apply_ms_full(sl0, sr0, start, len, wstart, wend);

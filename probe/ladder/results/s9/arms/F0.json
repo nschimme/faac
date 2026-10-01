@@ -1,0 +1,35 @@
+{
+  "12-German-male-speech.441.16b48k.wav": {
+    "bytes": 48709,
+    "mos": 4.1566,
+    "ms_regular_bands": 1005,
+    "ms_share": 0.9990059642147118,
+    "regular_stereo_bands": 1006,
+    "seconds": 2.602,
+    "short_ics": 310,
+    "short_share": 0.8378378378378378,
+    "total_ics": 370
+  },
+  "15-Good-evening.441.16b48k.wav": {
+    "bytes": 53499,
+    "mos": 4.061,
+    "ms_regular_bands": 2274,
+    "ms_share": 0.5808429118773947,
+    "regular_stereo_bands": 3915,
+    "seconds": 2.782,
+    "short_ics": 162,
+    "short_share": 0.400990099009901,
+    "total_ics": 404
+  },
+  "21-classic.441.16b48k.wav": {
+    "bytes": 59519,
+    "mos": 4.3274,
+    "ms_regular_bands": 3566,
+    "ms_share": 0.5443443749045948,
+    "regular_stereo_bands": 6551,
+    "seconds": 2.271,
+    "short_ics": 54,
+    "short_share": 0.11842105263157894,
+    "total_ics": 456
+  }
+}

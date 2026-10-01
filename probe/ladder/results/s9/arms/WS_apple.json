@@ -1,0 +1,68 @@
+{
+  "12-German-male-speech.441.16b48k.wav": {
+    "bytes": 51337,
+    "mos": 3.6169,
+    "ms_regular_bands": 5936,
+    "ms_share": 0.9991583908432924,
+    "regular_stereo_bands": 5941,
+    "seconds": 2.343,
+    "short_ics": 30,
+    "short_share": 0.08108108108108109,
+    "total_ics": 370
+  },
+  "15-Good-evening.441.16b48k.wav": {
+    "bytes": 53958,
+    "mos": 3.8751,
+    "ms_regular_bands": 3905,
+    "ms_share": 0.5791190864600326,
+    "regular_stereo_bands": 6743,
+    "seconds": 2.424,
+    "short_ics": 10,
+    "short_share": 0.024752475247524754,
+    "total_ics": 404
+  },
+  "21-classic.441.16b48k.wav": {
+    "bytes": 60587,
+    "mos": 4.1196,
+    "ms_regular_bands": 3024,
+    "ms_share": 0.5235457063711911,
+    "regular_stereo_bands": 5776,
+    "seconds": 2.442,
+    "short_ics": 2,
+    "short_share": 0.0043859649122807015,
+    "total_ics": 456
+  },
+  "24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+    "bytes": 55161,
+    "mos": 2.9974,
+    "ms_regular_bands": 2174,
+    "ms_share": 0.4949908925318761,
+    "regular_stereo_bands": 4392,
+    "seconds": 2.474,
+    "short_ics": 58,
+    "short_share": 0.1407766990291262,
+    "total_ics": 412
+  },
+  "25-This-is-the-end.441.16b48k.wav": {
+    "bytes": 60667,
+    "mos": 3.6138,
+    "ms_regular_bands": 3994,
+    "ms_share": 0.6346734466867948,
+    "regular_stereo_bands": 6293,
+    "seconds": 2.368,
+    "short_ics": 6,
+    "short_share": 0.013824884792626729,
+    "total_ics": 434
+  },
+  "27-last-song-drums-and-trampets.441.16b48k.wav": {
+    "bytes": 66873,
+    "mos": 3.8664,
+    "ms_regular_bands": 2644,
+    "ms_share": 0.5580413676656817,
+    "regular_stereo_bands": 4738,
+    "seconds": 2.441,
+    "short_ics": 72,
+    "short_share": 0.15319148936170213,
+    "total_ics": 470
+  }
+}

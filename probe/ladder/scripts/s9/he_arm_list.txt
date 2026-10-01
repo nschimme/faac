@@ -1,0 +1,14 @@
+REF_fdk
+REF_apple
+F40
+F56
+F_fdk
+F_apple
+W_fdk
+W_apple
+MS_fdk
+MS_apple
+WMS_fdk
+WMS_apple
+WS_fdk
+WS_apple

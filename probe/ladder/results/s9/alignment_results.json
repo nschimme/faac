@@ -1,0 +1,224 @@
+{
+  "12-German-male-speech.441.16b48k.wav": {
+    "faac_lag": 3042,
+    "references": {
+      "fdk": {
+        "profile": "profile=HE-AAC",
+        "lag": 5057,
+        "pad": 2015,
+        "frame_offset": 0,
+        "audio_alignment": [
+          2015,
+          0
+        ],
+        "lag_alignment_matches_default": true,
+        "inject_offset": 1,
+        "window_match": {
+          "-1024": {
+            "-1": 0.08108108108108109,
+            "0": 0.0913978494623656,
+            "1": 0.11827956989247312
+          },
+          "0": {
+            "-1": 0.07027027027027027,
+            "0": 0.0967741935483871,
+            "1": 0.0967741935483871
+          },
+          "1024": {
+            "-1": 0.0913978494623656,
+            "0": 0.11764705882352941,
+            "1": 0.08602150537634409
+          }
+        },
+        "peak": false,
+        "injected_window_match": 0.989247311827957
+      },
+      "apple": {
+        "profile": "profile=HE-AAC",
+        "lag": 5186,
+        "pad": 96,
+        "frame_offset": 1,
+        "audio_alignment": [
+          96,
+          1
+        ],
+        "lag_alignment_matches_default": true,
+        "inject_offset": 2,
+        "window_match": {
+          "-1024": {
+            "-1": 0.11351351351351352,
+            "0": 0.11351351351351352,
+            "1": 0.10810810810810811
+          },
+          "0": {
+            "-1": 0.10810810810810811,
+            "0": 0.11351351351351352,
+            "1": 0.0972972972972973
+          },
+          "1024": {
+            "-1": 0.11290322580645161,
+            "0": 0.11290322580645161,
+            "1": 0.10810810810810811
+          }
+        },
+        "peak": false,
+        "injected_window_match": 1.0
+      }
+    },
+    "whole_frame_encode_md5": {
+      "0": "fd82705175c02ea128842da685ac1d2e",
+      "2048": "b13787a063a4a72a03ea543edc984d7d"
+    },
+    "whole_frame_changes_encode": true,
+    "whole_frame_match_fixed": 0.7675675675675676,
+    "whole_frame_match_shifted": 1.0
+  },
+  "24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+    "faac_lag": 3042,
+    "references": {
+      "fdk": {
+        "profile": "profile=HE-AAC",
+        "lag": 5057,
+        "pad": 2015,
+        "frame_offset": 0,
+        "audio_alignment": [
+          2015,
+          0
+        ],
+        "lag_alignment_matches_default": true,
+        "inject_offset": 1,
+        "window_match": {
+          "-1024": {
+            "-1": 0.13170731707317074,
+            "0": 0.13592233009708737,
+            "1": 0.1407766990291262
+          },
+          "0": {
+            "-1": 0.1407766990291262,
+            "0": 0.14009661835748793,
+            "1": 0.13592233009708737
+          },
+          "1024": {
+            "-1": 0.13592233009708737,
+            "0": 0.14009661835748793,
+            "1": 0.11650485436893204
+          }
+        },
+        "peak": false,
+        "injected_window_match": 0.9903381642512077
+      },
+      "apple": {
+        "profile": "profile=HE-AAC",
+        "lag": 5186,
+        "pad": 96,
+        "frame_offset": 1,
+        "audio_alignment": [
+          96,
+          1
+        ],
+        "lag_alignment_matches_default": true,
+        "inject_offset": 2,
+        "window_match": {
+          "-1024": {
+            "-1": 0.22439024390243903,
+            "0": 0.2682926829268293,
+            "1": 0.23414634146341465
+          },
+          "0": {
+            "-1": 0.2621359223300971,
+            "0": 0.24757281553398058,
+            "1": 0.24390243902439024
+          },
+          "1024": {
+            "-1": 0.2669902912621359,
+            "0": 0.23300970873786409,
+            "1": 0.18536585365853658
+          }
+        },
+        "peak": false,
+        "injected_window_match": 0.9951456310679612
+      }
+    },
+    "whole_frame_encode_md5": {
+      "0": "c46ba4a3c4c432b573a8cc9d446ce9ca",
+      "2048": "ab4523a2985760c96352b046acd243d3"
+    },
+    "whole_frame_changes_encode": true,
+    "whole_frame_match_fixed": 0.8300970873786407,
+    "whole_frame_match_shifted": 1.0
+  },
+  "21-classic.441.16b48k.wav": {
+    "faac_lag": 3042,
+    "references": {
+      "fdk": {
+        "profile": "profile=HE-AAC",
+        "lag": 5057,
+        "pad": 2015,
+        "frame_offset": 0,
+        "audio_alignment": [
+          2015,
+          0
+        ],
+        "lag_alignment_matches_default": true,
+        "inject_offset": 1,
+        "window_match": {
+          "-1024": {
+            "-1": 0.8281938325991189,
+            "0": 0.8377192982456141,
+            "1": 0.8333333333333334
+          },
+          "0": {
+            "-1": 0.8289473684210527,
+            "0": 0.8209606986899564,
+            "1": 0.8245614035087719
+          },
+          "1024": {
+            "-1": 0.8377192982456141,
+            "0": 0.8296943231441049,
+            "1": 0.8333333333333334
+          }
+        },
+        "peak": false,
+        "injected_window_match": 0.9956331877729258
+      },
+      "apple": {
+        "profile": "profile=HE-AAC",
+        "lag": 5186,
+        "pad": 96,
+        "frame_offset": 1,
+        "audio_alignment": [
+          96,
+          1
+        ],
+        "lag_alignment_matches_default": true,
+        "inject_offset": 2,
+        "window_match": {
+          "-1024": {
+            "-1": 0.7929515418502202,
+            "0": 0.8061674008810573,
+            "1": 0.7973568281938326
+          },
+          "0": {
+            "-1": 0.8070175438596491,
+            "0": 0.8026315789473685,
+            "1": 0.801762114537445
+          },
+          "1024": {
+            "-1": 0.8026315789473685,
+            "0": 0.7982456140350878,
+            "1": 0.7973568281938326
+          }
+        },
+        "peak": false,
+        "injected_window_match": 1.0
+      }
+    },
+    "whole_frame_encode_md5": {
+      "0": "2e16b03aac2304df0b1db3b1d97fc235",
+      "2048": "a35433d88dbfc6cc8a7a1ee00d453443"
+    },
+    "whole_frame_changes_encode": true,
+    "whole_frame_match_fixed": 0.8771929824561403,
+    "whole_frame_match_shifted": 1.0
+  }
+}

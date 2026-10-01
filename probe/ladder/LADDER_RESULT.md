@@ -1872,3 +1872,38 @@ S4-B2 (+0.0153 / +0.0113) reproduces within ±0.001. Verdict by the pre-register
 LC 128k residual (+0.007 vs Apple) is in the scalefactors, split about evenly between 0–2 and 2–6 kHz with neither
 region ≥ 50 %. This is an oracle ceiling (Apple's exact sf); level-only, shape-only, offsets and within-frame feature
 fits are already dead (§5, S5-B3), so any encoder rule must come from a different signal. No rule tested in this stage.
+
+## Stage S9 — HE 48k core decision arms with a repaired injector (2026-10-01)
+
+Scripts `scripts/s9/` (inject_ctl.py, he_arms.py, he_arms_summary.py), results `results/s9/` (prereg.md written before
+scoring; ALIGNMENT_RESULT.md). Base F = static probe, `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12 FAAC_SBR_FREQ_SCALE=3`,
+`-b 48` HE-AAC v1, 49 clips; each arm vs F at its own pad, bits-adjusted with the per-clip 40/56 slope.
+
+Injector repairs (probe-only; unset output identical to a clean build): the field parser did not accept `cls`, so
+S8-W's `FIELDS=win,cls,sf,ms,tns` silently skipped class injection; the decoder dump records M/S after PNS clears it,
+so self-injected M/S turned M/S off on PNS bands (`stereo.c` keeps the pre-quantisation decision there). Self-inject
+PCM-identical 3/3 for win, sf, ms; cls 0/3 (its early zero-band forcing changes the rate loop) and tns unimplemented,
+so a full-field self-inject still fails — not needed for the arms below. S8-W's flat match came from its C4 picking
+the best offset per pad, which cancels a whole-frame input shift. Alignment from decoded PCM vs source: lags FAAC 3042,
+fdk 5057, Apple 5186 on every clip (as S6) ⇒ fdk pad 2015 / injector offset 1, Apple pad 96 / offset 2; injected
+windows then match the reference 98.9–100 %. (An uninjected window-match peak is not a usable control: FAAC's
+natural windows agree with the refs on only ~10 % of speech frames.)
+
+| arm | adj vs F | median | W/L | bytes | short | M/S long |
+|---|---:|---:|---|---:|---:|---:|
+| fdk raw − F | +0.073 | +0.066 | | +1.0 % | | |
+| W_fdk | −0.254 | −0.209 | 6/43 | +0.3 % | 6.8 % | 66.9 % |
+| MS_fdk | −0.001 | −0.004 | 13/35 | 0.0 % | 44.1 % | 88.1 % |
+| WMS_fdk | −0.272 | −0.207 | 5/44 | +0.3 % | 6.8 % | 87.8 % |
+| WS_fdk (diag.) | −0.397 | −0.283 | 3/46 | +2.0 % | 6.8 % | 66.5 % |
+| Apple raw − F | +0.080 | +0.110 | | +5.8 % | | |
+| W_apple | −0.216 | −0.136 | 7/42 | +0.3 % | 8.2 % | 66.9 % |
+| MS_apple | −0.023 | −0.016 | 11/38 | 0.0 % | 44.3 % | 81.7 % |
+| WMS_apple | −0.288 | −0.172 | 6/43 | +0.4 % | 8.2 % | 78.5 % |
+
+Every injection took (short share 44 % → 7–8 %, M/S 67 % → 82–88 %). Verdict by the pre-registered rule: neither
+the references' windows nor their M/S decisions are the lever; both lose inside FAAC (worst girl −2.06, Mohicans
+−1.1, speech −0.9). S7-CORE's W −0.25/−0.21 was right in size after all, though its alignment check was broken.
+As at LC (Stage H: windows alone ≈ 0), FAAC's long-block coding cannot carry the references' long windows; at LC it
+took Apple's scalefactors too, and at HE that arm cannot be built inside the rate loop (WS catastrophic; step1 KA
+fails at HE, S3-E0). The HE core gap is coding efficiency of FAAC's long path, not a decision to copy.

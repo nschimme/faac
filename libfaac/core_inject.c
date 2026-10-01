@@ -35,7 +35,7 @@ static unsigned parse_fields(const char *s)
     if (!s) return CI_CLASS;
     snprintf(buf, sizeof buf, "%s", s);
     for (p = strtok_r(buf, ",", &sp); p; p = strtok_r(NULL, ",", &sp)) {
-        if (!strcmp(p, "class")) x |= CI_CLASS;
+        if (!strcmp(p, "class") || !strcmp(p, "cls")) x |= CI_CLASS;
         else if (!strcmp(p, "sf")) x |= CI_SF;
         else if (!strcmp(p, "ms")) x |= CI_MS;
         else if (!strcmp(p, "win")) x |= CI_WIN;
