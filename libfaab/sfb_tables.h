@@ -21,12 +21,11 @@
 
 #include <stdint.h>
 
-#include "faab_export.h"
 
-extern FAABAPI const uint16_t * const sfb_offsets_1024[12];
-extern FAABAPI const uint8_t num_sfbs_1024[12];
+extern const uint16_t * const sfb_offsets_1024[12];
+extern const uint8_t num_sfbs_1024[12];
 
-extern FAABAPI const uint16_t * const sfb_offsets_128[12];
-extern FAABAPI const uint8_t num_sfbs_128[12];
+extern const uint16_t * const sfb_offsets_128[12];
+extern const uint8_t num_sfbs_128[12];
 
 #endif /* SFB_TABLES_H */

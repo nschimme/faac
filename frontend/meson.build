@@ -18,12 +18,7 @@ frontend_link_libs = [libfaac]
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
 
 if get_option('muxer')
-    # Both faac and faad link libfaam for MP4 read/write. Linking the static
-    # archive into each duplicates it in full; the embedded profile ships
-    # them as separate binaries, so the shared object (one copy on flash,
-    # loaded by both) is what actually saves space -- the default build
-    # keeps the static archive for a self-contained single-binary faac.
-    libfaam_link = get_option('embedded') ? libfaam_shared : libfaam_static
+    libfaam_link = libfaam_lib
     frontend_link_libs += [libfaam_link]
     c_args_list += ['-DHAVE_LIBFAAM']
 endif
@@ -54,7 +49,7 @@ if get_option('muxer') and not get_option('embedded')
     faam = executable('faam',
         ['faam_main.c', 'charset.c', 'cli_common.c', git_version_h],
         include_directories: ['..', '../include', '../libfaac', '../common'],
-        link_with: [libfaam_shared],
+        link_with: [libfaam_lib],
         dependencies: [libshell32, libiconv],
         install: true
     )

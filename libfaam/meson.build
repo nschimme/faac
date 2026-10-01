@@ -33,23 +33,15 @@ if get_option('muxer-fragmented')
     faam_args += ['-DFAAM_MUXER_FRAGMENTED=1']
 endif
 
-libfaam_shared = shared_library(
-  'faam',
-  libfaam_sources,
-  include_directories: libfaam_inc,
-  c_args: faam_args,
-  version: '1.0.0',
-  soversion: '0',
-  gnu_symbol_visibility: 'hidden',
-  install: true,
-)
-
 ffunc_args = []
 if cc.has_argument('-ffunction-sections')
     ffunc_args += ['-ffunction-sections', '-fdata-sections']
 endif
 
-libfaam_static = static_library(
+# Static only: measured smaller than one shared copy for both the encoder and
+# decoder deployments, since LTO and dead-stripping keep just what each
+# consumer uses.
+libfaam_lib = static_library(
   'faam',
   libfaam_sources,
   include_directories: libfaam_inc,
@@ -60,14 +52,14 @@ libfaam_static = static_library(
 
 libfaam_dep = declare_dependency(
   include_directories: libfaam_inc,
-  link_with: libfaam_shared,
+  link_with: libfaam_lib,
 )
 
 install_headers(libfaam_headers)
 
 pkg = import('pkgconfig')
 pkg.generate(
-  libfaam_shared,
+  libfaam_lib,
   name: 'faam',
   description: 'Freeware Advanced Audio & Video Muxer Library',
   version: '1.0.0',
@@ -82,7 +74,7 @@ test_faam = executable(
   'test_faam',
   'test_faam.c',
   include_directories: libfaam_inc,
-  link_with: libfaam_shared,
+  link_with: libfaam_lib,
   c_args: test_faam_args,
 )
 
@@ -92,7 +84,7 @@ test_master_layout = executable(
   'test_master_layout',
   'test_master_layout.c',
   include_directories: libfaam_inc,
-  link_with: libfaam_shared,
+  link_with: libfaam_lib,
 )
 test('faam_master_layout_test', test_master_layout)
 
@@ -100,13 +92,13 @@ test_faam_media = executable(
   'test_faam_media',
   'test_faam_media.c',
   include_directories: libfaam_inc,
-  link_with: libfaam_shared,
+  link_with: libfaam_lib,
   c_args: faam_args,
 )
 test('faam_media_test', test_faam_media)
 
 # Links the library sources directly so the allocator hook in alloc_hook/faam_alloc.h
-# counts every allocation; the shared library is built without it.
+# counts every allocation; the library itself is built without it.
 if get_option('muxer-fragmented')
     test_faam_alloc = executable(
       'test_faam_alloc',
