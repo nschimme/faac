@@ -443,6 +443,17 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
   return cnt;
 }
 
+bool wav_native_ok(const pcmfile_t *sndf)
+{
+  return !sndf->isfloat && sndf->bigendian == WORDS_BIGENDIAN &&
+         (sndf->samplebytes == 2 || sndf->samplebytes == 3);
+}
+
+size_t wav_read_native(pcmfile_t *sndf, void *buf, size_t num)
+{
+  return fread(buf, sndf->samplebytes, num, sndf->f);
+}
+
 int wav_close(pcmfile_t *sndf)
 {
   int i = fclose(sndf->f);

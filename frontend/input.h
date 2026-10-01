@@ -41,6 +41,13 @@ pcmfile_t *wav_open_read(const char *path, bool rawchans);
 size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map);
 int wav_close(pcmfile_t *file);
 
+/* True when the file's PCM can go to the encoder as-is (little-endian 16/24-bit
+   integers), sparing the float conversion pass. */
+bool wav_native_ok(const pcmfile_t *sndf);
+
+/* Read up to num samples without conversion; returns the number read. */
+size_t wav_read_native(pcmfile_t *sndf, void *buf, size_t num);
+
 /* Create channel remapping array for multi-channel input, consumed by
    wav_read_float32()'s internal chan_remap(). */
 int *mk_chan_map(uint16_t channels, uint16_t center, uint16_t lf);

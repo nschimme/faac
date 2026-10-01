@@ -541,7 +541,18 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     params.bandwidth = opts->bandwidth;
     params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
-    params.input_format = FAAC_INPUT_FLOAT;
+
+    /* Hand integer PCM to the encoder as it is: one conversion pass instead of
+       two, and nothing for it to sanitise. The encoder applies the channel map. */
+    chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
+    bool native = wav_native_ok(infile);
+    params.input_format = !native ? FAAC_INPUT_FLOAT :
+                          infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;
+    if (native && chanmap)
+    {
+        params.channel_map = chanmap;
+        params.channel_map_count = num_channels;
+    }
 
     {
         faac_status st = faac_encoder_open(&params, &hEncoder);
@@ -570,7 +581,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (!pcmbuf || !bitbuf)
         FAIL("Out of memory!\n");
 
-    chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
     if (chanmap && log_cb)
     {
         char msg[256];
@@ -658,6 +668,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     bool input_eof = false;
 
+#define read_pcm() (native ? wav_read_native(infile, pcmbuf, samples_per_frame) \
+                           : wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap))
+
     for (;;)
     {
         int bytes_written = 0;
@@ -668,7 +681,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             {
                 if (current_input_samples < total_input_samples || total_input_samples == 0)
                 {
-                    samples_read = (int)wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap);
+                    samples_read = (int)read_pcm();
                 }
                 else
                 {
@@ -683,7 +696,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             }
             else
             {
-                samples_read = (int)wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap);
+                samples_read = (int)read_pcm();
             }
 
             if (samples_read == 0)
