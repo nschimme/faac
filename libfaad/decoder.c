@@ -97,7 +97,7 @@ FAADAPI faad_status faad_get_library_info(faad_library_info *out)
     }
 
     out->struct_size = sizeof(faad_library_info);
-    out->version = "3.0.0";
+    out->version = FAAD_VERSION_STRING;
     out->copyright = "Copyright (C) 2026 Nils Schimmelmann";
     out->max_channels = MAX_CHANNELS;
 #ifndef FAAD_DISABLE_SBR

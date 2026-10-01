@@ -25,7 +25,7 @@ FAAMAPI faam_status faam_get_library_info(faam_library_info *out)
         return FAAM_ERR_INVALID_ARG;
 
     out->struct_size = sizeof(faam_library_info);
-    out->version = "1.0.0";
+    out->version = FAAM_VERSION_STRING;
     out->copyright = "Copyright (C) 2026 Nils Schimmelmann";
     return FAAM_OK;
 }
