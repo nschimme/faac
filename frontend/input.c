@@ -108,20 +108,27 @@ static void unsuperr(const char *name)
   fprintf(stderr, "%s: file format not supported\n", name);
 }
 
-static void seekcur(FILE *f, int ofs)
-{
-    if (ofs < 0)
-        return;
+#define SEEK_STEP 0x40000000u
 
-    if (fseek(f, ofs, SEEK_CUR) != 0)
+static void seekcur(FILE *f, uint32_t ofs)
+{
+    /* Chunk lengths are 32-bit and untrusted, and fseek takes a long: skip in
+       bounded steps so nothing past 2 GiB turns into a skip of nothing. */
+    while (ofs)
     {
-        /* fseek fails on non-seekable streams (stdin/pipes); fall back to
-           reading and discarding bytes one at a time */
-        while (ofs--)
+        uint32_t step = ofs < SEEK_STEP ? ofs : SEEK_STEP;
+
+        if (fseek(f, (long)step, SEEK_CUR) != 0)
         {
-            if (fgetc(f) == EOF)
-                break;
+            /* fseek fails on non-seekable streams (stdin/pipes); fall back to
+               reading and discarding bytes one at a time */
+            for (uint32_t n = step; n; n--)
+            {
+                if (fgetc(f) == EOF)
+                    return;
+            }
         }
+        ofs -= step;
     }
 }
 
@@ -135,7 +142,7 @@ static int seekchunk(FILE *f, riffsub_t *riffsub, const char *name)
      return 0;
 
    riffsub->len = le32toh(riffsub->len);
-   if (riffsub->len & 1)
+   if ((riffsub->len & 1) && riffsub->len != UINT32_MAX)
      riffsub->len++;
 
    if (!memcmp(&(riffsub->label), name, 4))
@@ -182,31 +189,31 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   if (!rawinput) // header input
   {
     if (fread(&riff, 1, sizeof(riff), wave_f) != sizeof(riff))
-      return NULL;
+      goto bad;
     if (memcmp(&(riff.label), "RIFF", 4))
-      return NULL;
+      goto bad;
     if (memcmp(&(riff.chunk_type), "WAVE", 4))
-      return NULL;
+      goto bad;
 
     if (!seekchunk(wave_f, &riffsub, "fmt "))
-      return NULL;
+      goto bad;
 
     if (memcmp(&(riffsub.label), "fmt ", 4))
-        return NULL;
+        goto bad;
     memset(&wave, 0, sizeof(wave));
 
     fmtsize = (riffsub.len < sizeof(wave)) ? riffsub.len : sizeof(wave);
     // check if format is at least 16 bytes long
     if (fmtsize < 16)
-	return NULL;
+	goto bad;
 
    if (fread(&wave, 1, fmtsize, wave_f) != (size_t)fmtsize)
-        return NULL;
+        goto bad;
 
     seekcur(wave_f, riffsub.len - fmtsize);
 
     if (!seekchunk(wave_f, &riffsub, "data"))
-      return NULL;
+      goto bad;
 
     uint16_t tag = le16toh(wave.Format.wFormatTag);
     if (tag != WAVE_FORMAT_PCM && tag != WAVE_FORMAT_FLOAT)
@@ -214,18 +221,18 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
       if (tag == WAVE_FORMAT_EXTENSIBLE)
       {
         if (le16toh(wave.Format.cbSize) < 22) // struct too small
-          return NULL;
+          goto bad;
         if (memcmp(wave.SubFormat, waveformat_pcm_guid, 16) != 0 &&
             memcmp(wave.SubFormat, waveformat_float_guid, 16) != 0)
         {
           unsuperr(name);
-          return NULL;
+          goto bad;
         }
       }
       else
       {
         unsuperr(name);
-        return NULL;
+        goto bad;
       }
     }
   }
@@ -288,6 +295,10 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   }
 
   return sndf;
+
+bad:
+  if (wave_f != stdin) fclose(wave_f);
+  return NULL;
 }
 
 int *mk_chan_map(uint16_t channels, uint16_t center, uint16_t lf)

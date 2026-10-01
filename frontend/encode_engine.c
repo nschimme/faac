@@ -468,6 +468,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->raw_pcm_input)
     {
         infile = wav_open_read(opts->input_filename, 1);
+        if (infile && (opts->raw_bits < 8 || opts->raw_bits > 32))
+        {
+            wav_close(infile);
+            infile = NULL;
+        }
         if (infile)
         {
             infile->bigendian = opts->raw_endian;
