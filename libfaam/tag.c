@@ -180,10 +180,46 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     if (meta_atom.size >= 12)
         faam_atom_find_child(io, meta_atom.offset + 12, meta_atom.offset + meta_atom.size, "ilst", &ilst);
 
+    uint8_t *smpb = NULL;
+    uint32_t smpb_len = 0;
+    for (uint64_t pos = ilst.offset + 8; ilst.size >= 8 && pos + 8 <= ilst.offset + ilst.size;) {
+        uint8_t hdr[8];
+        if (!io->seek(io->user_data, pos) || io->read(io->user_data, hdr, 8) != 8)
+            return FAAM_ERR_IO_READ;
+        uint32_t size = read_u32_be(hdr);
+        if (size < 8 || size > ilst.offset + ilst.size - pos) break;
+        if (!memcmp(hdr + 4, "----", 4)) {
+            uint8_t *atom = (uint8_t *)AllocMemory(size);
+            if (!atom) return FAAM_ERR_INSUFFICIENT_MEM;
+            if (!io->seek(io->user_data, pos) || io->read(io->user_data, atom, size) != (int32_t)size) {
+                FreeMemory(atom); return FAAM_ERR_IO_READ;
+            }
+            bool apple = false, name = false;
+            for (uint32_t off = 8; off + 12 <= size;) {
+                uint32_t sub = read_u32_be(atom + off);
+                if (sub < 12 || sub > size - off) break;
+                if (!memcmp(atom + off + 4, "mean", 4) && sub == 28 &&
+                    !memcmp(atom + off + 12, "com.apple.iTunes", 16)) apple = true;
+                if (!memcmp(atom + off + 4, "name", 4) && sub == 20 &&
+                    !memcmp(atom + off + 12, "iTunSMPB", 8)) name = true;
+                off += sub;
+            }
+            if (apple && name) { smpb = atom; smpb_len = size; break; }
+            FreeMemory(atom);
+        }
+        pos += size;
+    }
     uint32_t cap = estimate_ilst_capacity(meta);
-    uint8_t *ilst_buf = (uint8_t *)AllocMemory(cap);
-    if (!ilst_buf) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (smpb_len > UINT32_MAX - cap) { FreeMemory(smpb); return FAAM_ERR_INSUFFICIENT_MEM; }
+    uint8_t *ilst_buf = (uint8_t *)AllocMemory(cap + smpb_len);
+    if (!ilst_buf) { FreeMemory(smpb); return FAAM_ERR_INSUFFICIENT_MEM; }
     uint32_t ilst_len = build_ilst_payload(meta, ilst_buf);
+    if (smpb_len) {
+        memcpy(ilst_buf + ilst_len, smpb, smpb_len);
+        ilst_len += smpb_len;
+        write_u32(ilst_buf, ilst_len);
+    }
+    FreeMemory(smpb);
 
     uint64_t ancestors[3];
     int n_anc = 0;

@@ -156,7 +156,7 @@ faam_status faam_atom_resize(const faam_io *io,
     /* mdat only moves if it starts at/after the atom being grown. When mdat
      * comes first (the common non-faststart layout this project's own muxer
      * produces), nothing in moov's sample tables is affected. */
-    if (mdat && mdat->size > 0 && mdat->offset > atom_offset && moov && moov->size > 0) {
+    if (mdat && mdat->size > 0 && mdat->offset >= atom_offset && moov && moov->size > 0) {
         if (!fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size, (int64_t)delta))
             return FAAM_ERR_IO_WRITE;
     }
