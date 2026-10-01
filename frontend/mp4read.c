@@ -22,6 +22,7 @@ typedef struct {
     uint32_t asc_len;
     uint32_t delay;
     uint32_t padding;
+    uint32_t timescale;
     MP4Sample *samples;
     uint32_t num_samples;
     char major_brand[16];
@@ -94,6 +95,7 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
         if (faam_demuxer_get_track_info(d, i, &info) == FAAM_OK &&
             info.track_type == FAAM_TRACK_AUDIO && info.codec_id == FAAM_CODEC_AAC) {
             audio_track_id = info.track_id;
+            track->timescale = info.timescale;
             break;
         }
     }
