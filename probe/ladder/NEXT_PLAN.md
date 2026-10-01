@@ -33,8 +33,8 @@ must show ≥ +0.015 in CI.
   be built inside the rate loop. The HE gap is FAAC's long-path coding efficiency.
 - **Short-window sf smoothing** (`FAAC_SF_SMOOTH_SHORT` 0.3/0.6/0.9, on master): ≤ +0.003 at HE 48k/32k, LC flat. Dead.
 - **HE PNS threshold** (fork PR #612, pnslevel 3 only at 24 ≤ bitRate < 28 kbps/ch): CI ABR 48k_stereo_48k +0.010
-  (25/18, significant), CBR +0.008, VBR identical, +160 B, two clips at −0.05/−0.06. The wider variants (HE-wide, ≥ 24)
-  lost clips at 32k and 64k. Awaiting the user's merge decision.
+  (25/18, significant), CBR +0.008, VBR identical, +160 B, two clips at −0.05/−0.06. Closed by the user: one rung,
+  a measured-not-derived threshold, not worth it. The wider variants lost clips at 32k and 64k.
 
 **Injector state (probe libfaac):** `cls` is now accepted (S8-W's `win,cls,...` silently skipped class injection);
 M/S on PNS bands keeps the pre-quantisation decision. Self-inject PCM-identical for win, sf, ms; cls fails (its early
@@ -44,7 +44,8 @@ checks it per clip). Padding changes FAAC's own decisions (speech MOS ±0.04), s
 pad.
 
 **Next steps, in order:**
-1. **HE long-block side-info ceiling, measured before any build.** 09-24 dumps: FAAC spends 16–20 % of a long CPE
+1. **HE long-block side-info ceiling, measured before any build — full brief in `LONG_BLOCK_PLAN.md`** (phased, with
+   pre-registered stops). 09-24 dumps: FAAC spends 16–20 % of a long CPE
    frame on side info vs fdk (ch1 IS/spectral/PNS flip-flop, ch0 PNS interleave, sf jumps). Count the section + sf bits
    a coherent layout would save per long frame on the 49 clips (offline, from FAAD dumps), and price it in MOS with
    the 40/56 slope. Build only if the ceiling clears the MOS-per-byte bar (≥ +0.015 for > 1 KB). IS-contiguity alone
