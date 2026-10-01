@@ -59,9 +59,7 @@ subdir('include')
 subdir('libfaab')
 subdir('libfaac')
 
-if get_option('muxer')
-    subdir('libfaam')
-endif
+subdir('libfaam')
 
 if get_option('decoder')
     subdir('libfaad')

@@ -1250,15 +1250,3 @@ faam_status faam_muxer_get_info(const faam_muxer *m, uint32_t track_id, faam_mux
     out_info->max_frame_size = tr->max_frame_size;
     return FAAM_OK;
 }
-
-#ifdef FAAM_EMBEDDED
-faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta) {
-    (void)io; (void)meta;
-    return FAAM_ERR_UNSUPPORTED;
-}
-
-faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *chapters, uint32_t count) {
-    (void)io; (void)chapters; (void)count;
-    return FAAM_ERR_UNSUPPORTED;
-}
-#endif

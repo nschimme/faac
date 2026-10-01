@@ -14,14 +14,8 @@ git_version_h = vcs_tag(
     fallback: '',
 )
 
-frontend_link_libs = [libfaac]
+frontend_link_libs = [libfaac, libfaam_lib]
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
-
-if get_option('muxer')
-    libfaam_link = libfaam_lib
-    frontend_link_libs += [libfaam_link]
-    c_args_list += ['-DHAVE_LIBFAAM']
-endif
 
 libfrontend = static_library('frontend',
     ['input.c', 'mp4write.c', 'charset.c', 'cli_common.c', 'output.c', 'encode_engine.c', 'progress.c',
@@ -42,10 +36,7 @@ faac = executable('faac',
     install: true
 )
 
-# faam_main.c calls the tag-retrofit API that embedded builds drop from
-# libfaam, and nobody deploys the standalone MP4-inspection CLI on a camera
-# anyway -- skip it under the embedded profile.
-if get_option('muxer') and not get_option('embedded')
+if get_option('muxer')
     faam = executable('faam',
         ['faam_main.c', 'charset.c', 'cli_common.c', git_version_h],
         include_directories: ['..', '../include', '../libfaac', '../common'],
@@ -56,10 +47,7 @@ if get_option('muxer') and not get_option('embedded')
 endif
 
 if get_option('decoder')
-    decoder_link_libs = [libfaad]
-    if get_option('muxer')
-        decoder_link_libs += [libfaam_link]
-    endif
+    decoder_link_libs = [libfaad, libfaam_lib]
     gc_args = []
     if cc.has_link_argument('-Wl,--gc-sections')
         gc_args += ['-Wl,--gc-sections']

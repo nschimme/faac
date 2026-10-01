@@ -5,16 +5,10 @@ libfaam_sources = files(
   'mux.c',
   'metadata.c',
   'util.c',
+  'tag.c',
+  'chapter.c',
+  'atom_patch.c',
 )
-
-# tag.c/chapter.c are standalone retrofit APIs (faam_update_tags_stream /
-# faam_update_chapters_stream) that neither demux.c nor mux.c calls into --
-# safe to drop on flash-constrained targets that don't need iTunes metadata
-# or QuickTime chapter retrofitting. atom_patch.c is their shared in-place
-# atom-resize primitive.
-if not get_option('embedded')
-    libfaam_sources += files('tag.c', 'chapter.c', 'atom_patch.c')
-endif
 
 libfaam_headers = files(
   '../include/faam.h',
@@ -23,9 +17,6 @@ libfaam_headers = files(
 libfaam_inc = include_directories('../include', '../libfaac', '../common')
 
 faam_args = []
-if get_option('embedded')
-    faam_args += ['-DFAAM_EMBEDDED=1']
-endif
 if get_option('muxer-video')
     faam_args += ['-DFAAM_MUXER_VIDEO=1']
 endif
@@ -65,10 +56,7 @@ pkg.generate(
   version: '1.0.0',
 )
 
-test_faam_args = faam_args
-if not get_option('embedded')
-    test_faam_args += ['-DFAAM_HAVE_TAG_CHAPTER=1']
-endif
+test_faam_args = faam_args + ['-DFAAM_HAVE_TAG_CHAPTER=1']
 
 test_faam = executable(
   'test_faam',
