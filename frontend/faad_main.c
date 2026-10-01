@@ -35,6 +35,7 @@ typedef struct {
     uint32_t asc_len;
     uint32_t delay;
     uint32_t padding;
+    uint32_t timescale;
     MP4Sample *samples;
     uint32_t num_samples;
     char major_brand[16];
@@ -465,7 +466,7 @@ int main(int argc, char **argv)
     cfg.downmix_mode = downmix;
 
     faad_decoder *dec = NULL;
-    faad_status st = faad_decoder_create(&cfg, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);
+    faad_status st = faad_decoder_open(&cfg, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);
     if (st != FAAD_OK) {
         fprintf(stderr, "Failed to open FAAD decoder: %s\n", faad_strerror(st));
         free(inbuf);
@@ -493,7 +494,7 @@ int main(int argc, char **argv)
             fout = cli_fopen(outfile, "wb");
             if (!fout) {
                 fprintf(stderr, "Error opening output file %s\n", outfile);
-                faad_decoder_destroy(dec); dec = NULL;
+                faad_decoder_close(&dec);
                 free(inbuf);
                 if (is_mp4) mp4_free_track(&track);
                 return 1;
@@ -514,7 +515,7 @@ int main(int argc, char **argv)
 
     uint32_t start_frame = 0;
     if (jump_seconds > 0.0) {
-        faad_stream_info sinfo;
+        faad_stream_info sinfo = { .struct_size = sizeof(faad_stream_info) };
         uint32_t sr = 44100;
         uint32_t fl = 1024;
         if (faad_decoder_get_info(dec, &sinfo) == FAAD_OK) {
@@ -526,9 +527,8 @@ int main(int argc, char **argv)
         start_frame = (uint32_t)((jump_seconds * (double)sr) / (double)fl);
     }
 
-    /* Gapless counts are in the track's timescale, the core rate; the decoder
-     * may output at twice that (SBR), so they are scaled by the first frame,
-     * after adding the SBR delay the priming leaves out. */
+    /* Container priming uses track ticks, while the SBR filter delay uses
+     * core samples. Convert each to output samples before combining them. */
     uint32_t samples_to_skip = (is_mp4 && gapless) ? track.delay : 0;
     uint32_t padding_samples = (is_mp4 && gapless) ? track.padding : 0;
     bool gapless_scaled = false;
@@ -551,7 +551,7 @@ int main(int argc, char **argv)
             if (st != FAAD_OK) {
                 if (strict_mode) {
                     print_strict_error(infile, offset, s, st);
-                    faad_decoder_destroy(dec);
+                    faad_decoder_close(&dec);
                     free(inbuf);
                     mp4_free_track(&track);
                     return 1;
@@ -566,21 +566,22 @@ int main(int argc, char **argv)
                     header_channels = (uint16_t)num_channels;
                     header_pending = false;
                 }
-                obj_type = finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
+                obj_type = finfo.ps_active ? FAAD_OBJ_HE_AAC_V2 : finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
                 uint32_t dec_bytes_per_sample = (is_float || bit_depth == 24) ? 4 : 2;
                 uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
                 uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
                 if (!gapless_scaled) {
-                    if (finfo.sbr_active && gapless) {
-                        samples_to_skip += FAAD_SBR_DELAY;
-                        padding_samples = padding_samples > FAAD_SBR_DELAY ? padding_samples - FAAD_SBR_DELAY : 0;
-                    }
-                    uint32_t factor = finfo.samples_per_ch / 1024;
-                    if (factor > 1) {
-                        samples_to_skip *= factor;
-                        padding_samples *= factor;
-                    }
+                    faad_stream_info sinfo = { .struct_size = sizeof(faad_stream_info) };
+                    faad_decoder_get_info(dec, &sinfo);
+                    uint32_t core_rate = finfo.sbr_active && finfo.samples_per_ch == 2048
+                        ? finfo.sample_rate / 2 : finfo.sample_rate;
+                    uint32_t timescale = track.timescale ? track.timescale : core_rate;
+                    uint32_t delay = gapless ? (uint32_t)((uint64_t)sinfo.delay_samples
+                        * finfo.sample_rate / core_rate) : 0;
+                    samples_to_skip = (uint32_t)((uint64_t)samples_to_skip * finfo.sample_rate / timescale) + delay;
+                    padding_samples = (uint32_t)((uint64_t)padding_samples * finfo.sample_rate / timescale);
+                    padding_samples = padding_samples > delay ? padding_samples - delay : 0;
                     gapless_scaled = true;
                 }
 
@@ -646,7 +647,7 @@ int main(int argc, char **argv)
                 }
                 if (strict_mode) {
                     print_strict_error(infile, offset, frames_decoded, st);
-                    faad_decoder_destroy(dec);
+                    faad_decoder_close(&dec);
                     free(inbuf);
                     return 1;
                 }
@@ -661,20 +662,12 @@ int main(int argc, char **argv)
                 header_channels = (uint16_t)num_channels;
                 header_pending = false;
             }
-            obj_type = finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
+            obj_type = finfo.ps_active ? FAAD_OBJ_HE_AAC_V2 : finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
             if (fout && bytes_written > 0) {
                 uint32_t dec_bytes_per_sample = (is_float || bit_depth == 24) ? 4 : 2;
                 uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
                 uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
-                if (!gapless_scaled) {
-                    uint32_t factor = finfo.samples_per_ch / 1024;
-                    if (factor > 1) {
-                        samples_to_skip *= factor;
-                        padding_samples *= factor;
-                    }
-                    gapless_scaled = true;
-                }
 
                 if (bit_depth == 24 && !is_float) {
                     const float *src_pcm = (const float *)(outbuf);
@@ -770,7 +763,7 @@ int main(int argc, char **argv)
         }
     }
 
-    faad_decoder_destroy(dec); dec = NULL;
+    faad_decoder_close(&dec);
     free(inbuf);
     if (is_mp4) mp4_free_track(&track);
 

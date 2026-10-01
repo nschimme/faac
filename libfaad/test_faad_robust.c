@@ -34,7 +34,6 @@
 #include "faad.h"
 
 #define RATE     44100
-#define CHANNELS 2
 #define SECONDS  4
 #define FRAME    1024
 
@@ -44,12 +43,13 @@ static uint32_t rng(void) { rng_state ^= rng_state << 13; rng_state ^= rng_state
 static int fail(const char *msg) { fprintf(stderr, "test_faad_robust: %s\n", msg); return 1; }
 
 /* Encode to ADTS; returns the stream length or 0. */
-static uint32_t encode(enum faac_object_type obj, uint8_t *out, uint32_t cap)
+static uint32_t encode(enum faac_object_type obj, uint32_t channels, uint8_t *out, uint32_t cap)
 {
     faac_params p;
     if (faac_params_init(&p, sizeof(p)) != FAAC_OK) return 0;
     p.sample_rate = RATE;
-    p.num_channels = CHANNELS;
+    p.num_channels = channels;
+    p.use_lfe = channels == 6;
     p.object_type = obj;
     p.bit_rate = 48000;
     p.output_format = FAAC_STREAM_ADTS;
@@ -58,7 +58,7 @@ static uint32_t encode(enum faac_object_type obj, uint8_t *out, uint32_t cap)
     if (faac_encoder_open(&p, &enc) != FAAC_OK) return 0;
 
     uint32_t total = 0;
-    int16_t pcm[FRAME * CHANNELS];
+    int16_t pcm[FRAME * 8];
     double phase = 0.0;
     for (int f = 0; f < RATE * SECONDS / FRAME; f++) {
         for (int i = 0; i < FRAME; i++) {
@@ -66,11 +66,10 @@ static uint32_t encode(enum faac_object_type obj, uint8_t *out, uint32_t cap)
             phase += 2.0 * M_PI * (200.0 + 6000.0 * ((f * FRAME + i) % RATE) / RATE) / RATE;
             double v = 8000.0 * sin(phase);
             if (((f * FRAME + i) % (RATE / 2)) < 64) v += 12000.0 * ((rng() & 1) ? 1 : -1);
-            pcm[2 * i] = (int16_t)v;
-            pcm[2 * i + 1] = (int16_t)(v * 0.5);
+            for (uint32_t c = 0; c < channels; c++) pcm[channels * i + c] = (int16_t)(v / (c + 1));
         }
         uint32_t n = 0;
-        if (faac_encoder_encode(enc, pcm, FRAME * CHANNELS, out + total, cap - total, &n) != FAAC_OK) break;
+        if (faac_encoder_encode(enc, pcm, FRAME * channels, out + total, cap - total, &n) != FAAC_OK) break;
         total += n;
     }
     for (;;) {
@@ -107,33 +106,53 @@ static uint32_t corrupt(const uint8_t *in, uint32_t len, uint8_t *out)
     return o;
 }
 
-static int decode_bounded(const uint8_t *stream, uint32_t len, uint32_t max_frames)
+static int decode_bounded(const uint8_t *stream, uint32_t len, uint32_t max_frames, uint32_t expected_channels,
+                          enum faad_output_format format, enum faad_downmix_mode downmix, bool raw)
 {
     faad_config cfg;
     faad_config_init(&cfg, sizeof(cfg));
-    cfg.stream_format = FAAD_STREAM_ADTS;
-    cfg.output_format = FAAD_OUTPUT_16BIT;
+    cfg.stream_format = raw ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
+    uint8_t asc[2];
+    asc[0] = (uint8_t)(0x10 | ((stream[2] >> 2) & 15) >> 1);
+    asc[1] = (uint8_t)((((stream[2] >> 2) & 1) << 7) | (expected_channels << 3));
+    cfg.output_format = format;
+    cfg.downmix_mode = downmix;
     faad_decoder *dec = NULL;
-    if (faad_decoder_create(&cfg, NULL, 0, &dec) != FAAD_OK) return fail("decoder create");
+    if (faad_decoder_open(&cfg, raw ? asc : NULL, raw ? sizeof(asc) : 0, &dec) != FAAD_OK) return fail("decoder create");
 
-    static int16_t pcm[8 * 2048];
+    faad_stream_info info = { .struct_size = sizeof(info) };
+    if (faad_decoder_get_info(dec, &info) != FAAD_OK) return fail("stream info");
+    uint32_t lifetime_bound = info.max_output_bytes;
+    static float pcm[8 * 2048];
     uint32_t pos = 0, calls = 0, frames = 0;
     uint64_t out_bytes = 0;
     while (pos < len) {
         uint32_t used = 0, written = 0;
         faad_frame_info fi;
-        faad_status st = faad_decode_frame(dec, stream + pos, len - pos, &used, pcm, sizeof(pcm), &written, &fi);
+        uint32_t packet = len - pos, header = 0;
+        if (raw) {
+            packet = ((stream[pos + 3] & 3) << 11) | (stream[pos + 4] << 3) | (stream[pos + 5] >> 5);
+            header = 7;
+        }
+        faad_status st = faad_decode_frame(dec, stream + pos + header, packet - header,
+            &used, pcm, lifetime_bound, &written, &fi);
+        used += header;
         calls++;
         if (st == FAAD_ERR_NEED_MORE_DATA) break;
-        if (used == 0) { faad_decoder_destroy(dec); return fail("decoder did not advance"); }
-        if (written > sizeof(pcm)) { faad_decoder_destroy(dec); return fail("output exceeds buffer"); }
+        if (used == 0) { faad_decoder_close(&dec); return fail("decoder did not advance"); }
+        if (written > lifetime_bound) { faad_decoder_close(&dec); return fail("output exceeds lifetime bound"); }
+        if (written && expected_channels == 6 && downmix == FAAD_DOWNMIX_NONE) {
+            faad_decoder_get_info(dec, &info);
+            if (info.channel_mask != 0x3f || fi.channels != 6) return fail("5.1 channel mask");
+        }
+        if (written > sizeof(pcm)) { faad_decoder_close(&dec); return fail("output exceeds buffer"); }
         if (written > 0) frames++;
         out_bytes += written;
         pos += used;
         /* a call per byte of input is the loosest bound a resync could need */
-        if (calls > len + 16) { faad_decoder_destroy(dec); return fail("too many calls: stalled"); }
+        if (calls > len + 16) { faad_decoder_close(&dec); return fail("too many calls: stalled"); }
     }
-    faad_decoder_destroy(dec);
+    faad_decoder_close(&dec);
     if (frames > max_frames) return fail("more output frames than the intact stream");
     if (out_bytes > (uint64_t)max_frames * 2048 * 8 * 2) return fail("output larger than the intact stream");
     return 0;
@@ -143,8 +162,13 @@ int main(void)
 {
     static uint8_t intact[1 << 20], damaged[1 << 20];
     const enum faac_object_type objs[2] = { FAAC_OBJ_LOW, FAAC_OBJ_HE_AAC_V1 };
-    for (int t = 0; t < 2; t++) {
-        uint32_t len = encode(objs[t], intact, sizeof(intact));
+    faad_library_info lib = { .struct_size = sizeof(lib) };
+    faad_get_library_info(&lib);
+    for (int t = 0; t < 4; t++) {
+        uint32_t channels = t == 0 ? 1 : t == 3 ? 6 : 2;
+        enum faac_object_type obj = objs[t == 2 ? 1 : 0];
+        if (channels > lib.max_channels || (t == 2 && !lib.sbr_supported)) continue;
+        uint32_t len = encode(obj, channels, intact, sizeof(intact));
         if (len == 0) return fail("encode");
         uint32_t frames_intact = 0;
         for (uint32_t i = 0; i + 7 <= len; ) {
@@ -154,12 +178,16 @@ int main(void)
             i += flen;
         }
         /* the intact stream itself must decode within its own frame count */
-        if (decode_bounded(intact, len, frames_intact)) return 1;
+        for (int f = 0; f < 2; f++)
+            for (int d = 0; d < 3; d++)
+                for (int raw = 0; raw < 2; raw++)
+                if (decode_bounded(intact, len, frames_intact, channels,
+                    f ? FAAD_OUTPUT_FLOAT : FAAD_OUTPUT_16BIT, (enum faad_downmix_mode)d, raw != 0)) return 1;
         for (int seed = 1; seed <= 8; seed++) {
             rng_state = 0x9E3779B9u * (uint32_t)seed;
             uint32_t dlen = corrupt(intact, len, damaged);
-            if (decode_bounded(damaged, dlen, frames_intact)) {
-                fprintf(stderr, "  object %d, corruption seed %d\n", (int)objs[t], seed);
+            if (decode_bounded(damaged, dlen, frames_intact, 0, FAAD_OUTPUT_16BIT, FAAD_DOWNMIX_NONE, false)) {
+                fprintf(stderr, "  object %d, corruption seed %d\n", (int)obj, seed);
                 return 1;
             }
         }
