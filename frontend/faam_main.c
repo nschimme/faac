@@ -1584,8 +1584,9 @@ int main(int argc, char **argv)
     int ret = 0;
     const char *cmd = argv[1];
     if (strcmp(cmd, "--license") == 0) {
+        faam_library_info info = { .struct_size = sizeof(info) };
         cli_print_license("FAAM - Freeware Advanced Audio/Video Muxer",
-                          "Copyright (C) 2026 Nils Schimmelmann");
+                          faam_get_library_info(&info) == FAAM_OK ? info.copyright : NULL);
         ret = 0;
     } else if (strcmp(cmd, "info") == 0) {
         ret = cmd_info(argc - 1, argv + 1);

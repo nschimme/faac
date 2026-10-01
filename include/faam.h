@@ -62,6 +62,15 @@ typedef enum faam_status {
     FAAM_STATUS_MAX           = 0x7fffffff
 } faam_status;
 
+/* Global library metadata; set struct_size to sizeof(faam_library_info) before the call. */
+typedef struct faam_library_info {
+    uint32_t                struct_size;
+    const char             *version;
+    const char             *copyright;
+} faam_library_info;
+
+FAAMAPI faam_status faam_get_library_info(faam_library_info *out);
+
 typedef enum faam_track_type {
     FAAM_TRACK_AUDIO = 1,
     FAAM_TRACK_VIDEO = 2
