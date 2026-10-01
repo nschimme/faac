@@ -17,7 +17,6 @@
 
 #include "mp4write.h"
 
-#ifdef HAVE_LIBFAAM
 #include "faam.h"
 
 static faam_muxer *g_muxer = NULL;
@@ -55,10 +54,8 @@ static uint64_t file_tell_cb(void *user_data) {
     return (uint64_t)ftello((FILE *)user_data);
 #endif
 }
-#endif
 
 int mp4_open(const char *path, bool overwrite) {
-#ifdef HAVE_LIBFAAM
 #ifdef _WIN32
     if (!overwrite && win32_access_utf8(path, 0) == 0) return 1;
 #else
@@ -88,59 +85,34 @@ int mp4_open(const char *path, bool overwrite) {
     g_track_cfg.codec_data = codec_data_backup;
     g_track_cfg.codec_data_len = codec_len_backup;
     return 0;
-#else
-    (void)path; (void)overwrite;
-    return 1;
-#endif
 }
 
 void mp4_set_creation_time(uint32_t t) {
-#ifdef HAVE_LIBFAAM
     g_cfg.creation_time = t;
     if (g_muxer) faam_muxer_set_creation_time(g_muxer, t);
-#else
-    (void)t;
-#endif
 }
 
 void mp4_set_format(uint32_t samplerate, uint32_t channels, uint32_t bits) {
-#ifdef HAVE_LIBFAAM
     g_track_cfg.timescale = samplerate;
     g_track_cfg.sample_rate = samplerate;
     g_track_cfg.channels = channels;
     g_sample_size = (uint16_t)bits;
-#else
-    (void)samplerate; (void)channels; (void)bits;
-#endif
 }
 
 void mp4_set_constant_rate(bool constant) {
-#ifdef HAVE_LIBFAAM
     g_cfg.constant_rate = constant;
-#else
-    (void)constant;
-#endif
 }
 
 void mp4_set_decoder_config(const uint8_t *asc, unsigned long size) {
-#ifdef HAVE_LIBFAAM
     g_track_cfg.codec_data = asc;
     g_track_cfg.codec_data_len = (uint32_t)size;
-#else
-    (void)asc; (void)size;
-#endif
 }
 
 void mp4_set_encoder(const char *value) {
-#ifdef HAVE_LIBFAAM
     g_metadata.encoder = value;
-#else
-    (void)value;
-#endif
 }
 
 void mp4_set_tag(mp4_tag_id_t id, const char *value) {
-#ifdef HAVE_LIBFAAM
     if (!value) return;
     switch (id) {
     case MP4TAG_ARTIST: g_metadata.artist = value; break;
@@ -156,72 +128,40 @@ void mp4_set_tag(mp4_tag_id_t id, const char *value) {
     case MP4TAG_COMMENT: g_metadata.comment = value; break;
     default: break;
     }
-#else
-    (void)id; (void)value;
-#endif
 }
 
 void mp4_set_genre(uint16_t genre) {
-#ifdef HAVE_LIBFAAM
     g_metadata.genre_code = genre;
-#else
-    (void)genre;
-#endif
 }
 
 void mp4_set_language(const char *lang) {
-#ifdef HAVE_LIBFAAM
     memset(g_track_cfg.language, 0, sizeof(g_track_cfg.language));
     if (lang && strlen(lang) >= 3) memcpy(g_track_cfg.language, lang, 3);
-#else
-    (void)lang;
-#endif
 }
 
 void mp4_set_compilation(bool flag) {
-#ifdef HAVE_LIBFAAM
     g_metadata.compilation = flag;
-#else
-    (void)flag;
-#endif
 }
 
 void mp4_set_track(uint16_t num, uint16_t total) {
-#ifdef HAVE_LIBFAAM
     g_metadata.track_num = num; g_metadata.track_total = total;
-#else
-    (void)num; (void)total;
-#endif
 }
 
 void mp4_set_disc(uint16_t num, uint16_t total) {
-#ifdef HAVE_LIBFAAM
     g_metadata.disc_num = num; g_metadata.disc_total = total;
-#else
-    (void)num; (void)total;
-#endif
 }
 
 void mp4_set_cover(const uint8_t *data, uint32_t size) {
-#ifdef HAVE_LIBFAAM
     g_metadata.cover_art = data; g_metadata.cover_bytes = size;
-#else
-    (void)data; (void)size;
-#endif
 }
 
 void mp4_set_gapless(uint32_t priming, uint32_t padding, uint64_t original_samples) {
-#ifdef HAVE_LIBFAAM
     g_cfg.gapless.encoder_delay = priming;
     g_cfg.gapless.end_padding = padding;
     g_cfg.gapless.total_samples = original_samples;
-#else
-    (void)priming; (void)padding; (void)original_samples;
-#endif
 }
 
 int mp4_add_custom_tag(const char *name, const char *value) {
-#ifdef HAVE_LIBFAAM
     if (!name || !value) return -1;
     uint32_t idx = g_metadata.num_custom_tags;
     if (idx == g_custom_capacity) {
@@ -240,14 +180,9 @@ int mp4_add_custom_tag(const char *name, const char *value) {
     g_metadata.custom_tags = g_custom_tags;
     g_metadata.num_custom_tags++;
     return 0;
-#else
-    (void)name; (void)value;
-    return -1;
-#endif
 }
 
 int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
-#ifdef HAVE_LIBFAAM
     if (!g_muxer) {
         faam_muxer_config_add_track(&g_cfg, &g_track_cfg, NULL);
 
@@ -255,24 +190,17 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
         if (faam_muxer_set_audio_sample_size(g_muxer, 1, g_sample_size) != FAAM_OK) return -1;
     }
     return faam_muxer_write_frame(g_muxer, 1, data, size, samples, 0, true) == FAAM_OK ? 0 : -1;
-#else
-    (void)data; (void)size; (void)samples;
-    return -1;
-#endif
 }
 
 int mp4_finish(void) {
-#ifdef HAVE_LIBFAAM
     if (g_muxer) {
         faam_muxer_set_gapless(g_muxer, &g_cfg.gapless);
         return faam_muxer_finalize(g_muxer) == FAAM_OK ? 0 : 1;
     }
-#endif
     return 1;
 }
 
 int mp4_close(void) {
-#ifdef HAVE_LIBFAAM
     if (g_muxer) {
         faam_muxer_close(&g_muxer);
         g_muxer = NULL;
@@ -288,16 +216,13 @@ int mp4_close(void) {
         g_file = NULL;
         return result != 0;
     }
-#endif
     return 0;
 }
 
 static inline void get_info_helper(faam_muxer_info *info) {
     memset(info, 0, sizeof(*info));
     info->struct_size = sizeof(*info);
-#ifdef HAVE_LIBFAAM
     if (g_muxer) faam_muxer_get_info(g_muxer, 1, info);
-#endif
 }
 
 uint32_t mp4_frame_count(void) {
