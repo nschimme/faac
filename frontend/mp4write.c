@@ -13,8 +13,11 @@
  * Lesser General Public License for more details.
  */
 
+
 /*
- * Wrapper delegating mp4write to libfaam muxer over abstract stream I/O
+ * Audio-only MP4/M4A writer: one AAC track, progressive layout (ftyp, mdat,
+ * then moov once the sample tables are complete). Metadata is borrowed until
+ * mp4_finish().
  */
 
 #include <stdlib.h>
@@ -29,46 +32,405 @@
 #include <unistd.h>
 #endif
 #include "cli_common.h"
+#include "endian.h"
 
 #include "mp4write.h"
 
-#include "faam.h"
+enum {
+    MP4_EPOCH_OFFSET = 2082844800,
+    MP4_FP1616_ONE = 0x00010000,
+    MP4_FP0230_ONE = 0x40000000,
+    MP4_FP0808_ONE = 0x0100,
+    MP4_DESC_HDR = 5,
+    MP4_OBJECT_TYPE_AUDIO_ISO_14496_3 = 0x40,
+    MP4_STREAM_TYPE_AUDIO = 0x15,
+    MP4_DECODER_BUFFER_BYTES_PER_CH = 6144 / 8,
+    ISO639_UND_PACKED = 0x55C4,
+    /* ftyp (28) + 'wide' (8) + mdat header (8) */
+    MDAT_DATA_POS = 44,
+};
 
-static faam_muxer *g_muxer = NULL;
-static faam_metadata g_metadata;
-static faam_custom_tag *g_custom_tags;
-static uint32_t g_custom_capacity;
-static uint16_t g_sample_size = 16;
-static faam_muxer_config g_cfg;
-static faam_track_config g_track_cfg;
-static FILE *g_file = NULL;
-static faam_io g_io;
+typedef struct {
+    const char *name;
+    char *value;
+} custom_tag;
 
-static bool file_flush_cb(void *user_data) { return fflush((FILE *)user_data) == 0; }
+static struct {
+    FILE *f;
+    bool error;
 
-static int32_t file_read_cb(void *user_data, void *buf, uint32_t bytes) {
-    return (int32_t)fread(buf, 1, bytes, (FILE *)user_data);
+    /* Format, set before or after open */
+    uint32_t rate, channels;
+    uint16_t sample_bits;
+    char language[4];
+    const uint8_t *asc;
+    uint32_t asc_len;
+    uint32_t creation_time;
+    bool constant_rate;
+    struct { uint32_t delay, padding; uint64_t total; } gapless;
+
+    /* Metadata */
+    const char *encoder, *title, *title_sort, *artist, *artist_sort, *album, *album_sort,
+        *album_artist, *album_artist_sort, *composer, *composer_sort, *year, *comment;
+    uint16_t genre, track, ntracks, disc, ndiscs;
+    bool compilation;
+    const uint8_t *cover;
+    uint32_t cover_bytes;
+    custom_tag *custom;
+    uint32_t ncustom, custom_cap;
+
+    /* Sample tables and statistics */
+    uint32_t *sizes;
+    uint32_t nsamples, sizes_cap;
+    struct { uint32_t count, delta; } *stts;
+    uint32_t nstts, stts_cap;
+    uint64_t mdat_size;
+    uint64_t total_bytes;
+    uint64_t samples;
+    uint32_t max_frame_size;
+    uint32_t last_frame_samples;
+    uint32_t window_max;
+    uint64_t window_bytes, window_ticks;
+    bool finalized;
+} g = { .rate = 44100, .sample_bits = 16 };
+
+static uint32_t track_rate(void) { return g.rate ? g.rate : 44100; }
+
+static void put(const void *data, size_t size) {
+    if (g.error || !size) return;
+    if (fwrite(data, 1, size, g.f) != size) g.error = true;
 }
 
-static int32_t file_write_cb(void *user_data, const void *buf, uint32_t bytes) {
-    return (int32_t)fwrite(buf, 1, bytes, (FILE *)user_data);
+static void put_u8(uint8_t v) { put(&v, 1); }
+
+static void put_u16(uint16_t v) {
+    v = htobe16(v);
+    put(&v, 2);
 }
 
-static bool file_seek_cb(void *user_data, uint64_t offset) {
+static void put_u32(uint32_t v) {
+    v = htobe32(v);
+    put(&v, 4);
+}
+
+static void put_u64(uint64_t v) {
+    v = htobe64(v);
+    put(&v, 8);
+}
+
+static void put_time(uint64_t v, bool use64) {
+    if (use64) put_u64(v); else put_u32((uint32_t)v);
+}
+
+static bool seek_to(uint64_t pos) {
 #ifdef _WIN32
-    return _fseeki64((FILE *)user_data, (int64_t)offset, SEEK_SET) == 0;
+    return _fseeki64(g.f, (int64_t)pos, SEEK_SET) == 0;
 #else
-    return fseeko((FILE *)user_data, (off_t)offset, SEEK_SET) == 0;
+    return fseeko(g.f, (off_t)pos, SEEK_SET) == 0;
 #endif
 }
 
-static uint64_t file_tell_cb(void *user_data) {
+static uint64_t tell_pos(void) {
 #ifdef _WIN32
-    return (uint64_t)_ftelli64((FILE *)user_data);
+    return (uint64_t)_ftelli64(g.f);
 #else
-    return (uint64_t)ftello((FILE *)user_data);
+    return (uint64_t)ftello(g.f);
 #endif
 }
+
+static uint64_t start_atom(const char *name) {
+    uint64_t pos = tell_pos();
+    put_u32(0);
+    put(name, 4);
+    return pos;
+}
+
+static void end_atom(uint64_t pos) {
+    if (g.error) return;
+    uint64_t end = tell_pos();
+    if (end - pos > UINT32_MAX || !seek_to(pos)) { g.error = true; return; }
+    put_u32((uint32_t)(end - pos));
+    if (!seek_to(end)) g.error = true;
+}
+
+static uint16_t pack_language(const char *lang) {
+    if (!lang[0]) return ISO639_UND_PACKED;
+    uint16_t packed = 0;
+    for (unsigned i = 0; i < 3; i++) {
+        unsigned c = (unsigned char)lang[i];
+        if (c >= 'A' && c <= 'Z') c += 32;
+        if (c < 'a' || c > 'z') return ISO639_UND_PACKED;
+        packed = (uint16_t)((packed << 5) | (c - 0x60));
+    }
+    return packed;
+}
+
+static void put_descriptor(uint8_t tag, uint32_t size) {
+    uint8_t buf[5];
+    buf[0] = tag;
+    buf[1] = ((size >> 21) & 0x7f) | 0x80;
+    buf[2] = ((size >> 14) & 0x7f) | 0x80;
+    buf[3] = ((size >> 7) & 0x7f) | 0x80;
+    buf[4] = (size & 0x7f);
+    put(buf, 5);
+}
+
+/* iTunes metadata atoms */
+
+static void data_tag(const char *name, uint32_t type, const void *data, size_t len) {
+    if (!data) return;
+    uint64_t tag = start_atom(name);
+    uint64_t box = start_atom("data");
+    put_u32(type);
+    put_u32(0);
+    put(data, len);
+    end_atom(box);
+    end_atom(tag);
+}
+
+static void text_tag(const char *name, const char *value) {
+    if (value) data_tag(name, 1, value, strlen(value));
+}
+
+static void index_tag(const char *name, uint16_t num, uint16_t total) {
+    uint8_t data[8] = { 0, 0, (uint8_t)(num >> 8), (uint8_t)num, (uint8_t)(total >> 8), (uint8_t)total };
+    data_tag(name, 0, data, sizeof(data));
+}
+
+static void freeform_tag(const char *mean, const char *name, const char *value) {
+    uint64_t tag = start_atom("----");
+    uint64_t box = start_atom("mean");
+    put_u32(0);
+    put(mean, strlen(mean));
+    end_atom(box);
+    box = start_atom("name");
+    put_u32(0);
+    put(name, strlen(name));
+    end_atom(box);
+    box = start_atom("data");
+    put_u32(1);
+    put_u32(0);
+    put(value, strlen(value));
+    end_atom(box);
+    end_atom(tag);
+}
+
+static void write_ilst(void) {
+    uint64_t ilst = start_atom("ilst");
+    text_tag("\251too", g.encoder);
+    text_tag("\251ART", g.artist); text_tag("soar", g.artist_sort);
+    text_tag("\251wrt", g.composer); text_tag("soco", g.composer_sort);
+    text_tag("\251nam", g.title); text_tag("\251alb", g.album);
+    text_tag("aART", g.album_artist); text_tag("soaa", g.album_artist_sort);
+    text_tag("soal", g.album_sort); text_tag("\251day", g.year); text_tag("\251cmt", g.comment);
+    if (g.genre) {
+        uint8_t genre[2] = { (uint8_t)(g.genre >> 8), (uint8_t)g.genre };
+        data_tag("gnre", 0, genre, 2);
+    }
+    text_tag("sonm", g.title_sort);
+    if (g.compilation) { uint8_t flag = 1; data_tag("cpil", 0x15, &flag, 1); }
+    if (g.track) index_tag("trkn", g.track, g.ntracks);
+    if (g.disc) index_tag("disk", g.disc, g.ndiscs);
+    data_tag("covr", 0x0d, g.cover, g.cover_bytes);
+
+    /* Always written, even all-zero: players treat a missing iTunSMPB as
+     * "no gapless info" rather than "no padding". */
+    char smpb[128];
+    snprintf(smpb, sizeof(smpb),
+        " 00000000 %08X %08X %08X%08X 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000",
+        g.gapless.delay, g.gapless.padding, (uint32_t)(g.gapless.total >> 32), (uint32_t)g.gapless.total);
+    freeform_tag("com.apple.iTunes", "iTunSMPB", smpb);
+    for (uint32_t i = 0; i < g.ncustom; i++)
+        freeform_tag("faac", g.custom[i].name, g.custom[i].value);
+    end_atom(ilst);
+}
+
+/* Bitrates */
+
+/* Exact while the numerator fits 64 bits; beyond that the recording is long
+ * enough that dividing first costs well under 1 % of the rate. */
+static uint32_t average_bitrate(void) {
+    if (!g.samples) return 0;
+    uint64_t scale = (uint64_t)track_rate() * 8;
+    uint64_t rate = g.total_bytes <= UINT64_MAX / scale ? g.total_bytes * scale / g.samples
+                                                         : g.total_bytes / g.samples * scale;
+    return rate > UINT32_MAX ? UINT32_MAX : (uint32_t)rate;
+}
+
+uint32_t mp4_avg_bitrate(void) { return average_bitrate(); }
+
+uint32_t mp4_max_bitrate(void) {
+    if (g.constant_rate || !g.window_max) return average_bitrate();
+    return g.window_max;
+}
+
+static void write_moov(void) {
+    const uint32_t ts = track_rate();
+    const uint32_t channels = g.channels ? g.channels : 2;
+    const uint32_t now = g.creation_time ? g.creation_time + MP4_EPOCH_OFFSET : 0;
+    const uint64_t duration = g.samples;
+    const bool use64_time = duration > 0xFFFFFFFFULL;
+    const uint32_t time_flags = use64_time ? (1U << 24) : 0;
+    const uint32_t max_bitrate = mp4_max_bitrate(), avg_bitrate = average_bitrate();
+
+    uint64_t moov = start_atom("moov");
+    uint64_t mvhd = start_atom("mvhd");
+    put_u32(time_flags);
+    put_time(now, use64_time); put_time(now, use64_time);
+    put_u32(ts); put_time(duration, use64_time);
+    put_u32(MP4_FP1616_ONE); put_u16(MP4_FP0808_ONE); put_u16(0); put_u32(0); put_u32(0);
+    put_u32(MP4_FP1616_ONE); put_u32(0); put_u32(0);
+    put_u32(0); put_u32(MP4_FP1616_ONE); put_u32(0);
+    put_u32(0); put_u32(0); put_u32(MP4_FP0230_ONE);
+    for (int i = 0; i < 6; i++) put_u32(0);
+    put_u32(2); /* next track id */
+    end_atom(mvhd);
+
+    uint64_t trak = start_atom("trak");
+    uint64_t tkhd = start_atom("tkhd");
+    put_u32(time_flags | 1);
+    put_time(now, use64_time); put_time(now, use64_time);
+    put_u32(1); put_u32(0);
+    put_time(duration, use64_time);
+    put_u32(0); put_u32(0);
+    put_u16(0); put_u16(0); put_u16(MP4_FP0808_ONE); put_u16(0);
+    put_u32(MP4_FP1616_ONE); put_u32(0); put_u32(0);
+    put_u32(0); put_u32(MP4_FP1616_ONE); put_u32(0);
+    put_u32(0); put_u32(0); put_u32(MP4_FP0230_ONE);
+    put_u32(0); put_u32(0); /* width, height */
+    end_atom(tkhd);
+
+    if (g.gapless.delay > 0) {
+        uint64_t edts = start_atom("edts");
+        uint64_t elst = start_atom("elst");
+        put_u32(time_flags);
+        put_u32(1);
+        put_time(g.gapless.total, use64_time);
+        put_time(g.gapless.delay, use64_time);
+        put_u16(1); put_u16(0);
+        end_atom(elst);
+        end_atom(edts);
+    }
+
+    uint64_t mdia = start_atom("mdia");
+    uint64_t mdhd = start_atom("mdhd");
+    put_u32(time_flags);
+    put_time(now, use64_time); put_time(now, use64_time);
+    put_u32(ts); put_time(g.samples, use64_time);
+    put_u16(pack_language(g.language)); put_u16(0);
+    end_atom(mdhd);
+
+    uint64_t hdlr = start_atom("hdlr");
+    put_u32(0); put_u32(0);
+    put("soun", 4);
+    put_u32(0); put_u32(0); put_u32(0); put_u8(0);
+    end_atom(hdlr);
+
+    uint64_t minf = start_atom("minf");
+    uint64_t smhd = start_atom("smhd");
+    put_u32(0); put_u16(0); put_u16(0);
+    end_atom(smhd);
+
+    uint64_t dinf = start_atom("dinf");
+    uint64_t dref = start_atom("dref");
+    put_u32(0); put_u32(1);
+    uint64_t url = start_atom("url ");
+    put_u32(1); /* self-contained */
+    end_atom(url);
+    end_atom(dref);
+    end_atom(dinf);
+
+    uint64_t stbl = start_atom("stbl");
+    uint64_t stsd = start_atom("stsd");
+    put_u32(0); put_u32(1);
+    uint64_t mp4a = start_atom("mp4a");
+    for (int i = 0; i < 6; i++) put_u8(0);
+    put_u16(1); put_u32(0); put_u32(0);
+    put_u16((uint16_t)channels);
+    put_u16(g.sample_bits);
+    put_u16(0); put_u16(0);
+    put_u16((uint16_t)(ts > UINT16_MAX ? UINT16_MAX : ts));
+    put_u16(0);
+
+    uint64_t esds = start_atom("esds");
+    put_u32(0);
+    put_descriptor(3, 3 + MP4_DESC_HDR + 13 + MP4_DESC_HDR + g.asc_len + MP4_DESC_HDR + 1);
+    put_u16(0); put_u8(0);
+    put_descriptor(4, 13 + MP4_DESC_HDR + g.asc_len);
+    put_u8(MP4_OBJECT_TYPE_AUDIO_ISO_14496_3); put_u8(MP4_STREAM_TYPE_AUDIO);
+    uint32_t buffer_size = MP4_DECODER_BUFFER_BYTES_PER_CH * channels;
+    put_u8((uint8_t)(buffer_size >> 16));
+    put_u8((uint8_t)(buffer_size >> 8));
+    put_u8((uint8_t)buffer_size);
+    put_u32(max_bitrate); put_u32(avg_bitrate);
+    put_descriptor(5, g.asc_len);
+    put(g.asc, g.asc_len);
+    put_descriptor(6, 1); put_u8(2);
+    end_atom(esds);
+    end_atom(mp4a);
+    end_atom(stsd);
+
+    uint64_t stts = start_atom("stts");
+    put_u32(0); put_u32(g.nstts);
+    for (uint32_t i = 0; i < g.nstts; i++) {
+        put_u32(g.stts[i].count);
+        put_u32(g.stts[i].delta);
+    }
+    end_atom(stts);
+
+    /* One chunk holds every sample. */
+    uint64_t stsc = start_atom("stsc");
+    put_u32(0); put_u32(1);
+    put_u32(1); put_u32(g.nsamples); put_u32(1);
+    end_atom(stsc);
+
+    uint64_t stsz = start_atom("stsz");
+    put_u32(0); put_u32(0); put_u32(g.nsamples);
+    for (uint32_t i = 0; i < g.nsamples; i++) put_u32(g.sizes[i]);
+    end_atom(stsz);
+
+    if (MDAT_DATA_POS + g.mdat_size > UINT32_MAX) {
+        uint64_t co64 = start_atom("co64");
+        put_u32(0); put_u32(1); put_u64(MDAT_DATA_POS);
+        end_atom(co64);
+    } else {
+        uint64_t stco = start_atom("stco");
+        put_u32(0); put_u32(1); put_u32(MDAT_DATA_POS);
+        end_atom(stco);
+    }
+    end_atom(stbl);
+    end_atom(minf);
+    end_atom(mdia);
+    end_atom(trak);
+
+    uint64_t udta = start_atom("udta");
+    uint64_t meta = start_atom("meta");
+    put_u32(0);
+    uint64_t hdlr2 = start_atom("hdlr");
+    put_u32(0); put_u32(0); put("mdirappl", 8);
+    put_u32(0); put_u32(0); put_u8(0);
+    end_atom(hdlr2);
+    write_ilst();
+    end_atom(meta);
+    end_atom(udta);
+    end_atom(moov);
+}
+
+static bool start_file(void) {
+    static const uint8_t header[44] = {
+        0x00, 0x00, 0x00, 0x1c, 'f', 't', 'y', 'p',
+        /* Apple's decoders only honour iTunSMPB/edit-list gapless trimming
+         * in files branded M4A/M4B. */
+        'M', '4', 'A', ' ', 0, 0, 0, 0, 'M', '4', 'A', ' ', 'm', 'p', '4', '2', 'i', 's', 'o', 'm',
+        /* 'wide' placeholder so a >4 GiB mdat header can later grow in place */
+        0x00, 0x00, 0x00, 0x08, 'w', 'i', 'd', 'e',
+        0x00, 0x00, 0x00, 0x00, 'm', 'd', 'a', 't',
+    };
+    put(header, sizeof(header));
+    return !g.error;
+}
+
+/* Public API */
 
 int mp4_open(const char *path, bool overwrite) {
 #ifdef _WIN32
@@ -76,186 +438,189 @@ int mp4_open(const char *path, bool overwrite) {
 #else
     if (!overwrite && access(path, 0) == 0) return 1;
 #endif
-    g_file = cli_fopen(path, "wb");
-    if (!g_file) return 1;
+    g.f = cli_fopen(path, "wb");
+    if (!g.f) return 1;
 
-    g_io.user_data = g_file;
-    g_io.read = file_read_cb;
-    g_io.write = file_write_cb;
-    g_io.seek = file_seek_cb;
-    g_io.tell = file_tell_cb;
-    g_io.flush = file_flush_cb;
-
-    const uint8_t *codec_data_backup = g_track_cfg.codec_data;
-    uint32_t codec_len_backup = g_track_cfg.codec_data_len;
-
-    faam_muxer_config_init(&g_cfg, sizeof(g_cfg));
-    g_cfg.metadata = &g_metadata;
-
-    memset(&g_track_cfg, 0, sizeof(g_track_cfg));
-    g_track_cfg.struct_size = sizeof(g_track_cfg);
-    g_track_cfg.track_type = FAAM_TRACK_AUDIO;
-    g_track_cfg.codec_id = FAAM_CODEC_AAC;
-    g_track_cfg.timescale = 44100;
-    g_track_cfg.codec_data = codec_data_backup;
-    g_track_cfg.codec_data_len = codec_len_backup;
+    g.rate = 44100;
+    g.channels = 0;
+    g.language[0] = 0;
+    g.creation_time = 0;
+    g.constant_rate = false;
+    memset(&g.gapless, 0, sizeof(g.gapless));
     return 0;
 }
 
-void mp4_set_creation_time(uint32_t t) {
-    g_cfg.creation_time = t;
-    if (g_muxer) faam_muxer_set_creation_time(g_muxer, t);
-}
+void mp4_set_creation_time(uint32_t t) { g.creation_time = t; }
 
 void mp4_set_format(uint32_t samplerate, uint32_t channels, uint32_t bits) {
-    g_track_cfg.timescale = samplerate;
-    g_track_cfg.sample_rate = samplerate;
-    g_track_cfg.channels = channels;
-    g_sample_size = (uint16_t)bits;
+    g.rate = samplerate;
+    g.channels = channels;
+    g.sample_bits = (uint16_t)bits;
 }
 
-void mp4_set_constant_rate(bool constant) {
-    g_cfg.constant_rate = constant;
-}
+void mp4_set_constant_rate(bool constant) { g.constant_rate = constant; }
 
 void mp4_set_decoder_config(const uint8_t *asc, unsigned long size) {
-    g_track_cfg.codec_data = asc;
-    g_track_cfg.codec_data_len = (uint32_t)size;
+    g.asc = asc;
+    g.asc_len = (uint32_t)size;
 }
 
-void mp4_set_encoder(const char *value) {
-    g_metadata.encoder = value;
-}
+void mp4_set_encoder(const char *value) { g.encoder = value; }
 
 void mp4_set_tag(mp4_tag_id_t id, const char *value) {
     if (!value) return;
     switch (id) {
-    case MP4TAG_ARTIST: g_metadata.artist = value; break;
-    case MP4TAG_ARTISTSORT: g_metadata.artist_sort = value; break;
-    case MP4TAG_TITLE: g_metadata.title = value; break;
-    case MP4TAG_ALBUM: g_metadata.album = value; break;
-    case MP4TAG_ALBUMSORT: g_metadata.album_sort = value; break;
-    case MP4TAG_ALBUMARTIST: g_metadata.album_artist = value; break;
-    case MP4TAG_ALBUMARTISTSORT: g_metadata.album_artist_sort = value; break;
-    case MP4TAG_COMPOSER: g_metadata.composer = value; break;
-    case MP4TAG_COMPOSERSORT: g_metadata.composer_sort = value; break;
-    case MP4TAG_YEAR: g_metadata.year = value; break;
-    case MP4TAG_COMMENT: g_metadata.comment = value; break;
+    case MP4TAG_ARTIST: g.artist = value; break;
+    case MP4TAG_ARTISTSORT: g.artist_sort = value; break;
+    case MP4TAG_TITLE: g.title = value; break;
+    case MP4TAG_ALBUM: g.album = value; break;
+    case MP4TAG_ALBUMSORT: g.album_sort = value; break;
+    case MP4TAG_ALBUMARTIST: g.album_artist = value; break;
+    case MP4TAG_ALBUMARTISTSORT: g.album_artist_sort = value; break;
+    case MP4TAG_COMPOSER: g.composer = value; break;
+    case MP4TAG_COMPOSERSORT: g.composer_sort = value; break;
+    case MP4TAG_YEAR: g.year = value; break;
+    case MP4TAG_COMMENT: g.comment = value; break;
     default: break;
     }
 }
 
-void mp4_set_genre(uint16_t genre) {
-    g_metadata.genre_code = genre;
-}
+void mp4_set_genre(uint16_t genre) { g.genre = genre; }
 
 void mp4_set_language(const char *lang) {
-    memset(g_track_cfg.language, 0, sizeof(g_track_cfg.language));
-    if (lang && strlen(lang) >= 3) memcpy(g_track_cfg.language, lang, 3);
+    memset(g.language, 0, sizeof(g.language));
+    if (lang && strlen(lang) >= 3) memcpy(g.language, lang, 3);
 }
 
-void mp4_set_compilation(bool flag) {
-    g_metadata.compilation = flag;
-}
+void mp4_set_compilation(bool flag) { g.compilation = flag; }
 
-void mp4_set_track(uint16_t num, uint16_t total) {
-    g_metadata.track_num = num; g_metadata.track_total = total;
-}
+void mp4_set_track(uint16_t num, uint16_t total) { g.track = num; g.ntracks = total; }
 
-void mp4_set_disc(uint16_t num, uint16_t total) {
-    g_metadata.disc_num = num; g_metadata.disc_total = total;
-}
+void mp4_set_disc(uint16_t num, uint16_t total) { g.disc = num; g.ndiscs = total; }
 
-void mp4_set_cover(const uint8_t *data, uint32_t size) {
-    g_metadata.cover_art = data; g_metadata.cover_bytes = size;
-}
+void mp4_set_cover(const uint8_t *data, uint32_t size) { g.cover = data; g.cover_bytes = size; }
 
 void mp4_set_gapless(uint32_t priming, uint32_t padding, uint64_t original_samples) {
-    g_cfg.gapless.encoder_delay = priming;
-    g_cfg.gapless.end_padding = padding;
-    g_cfg.gapless.total_samples = original_samples;
+    g.gapless.delay = priming;
+    g.gapless.padding = padding;
+    g.gapless.total = original_samples;
 }
 
+/* The name is borrowed; the value is copied because callers free their
+ * UTF-8 conversion right after the call. */
 int mp4_add_custom_tag(const char *name, const char *value) {
     if (!name || !value) return -1;
-    uint32_t idx = g_metadata.num_custom_tags;
-    if (idx == g_custom_capacity) {
-        uint32_t capacity = g_custom_capacity ? g_custom_capacity * 2 : 8;
-        if (capacity < g_custom_capacity || capacity > UINT32_MAX / sizeof(*g_custom_tags)) return -1;
-        faam_custom_tag *tags = (faam_custom_tag *)realloc(g_custom_tags, (size_t)capacity * sizeof(*tags));
+    if (g.ncustom == g.custom_cap) {
+        uint32_t cap = g.custom_cap ? g.custom_cap * 2 : 8;
+        custom_tag *tags = (custom_tag *)realloc(g.custom, (size_t)cap * sizeof(*tags));
         if (!tags) return -1;
-        g_custom_tags = tags;
-        g_custom_capacity = capacity;
+        g.custom = tags;
+        g.custom_cap = cap;
     }
     char *copy = (char *)malloc(strlen(value) + 1);
     if (!copy) return -1;
     memcpy(copy, value, strlen(value) + 1);
-    g_custom_tags[idx].name = name;
-    g_custom_tags[idx].value = copy;
-    g_metadata.custom_tags = g_custom_tags;
-    g_metadata.num_custom_tags++;
+    g.custom[g.ncustom].name = name;
+    g.custom[g.ncustom].value = copy;
+    g.ncustom++;
     return 0;
 }
 
 int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
-    if (!g_muxer) {
-        faam_muxer_config_add_track(&g_cfg, &g_track_cfg, NULL);
+    if (g.error || g.finalized || !data || !size || g.asc_len > 256) return -1;
+    if (!g.nsamples && !g.mdat_size && !start_file()) return -1;
 
-        if (faam_muxer_open(&g_cfg, &g_io, &g_muxer) != FAAM_OK) return -1;
-        if (faam_muxer_set_audio_sample_size(g_muxer, 1, g_sample_size) != FAAM_OK) return -1;
+    put(data, size);
+    if (g.error) return -1;
+    g.mdat_size += size;
+    g.total_bytes += size;
+    g.samples += samples;
+
+    if (g.nsamples == g.sizes_cap) {
+        uint32_t cap = g.sizes_cap ? g.sizes_cap * 2 : 1024;
+        if (cap < g.sizes_cap) return -1;
+        uint32_t *tmp = (uint32_t *)realloc(g.sizes, (size_t)cap * sizeof(*tmp));
+        if (!tmp) return -1;
+        g.sizes = tmp;
+        g.sizes_cap = cap;
     }
-    return faam_muxer_write_frame(g_muxer, 1, data, size, samples, 0, true) == FAAM_OK ? 0 : -1;
+    g.sizes[g.nsamples++] = size;
+
+    /* Short drain frames do not contribute to a full-length bitrate window. */
+    if (g.last_frame_samples <= samples) {
+        uint32_t ts = track_rate();
+        g.window_bytes += size;
+        g.window_ticks += samples;
+        if (g.window_ticks >= ts) {
+            uint32_t rate = (uint32_t)(8 * g.window_bytes * ts / g.window_ticks);
+            if (g.window_max < rate) g.window_max = rate;
+            g.window_bytes = g.window_ticks = 0;
+        }
+        g.last_frame_samples = samples;
+    }
+    if (g.max_frame_size < size) g.max_frame_size = size;
+
+    if (g.nstts && g.stts[g.nstts - 1].delta == samples) {
+        g.stts[g.nstts - 1].count++;
+    } else {
+        if (g.nstts == g.stts_cap) {
+            uint32_t cap = g.stts_cap ? g.stts_cap * 2 : 16;
+            void *tmp = realloc(g.stts, (size_t)cap * sizeof(*g.stts));
+            if (!tmp) return -1;
+            g.stts = tmp;
+            g.stts_cap = cap;
+        }
+        g.stts[g.nstts].count = 1;
+        g.stts[g.nstts].delta = samples;
+        g.nstts++;
+    }
+    return 0;
 }
 
 int mp4_finish(void) {
-    if (g_muxer) {
-        faam_muxer_set_gapless(g_muxer, &g_cfg.gapless);
-        return faam_muxer_finalize(g_muxer) == FAAM_OK ? 0 : 1;
+    if (!g.f || g.error || !g.nsamples) return 1;
+    if (g.finalized) return 0;
+
+    uint64_t pos = tell_pos();
+    bool large = g.mdat_size > UINT32_MAX - 8ULL;
+    if (!seek_to(MDAT_DATA_POS - (large ? 16 : 8))) return 1;
+    if (large) {
+        put_u32(1);
+        put("mdat", 4);
+        put_u64(g.mdat_size + 16);
+    } else {
+        put_u32((uint32_t)(g.mdat_size + 8));
     }
-    return 1;
+    if (!seek_to(pos)) return 1;
+
+    write_moov();
+    if (!g.error && fflush(g.f) != 0) g.error = true;
+    g.finalized = !g.error;
+    return g.error ? 1 : 0;
 }
 
 int mp4_close(void) {
-    if (g_muxer) {
-        faam_muxer_close(&g_muxer);
-        g_muxer = NULL;
-    }
-    for (uint32_t i = 0; i < g_metadata.num_custom_tags; i++) free((void *)g_custom_tags[i].value);
-    free(g_custom_tags);
-    g_custom_tags = NULL;
-    g_custom_capacity = 0;
-    g_metadata.custom_tags = NULL;
-    g_metadata.num_custom_tags = 0;
-    if (g_file) {
-        int result = fclose(g_file);
-        g_file = NULL;
+    for (uint32_t i = 0; i < g.ncustom; i++) free(g.custom[i].value);
+    free(g.custom);
+    g.custom = NULL;
+    g.ncustom = g.custom_cap = 0;
+    free(g.sizes);
+    g.sizes = NULL;
+    free(g.stts);
+    g.stts = NULL;
+    g.nsamples = g.sizes_cap = g.nstts = g.stts_cap = 0;
+    g.mdat_size = g.total_bytes = g.samples = 0;
+    g.max_frame_size = g.last_frame_samples = g.window_max = 0;
+    g.window_bytes = g.window_ticks = 0;
+    g.finalized = g.error = false;
+    if (g.f) {
+        int result = fclose(g.f);
+        g.f = NULL;
         return result != 0;
     }
     return 0;
 }
 
-static inline void get_info_helper(faam_muxer_info *info) {
-    memset(info, 0, sizeof(*info));
-    info->struct_size = sizeof(*info);
-    if (g_muxer) faam_muxer_get_info(g_muxer, 1, info);
-}
-
-uint32_t mp4_frame_count(void) {
-    faam_muxer_info info; get_info_helper(&info); return info.frame_count;
-}
-
-uint64_t mp4_sample_count(void) {
-    faam_muxer_info info; get_info_helper(&info); return info.duration_ticks;
-}
-
-uint32_t mp4_max_bitrate(void) {
-    faam_muxer_info info; get_info_helper(&info); return info.max_bitrate;
-}
-
-uint32_t mp4_avg_bitrate(void) {
-    faam_muxer_info info; get_info_helper(&info); return info.avg_bitrate;
-}
-
-uint32_t mp4_max_frame_size(void) {
-    faam_muxer_info info; get_info_helper(&info); return info.max_frame_size;
-}
+uint32_t mp4_frame_count(void) { return g.nsamples; }
+uint64_t mp4_sample_count(void) { return g.samples; }
+uint32_t mp4_max_frame_size(void) { return g.max_frame_size; }
