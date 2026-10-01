@@ -284,7 +284,9 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
                 }
                 bits_skip(bs, 1); /* reserved_ps */
             }
-            cnt -= (int)(bits_get_consumed(bs) - before);
+            uint32_t used = bits_get_consumed(bs) - before;
+            if (used == 0) { ok = false; break; } /* input exhausted */
+            cnt -= (int)used;
         }
         if (cnt < 0) ok = false;
         else bits_skip(bs, (uint32_t)cnt);

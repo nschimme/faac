@@ -49,7 +49,7 @@ uint32_t bits_get(BitReader *bs, uint32_t nbits)
     uint32_t val = 0;
     while (nbits > 0) {
         if (bs->byte_pos >= bs->len) {
-            return val << nbits;
+            return nbits < 32 ? val << nbits : 0;
         }
         uint32_t bits_left_in_byte = 8 - bs->bit_pos;
         if (nbits <= bits_left_in_byte) {
