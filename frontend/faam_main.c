@@ -528,7 +528,7 @@ static int cmd_mux(int argc, char **argv)
 {
     const char *output_file = NULL;
     bool is_m4b = false;
-    uint32_t delay = 1024;
+    uint32_t delay = 0;
     uint32_t padding = 0;
     uint16_t width = 1920;
     uint16_t height = 1080;
@@ -1372,7 +1372,7 @@ static int cmd_tag(int argc, char **argv)
 }
 
 /* Chapter file format: one chapter per line, "HH:MM:SS.mmm<TAB>Title". No
- * duration field -- QuickTime's chpl atom (chapter.c) doesn't store one
+ * duration field -- Nero's chpl atom (chapter.c) doesn't store one
  * either; a chapter's extent is implicitly "until the next chapter starts". */
 static bool parse_chapter_line(const char *line, faam_chapter *out)
 {

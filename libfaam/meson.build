@@ -21,10 +21,16 @@ libfaam_headers = files(
 
 libfaam_inc = include_directories('../include', '../libfaac', '../common')
 
+faam_args = []
+if get_option('embedded')
+    faam_args += ['-DFAAM_EMBEDDED=1']
+endif
+
 libfaam_shared = shared_library(
   'faam',
   libfaam_sources,
   include_directories: libfaam_inc,
+  c_args: faam_args,
   version: '1.0.0',
   soversion: '0',
   gnu_symbol_visibility: 'hidden',
@@ -40,7 +46,7 @@ libfaam_static = static_library(
   'faam',
   libfaam_sources,
   include_directories: libfaam_inc,
-  c_args: ffunc_args,
+  c_args: ffunc_args + faam_args,
   gnu_symbol_visibility: 'hidden',
   install: true,
 )

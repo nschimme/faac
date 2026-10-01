@@ -15,7 +15,7 @@
 
 /*
  * Full Thread-Safe Multi-Track ISO BMFF Muxer Engine for libfaam
- * Supports audio (AAC, PCM) and video (H.264/AVC, H.265/HEVC) tracks.
+ * Supports audio (AAC) and video (H.264/AVC, H.265/HEVC) tracks.
  */
 
 #include <stdio.h>
@@ -40,6 +40,7 @@ enum {
 };
 
 static inline bool grow_membuf(faam_muxer *m, size_t extra) {
+    if (extra > SIZE_MAX - m->mempos) return false;
     if (m->mempos + extra <= m->memcap) return true;
     size_t max_cap = ((size_t)1 << 30);
     size_t new_cap = m->memcap ? m->memcap * 2 : 1024;
@@ -58,6 +59,7 @@ static inline bool grow_membuf(faam_muxer *m, size_t extra) {
 }
 
 static inline void mem_write(faam_muxer *m, const void *data, size_t size) {
+    if (m->mem_error) return;
     if (m->membuf) {
         if (!grow_membuf(m, size)) { m->mem_error = 1; return; }
         memcpy(m->membuf + m->mempos, data, size);
@@ -100,6 +102,7 @@ static inline long start_atom(faam_muxer *m, const char *name) {
 }
 
 static inline void end_atom(faam_muxer *m, long pos) {
+    if (m->mem_error) return;
     if (m->membuf) {
         uint32_t size = (uint32_t)(m->mempos - pos);
 #if !WORDS_BIGENDIAN
@@ -120,7 +123,12 @@ static uint64_t presentation_samples(const faam_muxer *m, const faam_muxer_track
     if (tr->cfg.track_type == FAAM_TRACK_AUDIO && m->cfg.gapless.encoder_delay > 0 &&
         m->cfg.gapless.total_samples)
         return m->cfg.gapless.total_samples;
-    return tr->bitrate_window.samples;
+    uint64_t samples = tr->bitrate_window.samples;
+    if (tr->cfg.track_type == FAAM_TRACK_AUDIO) {
+        uint64_t delay = m->cfg.gapless.encoder_delay;
+        return samples > delay ? samples - delay : 0;
+    }
+    return samples;
 }
 
 static void put_descriptor(faam_muxer *m, uint8_t tag, uint32_t size) {
@@ -201,14 +209,26 @@ faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size)
     if (!cfg || caller_size < sizeof(faam_muxer_config)) return FAAM_ERR_INVALID_ARG;
     memset(cfg, 0, caller_size);
     cfg->struct_size = caller_size;
-    cfg->gapless.encoder_delay = 1024;
+
     return FAAM_OK;
+}
+
+static bool valid_track(const faam_track_config *tr) {
+    if (tr->track_id == UINT32_MAX || tr->codec_data_len > 256 ||
+        (tr->codec_data_len && !tr->codec_data)) return false;
+    if (tr->track_type == FAAM_TRACK_AUDIO) return tr->codec_id == FAAM_CODEC_AAC;
+    return tr->track_type == FAAM_TRACK_VIDEO &&
+        (tr->codec_id == FAAM_CODEC_H264 || tr->codec_id == FAAM_CODEC_H265) &&
+        tr->width && tr->height && tr->codec_data && tr->codec_data_len;
 }
 
 faam_status faam_muxer_config_add_track(faam_muxer_config *cfg, const faam_track_config *track, uint32_t *out_track_id)
 {
-    if (!cfg || !track) return FAAM_ERR_INVALID_ARG;
-    if (cfg->num_tracks >= 8) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!cfg || !track || !valid_track(track)) return FAAM_ERR_INVALID_ARG;
+    if (cfg->num_tracks >= 8) return FAAM_ERR_INVALID_ARG;
+    uint32_t id = track->track_id ? track->track_id : cfg->num_tracks + 1;
+    for (uint32_t t = 0; t < cfg->num_tracks; t++)
+        if (cfg->tracks[t].track_id == id) return FAAM_ERR_INVALID_ARG;
 
     uint32_t idx = cfg->num_tracks;
     cfg->tracks[idx] = *track;
@@ -233,6 +253,14 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
         return FAAM_ERR_INVALID_ARG;
     }
 
+    *out_muxer = NULL;
+    if (!io->write || cfg->num_tracks > FAAM_MAX_TRACKS || cfg->num_chapters > 255 ||
+        (cfg->num_chapters && !cfg->chapters)) return FAAM_ERR_INVALID_ARG;
+    for (uint32_t t = 0; t < cfg->num_tracks; t++) {
+        if (!valid_track(&cfg->tracks[t]) || !cfg->tracks[t].track_id) return FAAM_ERR_INVALID_ARG;
+        for (uint32_t k = 0; k < t; k++)
+            if (cfg->tracks[k].track_id == cfg->tracks[t].track_id) return FAAM_ERR_INVALID_ARG;
+    }
     struct faam_muxer *m = (struct faam_muxer *)mem_buf;
     memset(m, 0, sizeof(*m));
     m->cfg = *cfg;
@@ -297,10 +325,14 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
     memcpy(hdr + 8, brands, 20);
     /* 'wide' placeholder so a >4 GiB mdat header can later grow in place. */
     memcpy(hdr + 28, "\0\0\0\x08wide", 8);
-    if (m->io.write) m->io.write(m->io.user_data, hdr, sizeof(hdr));
+    if (m->io.write(m->io.user_data, hdr, sizeof(hdr)) != sizeof(hdr)) {
+        faam_muxer_close(m); return FAAM_ERR_IO_WRITE;
+    }
 
     uint8_t mdat_hdr[8] = { 0x00, 0x00, 0x00, 0x00, 'm', 'd', 'a', 't' };
-    if (m->io.write) m->io.write(m->io.user_data, mdat_hdr, 8);
+    if (m->io.write(m->io.user_data, mdat_hdr, 8) != 8) {
+        faam_muxer_close(m); return FAAM_ERR_IO_WRITE;
+    }
     m->mdat_pos = m->io.tell ? m->io.tell(m->io.user_data) : 44;
 
     *out_muxer = m;
@@ -321,6 +353,7 @@ FAAMAPI faam_status faam_muxer_set_metadata(faam_muxer *m, const faam_metadata *
 
 faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8_t *frame_buf, uint32_t frame_bytes, uint32_t duration_ticks, bool is_keyframe)
 {
+    if (m && m->error) return m->error;
     if (!m || !frame_buf || frame_bytes == 0) return FAAM_ERR_INVALID_ARG;
 
     faam_muxer_track *tr = NULL;
@@ -330,11 +363,10 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
             break;
         }
     }
-    if (!tr && m->num_tracks > 0) tr = &m->tracks[0];
     if (!tr) return FAAM_ERR_NO_TRACK;
 
     if (m->io.write) {
-        if (m->io.write(m->io.user_data, frame_buf, frame_bytes) != (int32_t)frame_bytes) return FAAM_ERR_IO_WRITE;
+        if (m->io.write(m->io.user_data, frame_buf, frame_bytes) != (int32_t)frame_bytes) return m->error = FAAM_ERR_IO_WRITE;
     }
 
     m->mdat_size += frame_bytes;
@@ -343,7 +375,7 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
     if (tr->sample_count >= tr->sample_capacity) {
         uint32_t new_cap = tr->sample_capacity * 2;
         faam_sample *tmp = (faam_sample *)ReallocMemory(tr->samples, new_cap * sizeof(faam_sample));
-        if (!tmp) return FAAM_ERR_INSUFFICIENT_MEM;
+        if (!tmp) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
         tr->samples = tmp;
         tr->sample_capacity = new_cap;
     }
@@ -358,7 +390,7 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
         if (tr->stss_count >= tr->stss_capacity) {
             uint32_t new_cap = tr->stss_capacity * 2;
             uint32_t *tmp = (uint32_t *)ReallocMemory(tr->stss_entries, new_cap * sizeof(uint32_t));
-            if (!tmp) return FAAM_ERR_INSUFFICIENT_MEM;
+            if (!tmp) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
             tr->stss_entries = tmp;
             tr->stss_capacity = new_cap;
         }
@@ -373,7 +405,7 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
         if (tr->stts_count >= tr->stts_capacity) {
             uint32_t new_cap = tr->stts_capacity * 2;
             faam_stts_entry *tmp = (faam_stts_entry *)ReallocMemory(tr->stts_entries, new_cap * sizeof(faam_stts_entry));
-            if (!tmp) return FAAM_ERR_INSUFFICIENT_MEM;
+            if (!tmp) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
             tr->stts_entries = tmp;
             tr->stts_capacity = new_cap;
         }
@@ -385,18 +417,52 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
     return FAAM_OK;
 }
 
+/* Exact while the numerator fits 64 bits; beyond that the recording is long
+ * enough that dividing first costs well under 1 % of the rate. */
+static uint32_t average_bitrate(uint64_t bytes, uint64_t ticks, uint32_t ts) {
+    if (!ticks) return 0;
+    uint64_t scale = (uint64_t)ts * 8;
+    uint64_t rate = bytes <= UINT64_MAX / scale ? bytes * scale / ticks
+                                                : bytes / ticks * scale;
+    return rate > UINT32_MAX ? UINT32_MAX : (uint32_t)rate;
+}
+
+static void update_bitrates(faam_muxer_track *tr) {
+    uint64_t bytes = 0, ticks = 0, bucket_bytes = 0, bucket = 0, peak = 0;
+    uint32_t ts = tr->cfg.timescale ? tr->cfg.timescale :
+        (tr->cfg.track_type == FAAM_TRACK_AUDIO ? 44100 : 90000);
+    for (uint32_t i = 0; i < tr->sample_count; i++) {
+        uint64_t next_bucket = ticks / ts;
+        if (next_bucket != bucket) {
+            if (bucket_bytes > peak) peak = bucket_bytes;
+            bucket_bytes = 0; bucket = next_bucket;
+        }
+        bytes += tr->samples[i].size;
+        bucket_bytes += tr->samples[i].size;
+        ticks += tr->samples[i].duration;
+    }
+    if (bucket_bytes > peak) peak = bucket_bytes;
+    tr->avg_bitrate = average_bitrate(bytes, ticks, ts);
+    tr->max_bitrate = peak > UINT32_MAX / 8 ? UINT32_MAX : (uint32_t)(peak * 8);
+}
+
 faam_status faam_muxer_finalize(faam_muxer *m)
 {
     if (!m) return FAAM_ERR_INVALID_ARG;
-    m->mem_error = 0;
-
-    if (m->io.seek && m->io.write) {
-        uint64_t pos = m->io.tell ? m->io.tell(m->io.user_data) : 0;
-        m->io.seek(m->io.user_data, m->mdat_pos - 8);
-        uint32_t sz_be = bswap32((uint32_t)(m->mdat_size + 8));
-        m->io.write(m->io.user_data, &sz_be, 4);
-        m->io.seek(m->io.user_data, pos);
-    }
+    if (m->error) return m->error;
+    if (!m->io.seek || !m->io.tell) return m->error = FAAM_ERR_UNSUPPORTED;
+    uint64_t pos = m->io.tell(m->io.user_data);
+    bool large = m->mdat_size > UINT32_MAX - 8ULL;
+    uint8_t header[16];
+    write_u32_be(header, large ? 1 : (uint32_t)(m->mdat_size + 8));
+    memcpy(header + 4, "mdat", 4);
+    if (large) write_u64_be(header + 8, m->mdat_size + 16);
+    if (!m->io.seek(m->io.user_data, m->mdat_pos - (large ? 16 : 8)))
+        return m->error = FAAM_ERR_UNSUPPORTED;
+    uint32_t bytes = large ? 16 : 4;
+    if (m->io.write(m->io.user_data, header, bytes) != (int32_t)bytes)
+        return m->error = FAAM_ERR_IO_WRITE;
+    if (!m->io.seek(m->io.user_data, pos)) return m->error = FAAM_ERR_UNSUPPORTED;
 
     m->mempos = 0;
     m->memcap = 65536;
@@ -404,7 +470,7 @@ faam_status faam_muxer_finalize(faam_muxer *m)
         m->memcap += (size_t)m->tracks[t].sample_count * 12;
     }
     m->membuf = (uint8_t *)AllocMemory(m->memcap);
-    if (!m->membuf) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!m->membuf) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
 
     /* The audio rate keeps the gapless edit sample-exact; milliseconds would
      * truncate segment_duration. */
@@ -423,6 +489,7 @@ faam_status faam_muxer_finalize(faam_muxer *m)
 
     for (uint32_t t = 0; t < m->num_tracks; t++) {
         faam_muxer_track *tr = &m->tracks[t];
+        update_bitrates(tr);
         uint32_t ts = tr->cfg.timescale ? tr->cfg.timescale : (tr->cfg.track_type == FAAM_TRACK_AUDIO ? 44100 : 90000);
         uint64_t dur_mv = (presentation_samples(m, tr) * (uint64_t)movie_timescale) / ts;
         if (dur_mv > max_movie_dur) max_movie_dur = dur_mv;
@@ -438,7 +505,10 @@ faam_status faam_muxer_finalize(faam_muxer *m)
     put_u32(m, 0); put_u32(m, MP4_FP1616_ONE); put_u32(m, 0);
     put_u32(m, 0); put_u32(m, 0); put_u32(m, MP4_FP0230_ONE);
     put_u32(m, 0); put_u32(m, 0); put_u32(m, 0); put_u32(m, 0); put_u32(m, 0); put_u32(m, 0);
-    put_u32(m, m->num_tracks + 1);
+    uint32_t max_id = 0;
+    for (uint32_t t = 0; t < m->num_tracks; t++)
+        if (m->tracks[t].cfg.track_id > max_id) max_id = m->tracks[t].cfg.track_id;
+    put_u32(m, max_id + 1);
     end_atom(m, mvhd);
 
     for (uint32_t t = 0; t < m->num_tracks; t++) {
@@ -448,7 +518,7 @@ faam_status faam_muxer_finalize(faam_muxer *m)
 
         long trak = start_atom(m, "trak");
         long tkhd = start_atom(m, "tkhd");
-        put_u32(m, (use64_time ? (1U << 24) : 0) | 1);
+        put_u32(m, (use64_time ? (1U << 24) : 0) | 3);
         put_time(m, now, use64_time); put_time(m, now, use64_time);
         put_u32(m, tr->cfg.track_id); put_u32(m, 0);
         put_time(m, track_dur_mv, use64_time);
@@ -466,7 +536,9 @@ faam_status faam_muxer_finalize(faam_muxer *m)
             put_u32(m, use64_time ? (1U << 24) : 0);
             put_u32(m, 1);
             put_time(m, track_dur_mv, use64_time);
-            put_time(m, m->cfg.gapless.encoder_delay, use64_time);
+            uint64_t delay = m->cfg.gapless.encoder_delay;
+            if (delay > tr->bitrate_window.samples) delay = tr->bitrate_window.samples;
+            put_time(m, delay, use64_time);
             put_u16(m, 1); put_u16(m, 0);
             end_atom(m, elst);
             end_atom(m, edts);
@@ -531,7 +603,7 @@ faam_status faam_muxer_finalize(faam_muxer *m)
             put_u8(m, (uint8_t)(bufferSizeDB >> 16));
             put_u8(m, (uint8_t)(bufferSizeDB >> 8));
             put_u8(m, (uint8_t)(bufferSizeDB & 0xff));
-            put_u32(m, 128000); put_u32(m, 128000);
+            put_u32(m, tr->max_bitrate); put_u32(m, tr->avg_bitrate);
             put_descriptor(m, 5, tr->codec_data_len);
             put_data(m, tr->codec_data, tr->codec_data_len);
             put_descriptor(m, 6, 1); put_u8(m, 2);
@@ -624,8 +696,9 @@ faam_status faam_muxer_finalize(faam_muxer *m)
 
     if (m->cfg.chapters && m->cfg.num_chapters > 0) {
         long chpl = start_atom(m, "chpl");
+        put_u32(m, 1U << 24);
         put_u32(m, 0);
-        put_u32(m, m->cfg.num_chapters);
+        put_u8(m, (uint8_t)m->cfg.num_chapters);
         for (uint32_t c = 0; c < m->cfg.num_chapters; c++) {
             put_u64(m, m->cfg.chapters[c].start_ms * 10000ULL);
             size_t tlen = strlen(m->cfg.chapters[c].title);
@@ -653,6 +726,12 @@ faam_status faam_muxer_finalize(faam_muxer *m)
     if (m->cfg.metadata.year[0]) put_tag(m, "\xa9" "day", m->cfg.metadata.year);
     if (m->cfg.metadata.comment[0]) put_tag(m, "\xa9" "cmt", m->cfg.metadata.comment);
     if (m->cfg.metadata.genre_code) put_tag_genre(m, m->cfg.metadata.genre_code);
+    else put_tag(m, "\251gen", m->cfg.metadata.genre_str);
+    put_tag(m, "sonm", m->cfg.metadata.title_sort);
+    put_tag(m, "soar", m->cfg.metadata.artist_sort);
+    put_tag(m, "soal", m->cfg.metadata.album_sort);
+    put_tag(m, "soaa", m->cfg.metadata.album_artist_sort);
+    put_tag(m, "soco", m->cfg.metadata.composer_sort);
     if (m->cfg.metadata.compilation) put_tag_u8(m, "cpil", 1);
     if (m->cfg.metadata.track_num) put_tag_index(m, "trkn", m->cfg.metadata.track_num, m->cfg.metadata.track_total);
     if (m->cfg.metadata.disc_num) put_tag_index(m, "disk", m->cfg.metadata.disc_num, m->cfg.metadata.disc_total);
@@ -678,7 +757,7 @@ faam_status faam_muxer_finalize(faam_muxer *m)
         put_tag_ext(m, "com.apple.iTunes", "iTunSMPB", smpb);
     }
 
-    for (uint32_t i = 0; i < m->cfg.metadata.num_custom_tags; i++) {
+    for (uint32_t i = 0; i < m->cfg.metadata.num_custom_tags && i < 16; i++) {
         put_tag_ext(m, "faac", m->cfg.metadata.custom_tags[i].name, m->cfg.metadata.custom_tags[i].value);
     }
 
@@ -687,14 +766,14 @@ faam_status faam_muxer_finalize(faam_muxer *m)
     end_atom(m, udta);
     end_atom(m, moov);
 
-    if (m->io.write) {
-        m->io.write(m->io.user_data, m->membuf, (uint32_t)m->mempos);
-    }
+    if (m->mem_error) m->error = FAAM_ERR_INSUFFICIENT_MEM;
+    else if (m->io.write(m->io.user_data, m->membuf, (uint32_t)m->mempos) != (int32_t)m->mempos)
+        m->error = FAAM_ERR_IO_WRITE;
 
     FreeMemory(m->membuf);
     m->membuf = NULL;
 
-    return FAAM_OK;
+    return m->error;
 }
 
 void faam_muxer_close(faam_muxer *m)
@@ -713,11 +792,25 @@ faam_status faam_muxer_get_info(const faam_muxer *m, faam_muxer_info *out_info)
     if (!m || !out_info || out_info->struct_size < sizeof(faam_muxer_info)) {
         return FAAM_ERR_INVALID_ARG;
     }
+    faam_muxer_track stats = {0};
+    if (m->num_tracks) { stats = m->tracks[0]; update_bitrates(&stats); }
     out_info->struct_size = sizeof(faam_muxer_info);
     out_info->frame_count = m->num_tracks > 0 ? m->tracks[0].sample_count : 0;
     out_info->sample_count = m->num_tracks > 0 ? m->tracks[0].bitrate_window.samples : 0;
-    out_info->max_bitrate = m->num_tracks > 0 ? m->tracks[0].max_bitrate : 0;
-    out_info->avg_bitrate = m->num_tracks > 0 ? m->tracks[0].avg_bitrate : 0;
-    out_info->max_frame_size = m->num_tracks > 0 ? (uint16_t)m->tracks[0].max_frame_size : 0;
+    out_info->max_bitrate = m->num_tracks > 0 ? stats.max_bitrate : 0;
+    out_info->avg_bitrate = m->num_tracks > 0 ? stats.avg_bitrate : 0;
+    out_info->max_frame_size = m->num_tracks > 0 ? m->tracks[0].max_frame_size : 0;
     return FAAM_OK;
 }
+
+#ifdef FAAM_EMBEDDED
+faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta) {
+    (void)io; (void)meta;
+    return FAAM_ERR_UNSUPPORTED;
+}
+
+faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *chapters, uint32_t count) {
+    (void)io; (void)chapters; (void)count;
+    return FAAM_ERR_UNSUPPORTED;
+}
+#endif

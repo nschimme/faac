@@ -109,7 +109,8 @@ static void make_faststart_layout(const char *path) {
     fseek(f, 0, SEEK_SET);
     uint8_t *buf = (uint8_t *)malloc((size_t)total);
     assert(buf != NULL);
-    assert(fread(buf, 1, (size_t)total, f) == (size_t)total);
+    size_t bytes_read = fread(buf, 1, (size_t)total, f);
+    assert(bytes_read == (size_t)total);
     fclose(f);
 
     long pos = 0, ftyp_end = 0;
@@ -143,8 +144,147 @@ static void make_faststart_layout(const char *path) {
 }
 #endif /* FAAM_HAVE_TAG_CHAPTER */
 
+
+/* Payload writes advance a virtual file; only headers and moov occupy memory. */
+typedef struct {
+    uint64_t pos;
+    uint8_t header[44];
+    uint8_t moov[16384];
+    uint32_t moov_size;
+    bool fail_write;
+    bool fail_seek;
+    bool fail_moov;
+} virtual_file;
+
+static int32_t virtual_write(void *user, const void *data, uint32_t size) {
+    virtual_file *v = (virtual_file *)user;
+    if (v->fail_write || (v->fail_moov && size >= 8 && size < 16384 &&
+        !memcmp((const uint8_t *)data + 4, "moov", 4))) return -1;
+    if (v->pos < 44 && size <= 44 - v->pos) memcpy(v->header + v->pos, data, size);
+    else if (size < sizeof(v->moov) && size >= 8 && !memcmp((const uint8_t *)data + 4, "moov", 4)) {
+        memcpy(v->moov, data, size); v->moov_size = size;
+    }
+    v->pos += size;
+    return (int32_t)size;
+}
+static bool virtual_seek(void *user, uint64_t pos) {
+    virtual_file *v = (virtual_file *)user;
+    if (v->fail_seek) return false;
+    v->pos = pos; return true;
+}
+static uint64_t virtual_tell(void *user) { return ((virtual_file *)user)->pos; }
+static uint32_t test_u32(const uint8_t *b) {
+    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3];
+}
+static uint64_t test_u64(const uint8_t *b) { return ((uint64_t)test_u32(b) << 32) | test_u32(b + 4); }
+
+static void test_virtual_mux(void) {
+    faam_muxer_config cfg;
+    faam_status st = faam_muxer_config_init(&cfg, sizeof(cfg));
+    assert(st == FAAM_OK && cfg.gapless.encoder_delay == 0);
+    faam_track_config invalid = {0};
+    invalid.track_type = FAAM_TRACK_VIDEO; invalid.codec_id = FAAM_CODEC_H264;
+    st = faam_muxer_config_add_track(&cfg, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARG);
+    invalid.track_type = FAAM_TRACK_AUDIO; invalid.codec_id = FAAM_CODEC_GENERIC;
+    st = faam_muxer_config_add_track(&cfg, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARG);
+    faam_muxer_config validation = cfg;
+    invalid.codec_id = FAAM_CODEC_AAC; invalid.track_id = 77;
+    st = faam_muxer_config_add_track(&validation, &invalid, NULL); assert(st == FAAM_OK);
+    st = faam_muxer_config_add_track(&validation, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARG);
+    for (unsigned i = 0; i < 7; i++) {
+        invalid.track_id = i + 100;
+        st = faam_muxer_config_add_track(&validation, &invalid, NULL); assert(st == FAAM_OK);
+    }
+    st = faam_muxer_config_add_track(&validation, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARG);
+    cfg.metadata.num_custom_tags = UINT32_MAX;
+    for (unsigned i = 0; i < 16; i++) {
+        strcpy(cfg.metadata.custom_tags[i].name, "test");
+        strcpy(cfg.metadata.custom_tags[i].value, "value");
+    }
+    invalid.track_id = 77; invalid.timescale = 44100;
+    st = faam_muxer_config_add_track(&cfg, &invalid, NULL); assert(st == FAAM_OK);
+    cfg.gapless.encoder_delay = 10;
+    uint32_t state_size;
+    st = faam_muxer_get_state_size(&cfg, &state_size); assert(st == FAAM_OK);
+    void *mem = malloc(state_size); assert(mem);
+    uint8_t payload = 0;
+    for (unsigned mode = 0; mode < 7; mode++) {
+        virtual_file v = {0};
+        faam_io io = { &v, NULL, virtual_write, virtual_seek, virtual_tell };
+        if (mode == 6) io.seek = NULL;
+        faam_muxer *m;
+        st = faam_muxer_init(mem, state_size, &cfg, &io, &m); assert(st == FAAM_OK);
+        st = faam_muxer_write_frame(m, 999, &payload, 1, 1, true); assert(st == FAAM_ERR_NO_TRACK);
+        if (mode == 0) {
+            for (unsigned i = 0; i < 5; i++) {
+                st = faam_muxer_write_frame(m, 77, &payload, 0x40000000, 44100, true); assert(st == FAAM_OK);
+            }
+        } else {
+            st = faam_muxer_write_frame(m, 77, &payload, 100, 44100, true); assert(st == FAAM_OK);
+        }
+        if (mode == 2) v.fail_write = true;
+        if (mode == 5) v.fail_moov = true;
+        if (mode == 3) v.fail_seek = true;
+        if (mode == 4) {
+            v.fail_write = true;
+            st = faam_muxer_write_frame(m, 77, &payload, 1, 1, true); assert(st == FAAM_ERR_IO_WRITE);
+            v.fail_write = false;
+        }
+        st = faam_muxer_finalize(m);
+        if (mode >= 2) {
+            faam_status expected = (mode == 3 || mode == 6) ? FAAM_ERR_UNSUPPORTED : FAAM_ERR_IO_WRITE;
+            assert(st == expected);
+            v.fail_write = v.fail_seek = v.fail_moov = false;
+            st = faam_muxer_finalize(m); assert(st == expected);
+            st = faam_muxer_write_frame(m, 77, &payload, 1, 1, true); assert(st == expected);
+        } else if (mode == 0) {
+            assert(st == FAAM_OK);
+            assert(test_u32(v.header + 28) == 1 && !memcmp(v.header + 32, "mdat", 4));
+            assert(test_u64(v.header + 36) == 5ULL * 0x40000000 + 16);
+            bool co64 = false;
+            for (uint32_t i = 4; i + 56 <= v.moov_size; i++) if (!memcmp(v.moov + i, "co64", 4)) {
+                assert(test_u32(v.moov + i + 8) == 5);
+                assert(test_u64(v.moov + i + 12) == 44);
+                assert(test_u64(v.moov + i + 44) == 44 + 4ULL * 0x40000000);
+                co64 = true;
+            }
+            assert(co64);
+            faam_muxer_info info = {0}; info.struct_size = sizeof(info);
+            st = faam_muxer_get_info(m, &info); assert(st == FAAM_OK);
+            assert(info.max_frame_size == 0x40000000);
+        } else {
+            assert(st == FAAM_OK);
+            bool edit = false, movie = false, track = false;
+            for (uint32_t i = 4; i + 100 <= v.moov_size; i++) {
+                if (!memcmp(v.moov + i, "elst", 4)) {
+                    assert(test_u32(v.moov + i + 12) == 44090);
+                    assert(test_u32(v.moov + i + 16) == 10); edit = true;
+                }
+                if (!memcmp(v.moov + i, "mvhd", 4)) {
+                    assert(test_u32(v.moov + i + 100) == 78); movie = true;
+                }
+                if (!memcmp(v.moov + i, "tkhd", 4)) {
+                    assert(test_u32(v.moov + i + 4) == 3); track = true;
+                }
+            }
+            assert(edit && movie && track);
+            assert(test_u32(v.header + 36) == 108 && !memcmp(v.header + 40, "mdat", 4));
+            faam_muxer_info info = {0}; info.struct_size = sizeof(info);
+            st = faam_muxer_get_info(m, &info); assert(st == FAAM_OK);
+            assert(info.avg_bitrate == 800 && info.max_bitrate == 800 && info.max_frame_size == 100);
+        }
+        faam_muxer_close(m);
+    }
+#ifndef FAAM_HAVE_TAG_CHAPTER
+    st = faam_update_tags_stream(NULL, NULL); assert(st == FAAM_ERR_UNSUPPORTED);
+    st = faam_update_chapters_stream(NULL, NULL, 0); assert(st == FAAM_ERR_UNSUPPORTED);
+#endif
+    free(mem);
+}
+
 int main(void)
 {
+    test_virtual_mux();
     /* Test 1: Stream Muxer file creation (Audio & Video tracks, chapters) */
     FILE *fout = fopen("test_output.mp4", "wb");
     assert(fout != NULL);
@@ -311,6 +451,10 @@ int main(void)
         st = faam_muxer_config_init(&gcfg, sizeof(gcfg));
         assert(st == FAAM_OK);
 
+        gcfg.gapless.encoder_delay = 123;
+        gcfg.gapless.end_padding = 45;
+        gcfg.gapless.total_samples = 40000;
+
         uint8_t g_asc[2] = { 0x12, 0x10 };
         faam_track_config g_tr;
         memset(&g_tr, 0, sizeof(g_tr));
@@ -392,6 +536,10 @@ int main(void)
         faam_io tio = { tf, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
         st = faam_update_tags_stream(&tio, &big_meta);
         assert(st == FAAM_OK);
+        faam_chapter updated[2] = {0};
+        updated[0].start_ms = 123; strcpy(updated[0].title, "First");
+        updated[1].start_ms = 4567; strcpy(updated[1].title, "Second");
+        st = faam_update_chapters_stream(&tio, updated, 2); assert(st == FAAM_OK);
         fclose(tf);
 
         long size_after_grow = 0;
@@ -455,6 +603,14 @@ int main(void)
         faam_demuxer *dd = NULL;
         st = faam_demuxer_init(d_mem, d_size, &dio, &dd);
         assert(st == FAAM_OK);
+
+        faam_chapter updated_read[2]; uint32_t updated_count;
+        st = faam_demuxer_get_chapters(dd, updated_read, 2, &updated_count); assert(st == FAAM_OK);
+        assert(updated_count == 2 && updated_read[0].start_ms == 123 && updated_read[1].start_ms == 4567);
+        assert(!strcmp(updated_read[1].title, "Second"));
+        faam_gapless_info gapless;
+        st = faam_demuxer_get_gapless(dd, &gapless); assert(st == FAAM_OK);
+        assert(gapless.encoder_delay == 123 && gapless.end_padding == 45 && gapless.total_samples == 40000);
 
         int frames_seen = 0;
         uint8_t read_buf[TEST_FRAME_SIZE];
