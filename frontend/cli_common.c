@@ -24,11 +24,11 @@ const char *cli_version_string(char *buf, size_t buf_size, const char *version) 
 }
 
 void cli_print_license(const char *name, const char *copyright) {
-    printf("%s\n", name);
+    fprintf(stderr, "%s\n", name);
     if (copyright)
-        printf("%s\n", copyright);
-    printf("\n");
-    cli_print_lgpl_notice(stdout, "software");
+        fprintf(stderr, "%s\n", copyright);
+    fprintf(stderr, "\n");
+    cli_print_lgpl_notice(stderr, "library");
 }
 
 void cli_print_lgpl_notice(FILE *stream, const char *subject) {
