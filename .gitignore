@@ -73,3 +73,5 @@ core
 .mcp.json
 experiments/
 /libfaac/faac.pc
+/probe_tmp/
+__pycache__/

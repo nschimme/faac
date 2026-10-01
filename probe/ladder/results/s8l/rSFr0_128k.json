@@ -1,0 +1,1129 @@
+{
+"g2_00": {
+"stem": "12-German-male-speech.441.16b48k",
+"base112": {
+"mos": 4.8945,
+"bytes": 111495
+},
+"base128": {
+"mos": 4.9358,
+"bytes": 127091
+},
+"base144": {
+"mos": 4.9597,
+"bytes": 142772
+},
+"apple": {
+"mos": 4.9245,
+"bytes": 126356
+},
+"rSFr0": {
+"mos": 4.9348,
+"bytes": 127349
+}
+},
+"g2_01": {
+"stem": "15-Good-evening.441.16b48k",
+"base112": {
+"mos": 4.7026,
+"bytes": 121630
+},
+"base128": {
+"mos": 4.7875,
+"bytes": 138586
+},
+"base144": {
+"mos": 4.8566,
+"bytes": 155663
+},
+"apple": {
+"mos": 4.8626,
+"bytes": 139572
+},
+"rSFr0": {
+"mos": 4.7763,
+"bytes": 129762
+}
+},
+"g2_02": {
+"stem": "21-classic.441.16b48k",
+"base112": {
+"mos": 4.8011,
+"bytes": 136911
+},
+"base128": {
+"mos": 4.8446,
+"bytes": 156019
+},
+"base144": {
+"mos": 4.8872,
+"bytes": 175231
+},
+"apple": {
+"mos": 4.8969,
+"bytes": 161500
+},
+"rSFr0": {
+"mos": 4.8386,
+"bytes": 145203
+}
+},
+"g2_03": {
+"stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+"base112": {
+"mos": 4.7774,
+"bytes": 124107
+},
+"base128": {
+"mos": 4.8576,
+"bytes": 141415
+},
+"base144": {
+"mos": 4.9041,
+"bytes": 158828
+},
+"apple": {
+"mos": 4.9027,
+"bytes": 146220
+},
+"rSFr0": {
+"mos": 4.8575,
+"bytes": 139584
+}
+},
+"g2_04": {
+"stem": "25-This-is-the-end.441.16b48k",
+"base112": {
+"mos": 4.8005,
+"bytes": 130366
+},
+"base128": {
+"mos": 4.8481,
+"bytes": 148567
+},
+"base144": {
+"mos": 4.8897,
+"bytes": 166856
+},
+"apple": {
+"mos": 4.8779,
+"bytes": 151511
+},
+"rSFr0": {
+"mos": 4.8412,
+"bytes": 144292
+}
+},
+"g2_05": {
+"stem": "27-last-song-drums-and-trampets.441.16b48k",
+"base112": {
+"mos": 4.8365,
+"bytes": 141667
+},
+"base128": {
+"mos": 4.8808,
+"bytes": 161321
+},
+"base144": {
+"mos": 4.9103,
+"bytes": 181094
+},
+"apple": {
+"mos": 4.893,
+"bytes": 160177
+},
+"rSFr0": {
+"mos": 4.8735,
+"bytes": 156082
+}
+},
+"g2_06": {
+"stem": "35_SQAM_glockenspiel_cut.16b48k",
+"base112": {
+"mos": 4.9174,
+"bytes": 141837
+},
+"base128": {
+"mos": 4.9476,
+"bytes": 161413
+},
+"base144": {
+"mos": 4.9594,
+"bytes": 181321
+},
+"apple": {
+"mos": 4.9764,
+"bytes": 162513
+},
+"rSFr0": {
+"mos": 4.9435,
+"bytes": 166941
+}
+},
+"g2_07": {
+"stem": "4-Sound-English-male.441.16b48k",
+"base112": {
+"mos": 4.9183,
+"bytes": 128208
+},
+"base128": {
+"mos": 4.9472,
+"bytes": 146057
+},
+"base144": {
+"mos": 4.9611,
+"bytes": 164025
+},
+"apple": {
+"mos": 4.9338,
+"bytes": 147341
+},
+"rSFr0": {
+"mos": 4.9443,
+"bytes": 146244
+}
+},
+"g2_08": {
+"stem": "9-Have-big-expensive-car.441.16b48k",
+"base112": {
+"mos": 4.8361,
+"bytes": 137654
+},
+"base128": {
+"mos": 4.8793,
+"bytes": 156837
+},
+"base144": {
+"mos": 4.9053,
+"bytes": 176125
+},
+"apple": {
+"mos": 4.8627,
+"bytes": 162405
+},
+"rSFr0": {
+"mos": 4.8663,
+"bytes": 153433
+}
+},
+"g2_09": {
+"stem": "Asleep__4.11-4.31_.16b48k",
+"base112": {
+"mos": 4.7884,
+"bytes": 141654
+},
+"base128": {
+"mos": 4.851,
+"bytes": 161455
+},
+"base144": {
+"mos": 4.8899,
+"bytes": 181335
+},
+"apple": {
+"mos": 4.8712,
+"bytes": 170897
+},
+"rSFr0": {
+"mos": 4.8458,
+"bytes": 158039
+}
+},
+"g2_10": {
+"stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+"base112": {
+"mos": 4.7184,
+"bytes": 141496
+},
+"base128": {
+"mos": 4.8025,
+"bytes": 161222
+},
+"base144": {
+"mos": 4.858,
+"bytes": 181111
+},
+"apple": {
+"mos": 4.8222,
+"bytes": 167098
+},
+"rSFr0": {
+"mos": 4.8059,
+"bytes": 159085
+}
+},
+"g2_11": {
+"stem": "Changes.16b48k",
+"base112": {
+"mos": 4.8016,
+"bytes": 141706
+},
+"base128": {
+"mos": 4.8652,
+"bytes": 161579
+},
+"base144": {
+"mos": 4.8957,
+"bytes": 181513
+},
+"apple": {
+"mos": 4.8154,
+"bytes": 165582
+},
+"rSFr0": {
+"mos": 4.8587,
+"bytes": 157696
+}
+},
+"g2_12": {
+"stem": "Coral.16b48k",
+"base112": {
+"mos": 4.7824,
+"bytes": 141619
+},
+"base128": {
+"mos": 4.8587,
+"bytes": 161389
+},
+"base144": {
+"mos": 4.898,
+"bytes": 181288
+},
+"apple": {
+"mos": 4.8932,
+"bytes": 170569
+},
+"rSFr0": {
+"mos": 4.8565,
+"bytes": 155509
+}
+},
+"g2_13": {
+"stem": "ExitMusic.16b48k",
+"base112": {
+"mos": 4.8726,
+"bytes": 141631
+},
+"base128": {
+"mos": 4.9051,
+"bytes": 161393
+},
+"base144": {
+"mos": 4.9219,
+"bytes": 181288
+},
+"apple": {
+"mos": 4.8941,
+"bytes": 162701
+},
+"rSFr0": {
+"mos": 4.9075,
+"bytes": 162236
+}
+},
+"g2_14": {
+"stem": "Girl_In_The_Fire__Sample_.16b48k",
+"base112": {
+"mos": 4.6659,
+"bytes": 141816
+},
+"base128": {
+"mos": 4.7924,
+"bytes": 161654
+},
+"base144": {
+"mos": 4.8567,
+"bytes": 181572
+},
+"apple": {
+"mos": 4.8814,
+"bytes": 168357
+},
+"rSFr0": {
+"mos": 4.7823,
+"bytes": 153302
+}
+},
+"g2_15": {
+"stem": "Greatest_Love_of_All_2min57.16b48k",
+"base112": {
+"mos": 4.7799,
+"bytes": 141606
+},
+"base128": {
+"mos": 4.8577,
+"bytes": 161350
+},
+"base144": {
+"mos": 4.8977,
+"bytes": 181233
+},
+"apple": {
+"mos": 4.8797,
+"bytes": 164047
+},
+"rSFr0": {
+"mos": 4.8456,
+"bytes": 153383
+}
+},
+"g2_16": {
+"stem": "Hey Tonight.16b48k",
+"base112": {
+"mos": 4.7829,
+"bytes": 141607
+},
+"base128": {
+"mos": 4.8339,
+"bytes": 161373
+},
+"base144": {
+"mos": 4.8854,
+"bytes": 181265
+},
+"apple": {
+"mos": 4.8417,
+"bytes": 168330
+},
+"rSFr0": {
+"mos": 4.8308,
+"bytes": 157205
+}
+},
+"g2_17": {
+"stem": "Hotel California.16b48k",
+"base112": {
+"mos": 4.7779,
+"bytes": 141860
+},
+"base128": {
+"mos": 4.8325,
+"bytes": 161620
+},
+"base144": {
+"mos": 4.8741,
+"bytes": 181546
+},
+"apple": {
+"mos": 4.8397,
+"bytes": 169947
+},
+"rSFr0": {
+"mos": 4.8142,
+"bytes": 156108
+}
+},
+"g2_18": {
+"stem": "Jupiter, the Bringer of Jolity.16b48k",
+"base112": {
+"mos": 4.7563,
+"bytes": 141725
+},
+"base128": {
+"mos": 4.8241,
+"bytes": 161532
+},
+"base144": {
+"mos": 4.8766,
+"bytes": 181416
+},
+"apple": {
+"mos": 4.8518,
+"bytes": 167571
+},
+"rSFr0": {
+"mos": 4.8183,
+"bytes": 154286
+}
+},
+"g2_19": {
+"stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+"base112": {
+"mos": 4.7928,
+"bytes": 142639
+},
+"base128": {
+"mos": 4.8435,
+"bytes": 162305
+},
+"base144": {
+"mos": 4.8743,
+"bytes": 182097
+},
+"apple": {
+"mos": 4.8316,
+"bytes": 166877
+},
+"rSFr0": {
+"mos": 4.8451,
+"bytes": 162827
+}
+},
+"g2_20": {
+"stem": "NewYorkCity.16b48k",
+"base112": {
+"mos": 4.8084,
+"bytes": 141667
+},
+"base128": {
+"mos": 4.8585,
+"bytes": 161443
+},
+"base144": {
+"mos": 4.8972,
+"bytes": 181368
+},
+"apple": {
+"mos": 4.8397,
+"bytes": 167490
+},
+"rSFr0": {
+"mos": 4.8495,
+"bytes": 158213
+}
+},
+"g2_21": {
+"stem": "Only Time.16b48k",
+"base112": {
+"mos": 4.7978,
+"bytes": 141552
+},
+"base128": {
+"mos": 4.8501,
+"bytes": 161353
+},
+"base144": {
+"mos": 4.8835,
+"bytes": 181232
+},
+"apple": {
+"mos": 4.8651,
+"bytes": 170097
+},
+"rSFr0": {
+"mos": 4.839,
+"bytes": 153121
+}
+},
+"g2_22": {
+"stem": "Robots_old.16b48k",
+"base112": {
+"mos": 4.771,
+"bytes": 141536
+},
+"base128": {
+"mos": 4.8112,
+"bytes": 161290
+},
+"base144": {
+"mos": 4.8406,
+"bytes": 181158
+},
+"apple": {
+"mos": 4.7592,
+"bytes": 169148
+},
+"rSFr0": {
+"mos": 4.8053,
+"bytes": 158334
+}
+},
+"g2_23": {
+"stem": "Severance__1.31-1.51_.16b48k",
+"base112": {
+"mos": 4.8101,
+"bytes": 141761
+},
+"base128": {
+"mos": 4.875,
+"bytes": 161536
+},
+"base144": {
+"mos": 4.9174,
+"bytes": 181396
+},
+"apple": {
+"mos": 4.9237,
+"bytes": 164154
+},
+"rSFr0": {
+"mos": 4.8636,
+"bytes": 153962
+}
+},
+"g2_24": {
+"stem": "Shinsho_pool_3min45_4min4.16b48k",
+"base112": {
+"mos": 4.8727,
+"bytes": 141660
+},
+"base128": {
+"mos": 4.9011,
+"bytes": 161433
+},
+"base144": {
+"mos": 4.9227,
+"bytes": 181300
+},
+"apple": {
+"mos": 4.9149,
+"bytes": 167487
+},
+"rSFr0": {
+"mos": 4.8974,
+"bytes": 156236
+}
+},
+"g2_25": {
+"stem": "SinceAlways.16b48k",
+"base112": {
+"mos": 4.7903,
+"bytes": 141853
+},
+"base128": {
+"mos": 4.8302,
+"bytes": 161631
+},
+"base144": {
+"mos": 4.8761,
+"bytes": 181524
+},
+"apple": {
+"mos": 4.9135,
+"bytes": 164777
+},
+"rSFr0": {
+"mos": 4.8368,
+"bytes": 163108
+}
+},
+"g2_26": {
+"stem": "SlavesOfFear.16b48k",
+"base112": {
+"mos": 4.7796,
+"bytes": 141644
+},
+"base128": {
+"mos": 4.8329,
+"bytes": 161422
+},
+"base144": {
+"mos": 4.8793,
+"bytes": 181302
+},
+"apple": {
+"mos": 4.863,
+"bytes": 166480
+},
+"rSFr0": {
+"mos": 4.8196,
+"bytes": 156537
+}
+},
+"g2_27": {
+"stem": "The Chastising of Renegade.16b48k",
+"base112": {
+"mos": 4.7475,
+"bytes": 142211
+},
+"base128": {
+"mos": 4.807,
+"bytes": 161930
+},
+"base144": {
+"mos": 4.8616,
+"bytes": 181799
+},
+"apple": {
+"mos": 4.8104,
+"bytes": 171067
+},
+"rSFr0": {
+"mos": 4.7963,
+"bytes": 157902
+}
+},
+"g2_28": {
+"stem": "Through The Fire And Flames.16b48k",
+"base112": {
+"mos": 4.7517,
+"bytes": 141633
+},
+"base128": {
+"mos": 4.8132,
+"bytes": 161408
+},
+"base144": {
+"mos": 4.8748,
+"bytes": 181309
+},
+"apple": {
+"mos": 4.863,
+"bytes": 163130
+},
+"rSFr0": {
+"mos": 4.8069,
+"bytes": 159352
+}
+},
+"g2_29": {
+"stem": "TrosYGareg.16b48k",
+"base112": {
+"mos": 4.7965,
+"bytes": 141651
+},
+"base128": {
+"mos": 4.8819,
+"bytes": 161456
+},
+"base144": {
+"mos": 4.9266,
+"bytes": 181354
+},
+"apple": {
+"mos": 4.9282,
+"bytes": 157887
+},
+"rSFr0": {
+"mos": 4.8793,
+"bytes": 157416
+}
+},
+"g2_30": {
+"stem": "Waiting.16b48k",
+"base112": {
+"mos": 4.7135,
+"bytes": 142002
+},
+"base128": {
+"mos": 4.7931,
+"bytes": 161819
+},
+"base144": {
+"mos": 4.8533,
+"bytes": 181719
+},
+"apple": {
+"mos": 4.8221,
+"bytes": 166466
+},
+"rSFr0": {
+"mos": 4.8,
+"bytes": 152811
+}
+},
+"g2_31": {
+"stem": "With Love (Outro).16b48k",
+"base112": {
+"mos": 4.8392,
+"bytes": 141670
+},
+"base128": {
+"mos": 4.8809,
+"bytes": 161441
+},
+"base144": {
+"mos": 4.9103,
+"bytes": 181377
+},
+"apple": {
+"mos": 4.8569,
+"bytes": 161526
+},
+"rSFr0": {
+"mos": 4.8793,
+"bytes": 157901
+}
+},
+"g2_32": {
+"stem": "bah",
+"base112": {
+"mos": 4.7466,
+"bytes": 134680
+},
+"base128": {
+"mos": 4.8201,
+"bytes": 153483
+},
+"base144": {
+"mos": 4.8748,
+"bytes": 172407
+},
+"apple": {
+"mos": 4.8759,
+"bytes": 156583
+},
+"rSFr0": {
+"mos": 4.8066,
+"bytes": 142406
+}
+},
+"g2_33": {
+"stem": "bas",
+"base112": {
+"mos": 4.7446,
+"bytes": 141699
+},
+"base128": {
+"mos": 4.8264,
+"bytes": 161499
+},
+"base144": {
+"mos": 4.8707,
+"bytes": 181429
+},
+"apple": {
+"mos": 4.8502,
+"bytes": 163343
+},
+"rSFr0": {
+"mos": 4.8226,
+"bytes": 153075
+}
+},
+"g2_34": {
+"stem": "bonhemian_rhapsody.16b48k",
+"base112": {
+"mos": 4.7821,
+"bytes": 141565
+},
+"base128": {
+"mos": 4.8412,
+"bytes": 161360
+},
+"base144": {
+"mos": 4.8839,
+"bytes": 181216
+},
+"apple": {
+"mos": 4.8674,
+"bytes": 166245
+},
+"rSFr0": {
+"mos": 4.8371,
+"bytes": 156236
+}
+},
+"g2_35": {
+"stem": "clapton_44k.16b48k",
+"base112": {
+"mos": 4.7216,
+"bytes": 141518
+},
+"base128": {
+"mos": 4.7931,
+"bytes": 161282
+},
+"base144": {
+"mos": 4.8512,
+"bytes": 181203
+},
+"apple": {
+"mos": 4.8268,
+"bytes": 169741
+},
+"rSFr0": {
+"mos": 4.7927,
+"bytes": 158153
+}
+},
+"g2_36": {
+"stem": "cst",
+"base112": {
+"mos": 4.8005,
+"bytes": 93083
+},
+"base128": {
+"mos": 4.8515,
+"bytes": 106026
+},
+"base144": {
+"mos": 4.8855,
+"bytes": 119018
+},
+"apple": {
+"mos": 4.8262,
+"bytes": 111160
+},
+"rSFr0": {
+"mos": 4.8431,
+"bytes": 104226
+}
+},
+"g2_37": {
+"stem": "fms",
+"base112": {
+"mos": 4.7809,
+"bytes": 142159
+},
+"base128": {
+"mos": 4.846,
+"bytes": 161828
+},
+"base144": {
+"mos": 4.8931,
+"bytes": 181707
+},
+"apple": {
+"mos": 4.9176,
+"bytes": 160376
+},
+"rSFr0": {
+"mos": 4.856,
+"bytes": 161334
+}
+},
+"g2_38": {
+"stem": "girl.16b48k",
+"base112": {
+"mos": 4.9029,
+"bytes": 141724
+},
+"base128": {
+"mos": 4.9215,
+"bytes": 161456
+},
+"base144": {
+"mos": 4.9356,
+"bytes": 181349
+},
+"apple": {
+"mos": 4.688,
+"bytes": 169350
+},
+"rSFr0": {
+"mos": 4.9201,
+"bytes": 160900
+}
+},
+"g2_39": {
+"stem": "glk",
+"base112": {
+"mos": 4.9792,
+"bytes": 141731
+},
+"base128": {
+"mos": 4.9855,
+"bytes": 161512
+},
+"base144": {
+"mos": 4.9894,
+"bytes": 181368
+},
+"apple": {
+"mos": 4.9858,
+"bytes": 146148
+},
+"rSFr0": {
+"mos": 4.9864,
+"bytes": 169457
+}
+},
+"g2_40": {
+"stem": "hrp",
+"base112": {
+"mos": 4.8709,
+"bytes": 125179
+},
+"base128": {
+"mos": 4.9088,
+"bytes": 142571
+},
+"base144": {
+"mos": 4.9342,
+"bytes": 160076
+},
+"apple": {
+"mos": 4.9308,
+"bytes": 146390
+},
+"rSFr0": {
+"mos": 4.9102,
+"bytes": 143349
+}
+},
+"g2_41": {
+"stem": "liberate.16b48k",
+"base112": {
+"mos": 4.7756,
+"bytes": 71454
+},
+"base128": {
+"mos": 4.8166,
+"bytes": 81356
+},
+"base144": {
+"mos": 4.8659,
+"bytes": 91338
+},
+"apple": {
+"mos": 4.8137,
+"bytes": 85192
+},
+"rSFr0": {
+"mos": 4.7972,
+"bytes": 78310
+}
+},
+"g2_42": {
+"stem": "lob",
+"base112": {
+"mos": 4.7987,
+"bytes": 101021
+},
+"base128": {
+"mos": 4.846,
+"bytes": 115092
+},
+"base144": {
+"mos": 4.8819,
+"bytes": 129192
+},
+"apple": {
+"mos": 4.7971,
+"bytes": 119075
+},
+"rSFr0": {
+"mos": 4.8457,
+"bytes": 114775
+}
+},
+"g2_43": {
+"stem": "mof",
+"base112": {
+"mos": 4.7816,
+"bytes": 141621
+},
+"base128": {
+"mos": 4.8403,
+"bytes": 161388
+},
+"base144": {
+"mos": 4.878,
+"bytes": 181269
+},
+"apple": {
+"mos": 4.881,
+"bytes": 171064
+},
+"rSFr0": {
+"mos": 4.8437,
+"bytes": 161865
+}
+},
+"g2_44": {
+"stem": "qrt",
+"base112": {
+"mos": 4.7359,
+"bytes": 141843
+},
+"base128": {
+"mos": 4.8062,
+"bytes": 161643
+},
+"base144": {
+"mos": 4.8508,
+"bytes": 181570
+},
+"apple": {
+"mos": 4.8578,
+"bytes": 165904
+},
+"rSFr0": {
+"mos": 4.7959,
+"bytes": 152996
+}
+},
+"g2_45": {
+"stem": "sandman.16b48k",
+"base112": {
+"mos": 4.8299,
+"bytes": 141514
+},
+"base128": {
+"mos": 4.8768,
+"bytes": 161272
+},
+"base144": {
+"mos": 4.9113,
+"bytes": 181138
+},
+"apple": {
+"mos": 4.8965,
+"bytes": 163442
+},
+"rSFr0": {
+"mos": 4.8742,
+"bytes": 158327
+}
+},
+"g2_46": {
+"stem": "take_your_finger_frin_my_head.16b48k",
+"base112": {
+"mos": 4.6301,
+"bytes": 141738
+},
+"base128": {
+"mos": 4.7184,
+"bytes": 161536
+},
+"base144": {
+"mos": 4.8226,
+"bytes": 181421
+},
+"apple": {
+"mos": 4.8895,
+"bytes": 169512
+},
+"rSFr0": {
+"mos": 4.7025,
+"bytes": 158217
+}
+},
+"g2_47": {
+"stem": "trumpet.16b48k",
+"base112": {
+"mos": 4.8352,
+"bytes": 141958
+},
+"base128": {
+"mos": 4.8715,
+"bytes": 161578
+},
+"base144": {
+"mos": 4.8979,
+"bytes": 181373
+},
+"apple": {
+"mos": 4.8871,
+"bytes": 164168
+},
+"rSFr0": {
+"mos": 4.8811,
+"bytes": 161100
+}
+},
+"g2_48": {
+"stem": "velvet.16b48k",
+"base112": {
+"mos": 4.5675,
+"bytes": 142765
+},
+"base128": {
+"mos": 4.647,
+"bytes": 162189
+},
+"base144": {
+"mos": 4.7087,
+"bytes": 181690
+},
+"apple": {
+"mos": 4.7807,
+"bytes": 178939
+},
+"rSFr0": {
+"mos": 4.6474,
+"bytes": 163598
+}
+}
+}

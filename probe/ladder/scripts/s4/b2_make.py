@@ -8,18 +8,22 @@ Per ICS (frame, channel) d = round(mean over the set of Apple sf - FAAC sf).
   rSFr0..3  = Apple sf only on set bands whose centre is in 0-2 / 2-6 / 6-12 / >12 kHz
 Changed bands get origin 0, as in g_make/d_make rSF.
 usage: b2_make.py <G>"""
-import sys,copy,json,pathlib
+import sys,copy,json,pathlib,os,time
 here=pathlib.Path(__file__).resolve();sys.path.insert(0,str(here.parents[2]));sys.path.insert(0,str(here.parents[1]/'g'))
 from parse_dump import parse,ICS
 from g_make import fs
 G=pathlib.Path(sys.argv[1])
-ARMS=['K0','rSFr','rSFlev','rSFshape','rSFr0','rSFr1','rSFr2','rSFr3']
+ARMS=os.environ.get('LADDER_ARMS','K0,rSFr,rSFlev,rSFshape,rSFr0,rSFr1,rSFr2,rSFr3').split(',')
 EDGES=(2000,6000,12000)
 def reg(f):return sum(f>=e for e in EDGES)
 def lay(v):return (v.win_seq,v.window_shape,v.num_groups,tuple(v.group_len))
 out={}
+reported=False
 for it in json.load(open(G/'g2_index.json')):
+    if os.environ.get('LADDER_CLIP') and it['stem']!=os.environ['LADDER_CLIP']:continue
+    start=time.monotonic()
     k=it['id'];a=parse(str(G/f'{k}_apple.dump'));f=parse(str(G/f'{k}_normal.dump'))
+    if all((G/f'{k}_G_{arm}.bin').exists() and (G/f'{k}_G_{arm}_origin.bin').exists() for arm in ARMS):continue
     files={arm:(open(G/f'{k}_G_{arm}.bin','wb'),open(G/f'{k}_G_{arm}_origin.bin','wb')) for arm in ARMS}
     cnt={arm:0 for arm in ARMS};nset=[0,0,0,0];lev=[]
     for idx in range(max(a)+1):
@@ -50,4 +54,9 @@ for it in json.load(open(G/'g2_index.json')):
     for fo,fg in files.values():fo.close();fg.close()
     out[k]={'stem':it['stem'],'changed':cnt,'set_by_region':nset,'mean_level_shift':sum(lev)/max(1,len(lev))}
     print(k,it['stem'],out[k],flush=True)
-json.dump(out,open(G/'b2_make.json','w'),indent=0)
+    if not reported:
+        elapsed=time.monotonic()-start;print(f'make first new clip {elapsed:.1f}s; 49 clips estimate {49*elapsed/60:.1f}min',flush=True);reported=True
+    result=G/'s8l_make.json' if os.environ.get('LADDER_ARMS') else G/'b2_make.json'
+    previous=json.loads(result.read_text()) if result.exists() else {}
+    previous.update(out)
+    result.write_text(json.dumps(previous,indent=0))

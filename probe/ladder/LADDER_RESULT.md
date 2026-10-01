@@ -1846,3 +1846,29 @@ The explanation of the S7-CORE 0.5 result is a story, not a measurement. The ver
 at HE 32k**: 21 W / 28 L, worst clip hrp −0.193 (0.35 there: 25/24, −0.0009). The HE-wide `frame.c` commit is therefore
 not merged into the probe branch. Shipped instead: threshold 0.3 for HE only from 24 kbps/ch (HE 32k stereo unchanged),
 as its own PR on master; CI decides.
+
+## Stage S8-L — LC 128k Apple residual on the stack base (2026-10-01)
+
+Base: static probe, `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12`, LC 48 kHz stereo, 49 clips, Apple refs `ref/apple`
+(128k) and `ref/apple_lc96k`, bits-adjusted with the base's own 112/144 and 80/112 slope pairs. Pre-registered rule:
+`results/s8l/prereg.md`. Scripts `scripts/s8l/` (run locally: prepare, make, score, summary).
+
+Base check: since the S4-B2 results commit (5fd19b98) libfaac changed only by the `FAAC_PNS_THRESH`/`FAAC_PNS_MIN_SB`
+probe knobs (unset: same threshold, `sb >= 0` always true) and HE-only SBR writer code, so LC output is unchanged and
+S4-B2 was already on the stack base. The old-base reproduction control is therefore the same run; re-measured anyway.
+
+Control: K0 (builder, no change) PCM-identical to the base encode 49/49 at 128k and 96k.
+
+| rate | arm | adj | median | W/L | bytes | share of rSFr | worst clip |
+|---|---|---:|---:|---|---:|---:|---|
+| 128k | rSFr | +0.0145 | +0.0102 | 42/6 | −2.37 % | 100 % | glockenspiel −0.013 |
+| 128k | rSFr0 (0–2 kHz) | +0.0063 | +0.0034 | 33/13 | −2.21 % | 44 % | glockenspiel −0.010 |
+| 128k | rSFr1 (2–6 kHz) | +0.0058 | +0.0038 | 34/9 | −2.02 % | 40 % | glockenspiel −0.005 |
+| 96k | rSFr | +0.0103 | +0.0057 | 31/16 | −3.78 % | 100 % | liberate −0.036 |
+| 96k | rSFr0 | +0.0027 | +0.0011 | 25/20 | −2.46 % | 26 % | liberate −0.037 |
+| 96k | rSFr1 | +0.0044 | +0.0029 | 28/17 | −1.96 % | 43 % | Hey Tonight −0.017 |
+
+S4-B2 (+0.0153 / +0.0113) reproduces within ±0.001. Verdict by the pre-registered rule: rSFr ≥ +0.007, so the
+LC 128k residual (+0.007 vs Apple) is in the scalefactors, split about evenly between 0–2 and 2–6 kHz with neither
+region ≥ 50 %. This is an oracle ceiling (Apple's exact sf); level-only, shape-only, offsets and within-frame feature
+fits are already dead (§5, S5-B3), so any encoder rule must come from a different signal. No rule tested in this stage.

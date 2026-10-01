@@ -1,12 +1,12 @@
 """Encode step1 arms from <G>/<k>_G_<arm>.bin (+_origin.bin), decode, drop the +64 pad, score serially.
 Also scores the anchors (base<lo>, base<hi>, apple) once. Results -> <G>/<out>.json.
 usage: arm_score.py <G> <out> <arm,arm,...>   env: LADDER_RATE, LADDER_SLOPE, FAAC_BIN (+ encoder knobs)"""
-import os,sys,re,json,subprocess,pathlib,numpy as np,soundfile as sf
-G=pathlib.Path(sys.argv[1]);OUT=G/(sys.argv[2]+'.json');arms=sys.argv[3].split(',')
+import os,sys,re,json,subprocess,pathlib,time,numpy as np,soundfile as sf
+G=pathlib.Path(sys.argv[1]);OUT=pathlib.Path(os.environ.get('LADDER_RESULTS_DIR',str(G)))/(sys.argv[2]+'.json');OUT.parent.mkdir(parents=True,exist_ok=True);arms=sys.argv[3].split(',')
 repo=pathlib.Path(__file__).resolve().parents[4]
 PAD=int(os.environ.get('LADDER_PAD','64'));rate=os.environ.get('LADDER_RATE','128');lo,hi=os.environ.get('LADDER_SLOPE','112,144').split(',')
 faac=os.environ.get('FAAC_BIN',str(repo/'build_ladder/frontend/faac'))
-SC=[sys.executable,'/opt/faac-benchmark/scripts/score_clip.py']
+SC=[sys.executable,os.environ.get('LADDER_SCORER','/opt/faac-benchmark/scripts/score_clip.py')]
 res=json.load(open(OUT)) if OUT.exists() else {}
 def score(src,deg):
     p=subprocess.run(SC+[str(src),str(deg)],capture_output=True,text=True);m=re.search(r'MOS: ([\d.]+)',p.stdout)
@@ -15,8 +15,10 @@ def score(src,deg):
 def pcm(m):
     return np.frombuffer(subprocess.run(['ffmpeg','-v','error','-i',str(m),'-f','f32le','-ac','2','-'],capture_output=True,check=True).stdout,'<f4').reshape(-1,2)
 for it in json.load(open(G/'g2_index.json')):
+    if os.environ.get('LADDER_CLIP') and it['stem']!=os.environ['LADDER_CLIP']:continue
+    start=time.monotonic()
     k=it['id'];src=it['src'];n=sf.info(src).frames;r=res.setdefault(k,{'stem':it['stem']})
-    for a in [f'base{lo}',f'base{hi}','apple']:
+    for a in [f'base{lo}',f'base{rate}',f'base{hi}','apple']:
         if a in r:continue
         p=it['ref'] if a=='apple' else G/f'{k}_{a}.m4a';r[a]={'mos':score(src,p),'bytes':os.path.getsize(p)}
     for arm in arms:
@@ -31,5 +33,6 @@ for it in json.load(open(G/'g2_index.json')):
         r[arm]={'mos':score(src,wav),'bytes':os.path.getsize(enc)};os.remove(wav)
         if not arm.startswith('H_'):os.remove(enc)
         print(k,arm,r[arm],flush=True)
-    json.dump(res,open(OUT,'w'),indent=0)
+    temporary=OUT.with_suffix('.json.tmp');temporary.write_text(json.dumps(res,indent=0));temporary.replace(OUT)
+    if len(res)==1:print(f'score first clip {time.monotonic()-start:.1f}s; 49 clips estimate {49*(time.monotonic()-start)/60:.1f}min',flush=True)
 print('DONE')
