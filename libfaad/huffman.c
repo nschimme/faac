@@ -170,11 +170,7 @@ static inline uint32_t huff_decode(BitReader *bs, int book)
     return e >> 4;
 }
 
-#ifdef FAAD_STATS
 #define DECODE_HUFF_SF(bs) ((int)huff_decode((bs), 12))
-#else
-#define DECODE_HUFF_SF(bs) ((int)huff_decode((bs), 12))
-#endif
 
 static inline void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 {
