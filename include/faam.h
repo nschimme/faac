@@ -330,7 +330,6 @@ FAAMAPI faam_status faam_muxer_get_info(const faam_muxer *m, uint32_t track_id, 
 
 FAAMAPI const char *faam_strerror(faam_status status);
 
-/* Retrofit APIs return FAAM_ERR_UNSUPPORTED in embedded builds. */
 FAAMAPI faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta);
 FAAMAPI faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *chapters, uint32_t count);
 
