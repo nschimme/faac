@@ -13,11 +13,6 @@ option('decoder-ps',
     type: 'boolean',
     value: true)
 
-option('decoder-downsampled-sbr',
-    description: 'Downsampled SBR: synthesise HE-AAC at the core rate (32-band bank, half the output samples)',
-    type: 'boolean',
-    value: false)
-
 option('decoder',
     description: 'Build the FAAD decoder library and frontend executable',
     type: 'boolean',
