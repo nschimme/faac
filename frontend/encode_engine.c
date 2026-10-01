@@ -39,7 +39,7 @@
 #include "input.h"
 #include "mp4write.h"
 #include "charset.h"
-#include "git_version.h"
+#include "cli_common.h"
 
 void init_encode_options(encode_options_t *opts)
 {
@@ -97,14 +97,9 @@ bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const c
     return true;
 }
 
-/* FAAC_GIT_VERSION: short commit hash (+ "-dirty"), or "" with no .git. */
 const char *faac_version_string(char *buf, size_t buf_size, const char *lib_version)
 {
-    if (FAAC_GIT_VERSION[0])
-        snprintf(buf, buf_size, "%s (%s)", lib_version, FAAC_GIT_VERSION);
-    else
-        snprintf(buf, buf_size, "%s", lib_version);
-    return buf;
+    return cli_version_string(buf, buf_size, lib_version);
 }
 
 void free_encode_options(encode_options_t *opts)

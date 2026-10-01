@@ -219,7 +219,9 @@ static void print_usage(const char *prog)
         info.version = "3.0.0";
     }
 
-    printf("FAAD - Freeware Advanced Audio Decoder (v%s)\n", info.version);
+    char version_buf[128];
+    printf("FAAD %s\n",
+           cli_version_string(version_buf, sizeof(version_buf), info.version));
     printf("Usage: %s [options] <infile.aac|infile.m4a>\n\n", prog);
     printf("I/O & Format Options:\n");
     printf("  -o, --output <file>    Set output filename (default: stdout if piped, or infile.wav)\n");
@@ -236,13 +238,15 @@ static void print_usage(const char *prog)
     printf("      --json             Output bitstream info in JSON format\n");
     printf("  -q, --quiet            Quiet mode (suppress decoding progress)\n");
     printf("      --strict           Strict mode (noisily error and report debug details on failure)\n");
+    printf("      --license          Display copyright and license information\n");
     printf("  -h, --help             Display this help text\n");
 }
 
 enum {
     OPT_NO_GAPLESS = 300,
     OPT_JSON,
-    OPT_STRICT
+    OPT_STRICT,
+    OPT_LICENSE
 };
 
 static void print_strict_error(const char *filename, uint64_t offset, uint32_t frame_idx, faad_status st)
@@ -296,6 +300,7 @@ int main(int argc, char **argv)
         {"json", no_argument, 0, OPT_JSON},
         {"quiet", no_argument, 0, 'q'},
         {"strict", no_argument, 0, OPT_STRICT},
+        {"license", no_argument, 0, OPT_LICENSE},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
@@ -332,6 +337,13 @@ int main(int argc, char **argv)
         case OPT_JSON: json_info = true; info_only = true; break;
         case 'q': quiet = true; break;
         case OPT_STRICT: strict_mode = true; break;
+        case OPT_LICENSE: {
+            faad_library_info info;
+            info.struct_size = sizeof(info);
+            const char *copyright = faad_get_library_info(&info) == FAAD_OK ? info.copyright : NULL;
+            cli_print_license("FAAD - Freeware Advanced Audio Decoder", copyright);
+            return 0;
+        }
         case 'h': print_usage(argv[0]); return 0;
         default: break;
         }
