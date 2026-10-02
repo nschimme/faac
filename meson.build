@@ -57,7 +57,13 @@ endif
 subdir('docs')
 subdir('include')
 subdir('common')
-subdir('libfaac')
+if not get_option('encoder') and not get_option('decoder')
+    error('Enable at least one of -Dencoder and -Ddecoder')
+endif
+
+if get_option('encoder')
+    subdir('libfaac')
+endif
 
 if get_option('decoder')
     subdir('libfaad')
