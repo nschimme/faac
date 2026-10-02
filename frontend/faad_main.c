@@ -143,14 +143,23 @@ static void fifo_truncate_tail(PCMFifo *f, uint32_t bytes_to_remove)
     f->fill -= bytes_to_remove;
 }
 
-/* Unity-scale float to 24-bit, rounded to nearest and clamped. */
-static int32_t pcm_float_to_s24(float v)
+/* libfaad emits host-order samples; WAV wants little-endian. */
+static void pcm_to_little_endian(uint8_t *buf, uint32_t bytes, uint32_t sample_bytes)
 {
-    float x = v * 8388608.0f;
-    x += (x >= 0.0f) ? 0.5f : -0.5f;
-    if (x > 8388607.0f) x = 8388607.0f;
-    if (x < -8388608.0f) x = -8388608.0f;
-    return (int32_t)x;
+#if WORDS_BIGENDIAN
+    for (uint32_t i = 0; i + sample_bytes <= bytes; i += sample_bytes) {
+        uint8_t *p = buf + i;
+        if (sample_bytes == 2) {
+            uint16_t v; memcpy(&v, p, 2); v = htole16(v); memcpy(p, &v, 2);
+        } else if (sample_bytes == 3) {
+            write_pcm24_le(p, read_pcm24_be(p));
+        } else {
+            uint32_t v; memcpy(&v, p, 4); v = htole32(v); memcpy(p, &v, 4);
+        }
+    }
+#else
+    (void)buf; (void)bytes; (void)sample_bytes;
+#endif
 }
 
 /* dwChannelMask for the WAV order libfaad outputs (FL FR FC LFE BL BR SL SR). */
@@ -507,8 +516,7 @@ int main(int argc, char **argv)
     faad_config cfg;
     faad_config_init(&cfg, sizeof(cfg));
     cfg.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
-    /* 24-bit output is converted from float so it keeps the precision 16-bit rounding would drop */
-    cfg.output_format = (is_float || bit_depth == 24) ? FAAD_OUTPUT_FLOAT : FAAD_OUTPUT_16BIT;
+    cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : bit_depth == 24 ? FAAD_OUTPUT_24BIT : FAAD_OUTPUT_16BIT;
     cfg.downmix_mode = downmix;
 
     faad_decoder *dec = NULL;
@@ -559,7 +567,6 @@ int main(int argc, char **argv)
     }
 
     uint8_t outbuf[65536];
-    uint8_t pcm24_buf[98304];
     uint32_t total_pcm_bytes = 0;
     uint32_t sample_rate = 44100;
     uint32_t num_channels = 2;
@@ -621,8 +628,9 @@ int main(int argc, char **argv)
                 }
                 obj_type = finfo.ps_active ? FAAD_OBJ_HE_AAC_V2 : finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
-                uint32_t dec_bytes_per_sample = (is_float || bit_depth == 24) ? 4 : 2;
+                uint32_t dec_bytes_per_sample = is_float ? 4 : bit_depth / 8;
                 uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
+                pcm_to_little_endian(outbuf, bytes_written, dec_bytes_per_sample);
                 uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
                 if (!gapless_scaled) {
                     faad_stream_info sinfo = { .struct_size = sizeof(faad_stream_info) };
@@ -653,19 +661,7 @@ int main(int argc, char **argv)
                 }
 
                 if (fout && samples_to_write > 0) {
-                    if (bit_depth == 24 && !is_float) {
-                        const float *src_pcm = (const float *)(write_ptr);
-                        uint32_t total_items = samples_to_write * num_channels;
-                        for (uint32_t k = 0; k < total_items; k++) {
-                            int32_t val24 = pcm_float_to_s24(src_pcm[k]);
-                            pcm24_buf[k * 3 + 0] = (uint8_t)(val24 & 0xFF);
-                            pcm24_buf[k * 3 + 1] = (uint8_t)((val24 >> 8) & 0xFF);
-                            pcm24_buf[k * 3 + 2] = (uint8_t)((val24 >> 16) & 0xFF);
-                        }
-                        fifo_push(&fifo, pcm24_buf, total_items * 3);
-                    } else {
-                        fifo_push(&fifo, write_ptr, samples_to_write * dec_bytes_per_frame_sample);
-                    }
+                    fifo_push(&fifo, write_ptr, samples_to_write * dec_bytes_per_frame_sample);
 
                     uint32_t padding_bytes = padding_samples * num_channels * (bit_depth / 8);
                     if (fifo.fill > padding_bytes) {
@@ -718,23 +714,8 @@ int main(int argc, char **argv)
             obj_type = finfo.ps_active ? FAAD_OBJ_HE_AAC_V2 : finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
             if (fout && bytes_written > 0) {
-                uint32_t dec_bytes_per_sample = (is_float || bit_depth == 24) ? 4 : 2;
-                uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
-                uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
-
-                if (bit_depth == 24 && !is_float) {
-                    const float *src_pcm = (const float *)(outbuf);
-                    uint32_t total_items = frame_samples * num_channels;
-                    for (uint32_t k = 0; k < total_items; k++) {
-                        int32_t val24 = pcm_float_to_s24(src_pcm[k]);
-                        pcm24_buf[k * 3 + 0] = (uint8_t)(val24 & 0xFF);
-                        pcm24_buf[k * 3 + 1] = (uint8_t)((val24 >> 8) & 0xFF);
-                        pcm24_buf[k * 3 + 2] = (uint8_t)((val24 >> 16) & 0xFF);
-                    }
-                    fifo_push(&fifo, pcm24_buf, total_items * 3);
-                } else {
-                    fifo_push(&fifo, outbuf, bytes_written);
-                }
+                pcm_to_little_endian(outbuf, bytes_written, is_float ? 4 : bit_depth / 8);
+                fifo_push(&fifo, outbuf, bytes_written);
 
                 uint8_t pop_buf[4096];
                 while (fifo.fill > 0) {
