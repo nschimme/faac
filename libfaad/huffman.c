@@ -1,6 +1,5 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
- * Huffman decoder for spectral coefficients and scalefactors
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or

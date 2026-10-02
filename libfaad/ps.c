@@ -1,6 +1,5 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
- * Parametric stereo decoder, ISO/IEC 14496-3 §8.6 (HE-AAC v2).
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
