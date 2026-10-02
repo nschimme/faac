@@ -226,13 +226,6 @@ static struct {
     {0}
 };
 
-static const char *license =
-    "\nPlease note that the use of this software may require the payment of patent\n"
-    "royalties. You need to consider this issue before you start building derivative\n"
-    "works. We are not warranting or indemnifying you in any way for patent\n"
-    "royalities! YOU ARE SOLELY RESPONSIBLE FOR YOUR OWN ACTIONS!\n"
-    "\n";
-
 #ifndef _WIN32
 volatile int running = 1;
 static void signal_handler(int signal)
@@ -595,7 +588,7 @@ int main(int argc, char *argv[])
         case 'L':
             if (libinfo.copyright)
                 fprintf(stderr, "%s", libinfo.copyright);
-            fprintf(stderr, "%s", license);
+            cli_print_patent_notice(stderr);
             cli_print_lgpl_notice(stderr, "library");
             ret = 0;
             goto cleanup;
