@@ -14,8 +14,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- *
- * Shared CLI helpers for the faac/faad frontends.
  */
 
 #ifndef CLI_COMMON_H

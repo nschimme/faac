@@ -1,5 +1,6 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
+ * Comprehensive Unit & Integration Test for FAAD3 Engine
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -11,10 +12,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- */
-
-/*
- * Comprehensive Unit & Integration Test for FAAD3 Engine
  */
 
 #include <stdio.h>

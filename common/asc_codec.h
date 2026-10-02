@@ -1,5 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
+ * Shared AudioSpecificConfig (ISO/IEC 14496-3 1.6) codec
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -13,10 +14,7 @@
  * Lesser General Public License for more details.
  */
 
-/*
- * Shared AudioSpecificConfig (ISO/IEC 14496-3 1.6) codec.
- *
- * Parses/builds the core-LC-plus-implicit-SBR/PS-sync-extension bitstream
+/* Parses/builds the core-LC-plus-implicit-SBR/PS-sync-extension bitstream
  * that faac's own encoder emits (see SbrContextGetASC() in sbr.c, which
  * calls asc_codec_build() directly) and that libfaad's decoder and the
  * frontend's MP4 reader/writer both need to read back or reconstruct.

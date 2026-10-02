@@ -1,5 +1,6 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
+ * Robustness test: a corrupted ADTS stream must never stall the decoder
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -13,15 +14,12 @@
  * Lesser General Public License for more details.
  */
 
-/*
- * Robustness test: a corrupted ADTS stream must never stall the decoder.
- *
- * Encodes a synthetic signal with libfaac, damages the stream with a fixed
+/* Encodes a synthetic signal with libfaac, damages the stream with a fixed
  * PRNG (dropped frames, flipped bits, truncated tail), then feeds it to the
  * decoder the way a frontend does. The decoder must consume every byte,
  * advance on every call, emit at most one frame per call, and never exceed
- * the output the intact stream would produce.
- */
+ * the output the intact stream would produce. */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
