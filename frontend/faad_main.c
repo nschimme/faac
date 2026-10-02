@@ -233,7 +233,7 @@ static void print_usage(const char *prog)
            cli_version_string(version_buf, sizeof(version_buf), info.version));
     printf("Usage: %s [options] <infile.aac|infile.m4a>\n\n", prog);
     printf("I/O & Format Options:\n");
-    printf("  -o, --output <file>    Set output filename (default: stdout if piped, or infile.wav)\n");
+    printf("  -o, --output <file>    Set output filename (default: infile.wav, or stdout for stdin input)\n");
     printf("  -w, --stdout           Write output PCM to stdout\n");
     printf("  -f, --format <type>    Output container format: wav (default), raw\n");
     printf("  -b, --bits <depth>     Sample depth: 16 (default), 24, 32f (32-bit float)\n");
@@ -320,12 +320,15 @@ int main(int argc, char **argv)
         switch (opt) {
         case 'o': outfile = optarg; break;
         case 'w': write_stdout = true; break;
-        case 'f': if (strcmp(optarg, "raw") == 0) raw_format = true; break;
+        case 'f':
+            if (strcmp(optarg, "raw") == 0) raw_format = true;
+            else if (strcmp(optarg, "wav") != 0) { fprintf(stderr, "Unknown format '%s' (wav or raw)\n", optarg); return 1; }
+            break;
         case 'b':
             if (strcmp(optarg, "1") == 0 || strcmp(optarg, "16") == 0) { bit_depth = 16; is_float = false; }
             else if (strcmp(optarg, "2") == 0 || strcmp(optarg, "24") == 0) { bit_depth = 24; is_float = false; }
             else if (strcmp(optarg, "3") == 0 || strcmp(optarg, "4") == 0 || strcmp(optarg, "32f") == 0 || strcmp(optarg, "32") == 0) { bit_depth = 32; is_float = true; }
-            else bit_depth = 16;
+            else { fprintf(stderr, "Unknown bit depth '%s' (16, 24 or 32f)\n", optarg); return 1; }
             break;
         case 'a': adts_outfile = optarg; break;
         case 'd': {
@@ -339,7 +342,12 @@ int main(int argc, char **argv)
             else { fprintf(stderr, "Unknown downmix mode '%s' (mono/1 or stereo/2)\n", mode); return 1; }
             break;
         }
-        case 'j': jump_seconds = atof(optarg); break;
+        case 'j': {
+            char *end;
+            jump_seconds = strtod(optarg, &end);
+            if (end == optarg || *end || jump_seconds < 0.0) { fprintf(stderr, "Invalid jump time '%s'\n", optarg); return 1; }
+            break;
+        }
         case 'g': gapless = false; break;
         case OPT_NO_GAPLESS: gapless = false; break;
         case 'i': info_only = true; break;
@@ -354,7 +362,7 @@ int main(int argc, char **argv)
             return 0;
         }
         case 'h': print_usage(argv[0]); return 0;
-        default: break;
+        default: print_usage(argv[0]); return 1;
         }
     }
 
@@ -425,6 +433,12 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s: no supported AAC audio track found in MP4 file\n", infile);
         free(inbuf);
         mp4_free_track(&track);
+        return 1;
+    }
+
+    if (adts_outfile && !is_mp4) {
+        fprintf(stderr, "%s: --adts needs an MP4 input\n", infile);
+        free(inbuf);
         return 1;
     }
 
