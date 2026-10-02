@@ -27,11 +27,10 @@
 #ifdef _WIN32
 #include <io.h>
 #define access _access
-#include "charset.h"
 #else
 #include <unistd.h>
 #endif
-#include "cli_common.h"
+#include "charset.h"
 #include "endian.h"
 
 #include "mp4write.h"
