@@ -127,8 +127,8 @@ enum faad_output_format {
 
 enum faad_downmix_mode {
     FAAD_DOWNMIX_NONE   = 0,         /* preserve native channel layout           */
-    FAAD_DOWNMIX_STEREO = 1,         /* downmix surround to 2-channel stereo     */
-    FAAD_DOWNMIX_MONO   = 2,         /* downmix all channels to mono             */
+    FAAD_DOWNMIX_MONO   = 1,         /* downmix all channels to mono             */
+    FAAD_DOWNMIX_STEREO = 2,         /* downmix surround to 2-channel stereo     */
     FAAD_DOWNMIX_MAX    = 0x7fffffff
 };
 
