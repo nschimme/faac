@@ -20,7 +20,7 @@
 #include "sbr_tables.h"
 #include "bitstream.h"
 #include "channels.h"
-#include "faac_util.h"
+#include "util.h"
 #include "faac_internal.h"
 
 static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)

@@ -258,7 +258,7 @@ static void faad_print_stats(const struct faad_decoder *dec)
     double sbr_pct = s->totalFrames > 0 ? 100.0 * s->sbrActiveFrames / s->totalFrames : 0.0;
     double short_pct = s->icsCount > 0 ? 100.0 * s->shortBlockIcsCount / s->icsCount : 0.0;
     double pad_avg = s->fillElementCount > 0 ? (double)s->fillElementPadBitsSum / s->fillElementCount : 0.0;
-    /* Same definition libfaac's FAAC_STATS uses (see libfaac/faac_stats.h) so
+    /* Same definition libfaac's FAAC_STATS uses (see libfaac/stats.h) so
      * decoding a reference encoder's output and running faac on the same
      * content give directly comparable percentages. */
     double ms_pct = s->totalBands > 0 ? 100.0 * s->msBands / s->totalBands : 0.0;

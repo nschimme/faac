@@ -18,7 +18,7 @@
 
 #include "channels.h"
 #include "faac_internal.h"
-#include "faac_util.h"
+#include "util.h"
 
 /* Joint-stereo policy resolved once per configuration: per window type, the
  * bands that may take M/S and the first intensity-coded band. */
