@@ -65,7 +65,6 @@ static const int8_t ps_f_center_20[10] = { -3, -1, 1, 3, 5, 7, 10, 14, 18, 22 };
 static const int8_t ps_f_center_34[32] = { 2, 6, 10, 14, 18, 22, 26, 30, 34, -10, -6, -2, 51, 57, 15, 21,
                                            27, 33, 39, 45, 54, 66, 78, 42, 102, 66, 78, 90, 102, 114, 126, 90 }; /* /24 */
 
-/* ---- derived tables ---- */
 /* The complex hybrid filters G_q(n) = g(n) exp(-j 2pi/Q (q + 1/2)(n - 6))
  * for each prototype and split factor Q, taps 0..6 (the rest by symmetry).
  * The 20-band layout splits QMF band 0 eight ways (prototype g0); the
@@ -146,9 +145,7 @@ void init_ps_tables(void)
     ps_init_band_maps();
 }
 
-/* ------------------------------------------------------------------------ */
-/* Bitstream (§8.6.2)                                                        */
-/* ------------------------------------------------------------------------ */
+/* Bitstream (§8.6.2) */
 
 /* Deltas along frequency (df) or against the previous envelope (dt). */
 static bool ps_read_par(BitReader *bs, PSState *ps, int8_t par[PS_MAX_ENV][PS_NR_PAR], int num, int e, bool dt,
@@ -276,10 +273,10 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
                                     &sbr_books[dt ? HB_PS_OPD_DT : HB_PS_OPD_DF], 7, 0);
                     }
                 }
-                bits_skip(bs, 1); /* reserved_ps */
+                bits_skip(bs, 1);
             }
             uint32_t used = bits_get_consumed(bs) - before;
-            if (used == 0) { ok = false; break; } /* input exhausted */
+            if (used == 0) { ok = false; break; }
             cnt -= (int)used;
         }
         if (cnt < 0) ok = false;
@@ -325,9 +322,7 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
     if (used < bits_left) bits_skip(bs, bits_left - used);
 }
 
-/* ------------------------------------------------------------------------ */
-/* Hybrid filterbank (§8.6.4.3)                                              */
-/* ------------------------------------------------------------------------ */
+/* Hybrid filterbank (§8.6.4.3) */
 
 /* One slot of a Q-way split of one QMF band. The 13-tap filters f_q share
  * the symmetric real prototype, so f_q[12-j] = conj(f_q[j]) and each tap
@@ -413,9 +408,7 @@ static void ps_hybrid_synthesis_slot(float in[PS_NR_BANDS][2], float out[64][2],
     }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Decorrelation (§8.6.4.6)                                                  */
-/* ------------------------------------------------------------------------ */
+/* Decorrelation (§8.6.4.6) */
 
 /* Transient detection for one slot: per parameter band, a peak-decay
  * envelope against smoothed power gives the gain G_tr(b). */
@@ -502,9 +495,7 @@ static void ps_decorrelate_slot(PSState *ps, float s[PS_NR_BANDS][2], float d[PS
     ps->dl_pos = (uint8_t)((ps->dl_pos + 1) % PS_MAX_DELAY);
 }
 
-/* ------------------------------------------------------------------------ */
-/* Parameter band layouts                                                    */
-/* ------------------------------------------------------------------------ */
+/* Parameter band layouts */
 
 /* The 10, 20 and 34-band layouts meet when a frame switches layout or
  * codes IPD/OPD on fewer bands: parameters and the previous frame's mixing
@@ -608,9 +599,7 @@ static void ps_remap_values(float *p, bool to34)
     for (int j = 0; j < n; j++) p[j] = ps_band_read(src, to34 ? 20 : 34, to34 ? 20 : 34, to34 ? 34 : 20, j);
 }
 
-/* ------------------------------------------------------------------------ */
-/* Stereo processing (§8.6.4.7)                                              */
-/* ------------------------------------------------------------------------ */
+/* Stereo processing (§8.6.4.7) */
 
 static void ps_pd_smooth(int pd0, int pd1, int pd2, float *re, float *im)
 {
@@ -725,9 +714,7 @@ static void ps_mix_slot(PSState *ps, int n, float l[PS_NR_BANDS][2], float r[PS_
     }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Frame driver                                                              */
-/* ------------------------------------------------------------------------ */
+/* Frame driver */
 
 /* Prepares a frame: the QMF input line with its six slots of look-back, the
  * mixing matrices, and the resets a band-layout change needs. */

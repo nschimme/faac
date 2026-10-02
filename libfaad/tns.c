@@ -88,7 +88,7 @@ void apply_tns(ICSInfo *ics, float *spec)
 
             if (num_lines <= 0) continue;
 
-            /* Convert quantized Reflection Coefficients (parcor) to LPC coefficients via Levinson-Durbin step-down */
+            /* Reflection coefficients to LPC by Levinson-Durbin step-down. */
             float rc[32];
             float lpc[32];
             float lpc_tmp[32];

@@ -213,7 +213,6 @@ int main(void)
     assert(st == FAAD_OK);
     assert(state_bytes > 0);
 
-    /* Test 1: Static Memory Placement (Zero Heap Allocation) */
     void *static_mem = malloc(state_bytes);
     assert(static_mem != NULL);
 
@@ -234,7 +233,6 @@ int main(void)
     assert(dec_static == NULL);
     free(static_mem);
 
-    /* Test 2: Heap Wrapper Initialization */
     faad_decoder *dec_heap = NULL;
     st = faad_decoder_open(&cfg, NULL, 0, &dec_heap);
     assert(st == FAAD_OK);
@@ -248,7 +246,6 @@ int main(void)
     assert(faad_decoder_close(&dec_heap) == FAAD_OK);
     assert(faad_decoder_close(NULL) == FAAD_ERR_INVALID_ARGUMENT);
 
-    /* Test 3: Concurrent Multi-Threaded Stress Test */
 #if defined(_WIN32) && !defined(__MINGW32__)
     HANDLE threads[NUM_THREADS];
     for (int i = 0; i < NUM_THREADS; i++) {

@@ -460,7 +460,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    /* Direct ADTS extraction from MP4 container without decoding */
     if (adts_outfile && is_mp4) {
         if (!overwrite && output_exists(adts_outfile)) {
             fprintf(stderr, "Output file %s already exists (use --overwrite)\n", adts_outfile);

@@ -33,9 +33,7 @@ static const float sbr_h_smooth[5] = {
     0.11516383427084f, 0.03183050093751f
 };
 
-/* ------------------------------------------------------------------------ */
-/* Twiddles for the FFT-based QMF banks                                      */
-/* ------------------------------------------------------------------------ */
+/* Twiddles for the FFT-based QMF banks */
 
 static float ana_pre_c[64], ana_pre_s[64];   /* exp(+j*pi*n/64) */
 static float ana_post_c[32], ana_post_s[32]; /* exp(-j*pi*(k+1/2)/128) */
@@ -64,9 +62,7 @@ void init_qmf_twiddles(void)
     }
 }
 
-/* ------------------------------------------------------------------------ */
-/* QMF banks (§4.6.18.4, §4.6.18.8)                                          */
-/* ------------------------------------------------------------------------ */
+/* QMF banks (§4.6.18.4, §4.6.18.8) */
 
 /* Push one 32-sample block into the analysis delay line and window it:
  * u(n) = sum_j x(n + 64j) c(2(n + 64j)), newest sample first. The line is
@@ -177,9 +173,7 @@ static void qmf_synthesis_slot(SBRChannel *ch, float X[64][2], float *out)
 }
 
 
-/* ------------------------------------------------------------------------ */
-/* Frequency band tables (§4.6.18.3.2) and patches (§4.6.18.6.3)            */
-/* ------------------------------------------------------------------------ */
+/* Frequency band tables (§4.6.18.3.2) and patches (§4.6.18.6.3) */
 
 static int cmp_u8(const void *a, const void *b) { return (int)*(const uint8_t *)a - (int)*(const uint8_t *)b; }
 
@@ -430,9 +424,7 @@ static void sbr_reset_channel(SBRChannel *ch)
     ch->M_prev = 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* Bitstream: header, grid, envelopes (§4.6.18.3)                           */
-/* ------------------------------------------------------------------------ */
+/* Bitstream: header, grid, envelopes (§4.6.18.3) */
 
 SBRHuffBook sbr_books[HB_COUNT];
 static uint8_t sbr_huff_pool[846];
@@ -834,9 +826,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     return FAAD_OK;
 }
 
-/* ------------------------------------------------------------------------ */
-/* HF generation (§4.6.18.6)                                                 */
-/* ------------------------------------------------------------------------ */
+/* HF generation (§4.6.18.6) */
 
 /* Chirp factors from the inverse filtering modes (§4.6.18.6.1). */
 static void sbr_chirp(const SBRElement *el, SBRChannel *ch)
@@ -920,9 +910,7 @@ static void sbr_hf_generate(const SBRElement *el, SBRChannel *ch, SBRScratch *sc
     }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Envelope adjustment (§4.6.18.7)                                           */
-/* ------------------------------------------------------------------------ */
+/* Envelope adjustment (§4.6.18.7) */
 
 /* 2^(n/2) built from the float exponent field; the envelope and noise
  * scalefactors are integers, so no pow() is needed. */
@@ -1000,7 +988,7 @@ static void sbr_hf_adjust(const SBRElement *el, SBRChannel *ch, SBRScratch *sc,
         int slot0 = 2 * ch->t_E[l] + SBR_T_HFADJ, slot1 = 2 * ch->t_E[l + 1] + SBR_T_HFADJ;
         bool transient = (l == ch->l_A) || (l == 0 && ch->l_A_prev == (int)ch->L_E_prev && ch->L_E_prev > 0);
 
-        /* --- mapping (§4.6.18.7.2) --- */
+        /* mapping (§4.6.18.7.2) */
         for (int i = 0; i < nb; i++)
             for (int k = tab[i]; k < tab[i + 1]; k++) e_orig[k - kx] = E[l][i];
         for (int i = 0; i < el->n_q; i++)
@@ -1020,7 +1008,7 @@ static void sbr_hf_adjust(const SBRElement *el, SBRChannel *ch, SBRScratch *sc,
             for (int k = tab[i]; k < tab[i + 1]; k++) s_mapped[k - kx] = (uint8_t)any;
         }
 
-        /* --- E_curr estimation (§4.6.18.7.3) --- */
+        /* E_curr estimation (§4.6.18.7.3) */
         float inv_slots = 1.0f / (float)(slot1 - slot0);
         if (el->interpol_freq) {
             for (int m = 0; m < M; m++) {
@@ -1041,7 +1029,7 @@ static void sbr_hf_adjust(const SBRElement *el, SBRChannel *ch, SBRScratch *sc,
             }
         }
 
-        /* --- gains (§4.6.18.7.5) --- */
+        /* gains (§4.6.18.7.5) */
         for (int m = 0; m < M; m++) {
             float eo = e_orig[m], q = q_map[m], ec = e_curr[m];
             q_m[m] = sqrtf(eo * q / (1.0f + q));
@@ -1082,7 +1070,7 @@ static void sbr_hf_adjust(const SBRElement *el, SBRChannel *ch, SBRScratch *sc,
             }
         }
 
-        /* --- smoothing over the four previous envelopes (§4.6.18.7.6) --- */
+        /* smoothing over the four previous envelopes (§4.6.18.7.6) */
         /* the history is a ring of four; hist_pos is the oldest entry */
         if (prime_hist) {
             for (int h = 0; h < 4; h++) {
@@ -1152,9 +1140,7 @@ static void sbr_hf_adjust(const SBRElement *el, SBRChannel *ch, SBRScratch *sc,
     }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Frame processing                                                          */
-/* ------------------------------------------------------------------------ */
+/* Frame processing */
 
 /* Run the analysis bank on one channel's core PCM, filling the scratch
  * X_low buffer (previous tail + 32 new slots). */
@@ -1252,9 +1238,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
 }
 #endif /* FAAD_DISABLE_SBR */
 
-/* ------------------------------------------------------------------------ */
-/* Entry point                                                               */
-/* ------------------------------------------------------------------------ */
+/* Entry point */
 
 #ifdef FAAD_STATS
 /* One 'F' record for one SBR channel of one frame: dequantized envelope/
