@@ -13,10 +13,6 @@
  * Lesser General Public License for more details.
  */
 
-/*
- * FAAD CLI Executable - Modernized Unix Audio Decoder Utility
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

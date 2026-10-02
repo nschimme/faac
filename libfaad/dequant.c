@@ -1,5 +1,6 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
+ * Perceptual Noise Substitution
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -11,10 +12,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- */
-
-/*
- * Perceptual Noise Substitution
  */
 
 #include "faad_internal.h"

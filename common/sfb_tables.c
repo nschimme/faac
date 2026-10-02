@@ -1,5 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
+ * ISO/IEC 14496-3 Scale Factor Band (SFB) tables (non-copyrightable facts)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -12,10 +13,7 @@
  * Lesser General Public License for more details.
  */
 
-/*
- * ISO/IEC 14496-3 Scale Factor Band (SFB) Tables (non-copyrightable facts)
- *
- * Generated from libfaac's own per-rate band-width tables (SR_INFO in
+/* Generated from libfaac's own per-rate band-width tables (SR_INFO in
  * libfaac/frame.c) rather than transcribed independently: that table is the
  * one actually driving real encoder output, cross-checked decodable by
  * ffmpeg. The two had drifted apart -- every rate group here except

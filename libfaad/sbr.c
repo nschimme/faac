@@ -1,5 +1,6 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
+ * Spectral Band Replication decoder, ISO/IEC 14496-3 §4.6.18
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -13,10 +14,8 @@
  * Lesser General Public License for more details.
  */
 
-/*
- * Spectral Band Replication decoder, ISO/IEC 14496-3 §4.6.18 (high-quality
- * complex path), plus the parametric-stereo payload parser and mixer.
- */
+/* High-quality complex path, plus the parametric-stereo payload parser and
+ * mixer. */
 
 #include "faad_internal.h"
 #include "sbr_tables.h"
