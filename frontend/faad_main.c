@@ -220,6 +220,14 @@ static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
     fwrite(&pcm_bytes_le, 4, 1, f);
 }
 
+static bool output_exists(const char *path)
+{
+    FILE *f = cli_fopen(path, "rb");
+    if (!f) return false;
+    fclose(f);
+    return true;
+}
+
 static void print_usage(const char *prog)
 {
     faad_library_info info;
@@ -246,6 +254,7 @@ static void print_usage(const char *prog)
     printf("  -i, --info             Display bitstream & container metadata, then exit\n");
     printf("      --json             Output bitstream info in JSON format\n");
     printf("  -q, --quiet            Quiet mode (suppress decoding progress)\n");
+    printf("      --overwrite        Overwrite an existing output file\n");
     printf("      --strict           Strict mode (noisily error and report debug details on failure)\n");
     printf("      --license          Display copyright and license information\n");
     printf("  -h, --help             Display this help text\n");
@@ -255,6 +264,7 @@ enum {
     OPT_NO_GAPLESS = 300,
     OPT_JSON,
     OPT_STRICT,
+    OPT_OVERWRITE,
     OPT_LICENSE
 };
 
@@ -294,6 +304,7 @@ int main(int argc, char **argv)
     bool json_info = false;
     bool quiet = false;
     bool strict_mode = false;
+    bool overwrite = false;
     double jump_seconds = 0.0;
 
     static struct option long_options[] = {
@@ -309,6 +320,7 @@ int main(int argc, char **argv)
         {"json", no_argument, 0, OPT_JSON},
         {"quiet", no_argument, 0, 'q'},
         {"strict", no_argument, 0, OPT_STRICT},
+        {"overwrite", no_argument, 0, OPT_OVERWRITE},
         {"license", no_argument, 0, OPT_LICENSE},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
@@ -354,6 +366,7 @@ int main(int argc, char **argv)
         case OPT_JSON: json_info = true; info_only = true; break;
         case 'q': quiet = true; break;
         case OPT_STRICT: strict_mode = true; break;
+        case OPT_OVERWRITE: overwrite = true; break;
         case OPT_LICENSE: {
             faad_library_info info;
             info.struct_size = sizeof(info);
@@ -444,6 +457,12 @@ int main(int argc, char **argv)
 
     /* Direct ADTS extraction from MP4 container without decoding */
     if (adts_outfile && is_mp4) {
+        if (!overwrite && output_exists(adts_outfile)) {
+            fprintf(stderr, "Output file %s already exists (use --overwrite)\n", adts_outfile);
+            free(inbuf);
+            mp4_free_track(&track);
+            return 1;
+        }
         FILE *fadts = cli_fopen(adts_outfile, "wb");
         if (!fadts) {
             fprintf(stderr, "Error opening ADTS output file %s\n", adts_outfile);
@@ -521,6 +540,13 @@ int main(int argc, char **argv)
                 if (dot) strcpy(dot, raw_format ? ".raw" : ".wav");
                 else strcat(out_path, raw_format ? ".raw" : ".wav");
                 outfile = out_path;
+            }
+            if (!overwrite && output_exists(outfile)) {
+                fprintf(stderr, "Output file %s already exists (use --overwrite)\n", outfile);
+                faad_decoder_close(&dec);
+                free(inbuf);
+                if (is_mp4) mp4_free_track(&track);
+                return 1;
             }
             fout = cli_fopen(outfile, "wb");
             if (!fout) {
