@@ -34,23 +34,13 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-/* Memory management macros (overridable for embedded PSRAM / fast internal SRAM) */
+/* Memory management macros (overridable, e.g. for embedded PSRAM) */
 #ifndef AllocMemory
 #define AllocMemory(size) malloc(size)
 #endif
 #ifndef FreeMemory
 #define FreeMemory(block) free(block)
 #endif
-#ifndef AllocMemoryFast
-#define AllocMemoryFast(size) malloc(size)
-#endif
-#ifndef FreeMemoryFast
-#define FreeMemoryFast(block) free(block)
-#endif
-#ifndef ReallocMemory
-#define ReallocMemory(block, size) realloc(block, size)
-#endif
-
 
 #include "faad.h"
 #include "faad_stats.h"
@@ -66,6 +56,11 @@
 #define FAAD_DISABLE_PS /* parametric stereo needs SBR's QMF domain and two output channels */
 #endif
 #define FRAME_LEN_LONG 1024
+#ifdef FAAD_DISABLE_SBR
+#define FRAME_SAMPLES_MAX 1024 /* no SBR doubling of the output rate */
+#else
+#define FRAME_SAMPLES_MAX 2048
+#endif
 #define FRAME_LEN_SHORT 128
 #define NUM_WINDOWS 8
 
@@ -348,6 +343,18 @@ typedef struct {
     float x[PS_IN_SLOTS][64][2]; /* assembled output per slot (38 for the PS look-ahead) */
 } SBRScratch;
 
+/* Working memory of one frame's decode phases, which never overlap: the
+ * element being parsed (and a coupling element's discarded payload), the IMDCT
+ * temporaries, then the SBR/PS buffers. */
+typedef union {
+    CPEInfo cpe;
+    struct { ICSInfo ics; float spec[FRAME_LEN_LONG]; } cce;
+    float work[2 * FRAME_LEN_LONG];
+#ifndef FAAD_DISABLE_SBR
+    SBRScratch sbr;
+#endif
+} FrameScratch;
+
 struct faad_decoder {
     faad_config config;
     AudioSpecificConfig asc;
@@ -367,7 +374,6 @@ struct faad_decoder {
 #ifndef FAAD_DISABLE_SBR
     SBRChannel sbr[MAX_CHANNELS];
     SBRElement sbr_el[MAX_CHANNELS];
-    SBRScratch sbr_scratch;
 #endif
     bool sbr_present;
     bool sbr_seen; /* an SBR payload has appeared: frames without one still run at the SBR rate */
@@ -381,8 +387,11 @@ struct faad_decoder {
     uint32_t consecutive_errors;
     float prev_spec[MAX_CHANNELS][FRAME_LEN_LONG];
 
-    /* Frame decode scratch buffers moved from C call stack to reduce stack depth (<1 KB) */
-    float pcm[MAX_CHANNELS * 2048]; /* core output, then SBR output in place */
+    FrameScratch scratch;
+    uint8_t win_seq[MAX_CHANNELS];   /* this frame's window of each decoded channel, for the IMDCT */
+    uint8_t win_shape[MAX_CHANNELS];
+
+    float pcm[MAX_CHANNELS * FRAME_SAMPLES_MAX]; /* core output, then SBR output in place */
 
 #ifdef FAAD_STATS
     faadDecStats stats;
@@ -408,7 +417,7 @@ void apply_ms_stereo(CPEInfo *cpe, float *spec_l, float *spec_r
 );
 void apply_is_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
 void apply_tns(ICSInfo *ics, float *spec);
-void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float *spec, float *out_pcm);
+void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequence, uint8_t window_shape, float *spec, float *out_pcm);
 
 faad_status decode_pce(BitReader *bs, struct faad_decoder *dec);
 faad_status decode_cce(BitReader *bs, struct faad_decoder *dec);

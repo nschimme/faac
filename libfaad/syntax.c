@@ -137,10 +137,9 @@ faad_status decode_cce(BitReader *bs, struct faad_decoder *dec)
     bits_skip(bs, 1); /* gain_element_sign */
     bits_skip(bs, 2); /* gain_element_scale */
 
-    ICSInfo dummy_ics;
-    memset(&dummy_ics, 0, sizeof(dummy_ics));
-    float dummy_spec[FRAME_LEN_LONG];
-    return decode_ics(bs, dec, &dummy_ics, dummy_spec, false);
+    /* The payload is parsed to stay in step, then discarded. */
+    memset(&dec->scratch.cce.ics, 0, sizeof(dec->scratch.cce.ics));
+    return decode_ics(bs, dec, &dec->scratch.cce.ics, dec->scratch.cce.spec, false);
 }
 
 faad_status decode_dse(BitReader *bs)

@@ -148,7 +148,7 @@ FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_
  * Initializes the decoder using a caller-provided memory block.
  * Guarantees zero internal heap allocations (no malloc/free).
  *
- * @param mem_buf    Pointer to static memory block.
+ * @param mem_buf    Pointer to static memory block, aligned for float (4 bytes; 16 is best for SIMD).
  * @param mem_size   Size of mem_buf (must be >= size returned by faad_get_state_size).
  * @param asc_buf    (Optional) AudioSpecificConfig buffer for RAW streams.
  * @param asc_len    Length of asc_buf.
