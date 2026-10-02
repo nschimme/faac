@@ -79,6 +79,7 @@ enum faad_stream_format {
 
 enum faad_output_format {
     FAAD_OUTPUT_16BIT = 1,            /* Signed 16-bit PCM (int16_t) */
+    FAAD_OUTPUT_32BIT = 2,            /* Signed 32-bit PCM (int32_t), full scale */
     FAAD_OUTPUT_FLOAT = 4,            /* 32-bit floating point PCM (float) */
     FAAD_OUTPUT_MAX   = 0x7fffffff
 };
@@ -94,7 +95,7 @@ enum faad_downmix_mode {
 typedef struct faad_config {
     uint32_t                struct_size;   /* Must be set via faad_config_init() */
     enum faad_stream_format stream_format; /* RAW or ADTS */
-    enum faad_output_format output_format; /* 16-bit integer or 32-bit float */
+    enum faad_output_format output_format; /* 16-bit or 32-bit integer, or 32-bit float */
     enum faad_downmix_mode  downmix_mode;  /* Channel downmixing strategy */
 } faad_config;
 

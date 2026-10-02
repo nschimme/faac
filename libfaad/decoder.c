@@ -134,7 +134,8 @@ static bool valid_config(const faad_config *cfg)
 {
     return !cfg || (cfg->struct_size >= sizeof(faad_config)
         && (cfg->stream_format == FAAD_STREAM_RAW || cfg->stream_format == FAAD_STREAM_ADTS)
-        && (cfg->output_format == FAAD_OUTPUT_16BIT || cfg->output_format == FAAD_OUTPUT_FLOAT)
+        && (cfg->output_format == FAAD_OUTPUT_16BIT || cfg->output_format == FAAD_OUTPUT_32BIT
+            || cfg->output_format == FAAD_OUTPUT_FLOAT)
         && (cfg->downmix_mode == FAAD_DOWNMIX_NONE || cfg->downmix_mode == FAAD_DOWNMIX_STEREO
             || cfg->downmix_mode == FAAD_DOWNMIX_MONO));
 }
@@ -445,6 +446,16 @@ static inline int16_t pcm_to_s16(float v)
     int32_t bits;
     memcpy(&bits, &v, sizeof(bits));
     return (int16_t)bits;
+}
+
+/* Full-scale 32-bit: the core's 16-bit scale times 2^16, clamped. The sample
+ * is rounded at the float's own resolution, not at the 16-bit LSB. */
+static inline int32_t pcm_to_s32(float v)
+{
+    v *= 65536.0f;
+    v = v < 2147483520.0f ? v : 2147483520.0f; /* largest float below 2^31 */
+    v = v > -2147483648.0f ? v : -2147483648.0f;
+    return (int32_t)lrintf(v);
 }
 
 FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
@@ -762,6 +773,11 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                 for (uint32_t c = 0; c < num_chs; c++)
                     out_int16[i * num_chs + c] = pcm_to_s16(src[c][i]);
         }
+    } else if (dec->config.output_format == FAAD_OUTPUT_32BIT) {
+        int32_t * restrict out_int32 = (int32_t *)out_pcm;
+        for (uint32_t i = 0; i < frame_samples; i++)
+            for (uint32_t c = 0; c < num_chs; c++)
+                out_int32[i * num_chs + c] = pcm_to_s32(src[c][i]);
     } else {
         /* The core reconstructs at 16-bit full scale; float output is unity full scale. */
         const float norm = 1.0f / 32768.0f;
