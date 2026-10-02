@@ -154,6 +154,9 @@ static void faad_init_global_tables_impl(void)
     extern void init_qmf_twiddles(void);
     extern void init_sbr_books(void);
     extern void init_is_tables(void);
+#ifndef FAAD_DISABLE_PS
+    extern void init_ps_tables(void);
+#endif
 
     init_dequant_tables();
     init_huffman_luts();
@@ -161,6 +164,9 @@ static void faad_init_global_tables_impl(void)
     init_qmf_twiddles();
     init_sbr_books();
     init_is_tables();
+#ifndef FAAD_DISABLE_PS
+    init_ps_tables();
+#endif
 }
 
 void faad_init_global_tables(void)
@@ -175,7 +181,8 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
                                       faad_decoder **out_dec)
 {
     if (out_dec) *out_dec = NULL;
-    if (!valid_config(cfg) || !mem_buf || mem_size < sizeof(faad_decoder) || !out_dec) {
+    if (!valid_config(cfg) || !mem_buf || mem_size < sizeof(faad_decoder) || !out_dec
+        || ((uintptr_t)mem_buf & (_Alignof(faad_decoder) - 1))) {
         return FAAD_ERR_INVALID_ARGUMENT;
     }
 
@@ -508,7 +515,6 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #endif
     uint32_t ch_idx = 0;
     uint32_t last_elem_type = ID_SCE;
-    ICSInfo ics_list[MAX_CHANNELS]; /* each entry is cleared by the element that fills it */
 
 #ifdef FAAD_STATS
     bool saw_end = false;
@@ -532,26 +538,29 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #ifdef FAAD_STATS
                 unsigned b0 = bits_get_consumed(&bs);
 #endif
-                if (decode_sce(&bs, dec, &ics_list[ch_idx], ch_idx) != FAAD_OK) {
+                ICSInfo *ics = &dec->scratch.cpe.ics[0]; /* cleared by decode_sce */
+                if (decode_sce(&bs, dec, ics, ch_idx) != FAAD_OK) {
                     decode_success = false; /* the rest of the payload is out of step */
                     break;
                 }
 #ifdef FAAD_STATS
-                core_dump_ics(dec, ch_idx, &ics_list[ch_idx], dec->spec[ch_idx], NULL,
+                core_dump_ics(dec, ch_idx, ics, dec->spec[ch_idx], NULL,
                               bits_get_consumed(&bs) - b0);
 #endif
-                apply_pns(&ics_list[ch_idx], dec->spec[ch_idx], &dec->pns_seed);
-                apply_tns(&ics_list[ch_idx], dec->spec[ch_idx]);
+                dec->win_seq[ch_idx] = ics->window_sequence;
+                dec->win_shape[ch_idx] = ics->window_shape;
+                apply_pns(ics, dec->spec[ch_idx], &dec->pns_seed);
+                apply_tns(ics, dec->spec[ch_idx]);
                 ch_idx += 1;
             } else if (syntax_id == ID_CPE) {
                 if (ch_idx + 1 >= MAX_CHANNELS) break;
                 last_elem_type = ID_CPE;
-                CPEInfo cpe;
-                memset(&cpe, 0, sizeof(cpe));
+                CPEInfo *cpe = &dec->scratch.cpe;
+                memset(cpe, 0, sizeof(*cpe));
 #ifdef FAAD_STATS
                 unsigned b0 = bits_get_consumed(&bs);
 #endif
-                if (decode_cpe(&bs, dec, &cpe, ch_idx) != FAAD_OK) {
+                if (decode_cpe(&bs, dec, cpe, ch_idx) != FAAD_OK) {
                     decode_success = false;
                     break;
                 }
@@ -559,26 +568,28 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                 {
                     unsigned nb = bits_get_consumed(&bs) - b0;
                     /* ms_mask_present 2 sends no per-band flags, so every band is M/S. */
-                    if (cpe.ms_mask_present == 2)
-                        memset(cpe.ms_used, 1, sizeof(cpe.ms_used));
-                    const uint8_t (*ms)[MAX_SFB] = cpe.ms_mask_present ? (const uint8_t (*)[MAX_SFB])cpe.ms_used : NULL;
-                    core_dump_ics(dec, ch_idx, &cpe.ics[0], dec->spec[ch_idx], ms, nb);
-                    core_dump_ics(dec, ch_idx + 1, &cpe.ics[1], dec->spec[ch_idx + 1], ms, cpe.ms_mask_present);
+                    if (cpe->ms_mask_present == 2)
+                        memset(cpe->ms_used, 1, sizeof(cpe->ms_used));
+                    const uint8_t (*ms)[MAX_SFB] = cpe->ms_mask_present ? (const uint8_t (*)[MAX_SFB])cpe->ms_used : NULL;
+                    core_dump_ics(dec, ch_idx, &cpe->ics[0], dec->spec[ch_idx], ms, nb);
+                    core_dump_ics(dec, ch_idx + 1, &cpe->ics[1], dec->spec[ch_idx + 1], ms, cpe->ms_mask_present);
                 }
 #endif
-                ics_list[ch_idx] = cpe.ics[0];
-                ics_list[ch_idx + 1] = cpe.ics[1];
+                for (uint32_t i = 0; i < 2; i++) {
+                    dec->win_seq[ch_idx + i] = cpe->ics[i].window_sequence;
+                    dec->win_shape[ch_idx + i] = cpe->ics[i].window_shape;
+                }
 
-                apply_pns(&cpe.ics[0], dec->spec[ch_idx], &dec->pns_seed);
-                apply_pns(&cpe.ics[1], dec->spec[ch_idx + 1], &dec->pns_seed);
-                apply_ms_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]
+                apply_pns(&cpe->ics[0], dec->spec[ch_idx], &dec->pns_seed);
+                apply_pns(&cpe->ics[1], dec->spec[ch_idx + 1], &dec->pns_seed);
+                apply_ms_stereo(cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]
 #ifdef FAAD_STATS
                     , dec
 #endif
                 );
-                apply_is_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
-                apply_tns(&cpe.ics[0], dec->spec[ch_idx]);
-                apply_tns(&cpe.ics[1], dec->spec[ch_idx + 1]);
+                apply_is_stereo(cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+                apply_tns(&cpe->ics[0], dec->spec[ch_idx]);
+                apply_tns(&cpe->ics[1], dec->spec[ch_idx + 1]);
 
                 ch_idx += 2;
             } else if (syntax_id == ID_CCE) {
@@ -695,10 +706,8 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
              * follows its own short-window overlap as a stop block. */
             static const uint8_t next_seq[4] = { ONLY_LONG_SEQUENCE, LONG_STOP_SEQUENCE,
                                                  EIGHT_SHORT_SEQUENCE, ONLY_LONG_SEQUENCE };
-            ICSInfo *ics = &ics_list[c];
-            memset(ics, 0, sizeof(*ics));
-            ics->window_sequence = next_seq[dec->prev_window_seq[c] & 3];
-            ics->window_shape = dec->prev_window_shape[c];
+            dec->win_seq[c] = next_seq[dec->prev_window_seq[c] & 3];
+            dec->win_shape[c] = dec->prev_window_shape[c];
         }
     }
 
@@ -713,7 +722,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     dec->frame_samples = sbr_frame ? 2048 : 1024;
     float *pcm_final = dec->pcm;
     for (uint32_t c = 0; c < dec->num_channels; c++) {
-        imdct_and_window(dec, c, &ics_list[c], dec->spec[c], pcm_final + c * dec->frame_samples);
+        imdct_and_window(dec, c, dec->win_seq[c], dec->win_shape[c], dec->spec[c], pcm_final + c * dec->frame_samples);
     }
     if (sbr_frame) sbr_apply(dec, dec->num_channels, pcm_final);
 

@@ -78,7 +78,6 @@ static float ps_split8_g0[8][7][2], ps_split12_g0[12][7][2], ps_split8_g1[8][7][
 static float ps_phi_fract[2][50][2];
 static float ps_q_fract[2][50][3][2];
 static float ps_HA[46][8][4], ps_HB[46][8][4];
-static bool ps_tables_init = false;
 static void ps_init_band_maps(void);
 
 static void ps_init_split_filters(void)
@@ -100,7 +99,6 @@ static void ps_init_split_filters(void)
 
 void init_ps_tables(void)
 {
-    if (ps_tables_init) return;
     static const double links[3] = { 0.43, 0.75, 0.347 };
     const double gain = 0.39;
 
@@ -149,7 +147,6 @@ void init_ps_tables(void)
         }
     }
     ps_init_band_maps();
-    ps_tables_init = true;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -742,7 +739,6 @@ void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int t
     PSState *ps = &dec->ps;
     bool is34 = ps->is34;
 
-    init_ps_tables();
     for (int i = 0; i < 5; i++)
         for (int j = 0; j < PS_IN_SLOTS; j++) {
             ps->in_buf[i][j + 6][0] = X[j][i][0];

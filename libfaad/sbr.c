@@ -1315,7 +1315,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 {
     float *pcm_in = pcm, *pcm_out = pcm;
 #ifndef FAAD_DISABLE_SBR
-    SBRScratch *sc = &dec->sbr_scratch;
+    SBRScratch *sc = &dec->scratch.sbr;
     float E0[SBR_MAX_ENV][SBR_MAX_BANDS], E1[SBR_MAX_ENV][SBR_MAX_BANDS];
     float Q0[2][SBR_MAX_NQ], Q1[2][SBR_MAX_NQ];
 
