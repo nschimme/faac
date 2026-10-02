@@ -1,4 +1,4 @@
-# Source shared across libfaac, libfaad, libfaam and the frontends.
+# Source shared across libfaac, libfaad and the frontends.
 #
 # Nothing here is built as a library of its own. The headers are
 # included where needed, and codec_dep's sources (the FFT engine and the

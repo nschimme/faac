@@ -1,5 +1,5 @@
 /*
- * FAAM - Freeware Advanced Audio/Video Muxer
+ * FAAC - Freeware Advanced Audio Coder
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
