@@ -14,27 +14,44 @@ git_version_h = vcs_tag(
     fallback: '',
 )
 
-frontend_link_libs = [libfaac]
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
-
-libfrontend = static_library('frontend',
-    ['input.c', 'mp4write.c', 'charset.c', 'cli_common.c', 'output.c', 'encode_engine.c', 'progress.c',
-     'input.h', 'mp4write.h', 'charset.h', 'cli_common.h', 'progress.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
-    include_directories: ['..', '../include', '../common'],
-    link_with: frontend_link_libs,
-    c_args: c_args_list,
-    dependencies: [libiconv]
-)
 
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
 
-faac = executable('faac',
-    ['main.c'],
-    include_directories: ['..', '../include'],
-    link_with: [libfaac, libfrontend],
-    dependencies: [libshell32],
-    install: true
-)
+if get_option('encoder')
+    frontend_link_libs = [libfaac]
+    libfrontend = static_library('frontend',
+        ['input.c', 'mp4write.c', 'charset.c', 'cli_common.c', 'output.c', 'encode_engine.c', 'progress.c',
+         'input.h', 'mp4write.h', 'charset.h', 'cli_common.h', 'progress.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
+        include_directories: ['..', '../include', '../common'],
+        link_with: frontend_link_libs,
+        c_args: c_args_list,
+        dependencies: [libiconv]
+    )
+
+    faac = executable('faac',
+        ['main.c'],
+        include_directories: ['..', '../include'],
+        link_with: [libfaac, libfrontend],
+        dependencies: [libshell32],
+        install: true
+    )
+
+    if target_machine.system() == 'windows'
+        windows = import('windows')
+        resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
+            depend_files: 'faacgui.exe.manifest')
+        libcomctl32 = cc.find_library('comctl32', required: true)
+        faacgui = executable('faacgui',
+            ['maingui.c', 'resource.h'] + resource_src,
+            include_directories: ['..', '../include'],
+            link_with: [libfaac, libfrontend],
+            dependencies: [libcomctl32],
+            win_subsystem: 'windows',
+            install: true
+        )
+    endif
+endif
 
 if get_option('decoder')
     decoder_link_libs = [libfaad]
@@ -53,23 +70,8 @@ if get_option('decoder')
         dependencies: [libshell32, libiconv],
         install: true
     )
-    if not meson.is_cross_build()
+    if get_option('encoder') and not meson.is_cross_build()
         test('faad_frontend_test', find_program('python3'),
             args: [files('../tests/faad_frontend_test.py'), faac, faad])
     endif
-endif
-
-if target_machine.system() == 'windows'
-    windows = import('windows')
-    resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
-        depend_files: 'faacgui.exe.manifest')
-    libcomctl32 = cc.find_library('comctl32', required: true)
-    faacgui = executable('faacgui',
-        ['maingui.c', 'resource.h'] + resource_src,
-        include_directories: ['..', '../include'],
-        link_with: [libfaac, libfrontend],
-        dependencies: [libcomctl32],
-        win_subsystem: 'windows',
-        install: true
-    )
 endif
