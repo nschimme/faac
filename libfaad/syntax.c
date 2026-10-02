@@ -67,15 +67,12 @@ static faad_status decode_section_data(BitReader *bs, ICSInfo *ics)
             uint32_t max_run = (1U << sect_bits) - 1;
             uint32_t run_field = bits_get(bs, sect_bits);
             uint32_t len = run_field;
-            /* Section escape fields in libfaac (writebooks() in huff2.c) and ISO/IEC 13818-7 / 14496-3:
-             * Each max_run field indicates another run_field follows.
-             * Continuation continues while the last read run_field equals max_run. */
+            /* A run_field equal to max_run escapes: another one follows and adds on. */
             while (run_field == max_run) {
                 run_field = bits_get(bs, sect_bits);
                 len += run_field;
             }
             if (len == 0) len = 1;
-            /* a section is a run of bands sharing one codebook */
             int end_sfb = k + len;
             if (end_sfb > ics->max_sfb) end_sfb = ics->max_sfb;
             if (end_sfb > MAX_SFB) end_sfb = MAX_SFB;

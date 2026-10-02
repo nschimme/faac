@@ -30,6 +30,9 @@ static uint32_t config_channels(uint32_t channel_config)
     return channel_config == 7 ? 8 : (channel_config >= 1 && channel_config <= 6) ? channel_config : (MAX_CHANNELS < 2 ? 1 : 2);
 }
 
+/* Native (element) index of each output channel, WAV / SMPTE order, for
+ * channel configurations 3..7 (ISO/IEC 14496-3 Table 1.19); NULL keeps
+ * the element order (mono, stereo, PCE-defined layouts). */
 static const uint8_t *output_channel_map(uint32_t channel_config, uint32_t num_chs)
 {
     static const uint8_t map3[] = { 1, 2, 0 };                   /* C L R -> L R C */
@@ -433,9 +436,6 @@ static void core_dump_ics(struct faad_decoder *dec, int ch, const ICSInfo *ics, 
 }
 #endif
 
-/* Native (element) index of each output channel, WAV / SMPTE order, for
- * channel configurations 3..7 (ISO/IEC 14496-3 Table 1.19); NULL keeps
- * the element order (mono, stereo, PCE-defined layouts). */
 /* Clamp and round to nearest: truncating toward zero costs the output half
  * an LSB of error against any rounding decoder, on every sample. */
 static inline int16_t pcm_to_s16(float v)
@@ -691,7 +691,6 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         && ch_idx > config_channels(dec->asc.num_channels))
         return FAAD_ERR_DECODE_FAILED;
 
-    /* Error Concealment & Fade-Out Fading Mechanism */
     if (decode_success && ch_idx > 0) {
         dec->consecutive_errors = 0;
         memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);

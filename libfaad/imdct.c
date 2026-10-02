@@ -35,7 +35,6 @@ static float dct4_cos_128[64];
 static float dct4_sin_128[64];
 
 
-/* Zeroth-order modified Bessel function, power series. */
 static double bessel_i0(double x)
 {
     double sum = 1.0, term = 1.0, q = x * x / 4.0;
@@ -211,7 +210,6 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequ
         return;
     }
     if (window_sequence == LONG_STOP_SEQUENCE) {
-        /* zero, the short window's rise, then flat */
         for (int i = 0; i < 448; i++) out_pcm[i] = overlap[i];
         imdct_emit(out_pcm, overlap, u, scale, 448, 576, win_short_l, 1, 0.0f);
         imdct_emit(out_pcm, overlap, u, scale, 576, 1024, NULL, 0, 1.0f);
@@ -219,7 +217,6 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequ
         imdct_emit(out_pcm, overlap, u, scale, 0, 1024, win_long_l, 1, 0.0f);
     }
     if (window_sequence == LONG_START_SEQUENCE) {
-        /* flat, the short window's fall, then zero */
         imdct_emit(out_pcm, overlap, u, scale, 1024, 1472, NULL, 0, 1.0f);
         imdct_emit(out_pcm, overlap, u, scale, 1472, 1600, win_short, -1, 0.0f);
         memset(overlap + 576, 0, sizeof(float) * 448);
