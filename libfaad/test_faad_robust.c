@@ -242,11 +242,13 @@ int main(void)
             i += flen;
         }
         /* the intact stream itself must decode within its own frame count */
-        for (int f = 0; f < 2; f++)
+        static const enum faad_output_format formats[] = {
+            FAAD_OUTPUT_16BIT, FAAD_OUTPUT_24BIT, FAAD_OUTPUT_32BIT, FAAD_OUTPUT_FLOAT };
+        for (int f = 0; f < 4; f++)
             for (int d = 0; d < 3; d++)
                 for (int raw = 0; raw < 2; raw++)
                 if (decode_bounded(intact, len, frames_intact, channels,
-                    f ? FAAD_OUTPUT_FLOAT : FAAD_OUTPUT_16BIT, (enum faad_downmix_mode)d, raw != 0)) return 1;
+                    formats[f], (enum faad_downmix_mode)d, raw != 0)) return 1;
         for (int seed = 1; seed <= 8; seed++) {
             rng_state = 0x9E3779B9u * (uint32_t)seed;
             uint32_t dlen = corrupt(intact, len, damaged);
