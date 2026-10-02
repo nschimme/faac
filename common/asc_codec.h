@@ -18,13 +18,12 @@
  *
  * Parses/builds the core-LC-plus-implicit-SBR/PS-sync-extension bitstream
  * that faac's own encoder emits (see SbrContextGetASC() in sbr.c, which
- * calls asc_codec_build() directly) and that libfaad's decoder and libfaam's
- * demuxer/muxer both need to independently read back or reconstruct.
+ * calls asc_codec_build() directly) and that libfaad's decoder and the
+ * frontend's MP4 reader/writer both need to read back or reconstruct.
  *
- * Header-only with static-inline internal linkage on purpose: libfaac,
- * libfaad and libfaam each compile their own private copy of this code from
- * source. No library links against another here; only CLI frontends combine
- * them.
+ * Header-only with static-inline internal linkage on purpose: libfaac
+ * and libfaad each compile their own private copy of this code from source.
+ * No library links against the other; only CLI frontends combine them.
  */
 
 #ifndef FAAC_ASC_CODEC_H
