@@ -32,7 +32,6 @@
 
 #include "faad.h"
 #include "charset.h"
-#include "cli_common.h"
 #include "endian.h"
 #include "asc_codec.h"
 #include "mp4read.h"

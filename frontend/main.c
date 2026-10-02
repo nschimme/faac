@@ -42,7 +42,6 @@
 #include <faac.h>
 #include "output.h"
 #include "charset.h"
-#include "cli_common.h"
 #include "encode_engine.h"
 
 #ifdef _WIN32
