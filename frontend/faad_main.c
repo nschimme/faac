@@ -375,8 +375,9 @@ int main(int argc, char **argv)
         case OPT_LICENSE: {
             faad_library_info info;
             info.struct_size = sizeof(info);
-            const char *copyright = faad_get_library_info(&info) == FAAD_OK ? info.copyright : NULL;
-            cli_print_license("FAAD - Freeware Advanced Audio Decoder", copyright);
+            if (faad_get_library_info(&info) == FAAD_OK && info.copyright)
+                fprintf(stderr, "%s", info.copyright);
+            cli_print_lgpl_notice(stderr, "library");
             return 0;
         }
         case 'h': print_usage(argv[0]); return 0;

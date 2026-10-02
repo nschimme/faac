@@ -98,7 +98,9 @@ FAADAPI faad_status faad_get_library_info(faad_library_info *out)
 
     out->struct_size = sizeof(faad_library_info);
     out->version = FAAD_VERSION_STRING;
-    out->copyright = "Copyright (C) 2026 Nils Schimmelmann";
+    out->copyright =
+        "FAAD - Freeware Advanced Audio Decoder (https://freewareadvancedaudio.github.io)\n"
+        " Copyright (C) 2026, Nils Schimmelmann\n";
     out->max_channels = MAX_CHANNELS;
 #ifndef FAAD_DISABLE_SBR
     out->sbr_supported = true;
