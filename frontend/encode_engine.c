@@ -39,7 +39,6 @@
 #include "input.h"
 #include "mp4write.h"
 #include "charset.h"
-#include "cli_common.h"
 
 void init_encode_options(encode_options_t *opts)
 {

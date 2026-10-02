@@ -30,8 +30,8 @@ libshell32 = cc.find_library('shell32', required: target_machine.system() == 'wi
 if get_option('encoder')
     frontend_link_libs = [libfaac]
     libfrontend = static_library('frontend',
-        ['input.c', 'mp4write.c', 'charset.c', 'cli_common.c', 'output.c', 'encode_engine.c', 'progress.c',
-         'input.h', 'mp4write.h', 'charset.h', 'cli_common.h', 'progress.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
+        ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c',
+         'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
         include_directories: ['..', '../include', '../common'],
         link_with: frontend_link_libs,
         c_args: c_args_list,
@@ -71,7 +71,7 @@ if get_option('decoder')
         gc_args += ['-Wl,-dead_strip']
     endif
     faad = executable('faad',
-        ['faad_main.c', 'mp4read.c', 'charset.c', 'cli_common.c', git_version_h],
+        ['faad_main.c', 'mp4read.c', 'charset.c', git_version_h],
         include_directories: ['..', '../include', '../common'],
         link_with: decoder_link_libs,
         c_args: c_args_list,
