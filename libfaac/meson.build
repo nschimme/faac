@@ -44,8 +44,8 @@ common_src = [
     'stereo.h',
     'tns.c',
     'tns.h',
-    'faac_util.c',
-    'faac_util.h',
+    'util.c',
+    'util.h',
 ]
 
 libfaac = disabler()

@@ -13,7 +13,7 @@
  * Lesser General Public License for more details.
  */
 
-#include "faac_util.h"
+#include "util.h"
 #include "coder.h"  // FRAME_LEN
 
 #ifdef _MSC_VER

@@ -21,7 +21,7 @@
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
-#include "faac_util.h"
+#include "util.h"
 
 /* Escape coding for HCB_ESC as per ISO/IEC 14496-3.
  * Represents values |q| >= 16 by sending 16 plus an escape suffix. */

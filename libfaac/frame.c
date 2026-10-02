@@ -25,7 +25,7 @@
 #include "bitstream.h"
 #include "filtbank.h"
 #include "quantize.h"
-#include "faac_util.h"
+#include "util.h"
 #include "tns.h"
 #include "stereo.h"
 #include "sbr.h"
