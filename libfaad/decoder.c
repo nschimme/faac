@@ -21,6 +21,7 @@
 #endif
 
 #include "atomic.h"
+#include "endian.h"
 
 /* Channels a channel_configuration carries (7 is 7.1); 0, a PCE, is
  * learnt from the first decoded frame, so start from stereo. */
@@ -127,19 +128,23 @@ FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size)
     return FAAD_OK;
 }
 
+static uint32_t output_sample_bytes(enum faad_output_format f)
+{
+    return f == FAAD_OUTPUT_16BIT ? 2 : f == FAAD_OUTPUT_24BIT ? 3 : 4;
+}
+
 static bool valid_config(const faad_config *cfg)
 {
     return !cfg || (cfg->struct_size >= sizeof(faad_config)
         && (cfg->stream_format == FAAD_STREAM_RAW || cfg->stream_format == FAAD_STREAM_ADTS)
-        && (cfg->output_format == FAAD_OUTPUT_16BIT || cfg->output_format == FAAD_OUTPUT_32BIT
-            || cfg->output_format == FAAD_OUTPUT_FLOAT)
+        && (cfg->output_format == FAAD_OUTPUT_16BIT || cfg->output_format == FAAD_OUTPUT_24BIT
+            || cfg->output_format == FAAD_OUTPUT_32BIT || cfg->output_format == FAAD_OUTPUT_FLOAT)
         && (cfg->downmix_mode == FAAD_DOWNMIX_NONE || cfg->downmix_mode == FAAD_DOWNMIX_STEREO
             || cfg->downmix_mode == FAAD_DOWNMIX_MONO));
 }
 
 FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_bytes_out)
 {
-    if (cfg && cfg->output_format == FAAD_OUTPUT_24BIT) return FAAD_ERR_UNSUPPORTED;
     if (!valid_config(cfg) || !state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
     *state_bytes_out = (uint32_t)sizeof(faad_decoder);
     return FAAD_OK;
@@ -180,7 +185,6 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
                                       faad_decoder **out_dec)
 {
     if (out_dec) *out_dec = NULL;
-    if (cfg && cfg->output_format == FAAD_OUTPUT_24BIT) return FAAD_ERR_UNSUPPORTED;
     if (!valid_config(cfg) || !mem_buf || mem_size < sizeof(faad_decoder) || !out_dec
         || ((uintptr_t)mem_buf & (_Alignof(faad_decoder) - 1))) {
         return FAAD_ERR_INVALID_ARGUMENT;
@@ -349,7 +353,7 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
 #ifndef FAAD_DISABLE_SBR
     samples = 2048; /* RAW LC can carry implicit SBR later in its lifetime. */
 #endif
-    info.max_output_bytes = samples * channels * (dec->config.output_format == FAAD_OUTPUT_16BIT ? 2 : 4);
+    info.max_output_bytes = samples * channels * output_sample_bytes(dec->config.output_format);
     static const uint32_t masks[] = { 0, 0x4, 0x3, 0x7, 0x107, 0x37, 0x3f, 0, 0x63f };
     if (info.channels <= 8 && (info.channels <= 2
         || (dec->asc.num_channels && config_channels(dec->asc.num_channels) == info.channels)))
@@ -449,6 +453,14 @@ static inline int16_t pcm_to_s16(float v)
 
 /* Full-scale 32-bit: the core's 16-bit scale times 2^16, clamped. The sample
  * is rounded at the float's own resolution, not at the 16-bit LSB. */
+static inline int32_t pcm_to_s24(float v)
+{
+    v *= 256.0f;
+    v = v < 8388607.0f ? v : 8388607.0f;
+    v = v > -8388608.0f ? v : -8388608.0f;
+    return (int32_t)lrintf(v);
+}
+
 static inline int32_t pcm_to_s32(float v)
 {
     v *= 65536.0f;
@@ -749,7 +761,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     if (num_chs <= 2)
         for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * frame_samples;
 
-    uint32_t required_bytes = frame_samples * num_chs * ((dec->config.output_format == FAAD_OUTPUT_16BIT) ? 2 : 4);
+    uint32_t required_bytes = frame_samples * num_chs * output_sample_bytes(dec->config.output_format);
     if (out_cap_bytes < required_bytes) {
         return FAAD_ERR_OUTPUT_TOO_SMALL;
     }
@@ -772,6 +784,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                 for (uint32_t c = 0; c < num_chs; c++)
                     out_int16[i * num_chs + c] = pcm_to_s16(src[c][i]);
         }
+    } else if (dec->config.output_format == FAAD_OUTPUT_24BIT) {
+        /* Packed in host byte order like the wider formats; byte-wise stores assume no alignment of out_pcm. */
+        uint8_t * restrict out_u8 = (uint8_t *)out_pcm;
+        for (uint32_t i = 0; i < frame_samples; i++)
+            for (uint32_t c = 0; c < num_chs; c++, out_u8 += 3)
+                write_pcm24(out_u8, pcm_to_s24(src[c][i]), WORDS_BIGENDIAN);
     } else if (dec->config.output_format == FAAD_OUTPUT_32BIT) {
         int32_t * restrict out_int32 = (int32_t *)out_pcm;
         for (uint32_t i = 0; i < frame_samples; i++)
