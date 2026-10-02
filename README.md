@@ -75,4 +75,4 @@ faad output.m4a -o decoded.wav      # decode
 faad -i output.m4a                  # show stream info
 ```
 
-See `faac --help`, `faad --help` and `docs/faac.1` for all options.
+All options are in the `faac(1)` and `faad(1)` man pages.
