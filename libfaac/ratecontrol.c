@@ -19,7 +19,7 @@
 #include "ratecontrol.h"
 #include "coder.h"
 #include "quantize.h"
-#include "faac_stats.h"
+#include "stats.h"
 
 #define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 

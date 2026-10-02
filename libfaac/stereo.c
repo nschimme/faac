@@ -17,9 +17,9 @@
 #include <math.h>
 #include "stereo.h"
 #include "huff2.h"
-#include "faac_util.h"
+#include "util.h"
 #include "faac_internal.h"
-#include "faac_stats.h"
+#include "stats.h"
 
 /* Intensity stereo crossover scales with core bandwidth (3.5-7 kHz) to save low-band phase bits at low rates. */
 #define IS_BW_RATIO              0.35f

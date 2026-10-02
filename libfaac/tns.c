@@ -18,7 +18,7 @@
 #include "frame.h"
 #include "coder.h"
 #include "tns.h"
-#include "faac_util.h"
+#include "util.h"
 
 /* Per-sample-rate scalefactor-band range TNS is allowed to filter over, from
  * ISO/IEC 13818-7/14496-3's TNS tool tables (indexed by sampleRateIdx). Not
