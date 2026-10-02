@@ -407,6 +407,13 @@ const char *cli_version_string(char *buf, size_t buf_size, const char *version) 
     return buf;
 }
 
+void cli_print_patent_notice(FILE *stream) {
+    fputs("\nPlease note that the use of this software may require the payment of patent\n"
+          "royalties. You need to consider this issue before you start building derivative\n"
+          "works. We are not warranting or indemnifying you in any way for patent\n"
+          "royalities! YOU ARE SOLELY RESPONSIBLE FOR YOUR OWN ACTIONS!\n\n", stream);
+}
+
 void cli_print_lgpl_notice(FILE *stream, const char *subject) {
     fprintf(stream, "This %s is free software; you can redistribute it and/or\n", subject);
     fprintf(stream,

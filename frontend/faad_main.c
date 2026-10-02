@@ -376,6 +376,7 @@ int main(int argc, char **argv)
             info.struct_size = sizeof(info);
             if (faad_get_library_info(&info) == FAAD_OK && info.copyright)
                 fprintf(stderr, "%s", info.copyright);
+            cli_print_patent_notice(stderr);
             cli_print_lgpl_notice(stderr, "library");
             return 0;
         }
