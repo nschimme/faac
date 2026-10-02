@@ -142,6 +142,7 @@ static bool valid_config(const faad_config *cfg)
 
 FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_bytes_out)
 {
+    if (cfg && cfg->output_format == FAAD_OUTPUT_24BIT) return FAAD_ERR_UNSUPPORTED;
     if (!valid_config(cfg) || !state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
     *state_bytes_out = (uint32_t)sizeof(faad_decoder);
     return FAAD_OK;
@@ -182,6 +183,7 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
                                       faad_decoder **out_dec)
 {
     if (out_dec) *out_dec = NULL;
+    if (cfg && cfg->output_format == FAAD_OUTPUT_24BIT) return FAAD_ERR_UNSUPPORTED;
     if (!valid_config(cfg) || !mem_buf || mem_size < sizeof(faad_decoder) || !out_dec
         || ((uintptr_t)mem_buf & (_Alignof(faad_decoder) - 1))) {
         return FAAD_ERR_INVALID_ARGUMENT;
