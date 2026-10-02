@@ -1,19 +1,28 @@
 # <img src="frontend/faac.ico" alt="FAAC" width="48" height="48" align="top" /> Freeware Advanced Audio Coder
 
-FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeline use cases where footprint and throughput matter as much as quality.
+This repository is a monorepo for the FAAC AAC encoder and its companion FAAD3 decoder, built together with Meson.
+
+FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeline use cases where footprint and throughput matter as much as quality. FAAD3 is the in-tree AAC decoder, used for decoding, round-trip testing and quality benchmarking.
 
 ### Key features:
 
-- MPEG-4 AAC-LC and HE-AAC v1 (SBR) profiles
+- MPEG-4 AAC-LC and HE-AAC v1 (SBR) encoding; the FAAD3 decoder additionally handles HE-AAC v2 (Parametric Stereo)
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
-- Flexible output options: ADTS and raw AAC streams
+- Flexible output options: Raw ADTS, ADIF bitstream, MP4/M4A (encoder and decoder frontends)
 
-### Command-line tools:
+## Repository layout
 
-- `faac` reads and writes MP4/M4A with gapless playback info, as well as raw ADTS
-- WAV and raw PCM input, with stdin/stdout piping
+| Directory | Contents |
+|-----------|----------|
+| `libfaac/` | Encoder library. Public API is `faac_*` in `include/faac.h` |
+| `libfaad/` | FAAD3 decoder library (LC, SBR, PS). Public API in `include/faad.h` |
+| `common/` | Source shared by both libraries and the frontends: FFT engine, SBR/Huffman/SFB tables, endian and AudioSpecificConfig helpers. Not built as a library of its own |
+| `frontend/` | `faac` and `faad` command-line tools (plus `faacgui` on Windows), sharing the input/output code, the audio-only MP4 writer and the MP4 reader |
+| `include/` | Public headers |
+| `tests/` | Decoder smoke/robustness tests, frontend round-trip test, libFuzzer harnesses, quality benchmark wrapper |
+| `docs/` | Man page and API documentation |
 
 ## Copyrights
 
@@ -43,26 +52,37 @@ Lesser General Public License for more details.
 ## Compiling Instructions
 
 1. Make sure you have recent versions of meson and ninja installed.
-2. cd to the source dir
+2. cd to FAAC source dir
 3. Run:
    ```bash
    meson setup build
    ninja -C build
+   meson test -C build
    meson install -C build
    ```
+
+This builds `libfaac`, `libfaad` and the `faac` and `faad` frontends.
 
 ### Build options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `frontend` | true | Build the `faac` command-line tool |
+| `frontend` | true | Build the `faac` (and `faad`, if enabled) command-line tools |
+| `decoder` | true | Build `libfaad` and the `faad` frontend |
+| `decoder-sbr` | true | SBR (HE-AAC v1) support in `libfaad` |
+| `decoder-ps` | true | Parametric Stereo (HE-AAC v2) support in `libfaad` |
 | `max-channels` | 8 | Maximum number of channels (1-8) |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
-| `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
+| `stats` | false | End-of-encode diagnostics on stderr (instrumentation only) |
+
+For an encoder-only build, pass `-Ddecoder=false`.
 
 ## Usage
 
 ```bash
 faac input.wav -o output.m4a        # encode
+faad output.m4a -o decoded.wav      # decode
+faad -i output.m4a                  # show stream info
 ```
 
+See `faac --help`, `faad --help` and `docs/faac.1` for all options.
