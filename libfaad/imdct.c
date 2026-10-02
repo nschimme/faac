@@ -94,14 +94,15 @@ void init_windows(void)
 
 /* DCT-IV of length M through an M/2-point complex FFT: pack even-index
  * inputs against reversed odd-index inputs, rotate, transform, rotate again
- * and unzip. */
-static void dct4(const float *in, float *u, int M)
+ * and unzip. buf holds 2*M floats: z, which the result u then overwrites
+ * (the FFT is done with it by then), and w. The result is buf[0..M). */
+static void dct4(const float *in, float *buf, int M)
 {
     int K = M / 2;
     int logm = (M == 1024) ? 9 : 6;
     const float *cs = (M == 1024) ? dct4_cos_1024 : dct4_cos_128;
     const float *sn = (M == 1024) ? dct4_sin_1024 : dct4_sin_128;
-    float z[1024], w[1024];
+    float *z = buf, *w = buf + M, *u = buf;
     float *zr = z, *zi = z + K;
 
     for (int n = 0; n < K; n++) {
@@ -119,13 +120,13 @@ static void dct4(const float *in, float *u, int M)
 
 /* IMDCT (ISO/IEC 14496-3 §4.6.11.3.1): n0 = N/4 + 1/2 makes the transform a
  * DCT-IV of the coefficients, folded out with its odd/even symmetries. */
-static void fast_imdct(const float *in, float *out, int n)
+static void fast_imdct(const float *in, float *out, int n, float *tmp)
 {
     int M = n / 2, H = M / 2;
-    float u[1024];
+    float *u = tmp; /* 2*M floats of work */
     float scale = 2.0f / (float)n;
 
-    dct4(in, u, M);
+    dct4(in, tmp, M);
     for (int i = 0; i < H; i++) {
         out[i]             =  u[H + i] * scale;
         out[M + H + i]     = -u[i] * scale;
@@ -168,26 +169,28 @@ static void imdct_emit_long(float * restrict out_pcm, float * restrict overlap, 
     for (int i = 1536; i < 2048; i++)  overlap[i - 1024] = -u[i - 1536] * scale * wr[2047 - i];
 }
 
-void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float * restrict spec, float * restrict out_pcm)
+void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequence, uint8_t window_shape, float * restrict spec, float * restrict out_pcm)
 {
+    float * restrict work = dec->scratch.work;
     /* ISO/IEC 14496-3 §4.6.11.3.2: the left half of the window uses the
      * previous block's shape, the right half this block's. */
     uint8_t prev_shape = dec->prev_window_shape[ch];
     const float * restrict win_long_l = (prev_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
     const float * restrict win_short_l = (prev_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
-    const float * restrict win_long = (ics->window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
-    const float * restrict win_short = (ics->window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
+    const float * restrict win_long = (window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
+    const float * restrict win_short = (window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
     float * restrict overlap = dec->overlap[ch];
-    dec->prev_window_shape[ch] = ics->window_shape;
-    dec->prev_window_seq[ch] = ics->window_sequence;
+    dec->prev_window_shape[ch] = window_shape;
+    dec->prev_window_seq[ch] = window_sequence;
 
-    if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
+    if (window_sequence == EIGHT_SHORT_SEQUENCE) {
         /* eight 256-sample blocks hopping by 128 cover samples 448..1599 */
-        float acc[1152];
-        memset(acc, 0, sizeof(acc));
+        float * restrict acc = work;
+        float * restrict block = work + 1152;
+        float * restrict tmp = work + 1152 + 256;
+        memset(acc, 0, sizeof(float) * 1152);
         for (int w = 0; w < 8; w++) {
-            float block[256];
-            fast_imdct(spec + w * 128, block, 256);
+            fast_imdct(spec + w * 128, block, 256, tmp);
             const float * restrict wl = (w == 0) ? win_short_l : win_short;
             float *dst = acc + w * 128;
             for (int i = 0; i < 128; i++) {
@@ -202,15 +205,15 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
         return;
     }
 
-    float u[1024];
+    float * restrict u = work;
     const float scale = 2.0f / 2048.0f;
-    dct4(spec, u, 1024);
+    dct4(spec, work, 1024);
 
-    if (ics->window_sequence == ONLY_LONG_SEQUENCE) {
+    if (window_sequence == ONLY_LONG_SEQUENCE) {
         imdct_emit_long(out_pcm, overlap, u, scale, win_long_l, win_long);
         return;
     }
-    if (ics->window_sequence == LONG_STOP_SEQUENCE) {
+    if (window_sequence == LONG_STOP_SEQUENCE) {
         /* zero, the short window's rise, then flat */
         for (int i = 0; i < 448; i++) out_pcm[i] = overlap[i];
         imdct_emit(out_pcm, overlap, u, scale, 448, 576, win_short_l, 1, 0.0f);
@@ -218,7 +221,7 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
     } else {
         imdct_emit(out_pcm, overlap, u, scale, 0, 1024, win_long_l, 1, 0.0f);
     }
-    if (ics->window_sequence == LONG_START_SEQUENCE) {
+    if (window_sequence == LONG_START_SEQUENCE) {
         /* flat, the short window's fall, then zero */
         imdct_emit(out_pcm, overlap, u, scale, 1024, 1472, NULL, 0, 1.0f);
         imdct_emit(out_pcm, overlap, u, scale, 1472, 1600, win_short, -1, 0.0f);
