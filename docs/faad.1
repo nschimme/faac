@@ -35,7 +35,9 @@ they are suppressed so they do not mix with the audio.
 .TP
 .BR -o ,\  --output\ <\fIfile\fP>
 Set output filename.
-An existing file is overwritten.
+An existing file is not overwritten unless
+.B --overwrite
+is given.
 .TP
 .BR -w ,\  --stdout
 Write the output to stdout.
@@ -90,6 +92,9 @@ Output the bitstream information in JSON format, without decoding.
 .BR -q ,\  --quiet
 Quiet mode, suppress decoding progress.
 .TP
+.BR --overwrite
+Overwrite an existing output file.
+.TP
 .BR --strict
 Strict mode, report the file offset, frame number and error of a decoding
 failure and exit with status 1.
@@ -126,13 +131,13 @@ Print stream information as JSON:
 .PP
 Check a file for damage:
 .IP
-.B faad --strict -o /dev/null song.m4a
+.B faad --strict --overwrite -o /dev/null song.m4a
 
 .SH EXIT STATUS
 .B 0
 on success and
 .B 1
-on a usage or option error, an unreadable input or output, or, with
+on a usage or option error, an unreadable input, an unwritable or already existing output, or, with
 .BR --strict ,
 a decoding error.
 
