@@ -25,15 +25,11 @@
  * The passband is flat within 0.05 dB up to the SBR crossover region,
  * ensuring the core signal remains transparent before SBR reconstruction. */
 #define HB_CENTER 0.5015570876767614f
-static const resfloat hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
+static const resfloat hb_even[RESAMPLE_FILTER_LEN / 4 + 1] = {
     -2.39042884e-03f,  2.03978735e-03f, -2.88625768e-03f,  3.94878764e-03f,
     -5.26747336e-03f,  6.89408424e-03f, -8.89782634e-03f,  1.13774798e-02f,
     -1.44815390e-02f,  1.84491642e-02f, -2.36937924e-02f,  3.10005784e-02f,
     -4.20596122e-02f,  6.12815300e-02f, -1.04870415e-01f,  3.18777389e-01f,
-     3.18777389e-01f, -1.04870415e-01f,  6.12815300e-02f, -4.20596122e-02f,
-     3.10005784e-02f, -2.36937924e-02f,  1.84491642e-02f, -1.44815390e-02f,
-     1.13774798e-02f, -8.89782634e-03f,  6.89408424e-03f, -5.26747336e-03f,
-     3.94878764e-03f, -2.88625768e-03f,  2.03978735e-03f, -2.39042884e-03f,
 };
 
 Resampler *ResampleInit(int channels)
