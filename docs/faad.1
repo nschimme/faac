@@ -44,16 +44,16 @@ consume it until end of file.
 .TP
 .BR -f ,\  --format\ <\fItype\fP>
 Output container format: wav (default) or raw (headerless PCM).
-Unrecognized values select wav.
+Any other value is an error.
 .TP
 .BR -b ,\  --bits\ <\fIdepth\fP>
 Sample depth: 16 (default), 24 or 32f (32-bit float).
-Unrecognized values select 16.
+Any other value is an error.
 More than two channels are written as WAVE_FORMAT_EXTENSIBLE with a channel mask.
 .TP
 .BR -a ,\  --adts\ <\fIfile\fP>
 Extract the raw ADTS stream from an MP4 file without decoding.
-Only applies to MP4 input; an ADTS input is decoded as usual.
+Requires MP4 input.
 
 .SH PROCESSING OPTIONS
 .TP
@@ -71,7 +71,7 @@ Has no effect on mono or stereo input.
 .BR -j ,\  --jump\ <\fIseconds\fP>
 Start decoding from the specified timestamp, in seconds.
 Only applies to MP4 input.
-A timestamp past the end gives an empty output, and an invalid one is ignored.
+A timestamp past the end gives an empty output.
 .TP
 .BR -g ,\  --no-gapless
 Disable the gapless trim of encoder delay and trailing padding that is
@@ -132,7 +132,7 @@ Check a file for damage:
 .B 0
 on success and
 .B 1
-on a usage error, an unreadable input or output, or, with
+on a usage or option error, an unreadable input or output, or, with
 .BR --strict ,
 a decoding error.
 
