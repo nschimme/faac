@@ -78,10 +78,12 @@ test_faad = executable('test_faad',
 )
 test('faad_smoke_test', test_faad)
 
-test_faad_robust = executable('test_faad_robust',
-    'test_faad_robust.c',
-    include_directories: ['..', '../include'],
-    link_with: [libfaad, libfaac],
-    dependencies: [libm],
-)
-test('faad_robust_test', test_faad_robust, timeout: 120)
+if get_option('encoder')
+    test_faad_robust = executable('test_faad_robust',
+        'test_faad_robust.c',
+        include_directories: ['..', '../include'],
+        link_with: [libfaad, libfaac],
+        dependencies: [libm],
+    )
+    test('faad_robust_test', test_faad_robust, timeout: 120)
+endif
