@@ -1,6 +1,5 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
- * Robustness test: a corrupted ADTS stream must never stall the decoder
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
