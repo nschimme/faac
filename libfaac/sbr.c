@@ -37,7 +37,6 @@
 /* SBR start frequency (kx). Crossover alignment prevents aliasing/gaps. */
 static int compute_kx(int sampleRate)
 {
-    static const int8_t sbr_offset[6] = { 7, 13, 16, 16, 20, 24 };
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int start_min = ((temp << 7) + (sampleRate >> 1)) / sampleRate;
     int row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
