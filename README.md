@@ -10,7 +10,7 @@ FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeli
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
-- Flexible output options: Raw ADTS, ADIF bitstream, MP4/M4A (encoder and decoder frontends)
+- Flexible output options: ADTS bitstream, raw AAC frames, and MP4/M4A container (encoder and decoder frontends)
 
 ## Repository layout
 
