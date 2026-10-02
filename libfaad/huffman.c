@@ -133,7 +133,7 @@ void init_huffman_luts(void)
                 huff_subtree[t].start = (uint16_t)n_entries;
                 n_entries += 1 << huff_subtree[t].depth;
                 memset(huff_sub + huff_subtree[t].start, 0, sizeof(HuffEntry) << huff_subtree[t].depth);
-                huff_subtree[t].depth |= 0x80; /* allocated */
+                huff_subtree[t].depth |= 0x80;
             }
             int depth = huff_subtree[t].depth & 0x7F;
             int rest = len - HUFF_LUT_BITS;
@@ -194,7 +194,7 @@ static inline int decode_escape(BitReader *bs)
 {
     int prefix = 0;
     while (prefix < 8 && bits_get_1(bs)) prefix++;
-    if (prefix == 8) bits_get_1(bs); /* the terminating zero */
+    if (prefix == 8) bits_get_1(bs);
     return (1 << (prefix + 4)) + (int)bits_get_fast(bs, (uint32_t)prefix + 4);
 }
 

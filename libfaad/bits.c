@@ -28,7 +28,6 @@ uint32_t bits_get(BitReader *bs, uint32_t nbits)
 {
     if (nbits == 0) return 0;
 
-    /* Fast single-word 32-bit shift-accumulator path */
     if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
         uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
@@ -42,7 +41,6 @@ uint32_t bits_get(BitReader *bs, uint32_t nbits)
 
     if (nbits > 32) nbits = 32;
 
-    /* Fallback byte-by-byte loop near buffer boundary */
     uint32_t val = 0;
     while (nbits > 0) {
         if (bs->byte_pos >= bs->len) {

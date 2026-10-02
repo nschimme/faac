@@ -64,7 +64,6 @@
 /* Index into the SFB tables for a sample rate (asc.c). */
 int get_sr_index(uint32_t sample_rate);
 
-/* Syntactic Element IDs per ISO 14496-3 */
 #define ID_SCE 0x0
 #define ID_CPE 0x1
 #define ID_CCE 0x2
@@ -74,17 +73,14 @@ int get_sr_index(uint32_t sample_rate);
 #define ID_FIL 0x6
 #define ID_END 0x7
 
-/* Window Sequences */
 #define ONLY_LONG_SEQUENCE 0
 #define LONG_START_SEQUENCE 1
 #define EIGHT_SHORT_SEQUENCE 2
 #define LONG_STOP_SEQUENCE 3
 
-/* Window Shapes */
 #define SINE_WINDOW 0
 #define KBD_WINDOW  1
 
-/* SBR & PS Constants */
 #define SBR_EXTENSION_DATA 13
 #define SBR_EXTENSION_DATA_CRC 14
 #define PS_EXTENSION_DATA 2
@@ -95,9 +91,9 @@ int get_sr_index(uint32_t sample_rate);
 
 typedef struct {
     const uint8_t *buffer;
-    uint32_t len;        /* total size in bytes */
-    uint32_t byte_pos;   /* current byte index */
-    uint32_t bit_pos;    /* bit offset within current byte (0..7, MSB to LSB) */
+    uint32_t len;
+    uint32_t byte_pos;
+    uint32_t bit_pos;    /* 0..7 within the byte, MSB first */
 } BitReader;
 
 void bits_init(BitReader *bs, const uint8_t *buffer, uint32_t len);
@@ -184,7 +180,6 @@ typedef struct {
     uint8_t pulse_amp[4];
     uint16_t pulse_pos[4];
 
-    /* TNS data */
     bool tns_data_present;
     uint8_t tns_n_filt[8];
     uint8_t tns_length[8][4];
@@ -193,7 +188,6 @@ typedef struct {
     uint8_t tns_coef_res[8];
     int8_t  tns_coef[8][4][TNS_MAX_ORDER];
 
-    /* Gain control */
     bool gain_control_present;
 } ICSInfo;
 
@@ -205,7 +199,7 @@ typedef struct {
 } CPEInfo;
 
 
-/* ---- Parametric stereo (ISO/IEC 14496-3 §8.6) ---- */
+/* Parametric stereo (ISO/IEC 14496-3 §8.6) */
 #define PS_MAX_ENV      5   /* four coded envelopes plus the implicit trailing one */
 #define PS_NR_PAR       34
 #define PS_NR_BANDS     91  /* hybrid sub-bands in the 34-parameter layout */
@@ -268,7 +262,7 @@ extern SBRHuffBook sbr_books[HB_COUNT];
 void init_sbr_books(void);
 int  sbr_huff_decode(BitReader *bs, const SBRHuffBook *book);
 
-/* ---- SBR (ISO/IEC 14496-3 §4.6.18) ---- */
+/* SBR (ISO/IEC 14496-3 §4.6.18) */
 #define SBR_SLOTS        32  /* QMF time slots per frame: numTimeSlots (16) * RATE (2) */
 #define SBR_T_HFGEN      8   /* slots of the previous frame kept for the covariance and X_low */
 #define SBR_T_HFADJ      2   /* offset of the envelope-adjusted region within the buffer */
@@ -280,7 +274,6 @@ int  sbr_huff_decode(BitReader *bs, const SBRHuffBook *book);
 #define SBR_MAX_LIM      (SBR_MAX_BANDS + SBR_MAX_PATCHES + 2)
 
 typedef struct {
-    /* frame grid */
     uint8_t frame_class, L_E, L_Q, bs_pointer;
     int8_t  l_A;
     uint8_t t_E[SBR_MAX_ENV + 1], t_Q[3], freq_res[SBR_MAX_ENV];
@@ -292,7 +285,6 @@ typedef struct {
     int16_t Q[2][SBR_MAX_NQ];
     bool    amp_res; /* this frame's resolution (a single FIXFIX envelope forces 1.5 dB) */
 
-    /* carried across frames */
     int16_t E_prev[SBR_MAX_BANDS];
     int16_t Q_prev[SBR_MAX_NQ];
     uint8_t freq_res_prev;
