@@ -178,9 +178,6 @@ const sbrfloat qmf_c[640] = {
     -4.8752279712e-04f, -4.9475180896e-04f, -5.6176925738e-04f, -5.5252865047e-04f,
 };
 
-const int8_t sbr_offset[6] = {
-    7, 13, 16, 16, 20, 24
-};
 
 const SBRHuffEntry f_huff_env_1_5dB[F_HUFF_ENV_1_5DB_NSYMS] = {
     /*  -60 */ { 0x0007ffe7u, 19 },
