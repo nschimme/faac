@@ -11,7 +11,7 @@ FAAD3 represents a complete, modernized redesign of the Freeware Advanced Audio 
 ### Core Audit Summary:
 1. **CLI Adaptation & Muscle Memory**: The `faad3` CLI (`frontend/faad_main.c`) has been enhanced to preserve muscle memory from `faad2` while providing modernized CLI features. Added short option `-g` (alias for `--no-gapless`), legacy numeric `-b` depth flags (`-b 1`, `-b 2`, `-b 3`, `-b 4`), and stdin stream piping (`faad -`).
 2. **ABI & Shared Library Versioning**: `libfaad` intentionally executes a clean-break ABI transition from legacy `NeAACDec*` symbols (`libfaad.so.2`) to modern `faad_*` symbols (`libfaad.so.3.0.0` with `soversion: '3'`). Shared library versioning in `libfaad/meson.build` has been updated to produce `libfaad.so.3` cleanly within the mono-repo.
-3. **Modern ABI Architecture**: FAAD3 introduces a zero-allocation memory model (`faad_get_state_size` + `faad_decoder_init`), explicit structure size versioning (`struct_size`), single-frame zero-copy decoding (`faad_decode_frame`), exact delay/priming query constants (`FAAD_SBR_DELAY`), thread-safe global lookup initialization, and strict error reporting (`faad_strerror`).
+3. **Modern ABI Architecture**: FAAD3 introduces a zero-allocation memory model (`faad_get_state_size` + `faad_decoder_init`), explicit structure size versioning (`struct_size`), single-frame zero-copy decoding (`faad_decode_frame`), runtime decoder delay in output samples (`decoder_delay`), thread-safe global lookup initialization, and strict error reporting (`faad_strerror`).
 4. **Dropped Profiles & Features**: Outside of DRM and fixed-point math, FAAD3 omits obsolete profiles (Main Profile, SSR, LTP, LD/ELD, ER AAC). Market research confirms these profiles have negligible/zero usage in modern streaming and media distribution. In-library file I/O has been cleanly refactored out of `libfaad` into `frontend/mp4read.c`.
 5. **Downstream Replacement & Edge Cases**: Downstream applications (e.g., FFmpeg, Audacious, VLC, MPlayer, GStreamer) have either transitioned to native decoders or can link against `libfaad.so.3` using the modern C API. Pipe handling, gapless trimming, and multi-channel `WAVE_FORMAT_EXTENSIBLE` header creation ensure full CLI script compatibility.
 
@@ -172,7 +172,7 @@ Because FAAD3 introduces `libfaad.so.3` and modern C API header `include/faad.h`
 ### 5.2 Edge Cases Handled in FAAD3
 1. **Stdin Input Piping (`faad -`)**: Shell pipelines (e.g., `cat input.aac | faad - -o output.wav`) read input dynamically from `stdin` into `inbuf` without requiring `fseek` support.
 2. **Multichannel WAV Extensible Headers**: When decoding multichannel AAC (3 to 8 channels), `write_wav_header()` automatically outputs `WAVE_FORMAT_EXTENSIBLE` headers with exact Windows speaker position masks (`dwChannelMask`), ensuring correct surround speaker placement in media players.
-3. **SBR Delay & Gapless Trimming**: Accurately accounts for core priming delay and SBR QMF delay (`FAAD_SBR_DELAY = 481` samples) when trimming gapless MP4/M4A tracks.
+3. **SBR Delay & Gapless Trimming**: Accurately accounts for core priming delay and SBR QMF delay (`decoder_delay`, currently 962 output samples) when trimming gapless MP4/M4A tracks.
 
 ---
 

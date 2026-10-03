@@ -566,7 +566,7 @@ int main(int argc, char **argv)
         }
     }
 
-    uint8_t outbuf[65536];
+    _Alignas(float) uint8_t outbuf[65536];
     uint32_t total_pcm_bytes = 0;
     uint32_t sample_rate = 44100;
     uint32_t num_channels = 2;
@@ -587,8 +587,8 @@ int main(int argc, char **argv)
         start_frame = (uint32_t)((jump_seconds * (double)sr) / (double)fl);
     }
 
-    /* Container priming uses track ticks, while the SBR filter delay uses
-     * core samples. Convert each to output samples before combining them. */
+    /* Convert container priming from track ticks to output samples; decoder
+     * metadata already supplies its additional delay in output samples. */
     uint32_t samples_to_skip = (is_mp4 && gapless) ? track.delay : 0;
     uint32_t padding_samples = (is_mp4 && gapless) ? track.padding : 0;
     bool gapless_scaled = false;
@@ -604,10 +604,12 @@ int main(int argc, char **argv)
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
 
-            faad_frame_info finfo;
+            faad_frame_info finfo = { .struct_size = sizeof(finfo) };
             st = faad_decode_frame(dec, inbuf + offset, size,
                                    &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
 
+            if (st == FAAD_OK && strict_mode && (finfo.concealed || finfo.degraded))
+                st = FAAD_ERR_DECODE_FAILED;
             if (st != FAAD_OK) {
                 if (strict_mode) {
                     print_strict_error(infile, offset, s, st);
@@ -633,13 +635,10 @@ int main(int argc, char **argv)
                 pcm_to_little_endian(outbuf, bytes_written, dec_bytes_per_sample);
                 uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
                 if (!gapless_scaled) {
-                    faad_stream_info sinfo = { .struct_size = sizeof(faad_stream_info) };
-                    faad_decoder_get_info(dec, &sinfo);
                     uint32_t core_rate = finfo.sbr_active && finfo.samples_per_ch == 2048
                         ? finfo.sample_rate / 2 : finfo.sample_rate;
                     uint32_t timescale = track.timescale ? track.timescale : core_rate;
-                    uint32_t delay = gapless ? (uint32_t)((uint64_t)sinfo.delay_samples
-                        * finfo.sample_rate / core_rate) : 0;
+                    uint32_t delay = gapless ? finfo.decoder_delay : 0;
                     samples_to_skip = (uint32_t)((uint64_t)samples_to_skip * finfo.sample_rate / timescale) + delay;
                     padding_samples = (uint32_t)((uint64_t)padding_samples * finfo.sample_rate / timescale);
                     padding_samples = padding_samples > delay ? padding_samples - delay : 0;
@@ -686,10 +685,12 @@ int main(int argc, char **argv)
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
 
-            faad_frame_info finfo;
+            faad_frame_info finfo = { .struct_size = sizeof(finfo) };
             st = faad_decode_frame(dec, inbuf + offset, file_len - offset,
                                    &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
 
+            if (st == FAAD_OK && strict_mode && (finfo.concealed || finfo.degraded))
+                st = FAAD_ERR_DECODE_FAILED;
             if (st != FAAD_OK) {
                 if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
                     break;

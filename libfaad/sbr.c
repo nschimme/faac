@@ -1257,7 +1257,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 #endif
 
 #ifndef FAAD_DISABLE_PS
-        if (dec->ps_present && num_ch == 1) {
+        if (dec->ps_seen && num_ch == 1) {
             sbr_process_channel(el, &dec->sbr[0], sc, pcm_in, E0, Q0, have_hf, PS_IN_SLOTS);
             dec->num_channels = 2;
             if (dec->ps.start) ps_frame_begin(dec, sc->x, have_hf ? el->kx + el->M : 32);

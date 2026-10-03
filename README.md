@@ -66,6 +66,11 @@ Lesser General Public License for more details.
 | `stats` | false | End-of-stream diagnostics on stderr, encoder and decoder (instrumentation only) |
 
 For an encoder-only build pass `-Ddecoder=false`; for a decoder-only build pass `-Dencoder=false`.
+Decoder PS support requires SBR and at least two compiled channels;
+`faad_get_library_info()` reports the capabilities of the loaded build.
+
+Library integration: [FAAD decoder API](docs/libfaad.md) and
+[FAAC encoder API](docs/libfaac.html).
 
 ## Usage
 

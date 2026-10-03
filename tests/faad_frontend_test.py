@@ -51,6 +51,33 @@ def main():
             assert actual > 0, f"{ext}: -w produced no PCM"
             assert riff == 0xFFFFFFFF and data == 0xFFFFFFFF, f"{ext}: -w header must declare a streaming length, got {riff}/{data}"
             assert piped[44:] == open(out, "rb").read()[44:], f"{ext}: -w PCM differs from -o PCM"
+
+        # Runtime SBR delay uses output samples; preserve gapless track length.
+        he = os.path.join(d, "he.m4a")
+        subprocess.run([faac, "--object-type", "he-aac-v1", "-b", "64", "-o", he, src],
+                       check=True, capture_output=True)
+        he_out = os.path.join(d, "he.wav")
+        subprocess.run([faad, "-q", "--strict", "-o", he_out, he], check=True, capture_output=True)
+        with wave.open(he_out) as w:
+            assert w.getframerate() == 44100 and w.getnchannels() == 2
+            assert w.getnframes() == 88200, "runtime decoder delay changed gapless length"
+
+        # Concealed core and damaged-SBR recovery both produce usable audio
+        # normally, but strict mode must reject them.
+        for name, payload in (("concealed", b"\xe0"),
+                              ("degraded", bytes.fromhex("00c800063dfc000e"))):
+            length = 7 + len(payload)
+            header = bytes((0xff, 0xf1, 0x50, 0x40 | (length >> 11),
+                            (length >> 3) & 0xff, ((length & 7) << 5) | 0x1f, 0xfc))
+            damaged = os.path.join(d, name + ".aac")
+            with open(damaged, "wb") as f:
+                f.write(header + payload)
+            out = os.path.join(d, name + ".wav")
+            subprocess.run([faad, "-q", "-o", out, damaged], check=True, capture_output=True)
+            assert wav_sizes(open(out, "rb").read())[2] > 0
+            result = subprocess.run([faad, "-q", "--strict", "--overwrite", "-o", out, damaged],
+                                    capture_output=True)
+            assert result.returncode == 1 and b"frame" in result.stderr.lower(), name + " strict mode"
     print("faad frontend: ok")
 
 

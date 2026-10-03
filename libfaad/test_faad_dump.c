@@ -36,7 +36,7 @@ static void decode_to_dump(const char *path)
     const uint8_t frame[] = { 0xe0 }; /* END-only frame, concealed */
     faad_decoder *dec = NULL;
     assert(faad_decoder_open(&cfg, asc, sizeof(asc), &dec) == FAAD_OK);
-    int16_t pcm[2048];
+    int16_t pcm[4096];
     for (int i = 0; i < 2; i++) {
         uint32_t used = 0, written = 0;
         assert(faad_decode_frame(dec, frame, sizeof(frame), &used,
