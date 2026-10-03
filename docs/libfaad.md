@@ -158,6 +158,122 @@ capacity bound, resets the PNS sequence, and cannot replay previous concealed
 audio. It does not drain delayed PCM or generate audio for missing packets.
 Reopen the decoder for a different stream configuration.
 
+## Porting from the legacy NeAACDec* API
+
+The FAAD2 interface in `../faad2/include/neaacdec.h` and its compatibility
+`faad.h` (generated from `faad.h.in`) is replaced by `include/faad.h` in this
+tree. Include `<faad.h>` with this project's include directory on your search
+path, and link against this project's `libfaad` (shared-library ABI 3).
+Installed builds provide the `faad` pkg-config module. Remove the old FAAD2
+include/library paths so an old header or library cannot be selected by mistake.
+Rebuild callers: this is a new source and binary interface, with no `NeAACDec*`
+or `faacDec*` compatibility shim. The latter names were aliases in the legacy
+header and require the same migration.
+
+- **Open and initialization.** Replace `NeAACDecHandle` with
+  `faad_decoder *`. The old sequence of `NeAACDecOpen()`,
+  `NeAACDecGetCurrentConfiguration()` / `NeAACDecSetConfiguration()`, and
+  `NeAACDecInit()` or `NeAACDecInit2()` becomes `faad_config_init()`, field
+  assignments, and one `faad_decoder_open()` call. Configuration is supplied
+  once; there is no live configuration pointer or reconfiguration setter.
+  `faad_decoder_init()` is the alternative for caller-owned, aligned state;
+  see [Allocation and initialization](#allocation-and-initialization).
+- **ADTS initialization.** For the ADTS use of `NeAACDecInit()`, select
+  `FAAD_STREAM_ADTS` (the default) and open with NULL ASC and length 0.
+  Opening consumes no input bytes: pass the first ADTS frame, including its
+  header, to `faad_decode_frame()`. There is no initialization return value to
+  skip in the input. Rate and channel count may remain unknown until decoding;
+  check `faad_stream_info.format_known` and use emitted frame metadata.
+- **RAW initialization.** For `NeAACDecInit2()`, select `FAAD_STREAM_RAW`
+  and pass the demuxer's valid, nonempty AudioSpecificConfig to
+  `faad_decoder_open()`. Configuration and ASC are consumed during open and
+  need not outlive it. Pass exactly one complete raw AAC access unit per decode
+  call. There is no fallback to a configured sample rate or object type when
+  ASC is missing.
+- **PCM ownership and capacity.** `NeAACDecDecode()` returned library-owned
+  PCM; `faad_decode_frame()` always writes to caller-owned storage. Call
+  `faad_decoder_get_info()` after open and allocate at least
+  `info.max_output_bytes`, with the alignment required by the selected PCM
+  format. Supply that lifetime capacity on every call, even before the stream
+  format is known. Callers of `NeAACDecDecode2()` can retain their buffer
+  management but now pass the buffer directly as `void *`, rather than as
+  `void **`. A buffer sized for only the current channel count or LC frame may
+  be too small for later implicit SBR/PS.
+- **Decode and errors.** Replace both decode functions with
+  `faad_decode_frame()`. It returns a `faad_status`, with input consumption and
+  PCM byte count in separate `uint32_t` out-parameters. Replace checks of a
+  returned PCM pointer or `NeAACDecFrameInfo.error` with status handling, and
+  replace `NeAACDecGetErrorMessage()` with `faad_strerror(status)`.
+  `status < 0` identifies a non-success result, but streaming callers must
+  distinguish retryable `FAAD_ERR_NEED_MORE_DATA`, skipped bytes on
+  `FAAD_ERR_SYNC_LOST`, and consumed rejected packets. Follow the consumption
+  rules in [Packet errors and seeking](#packet-errors-and-seeking); do not
+  blindly retry every negative status. Recovered PCM returns `FAAD_OK` with
+  `concealed` or `degraded` set.
+- **Seeking.** Replace `NeAACDecPostSeekReset(handle, frame)` with
+  `faad_decoder_flush(dec)`. There is no frame-index argument. Flush discards
+  audio history without draining PCM and preserves configuration and discovered
+  format. Close and reopen for a different stream configuration.
+- **Close.** Replace `NeAACDecClose(handle)` with
+  `faad_decoder_close(&dec)`. Pass the address of the handle; it is set to NULL
+  on success. Caller-owned state and PCM remain the caller's responsibility.
+- **Version and capabilities.** Replace `NeAACDecGetVersion()` and
+  `NeAACDecGetCapabilities()` with `faad_get_library_info()`. It reports
+  library-owned version/copyright strings, the compiled channel ceiling, and
+  SBR/PS support as fields rather than a capability bitmask. Use
+  `FAAD_VERSION_STRING` / `FAAD_VERSION_HEX` for compile-time header version
+  checks instead of `FAAD2_VERSION`.
+- **Struct growth and integer widths.** Always initialize configuration with
+  `faad_config_init(&cfg, sizeof(cfg))` and set metadata `struct_size` before
+  each query or decode call. The old structs have different layouts and cannot
+  be cast to the new ones. Lengths and counts are now `uint32_t`, rather than
+  platform-dependent `unsigned long`; check larger container lengths before
+  narrowing them.
+
+### Configuration field mapping
+
+| Legacy `NeAACDecConfiguration` field | New configuration or action |
+|---|---|
+| `outputFormat` | `faad_config.output_format`: `FAAD_FMT_16BIT`, `FAAD_FMT_24BIT`, `FAAD_FMT_32BIT`, and `FAAD_FMT_FLOAT` become `FAAD_OUTPUT_16BIT`, `FAAD_OUTPUT_24BIT`, `FAAD_OUTPUT_32BIT`, and `FAAD_OUTPUT_FLOAT` |
+| `downMatrix` | `faad_config.downmix_mode`: use `FAAD_DOWNMIX_STEREO` for the old stereo downmix request, or `FAAD_DOWNMIX_NONE` to preserve the layout; `FAAD_DOWNMIX_MONO` is also available |
+| `defObjectType`, `defSampleRate` | No replacement; ADTS or required RAW ASC supplies stream parameters |
+| `useOldADTSFormat` | No replacement for the legacy ADTS variant |
+| `dontUpSampleImplicitSBR` | No replacement; use the actual output rate in frame metadata and resample outside the decoder if needed |
+
+Stream framing is now explicit in `faad_config.stream_format`. Use
+`FAAD_STREAM_RAW` or `FAAD_STREAM_ADTS`; do not copy the legacy `header_type`
+numbers (`ADTS` was 2, whereas `FAAD_STREAM_ADTS` is 1). ADIF, LATM and DRM
+initialization (`NeAACDecInitDRM()`) have no corresponding entry points.
+The public object types are AAC-LC, HE-AAC v1 and HE-AAC v2
+(`FAAD_OBJ_LC`, `FAAD_OBJ_HE_AAC_V1`, `FAAD_OBJ_HE_AAC_V2`); legacy MAIN,
+SSR, LTP, LD and error-resilient profiles have no replacements. Double and
+legacy fixed-point PCM modes are not exposed; select a documented
+`FAAD_OUTPUT_*` representation explicitly.
+
+### Frame metadata mapping
+
+| Legacy `NeAACDecFrameInfo` field | New value |
+|---|---|
+| `bytesconsumed` | `bytes_consumed` decode out-parameter, including on errors where input was skipped |
+| `samples` | `frame.samples_per_ch * frame.channels` for the total interleaved sample count; `bytes_written` is the PCM byte count |
+| `samplerate`, `channels` | `faad_frame_info.sample_rate`, `channels` |
+| `error` | Returned `faad_status`; also inspect `concealed` / `degraded` for recovered PCM |
+| `sbr`, `ps` | Boolean `sbr_active`, `ps_active`; the legacy multi-valued SBR mode is not retained |
+| `object_type` | `faad_stream_info.object_type`, queried with `faad_decoder_get_info()` |
+| `header_type` | The configured `stream_format`; there is no per-frame header-type field |
+| `num_front_channels`, `num_side_channels`, `num_back_channels`, `num_lfe_channels`, `channel_position[]` | `channel_mask` and the documented output order; there is no per-channel position array |
+
+Review any channel reordering inherited from FAAD2: the new surround output
+starts with FL, FR, FC, and `channel_mask` uses WAVE speaker bits rather than
+the legacy channel-position constants. Unknown PCE surround layouts report
+mask 0. Frame metadata describes the PCM actually emitted; implicit SBR/PS can
+change rate, channel count and frame length after open.
+
+`NeAACDecAudioSpecificConfig()` and `mp4AudioSpecificConfig` have no standalone
+public parser equivalent. Pass ASC to decoder initialization and query the
+available stream metadata; applications needing detailed ASC syntax must
+handle that in their container/parser layer.
+
 ## Validation
 
 `meson test` includes baseline/future-size ABI canaries, a short-enum caller,
