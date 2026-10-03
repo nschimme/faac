@@ -415,29 +415,13 @@ struct faad_decoder {
     uint8_t win_shape[MAX_CHANNELS];
 
     float pcm[MAX_CHANNELS * FRAME_SAMPLES_MAX]; /* core output, then SBR output in place */
-
-#ifdef FAAD_STATS
-    faadDecStats stats;
-#endif
 };
 
 void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate);
-faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate
-#ifdef FAAD_STATS
-    , struct faad_decoder *dec
-#endif
-);
-faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec
-#ifdef FAAD_STATS
-    , struct faad_decoder *dec
-#endif
-);
+faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate);
+faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec);
 void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed);
-void apply_ms_stereo(CPEInfo *cpe, float *spec_l, float *spec_r
-#ifdef FAAD_STATS
-    , struct faad_decoder *dec
-#endif
-);
+void apply_ms_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
 void apply_is_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
 void apply_tns(ICSInfo *ics, float *spec);
 void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequence, uint8_t window_shape, float *spec, float *out_pcm);
@@ -458,7 +442,7 @@ void ps_slot(struct faad_decoder *dec, int n, float X[PS_IN_SLOTS][64][2], float
 void init_ps_tables(void);
 void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm);
 #ifdef FAAD_STATS
-FILE *faad_dump_file(struct faad_decoder *dec);
+FILE *faad_dump_file(void);
 #endif
 
 #endif /* FAAD_INTERNAL_H */

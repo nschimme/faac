@@ -81,6 +81,17 @@ test_faad = executable('test_faad',
 )
 test('faad_smoke_test', test_faad)
 
+if get_option('stats')
+    test_faad_dump = executable('test_faad_dump',
+        'test_faad_dump.c',
+        c_args: faad_c_args,
+        include_directories: ['..', '../include'],
+        link_with: [libfaad],
+    )
+    test('faad_dump_test', find_program('python3'),
+        args: [files('../tests/faad_dump_test.py'), test_faad_dump])
+endif
+
 if get_option('encoder')
     test_faad_robust = executable('test_faad_robust',
         'test_faad_robust.c',

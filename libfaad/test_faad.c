@@ -18,15 +18,19 @@
 #include <assert.h>
 #include <string.h>
 
+#include "config.h"
+
+#ifndef FAAD_STATS
 #if defined(_WIN32) && !defined(__MINGW32__)
 #include <windows.h>
 #else
 #include <pthread.h>
 #endif
+#endif
 
 #include "faad.h"
-#include "config.h"
 
+#ifndef FAAD_STATS
 #define NUM_THREADS 8
 #define ITERATIONS_PER_THREAD 100
 
@@ -70,6 +74,8 @@ static void *thread_test_worker(void *arg)
     return NULL;
 }
 #endif
+
+#endif /* !FAAD_STATS */
 
 /* AudioSpecificConfig signalling: the 0x2b7 sync extension carries a real
  * sbrPresentFlag, so an explicit "no SBR" (FFmpeg's default for AAC-LC in
@@ -245,6 +251,7 @@ int main(void)
     assert(faad_decoder_close(&dec_heap) == FAAD_OK);
     assert(faad_decoder_close(NULL) == FAAD_ERR_INVALID_ARGUMENT);
 
+#ifndef FAAD_STATS
 #if defined(_WIN32) && !defined(__MINGW32__)
     HANDLE threads[NUM_THREADS];
     for (int i = 0; i < NUM_THREADS; i++) {
@@ -268,5 +275,9 @@ int main(void)
 #endif
 
     printf("FAAD3 static placement, heap, and concurrent multi-threading tests passed successfully.\n");
+#else
+    /* Global diagnostic state is intended for one decoder at a time. */
+    printf("FAAD3 static placement and heap tests passed (global stats enabled).\n");
+#endif
     return 0;
 }

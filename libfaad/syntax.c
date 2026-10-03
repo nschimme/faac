@@ -149,7 +149,7 @@ faad_status decode_dse(BitReader *bs)
 faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, float *spec, bool common_window)
 {
 #ifdef FAAD_STATS
-    dec->stats.icsCount++;
+    g_faadStats.icsCount++;
 #endif
 
     ics->global_gain = bits_get(bs, 8);
@@ -167,7 +167,7 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
 
 #ifdef FAAD_STATS
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
-        dec->stats.shortBlockIcsCount++;
+        g_faadStats.shortBlockIcsCount++;
     }
 #endif
 
@@ -177,17 +177,13 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     faad_status st = decode_section_data(bs, ics);
     if (st != FAAD_OK) return st;
 #ifdef FAAD_STATS
-    dec->stats.frameSectBits += bits_get_consumed(bs) - bits_mark;
+    g_faadStats.frameSectBits += bits_get_consumed(bs) - bits_mark;
     bits_mark = bits_get_consumed(bs);
 #endif
 
-    decode_scale_factor_data(bs, ics, dec->core_sample_rate
+    decode_scale_factor_data(bs, ics, dec->core_sample_rate);
 #ifdef FAAD_STATS
-        , dec
-#endif
-    );
-#ifdef FAAD_STATS
-    dec->stats.frameSfBits += bits_get_consumed(bs) - bits_mark;
+    g_faadStats.frameSfBits += bits_get_consumed(bs) - bits_mark;
     bits_mark = bits_get_consumed(bs);
 #endif
 
@@ -212,7 +208,7 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     ics->tns_data_present = bits_get(bs, 1);
 #ifdef FAAD_STATS
     if (ics->tns_data_present) {
-        dec->stats.tnsActiveFrames++;
+        g_faadStats.tnsActiveFrames++;
     }
 #endif
     if (ics->tns_data_present) {
@@ -252,14 +248,14 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     }
 
 #ifdef FAAD_STATS
-    dec->stats.frameAuxBits += bits_get_consumed(bs) - bits_mark;
+    g_faadStats.frameAuxBits += bits_get_consumed(bs) - bits_mark;
     bits_mark = bits_get_consumed(bs);
-    st = decode_spectral_data(bs, ics, spec, dec);
-    dec->stats.frameSpecBits += bits_get_consumed(bs) - bits_mark;
-    return st;
-#else
-    return decode_spectral_data(bs, ics, spec);
 #endif
+    st = decode_spectral_data(bs, ics, spec);
+#ifdef FAAD_STATS
+    g_faadStats.frameSpecBits += bits_get_consumed(bs) - bits_mark;
+#endif
+    return st;
 }
 
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch)

@@ -645,7 +645,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
             h.limiter_bands = 2; h.limiter_gains = 2; h.interpol_freq = 1; h.smoothing_mode = 1;
         }
 #ifdef FAAD_STATS
-        dec->stats.sbrHeaderCount++;
+        g_faadStats.sbrHeaderCount++;
 #endif
         /* A change to anything the tables depend on resets the element. */
         bool reset = !el->header_present || h.start_freq != el->start_freq || h.stop_freq != el->stop_freq ||
@@ -662,10 +662,10 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         }
 #ifdef FAAD_STATS
         {
-            FILE *df = faad_dump_file(dec);
+            FILE *df = faad_dump_file();
             if (df) {
                 fprintf(df, "H %u %d %d %u %u %u %u %u %u %u %u %u %u %d %u %u %u %u %u %d %d\n",
-                        dec->stats.totalFrames, nch, (int)el->amp_res, el->start_freq, el->stop_freq,
+                        g_faadStats.totalFrames, nch, (int)el->amp_res, el->start_freq, el->stop_freq,
                         el->xover_band, el->freq_scale, el->alter_scale, el->noise_bands,
                         el->limiter_bands, el->limiter_gains, el->interpol_freq, el->smoothing_mode,
                         (int)reset, el->kx, el->M, el->n_low, el->n_high, el->n_q,
@@ -735,7 +735,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
             for (int k = 0; k < el->n_high; k++) ch->add_harmonic[k] = (uint8_t)bits_get(bs, 1);
     }
 #ifdef FAAD_STATS
-    dec->stats.sbrEnvelopeSum += chs[0]->L_E;
+    g_faadStats.sbrEnvelopeSum += chs[0]->L_E;
 #endif
 
     if (bits_get(bs, 1)) { /* bs_extended_data */
@@ -749,7 +749,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
                 uint32_t here = bits_get_consumed(bs);
                 ps_read_data(dec, bs, end > here ? end - here : 0);
 #ifdef FAAD_STATS
-                dec->stats.framePsBits += bits_get_consumed(bs) - here;
+                g_faadStats.framePsBits += bits_get_consumed(bs) - here;
 #endif
                 break;
             }
@@ -1167,8 +1167,6 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
 
 #else /* FAAD_DISABLE_SBR */
 
-void init_qmf_twiddles(void) {}
-
 faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
 {
     (void)dec; (void)bs; (void)ch0; (void)syntax_id; (void)crc;
@@ -1178,7 +1176,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
 
 /* Entry point */
 
-#ifdef FAAD_STATS
+#if defined(FAAD_STATS) && !defined(FAAD_DISABLE_SBR)
 /* One 'F' record for one SBR channel of one frame: dequantized envelope/
  * noise levels are captured here (post sbr_dequant, pre sbr_hf_adjust), so
  * they are E_orig/Q before any decoder-side limiter or smoothing gain. */
@@ -1250,10 +1248,10 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 
 #ifdef FAAD_STATS
         if (have_hf) {
-            FILE *df = faad_dump_file(dec);
+            FILE *df = faad_dump_file();
             if (df) {
-                sbr_dump_frame(df, dec->stats.totalFrames, ch, el, &dec->sbr[ch], E0, Q0);
-                if (pair) sbr_dump_frame(df, dec->stats.totalFrames, ch + 1, el, &dec->sbr[ch + 1], E1, Q1);
+                sbr_dump_frame(df, g_faadStats.totalFrames, ch, el, &dec->sbr[ch], E0, Q0);
+                if (pair) sbr_dump_frame(df, g_faadStats.totalFrames, ch + 1, el, &dec->sbr[ch + 1], E1, Q1);
             }
         }
 #endif
