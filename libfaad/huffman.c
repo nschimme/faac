@@ -290,24 +290,22 @@ void init_huffman_luts(void)
         int n = huffbook_sizes[book];
         uint32_t code = 0;
         int prev_len = 0;
-#define HUFF_LEN(i) (int)tab[i].len
-#define HUFF_CODE(i) code
         HuffEntry *lut = huff_lut[book - 1];
         memset(lut, 0, sizeof(huff_lut[0]));
 
         /* short codes fill their share of the first level; each longer
          * code's prefix gets a subtree as deep as its longest code */
         for (int i = 0; i < n; i++) {
-            int len = HUFF_LEN(i);
+            int len = (int)tab[i].len;
             code = (code + (i != 0)) << (len - prev_len);
             prev_len = len;
             if (len == 0) continue;
             if (len <= HUFF_LUT_BITS) {
-                uint32_t start = HUFF_CODE(i) << (HUFF_LUT_BITS - len);
+                uint32_t start = code << (HUFF_LUT_BITS - len);
                 for (uint32_t k = 0; k < (1U << (HUFF_LUT_BITS - len)); k++)
                     lut[start + k] = (HuffEntry)(len | (huff_tuple(book, tab[i].sym) << 4));
             } else {
-                uint32_t prefix = HUFF_CODE(i) >> (len - HUFF_LUT_BITS);
+                uint32_t prefix = code >> (len - HUFF_LUT_BITS);
                 if (lut[prefix] == 0) {
                     lut[prefix] = (HuffEntry)(n_sub << 4);
                     huff_subtree[n_sub].depth = 0;
@@ -320,11 +318,11 @@ void init_huffman_luts(void)
         code = 0;
         prev_len = 0;
         for (int i = 0; i < n; i++) {
-            int len = HUFF_LEN(i);
+            int len = (int)tab[i].len;
             code = (code + (i != 0)) << (len - prev_len);
             prev_len = len;
             if (len <= HUFF_LUT_BITS) continue;
-            uint32_t prefix = HUFF_CODE(i) >> (len - HUFF_LUT_BITS);
+            uint32_t prefix = code >> (len - HUFF_LUT_BITS);
             int t = lut[prefix] >> 4;
             if (!(huff_subtree[t].depth & 0x80)) {
                 /* first code of this subtree: allocate it */
@@ -335,13 +333,11 @@ void init_huffman_luts(void)
             }
             int depth = huff_subtree[t].depth & 0x7F;
             int rest = len - HUFF_LUT_BITS;
-            uint32_t tail = HUFF_CODE(i) & ((1U << rest) - 1);
+            uint32_t tail = code & ((1U << rest) - 1);
             uint32_t start = huff_subtree[t].start + (tail << (depth - rest));
             for (uint32_t k = 0; k < (1U << (depth - rest)); k++)
                 huff_sub[start + k] = (HuffEntry)(rest | (huff_tuple(book, tab[i].sym) << 4));
         }
-#undef HUFF_LEN
-#undef HUFF_CODE
         tab += n;
     }
     for (int t = 0; t < n_sub; t++) huff_subtree[t].depth &= 0x7F;
