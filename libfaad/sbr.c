@@ -422,80 +422,24 @@ static void sbr_reset_channel(SBRChannel *ch)
 
 /* Bitstream: header, grid, envelopes (§4.6.18.3) */
 
-SBRHuffBook sbr_books[HB_COUNT];
-static uint8_t sbr_huff_pool[846];
-
-static const struct { const SBRHuffEntry *tab; uint8_t nsyms; int8_t offset; } sbr_book_desc[HB_COUNT] = {
-    { t_huff_env_1_5dB, T_HUFF_ENV_1_5DB_NSYMS, T_HUFF_ENV_1_5DB_OFFSET },
-    { f_huff_env_1_5dB, F_HUFF_ENV_1_5DB_NSYMS, F_HUFF_ENV_1_5DB_OFFSET },
-    { t_huff_env_bal_1_5dB, T_HUFF_ENV_BAL_1_5DB_NSYMS, T_HUFF_ENV_BAL_1_5DB_OFFSET },
-    { f_huff_env_bal_1_5dB, F_HUFF_ENV_BAL_1_5DB_NSYMS, F_HUFF_ENV_BAL_1_5DB_OFFSET },
-    { t_huff_env_3_0dB, T_HUFF_ENV_3_0DB_NSYMS, T_HUFF_ENV_3_0DB_OFFSET },
-    { f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET },
-    { t_huff_env_bal_3_0dB, T_HUFF_ENV_BAL_3_0DB_NSYMS, T_HUFF_ENV_BAL_3_0DB_OFFSET },
-    { f_huff_env_bal_3_0dB, F_HUFF_ENV_BAL_3_0DB_NSYMS, F_HUFF_ENV_BAL_3_0DB_OFFSET },
-    { t_huff_noise_3_0dB, T_HUFF_NOISE_3_0DB_NSYMS, T_HUFF_NOISE_3_0DB_OFFSET },
-    { t_huff_noise_bal_3_0dB, T_HUFF_NOISE_BAL_3_0DB_NSYMS, T_HUFF_NOISE_BAL_3_0DB_OFFSET },
-#ifndef FAAD_DISABLE_PS
-    { ps_huff_iid_df_fine, PS_HUFF_IID_DF_FINE_NSYMS, PS_HUFF_IID_DF_FINE_OFFSET },
-    { ps_huff_iid_dt_fine, PS_HUFF_IID_DT_FINE_NSYMS, PS_HUFF_IID_DT_FINE_OFFSET },
-    { ps_huff_iid_df, PS_HUFF_IID_DF_NSYMS, PS_HUFF_IID_DF_OFFSET },
-    { ps_huff_iid_dt, PS_HUFF_IID_DT_NSYMS, PS_HUFF_IID_DT_OFFSET },
-    { ps_huff_icc_df, PS_HUFF_ICC_DF_NSYMS, PS_HUFF_ICC_DF_OFFSET },
-    { ps_huff_icc_dt, PS_HUFF_ICC_DT_NSYMS, PS_HUFF_ICC_DT_OFFSET },
-    { ps_huff_ipd_df, PS_HUFF_IPD_DF_NSYMS, PS_HUFF_IPD_DF_OFFSET },
-    { ps_huff_ipd_dt, PS_HUFF_IPD_DT_NSYMS, PS_HUFF_IPD_DT_OFFSET },
-    { ps_huff_opd_df, PS_HUFF_OPD_DF_NSYMS, PS_HUFF_OPD_DF_OFFSET },
-    { ps_huff_opd_dt, PS_HUFF_OPD_DT_NSYMS, PS_HUFF_OPD_DT_OFFSET },
-#endif
-};
-
-void init_sbr_books(void)
-{
-    static bool done = false;
-    if (done) return;
-    uint16_t pos = 0;
-    for (int id = 0; id < HB_COUNT; id++) {
-        const SBRHuffEntry *tab = sbr_book_desc[id].tab;
-        int nsyms = sbr_book_desc[id].nsyms;
-        SBRHuffBook *b = &sbr_books[id];
-        uint8_t *order = sbr_huff_pool + pos;
-        if (!tab) continue;
-        b->tab = tab; b->nsyms = (uint8_t)nsyms; b->offset = sbr_book_desc[id].offset; b->pool = pos;
-        pos += (uint16_t)nsyms;
-
-        memset(b->first, 0, sizeof(b->first));
-        for (int i = 0; i < nsyms; i++) b->first[tab[i].len + 1]++;
-        for (int l = 1; l <= HB_MAX_LEN + 1; l++) b->first[l] += b->first[l - 1];
-        /* stable fill, then order each length's run by code */
-        uint8_t fill[HB_MAX_LEN + 2];
-        memcpy(fill, b->first, sizeof(fill));
-        for (int i = 0; i < nsyms; i++) order[fill[tab[i].len]++] = (uint8_t)i;
-        for (int l = 1; l <= HB_MAX_LEN; l++) {
-            for (int i = b->first[l] + 1; i < b->first[l + 1]; i++) {
-                uint8_t sym = order[i];
-                int j = i;
-                while (j > b->first[l] && tab[order[j - 1]].code > tab[sym].code) { order[j] = order[j - 1]; j--; }
-                order[j] = sym;
-            }
-        }
-    }
-    done = true;
-}
-
-/* Reads one codeword: after each bit, only the symbols of that length are
- * candidates, and they are in code order. */
+/* Canonical codewords of each length form a contiguous range. */
 int sbr_huff_decode(BitReader *bs, const SBRHuffBook *book)
 {
-    const SBRHuffEntry *tab = book->tab;
-    const uint8_t *order = sbr_huff_pool + book->pool;
-    uint32_t code = 0;
+    uint32_t code = 0, first_code = 0;
     for (int len = 1; len <= HB_MAX_LEN; len++) {
         code = (code << 1) | bits_get_1(bs);
-        for (int i = book->first[len]; i < book->first[len + 1]; i++) {
-            uint32_t c = tab[order[i]].code;
-            if (c == code) return order[i] - book->offset;
-            if (c > code) break;
+        int first = book->first[len], end = book->first[len + 1];
+        if (!book->tab) {
+            uint32_t index = code - first_code;
+            if (index < (uint32_t)(end - first))
+                return book->order[first + index] - book->offset;
+            first_code = (first_code + (uint32_t)(end - first)) << 1;
+        } else {
+            for (int i = first; i < end; i++) {
+                uint32_t c = book->tab[book->order[i]].code;
+                if (c == code) return book->order[i] - book->offset;
+                if (c > code) break;
+            }
         }
     }
     return 0;
@@ -1224,8 +1168,6 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
 #else /* FAAD_DISABLE_SBR */
 
 void init_qmf_twiddles(void) {}
-void init_sbr_books(void) {}
-SBRHuffBook sbr_books[HB_COUNT];
 
 faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
 {

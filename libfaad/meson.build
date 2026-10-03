@@ -10,14 +10,17 @@ faad_src = [
     'imdct.c',
     'sbr.c',
     'ps.c',
-    'sbr_dec_tables.c',
 ]
+
+if get_option('decoder-sbr')
+    faad_src += ['sbr_dec_tables.c', 'sbr_huff_tables.c', '../common/sbr_tables.c']
+endif
 
 faad_c_args = c_args
 if not get_option('decoder-sbr')
     faad_c_args += ['-DFAAD_DISABLE_SBR']
 endif
-if not get_option('decoder-ps')
+if not get_option('decoder-ps') or not get_option('decoder-sbr')
     faad_c_args += ['-DFAAD_DISABLE_PS']
 endif
 
