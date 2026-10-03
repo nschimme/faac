@@ -37,10 +37,14 @@ typedef struct faadDecStats {
     unsigned int frameSectBits, frameSfBits, frameSpecBits, frameAuxBits;
     unsigned int frameSbrBits, framePsBits, frameFillBits;
 
-    /* Per-decoder decision dump, opened lazily from FAAD_DUMP. */
+    /* Decision dump, opened lazily from FAAD_DUMP. */
     FILE *dumpFile;
     bool dumpOpenTried;
 } faadDecStats;
+
+/* Like FAAC_STATS, diagnostics are global and intended for one stream at a
+ * time. Successful decoder initialization resets the counters. */
+extern faadDecStats g_faadStats;
 #endif /* FAAD_STATS */
 
 #endif /* FAAD_STATS_H */

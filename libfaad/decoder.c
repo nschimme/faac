@@ -159,7 +159,9 @@ static void faad_init_global_tables_impl(void)
     extern void init_dequant_tables(void);
     extern void init_huffman_luts(void);
     extern void init_windows(void);
+#ifndef FAAD_DISABLE_SBR
     extern void init_qmf_twiddles(void);
+#endif
     extern void init_is_tables(void);
 #ifndef FAAD_DISABLE_PS
     extern void init_ps_tables(void);
@@ -168,7 +170,9 @@ static void faad_init_global_tables_impl(void)
     init_dequant_tables();
     init_huffman_luts();
     init_windows();
+#ifndef FAAD_DISABLE_SBR
     init_qmf_twiddles();
+#endif
     init_is_tables();
 #ifndef FAAD_DISABLE_PS
     init_ps_tables();
@@ -225,6 +229,10 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
         dec->frame_samples = 1024;
     }
 
+#ifdef FAAD_STATS
+    if (g_faadStats.dumpFile) fclose(g_faadStats.dumpFile);
+    memset(&g_faadStats, 0, sizeof(g_faadStats));
+#endif
     *out_dec = dec;
     return FAAD_OK;
 }
@@ -254,9 +262,11 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
 }
 
 #ifdef FAAD_STATS
-static void faad_print_stats(const struct faad_decoder *dec)
+faadDecStats g_faadStats;
+
+static void faad_print_stats(void)
 {
-    const faadDecStats *s = &dec->stats;
+    const faadDecStats *s = &g_faadStats;
     if (s->totalFrames == 0) return;
 
     double tns_pct = s->icsCount > 0 ? 100.0 * s->tnsActiveFrames / s->icsCount : 0.0;
@@ -311,7 +321,10 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **handle)
     if (!dec) return FAAD_OK;
     *handle = NULL;
 #ifdef FAAD_STATS
-    faad_print_stats(dec);
+    faad_print_stats();
+    if (g_faadStats.dumpFile) fclose(g_faadStats.dumpFile);
+    g_faadStats.dumpFile = NULL;
+    g_faadStats.dumpOpenTried = false;
 #endif
     if (dec->is_heap_allocated) {
         FreeMemory(dec);
@@ -400,9 +413,9 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
  *       bits by syntax part; sect/sf/spec/aux (pulse, TNS) sum over the ics,
  *       sbr excludes ps, fill is pad after the SBR payload, and the
  *       remainder of total is element and ics headers */
-FILE *faad_dump_file(struct faad_decoder *dec)
+FILE *faad_dump_file(void)
 {
-    faadDecStats *st = &dec->stats;
+    faadDecStats *st = &g_faadStats;
     if (!st->dumpOpenTried) {
         st->dumpOpenTried = true;
         const char *path = getenv("FAAD_DUMP");
@@ -411,12 +424,12 @@ FILE *faad_dump_file(struct faad_decoder *dec)
     return st->dumpFile;
 }
 
-static void core_dump_ics(struct faad_decoder *dec, int ch, const ICSInfo *ics, const float *spec,
+static void core_dump_ics(int ch, const ICSInfo *ics, const float *spec,
                           const uint8_t (*ms)[MAX_SFB], unsigned bits)
 {
-    FILE *df = faad_dump_file(dec);
+    FILE *df = faad_dump_file();
     if (!df) return;
-    fprintf(df, "C %u %d %u %u %u %u %u |", dec->stats.totalFrames, ch, bits, ics->window_sequence,
+    fprintf(df, "C %u %d %u %u %u %u %u |", g_faadStats.totalFrames, ch, bits, ics->window_sequence,
             ics->max_sfb, ics->num_window_groups, ics->global_gain);
     int wo = 0;
     for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
@@ -484,7 +497,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     }
 
 #ifdef FAAD_STATS
-    dec->stats.totalFrames++;
+    g_faadStats.totalFrames++;
 #endif
 
     /* Zero out spectral buffers only up to active/previous max channels to avoid clearing all 32 KB on every frame */
@@ -529,9 +542,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     }
 
 #ifdef FAAD_STATS
-    dec->stats.frameSectBits = dec->stats.frameSfBits = dec->stats.frameSpecBits = 0;
-    dec->stats.frameAuxBits = dec->stats.frameSbrBits = dec->stats.framePsBits = 0;
-    dec->stats.frameFillBits = 0;
+    g_faadStats.frameSectBits = g_faadStats.frameSfBits = g_faadStats.frameSpecBits = 0;
+    g_faadStats.frameAuxBits = g_faadStats.frameSbrBits = g_faadStats.framePsBits = 0;
+    g_faadStats.frameFillBits = 0;
     unsigned frame_hdr_bits = bits_get_consumed(&bs);
 #endif
     uint32_t ch_idx = 0;
@@ -546,7 +559,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         while (bits_get_consumed(&bs) + 3 <= bs.len * 8) {
             uint32_t syntax_id = bits_get(&bs, 3);
 #ifdef FAAD_STATS
-            dec->stats.elementCounts[syntax_id]++;
+            g_faadStats.elementCounts[syntax_id]++;
 #endif
             if (syntax_id == ID_END) {
 #ifdef FAAD_STATS
@@ -565,7 +578,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                     break;
                 }
 #ifdef FAAD_STATS
-                core_dump_ics(dec, ch_idx, ics, dec->spec[ch_idx], NULL,
+                core_dump_ics(ch_idx, ics, dec->spec[ch_idx], NULL,
                               bits_get_consumed(&bs) - b0);
 #endif
                 dec->win_seq[ch_idx] = ics->window_sequence;
@@ -592,8 +605,8 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                     if (cpe->ms_mask_present == 2)
                         memset(cpe->ms_used, 1, sizeof(cpe->ms_used));
                     const uint8_t (*ms)[MAX_SFB] = cpe->ms_mask_present ? (const uint8_t (*)[MAX_SFB])cpe->ms_used : NULL;
-                    core_dump_ics(dec, ch_idx, &cpe->ics[0], dec->spec[ch_idx], ms, nb);
-                    core_dump_ics(dec, ch_idx + 1, &cpe->ics[1], dec->spec[ch_idx + 1], ms, cpe->ms_mask_present);
+                    core_dump_ics(ch_idx, &cpe->ics[0], dec->spec[ch_idx], ms, nb);
+                    core_dump_ics(ch_idx + 1, &cpe->ics[1], dec->spec[ch_idx + 1], ms, cpe->ms_mask_present);
                 }
 #endif
                 for (uint32_t i = 0; i < 2; i++) {
@@ -603,11 +616,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 
                 apply_pns(&cpe->ics[0], dec->spec[ch_idx], &dec->pns_seed);
                 apply_pns(&cpe->ics[1], dec->spec[ch_idx + 1], &dec->pns_seed);
-                apply_ms_stereo(cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]
-#ifdef FAAD_STATS
-                    , dec
-#endif
-                );
+                apply_ms_stereo(cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
                 apply_is_stereo(cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
                 apply_tns(&cpe->ics[0], dec->spec[ch_idx]);
                 apply_tns(&cpe->ics[1], dec->spec[ch_idx + 1]);
@@ -634,7 +643,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                         }
 #ifdef FAAD_STATS
                         unsigned sbr_mark = bits_get_consumed(&bs);
-                        unsigned ps_mark = dec->stats.framePsBits;
+                        unsigned ps_mark = g_faadStats.framePsBits;
 #endif
                         faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
 #ifndef FAAD_DISABLE_SBR
@@ -651,17 +660,17 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #endif
                         uint32_t consumed = bits_get_consumed(&bs);
 #ifdef FAAD_STATS
-                        dec->stats.fillElementCount++;
-                        dec->stats.frameSbrBits += consumed - sbr_mark - (dec->stats.framePsBits - ps_mark);
+                        g_faadStats.fillElementCount++;
+                        g_faadStats.frameSbrBits += consumed - sbr_mark - (g_faadStats.framePsBits - ps_mark);
 #endif
                         if (consumed < fill_end) {
                             uint32_t pad = fill_end - consumed;
                             bits_skip(&bs, pad);
 #ifdef FAAD_STATS
-                            dec->stats.fillElementPadBitsSum += pad;
-                            dec->stats.frameFillBits += pad;
-                            if (pad > dec->stats.fillElementMaxPad) {
-                                dec->stats.fillElementMaxPad = pad;
+                            g_faadStats.fillElementPadBitsSum += pad;
+                            g_faadStats.frameFillBits += pad;
+                            if (pad > g_faadStats.fillElementMaxPad) {
+                                g_faadStats.fillElementMaxPad = pad;
                             }
 #endif
                         }
@@ -673,11 +682,11 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         }
 #ifdef FAAD_STATS
         if (!saw_end) {
-            dec->stats.nonEndTermination++;
+            g_faadStats.nonEndTermination++;
         }
-        FILE *df = faad_dump_file(dec);
+        FILE *df = faad_dump_file();
         if (df) {
-            const faadDecStats *s = &dec->stats;
+            const faadDecStats *s = &g_faadStats;
             fprintf(df, "B %u %u %u %u %u %u %u %u %u %u\n", s->totalFrames, bits_get_consumed(&bs),
                     frame_hdr_bits, s->frameSectBits, s->frameSfBits, s->frameSpecBits, s->frameAuxBits,
                     s->frameSbrBits, s->framePsBits, s->frameFillBits);
@@ -695,23 +704,23 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);
         dec->num_channels = ch_idx;
 #ifdef FAAD_STATS
-        if (!dec->stats.haveLastChannels) {
-            dec->stats.haveLastChannels = true;
-            dec->stats.lastChannels = ch_idx;
-            dec->stats.minChannels = ch_idx;
-            dec->stats.maxChannels = ch_idx;
+        if (!g_faadStats.haveLastChannels) {
+            g_faadStats.haveLastChannels = true;
+            g_faadStats.lastChannels = ch_idx;
+            g_faadStats.minChannels = ch_idx;
+            g_faadStats.maxChannels = ch_idx;
         } else {
-            if (ch_idx != dec->stats.lastChannels) {
-                dec->stats.channelCountChanges++;
-                dec->stats.lastChannels = ch_idx;
+            if (ch_idx != g_faadStats.lastChannels) {
+                g_faadStats.channelCountChanges++;
+                g_faadStats.lastChannels = ch_idx;
             }
-            if (ch_idx < dec->stats.minChannels) dec->stats.minChannels = ch_idx;
-            if (ch_idx > dec->stats.maxChannels) dec->stats.maxChannels = ch_idx;
+            if (ch_idx < g_faadStats.minChannels) g_faadStats.minChannels = ch_idx;
+            if (ch_idx > g_faadStats.maxChannels) g_faadStats.maxChannels = ch_idx;
         }
 #endif
     } else {
 #ifdef FAAD_STATS
-        dec->stats.errorConcealmentFrames++;
+        g_faadStats.errorConcealmentFrames++;
 #endif
         dec->consecutive_errors++;
         float fade = 0.0f;
@@ -808,7 +817,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     bool sbr_active = sbr_frame;
 #ifdef FAAD_STATS
     if (sbr_active) {
-        dec->stats.sbrActiveFrames++;
+        g_faadStats.sbrActiveFrames++;
     }
 #endif
 

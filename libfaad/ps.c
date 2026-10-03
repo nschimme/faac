@@ -305,10 +305,10 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
         }
         dec->ps_present = true;
 #ifdef FAAD_STATS
-        dec->stats.psActiveFrames++;
+        g_faadStats.psActiveFrames++;
         {
-            FILE *df = faad_dump_file(dec);
-            if (df) fprintf(df, "P %u %d %d %d\n", dec->stats.totalFrames,
+            FILE *df = faad_dump_file();
+            if (df) fprintf(df, "P %u %d %d %d\n", g_faadStats.totalFrames,
                             (int)ps->enable_iid, (int)ps->enable_icc, (int)ps->num_env);
         }
 #endif
