@@ -17,6 +17,7 @@
 #define CHARSET_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 
