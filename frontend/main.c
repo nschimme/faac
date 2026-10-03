@@ -95,6 +95,49 @@ static const char *id3_genres[] = {
     "Unknown"
 };
 
+static char *trim_quotes_and_spaces(char *s)
+{
+    if (!s) return s;
+
+    while (*s)
+    {
+        if (*s == ' ' || *s == '\t' || *s == '"' || *s == '\'')
+        {
+            s++;
+        }
+        else if ((unsigned char)s[0] == 0xE2 && (unsigned char)s[1] == 0x80 &&
+                 ((unsigned char)s[2] == 0x9C || (unsigned char)s[2] == 0x9D || (unsigned char)s[2] == 0x98 || (unsigned char)s[2] == 0x99))
+        {
+            s += 3;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    size_t len = strlen(s);
+    while (len > 0)
+    {
+        if (s[len - 1] == ' ' || s[len - 1] == '\t' || s[len - 1] == '"' || s[len - 1] == '\'')
+        {
+            s[--len] = '\0';
+        }
+        else if (len >= 3 && (unsigned char)s[len - 3] == 0xE2 && (unsigned char)s[len - 2] == 0x80 &&
+                 ((unsigned char)s[len - 1] == 0x9C || (unsigned char)s[len - 1] == 0x9D || (unsigned char)s[len - 1] == 0x98 || (unsigned char)s[len - 1] == 0x99))
+        {
+            len -= 3;
+            s[len] = '\0';
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return s;
+}
+
 static bool parse_genre(const char *arg, encode_options_t *opts)
 {
     if (!arg || !*arg)
@@ -827,17 +870,8 @@ int main(int argc, char *argv[])
                 else
                 {
                     *tagval++ = '\0';
-                    while (*tagname == ' ' || *tagname == '\t')
-                        tagname++;
-                    char *end = tagname + strlen(tagname) - 1;
-                    while (end > tagname && (*end == ' ' || *end == '\t'))
-                    {
-                        *end = '\0';
-                        end--;
-                    }
-
-                    while (*tagval == ' ' || *tagval == '\t')
-                        tagval++;
+                    tagname = trim_quotes_and_spaces(tagname);
+                    tagval = trim_quotes_and_spaces(tagval);
 
                     if (*tagname == '\0')
                         dieMessage = "Tag name cannot be empty.\n";
