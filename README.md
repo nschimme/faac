@@ -1,23 +1,23 @@
 # <img src="frontend/faac.ico" alt="FAAC" width="48" height="48" align="top" /> Freeware Advanced Audio Coder
 
-FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeline use cases where footprint and throughput matter as much as quality.
+FAAC is an open-source, dependency-free AAC encoder, and FAAD its decoder counterpart. Both are aimed at embedded and pipeline use cases where footprint and throughput matter as much as quality.
 
 ### Key features:
 
-- MPEG-4 AAC-LC and HE-AAC v1 (SBR) profiles
+- MPEG-4 AAC-LC and HE-AAC v1 (SBR) encoding and decoding, plus HE-AAC v2 (PS) decoding
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
-- Flexible output options: ADTS and raw AAC streams
+- ADTS and raw AAC streams
 
 ### Command-line tools:
 
-- `faac` reads and writes MP4/M4A with gapless playback info, as well as raw ADTS
+- `faac` and `faad` read and write MP4/M4A with gapless playback info, as well as raw ADTS
 - WAV and raw PCM input, with stdin/stdout piping
 
 ## Copyrights
 
-FAAC is free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
+FAAC and FAAD are free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
 
 ```
 FAAC - Freeware Advanced Audio Coder
@@ -48,6 +48,7 @@ Lesser General Public License for more details.
    ```bash
    meson setup build
    ninja -C build
+   meson test -C build
    meson install -C build
    ```
 
@@ -55,13 +56,21 @@ Lesser General Public License for more details.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `frontend` | true | Build the `faac` command-line tool |
+| `encoder` | true | Build `libfaac` and the `faac` frontend |
+| `decoder` | true | Build `libfaad` and the `faad` frontend |
+| `frontend` | true | Build the command-line tools for the enabled components |
+| `decoder-sbr` | true | SBR (HE-AAC v1) support in `libfaad` |
+| `decoder-ps` | true | Parametric Stereo (HE-AAC v2) support in `libfaad` |
 | `max-channels` | 8 | Maximum number of channels (1-8) |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
-| `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
+| `stats` | false | End-of-stream diagnostics on stderr, encoder and decoder (instrumentation only) |
+
+For an encoder-only build pass `-Ddecoder=false`; for a decoder-only build pass `-Dencoder=false`.
 
 ## Usage
 
 ```bash
 faac input.wav -o output.m4a        # encode
+faad output.m4a -o decoded.wav      # decode
+faad -i output.m4a                  # show stream info
 ```

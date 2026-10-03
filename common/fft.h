@@ -16,6 +16,7 @@
 #ifndef _FFT_H_
 #define _FFT_H_
 
+
 typedef float fftfloat;
 
 #define FFT_LOGM_SHORT 6  /* 256-sample short block MDCT, SBR QMF */

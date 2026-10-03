@@ -1,0 +1,157 @@
+.TH FAAD 1 "2026-10-02" "3.0.0" "Freeware Advanced Audio Decoder"
+
+.SH NAME
+faad \- open source MPEG-4 and MPEG-2 AAC decoder
+
+.SH SYNOPSIS
+.B faad
+.RI [ options ]
+.RI [\-o\  outfile ]
+.I infile
+.PP
+.RI < infile >
+is an ADTS
+.B .aac
+stream or an MP4
+.B .m4a
+file.
+
+.SH DESCRIPTION
+.B FAAD
+is an open source MPEG-4 and MPEG-2 AAC decoder, it is licensed under the LGPL license.
+It decodes AAC-LC and HE-AAC v1 (SBR) streams, and HE-AAC v2 (PS) when built with
+parametric stereo support, to PCM.
+By default the output is a WAV file named after the input, with the extension
+replaced by
+.BR .wav .
+Input from stdin ("\-") is written to stdout instead.
+Progress and result messages are printed to stdout unless
+.B -q
+is given; with
+.B -w
+they are suppressed so they do not mix with the audio.
+
+.SH I/O AND FORMAT OPTIONS
+.TP
+.BR -o ,\  --output\ <\fIfile\fP>
+Set output filename.
+An existing file is not overwritten unless
+.B --overwrite
+is given.
+.TP
+.BR -w ,\  --stdout
+Write the output to stdout.
+A WAV header written to stdout declares an unknown length, so readers
+consume it until end of file.
+.TP
+.BR -f ,\  --format\ <\fItype\fP>
+Output container format: wav (default) or raw (headerless PCM).
+Any other value is an error.
+.TP
+.BR -b ,\  --bits\ <\fIdepth\fP>
+Sample depth: 16 (default), 24 or 32f (32-bit float).
+Any other value is an error.
+More than two channels are written as WAVE_FORMAT_EXTENSIBLE with a channel mask.
+.TP
+.BR -a ,\  --adts\ <\fIfile\fP>
+Extract the raw ADTS stream from an MP4 file without decoding.
+Requires MP4 input.
+
+.SH PROCESSING OPTIONS
+.TP
+.BR -d ,\  --downmix\ [\fImode\fP]
+Downmix audio to mono (mono or 1, the default) or stereo (stereo or 2).
+The mode may follow as a separate argument, as in
+.BR "-d stereo" ,
+or be attached, as in
+.B -dstereo
+or
+.BR --downmix=2 .
+Any other value is taken as the input file name.
+Has no effect on mono or stereo input.
+.TP
+.BR -j ,\  --jump\ <\fIseconds\fP>
+Start decoding from the specified timestamp, in seconds.
+Only applies to MP4 input.
+A timestamp past the end gives an empty output.
+.TP
+.BR -g ,\  --no-gapless
+Disable the gapless trim of encoder delay and trailing padding that is
+otherwise applied to MP4 input.
+The output then keeps the extra priming and padding samples.
+
+.SH INFORMATION AND GENERAL OPTIONS
+.TP
+.BR -i ,\  --info
+Display bitstream and container metadata, then exit.
+Works on ADTS and MP4 input.
+.TP
+.BR --json
+Output the bitstream information in JSON format, without decoding.
+.TP
+.BR -q ,\  --quiet
+Quiet mode, suppress decoding progress.
+.TP
+.BR --overwrite
+Overwrite an existing output file.
+.TP
+.BR --strict
+Strict mode, report the file offset, frame number and error of a decoding
+failure and exit with status 1.
+Without it, decoding stops at the first bad frame, the audio decoded so far is
+kept and the exit status is 0.
+.TP
+.BR --license
+Display copyright and license information.
+.TP
+.BR -h ,\  --help
+Display a short help text.
+
+.SH EXAMPLES
+Decode to
+.BR song.wav :
+.IP
+.B faad song.m4a
+.PP
+Decode to 24-bit WAV:
+.IP
+.B faad -b 24 -o out.wav song.m4a
+.PP
+Stream raw 16-bit PCM to another program:
+.IP
+.B faad -w -f raw song.m4a | aplay -f cd
+.PP
+Downmix surround to stereo:
+.IP
+.B faad -d stereo -o out.wav surround.m4a
+.PP
+Print stream information as JSON:
+.IP
+.B faad --json song.m4a
+.PP
+Check a file for damage:
+.IP
+.B faad --strict --overwrite -o /dev/null song.m4a
+
+.SH EXIT STATUS
+.B 0
+on success and
+.B 1
+on a usage or option error, an unreadable input, an unwritable or already existing output, or, with
+.BR --strict ,
+a decoding error.
+
+.SH SEE ALSO
+.BR faac (1)
+
+.SH AUTHORS
+.B FAAD
+is derived from the work of M. Bakker.
+.PP
+.nh 2
+Developed and maintained by Nils Schimmelmann.
+.PP
+This manpage follows the style of the
+.BR faac (1)
+manpage.
+.nh 1
