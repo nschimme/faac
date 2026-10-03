@@ -27,6 +27,12 @@ extern "C" {
 /* Ensure string is valid UTF-8, converting from system encoding if needed */
 char *utf8_ensure(const char *str);
 
+/* Trim surrounding whitespace, ASCII quotes, and UTF-8 Unicode curly quotes */
+char *trim_quotes_and_spaces(char *s);
+
+/* Parse a genre argument (number or string name) into ID3v1 genre_id and genre_name */
+bool parse_genre(const char *arg, uint16_t *genre_id, const char **genre_name);
+
 #ifdef _WIN32
 #include <windows.h>
 /* Convert UTF-16 wchar_t string to heap-allocated UTF-8 string */
