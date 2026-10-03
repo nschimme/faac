@@ -13,7 +13,7 @@
  * Lesser General Public License for more details.
  */
 
-#include "sbr_huff_tables.h"
+#include "sbr_tables.h"
 
 const SBRHuffEntry f_huff_env_1_5dB[F_HUFF_ENV_1_5DB_NSYMS] = {
     /*  -60 */ { 0x0007ffe7u, 19 },
