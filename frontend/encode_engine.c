@@ -378,6 +378,7 @@ static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts,
     SETTAG(MP4TAG_ALBUMARTIST, metadata.album_artist);
     SETTAG(MP4TAG_ALBUMARTISTSORT, metadata.album_artist_sort);
     SETTAG(MP4TAG_ALBUMSORT, metadata.album_sort);
+    SETTAG(MP4TAG_GENRE, metadata.genre);
     SETTAG(MP4TAG_YEAR, metadata.year);
     SETTAG(MP4TAG_COMMENT, metadata.comment);
 #undef SETTAG

@@ -574,6 +574,7 @@ static const char *tag_atom_names[MP4TAG_COUNT] = {
     [MP4TAG_ALBUMARTIST]     = "aART",
     [MP4TAG_ALBUMARTISTSORT] = "soaa",
     [MP4TAG_ALBUMSORT]       = "soal",
+    [MP4TAG_GENRE]           = "\xa9" "gen",
     [MP4TAG_YEAR]            = "\xa9" "day",
     [MP4TAG_COMMENT]         = "\xa9" "cmt",
 };

@@ -45,6 +45,7 @@ typedef struct {
     const char *comment;
     const char *encoder;
     const char *language;
+    const char *genre;
     uint16_t genre_id;
     uint16_t track;
     uint16_t ntracks;

@@ -209,8 +209,9 @@ Ignore wav length from header (useful with files over 4 GB)
 Overwrite existing output file
 .SH MP4 SPECIFIC OPTIONS
 .TP
-.BR --tag\ <\fItagname,tagvalue\fP>
-Add named tag (iTunes '----')
+.BR --tag\ <\fItagname=tagvalue\fP>
+Add named tag (iTunes '----'). Separated by an equals sign or comma. Enclose in
+quotes if the name or value contains spaces (e.g. \-\-tag "copyright=John Doe").
 .TP
 .BR --artist\ <\fIname\fP>
 Set artist name
@@ -221,8 +222,8 @@ Set composer name
 .BR --title\ <\fIname\fP>
 Set title/track name
 .TP
-.BR --genre\ <\fInumber\fP>
-Set genre number
+.BR --genre\ <\fInumber|name\fP>
+Set genre number or name (e.g., 14, Pop, or "Classic Rock").
 .TP
 .BR --album\ <\fIname\fP>
 Set album/performer

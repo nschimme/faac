@@ -47,9 +47,99 @@
 #ifdef _WIN32
 # undef stderr
 # define stderr stdout
+# ifndef strcasecmp
+#  define strcasecmp _stricmp
+# endif
 #endif
 
 #define MAX_COVER_ART_SIZE ((size_t)32 * 1024 * 1024)
+
+static const char *id3_genres[] = {
+    "Blues", "Classic Rock", "Country", "Dance",
+    "Disco", "Funk", "Grunge", "Hip-Hop",
+    "Jazz", "Metal", "New Age", "Oldies",
+    "Other", "Pop", "R&B", "Rap",
+    "Reggae", "Rock", "Techno", "Industrial",
+    "Alternative", "Ska", "Death Metal", "Pranks",
+    "Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop",
+    "Vocal", "Jazz+Funk", "Fusion", "Trance",
+    "Classical", "Instrumental", "Acid", "House",
+    "Game", "Sound Clip", "Gospel", "Noise",
+    "Alternative Rock", "Bass", "Soul", "Punk",
+    "Space", "Meditative", "Instrumental Pop", "Instrumental Rock",
+    "Ethnic", "Gothic", "Darkwave", "Techno-Industrial",
+    "Electronic", "Pop-Folk", "Eurodance", "Dream",
+    "Southern Rock", "Comedy", "Cult", "Gangsta",
+    "Top 40", "Christian Rap", "Pop/Funk", "Jungle",
+    "Native US", "Cabaret", "New Wave", "Psychadelic",
+    "Rave", "Showtunes", "Trailer", "Lo-Fi",
+    "Tribal", "Acid Punk", "Acid Jazz", "Polka",
+    "Retro", "Musical", "Rock & Roll", "Hard Rock",
+    "Folk", "Folk-Rock", "National Folk", "Swing",
+    "Fast Fusion", "Bebob", "Latin", "Revival",
+    "Celtic", "Bluegrass", "Avantgarde", "Gothic Rock",
+    "Progressive Rock", "Psychedelic Rock", "Symphonic Rock", "Slow Rock",
+    "Big Band", "Chorus", "Easy Listening", "Acoustic",
+    "Humour", "Speech", "Chanson", "Opera",
+    "Chamber Music", "Sonata", "Symphony", "Booty Bass",
+    "Primus", "Porn Groove", "Satire", "Slow Jam",
+    "Club", "Tango", "Samba", "Folklore",
+    "Ballad", "Power Ballad", "Rhythmic Soul", "Freestyle",
+    "Duet", "Punk Rock", "Drum Solo", "Acapella",
+    "Euro-House", "Dance Hall", "Goa", "Drum & Bass",
+    "Club - House", "Hardcore", "Terror", "Indie",
+    "BritPop", "Negerpunk", "Polsk Punk", "Beat",
+    "Christian Gangsta Rap", "Heavy Metal", "Black Metal", "Crossover",
+    "Contemporary Christian", "Christian Rock", "Merengue", "Salsa",
+    "Thrash Metal", "Anime", "JPop", "Synthpop",
+    "Unknown"
+};
+
+static bool parse_genre(const char *arg, encode_options_t *opts)
+{
+    if (!arg || !*arg)
+        return false;
+
+    bool is_num = true;
+    for (const char *p = arg; *p; p++)
+    {
+        if (*p < '0' || *p > '9')
+        {
+            is_num = false;
+            break;
+        }
+    }
+
+    int max_genres = (int)(sizeof(id3_genres) / sizeof(id3_genres[0]));
+
+    if (is_num)
+    {
+        int g = atoi(arg);
+        if (g < 0 || g > 255)
+            return false;
+        opts->metadata.genre_id = (uint16_t)(g + 1);
+        if (g >= 0 && g < max_genres)
+            opts->metadata.genre = id3_genres[g];
+        else
+            opts->metadata.genre = NULL;
+        return true;
+    }
+
+    for (int i = 0; i < max_genres; i++)
+    {
+        if (strcasecmp(arg, id3_genres[i]) == 0)
+        {
+            opts->metadata.genre_id = (uint16_t)(i + 1);
+            opts->metadata.genre = id3_genres[i];
+            return true;
+        }
+    }
+
+    /* Custom genre string */
+    opts->metadata.genre_id = 0;
+    opts->metadata.genre = arg;
+    return true;
+}
 
 enum flags
 {
@@ -176,13 +266,14 @@ static help_t help_io[] = {
 };
 
 static help_t help_mp4[] = {
-    {"--tag <tagname,tagvalue> Add named tag (iTunes '----')\n", NULL},
+    {"--tag <tagname=tagvalue> Add named tag (iTunes '----')\n",
+    "\t\tSeparated by = or ,. Enclose in quotes if spaces are present.\n"},
     {"--artist <name>\tSet artist name\n", NULL},
     {"--artistsort <name>\tSet artist sort order\n", NULL},
     {"--composer <name>\tSet composer name\n", NULL},
     {"--composersort <name>\tSet composer sort order\n", NULL},
     {"--title <name>\tSet title/track name\n", NULL},
-    {"--genre <number>\tSet genre number\n", NULL},
+    {"--genre <number|name>\tSet genre number or name\n", NULL},
     {"--album <name>\tSet album/performer\n", NULL},
     {"--albumartist <name>\tSet album artist\n", NULL},
     {"--albumartistsort <name>\tSet album artist sort order\n", NULL},
@@ -682,13 +773,8 @@ int main(int argc, char *argv[])
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
-            {
-                int g = atoi(optarg);
-                if (g < 0 || g > 255)
-                    dieMessage = "Genre number out of range.\n";
-                else
-                    opts.metadata.genre_id = (uint16_t)(g + 1);
-            }
+            if (!parse_genre(optarg, &opts))
+                dieMessage = "Genre number out of range.\n";
             break;
         case YEAR_FLAG:
             opts.metadata.year = optarg;
@@ -723,7 +809,17 @@ int main(int argc, char *argv[])
         case TAG_FLAG:
             {
                 char *tagname = optarg;
-                char *tagval = strchr(optarg, ',');
+                char *eq = strchr(optarg, '=');
+                char *comma = strchr(optarg, ',');
+                char *tagval = NULL;
+
+                if (eq && comma)
+                    tagval = (eq < comma) ? eq : comma;
+                else if (eq)
+                    tagval = eq;
+                else
+                    tagval = comma;
+
                 if (!tagval)
                 {
                     dieMessage = "Missing tag value.\n";
@@ -731,7 +827,21 @@ int main(int argc, char *argv[])
                 else
                 {
                     *tagval++ = '\0';
-                    if (*tagval == '\0')
+                    while (*tagname == ' ' || *tagname == '\t')
+                        tagname++;
+                    char *end = tagname + strlen(tagname) - 1;
+                    while (end > tagname && (*end == ' ' || *end == '\t'))
+                    {
+                        *end = '\0';
+                        end--;
+                    }
+
+                    while (*tagval == ' ' || *tagval == '\t')
+                        tagval++;
+
+                    if (*tagname == '\0')
+                        dieMessage = "Tag name cannot be empty.\n";
+                    else if (*tagval == '\0')
                         dieMessage = "Tag value cannot be empty.\n";
                 }
                 if (!dieMessage)
@@ -865,9 +975,10 @@ int main(int argc, char *argv[])
                         opts.metadata.album_artist_sort || opts.metadata.composer ||
                         opts.metadata.composer_sort || opts.metadata.year ||
                         opts.metadata.comment || opts.metadata.genre_id ||
-                        opts.metadata.track || opts.metadata.disc ||
-                        opts.metadata.compilation || opts.metadata.language ||
-                        opts.art_data || opts.custom_tag_count > 0 || has_custom_tags;
+                        opts.metadata.genre || opts.metadata.track ||
+                        opts.metadata.disc || opts.metadata.compilation ||
+                        opts.metadata.language || opts.art_data ||
+                        opts.custom_tag_count > 0 || has_custom_tags;
 
     if (!opts.container_mp4 && has_metadata)
     {
