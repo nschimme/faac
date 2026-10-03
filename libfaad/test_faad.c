@@ -107,9 +107,11 @@ static void test_asc_sbr_signalling(void)
 #ifdef FAAD_DISABLE_SBR
         assert(info.sample_rate == 16000);
         assert(info.frame_samples == 1024);
+        assert(info.decoder_delay == 0);
 #else
         assert(info.sample_rate == cases[i].rate);
         assert(info.frame_samples == (cases[i].obj == FAAD_OBJ_LC ? 1024u : 2048u));
+        assert(info.decoder_delay == (cases[i].obj == FAAD_OBJ_LC ? 0u : 962u));
 #endif
 #if defined(FAAD_DISABLE_PS) || defined(FAAD_DISABLE_SBR) || MAX_CHANNELS < 2
         assert(info.channels == 1);
@@ -175,7 +177,7 @@ static void test_struct_sizes_and_enums(void)
     assert(faad_decoder_open(&c.cfg, NULL, 0, &dec) == FAAD_OK);
     struct { faad_stream_info info; uint32_t guard; } out;
     memset(&out, 0xa5, sizeof(out));
-    out.info.struct_size = sizeof(out.info) - 1;
+    out.info.struct_size = offsetof(faad_stream_info, reserved) + sizeof(out.info.reserved) - 1;
     assert(faad_decoder_get_info(dec, &out.info) == FAAD_ERR_INVALID_ARGUMENT);
     assert(out.info.sample_rate == 0xa5a5a5a5u);
     out.info.struct_size = sizeof(out);
@@ -218,8 +220,12 @@ int main(void)
     assert(st == FAAD_OK);
     assert(state_bytes > 0);
 
-    void *static_mem = malloc(state_bytes);
-    assert(static_mem != NULL);
+    void *state_allocation = malloc((size_t)state_bytes + FAAD_STATE_ALIGNMENT - 1);
+    assert(state_allocation != NULL);
+    uintptr_t address = (uintptr_t)state_allocation;
+    size_t offset = (FAAD_STATE_ALIGNMENT - (address & (FAAD_STATE_ALIGNMENT - 1)))
+        & (FAAD_STATE_ALIGNMENT - 1);
+    void *static_mem = (uint8_t *)state_allocation + offset;
 
     faad_decoder *dec_static = NULL;
     st = faad_decoder_init(static_mem, state_bytes, &cfg, NULL, 0, &dec_static);
@@ -229,14 +235,14 @@ int main(void)
     faad_stream_info info = { .struct_size = sizeof(faad_stream_info) };
     st = faad_decoder_get_info(dec_static, &info);
     assert(st == FAAD_OK);
-    assert(info.channels == 2);
+    assert(!info.format_known && info.channels == 0);
 
     st = faad_decoder_flush(dec_static);
     assert(st == FAAD_OK);
 
     assert(faad_decoder_close(&dec_static) == FAAD_OK);
     assert(dec_static == NULL);
-    free(static_mem);
+    free(state_allocation);
 
     faad_decoder *dec_heap = NULL;
     st = faad_decoder_open(&cfg, NULL, 0, &dec_heap);

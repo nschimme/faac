@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <float.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -39,6 +40,9 @@
 #endif
 
 #include "faad.h"
+_Static_assert(sizeof(bool) == 1, "public ABI requires one-byte flags");
+_Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,
+               "PCM requires IEEE binary32 floats");
 #include "faad_stats.h"
 #include "sbr_tables.h"
 typedef struct {
@@ -383,6 +387,11 @@ struct faad_decoder {
     AudioSpecificConfig asc;
     bool asc_parsed;
     bool is_heap_allocated;
+    void *heap_storage; /* original allocator pointer before alignment */
+    bool format_known;
+    bool ps_seen;
+    uint32_t core_channels;
+    uint32_t max_output_bytes;
 
     uint32_t frame_samples; /* 1024 or 2048 */
     uint32_t num_channels;
@@ -416,6 +425,13 @@ struct faad_decoder {
 
     float pcm[MAX_CHANNELS * FRAME_SAMPLES_MAX]; /* core output, then SBR output in place */
 };
+
+/* Core-rate QMF delay; public metadata converts it to output samples. */
+#define FAAD_SBR_CORE_DELAY 481u
+_Static_assert(_Alignof(struct faad_decoder) <= FAAD_STATE_ALIGNMENT,
+               "decoder exceeds public placement alignment");
+_Static_assert(sizeof(struct faad_decoder) <= UINT32_MAX - (FAAD_STATE_ALIGNMENT - 1),
+               "decoder storage size must fit 32-bit allocation arithmetic");
 
 void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate);
 faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate);

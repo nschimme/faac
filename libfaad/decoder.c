@@ -22,6 +22,23 @@
 #include "atomic.h"
 #include "endian.h"
 
+/* Frozen initial layouts: never replace these with a growing sizeof(). */
+#define CONFIG_BASELINE_SIZE ((uint32_t)(offsetof(faad_config, downmix_mode) + sizeof(enum faad_downmix_mode)))
+#define LIBRARY_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_library_info, reserved) + sizeof(((faad_library_info *)0)->reserved)))
+#define STREAM_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_stream_info, reserved) + sizeof(((faad_stream_info *)0)->reserved)))
+#define FRAME_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_frame_info, reserved) + sizeof(((faad_frame_info *)0)->reserved)))
+
+/* Append-only fields must not increase the alignment an older caller supplies. */
+_Static_assert(_Alignof(faad_config) == _Alignof(uint32_t), "config ABI alignment");
+_Static_assert(_Alignof(faad_stream_info) == _Alignof(uint32_t), "stream ABI alignment");
+_Static_assert(_Alignof(faad_frame_info) == _Alignof(uint32_t), "frame ABI alignment");
+_Static_assert(_Alignof(faad_library_info) == _Alignof(const char *), "library ABI alignment");
+
+static uint32_t bounded_size(uint32_t caller_size, size_t library_size)
+{
+    return caller_size < library_size ? caller_size : (uint32_t)library_size;
+}
+
 /* Channels a channel_configuration carries (7 is 7.1); 0, a PCE, is
  * learnt from the first decoded frame, so start from stereo. */
 static uint32_t config_channels(uint32_t channel_config)
@@ -92,33 +109,35 @@ static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uin
 
 FAADAPI faad_status faad_get_library_info(faad_library_info *out)
 {
-    if (!out || out->struct_size < sizeof(faad_library_info)) {
+    if (!out || out->struct_size < LIBRARY_INFO_BASELINE_SIZE) {
         return FAAD_ERR_INVALID_ARGUMENT;
     }
-
-    out->struct_size = sizeof(faad_library_info);
-    out->version = FAAD_VERSION_STRING;
-    out->copyright =
+    faad_library_info info;
+    memset(&info, 0, sizeof(info));
+    info.struct_size = bounded_size(out->struct_size, sizeof(info));
+    info.version = FAAD_VERSION_STRING;
+    info.copyright =
         "FAAD - Freeware Advanced Audio Decoder (https://freewareadvancedaudio.github.io)\n"
         " Copyright (C) 2026, Nils Schimmelmann\n";
-    out->max_channels = MAX_CHANNELS;
+    info.max_channels = MAX_CHANNELS;
 #ifndef FAAD_DISABLE_SBR
-    out->sbr_supported = true;
+    info.sbr_supported = true;
 #else
-    out->sbr_supported = false;
+    info.sbr_supported = false;
 #endif
 #ifndef FAAD_DISABLE_PS
-    out->ps_supported = true;
+    info.ps_supported = true;
 #else
-    out->ps_supported = false;
+    info.ps_supported = false;
 #endif
 
+    memcpy(out, &info, info.struct_size);
     return FAAD_OK;
 }
 
 FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size)
 {
-    if (!cfg || caller_size < sizeof(faad_config)) {
+    if (!cfg || caller_size < CONFIG_BASELINE_SIZE) {
         return FAAD_ERR_INVALID_ARGUMENT;
     }
     faad_config tmp;
@@ -137,19 +156,55 @@ static uint32_t output_sample_bytes(enum faad_output_format f)
     return f == FAAD_OUTPUT_16BIT ? 2 : f == FAAD_OUTPUT_24BIT ? 3 : 4;
 }
 
-static bool valid_config(const faad_config *cfg)
+static uint32_t output_capacity(const faad_decoder *dec)
 {
-    return !cfg || (cfg->struct_size >= sizeof(faad_config)
-        && (cfg->stream_format == FAAD_STREAM_RAW || cfg->stream_format == FAAD_STREAM_ADTS)
-        && (cfg->output_format == FAAD_OUTPUT_16BIT || cfg->output_format == FAAD_OUTPUT_24BIT
-            || cfg->output_format == FAAD_OUTPUT_32BIT || cfg->output_format == FAAD_OUTPUT_FLOAT)
-        && (cfg->downmix_mode == FAAD_DOWNMIX_NONE || cfg->downmix_mode == FAAD_DOWNMIX_STEREO
-            || cfg->downmix_mode == FAAD_DOWNMIX_MONO));
+    uint32_t channels = MAX_CHANNELS;
+    if (dec->config.stream_format == FAAD_STREAM_RAW && dec->asc_parsed && dec->asc.num_channels)
+        channels = config_channels(dec->asc.num_channels);
+#ifndef FAAD_DISABLE_PS
+    if (channels < 2) channels = 2;
+#endif
+    if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO) channels = 1;
+    else if (dec->config.downmix_mode == FAAD_DOWNMIX_STEREO && channels > 2) channels = 2;
+    uint32_t samples = 1024;
+#ifndef FAAD_DISABLE_SBR
+    samples = 2048;
+#endif
+    return samples * channels * output_sample_bytes(dec->config.output_format);
+}
+
+static uint32_t channel_mask(const faad_decoder *dec, uint32_t channels)
+{
+    static const uint32_t masks[] = { 0, 0x4, 0x3, 0x7, 0x107, 0x37, 0x3f, 0, 0x63f };
+    return channels <= 8 && (channels <= 2 || (dec->asc.num_channels
+        && config_channels(dec->asc.num_channels) == channels)) ? masks[channels] : 0;
+}
+
+static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
+{
+    faad_config_init(resolved, sizeof(*resolved));
+    if (!cfg) return FAAD_OK;
+    if (cfg->struct_size < CONFIG_BASELINE_SIZE) return FAAD_ERR_INVALID_ARGUMENT;
+    /* Add future fields here: absent or partially supplied fields keep defaults.
+     * Never memcpy a partially supplied scalar or read beyond the caller. */
+#define COPY_CONFIG_FIELD(field) \
+    if (cfg->struct_size >= offsetof(faad_config, field) + sizeof(cfg->field)) \
+        resolved->field = cfg->field
+    COPY_CONFIG_FIELD(stream_format);
+    COPY_CONFIG_FIELD(output_format);
+    COPY_CONFIG_FIELD(downmix_mode);
+#undef COPY_CONFIG_FIELD
+    return (resolved->stream_format == FAAD_STREAM_RAW || resolved->stream_format == FAAD_STREAM_ADTS)
+        && (resolved->output_format == FAAD_OUTPUT_16BIT || resolved->output_format == FAAD_OUTPUT_24BIT
+            || resolved->output_format == FAAD_OUTPUT_32BIT || resolved->output_format == FAAD_OUTPUT_FLOAT)
+        && (resolved->downmix_mode == FAAD_DOWNMIX_NONE || resolved->downmix_mode == FAAD_DOWNMIX_STEREO
+            || resolved->downmix_mode == FAAD_DOWNMIX_MONO) ? FAAD_OK : FAAD_ERR_INVALID_ARGUMENT;
 }
 
 FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_bytes_out)
 {
-    if (!valid_config(cfg) || !state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
+    faad_config resolved;
+    if (resolve_config(cfg, &resolved) != FAAD_OK || !state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
     *state_bytes_out = (uint32_t)sizeof(faad_decoder);
     return FAAD_OK;
 }
@@ -191,21 +246,21 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
                                       faad_decoder **out_dec)
 {
     if (out_dec) *out_dec = NULL;
-    if (!valid_config(cfg) || !mem_buf || mem_size < sizeof(faad_decoder) || !out_dec
-        || ((uintptr_t)mem_buf & (_Alignof(faad_decoder) - 1))) {
+    faad_config resolved;
+    if (resolve_config(cfg, &resolved) != FAAD_OK || !mem_buf || !out_dec
+        || ((uintptr_t)mem_buf & (FAAD_STATE_ALIGNMENT - 1))
+        || ((asc_buf == NULL) != (asc_len == 0))
+        || (resolved.stream_format == FAAD_STREAM_RAW && !asc_len)) {
         return FAAD_ERR_INVALID_ARGUMENT;
     }
+    if (mem_size < sizeof(faad_decoder)) return FAAD_ERR_INSUFFICIENT_MEM;
 
     faad_init_global_tables();
 
     faad_decoder *dec = (faad_decoder *)mem_buf;
     memset(dec, 0, sizeof(faad_decoder));
 
-    if (cfg) {
-        dec->config = *cfg;
-    } else {
-        faad_config_init(&dec->config, sizeof(faad_config));
-    }
+    dec->config = resolved;
 
     dec->pns_seed = 0x12345678;
 
@@ -222,12 +277,17 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
         dec->sample_rate = dec->asc.is_sbr ? dec->asc.sbr_sample_rate : dec->core_sample_rate;
         dec->frame_samples = dec->asc.is_sbr ? 2048 : 1024;
         dec->asc_parsed = true;
+        dec->format_known = dec->asc.num_channels != 0;
+        dec->sbr_seen = dec->asc.is_sbr;
+        dec->ps_seen = dec->asc.is_ps;
     } else {
         dec->num_channels = MAX_CHANNELS < 2 ? 1 : 2;
         dec->sample_rate = 44100;
         dec->core_sample_rate = 44100;
         dec->frame_samples = 1024;
     }
+    dec->core_channels = dec->num_channels;
+    dec->max_output_bytes = output_capacity(dec);
 
 #ifdef FAAD_STATS
     if (g_faadStats.dumpFile) fclose(g_faadStats.dumpFile);
@@ -247,17 +307,23 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
     uint32_t state_size = 0;
     if (faad_get_state_size(cfg, &state_size) != FAAD_OK) return FAAD_ERR_INVALID_ARGUMENT;
 
-    void *mem = AllocMemory(state_size);
-    if (!mem) return FAAD_ERR_INSUFFICIENT_MEM;
-    memset(mem, 0, state_size);
+    /* malloc may only align to 8 bytes on 32-bit targets. Keep its original
+     * pointer for free, and align instance placement independently. */
+    void *storage = AllocMemory((size_t)state_size + FAAD_STATE_ALIGNMENT - 1);
+    if (!storage) return FAAD_ERR_INSUFFICIENT_MEM;
+    uintptr_t address = (uintptr_t)storage;
+    size_t offset = (FAAD_STATE_ALIGNMENT - (address & (FAAD_STATE_ALIGNMENT - 1)))
+        & (FAAD_STATE_ALIGNMENT - 1);
+    void *mem = (uint8_t *)storage + offset;
 
     faad_status st = faad_decoder_init(mem, state_size, cfg, asc_buf, asc_len, out_dec);
     if (st != FAAD_OK) {
-        FreeMemory(mem);
+        FreeMemory(storage);
         return st;
     }
 
     (*out_dec)->is_heap_allocated = true;
+    (*out_dec)->heap_storage = storage;
     return FAAD_OK;
 }
 
@@ -327,18 +393,24 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **handle)
     g_faadStats.dumpOpenTried = false;
 #endif
     if (dec->is_heap_allocated) {
-        FreeMemory(dec);
+        FreeMemory(dec->heap_storage);
     }
     return FAAD_OK;
 }
 
 FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_info *out_info)
 {
-    if (!dec || !out_info || out_info->struct_size < sizeof(faad_stream_info))
+    if (!dec || !out_info || out_info->struct_size < STREAM_INFO_BASELINE_SIZE)
         return FAAD_ERR_INVALID_ARGUMENT;
     faad_stream_info info;
     memset(&info, 0, sizeof(info));
-    info.struct_size = sizeof(info);
+    info.struct_size = bounded_size(out_info->struct_size, sizeof(info));
+    info.max_output_bytes = dec->max_output_bytes;
+    info.format_known = dec->format_known;
+    if (!info.format_known) {
+        memcpy(out_info, &info, info.struct_size);
+        return FAAD_OK;
+    }
     bool sbr = dec->asc.is_sbr || dec->sbr_seen;
     info.sample_rate = dec->core_sample_rate;
     info.frame_samples = 1024;
@@ -347,33 +419,17 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
 #endif
     info.channels = dec->num_channels;
 #ifndef FAAD_DISABLE_PS
-    if ((dec->asc.is_ps || dec->ps_present) && info.channels == 1) info.channels = 2;
+    if (dec->ps_seen && info.channels == 1) info.channels = 2;
 #endif
     if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO) info.channels = 1;
     else if (dec->config.downmix_mode == FAAD_DOWNMIX_STEREO && info.channels > 2) info.channels = 2;
-    info.object_type = (dec->asc.is_ps || dec->ps_present) ? FAAD_OBJ_HE_AAC_V2
+    info.object_type = (dec->asc.is_ps || dec->ps_seen) ? FAAD_OBJ_HE_AAC_V2
         : sbr ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 #ifndef FAAD_DISABLE_SBR
-    info.delay_samples = sbr ? FAAD_SBR_DELAY : 0;
+    info.decoder_delay = sbr ? 2 * FAAD_SBR_CORE_DELAY : 0;
 #endif
-    uint32_t channels = MAX_CHANNELS;
-    if (dec->config.stream_format == FAAD_STREAM_RAW && dec->asc_parsed && dec->asc.num_channels)
-        channels = config_channels(dec->asc.num_channels);
-#ifndef FAAD_DISABLE_PS
-    if (channels < 2) channels = 2;
-#endif
-    if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO) channels = 1;
-    else if (dec->config.downmix_mode == FAAD_DOWNMIX_STEREO && channels > 2) channels = 2;
-    uint32_t samples = 1024;
-#ifndef FAAD_DISABLE_SBR
-    samples = 2048; /* RAW LC can carry implicit SBR later in its lifetime. */
-#endif
-    info.max_output_bytes = samples * channels * output_sample_bytes(dec->config.output_format);
-    static const uint32_t masks[] = { 0, 0x4, 0x3, 0x7, 0x107, 0x37, 0x3f, 0, 0x63f };
-    if (info.channels <= 8 && (info.channels <= 2
-        || (dec->asc.num_channels && config_channels(dec->asc.num_channels) == info.channels)))
-        info.channel_mask = masks[info.channels];
-    memcpy(out_info, &info, sizeof(info));
+    info.channel_mask = channel_mask(dec, info.channels);
+    memcpy(out_info, &info, info.struct_size);
 
     return FAAD_OK;
 }
@@ -383,6 +439,15 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
     if (!dec) return FAAD_ERR_INVALID_ARGUMENT;
 
     memset(dec->overlap, 0, sizeof(dec->overlap));
+    memset(dec->spec, 0, sizeof(dec->spec));
+    memset(dec->prev_spec, 0, sizeof(dec->prev_spec));
+    memset(dec->prev_window_shape, 0, sizeof(dec->prev_window_shape));
+    memset(dec->prev_window_seq, 0, sizeof(dec->prev_window_seq));
+    memset(dec->win_shape, 0, sizeof(dec->win_shape));
+    memset(dec->win_seq, 0, sizeof(dec->win_seq));
+    memset(dec->pcm, 0, sizeof(dec->pcm));
+    dec->consecutive_errors = 0;
+    dec->pns_seed = 0x12345678;
 #ifndef FAAD_DISABLE_SBR
     memset(dec->sbr, 0, sizeof(dec->sbr));
     memset(dec->sbr_el, 0, sizeof(dec->sbr_el));
@@ -488,58 +553,78 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                                       uint32_t *bytes_written,
                                       faad_frame_info *frame_info)
 {
-    if (!dec || !in_buf || !bytes_consumed || !out_pcm || !bytes_written) {
+    if (bytes_consumed) *bytes_consumed = 0;
+    if (bytes_written) *bytes_written = 0;
+    uint32_t frame_size = 0;
+    if (frame_info) {
+        if (frame_info->struct_size < FRAME_INFO_BASELINE_SIZE)
+            return FAAD_ERR_INVALID_ARGUMENT;
+        frame_size = bounded_size(frame_info->struct_size, sizeof(*frame_info));
+        faad_frame_info empty;
+        memset(&empty, 0, sizeof(empty));
+        empty.struct_size = frame_size;
+        memcpy(frame_info, &empty, frame_size);
+    }
+    if (!dec || !in_buf || !bytes_consumed || !out_pcm || !bytes_written)
         return FAAD_ERR_INVALID_ARGUMENT;
-    }
-
-    if (in_bytes == 0) {
-        return FAAD_ERR_NEED_MORE_DATA;
-    }
-
-#ifdef FAAD_STATS
-    g_faadStats.totalFrames++;
-#endif
-
-    /* Zero out spectral buffers only up to active/previous max channels to avoid clearing all 32 KB on every frame */
-    uint32_t active_chs = dec->num_channels ? dec->num_channels : 2;
-    if (active_chs > MAX_CHANNELS) active_chs = MAX_CHANNELS;
-    for (uint32_t c = 0; c < active_chs; c++) {
-        memset(dec->spec[c], 0, sizeof(float) * FRAME_LEN_LONG);
-    }
-    dec->sbr_present = false;
+    /* RAW lengths enter bit-count arithmetic directly. ADTS lengths are
+     * bounded by the 13-bit frame header before payload parsing. */
+    if (dec->config.stream_format == FAAD_STREAM_RAW && in_bytes > UINT32_MAX / 8)
+        return FAAD_ERR_INVALID_ARGUMENT;
+    uint32_t sample_bytes = output_sample_bytes(dec->config.output_format);
+    if (sample_bytes != 3 && ((uintptr_t)out_pcm & (sample_bytes - 1)))
+        return FAAD_ERR_INVALID_ARGUMENT;
+    if (out_cap_bytes < dec->max_output_bytes) return FAAD_ERR_OUTPUT_TOO_SMALL;
+    if (!in_bytes) return FAAD_ERR_NEED_MORE_DATA;
 
     BitReader bs;
     bits_init(&bs, in_buf, in_bytes);
-
-    uint32_t adts_frame_len = 0;
-    bool decode_success = true;
+    uint32_t adts_frame_len = in_bytes;
     if (dec->config.stream_format == FAAD_STREAM_ADTS) {
-        faad_status st = adts_decode_header(&bs, &dec->asc, &adts_frame_len);
-        if (st != FAAD_OK || adts_frame_len < 7) {
-            /* No frame to conceal: hand back how far to skip to the next
-             * syncword so a caller that loops on bytes_consumed always
-             * advances, and emit nothing. */
+        /* Validate framing without touching the instance. Preserve a split
+         * syncword rather than silently eating its first byte. */
+        if (in_buf[0] == 0xff && in_bytes == 1) return FAAD_ERR_NEED_MORE_DATA;
+        if (in_bytes < 2 || in_buf[0] != 0xff || (in_buf[1] & 0xf6) != 0xf0) {
             uint32_t skip = 1;
-            while (skip + 1 < in_bytes && !(in_buf[skip] == 0xFF && (in_buf[skip + 1] & 0xF6) == 0xF0)) skip++;
-            *bytes_consumed = (skip + 1 < in_bytes) ? skip : in_bytes;
-            *bytes_written = 0;
-            return (st != FAAD_OK) ? st : FAAD_ERR_SYNC_LOST;
-        } else if (adts_frame_len > in_bytes) {
-            return FAAD_ERR_NEED_MORE_DATA;
-        } else {
-            dec->num_channels = config_channels(dec->asc.num_channels);
-            if (dec->num_channels > MAX_CHANNELS) {
-                *bytes_consumed = adts_frame_len;
-                *bytes_written = 0;
-                return FAAD_ERR_UNSUPPORTED;
-            }
-            dec->sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
-            dec->core_sample_rate = dec->sample_rate; /* adts_decode_header() doesn't detect SBR */
-            bs.len = adts_frame_len;
+            while (skip + 1 < in_bytes && !(in_buf[skip] == 0xff
+                && (in_buf[skip + 1] & 0xf6) == 0xf0)) skip++;
+            if (skip + 1 >= in_bytes) skip = in_bytes - (in_buf[in_bytes - 1] == 0xff);
+            *bytes_consumed = skip;
+            return FAAD_ERR_SYNC_LOST;
         }
-    } else {
-        adts_frame_len = in_bytes;
+        uint32_t header_bytes = (in_buf[1] & 1) ? 7 : 9;
+        if (in_bytes < header_bytes) return FAAD_ERR_NEED_MORE_DATA;
+        adts_frame_len = ((uint32_t)(in_buf[3] & 3) << 11)
+            | ((uint32_t)in_buf[4] << 3) | (in_buf[5] >> 5);
+        if (adts_frame_len < header_bytes) {
+            *bytes_consumed = 1;
+            return FAAD_ERR_DECODE_FAILED;
+        }
+        if (adts_frame_len > in_bytes) return FAAD_ERR_NEED_MORE_DATA;
+        AudioSpecificConfig asc;
+        faad_status st = adts_decode_header(&bs, &asc, &adts_frame_len);
+        if (st != FAAD_OK || config_channels(asc.num_channels) > MAX_CHANNELS) {
+            *bytes_consumed = adts_frame_len;
+            return st != FAAD_OK ? st : FAAD_ERR_UNSUPPORTED;
+        }
+        dec->asc = asc;
+        dec->core_channels = config_channels(asc.num_channels);
+        dec->core_sample_rate = asc.sample_rate;
+        bs.len = adts_frame_len;
     }
+    *bytes_consumed = adts_frame_len;
+    dec->num_channels = dec->core_channels;
+    bool decode_success = true;
+    bool degraded = false;
+#ifdef FAAD_STATS
+    g_faadStats.totalFrames++;
+#endif
+    uint32_t active_chs = dec->num_channels;
+    if (active_chs > MAX_CHANNELS) active_chs = MAX_CHANNELS;
+    for (uint32_t c = 0; c < active_chs; c++)
+        memset(dec->spec[c], 0, sizeof(dec->spec[c]));
+    dec->sbr_present = false;
+    dec->ps_present = false;
 
 #ifdef FAAD_STATS
     g_faadStats.frameSectBits = g_faadStats.frameSfBits = g_faadStats.frameSpecBits = 0;
@@ -550,9 +635,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     uint32_t ch_idx = 0;
     uint32_t last_elem_type = ID_SCE;
 
-#ifdef FAAD_STATS
     bool saw_end = false;
-#endif
     if (decode_success) {
         /* Fill elements (SBR) follow the last channel element, so the loop
          * runs to END even once every channel slot is taken. */
@@ -562,12 +645,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
             g_faadStats.elementCounts[syntax_id]++;
 #endif
             if (syntax_id == ID_END) {
-#ifdef FAAD_STATS
                 saw_end = true;
-#endif
                 break;
             } else if (syntax_id == ID_SCE || syntax_id == ID_LFE) {
-                if (ch_idx >= MAX_CHANNELS) break;
+                if (ch_idx >= MAX_CHANNELS) { decode_success = false; break; }
                 last_elem_type = syntax_id;
 #ifdef FAAD_STATS
                 unsigned b0 = bits_get_consumed(&bs);
@@ -587,7 +668,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                 apply_tns(ics, dec->spec[ch_idx]);
                 ch_idx += 1;
             } else if (syntax_id == ID_CPE) {
-                if (ch_idx + 1 >= MAX_CHANNELS) break;
+                if (ch_idx + 1 >= MAX_CHANNELS) { decode_success = false; break; }
                 last_elem_type = ID_CPE;
                 CPEInfo *cpe = &dec->scratch.cpe;
                 memset(cpe, 0, sizeof(*cpe));
@@ -654,6 +735,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                             uint32_t nch = (last_elem_type == ID_CPE) ? 2 : 1;
                             for (uint32_t c = ch0; c < ch0 + nch && c < MAX_CHANNELS; c++) dec->sbr[c].have_frame = false;
                             dec->sbr_present = true;
+                            degraded = true;
                         }
 #else
                         (void)sbr_st;
@@ -694,6 +776,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #endif
     }
 
+    if (!saw_end) decode_success = false;
     /* A fixed RAW layout also fixes the lifetime output capacity. */
     if (dec->config.stream_format == FAAD_STREAM_RAW && dec->asc.num_channels
         && ch_idx > config_channels(dec->asc.num_channels))
@@ -703,6 +786,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         dec->consecutive_errors = 0;
         memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);
         dec->num_channels = ch_idx;
+        dec->core_channels = ch_idx;
 #ifdef FAAD_STATS
         if (!g_faadStats.haveLastChannels) {
             g_faadStats.haveLastChannels = true;
@@ -744,6 +828,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
      * channel's whole core frame before it synthesises that channel, so it
      * works in place over the core output at the start of each run. */
     if (dec->sbr_present) dec->sbr_seen = true;
+#ifndef FAAD_DISABLE_PS
+    if (dec->ps_present || dec->asc.is_ps) dec->ps_seen = true;
+#endif
     bool sbr_frame = dec->asc.is_sbr || dec->sbr_present || dec->sbr_seen;
 #ifdef FAAD_DISABLE_SBR
     sbr_frame = false;
@@ -760,7 +847,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 
     /* Output in the WAV / SMPTE order (FL FR FC LFE BL BR SL SR), taken
      * from the element order the channel configuration implies. */
-    const float *src[MAX_CHANNELS];
+    const float *src[MAX_CHANNELS < 2 ? 2 : MAX_CHANNELS];
     const uint8_t *map = output_channel_map(dec->asc.num_channels, num_chs);
     for (uint32_t c = 0; c < num_chs; c++)
         src[c] = pcm_final + (map ? map[c] : c) * frame_samples;
@@ -769,9 +856,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * frame_samples;
 
     uint32_t required_bytes = frame_samples * num_chs * output_sample_bytes(dec->config.output_format);
-    if (out_cap_bytes < required_bytes) {
-        return FAAD_ERR_OUTPUT_TOO_SMALL;
-    }
+    /* The entry check guarantees capacity before any history advances. A
+     * lifetime-bound violation is a rejected frame, never a retryable buffer
+     * error after synthesis has already consumed the packet. */
+    if (required_bytes > dec->max_output_bytes) return FAAD_ERR_DECODE_FAILED;
 
     if (dec->config.output_format == FAAD_OUTPUT_16BIT) {
         int16_t * restrict out_int16 = (int16_t *)out_pcm;
@@ -821,12 +909,25 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     }
 #endif
 
+    dec->format_known = dec->format_known || dec->asc.num_channels != 0
+        || (decode_success && ch_idx > 0);
+    dec->sample_rate = sbr_active ? 2 * dec->core_sample_rate : dec->core_sample_rate;
     if (frame_info) {
-        frame_info->sample_rate = sbr_active ? 2 * dec->core_sample_rate : dec->core_sample_rate;
-        frame_info->samples_per_ch = dec->frame_samples;
-        frame_info->channels = num_chs;
-        frame_info->sbr_active = sbr_active;
-        frame_info->ps_active = dec->ps_present || dec->asc.is_ps;
+        faad_frame_info info;
+        memset(&info, 0, sizeof(info));
+        info.struct_size = frame_size;
+        info.sample_rate = dec->sample_rate;
+        info.samples_per_ch = dec->frame_samples;
+        info.channels = num_chs;
+        info.sbr_active = sbr_active;
+#ifndef FAAD_DISABLE_PS
+        info.ps_active = sbr_active && dec->ps_seen && dec->core_channels == 1;
+#endif
+        info.decoder_delay = sbr_active ? 2 * FAAD_SBR_CORE_DELAY : 0;
+        info.channel_mask = channel_mask(dec, num_chs);
+        info.concealed = !decode_success || ch_idx == 0;
+        info.degraded = degraded;
+        memcpy(frame_info, &info, frame_size);
     }
 
     return FAAD_OK;

@@ -20,7 +20,7 @@ faad_c_args = c_args
 if not get_option('decoder-sbr')
     faad_c_args += ['-DFAAD_DISABLE_SBR']
 endif
-if not get_option('decoder-ps') or not get_option('decoder-sbr')
+if not get_option('decoder-ps') or not get_option('decoder-sbr') or get_option('max-channels') < 2
     faad_c_args += ['-DFAAD_DISABLE_PS']
 endif
 
@@ -81,6 +81,17 @@ test_faad = executable('test_faad',
 )
 test('faad_smoke_test', test_faad)
 
+test_faad_api = executable('test_faad_api', 'test_faad_api.c',
+    c_args: faad_c_args,
+    include_directories: ['..', '../include', common_inc], link_with: [libfaad])
+test('faad_api_test', test_faad_api)
+if cc.has_argument('-fshort-enums')
+    test_faad_api_short = executable('test_faad_api_short', 'test_faad_api.c',
+        c_args: faad_c_args + ['-fshort-enums'],
+        include_directories: ['..', '../include', common_inc], link_with: [libfaad])
+    test('faad_api_short_enums_test', test_faad_api_short)
+endif
+
 if get_option('stats')
     test_faad_dump = executable('test_faad_dump',
         'test_faad_dump.c',
@@ -95,7 +106,7 @@ endif
 if get_option('encoder')
     test_faad_robust = executable('test_faad_robust',
         'test_faad_robust.c',
-        include_directories: ['..', '../include'],
+        include_directories: ['..', '../include', common_inc],
         link_with: [libfaad, libfaac],
         dependencies: [libm],
     )

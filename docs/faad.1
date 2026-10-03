@@ -98,8 +98,9 @@ Overwrite an existing output file.
 .BR --strict
 Strict mode, report the file offset, frame number and error of a decoding
 failure and exit with status 1.
-Without it, decoding stops at the first bad frame, the audio decoded so far is
-kept and the exit status is 0.
+Concealed core audio and recovered audio with damaged SBR also count as failures.
+Without it, usable concealed or recovered audio is kept, bad packets are skipped
+where framing permits, and decoding continues.
 .TP
 .BR --license
 Display copyright and license information.

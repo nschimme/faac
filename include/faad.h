@@ -20,15 +20,19 @@
  *
  * Design summary:
  *   - Configuration is supplied once, up front, to faad_decoder_init() or
- *     faad_decoder_open(), so derived values (output rate, channel count,
- *     PCM capacity bound) are queryable as soon as the call returns.
+ *     faad_decoder_open(). PCM capacity is queryable immediately; format is
+ *     discovered from ASC or decoded packets and may change with implicit SBR/PS.
  *   - Every fallible call returns a faad_status; faad_strerror() maps a status
  *     to a human-readable string.
- *   - Fixed-width integer types and width-pinned enums keep the ABI identical
- *     across LP64/LLP64 platforms and regardless of -fshort-enums.
+ *   - Fixed-width integer types and width-pinned enums preserve the ABI within
+ *     each target platform, including builds using -fshort-enums.
  *   - faad_config and the info structs grow only by appending named fields;
  *     callers MUST set struct_size (faad_config_init() does) so the library
- *     can reconcile versions.
+ *     can reconcile versions. Existing offsets, meanings, enum values, and
+ *     signatures and struct alignment never change within a released major ABI
+ *     version. Explicit tail padding is never reused for new fields.
+ *   - Independent handles may be used concurrently; one handle is owned by
+ *     one thread at a time. Instrumented stats builds are process-global.
  */
 
 #ifndef FAAD_H
@@ -75,7 +79,7 @@ typedef enum faad_status {
     FAAD_OK                   = 0,
     FAAD_ERR_INVALID_ARGUMENT = -1,  /* NULL pointer or bad arguments                        */
     FAAD_ERR_UNSUPPORTED      = -2,  /* unsupported profile or bitstream feature             */
-    FAAD_ERR_INSUFFICIENT_MEM = -3,  /* provided static memory block is too small            */
+    FAAD_ERR_INSUFFICIENT_MEM = -3,  /* allocation failed or provided state block too small   */
     FAAD_ERR_OUTPUT_TOO_SMALL = -4,  /* provided PCM output buffer capacity too small        */
     FAAD_ERR_NEED_MORE_DATA   = -5,  /* input buffer doesn't contain a full frame            */
     FAAD_ERR_DECODE_FAILED    = -6,  /* bitstream corruption or DSP error                    */
@@ -100,6 +104,7 @@ typedef struct faad_library_info {
     uint32_t                max_channels;   /* highest channel count this build decodes */
     bool                    sbr_supported;  /* SBR compiled in                          */
     bool                    ps_supported;   /* Parametric Stereo compiled in            */
+    uint8_t                 reserved[2];    /* explicit tail padding; always zero, never reuse */
 } faad_library_info;
 
 FAADAPI faad_status faad_get_library_info(faad_library_info *out);
@@ -155,14 +160,13 @@ typedef struct faad_config {
 } faad_config;
 
 /*
- * SBR QMF analysis+synthesis delay in core-rate samples. Apple and fdk-aac
- * priming values exclude it. Convert track priming/padding from track ticks
- * and this delay from core samples to output samples before trimming.
+ * Caller-owned decoder state must be aligned to this boundary. The size query
+ * includes instance storage, not shared tables or caller-owned input/PCM.
  */
-#define FAAD_SBR_DELAY 481
+#define FAAD_STATE_ALIGNMENT 16u
 
 /*
- * Static stream information, derived from the ASC or ADTS headers. Set
+ * Current stream information, derived from ASC, ADTS headers and decoded data. Set
  * struct_size to sizeof(faad_stream_info) before faad_decoder_get_info(); it is
  * updated to the bytes populated.
  *
@@ -176,20 +180,28 @@ typedef struct faad_stream_info {
     uint32_t                sample_rate;      /* Resolved output sample rate in Hz */
     uint32_t                channels;         /* Resolved output channel count */
     enum faad_object_type   object_type;      /* Detected object type */
-    uint32_t                delay_samples;    /* Decoder delay at the core rate that MP4/iTunSMPB priming
-                                               * excludes: FAAD_SBR_DELAY with detected SBR, else 0 */
+    uint32_t                decoder_delay;    /* Additional delay excluded from container priming,
+                                               * in samples/channel at sample_rate (0 LC, 962 SBR) */
     uint32_t                frame_samples;    /* 1024, or 2048 with upsampled SBR output */
     uint32_t                max_output_bytes; /* Lifetime PCM capacity, including implicit SBR/PS */
     uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
+    bool                    format_known;     /* Usable rate/channel snapshot; later frames may change it */
+    uint8_t                 reserved[3];      /* explicit tail padding; always zero, never reuse */
 } faad_stream_info;
 
 /* Per-frame metadata, returned after every decoded packet. */
 typedef struct faad_frame_info {
+    uint32_t                struct_size;      /* set by caller to sizeof(faad_frame_info) */
     uint32_t                sample_rate;      /* Effective frame sample rate (reflects SBR upsampling) */
     uint32_t                samples_per_ch;   /* Decoded samples per channel (1024 or 2048) */
     uint32_t                channels;         /* Active output channel count */
     bool                    sbr_active;       /* True if SBR extension was applied */
     bool                    ps_active;        /* True if Parametric Stereo was applied */
+    uint32_t                decoder_delay;    /* Additional delay in output samples/channel */
+    uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
+    bool                    concealed;        /* Replacement audio rendered for corrupt core data */
+    bool                    degraded;         /* Recovered audio, e.g. damaged SBR with intact core */
+    uint8_t                 reserved[2];      /* explicit tail padding; always zero, never reuse */
 } faad_frame_info;
 
 
@@ -201,7 +213,7 @@ FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
 
 
 /*
- * Query the exact bytes of SRAM required to instantiate the decoder.
+ * Query the exact bytes of instance storage required to instantiate the decoder.
  * Embedded applications use this to allocate static .bss/.dram memory.
  */
 FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_bytes_out);
@@ -210,9 +222,10 @@ FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_
  * Initialize the decoder in a caller-provided memory block, with zero internal
  * heap allocations (no malloc/free).
  *
- * mem_buf  - static memory block, aligned for float (4 bytes; 16 is best for SIMD)
+ * mem_buf  - static memory block, aligned to FAAD_STATE_ALIGNMENT
  * mem_size - size of mem_buf, at least the size faad_get_state_size() returned
- * asc_buf  - optional AudioSpecificConfig for RAW streams
+ * asc_buf  - valid, nonempty AudioSpecificConfig required for RAW streams;
+ *            optional for ADTS. Configuration/ASC need not outlive this call.
  * asc_len  - length of asc_buf
  */
 FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
@@ -233,8 +246,10 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
 FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
 
 /*
- * Extract static stream metadata. Safe to call immediately after init
- * if ASC was provided, or after the first ADTS frame is parsed. Set
+ * Query current stream metadata. Safe immediately after init. Before ADTS
+ * discovery, format_known is false and format fields are zero/FAAD_OBJ_NULL.
+ * ASC may supply a usable snapshot, but implicit SBR/PS can change it later;
+ * frame metadata is authoritative for emitted PCM. Set
  * out_info->struct_size to sizeof(faad_stream_info); smaller baseline layouts
  * are rejected, larger layouts are accepted and only known bytes are written.
  * max_output_bytes is valid even before the first frame and across flushes;
@@ -244,8 +259,9 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
 FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_info *out_info);
 
 /*
- * Flush internal IMDCT overlap and SBR delay-line history buffers. MUST be
- * called when seeking, or if network packet loss is detected (RTP drop).
+ * Discard audio history on seek/discontinuity, including concealment and
+ * synthesis history. Preserves configuration, discovered format and capacity.
+ * Does not drain PCM or generate missing packets. Reopen for a different stream.
  */
 FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
 
@@ -256,10 +272,23 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
  * in_buf         - a single ADTS frame or RAW access unit
  * in_bytes       - size of in_buf
  * bytes_consumed - returns the number of bitstream bytes parsed
- * out_pcm        - caller-allocated PCM output, formatted per output_format
- * out_cap_bytes  - capacity of out_pcm in bytes
+ * out_pcm        - caller-allocated PCM output, formatted per output_format;
+ *                  aligned for int16_t/int32_t/float (packed 24-bit: any alignment)
+ * out_cap_bytes  - must be at least stream_info.max_output_bytes
  * bytes_written  - returns the number of PCM bytes generated
- * frame_info     - returns metadata for the rendered frame
+ * frame_info     - optional; set struct_size before each call. Grows append-only,
+ *                  bounded by caller size, reporting the bytes populated.
+ *
+ * Byte counts are zeroed on entry. Invalid arguments, insufficient PCM capacity,
+ * and NEED_MORE_DATA consume/emit nothing and preserve decoder state, so retry
+ * with the same input is safe. ADTS input can contain subsequent frames; only
+ * the first is decoded. Sync loss reports skipped bytes (retaining a trailing
+ * possible sync prefix). Complete unsupported/rejected frames report consumed
+ * bytes and emit nothing; advance past them rather than retrying. RAW input
+ * must contain one complete access unit; its framing is the caller's job.
+ * Concealed/degraded PCM returns FAAD_OK with frame flags. With no emitted PCM,
+ * valid frame-info storage has its known fields cleared; unknown trailing
+ * caller storage is untouched.
  */
 FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                                       const uint8_t *in_buf, uint32_t in_bytes,
