@@ -57,12 +57,6 @@ static inline int clamp_int(int x, int lo, int hi)
 #ifndef FreeMemory
 #define FreeMemory(block) free(block)
 #endif
-#ifndef AllocMemoryFast
-#define AllocMemoryFast(size) malloc(size)
-#endif
-#ifndef FreeMemoryFast
-#define FreeMemoryFast(block) free(block)
-#endif
 #ifndef ReallocMemory
 #define ReallocMemory(block, size) realloc(block, size)
 #endif
