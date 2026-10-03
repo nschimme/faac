@@ -8,7 +8,7 @@ FAAC is an open-source, dependency-free AAC encoder, and FAAD its decoder counte
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
-- ADTS and raw AAC streams
+- Flexible output options: ADTS and raw AAC streams
 
 ### Command-line tools:
 
