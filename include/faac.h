@@ -18,10 +18,10 @@
  *
  * This is the only public surface for the encoder. The legacy faacEnc* API
  * (faacEncOpen/faacEncGetCurrentConfiguration/faacEncSetConfiguration/
- * faacEncEncode/faacEncClose) has been removed; see docs/libfaac.html for a
+ * faacEncEncode/faacEncClose) has been removed; see docs/libfaac.md for a
  * porting guide.
  *
- * Design summary (see docs/libfaac.html for the full narrative):
+ * Design summary (see docs/libfaac.md for the full narrative):
  *   - Parameters are supplied once, up front, to faac_encoder_open(), so the
  *     encoder never exists in a half-configured state and all derived values
  *     (frame size, output-buffer bound, effective sample rate, resolved object
