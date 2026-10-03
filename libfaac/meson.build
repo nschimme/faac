@@ -28,6 +28,8 @@ common_src = [
     'frame.h',
     'huff2.c',
     'huff2.h',
+    'huffdata.c',
+    'huffdata.h',
     'quantize.c',
     'quantize.h',
     'ratecontrol.c',

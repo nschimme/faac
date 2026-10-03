@@ -40,7 +40,6 @@
 
 #include "faad.h"
 #include "faad_stats.h"
-#include "huffdata.h"
 #include "sbr_tables.h"
 
 /* Channel capacity: the build's -Dmax-channels (config.h) when present. Every
