@@ -160,7 +160,6 @@ static void faad_init_global_tables_impl(void)
     extern void init_huffman_luts(void);
     extern void init_windows(void);
     extern void init_qmf_twiddles(void);
-    extern void init_sbr_books(void);
     extern void init_is_tables(void);
 #ifndef FAAD_DISABLE_PS
     extern void init_ps_tables(void);
@@ -170,7 +169,6 @@ static void faad_init_global_tables_impl(void)
     init_huffman_luts();
     init_windows();
     init_qmf_twiddles();
-    init_sbr_books();
     init_is_tables();
 #ifndef FAAD_DISABLE_PS
     init_ps_tables();
