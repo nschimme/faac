@@ -13,7 +13,7 @@ faad_src = [
 ]
 
 if get_option('decoder-sbr')
-    faad_src += ['sbr_dec_tables.c', 'sbr_huff_tables.c', '../common/sbr_tables.c']
+    faad_src += ['sbr_dec_tables.c', '../common/sbr_tables.c']
 endif
 
 faad_c_args = c_args

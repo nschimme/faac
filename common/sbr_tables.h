@@ -28,11 +28,6 @@ extern "C" {
 
 typedef float sbrfloat;
 
-typedef struct {
-    uint32_t code : 24;
-    uint32_t len  : 8;
-} SBRHuffEntry;
-
 extern const sbrfloat qmf_c[640];
 extern const int8_t sbr_offset[6][16];
 
