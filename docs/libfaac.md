@@ -332,6 +332,16 @@ not be freed. Closing a NULL handle via `faac_encoder_close(&enc)` succeeds.
 Independent handles may run concurrently; serialize all access to one handle.
 The optional `stats` build prints diagnostics on close.
 
+### Custom allocators
+
+The encoder allocates its state on the heap through the `AllocMemory` /
+`FreeMemory` macros in `libfaac/util.h`. A source build can override them, for
+example with `-DAllocMemory=my_alloc -DFreeMemory=my_free` (provide the
+function declarations when compiling). Unlike libfaad there is no
+caller-owned-state path, so the allocator is the only control over where
+encoder memory lives. Memory returned by `AllocMemory` is zeroed by the
+library where needed; the allocator need not clear it.
+
 ### Encoder delay and gapless output
 
 Encoding includes priming and trailing padding. `info.encoder_delay` is the
