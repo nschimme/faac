@@ -14,6 +14,8 @@
   - [Complete ADTS encode example](#complete-adts-encode-example)
   - [Defaults and PCM input](#defaults-and-pcm-input)
   - [Channel ordering and ownership](#channel-ordering-and-ownership)
+  - [Custom allocators](#custom-allocators)
+  - [Memory budget and embedded targets](#memory-budget-and-embedded-targets)
   - [Encoder delay and gapless output](#encoder-delay-and-gapless-output)
   - [Rate control modes](#rate-control-modes)
   - [Capping the peak frame size](#capping-the-peak-frame-size)
@@ -339,8 +341,44 @@ The encoder allocates its state on the heap through the `AllocMemory` /
 example with `-DAllocMemory=my_alloc -DFreeMemory=my_free` (provide the
 function declarations when compiling). Unlike libfaad there is no
 caller-owned-state path, so the allocator is the only control over where
-encoder memory lives. Memory returned by `AllocMemory` is zeroed by the
-library where needed; the allocator need not clear it.
+encoder memory lives. The allocator need not clear the memory it returns.
+
+### Memory budget and embedded targets
+
+The encoder instance is heap-allocated at `faac_encoder_open()` and does not
+allocate again while encoding or flushing (apart from the 2-byte ASC that
+`faac_encoder_asc()` returns), so the open-time figure is also the peak. Closing the handle releases all of
+it. Measured on arm64 with default build options (a counting `AllocMemory`
+shim, 200 frames of PCM):
+
+| Configuration | Encoder heap | Frame samples/channel | 16-bit PCM input per call |
+|---|---|---|---|
+| Mono, AAC-LC | 154 KB | 1024 | 2 KB |
+| Stereo, AAC-LC | 187 KB | 1024 | 4 KB |
+| 5.1, AAC-LC | 319 KB | 1024 | 12 KB |
+| 7.1, AAC-LC | 385 KB | 1024 | 16 KB |
+| Mono, HE-AAC | 311 KB | 2048 | 4 KB |
+| Stereo, HE-AAC | 353 KB | 2048 | 8 KB |
+
+Add the output buffer, `info.max_output_bytes` (8 KB in every configuration
+above), and your input buffer. Encoder heap did not change between 44.1 and
+48 kHz. The shared tables (about 16 KB of `.bss` and 10 KB of read-only data)
+are built on first open and stay in static storage, separate from the heap
+figures. Stack use is small: a full encode ran in a thread with a 20 KB stack,
+the smallest this platform allows, including the test harness itself.
+
+Use these figures for a first sizing, then measure your own build: sizes follow
+pointer width and alignment, and build options such as `-Dmax-channels` may
+change them. HE-AAC roughly doubles the heap because it runs a core at half
+the sample rate plus the SBR analysis state, so choose `FAAC_OBJ_LOW` when RAM
+is tight.
+The core uses single-precision float; double precision appears only in
+one-time table generation at open.
+
+Because `AllocMemory` is the only allocation point, a port can direct the whole
+encoder into a specific region, for example external RAM, by overriding it as
+described above. Check the speed cost of that placement on your target before
+committing to it.
 
 ### Encoder delay and gapless output
 
