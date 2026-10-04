@@ -2,7 +2,7 @@
 """Round-trip the faad frontend through faac: ADTS and MP4 input, WAV to a
 file and to stdout.
 
-Usage: faad_frontend_test.py <faac> <faad>
+Usage: faad_frontend_test.py <faac> <faad> <max-channels> <decoder-sbr>
 """
 
 import math
@@ -14,15 +14,15 @@ import tempfile
 import wave
 
 
-def make_wav(path, rate=44100, secs=2):
+def make_wav(path, channels, rate=44100, secs=2):
     with wave.open(path, "wb") as w:
-        w.setnchannels(2)
+        w.setnchannels(channels)
         w.setsampwidth(2)
         w.setframerate(rate)
         w.writeframes(b"".join(
-            struct.pack("<hh",
-                        int(8000 * math.sin(2 * math.pi * 440 * i / rate)),
-                        int(8000 * math.sin(2 * math.pi * 660 * i / rate)))
+            struct.pack("<" + "h" * channels,
+                        *(int(8000 * math.sin(2 * math.pi * freq * i / rate))
+                          for freq in (440, 660)[:channels]))
             for i in range(rate * secs)))
 
 
@@ -34,9 +34,11 @@ def wav_sizes(data):
 
 def main():
     faac, faad = sys.argv[1:3]
+    channels = min(2, int(sys.argv[3]))
+    sbr = sys.argv[4] == "true"
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, "in.wav")
-        make_wav(src)
+        make_wav(src, channels)
         for ext in ("aac", "m4a"):
             enc = os.path.join(d, "t." + ext)
             subprocess.run([faac, "-o", enc, src], check=True, capture_output=True)
@@ -65,8 +67,8 @@ def main():
         he_out = os.path.join(d, "he.wav")
         subprocess.run([faad, "-q", "--strict", "-o", he_out, he], check=True, capture_output=True)
         with wave.open(he_out) as w:
-            assert w.getframerate() == 44100 and w.getnchannels() == 2
-            assert w.getnframes() == 88200, "runtime decoder delay changed gapless length"
+            assert w.getframerate() == (44100 if sbr else 22050) and w.getnchannels() == channels
+            assert w.getnframes() == (88200 if sbr else 44100), "runtime decoder delay changed gapless length"
 
         # Concealed core and damaged-SBR recovery both produce usable audio
         # normally, but strict mode must reject them.
@@ -83,7 +85,10 @@ def main():
             assert wav_sizes(open(out, "rb").read())[2] > 0
             result = subprocess.run([faad, "-q", "--strict", "--overwrite", "-o", out, damaged],
                                     capture_output=True)
-            assert result.returncode == 1 and b"frame" in result.stderr.lower(), name + " strict mode"
+            if name == "concealed" or sbr:
+                assert result.returncode == 1 and b"frame" in result.stderr.lower(), name + " strict mode"
+            else:
+                assert result.returncode == 0, "disabled SBR leaves the intact core usable"
     print("faad frontend: ok")
 
 
