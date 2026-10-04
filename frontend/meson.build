@@ -72,6 +72,7 @@ if get_option('decoder')
     )
     if get_option('encoder') and not meson.is_cross_build()
         test('faad_frontend_test', find_program('python3'),
-            args: [files('../tests/faad_frontend_test.py'), faac, faad])
+            args: [files('../tests/faad_frontend_test.py'), faac, faad,
+                   get_option('max-channels').to_string(), get_option('decoder-sbr').to_string()])
     endif
 endif
