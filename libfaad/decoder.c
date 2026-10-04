@@ -26,12 +26,10 @@
 #define CONFIG_BASELINE_SIZE ((uint32_t)(offsetof(faad_config, downmix_mode) + sizeof(enum faad_downmix_mode)))
 #define LIBRARY_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_library_info, reserved) + sizeof(((faad_library_info *)0)->reserved)))
 #define STREAM_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_stream_info, reserved) + sizeof(((faad_stream_info *)0)->reserved)))
-#define FRAME_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_frame_info, reserved) + sizeof(((faad_frame_info *)0)->reserved)))
 
 /* Append-only fields must not increase the alignment an older caller supplies. */
 _Static_assert(_Alignof(faad_config) == _Alignof(uint32_t), "config ABI alignment");
 _Static_assert(_Alignof(faad_stream_info) == _Alignof(uint32_t), "stream ABI alignment");
-_Static_assert(_Alignof(faad_frame_info) == _Alignof(uint32_t), "frame ABI alignment");
 _Static_assert(_Alignof(faad_library_info) == _Alignof(const char *), "library ABI alignment");
 
 static uint32_t bounded_size(uint32_t caller_size, size_t library_size)
@@ -429,6 +427,13 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
     info.decoder_delay = sbr ? 2 * FAAD_SBR_CORE_DELAY : 0;
 #endif
     info.channel_mask = channel_mask(dec, info.channels);
+    if (dec->pcm_emitted) {
+        info.sample_rate = dec->emitted_format.sample_rate;
+        info.channels = dec->emitted_format.channels;
+        info.frame_samples = dec->emitted_format.frame_samples;
+        info.channel_mask = dec->emitted_format.channel_mask;
+        info.decoder_delay = dec->emitted_format.decoder_delay;
+    }
     memcpy(out_info, &info, info.struct_size);
 
     return FAAD_OK;
@@ -551,20 +556,11 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                                       uint32_t *bytes_consumed,
                                       void *out_pcm, uint32_t out_cap_bytes,
                                       uint32_t *bytes_written,
-                                      faad_frame_info *frame_info)
+                                      uint32_t *frame_flags)
 {
     if (bytes_consumed) *bytes_consumed = 0;
     if (bytes_written) *bytes_written = 0;
-    uint32_t frame_size = 0;
-    if (frame_info) {
-        if (frame_info->struct_size < FRAME_INFO_BASELINE_SIZE)
-            return FAAD_ERR_INVALID_ARGUMENT;
-        frame_size = bounded_size(frame_info->struct_size, sizeof(*frame_info));
-        faad_frame_info empty;
-        memset(&empty, 0, sizeof(empty));
-        empty.struct_size = frame_size;
-        memcpy(frame_info, &empty, frame_size);
-    }
+    if (frame_flags) *frame_flags = 0;
     if (!dec || !in_buf || !bytes_consumed || !out_pcm || !bytes_written)
         return FAAD_ERR_INVALID_ARGUMENT;
     /* RAW lengths enter bit-count arithmetic directly. ADTS lengths are
@@ -912,22 +908,30 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     dec->format_known = dec->format_known || dec->asc.num_channels != 0
         || (decode_success && ch_idx > 0);
     dec->sample_rate = sbr_active ? 2 * dec->core_sample_rate : dec->core_sample_rate;
-    if (frame_info) {
-        faad_frame_info info;
-        memset(&info, 0, sizeof(info));
-        info.struct_size = frame_size;
-        info.sample_rate = dec->sample_rate;
-        info.samples_per_ch = dec->frame_samples;
-        info.channels = num_chs;
-        info.sbr_active = sbr_active;
+    uint32_t mask = channel_mask(dec, num_chs);
+    uint32_t delay = sbr_active ? 2 * FAAD_SBR_CORE_DELAY : 0;
+    uint32_t flags = 0;
+    if (!dec->pcm_emitted || dec->emitted_format.sample_rate != dec->sample_rate
+        || dec->emitted_format.channels != num_chs
+        || dec->emitted_format.frame_samples != frame_samples
+        || dec->emitted_format.channel_mask != mask
+        || dec->emitted_format.decoder_delay != delay)
+        flags |= FAAD_FRAME_FORMAT_CHANGED;
+    if (sbr_active) flags |= FAAD_FRAME_SBR;
 #ifndef FAAD_DISABLE_PS
-        info.ps_active = sbr_active && dec->ps_seen && dec->core_channels == 1;
+    if (sbr_active && dec->ps_seen && dec->core_channels == 1) flags |= FAAD_FRAME_PS;
 #endif
-        info.decoder_delay = sbr_active ? 2 * FAAD_SBR_CORE_DELAY : 0;
-        info.channel_mask = channel_mask(dec, num_chs);
-        info.concealed = !decode_success || ch_idx == 0;
-        info.degraded = degraded;
-        memcpy(frame_info, &info, frame_size);
+    if (!decode_success || ch_idx == 0) flags |= FAAD_FRAME_CONCEALED;
+    if (degraded) flags |= FAAD_FRAME_DEGRADED;
+    if (required_bytes) {
+        dec->emitted_format.sample_rate = dec->sample_rate;
+        dec->emitted_format.channels = num_chs;
+        dec->emitted_format.frame_samples = frame_samples;
+        dec->emitted_format.channel_mask = mask;
+        dec->emitted_format.decoder_delay = delay;
+        dec->pcm_emitted = true;
+        dec->format_known = true;
+        if (frame_flags) *frame_flags = flags;
     }
 
     return FAAD_OK;

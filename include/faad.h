@@ -166,7 +166,7 @@ typedef struct faad_config {
 #define FAAD_STATE_ALIGNMENT 16u
 
 /*
- * Current stream information, derived from ASC, ADTS headers and decoded data. Set
+ * Describes the most recently emitted PCM; before any PCM, the ASC/ADTS snapshot. Set
  * struct_size to sizeof(faad_stream_info) before faad_decoder_get_info(); it is
  * updated to the bytes populated.
  *
@@ -189,20 +189,15 @@ typedef struct faad_stream_info {
     uint8_t                 reserved[3];      /* explicit tail padding; always zero, never reuse */
 } faad_stream_info;
 
-/* Per-frame metadata, returned after every decoded packet. */
-typedef struct faad_frame_info {
-    uint32_t                struct_size;      /* set by caller to sizeof(faad_frame_info) */
-    uint32_t                sample_rate;      /* Effective frame sample rate (reflects SBR upsampling) */
-    uint32_t                samples_per_ch;   /* Decoded samples per channel (1024 or 2048) */
-    uint32_t                channels;         /* Active output channel count */
-    bool                    sbr_active;       /* True if SBR extension was applied */
-    bool                    ps_active;        /* True if Parametric Stereo was applied */
-    uint32_t                decoder_delay;    /* Additional delay in output samples/channel */
-    uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
-    bool                    concealed;        /* Replacement audio rendered for corrupt core data */
-    bool                    degraded;         /* Recovered audio, e.g. damaged SBR with intact core */
-    uint8_t                 reserved[2];      /* explicit tail padding; always zero, never reuse */
-} faad_frame_info;
+enum faad_frame_flag {
+    FAAD_FRAME_FORMAT_CHANGED = 1u << 0, /* Emitted PCM format differs from the previous emitted frame;
+                                         * always set on the first. Re-query faad_decoder_get_info(). */
+    FAAD_FRAME_SBR            = 1u << 1, /* SBR applied */
+    FAAD_FRAME_PS             = 1u << 2, /* Parametric Stereo applied */
+    FAAD_FRAME_CONCEALED      = 1u << 3, /* Replacement audio for corrupt core data */
+    FAAD_FRAME_DEGRADED       = 1u << 4, /* Recovered audio, e.g. damaged SBR with intact core */
+    FAAD_FRAME_FLAG_MAX       = 0x7fffffff
+};
 
 
 /* Zero-initialize *cfg and fill in library defaults and struct_size. Pass
@@ -276,8 +271,10 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
  *                  aligned for int16_t/int32_t/float (packed 24-bit: any alignment)
  * out_cap_bytes  - must be at least stream_info.max_output_bytes
  * bytes_written  - returns the number of PCM bytes generated
- * frame_info     - optional; set struct_size before each call. Grows append-only,
- *                  bounded by caller size, reporting the bytes populated.
+ * frame_flags    - optional; zeroed on entry. Callers must ignore unknown bits.
+ *                  On FORMAT_CHANGED, re-query faad_decoder_get_info() before
+ *                  using the PCM. Format comprises sample_rate, channels,
+ *                  frame_samples, channel_mask and decoder_delay.
  *
  * Byte counts are zeroed on entry. Invalid arguments, insufficient PCM capacity,
  * and NEED_MORE_DATA consume/emit nothing and preserve decoder state, so retry
@@ -287,15 +284,15 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
  * bytes and emit nothing; advance past them rather than retrying. RAW input
  * must contain one complete access unit; its framing is the caller's job.
  * Concealed/degraded PCM returns FAAD_OK with frame flags. With no emitted PCM,
- * valid frame-info storage has its known fields cleared; unknown trailing
- * caller storage is untouched.
+ * frame_flags remains zero and the stream_info format is unchanged. Flush
+ * preserves the last emitted format; it does not force FORMAT_CHANGED.
  */
 FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                                       const uint8_t *in_buf, uint32_t in_bytes,
                                       uint32_t *bytes_consumed,
                                       void *out_pcm, uint32_t out_cap_bytes,
                                       uint32_t *bytes_written,
-                                      faad_frame_info *frame_info);
+                                      uint32_t *frame_flags);
 
 /* Human-readable, static description of a status code. Never returns NULL. */
 FAADAPI const char *faad_strerror(faad_status status);

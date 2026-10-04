@@ -4,6 +4,7 @@
  */
 #include "faad.h"
 
+_Static_assert(sizeof(enum faad_frame_flag) == 4, "frame flag ABI");
 _Static_assert(sizeof(faad_status) == 4, "status ABI");
 _Static_assert(sizeof(enum faad_object_type) == 4, "object ABI");
 _Static_assert(sizeof(enum faad_stream_format) == 4, "stream ABI");
@@ -13,9 +14,6 @@ _Static_assert(sizeof(bool) == 1 && sizeof(float) == 4, "flag/float ABI");
 _Static_assert(sizeof(faad_config) >= 16, "config baseline layout");
 _Static_assert(offsetof(faad_config, downmix_mode) == 12, "config baseline");
 _Static_assert(offsetof(faad_stream_info, format_known) == 32, "stream baseline");
-_Static_assert(offsetof(faad_frame_info, degraded) == 29, "frame baseline");
-_Static_assert(offsetof(faad_frame_info, decoder_delay) == 20, "frame padding");
-_Static_assert(offsetof(faad_frame_info, reserved) == 30, "frame tail padding");
 _Static_assert(offsetof(faad_stream_info, reserved) == 33, "stream tail padding");
 #if UINTPTR_MAX == UINT64_MAX
 _Static_assert(offsetof(faad_library_info, version) == 8, "64-bit pointer alignment");

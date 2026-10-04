@@ -582,6 +582,7 @@ int main(int argc, char **argv)
     uint32_t num_channels = 2;
     enum faad_object_type obj_type = FAAD_OBJ_LC;
     uint32_t frames_decoded = 0;
+    faad_stream_info sinfo = { .struct_size = sizeof(sinfo) };
 
     uint32_t start_frame = 0;
     if (jump_seconds > 0.0) {
@@ -614,11 +615,11 @@ int main(int argc, char **argv)
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
 
-            faad_frame_info finfo = { .struct_size = sizeof(finfo) };
+            uint32_t flags;
             st = faad_decode_frame(dec, inbuf + offset, size,
-                                   &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
+                                   &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &flags);
 
-            if (st == FAAD_OK && strict_mode && (finfo.concealed || finfo.degraded))
+            if (st == FAAD_OK && strict_mode && (flags & (FAAD_FRAME_CONCEALED | FAAD_FRAME_DEGRADED)))
                 st = FAAD_ERR_DECODE_FAILED;
             if (st != FAAD_OK) {
                 if (strict_mode) {
@@ -629,28 +630,29 @@ int main(int argc, char **argv)
                     return 1;
                 }
             } else if (bytes_written > 0) {
-                /* Per-frame info, not the stream info: SBR may be signalled
-                 * implicitly and only known once the payload is decoded. */
-                sample_rate = finfo.sample_rate;
-                num_channels = finfo.channels;
+                if (flags & FAAD_FRAME_FORMAT_CHANGED) {
+                    faad_decoder_get_info(dec, &sinfo);
+                    sample_rate = sinfo.sample_rate;
+                    num_channels = sinfo.channels;
+                }
                 if (header_pending) {
                     write_wav_header(fout, sample_rate, (uint16_t)num_channels, 0, bit_depth, is_float);
                     header_channels = (uint16_t)num_channels;
                     header_pending = false;
                 }
-                obj_type = finfo.ps_active ? FAAD_OBJ_HE_AAC_V2 : finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
+                obj_type = (flags & FAAD_FRAME_PS) ? FAAD_OBJ_HE_AAC_V2 : (flags & FAAD_FRAME_SBR) ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
                 uint32_t dec_bytes_per_sample = is_float ? 4 : bit_depth / 8;
                 uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
                 pcm_to_little_endian(outbuf, bytes_written, dec_bytes_per_sample);
                 uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
                 if (!gapless_scaled) {
-                    uint32_t core_rate = finfo.sbr_active && finfo.samples_per_ch == 2048
-                        ? finfo.sample_rate / 2 : finfo.sample_rate;
+                    uint32_t core_rate = (flags & FAAD_FRAME_SBR) && sinfo.frame_samples == 2048
+                        ? sinfo.sample_rate / 2 : sinfo.sample_rate;
                     uint32_t timescale = track.timescale ? track.timescale : core_rate;
-                    uint32_t delay = gapless ? finfo.decoder_delay : 0;
-                    samples_to_skip = (uint32_t)((uint64_t)samples_to_skip * finfo.sample_rate / timescale) + delay;
-                    padding_samples = (uint32_t)((uint64_t)padding_samples * finfo.sample_rate / timescale);
+                    uint32_t delay = gapless ? sinfo.decoder_delay : 0;
+                    samples_to_skip = (uint32_t)((uint64_t)samples_to_skip * sinfo.sample_rate / timescale) + delay;
+                    padding_samples = (uint32_t)((uint64_t)padding_samples * sinfo.sample_rate / timescale);
                     padding_samples = padding_samples > delay ? padding_samples - delay : 0;
                     gapless_scaled = true;
                 }
@@ -695,11 +697,11 @@ int main(int argc, char **argv)
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
 
-            faad_frame_info finfo = { .struct_size = sizeof(finfo) };
+            uint32_t flags;
             st = faad_decode_frame(dec, inbuf + offset, file_len - offset,
-                                   &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
+                                   &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &flags);
 
-            if (st == FAAD_OK && strict_mode && (finfo.concealed || finfo.degraded))
+            if (st == FAAD_OK && strict_mode && (flags & (FAAD_FRAME_CONCEALED | FAAD_FRAME_DEGRADED)))
                 st = FAAD_ERR_DECODE_FAILED;
             if (st != FAAD_OK) {
                 if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
@@ -715,14 +717,21 @@ int main(int argc, char **argv)
                 continue;
             }
 
-            sample_rate = finfo.sample_rate;
-            num_channels = finfo.channels;
+            if (!bytes_written) {
+                offset += bytes_consumed;
+                continue;
+            }
+            if (flags & FAAD_FRAME_FORMAT_CHANGED) {
+                faad_decoder_get_info(dec, &sinfo);
+                sample_rate = sinfo.sample_rate;
+                num_channels = sinfo.channels;
+            }
             if (header_pending) {
                 write_wav_header(fout, sample_rate, (uint16_t)num_channels, 0, bit_depth, is_float);
                 header_channels = (uint16_t)num_channels;
                 header_pending = false;
             }
-            obj_type = finfo.ps_active ? FAAD_OBJ_HE_AAC_V2 : finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
+            obj_type = (flags & FAAD_FRAME_PS) ? FAAD_OBJ_HE_AAC_V2 : (flags & FAAD_FRAME_SBR) ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
             if (fout && bytes_written > 0) {
                 pcm_to_little_endian(outbuf, bytes_written, is_float ? 4 : bit_depth / 8);

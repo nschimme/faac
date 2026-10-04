@@ -23,15 +23,9 @@ typedef struct {
     bool format_known;
     uint8_t reserved[3];
 } stream_v3;
-typedef struct {
-    uint32_t struct_size, sample_rate, samples_per_ch, channels;
-    bool sbr_active, ps_active;
-    uint32_t decoder_delay, channel_mask;
-    bool concealed, degraded;
-    uint8_t reserved[2];
-} frame_v3;
 #define BASE(T, field) ((uint32_t)(offsetof(T, field) + sizeof(((T *)0)->field)))
 
+_Static_assert(sizeof(enum faad_frame_flag) == 4, "frame flag width");
 _Static_assert(sizeof(faad_status) == 4, "status width");
 _Static_assert(sizeof(enum faad_object_type) == 4, "object width");
 _Static_assert(sizeof(enum faad_stream_format) == 4, "stream width");
@@ -118,30 +112,28 @@ static void test_boundaries(void)
     assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
     uint8_t *pcm = malloc(info.max_output_bytes);
     assert(pcm);
-    struct { frame_v3 value; uint8_t tail[16]; } frame;
-    memset(&frame, 0xa5, sizeof(frame));
-    frame.value.struct_size = sizeof(frame);
+    uint32_t flags = UINT32_MAX;
     uint32_t used = 99, written = 99;
     assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
-        info.max_output_bytes - 1, &written, (faad_frame_info *)&frame.value) == FAAD_ERR_OUTPUT_TOO_SMALL);
-    assert(!used && !written && !frame.value.sample_rate);
-    assert_tail(&frame, frame.value.struct_size, sizeof(frame));
+        info.max_output_bytes - 1, &written, &flags) == FAAD_ERR_OUTPUT_TOO_SMALL);
+    assert(!used && !written && !flags);
     assert(memcmp(before, mem, bytes) == 0);
     for (size_t crc = 0; crc < 2; crc++) {
         const uint8_t *packet = crc ? mono_crc : mono_adts;
         uint32_t len = crc ? sizeof(mono_crc) : sizeof(mono_adts);
         for (uint32_t split = 0; split < len; split++) {
             used = written = 99;
+            flags = UINT32_MAX;
             assert(faad_decode_frame(dec, packet, split, &used, pcm, info.max_output_bytes,
-                &written, NULL) == FAAD_ERR_NEED_MORE_DATA);
-            assert(!used && !written && memcmp(before, mem, bytes) == 0);
+                &written, &flags) == FAAD_ERR_NEED_MORE_DATA);
+            assert(!used && !written && !flags && memcmp(before, mem, bytes) == 0);
         }
     }
-    frame.value.struct_size = BASE(frame_v3, reserved) - 1;
+    flags = UINT32_MAX;
     used = written = 99;
-    assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
-        info.max_output_bytes, &written, (faad_frame_info *)&frame.value) == FAAD_ERR_INVALID_ARGUMENT);
-    assert(!used && !written && memcmp(before, mem, bytes) == 0);
+    assert(faad_decode_frame(NULL, mono_adts, sizeof(mono_adts), &used, pcm,
+        info.max_output_bytes, &written, &flags) == FAAD_ERR_INVALID_ARGUMENT);
+    assert(!used && !written && !flags && memcmp(before, mem, bytes) == 0);
     const uint8_t lost[] = { 0, 1, 0xff };
     assert(faad_decode_frame(dec, lost, sizeof(lost), &used, pcm, info.max_output_bytes,
         &written, NULL) == FAAD_ERR_SYNC_LOST);
@@ -152,19 +144,31 @@ static void test_boundaries(void)
     assert(faad_decode_frame(dec, unsupported, sizeof(unsupported), &used, pcm,
         info.max_output_bytes, &written, NULL) == FAAD_ERR_UNSUPPORTED);
     assert(used == sizeof(unsupported) && !written && memcmp(before, mem, bytes) == 0);
-    memset(&frame, 0xa5, sizeof(frame));
-    frame.value.struct_size = BASE(frame_v3, reserved);
     assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
-        info.max_output_bytes, &written, (faad_frame_info *)&frame.value) == FAAD_OK);
+        info.max_output_bytes, &written, &flags) == FAAD_OK);
     assert(used == sizeof(mono_adts) && written == 2048);
-    assert(frame.value.concealed && !frame.value.degraded && frame.value.channel_mask == 4);
-    assert_tail(&frame, frame.value.struct_size, sizeof(frame));
+    assert(flags == (FAAD_FRAME_FORMAT_CHANGED | FAAD_FRAME_CONCEALED));
     info.struct_size = sizeof(info);
-    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.format_known && info.channels == 1);
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.format_known && info.channels == 1 && info.channel_mask == 4);
+    assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
+        info.max_output_bytes, &written, &flags) == FAAD_OK);
+    assert(written && flags == FAAD_FRAME_CONCEALED);
+    assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
+        info.max_output_bytes, &written, NULL) == FAAD_OK && written);
+    flags = UINT32_MAX;
+    assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts) - 1, &used, pcm,
+        info.max_output_bytes, &written, &flags) == FAAD_ERR_NEED_MORE_DATA);
+    assert(!written && !flags);
+    faad_stream_info after_error = { .struct_size = sizeof(after_error) };
+    assert(faad_decoder_get_info(dec, &after_error) == FAAD_OK);
+    assert(memcmp(&info, &after_error, sizeof(info)) == 0);
     uint32_t bound = info.max_output_bytes;
     assert(faad_decoder_flush(dec) == FAAD_OK);
     info.struct_size = sizeof(info);
     assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.max_output_bytes == bound && info.format_known);
+    assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
+        info.max_output_bytes, &written, &flags) == FAAD_OK);
+    assert(written && !(flags & FAAD_FRAME_FORMAT_CHANGED));
     assert(faad_decoder_close(&dec) == FAAD_OK);
     free(pcm); free(before); free(allocation);
 }
@@ -239,22 +243,37 @@ static void test_degraded(void)
     assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
     void *pcm = malloc(info.max_output_bytes);
     assert(pcm);
-    faad_frame_info frame = { .struct_size = sizeof(frame) };
+    uint32_t flags;
     uint32_t used, written;
+    const uint8_t core[] = { 0, 0xc8, 0, 7 }; /* Silent SCE and END */
+    assert(faad_decode_frame(dec, core, sizeof(core), &used, pcm,
+        info.max_output_bytes, &written, &flags) == FAAD_OK);
+    assert(written == 2048 && flags == FAAD_FRAME_FORMAT_CHANGED);
+    assert(faad_decode_frame(dec, core, sizeof(core), &used, pcm,
+        info.max_output_bytes, &written, &flags) == FAAD_OK);
+    assert(written == 2048 && !flags);
+
     assert(faad_decode_frame(dec, packet, sizeof(packet), &used, pcm,
-        info.max_output_bytes, &written, &frame) == FAAD_OK);
-    assert(used == sizeof(packet) && written > 0 && !frame.concealed);
+        info.max_output_bytes, &written, &flags) == FAAD_OK);
+    assert(used == sizeof(packet) && written > 0 && !(flags & FAAD_FRAME_CONCEALED));
 #ifndef FAAD_DISABLE_SBR
-    assert(frame.degraded && frame.sbr_active && frame.decoder_delay == 962);
-    info.struct_size = sizeof(info);
-    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.sample_rate == frame.sample_rate
-        && info.decoder_delay == frame.decoder_delay);
-    assert(faad_decoder_flush(dec) == FAAD_OK);
-    info.struct_size = sizeof(info);
-    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.decoder_delay == 962);
+    assert(flags & FAAD_FRAME_FORMAT_CHANGED);
 #else
-    assert(!frame.degraded && !frame.sbr_active && frame.decoder_delay == 0);
+    assert(!(flags & FAAD_FRAME_FORMAT_CHANGED));
 #endif
+    info.struct_size = sizeof(info);
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+#ifndef FAAD_DISABLE_SBR
+    assert((flags & (FAAD_FRAME_DEGRADED | FAAD_FRAME_SBR))
+        == (FAAD_FRAME_DEGRADED | FAAD_FRAME_SBR));
+    assert(info.sample_rate == 88200 && info.frame_samples == 2048 && info.decoder_delay == 962);
+#else
+    assert(!(flags & (FAAD_FRAME_DEGRADED | FAAD_FRAME_SBR)) && info.decoder_delay == 0);
+#endif
+    assert(faad_decoder_flush(dec) == FAAD_OK);
+    faad_stream_info after = { .struct_size = sizeof(after) };
+    assert(faad_decoder_get_info(dec, &after) == FAAD_OK);
+    assert(memcmp(&info, &after, sizeof(info)) == 0);
     free(pcm);
     assert(faad_decoder_close(&dec) == FAAD_OK);
 }
@@ -281,23 +300,24 @@ static void test_known_extensions(void)
         void *pcm = malloc(bound);
         assert(pcm);
         for (int seek = 0; seek < 2; seek++) {
-            faad_frame_info frame = { .struct_size = sizeof(frame) };
+            uint32_t flags;
             uint32_t used, written;
             const uint8_t *packet = parametric ? end : adts;
             uint32_t len = parametric ? sizeof(end) : sizeof(adts);
-            assert(faad_decode_frame(dec, packet, len, &used, pcm, bound, &written, &frame) == FAAD_OK);
-            assert(frame.concealed && frame.sbr_active == library.sbr_supported);
-            assert(frame.ps_active == (parametric && library.ps_supported));
-            assert(frame.channels == (parametric && library.ps_supported ? 2u : 1u));
-            assert(frame.sample_rate == (library.sbr_supported ? 32000u : 16000u));
-            assert(frame.decoder_delay == (library.sbr_supported ? 962u : 0u));
+            assert(faad_decode_frame(dec, packet, len, &used, pcm, bound, &written, &flags) == FAAD_OK);
+            assert(flags & FAAD_FRAME_CONCEALED);
+            assert(!!(flags & FAAD_FRAME_SBR) == library.sbr_supported);
+            assert(!!(flags & FAAD_FRAME_PS) == (parametric && library.ps_supported));
+            assert(!!(flags & FAAD_FRAME_FORMAT_CHANGED) == (seek == 0));
             info.struct_size = sizeof(info);
-            assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.channels == frame.channels
-                && info.sample_rate == frame.sample_rate && info.decoder_delay == frame.decoder_delay);
+            assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+            assert(info.channels == (parametric && library.ps_supported ? 2u : 1u));
+            assert(info.sample_rate == (library.sbr_supported ? 32000u : 16000u));
+            assert(info.decoder_delay == (library.sbr_supported ? 962u : 0u));
             assert(faad_decoder_flush(dec) == FAAD_OK);
-            info.struct_size = sizeof(info);
-            assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.max_output_bytes == bound
-                && info.channels == frame.channels && info.decoder_delay == frame.decoder_delay);
+            faad_stream_info after = { .struct_size = sizeof(after) };
+            assert(faad_decoder_get_info(dec, &after) == FAAD_OK);
+            assert(after.max_output_bytes == bound && memcmp(&info, &after, sizeof(info)) == 0);
         }
         free(pcm);
         assert(faad_decoder_close(&dec) == FAAD_OK);

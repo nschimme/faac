@@ -237,6 +237,16 @@ int main(void)
     assert(st == FAAD_OK);
     assert(!info.format_known && info.channels == 0);
 
+    const uint8_t packet[] = { 0xff, 0xf1, 0x50, 0x40, 0x01, 0x1f, 0xfc, 0xe0 };
+    void *pcm = malloc(info.max_output_bytes);
+    assert(pcm != NULL);
+    uint32_t used, written, flags;
+    st = faad_decode_frame(dec_static, packet, sizeof(packet), &used, pcm,
+                           info.max_output_bytes, &written, &flags);
+    assert(st == FAAD_OK && written && flags == (FAAD_FRAME_FORMAT_CHANGED | FAAD_FRAME_CONCEALED));
+    assert(faad_decoder_get_info(dec_static, &info) == FAAD_OK && info.channels == 1);
+    free(pcm);
+
     st = faad_decoder_flush(dec_static);
     assert(st == FAAD_OK);
 

@@ -111,26 +111,25 @@ static int test_retry_and_flush(const uint8_t *stream, uint32_t channels,
         uint32_t header = raw ? 7 : 0;
         const uint8_t *in = stream + pos + header;
         uint32_t len = packet - header, used = 123, written = 123, used_b, written_b;
-        faad_frame_info fi = { .struct_size = sizeof(fi) }, fb = { .struct_size = sizeof(fb) };
+        uint32_t fi = UINT32_MAX, fb;
         if (faad_decode_frame(retry, in, len, &used, a, cap - 1, &written, &fi) != FAAD_ERR_OUTPUT_TOO_SMALL
-            || used || written || fi.sample_rate) return fail("capacity retry contract");
+            || used || written || fi) return fail("capacity retry contract");
         if (!raw && (faad_decode_frame(retry, in, len - 1, &used, a, cap, &written, &fi) != FAAD_ERR_NEED_MORE_DATA
-            || used || written || fi.sample_rate)) return fail("input retry contract");
+            || used || written || fi)) return fail("input retry contract");
         if (faad_decode_frame(retry, in, len, &used, a, cap, &written, &fi) != FAAD_OK
             || faad_decode_frame(control, in, len, &used_b, b, cap, &written_b, &fb) != FAAD_OK)
             return fail("retry decode");
         if (used != used_b || written != written_b || memcmp(a, b, written)
-            || memcmp(&fi, &fb, sizeof(fi))) return fail("retry changed PCM or metadata/history");
-        if (fi.concealed || fi.degraded) {
+            || fi != fb) return fail("retry changed PCM or metadata/history");
+        if ((fi & FAAD_FRAME_CONCEALED) || (fi & FAAD_FRAME_DEGRADED)) {
             fprintf(stderr, "  frame %d, channels %u, format %d, raw %d, concealed %d, degraded %d\n",
-                f, channels, (int)format, raw, fi.concealed, fi.degraded);
+                f, channels, (int)format, raw, !!(fi & FAAD_FRAME_CONCEALED), !!(fi & FAAD_FRAME_DEGRADED));
             return fail("intact frame recovery flags");
         }
         faad_stream_info current = { .struct_size = sizeof(current) };
         faad_decoder_get_info(retry, &current);
         if (!current.format_known || current.max_output_bytes != cap
-            || current.decoder_delay != fi.decoder_delay
-            || fi.decoder_delay != (fi.sbr_active ? 962u : 0u)) return fail("runtime format/delay");
+            || current.decoder_delay != ((fi & FAAD_FRAME_SBR) ? 962u : 0u)) return fail("runtime format/delay");
         pos += packet;
     }
     if (faad_decoder_flush(retry) != FAAD_OK) return fail("flush");
@@ -139,16 +138,18 @@ static int test_retry_and_flush(const uint8_t *stream, uint32_t channels,
         return fail("flush control open");
     uint32_t packet = ((stream[3] & 3) << 11) | (stream[4] << 3) | (stream[5] >> 5);
     uint32_t header = raw ? 7 : 0, used, written, used_b, written_b;
-    faad_frame_info fi = { .struct_size = sizeof(fi) }, fb = { .struct_size = sizeof(fb) };
+    uint32_t fi = UINT32_MAX, fb;
     if (faad_decode_frame(retry, stream + header, packet - header, &used, a, cap, &written, &fi) != FAAD_OK
         || faad_decode_frame(control, stream + header, packet - header, &used_b, b, cap, &written_b, &fb) != FAAD_OK
-        || written != written_b || memcmp(a, b, written) || memcmp(&fi, &fb, sizeof(fi)))
+        || written != written_b || memcmp(a, b, written) || (fi & FAAD_FRAME_FORMAT_CHANGED)
+        || !(fb & FAAD_FRAME_FORMAT_CHANGED)
+        || (fi & ~FAAD_FRAME_FORMAT_CHANGED) != (fb & ~FAAD_FRAME_FORMAT_CHANGED))
         return fail("flush retained audio history");
     /* Concealment immediately after flush must not replay the previous track. */
     faad_decoder_flush(retry);
     const uint8_t end[] = { 0xe0 };
     if (raw) {
-        if (faad_decode_frame(retry, end, sizeof(end), &used, a, cap, &written, &fi) != FAAD_OK || !fi.concealed)
+        if (faad_decode_frame(retry, end, sizeof(end), &used, a, cap, &written, &fi) != FAAD_OK || !(fi & FAAD_FRAME_CONCEALED))
             return fail("post-flush concealment");
         if (format == FAAD_OUTPUT_FLOAT) {
             for (uint32_t i = 0; i < written / sizeof(float); i++)
@@ -187,14 +188,16 @@ static int test_pcm_formats(const uint8_t *stream)
     bool nonzero = false;
     for (int frame = 0; frame < 8; frame++) {
         uint32_t packet = ((stream[pos + 3] & 3) << 11) | (stream[pos + 4] << 3) | (stream[pos + 5] >> 5);
-        faad_frame_info info[4];
+        uint32_t flags[4];
+        faad_stream_info info[4];
         for (int f = 0; f < 4; f++) {
             info[f].struct_size = sizeof(info[f]);
             uint32_t used, written;
-            if (faad_decode_frame(dec[f], stream + pos, packet, &used, pcm[f], cap[f], &written, &info[f]) != FAAD_OK)
+            if (faad_decode_frame(dec[f], stream + pos, packet, &used, pcm[f], cap[f], &written, &flags[f]) != FAAD_OK)
                 return fail("PCM format decode");
+            faad_decoder_get_info(dec[f], &info[f]);
         }
-        uint32_t count = info[3].samples_per_ch * info[3].channels;
+        uint32_t count = info[3].frame_samples * info[3].channels;
         for (uint32_t i = 0; i < count; i++) {
             double reference = ((float *)pcm[3])[i];
             if (fabs(reference) > 0.01) nonzero = true;
@@ -262,7 +265,7 @@ static int decode_bounded(const uint8_t *stream, uint32_t len, uint32_t max_fram
     uint64_t out_bytes = 0;
     while (pos < len) {
         uint32_t used = 0, written = 0;
-        faad_frame_info fi = { .struct_size = sizeof(fi) };
+        uint32_t fi;
         uint32_t packet = len - pos, header = 0;
         if (raw) {
             packet = ((stream[pos + 3] & 3) << 11) | (stream[pos + 4] << 3) | (stream[pos + 5] >> 5);
@@ -277,7 +280,7 @@ static int decode_bounded(const uint8_t *stream, uint32_t len, uint32_t max_fram
         if (written > lifetime_bound) { faad_decoder_close(&dec); return fail("output exceeds lifetime bound"); }
         if (written && expected_channels == 6 && downmix == FAAD_DOWNMIX_NONE) {
             faad_decoder_get_info(dec, &info);
-            if (info.channel_mask != 0x3f || fi.channels != 6) return fail("5.1 channel mask");
+            if (info.channel_mask != 0x3f || info.channels != 6) return fail("5.1 channel mask");
         }
         if (written > sizeof(pcm)) { faad_decoder_close(&dec); return fail("output exceeds buffer"); }
         if (written > 0) frames++;
@@ -350,7 +353,7 @@ static void decode_hang_case(const hang_case *hc)
     uint32_t cap = info.max_output_bytes < sizeof(pcm) ? info.max_output_bytes : (uint32_t)sizeof(pcm);
     for (uint32_t pos = 0, calls = 0; pos < hc->len && calls < 64; calls++) {
         uint32_t take = hc->len - pos < hc->chunk ? hc->len - pos : hc->chunk, used = 0, written = 0;
-        faad_frame_info fi = { .struct_size = sizeof(fi) };
+        uint32_t fi;
         faad_status st = faad_decode_frame(dec, hc->data + pos, take, &used, pcm, cap, &written, &fi);
         if (st == FAAD_ERR_NEED_MORE_DATA || st == FAAD_ERR_OUTPUT_TOO_SMALL) break;
         pos += used ? used : take;
