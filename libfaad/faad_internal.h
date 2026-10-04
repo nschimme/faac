@@ -389,6 +389,12 @@ struct faad_decoder {
     bool is_heap_allocated;
     void *heap_storage; /* original allocator pointer before alignment */
     bool format_known;
+    bool pcm_emitted;
+    /* Parsing and synthesis may advance on rejected packets; only emitted PCM
+     * may replace the output format that callers use. */
+    struct {
+        uint32_t sample_rate, channels, frame_samples, channel_mask, decoder_delay;
+    } emitted_format;
     bool ps_seen;
     uint32_t core_channels;
     uint32_t max_output_bytes;

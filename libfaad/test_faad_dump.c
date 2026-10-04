@@ -38,10 +38,11 @@ static void decode_to_dump(const char *path)
     assert(faad_decoder_open(&cfg, asc, sizeof(asc), &dec) == FAAD_OK);
     int16_t pcm[4096];
     for (int i = 0; i < 2; i++) {
-        uint32_t used = 0, written = 0;
+        uint32_t used = 0, written = 0, flags = UINT32_MAX;
         assert(faad_decode_frame(dec, frame, sizeof(frame), &used,
-                                pcm, sizeof(pcm), &written, NULL) == FAAD_OK);
-        assert(used == sizeof(frame));
+                                pcm, sizeof(pcm), &written, &flags) == FAAD_OK);
+        assert(used == sizeof(frame) && written);
+        assert(flags == (FAAD_FRAME_CONCEALED | (i == 0 ? FAAD_FRAME_FORMAT_CHANGED : 0)));
     }
     assert(faad_decoder_close(&dec) == FAAD_OK);
     assert(dec == NULL);
