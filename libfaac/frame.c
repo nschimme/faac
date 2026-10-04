@@ -357,7 +357,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
         unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
-        SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate);
+        if (!SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate))
+            return -1;
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth = SbrContextGetXOverBandwidth(sCtx);
@@ -425,12 +426,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     // reset psymodel
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
-    PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
-			hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1);
+    if (!PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
+                 hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1))
+        return -1;
 
-	/* load channel_map */
-	for( i = 0; i < MAX_CHANNELS; i++ )
-		hEncoder->config.channel_map[i] = config->channel_map[i];
+    /* load channel_map */
+    for( i = 0; i < MAX_CHANNELS; i++ )
+        hEncoder->config.channel_map[i] = config->channel_map[i];
 
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, hEncoder->config.useLfe);
     RefreshLfeMap(hEncoder);
@@ -513,10 +515,12 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, (bool)hEncoder->config.useLfe);
     RefreshLfeMap(hEncoder);
 
-	PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
-        hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1);
-
-    FilterBankInit(hEncoder);
+    if (!PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
+                 hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1)
+        || !FilterBankInit(hEncoder)) {
+        faacEncClose(hEncoder);
+        return NULL;
+    }
 
     TnsInit(hEncoder);
 
@@ -717,7 +721,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel;
     int frameBytes;
-    BitStream *bitStream;
+    BitStream bitStream;
 
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = hEncoder->numChannels;
@@ -1046,17 +1050,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
 
         /* Write the AAC bitstream; the write doubles as the size probe. */
-        bitStream = OpenBitStream(bufferSize, outputBuffer);
-        if (!bitStream)
-            return -1;
+        InitBitStream(&bitStream, outputBuffer, bufferSize);
 
-        if (WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream) < 0) {
-            CloseBitStream(bitStream);
+        if (WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, &bitStream) < 0) {
             return -1;
         }
 
-        /* Close the bitstream and return the number of bytes written */
-        frameBytes = CloseBitStream(bitStream);
+        /* Round the written bits up to complete bytes. */
+        frameBytes = (int)((bitStream.currentBit + 7) >> 3);
         payloadBits = (frameBytes - hdrBytes) * 8;
 
         if (!peakBits || (unsigned long long)payloadBits <= peakBits

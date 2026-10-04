@@ -315,7 +315,7 @@ For static allocation, query the build's exact instance size and provide a
 the returned requirement; downmixing reduces PCM capacity, not decoder state.
 
 ```c
-#define BOARD_AAC_STATE_BYTES (1024u * 1024u)
+/* Define BOARD_AAC_STATE_BYTES for your build and memory budget. */
 _Alignas(FAAD_STATE_ALIGNMENT) static uint8_t state[BOARD_AAC_STATE_BYTES];
 faad_config cfg;
 faad_decoder *dec = NULL;
@@ -331,7 +331,8 @@ if (st == FAAD_OK)
 faad_decoder_close(&dec);
 ```
 
-Memory budgets measured on arm64 with default build options except as listed:
+The following are indicative measurements from an arm64 build with default
+options except as listed, not storage requirements guaranteed across builds:
 
 | Build | Decoder state | Shared tables (.bss, once per process) | 16-bit PCM buffer |
 |---|---|---|---|
@@ -342,9 +343,10 @@ Memory budgets measured on arm64 with default build options except as listed:
 Query state size at runtime with `faad_get_state_size()`; it is independent of
 configuration and excludes shared tables, input and PCM. Table arrays use
 float/int elements, so their sizes carry across targets up to alignment.
-Tables are built on first initialization and remain in static storage (internal
-RAM on MCUs), separate from caller-owned state. Stack use is small because
-per-frame scratch lives in the state.
+Writable tables are initialized on first initialization and remain in static
+storage, separate from caller-owned state. Their placement depends on the
+linker configuration. Per-frame scratch is stored in the instance, but measure
+stack requirements on your target separately.
 
 Independent handles can run concurrently; one handle is owned by one thread at a time. Instrumented
 stats builds use process-global diagnostics and require external serialization.

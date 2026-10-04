@@ -27,7 +27,7 @@ extern "C" {
 /* Builds the process-wide windows and MDCT twiddles; the caller runs it exactly once. */
 void			FilterBankTablesInit( void );
 
-void			FilterBankInit		( faacEncStruct* hEncoder );
+int			FilterBankInit		( faacEncStruct* hEncoder );
 
 void			FilterBankEnd		( faacEncStruct* hEncoder );
 

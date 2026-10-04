@@ -44,7 +44,7 @@ typedef struct {
 	float *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, mdct) */
 } GlobalPsyInfo;
 
-void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
+int PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 		unsigned int numChannels, unsigned int sampleRate, bool heCore);
 void PsyEnd (PsyInfo *psyInfo, unsigned int numChannels);
 float PsyGetAttack (PsyInfo *psyInfo);

@@ -341,15 +341,18 @@ The encoder allocates its state on the heap through the `AllocMemory` /
 example with `-DAllocMemory=my_alloc -DFreeMemory=my_free` (provide the
 function declarations when compiling). Unlike libfaad there is no
 caller-owned-state path, so the allocator is the only control over where
-encoder memory lives. The allocator need not clear the memory it returns.
+encoder memory lives. The allocator need not clear the memory it returns;
+16-byte-aligned storage is sufficient for the current implementation.
 
 ### Memory budget and embedded targets
 
 The encoder instance is heap-allocated at `faac_encoder_open()` and does not
-allocate again while encoding or flushing (apart from the 2-byte ASC that
-`faac_encoder_asc()` returns), so the open-time figure is also the peak. Closing the handle releases all of
-it. Measured on arm64 with default build options (a counting `AllocMemory`
-shim, 200 frames of PCM):
+allocate again while encoding or flushing. The first successful
+`faac_encoder_asc()` call additionally caches 2 bytes for LC, 5 bytes for stereo
+HE-AAC, or 7 bytes for mono HE-AAC. Closing the handle releases all of it.
+
+The following are indicative measurements from an arm64 build with default
+options, not storage requirements guaranteed across builds:
 
 | Configuration | Encoder heap | Frame samples/channel | 16-bit PCM input per call |
 |---|---|---|---|
@@ -361,11 +364,11 @@ shim, 200 frames of PCM):
 | Stereo, HE-AAC | 353 KB | 2048 | 8 KB |
 
 Add the output buffer, `info.max_output_bytes` (8 KB in every configuration
-above), and your input buffer. Encoder heap did not change between 44.1 and
-48 kHz. The shared tables (about 16 KB of `.bss` and 10 KB of read-only data)
-are built on first open and stay in static storage, separate from the heap
-figures. Stack use is small: a full encode ran in a thread with a 20 KB stack,
-the smallest this platform allows, including the test harness itself.
+above), and your input buffer. The measured
+build also used about 16 KB of shared `.bss` tables and 10 KB of read-only
+data, separate from the heap figures. Writable shared tables are initialized
+on first open and remain in static storage. Measure stack requirements on
+your target separately.
 
 Use these figures for a first sizing, then measure your own build: sizes follow
 pointer width and alignment, and build options such as `-Dmax-channels` may
@@ -375,54 +378,50 @@ is tight.
 The core uses single-precision float; double precision appears only in
 one-time table generation at open.
 
-Because `AllocMemory` is the only allocation point, a port can direct the whole
-encoder into a specific region, for example external RAM, by overriding it as
+A port can direct dynamically allocated encoder state into a specific
+region, for example external RAM, by overriding `AllocMemory` as
 described above. Check the speed cost of that placement on your target before
 committing to it.
 
 #### Running without a heap
 
-The same override gives a no-heap setup: back `AllocMemory` with a fixed pool
-and reset it after `faac_encoder_close()`. The encoder allocates only during
-open, so a bump allocator with a no-op free is enough.
+A fixed-pool override can avoid the system heap. Allocations occur during open
+and the first successful ASC request; encoding and flushing allocate nothing.
+A bump allocator must also reserve space for allocations freed during open,
+because it cannot reuse them.
+
+Force-include a header declaring `pool_alloc(size_t)` and `pool_free(void *)`
+when compiling libfaac with `-DAllocMemory=pool_alloc -DFreeMemory=pool_free`.
+Compile their definitions into your application:
 
 ```c
-/* pool_alloc.h, force-included: cc -include pool_alloc.h
- *   -DAllocMemory=pool_alloc -DFreeMemory=pool_free ... */
 #include <stddef.h>
-void *pool_alloc(size_t n);
-void pool_free(void *p);
-```
 
-```c
-#define POOL_BYTES (400u * 1024u) /* From the table above, plus margin. */
+/* Define POOL_BYTES for your build and encoder configuration. */
 static _Alignas(16) unsigned char pool[POOL_BYTES];
 static size_t used;
 
 void *pool_alloc(size_t n)
 {
-    void *p;
-    n = (n + 15u) & ~(size_t)15u;
-    if (n > POOL_BYTES - used)
+    if (n > sizeof(pool) - used)
         return NULL;
-    p = pool + used;
+    n = (n + 15u) & ~(size_t)15u;
+    if (n > sizeof(pool) - used)
+        return NULL;
+    void *p = pool + used;
     used += n;
     return p;
 }
 
 void pool_free(void *p) { (void)p; }
-
-/* Call after faac_encoder_close() to open another encoder. */
 void pool_reset(void) { used = 0; }
 ```
 
-Size the pool from the budget table with a few percent of margin for 16-byte
-rounding; stereo AAC-LC consumed 190 KB (194,608 bytes) and stereo HE-AAC
-356 KB (364,416 bytes) in this arrangement, including the ASC. Leave the pool
-and the open/close order to your application: one encoder per pool, and reset
-only after close. This produced output byte-identical to the heap build and
-reopened cleanly after a reset. An undersized pool makes `faac_encoder_open()` return
-`FAAC_ERR_NO_MEMORY`.
+Use one encoder at a time with this pool and serialize access. Measure `used`
+after open and a successful ASC request to determine consumption on your
+build. Reset only after close or a failed open. Insufficient storage returns
+`FAAC_ERR_NO_MEMORY` from open or ASC, respectively. Shared tables, stack,
+and caller-owned input and output buffers remain separate from the pool.
 
 ### Encoder delay and gapless output
 

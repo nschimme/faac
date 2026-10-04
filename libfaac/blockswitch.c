@@ -77,7 +77,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
                         ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
 }
 
-void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
+int PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
 		    unsigned int sampleRate, bool heCore)
 {
   unsigned int channel;
@@ -91,7 +91,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
   for (channel = 0; channel < numChannels; channel++)
   {
     psydata_t *psydata = (psydata_t *)AllocMemory(sizeof(psydata_t));
-    if (!psydata) return;
+    if (!psydata) return 0;
     memset(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
   }
@@ -105,6 +105,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
   size = BLOCK_LEN_SHORT;
   for (channel = 0; channel < numChannels; channel++)
     psyInfo[channel].sizeS = size;
+  return 1;
 }
 
 /* Strongest relative energy jump across the sub-blocks of the window the MDCT
@@ -151,6 +152,7 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
   {
     if (psyInfo[channel].data)
       FreeMemory(psyInfo[channel].data);
+    psyInfo[channel].data = NULL;
   }
 }
 

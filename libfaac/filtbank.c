@@ -62,16 +62,17 @@ void FilterBankTablesInit(void)
     }
 }
 
-void FilterBankInit(faacEncStruct* hEncoder)
+int FilterBankInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         hEncoder->freqBuff[channel] = (float*)AllocMemory(2*FRAME_LEN*sizeof(float));
-        if (!hEncoder->freqBuff[channel]) return;
+        if (!hEncoder->freqBuff[channel]) return 0;
     }
 
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
+    return hEncoder->gpsyInfo.sharedWorkBuffLong != NULL;
 }
 
 void FilterBankEnd(faacEncStruct* hEncoder)

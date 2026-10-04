@@ -284,13 +284,14 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
+int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
 {
-    if (!sCtx) return;
+    if (!sCtx) return 0;
     if (!sCtx->sbrInfo)
         sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
     else
         SbrUpdate(sCtx->sbrInfo, bitrate);
+    return sCtx->sbrInfo != NULL;
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
