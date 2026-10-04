@@ -230,6 +230,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     faacEncConfiguration *cfg;
     unsigned long inSamples = 0, maxOut = 0;
     faac_status st;
+    int applied;
 
     if (!out)
         return FAAC_ERR_INVALID_ARGUMENT;
@@ -274,9 +275,10 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     }
     /* else: faacEncOpen already installed the identity map */
 
-    if (!faacEncApplyConfig(h, cfg)) {
+    applied = faacEncApplyConfig(h, cfg);
+    if (applied != 1) {
         faacEncClose((faacEncHandle)h);
-        return FAAC_ERR_INVALID_ARGUMENT;
+        return (applied < 0) ? FAAC_ERR_NO_MEMORY : FAAC_ERR_INVALID_ARGUMENT;
     }
 
     *out = (faac_encoder *)h;

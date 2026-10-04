@@ -172,7 +172,7 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
  * resolves AUTO/HE-AAC, and (re)initializes the encoder for it. Returns 1 on
- * success, 0 on failure. */
+ * success, 0 for an invalid configuration, -1 when an allocation failed. */
 int faacEncApplyConfig(faacEncStruct* hEncoder,
                        faacEncConfigurationPtr config)
 {
@@ -261,7 +261,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             hEncoder->sbrContext = SbrContextInit(hEncoder->numChannels);
 
         if (!hEncoder->sbrContext)
-            return 0;
+            return -1;
 
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
@@ -380,7 +380,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             {
                 hEncoder->inputFifo[channel] =
                     (float *)AllocMemory(cap * sizeof(float));
-                if (!hEncoder->inputFifo[channel]) return 0;
+                if (!hEncoder->inputFifo[channel]) return -1;
             }
         hEncoder->inputFifoCap  = cap;
         /* HE-AAC's pipeline delay is 3*FRAME_LEN - 31 full-rate samples, an odd
@@ -404,7 +404,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             if (!hEncoder->peakSnap[ch])
                 hEncoder->peakSnap[ch] = (int *)AllocMemory(2 * MAX_SCFAC_BANDS * sizeof(int));
             if (!hEncoder->peakSnap[ch])
-                return 0;
+                return -1;
         }
     }
 
