@@ -45,10 +45,7 @@ _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,
                "PCM requires IEEE binary32 floats");
 #include "faad_stats.h"
 #include "sbr_tables.h"
-typedef struct {
-    uint32_t code : 24;
-    uint32_t len : 8;
-} SBRHuffEntry;
+#include "ps_tables.h"
 
 extern const float sbr_noise_table[512][2];
 

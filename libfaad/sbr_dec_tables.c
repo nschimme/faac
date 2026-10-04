@@ -407,37 +407,7 @@ const SBRHuffEntry ps_huff_iid_dt_fine[PS_HUFF_IID_DT_FINE_NSYMS] = {
 };
 
 /* ISO/IEC 14496-3 Table 8.A.33: huff_iid_df, index = delta + 14. */
-const SBRHuffEntry ps_huff_iid_df[PS_HUFF_IID_DF_NSYMS] = {
-    /*  -14 */ { 0x0001fffbu, 17 },
-    /*  -13 */ { 0x0001fffcu, 17 },
-    /*  -12 */ { 0x0001fffdu, 17 },
-    /*  -11 */ { 0x0001fffau, 17 },
-    /*  -10 */ { 0x0000fffcu, 16 },
-    /*   -9 */ { 0x00007ffcu, 15 },
-    /*   -8 */ { 0x00001ffdu, 13 },
-    /*   -7 */ { 0x000003feu, 10 },
-    /*   -6 */ { 0x000001feu,  9 },
-    /*   -5 */ { 0x0000007eu,  7 },
-    /*   -4 */ { 0x0000003cu,  6 },
-    /*   -3 */ { 0x0000001du,  5 },
-    /*   -2 */ { 0x0000000du,  4 },
-    /*   -1 */ { 0x00000005u,  3 },
-    /*    0 */ { 0x00000000u,  1 },
-    /*    1 */ { 0x00000004u,  3 },
-    /*    2 */ { 0x0000000cu,  4 },
-    /*    3 */ { 0x0000001cu,  5 },
-    /*    4 */ { 0x0000003du,  6 },
-    /*    5 */ { 0x0000003eu,  6 },
-    /*    6 */ { 0x000000feu,  8 },
-    /*    7 */ { 0x000007feu, 11 },
-    /*    8 */ { 0x00001ffcu, 13 },
-    /*    9 */ { 0x00003ffcu, 14 },
-    /*   10 */ { 0x00003ffdu, 14 },
-    /*   11 */ { 0x00007ffdu, 15 },
-    /*   12 */ { 0x0001fffeu, 17 },
-    /*   13 */ { 0x0003fffeu, 18 },
-    /*   14 */ { 0x0003ffffu, 18 },
-};
+
 
 /* ISO/IEC 14496-3 Table 8.A.34: huff_iid_dt, index = delta + 14. */
 const SBRHuffEntry ps_huff_iid_dt[PS_HUFF_IID_DT_NSYMS] = {
@@ -473,23 +443,7 @@ const SBRHuffEntry ps_huff_iid_dt[PS_HUFF_IID_DT_NSYMS] = {
 };
 
 /* ISO/IEC 14496-3 Table 8.A.35: huff_icc_df, index = delta + 7. */
-const SBRHuffEntry ps_huff_icc_df[PS_HUFF_ICC_DF_NSYMS] = {
-    /*   -7 */ { 0x00003fffu, 14 },
-    /*   -6 */ { 0x00003ffeu, 14 },
-    /*   -5 */ { 0x00000ffeu, 12 },
-    /*   -4 */ { 0x000003feu, 10 },
-    /*   -3 */ { 0x0000007eu,  7 },
-    /*   -2 */ { 0x0000001eu,  5 },
-    /*   -1 */ { 0x00000006u,  3 },
-    /*    0 */ { 0x00000000u,  1 },
-    /*    1 */ { 0x00000002u,  2 },
-    /*    2 */ { 0x0000000eu,  4 },
-    /*    3 */ { 0x0000003eu,  6 },
-    /*    4 */ { 0x000000feu,  8 },
-    /*    5 */ { 0x000001feu,  9 },
-    /*    6 */ { 0x000007feu, 11 },
-    /*    7 */ { 0x00001ffeu, 13 },
-};
+
 
 /* ISO/IEC 14496-3 Table 8.A.36: huff_icc_dt, index = delta + 7. */
 const SBRHuffEntry ps_huff_icc_dt[PS_HUFF_ICC_DT_NSYMS] = {
@@ -511,16 +465,7 @@ const SBRHuffEntry ps_huff_icc_dt[PS_HUFF_ICC_DT_NSYMS] = {
 };
 
 /* ISO/IEC 14496-3 Table 8.A.37: huff_ipd_df, index = delta + 0. */
-const SBRHuffEntry ps_huff_ipd_df[PS_HUFF_IPD_DF_NSYMS] = {
-    /*    0 */ { 0x00000001u,  1 },
-    /*    1 */ { 0x00000000u,  3 },
-    /*    2 */ { 0x00000006u,  4 },
-    /*    3 */ { 0x00000004u,  4 },
-    /*    4 */ { 0x00000002u,  4 },
-    /*    5 */ { 0x00000003u,  4 },
-    /*    6 */ { 0x00000005u,  4 },
-    /*    7 */ { 0x00000007u,  4 },
-};
+
 
 /* ISO/IEC 14496-3 Table 8.A.38: huff_ipd_dt, index = delta + 0. */
 const SBRHuffEntry ps_huff_ipd_dt[PS_HUFF_IPD_DT_NSYMS] = {
@@ -535,16 +480,7 @@ const SBRHuffEntry ps_huff_ipd_dt[PS_HUFF_IPD_DT_NSYMS] = {
 };
 
 /* ISO/IEC 14496-3 Table 8.A.39: huff_opd_df, index = delta + 0. */
-const SBRHuffEntry ps_huff_opd_df[PS_HUFF_OPD_DF_NSYMS] = {
-    /*    0 */ { 0x00000001u,  1 },
-    /*    1 */ { 0x00000001u,  3 },
-    /*    2 */ { 0x00000006u,  4 },
-    /*    3 */ { 0x00000004u,  4 },
-    /*    4 */ { 0x0000000fu,  5 },
-    /*    5 */ { 0x0000000eu,  5 },
-    /*    6 */ { 0x00000005u,  4 },
-    /*    7 */ { 0x00000000u,  3 },
-};
+
 
 /* ISO/IEC 14496-3 Table 8.A.40: huff_opd_dt, index = delta + 0. */
 const SBRHuffEntry ps_huff_opd_dt[PS_HUFF_OPD_DT_NSYMS] = {

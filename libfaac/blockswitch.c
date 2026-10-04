@@ -149,8 +149,10 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].data)
+    if (psyInfo[channel].data) {
       FreeMemory(psyInfo[channel].data);
+      psyInfo[channel].data = NULL;
+    }
   }
 }
 

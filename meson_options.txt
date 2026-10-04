@@ -26,6 +26,11 @@ option('decoder-ps',
     value: true)
 
 # Encoder tuning
+option('encoder-ps',
+    description: 'Enable experimental Parametric Stereo (HE-AAC v2) encoding',
+    type: 'boolean',
+    value: false)
+
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.

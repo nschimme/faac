@@ -52,6 +52,10 @@ common_src = [
     'util.h',
 ]
 
+if encoder_ps
+    common_src += ['ps.c', 'ps.h', '../common/ps_tables.c']
+endif
+
 libfaac = disabler()
 
 # Derives library shared object version directly from project_version in root meson.build
@@ -104,3 +108,15 @@ pkgconfig.generate(
     version: project_ver,
     filebase: 'faac'
 )
+
+if encoder_ps
+    test_ps = executable('test_ps', ['test_ps.c', 'ps.c', 'bitstream.c', '../common/ps_tables.c'],
+        include_directories: ['..', '../include', common_inc],
+        c_args: c_args + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG'], dependencies: [libm])
+    test('faac_ps_test', test_ps)
+endif
+
+ps_api_test = executable('test_ps_api', 'test_ps_api.c',
+    include_directories: ['..', '../include'], link_with: libfaac,
+    c_args: c_args + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG'])
+test('faac_ps_api_test', ps_api_test)

@@ -74,5 +74,9 @@ if get_option('decoder')
         test('faad_frontend_test', find_program('python3'),
             args: [files('../tests/faad_frontend_test.py'), faac, faad,
                    get_option('max-channels').to_string(), get_option('decoder-sbr').to_string()])
+        if encoder_ps and get_option('decoder-sbr') and get_option('decoder-ps')
+            test('faac_ps_frontend_test', find_program('python3'),
+                args: [files('../tests/faac_ps_frontend_test.py'), faac, faad])
+        endif
     endif
 endif

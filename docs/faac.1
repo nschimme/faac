@@ -28,7 +28,7 @@ is not up to par with the currently best AAC encoders available.
 .TP
 * Fast
 .TP
-* AAC-LC and HE-AAC v1 (SBR) support
+* AAC-LC, HE-AAC v1 (SBR), and optional HE-AAC v2 (PS) support
 
 .SH HELP OPTIONS
 .TP
@@ -75,11 +75,20 @@ Force the AAC object type:
 .B lc
 (Low Complexity),
 .B he-aac-v1
-(High-Efficiency AAC v1, i.e. AAC-LC plus Spectral Band Replication), or
+(High-Efficiency AAC v1, i.e. AAC-LC plus Spectral Band Replication),
+.B he-aac-v2
+(HE-AAC v1 plus Parametric Stereo; requires an encoder built with
+.B encoder-ps=true
+and stereo input), or
 .B auto
 (default), which selects LC or HE-AAC v1 from the bitrate and sample rate.
 HE-AAC v1 targets low bitrates; its core is coded at half the input sample
 rate and reconstructed to full rate by SBR in the decoder.
+With encoder PS enabled, MPEG-4 stereo AUTO uses HE-AAC v2 at total target
+bitrates of 8-12 kb/s for 32/44.1 kHz input, and 8-16 kb/s for 48 kHz input.
+The adjacent low-rate range uses HE-AAC v1. Other input rates and VBR retain
+the existing AUTO policy. These thresholds reflect measured music averages;
+the best profile can vary with the material.
 .TP
 .BR --joint\ <\fImode\fP>
 Joint stereo coding mode:

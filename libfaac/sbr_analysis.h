@@ -55,6 +55,10 @@ typedef struct SignalAnalysis {
     /* Per-envelope QMF band energy, binned over the grid above; only the first
        numEnvelopes rows are written. */
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+#if FAAC_ENCODER_PS
+    float bandCrossE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+    float bandCrossIm[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+#endif
 } SignalAnalysis;
 
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr);

@@ -19,6 +19,7 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
+#include "ps.h"
 
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
@@ -44,9 +45,17 @@ typedef struct SbrFrameData {
     struct {
         int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
     } ch[MAX_CHANNELS];
+#if FAAC_ENCODER_PS
+    int iid[PS_BANDS];
+    int icc[PS_BANDS];
+    int enable_icc;
+    int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
+    int enable_phase;
+#endif
 } SbrFrameData;
 
 struct SBRInfo {
+    int is_he_v2;
     int sbrPresent;
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
     int numChannels;
@@ -120,6 +129,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 void SbrEnd(SBRInfo *sbr);
 
+void SbrQmfAnalysisComplex(SBRInfo *, const float *, float *, float *, int, int);
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);

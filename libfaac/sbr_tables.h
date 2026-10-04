@@ -27,10 +27,7 @@ extern "C" {
 
 typedef float sbrfloat;
 
-typedef struct {
-    uint32_t code : 24;
-    uint32_t len  : 8;
-} SBRHuffEntry;
+#include "ps_tables.h"
 
 #define F_HUFF_ENV_1_5DB_OFFSET  60
 #define F_HUFF_ENV_1_5DB_NSYMS   121

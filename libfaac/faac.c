@@ -50,7 +50,8 @@ _Static_assert(sizeof(enum faac_input_format)  == 4, "faac_input_format must be 
  * translation is a plain field copy. Guard that assumption. */
 _Static_assert((int)FAAC_MPEG4 == MPEG4 && (int)FAAC_MPEG2 == MPEG2, "mpeg version drift");
 _Static_assert((int)FAAC_OBJ_AUTO == AUTO && (int)FAAC_OBJ_LOW == LOW
-               && (int)FAAC_OBJ_HE_AAC_V1 == HE_V1, "object type drift");
+               && (int)FAAC_OBJ_HE_AAC_V1 == HE_V1
+               && (int)FAAC_OBJ_HE_AAC_V2 == HE_V2, "object type drift");
 _Static_assert((int)FAAC_JOINT_NONE == JOINT_NONE && (int)FAAC_JOINT_MIXED == JOINT_MIXED, "joint mode drift");
 _Static_assert((int)FAAC_SHORTCTL_NORMAL == SHORTCTL_NORMAL && (int)FAAC_SHORTCTL_NOLONG == SHORTCTL_NOLONG, "shortctl drift");
 _Static_assert((int)FAAC_STREAM_RAW == RAW_STREAM && (int)FAAC_STREAM_ADTS == ADTS_STREAM, "stream format drift");
@@ -152,7 +153,12 @@ static faac_status validate_params(const faac_params *p)
         case FAAC_OBJ_AUTO: case FAAC_OBJ_LOW: case FAAC_OBJ_HE_AAC_V1:
             break;
         case FAAC_OBJ_HE_AAC_V2:
-            return FAAC_ERR_UNSUPPORTED;   /* parametric stereo not implemented */
+#if FAAC_ENCODER_PS
+            if (p->num_channels != 2) return FAAC_ERR_INVALID_ARGUMENT;
+            break;
+#else
+            return FAAC_ERR_UNSUPPORTED;
+#endif
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
     }
@@ -302,7 +308,8 @@ static uint32_t faacEncoderDelay(const faacEncStruct *h)
 {
     switch (h->config.aacObjectType) {
         case LOW:   return FRAME_LEN;
-        case HE_V1: return 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1;
+        case HE_V1:
+        case HE_V2: return 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1;
     }
     assert(0 && "faacEncoderDelay: unhandled aacObjectType");
     return FRAME_LEN;
