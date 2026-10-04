@@ -58,18 +58,18 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
             && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_32BIT == INPUT_32BIT
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 
-/* Baseline layout as first shipped. Frozen by the append-only rule: new fields
- * go after max_bit_rate, so this offset never moves. Not sizeof(), which
+/* Baseline layout as shipped in SONAME 2. Frozen by the append-only rule:
+ * fields cannot move, so this offset never moves. Not sizeof(), which
  * grows with every appended field and would reject older callers' binaries.
  * A literal would be wrong too: the layout depends on pointer width. */
 #define PARAMS_BASELINE_SIZE \
-    ((uint32_t)(offsetof(faac_params, max_bit_rate) + sizeof(uint32_t)))
+    ((uint32_t)(offsetof(faac_params, rate_control) + sizeof(enum faac_rate_control)))
 
 /* Same pattern as PARAMS_BASELINE_SIZE above. */
 #define LIBRARY_INFO_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_library_info, sbr_decimation) + sizeof(uint32_t)))
 #define ENCODER_INFO_BASELINE_SIZE \
-    ((uint32_t)(offsetof(faac_encoder_info, max_bit_rate) + sizeof(uint32_t)))
+    ((uint32_t)(offsetof(faac_encoder_info, rate_control) + sizeof(enum faac_rate_control)))
 
 /* faac_encoder* and faacEncHandle are the same underlying object. */
 static inline faacEncStruct *unwrap(faac_encoder *enc) { return (faacEncStruct *)enc; }
