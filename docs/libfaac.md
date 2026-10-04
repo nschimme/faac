@@ -421,8 +421,8 @@ rounding; stereo AAC-LC consumed 190 KB (194,608 bytes) and stereo HE-AAC
 356 KB (364,416 bytes) in this arrangement, including the ASC. Leave the pool
 and the open/close order to your application: one encoder per pool, and reset
 only after close. This produced output byte-identical to the heap build and
-reopened cleanly after a reset. If `faac_encoder_open()` fails with a pool, suspect
-an undersized pool first.
+reopened cleanly after a reset. An undersized pool makes `faac_encoder_open()` return
+`FAAC_ERR_NO_MEMORY`.
 
 ### Encoder delay and gapless output
 
