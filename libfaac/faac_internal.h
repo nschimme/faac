@@ -33,7 +33,10 @@ enum { MPEG4 = 0, MPEG2 = 1 };
 /* AAC object types this build implements, numbered per the MPEG-4 AOT
  * registry (mirrors the public FAAC_OBJ_* enum in <faac.h>). AUTO defers the
  * choice between LOW and HE_V1 to faacEncApplyConfig. */
-enum { AUTO = 0, LOW = 2, HE_V1 = 5 };
+enum { AUTO = 0, LOW = 2, HE_V1 = 5, HE_V2 = 29 };
+
+static inline int IsHEAAC(unsigned int obj) { return obj == HE_V1 || obj == HE_V2; }
+static inline int IsHEV2(unsigned int obj)  { return obj == HE_V2; }
 
 /* Perceptual noise substitution aggressiveness (see assign_band_codebooks). */
 enum { PNSLEVEL_NARROWBAND_MONO = 2, PNSLEVEL_DEFAULT = 4 };

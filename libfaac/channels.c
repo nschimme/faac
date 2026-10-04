@@ -225,7 +225,7 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
 
 static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs)
 {
-    int channelConfig = GetChannelConfig((int)hEncoder->numChannels);
+    int channelConfig = GetChannelConfig(IsHEV2(hEncoder->config.aacObjectType) ? 1 : (int)hEncoder->numChannels);
     PutBit(bs, 0xFFF,                        LEN_ADTS_SYNC);
     PutBit(bs, hEncoder->config.mpegVersion, LEN_ADTS_ID);
     PutBit(bs, 0,                            LEN_ADTS_LAYER);
@@ -310,7 +310,7 @@ static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int f
 {
     if (hEncoder->config.outputFormat == 1 && bs->data) {
         int fullness = 0x7FF;
-        int channelConfig = GetChannelConfig((int)hEncoder->numChannels);
+        int channelConfig = GetChannelConfig(IsHEV2(hEncoder->config.aacObjectType) ? 1 : (int)hEncoder->numChannels);
         if (hEncoder->rc.resMean)
             fullness = RateControlReservoirAfter(&hEncoder->rc, (frameBytes - ADTS_HEADER_SIZE) * 8) >> 5;
         bs->data[0] = 0xFF;

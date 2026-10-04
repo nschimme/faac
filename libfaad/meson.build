@@ -24,6 +24,10 @@ if not get_option('decoder-ps') or not get_option('decoder-sbr') or get_option('
     faad_c_args += ['-DFAAD_DISABLE_PS']
 endif
 
+if get_option('decoder-ps') and get_option('decoder-sbr') and get_option('max-channels') >= 2
+    faad_src += ['../common/ps_tables.c']
+endif
+
 project_ver = meson.project_version()
 
 common_args = {

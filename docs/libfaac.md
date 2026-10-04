@@ -76,7 +76,8 @@ library paths when migrating.
 |---|---|
 | AAC-LC | Supported by every encoder build; 1024 samples/channel per frame |
 | HE-AAC v1 | Dual-rate SBR; input rate at least 32000 Hz; 2048 samples/channel per frame |
-| HE-AAC v2, MAIN, SSR, LTP, LD, ELD, USAC | Unsupported |
+| HE-AAC v2 | SBR + Parametric Stereo; requires `encoder-ps=true`, stereo input, and input rate at least 32000 Hz; 2048 samples/channel per frame |
+| MAIN, SSR, LTP, LD, ELD, USAC | Unsupported |
 | ADTS | Library supplies each frame's header |
 | RAW AAC | One access unit per emitted frame; MPEG-4 ASC available separately |
 | MP4/M4A | Mux outside the library using RAW access units and ASC |
@@ -176,8 +177,21 @@ const char *faac_strerror(faac_status status);
 The `object_type` field of `faac_params` uses MPEG-4 Audio Object Type
 numbers: `FAAC_OBJ_LOW` (2) is AAC-LC and `FAAC_OBJ_HE_AAC_V1` (5) is
 HE-AAC v1 (AAC-LC core + SBR). `FAAC_OBJ_AUTO` (0) lets the library choose
-LC or HE-AAC from the bitrate, or from `quant_quality` when there is none. `FAAC_OBJ_HE_AAC_V2` (29) is defined but not
-implemented; requesting it returns `FAAC_ERR_UNSUPPORTED`.
+LC or HE-AAC from the bitrate, or from `quant_quality` when there is none.
+`FAAC_OBJ_HE_AAC_V2` (29) selects SBR plus Parametric Stereo and requires a
+build configured with `-Dencoder-ps=true` and exactly two input channels.
+A build without encoder PS returns `FAAC_ERR_UNSUPPORTED` for this profile.
+The PS core is mono; input and decoded output remain stereo.
+
+With encoder PS enabled, MPEG-4 stereo AUTO selects HE-AAC v2 for total
+target bitrates from 8 through 12 kb/s at 32/44.1 kHz, or 8 through 16 kb/s
+at 48 kHz. Above those ceilings the adjacent low-rate range uses HE-AAC v1.
+These thresholds use mean bitrate-adjusted MOS and stereo coherence from
+49 music clips per rate; they do not guarantee an improvement for every clip.
+The API `bit_rate` is per channel: the corresponding PS ceilings are 6000,
+6000, and 8000 bits/s per channel. VBR, other sample rates, mono, MPEG-2, and
+builds without encoder PS retain the existing AUTO policy.
+See [PS quality measurements](ps-quality.md) for the crossover and limitations.
 
 For an HE-AAC encoder the SBR core runs at half the input rate and codes a
 2048-sample frame, so `faac_encoder_get_info()` reports

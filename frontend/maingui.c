@@ -14,6 +14,7 @@
  * Lesser General Public License for more details.
  */
 
+#include "config.h"
 #include <windows.h>
 #include <commdlg.h>
 #include <commctrl.h>
@@ -416,7 +417,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             LeaveCriticalSection(&g_cs_progress);
 
             char szParams[128];
-            const char *aot = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity";
+            const char *aot = info.object_type == FAAC_OBJ_HE_AAC_V2 ? "HE-AAC v2" :
+                              info.object_type == FAAC_OBJ_HE_AAC_V1 ? "HE-AAC v1" : "Low Complexity";
             snprintf(szParams, sizeof(szParams), "%uHz %uch | %s | Cutoff: %uHz",
                      info.sample_rate, info.num_channels, aot, info.bandwidth);
             SetDlgItemText(hWnd, IDC_INPUTPARAMS, szParams);
@@ -544,6 +546,10 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LOW);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+#if FAAC_ENCODER_PS
+            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
+#endif
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 
@@ -593,7 +599,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 "and lets the bitrate follow the material. CBR holds the\n"
                 "bitrate exactly.");
             AddTip(hWnd, IDC_OBJECTTYPE,
-                "Auto picks LC or HE-AAC v1 based on bitrate; force one to\n"
+                "Auto picks the profile based on bitrate; force one to\n"
                 "override that choice.");
             AddTip(hWnd, IDC_USETNS, "Temporal Noise Shaping: reduces pre-echo on transients.");
             AddTip(hWnd, IDC_USEPNS, "Perceptual Noise Substitution: codes noise-like bands as a noise level.");

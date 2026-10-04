@@ -30,6 +30,8 @@ cpu_family = target_machine.cpu_family()
 
 config_h.set('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and config_h.get('HAVE_IMMINTRIN_H'))
 
+encoder_ps = get_option('encoder-ps') and get_option('max-channels') >= 2
+config_h.set10('FAAC_ENCODER_PS', encoder_ps)
 config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 
 config_h.set('FAAC_STATS', get_option('stats'))

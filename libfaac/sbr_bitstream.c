@@ -155,6 +155,12 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_noise(fd, bs, write);
 
+#if FAAC_ENCODER_PS
+    if (sbr->is_he_v2) {
+        if (write) PutBit(bs, 1, flags_len); /* harmonic=0, extended_data=1 */
+        bits += PsWrite(fd, bs, write);
+    } else
+#endif
     if (write) PutBit(bs, 0, flags_len); /* add_harmonic / extended data flags */
 
     return bits;
@@ -212,7 +218,7 @@ static int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
 
 int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, int aacObjectType)
 {
-    if (aacObjectType == HE_V1 && sCtx && elem->type != ID_LFE) {
+    if (IsHEAAC(aacObjectType) && sCtx && elem->type != ID_LFE) {
         if (sCtx->sbrInfo) {
             int id_aac = (elem->type == ID_CPE) ? ID_CPE : ID_SCE;
             /* One step past the newest slot is the oldest: the payload whose

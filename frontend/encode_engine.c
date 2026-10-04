@@ -568,7 +568,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     /* Implicit SBR signaling expects the container declared at the core
        (pre-SBR) rate, half the reconstructed output rate. */
-    rate_conv_t rc = { .div = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? 2 : 1 };
+    rate_conv_t rc = { .div = (info.object_type == FAAC_OBJ_HE_AAC_V1 || info.object_type == FAAC_OBJ_HE_AAC_V2) ? 2 : 1 };
 
     pcmbuf = malloc(samples_per_frame * sizeof(float));
     bitbuf = malloc(max_output_bytes * sizeof(unsigned char));

@@ -115,9 +115,62 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     for (int e = 0; e < sa->numEnvelopes; e++)
         if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
 
+    if (sbr) {
+#if FAAC_ENCODER_PS
+        if (sbr->is_he_v2) {
+            float right[SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
+            memcpy(workspace, sbr->ch[0].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
+            memcpy(workspace + SBR_QMF_HIST_LEN, fullPtrs[0], numSamples * sizeof(float));
+            memcpy(right, sbr->ch[1].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
+            memcpy(right + SBR_QMF_HIST_LEN, fullPtrs[1], numSamples * sizeof(float));
+            memset(sa->bandE[0], 0, sizeof(sa->bandE[0]));
+            memset(sa->bandE[1], 0, sizeof(sa->bandE[1]));
+            memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
+            memset(sa->bandCrossIm, 0, sizeof(sa->bandCrossIm));
+            memset(sa->psE, 0, sizeof(sa->psE));
+            memset(sa->psCross, 0, sizeof(sa->psCross));
+            memset(sa->psCrossIm, 0, sizeof(sa->psCrossIm));
+            float low[2][3][44][2];
+            for (int ch = 0; ch < 2; ch++)
+                for (int k = 0; k < 3; k++)
+                    memcpy(low[ch][k], sbr->psHybrid.history[ch][k], sizeof(sbr->psHybrid.history[ch][k]));
+            for (int slot = 0; slot < num_slots + 6; slot++) {
+                float lr[64], li[64], rr[64], ri[64];
+                int sampled = slot < num_slots && slot % FAAC_SBR_DECIMATION == 0;
+                SbrQmfAnalysisComplex(sbr, workspace + slot * 64, lr, li, 0, sampled ? 64 : 3);
+                SbrQmfAnalysisComplex(sbr, right + slot * 64, rr, ri, 0, sampled ? 64 : 3);
+                for (int k = 0; k < 3; k++) {
+                    low[0][k][slot+6][0]=lr[k]; low[0][k][slot+6][1]=li[k];
+                    low[1][k][slot+6][0]=rr[k]; low[1][k][slot+6][1]=ri[k];
+                }
+                if (!sampled) continue;
+                int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
+                int p = slot * 4 / num_slots;
+                static const unsigned char edges[13] = {3,4,5,6,7,8,9,11,14,18,23,35,64};
+                for (int k = 0; k < 64; k++) {
+                    sa->bandE[0][e][k] += lr[k]*lr[k]+li[k]*li[k];
+                    sa->bandE[1][e][k] += rr[k]*rr[k]+ri[k]*ri[k];
+                    sa->bandCrossE[e][k] += lr[k]*rr[k]+li[k]*ri[k];
+                    sa->bandCrossIm[e][k] += li[k]*rr[k]-lr[k]*ri[k];
+                    if (k < 3) continue;
+                    int band = 8;
+                    while (k >= edges[band-7]) band++;
+                    sa->psE[0][p][band] += lr[k]*lr[k]+li[k]*li[k];
+                    sa->psE[1][p][band] += rr[k]*rr[k]+ri[k]*ri[k];
+                    sa->psCross[p][band] += lr[k]*rr[k]+li[k]*ri[k];
+                    sa->psCrossIm[p][band] += li[k]*rr[k]-lr[k]*ri[k];
+                }
+            }
+            PsHybridAnalyze(&sbr->psHybrid, low, sa->psE, sa->psCross, sa->psCrossIm, num_slots);
+            for (int ch = 0; ch < 2; ch++)
+                for (int k = 0; k < 3; k++)
+                    memcpy(sbr->psHybrid.history[ch][k], low[ch][k] + num_slots,
+                           sizeof(sbr->psHybrid.history[ch][k]));
+            return;
+        }
+#endif
     /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
      * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
-    if (sbr) {
         int kx = sbr->kx;
         int kEnd = sbr->k2;
         for (int ch = 0; ch < nch; ch++) {

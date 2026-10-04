@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <assert.h>
 
 #include "sbr.h"
 #include "sbr_tables.h"
@@ -236,7 +235,7 @@ void SbrContextEnd(SBRContext *sbrCtx)
     FreeMemory(sbrCtx);
 }
 
-int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize)
+int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize, int aacObjectType)
 {
     /* Explicit-hierarchy ASC: AAC-LC core wrapped with an SBR extension
      * (sync 0x2b7, type 5) carrying the full output rate. The core rate is
@@ -245,7 +244,8 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
      * A mono core also carries the PS sync extension with psPresentFlag = 0:
      * without it a decoder may assume parametric stereo is implied and return
      * two channels. */
-    const int signalPS = (channels == 1);
+    const int signalPS = (channels == 1 || IsHEV2(aacObjectType));
+    if (IsHEV2(aacObjectType)) channels = 1;
     const unsigned long size = signalPS ? 7 : 5;
 
     unsigned char *buf = (unsigned char *)AllocMemory(size);
@@ -266,7 +266,7 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     AccumPutBits(&a, sbrCtx->fullSampleRateIdx, 4); /* SBR output rate (2*core) */
     if (signalPS) {
         AccumPutBits(&a, 0x548, 11); /* syncExtensionType = PS */
-        AccumPutBits(&a, 0,      1); /* psPresentFlag */
+        AccumPutBits(&a, IsHEV2(aacObjectType), 1); /* psPresentFlag */
     }
     AccumEnd(&a);
 
@@ -284,20 +284,23 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int aacObjectType)
 {
     if (!sCtx) return;
     if (!sCtx->sbrInfo)
         sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
     else
         SbrUpdate(sCtx->sbrInfo, bitrate);
+    if (sCtx->sbrInfo) sCtx->sbrInfo->is_he_v2 = IsHEV2(aacObjectType);
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
 {
+    if (sCtx->sbrInfo->is_he_v2) numChannels = 2;
     unsigned int channel;
     Resampler *rs = sCtx->resampler;
     float *fullPtrs[MAX_CHANNELS];
+    float spectralCarrier[2 * FRAME_LEN];
 
     /* SbrEncode quantizes into the new head; SbrWrite (via SbrContextGetBits)
      * emits the oldest slot, which is the payload for this frame's core audio. */
@@ -331,9 +334,37 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
          * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
          * would inflate its levels, and the QMF-overlap save below reads the last
          * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
+#if FAAC_ENCODER_PS
+        if (sCtx->sbrInfo->is_he_v2) {
+            PsSpectralDownmix(&sCtx->psCarrier, fullPtrs[0], fullPtrs[1], spectralCarrier, 2 * FRAME_LEN);
+            float original[2 * FRAME_LEN];
+            memcpy(original, fullPtrs[0], sizeof(original));
+            PsDownmix(original, fullPtrs[1], 2 * FRAME_LEN);
+            double l = 0, r = 0, cross = 0;
+            for (int i = 0; i < 2 * FRAME_LEN; i++) {
+                l += (double)fullPtrs[0][i] * fullPtrs[0][i];
+                r += (double)fullPtrs[1][i] * fullPtrs[1][i];
+                cross += (double)fullPtrs[0][i] * fullPtrs[1][i];
+            }
+            sCtx->psCarrier.smoothL = 0.9 * sCtx->psCarrier.smoothL + l;
+            sCtx->psCarrier.smoothR = 0.9 * sCtx->psCarrier.smoothR + r;
+            sCtx->psCarrier.smoothCross = 0.9 * sCtx->psCarrier.smoothCross + cross;
+            l = sCtx->psCarrier.smoothL;
+            r = sCtx->psCarrier.smoothR;
+            cross = sCtx->psCarrier.smoothCross;
+            double rho = cross / (sqrt(l * r) + 1e-20);
+            float blend = (float)fmax(0, fmin(1, (0.99 - rho) / 0.005));
+            for (int i = 0; i < 2 * FRAME_LEN; i++)
+                spectralCarrier[i] = blend * spectralCarrier[i] + (1-blend) * original[i];
+        }
+#endif
         SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
         SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
         /* Dual-rate decimation: produces the halved-rate core signal. */
+#if FAAC_ENCODER_PS
+        if (sCtx->sbrInfo->is_he_v2)
+            memcpy(rs->fullRate[0], spectralCarrier, sizeof(spectralCarrier));
+#endif
         Resample(rs, 2 * FRAME_LEN);
     }
 }
@@ -391,7 +422,7 @@ static inline float fast_log2(float x)
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
  * a standard 128-point implementation. Phase info is discarded as the
  * SBR bitstream only transmits envelope magnitudes. */
-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float *ovl_pos, float *real, float *imag, int kx, int k2)
 {
     float x[128], y[128];
     float * restrict xr = x, * restrict xi = x + 64;
@@ -428,8 +459,16 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         float wi = sbr->oddSin[k];
         float Sr = Ar + wr * Br - wi * Bi;
         float Si = Ai + wr * Bi + wi * Br;
-        energy[k] += Sr * Sr + Si * Si;
+        real[k] = Sr;
+        imag[k] = Si;
     }
+}
+
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+{
+    float real[64], imag[64];
+    SbrQmfAnalysisComplex(sbr, ovl_pos, real, imag, kx, k2);
+    for (int k = kx; k < k2; k++) energy[k] += real[k] * real[k] + imag[k] * imag[k];
 }
 
 
@@ -491,7 +530,10 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_HIST_LEN, SBR_QMF_HIST_LEN * sizeof(float));
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
-    sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
+#if FAAC_ENCODER_PS
+    if (sbr->is_he_v2) PsAnalyze(sbr, sa, fd);
+#endif
+    sbr_quantize_envelopes(sbr, sbr->is_he_v2 ? 1 : numChannels, isLfe, sa, fd);
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
@@ -509,4 +551,3 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
  * Replays the write sequence into a counting sink during rate control to
  * ensure accurate bit budget allocation. */
-
