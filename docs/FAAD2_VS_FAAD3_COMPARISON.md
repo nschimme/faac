@@ -63,7 +63,7 @@ This produces `libfaad.so.3.0.0` and symlink `libfaad.so.3` on Linux, clearly is
 | FAAD2 C API (`neaacdec.h`) | FAAD3 C API (`include/faad.h`) | Architectural Improvement in FAAD3 |
 | :--- | :--- | :--- |
 | `NeAACDecOpen()` | `faad_decoder_open()` / `faad_decoder_init()` | Supports zero-allocation static memory init via `faad_decoder_init()`. |
-| `NeAACDecInit()`, `NeAACDecInit2()` | `faad_config_init()`, `faad_decoder_get_info()` | Separates configuration setup from static metadata querying. |
+| `NeAACDecInit()`, `NeAACDecInit2()` | `faad_config_init()`, `faad_decoder_open()` / `faad_decoder_init()` | Supplies configuration and ASC at initialization; query PCM format with `faad_decoder_get_info()`. |
 | `NeAACDecDecode()`, `NeAACDecDecode2()` | `faad_decode_frame()` | Zero-copy single-frame Access Unit decoding with explicit `bytes_consumed` and `bytes_written`. |
 | `NeAACDecClose()` | `faad_decoder_close()` | Nulls the handle; frees only heap-owned memory. Pass the address of the handle. |
 | `NeAACDecPostSeekReset()` | `faad_decoder_flush()` | Flushes IMDCT overlap and SBR delay history cleanly upon seeking. |
@@ -71,10 +71,10 @@ This produces `libfaad.so.3.0.0` and symlink `libfaad.so.3` on Linux, clearly is
 | `NeAACDecGetVersion()` | `faad_get_library_info()` | Structured library capabilities and metadata query with `struct_size` versioning. |
 
 ### 3.3 Modern ABI Architectural Strengths
-1. **Zero-Allocation Execution**: Calling `faad_get_state_size()` queries the exact memory requirements (~128 KB for stereo HE-AAC). Embedded or RTOS callers pass a static `.bss` memory pointer to `faad_decoder_init()`, completely eliminating dynamic heap allocation (`malloc`/`free`) during decoder lifetime.
-2. **Struct Size Versioning**: Public structures (`faad_config`, `faad_library_info`, `faad_stream_info`) use `struct_size = sizeof(the_structure)`. This guarantees future ABI field expansion without breaking existing binaries.
-3. **Deterministic Single-Frame Decoding**: `faad_decode_frame()` decodes exactly one Access Unit per call, returning `bytes_consumed` and `bytes_written`. Callers maintain full control over bitstream buffering without hidden internal FIFO state.
-4. **Thread Safety & Hidden Visibility**: All internal lookup tables are pre-initialized during single-threaded decoder creation (`faad_init_global_tables()`), making decoding threads 100% reentrant. Library symbols use `gnu_symbol_visibility: hidden` with explicit `FAADAPI` export attributes.
+1. **Zero-Allocation Execution**: Calling `faad_get_state_size()` queries the exact memory requirements (independent of configuration; query the loaded build). Embedded or RTOS callers pass a static `.bss` memory pointer to `faad_decoder_init()`, completely eliminating dynamic heap allocation (`malloc`/`free`) during decoder lifetime.
+2. **Struct Size Versioning**: Initialize `faad_config` with `faad_config_init(&cfg, sizeof cfg)` and info structs with `struct_size = sizeof(info)` once. Queries return the populated size, valid for later calls; ABI stability is within the major version / SONAME and target platform ABI.
+3. **Deterministic Single-Frame Decoding**: `faad_decode_frame()` decodes exactly one Access Unit per call, returning `bytes_consumed`, `bytes_written` and optional `uint32_t` frame flags. Ignore unknown bits; on `FAAD_FRAME_FORMAT_CHANGED`, re-query `faad_decoder_get_info()` before using PCM. `faad_stream_info` describes the most recently emitted PCM. `FAAD_FRAME_SBR` / `FAAD_FRAME_PS` report applied extensions; `FAAD_FRAME_CONCEALED` / `FAAD_FRAME_DEGRADED` report recovered PCM with `FAAD_OK`. Callers maintain full control over bitstream buffering without hidden internal FIFO state.
+4. **Thread Safety & Hidden Visibility**: Shared lookup tables are initialized once on first decoder initialization. Independent handles may run concurrently; one handle is owned by one thread at a time. Instrumented stats builds use process-global diagnostics. Library symbols use `gnu_symbol_visibility: hidden` with explicit `FAADAPI` export attributes.
 
 ---
 
@@ -84,7 +84,7 @@ This produces `libfaad.so.3.0.0` and symlink `libfaad.so.3` on Linux, clearly is
 
 FAAD2 included support for several niche or legacy MPEG-4 audio profiles. FAAD3 omits these in favor of an optimized AAC-LC / HE-AAC v1 / HE-AAC v2 core.
 
-1. **Main Profile (`FAAD_OBJ_MAIN`)**:
+1. **Main Profile (AOT 1)**:
    - *Technical Description*: Uses intra-channel spectral predictor across 1024 spectral lines.
    - *Popularity & Market Status*: **Obsolete / 0% Market Share**. Main profile required excessive state memory for prediction state with negligible MOS audio quality improvements over AAC-LC. Major encoders (Apple, FDK-AAC, FAAC) dropped Main Profile support two decades ago.
 2. **Scalable Sample Rate (SSR)**:
@@ -110,8 +110,8 @@ input.aac:0x0000: frame 0: error -2 (Unsupported configuration)
 
 ### 4.2 Other Dropped Features
 - **In-Library File I/O**: FAAD2 embedded MP4 container parsing directly inside `libfaad` (`NeAACDecInit2`). FAAD3 separates stream decoding (`libfaad`) from container parsing (`frontend/mp4read.c`), producing a clean, modular DSP library.
-- **Fixed-Point Math vs Floating-Point Performance**: FAAD3 is written in pure C11 floating-point math, which benchmarks show is **1.40x to 2.18x faster** than FAAD2 fixed-point baselines on modern CPUs while reducing `.text` footprint by 50% (~101 KB vs ~203 KB) and `.rodata` tables by 90% (~9 KB vs ~91 KB). For embedded platforms without hardware FPUs, FAAD3 provides an opt-in fixed-point abstraction layer (`FAAD_FIXED_POINT` / `libfaad/faad_math.h`).
-- **Matrix Surround Downmixing Evaluation**: Replaced legacy Dolby Pro Logic matrix surround decoding with in-frequency-domain ITU-R BS.775 stereo and mono downmixing (`faad_downmix_mode`).
+- **Fixed-Point Math vs Floating-Point Performance**: FAAD3 is written in pure C11 floating-point math, which benchmarks show is **1.40x to 2.18x faster** than FAAD2 fixed-point baselines on modern CPUs while reducing `.text` footprint by 50% (~101 KB vs ~203 KB) and `.rodata` tables by 90% (~9 KB vs ~91 KB). The public API exposes integer and float PCM output; it has no fixed-point configuration mode.
+- **Matrix Surround Downmixing Evaluation**: `faad_config.downmix_mode` selects `FAAD_DOWNMIX_NONE`, `FAAD_DOWNMIX_MONO` or `FAAD_DOWNMIX_STEREO`. Downmixing operates on time-domain PCM; LFE is dropped from surround downmix.
 
 #### Detailed Comparison: FAAD3 ITU-R BS.775 Downmixing vs Legacy Dolby Pro Logic Matrix Decoding
 
