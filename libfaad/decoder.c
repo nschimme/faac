@@ -199,10 +199,9 @@ static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
             || resolved->downmix_mode == FAAD_DOWNMIX_MONO) ? FAAD_OK : FAAD_ERR_INVALID_ARGUMENT;
 }
 
-FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_bytes_out)
+FAADAPI faad_status faad_get_state_size(uint32_t *state_bytes_out)
 {
-    faad_config resolved;
-    if (resolve_config(cfg, &resolved) != FAAD_OK || !state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
+    if (!state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
     *state_bytes_out = (uint32_t)sizeof(faad_decoder);
     return FAAD_OK;
 }
@@ -251,7 +250,9 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
         || (resolved.stream_format == FAAD_STREAM_RAW && !asc_len)) {
         return FAAD_ERR_INVALID_ARGUMENT;
     }
-    if (mem_size < sizeof(faad_decoder)) return FAAD_ERR_INSUFFICIENT_MEM;
+    uint32_t state_size;
+    faad_get_state_size(&state_size);
+    if (mem_size < state_size) return FAAD_ERR_INSUFFICIENT_MEM;
 
     faad_init_global_tables();
 
@@ -303,7 +304,7 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
     *out_dec = NULL;
 
     uint32_t state_size = 0;
-    if (faad_get_state_size(cfg, &state_size) != FAAD_OK) return FAAD_ERR_INVALID_ARGUMENT;
+    if (faad_get_state_size(&state_size) != FAAD_OK) return FAAD_ERR_INVALID_ARGUMENT;
 
     /* malloc may only align to 8 bytes on 32-bit targets. Keep its original
      * pointer for free, and align instance placement independently. */
