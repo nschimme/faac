@@ -380,6 +380,50 @@ encoder into a specific region, for example external RAM, by overriding it as
 described above. Check the speed cost of that placement on your target before
 committing to it.
 
+#### Running without a heap
+
+The same override gives a no-heap setup: back `AllocMemory` with a fixed pool
+and reset it after `faac_encoder_close()`. The encoder allocates only during
+open, so a bump allocator with a no-op free is enough.
+
+```c
+/* pool_alloc.h, force-included: cc -include pool_alloc.h
+ *   -DAllocMemory=pool_alloc -DFreeMemory=pool_free ... */
+#include <stddef.h>
+void *pool_alloc(size_t n);
+void pool_free(void *p);
+```
+
+```c
+#define POOL_BYTES (400u * 1024u) /* From the table above, plus margin. */
+static _Alignas(16) unsigned char pool[POOL_BYTES];
+static size_t used;
+
+void *pool_alloc(size_t n)
+{
+    void *p;
+    n = (n + 15u) & ~(size_t)15u;
+    if (n > POOL_BYTES - used)
+        return NULL;
+    p = pool + used;
+    used += n;
+    return p;
+}
+
+void pool_free(void *p) { (void)p; }
+
+/* Call after faac_encoder_close() to open another encoder. */
+void pool_reset(void) { used = 0; }
+```
+
+Size the pool from the budget table with a few percent of margin for 16-byte
+rounding; stereo AAC-LC consumed 190 KB (194,608 bytes) and stereo HE-AAC
+356 KB (364,416 bytes) in this arrangement, including the ASC. Leave the pool
+and the open/close order to your application: one encoder per pool, and reset
+only after close. This produced output byte-identical to the heap build and
+reopened cleanly after a reset. If `faac_encoder_open()` fails with a pool this
+way, treat an undersized pool as the first suspect.
+
 ### Encoder delay and gapless output
 
 Encoding includes priming and trailing padding. `info.encoder_delay` is the
