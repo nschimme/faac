@@ -478,7 +478,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 
     hEncoder = (faacEncStruct*)AllocMemory(sizeof(faacEncStruct));
     if (!hEncoder) return NULL;
-    SetMemory(hEncoder, 0, sizeof(faacEncStruct));
+    memset(hEncoder, 0, sizeof(faacEncStruct));
 
     hEncoder->numChannels = numChannels;
     hEncoder->sampleRate = sampleRate;
@@ -672,7 +672,7 @@ int faacEncClose(faacEncHandle hpEncoder)
             FreeMemory(hEncoder->peakSnap[channel]);
     }
 
-    if (hEncoder->ascCache) free(hEncoder->ascCache);
+    if (hEncoder->ascCache) FreeMemory(hEncoder->ascCache);
 
     if (hEncoder->sbrContext) {
         SbrContextEnd(hEncoder->sbrContext);

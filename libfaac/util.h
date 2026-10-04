@@ -57,12 +57,6 @@ static inline int clamp_int(int x, int lo, int hi)
 #ifndef FreeMemory
 #define FreeMemory(block) free(block)
 #endif
-#ifndef ReallocMemory
-#define ReallocMemory(block, size) realloc(block, size)
-#endif
-#ifndef SetMemory
-#define SetMemory(block, value, size) memset(block, value, size)
-#endif
 
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);

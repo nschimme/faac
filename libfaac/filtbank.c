@@ -117,7 +117,7 @@ static inline void CopyFlat(float * restrict dst, const float * restrict src, in
 
 static inline void ZeroFlat(float * restrict dst, int len)
 {
-    SetMemory(dst, 0, len * sizeof(float));
+    memset(dst, 0, len * sizeof(float));
 }
 
 void FilterBank(faacEncStruct* hEncoder,
