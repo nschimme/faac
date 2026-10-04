@@ -52,6 +52,12 @@ def main():
             assert riff == 0xFFFFFFFF and data == 0xFFFFFFFF, f"{ext}: -w header must declare a streaming length, got {riff}/{data}"
             assert piped[44:] == open(out, "rb").read()[44:], f"{ext}: -w PCM differs from -o PCM"
 
+            with open(enc, "rb") as stream:
+                stdin_pcm = subprocess.run([faad, "-q", "-w", "-"],
+                                           input=stream.read(), check=True,
+                                           capture_output=True).stdout
+            assert stdin_pcm == piped, f"{ext}: stdin changed the decoded WAV"
+
         # Runtime SBR delay uses output samples; preserve gapless track length.
         he = os.path.join(d, "he.m4a")
         subprocess.run([faac, "--object-type", "he-aac-v1", "-b", "64", "-o", he, src],
