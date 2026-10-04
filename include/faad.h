@@ -150,6 +150,10 @@ enum faad_downmix_mode {
  *
  * ALWAYS initialize with faad_config_init() before setting fields: it stamps
  * struct_size, which is how the library stays compatible as this struct grows.
+ *
+ * Maintainers: here and in the info structs, append fields after the previous
+ * sizeof, never into tail padding or reserved bytes, and keep the alignment: a
+ * populated-size check cannot tell a new field in old padding from padding.
  */
 typedef struct faad_config {
     uint32_t                struct_size;   /* set by faad_config_init() */
