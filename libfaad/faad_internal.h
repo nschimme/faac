@@ -170,11 +170,11 @@ static inline uint32_t bits_get_fast(BitReader *bs, uint32_t nbits)
 
 static inline uint32_t bits_show_fast(BitReader *bs, uint32_t nbits)
 {
-    if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
+    if (nbits > 0 && nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
         uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
                         ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
-        return (word >> (32 - bs->bit_pos - nbits)) & ((1U << nbits) - 1U);
+        return (word << bs->bit_pos) >> (32 - nbits);
     }
     return bits_show(bs, nbits);
 }
