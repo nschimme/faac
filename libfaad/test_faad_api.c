@@ -97,7 +97,8 @@ static void test_boundaries(void)
     faad_config cfg;
     assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
     uint32_t bytes;
-    assert(faad_get_state_size(&cfg, &bytes) == FAAD_OK);
+    assert(faad_get_state_size(NULL) == FAAD_ERR_INVALID_ARGUMENT);
+    assert(faad_get_state_size(&bytes) == FAAD_OK);
     void *allocation, *mem = aligned_storage(bytes, &allocation);
     faad_decoder *dec = NULL;
     assert(faad_decoder_init(mem, bytes - 1, &cfg, NULL, 0, &dec) == FAAD_ERR_INSUFFICIENT_MEM);

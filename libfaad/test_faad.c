@@ -186,7 +186,7 @@ static void test_struct_sizes_and_enums(void)
     assert(out.guard == 0xa5a5a5a5u);
     assert(faad_decoder_close(&dec) == FAAD_OK && dec == NULL);
     uint32_t bytes;
-    assert(faad_get_state_size(NULL, &bytes) == FAAD_OK);
+    assert(faad_get_state_size(&bytes) == FAAD_OK);
     void *mem = malloc(bytes);
     assert(mem != NULL);
     for (int i = 0; i < 4; i++) {
@@ -216,7 +216,7 @@ int main(void)
     assert(cfg.stream_format == FAAD_STREAM_ADTS);
 
     uint32_t state_bytes = 0;
-    st = faad_get_state_size(&cfg, &state_bytes);
+    st = faad_get_state_size(&state_bytes);
     assert(st == FAAD_OK);
     assert(state_bytes > 0);
 

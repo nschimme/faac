@@ -209,9 +209,10 @@ FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
 
 /*
  * Query the exact bytes of instance storage required to instantiate the decoder.
- * Embedded applications use this to allocate static .bss/.dram memory.
+ * The size is independent of configuration. Embedded applications use this
+ * to allocate static .bss/.dram memory.
  */
-FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_bytes_out);
+FAADAPI faad_status faad_get_state_size(uint32_t *state_bytes_out);
 
 /*
  * Initialize the decoder in a caller-provided memory block, with zero internal
