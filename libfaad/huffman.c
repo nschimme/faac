@@ -346,7 +346,9 @@ void init_huffman_luts(void)
 /* One codeword of book (1..12): the decoded tuple. */
 static inline uint32_t huff_decode(BitReader *bs, int book)
 {
-    HuffEntry e = huff_lut[book - 1][bits_show_fast(bs, HUFF_LUT_BITS)];
+    /* Reuse the same lookahead when a long code needs the second table. */
+    uint32_t lookahead = bits_show_fast(bs, HUFF_MAX_LEN);
+    HuffEntry e = huff_lut[book - 1][lookahead >> (HUFF_MAX_LEN - HUFF_LUT_BITS)];
     if (e & 15) {
         bits_skip(bs, e & 15);
         return e >> 4;
@@ -354,7 +356,7 @@ static inline uint32_t huff_decode(BitReader *bs, int book)
     int t = e >> 4;
     if (t < 0 || t >= HUFF_SUBTREES) return 0;
     int depth = huff_subtree[t].depth;
-    uint32_t rest = bits_show(bs, HUFF_LUT_BITS + depth) & ((1U << depth) - 1);
+    uint32_t rest = (lookahead >> (HUFF_MAX_LEN - HUFF_LUT_BITS - depth)) & ((1U << depth) - 1);
     e = huff_sub[huff_subtree[t].start + rest];
     uint32_t skip = e & 15;
     if (skip == 0 && depth > 0) return 0;
@@ -375,10 +377,23 @@ static inline void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, 
         *v = v_val - 1; *w = w_val - 1; *x = x_val - 1; *y = y_val - 1;
     } else {
         /* unsigned 4-tuple: a sign bit follows for each non-zero value */
-        if (v_val) if (bits_get_1(bs)) v_val = -v_val;
-        if (w_val) if (bits_get_1(bs)) w_val = -w_val;
-        if (x_val) if (bits_get_1(bs)) x_val = -x_val;
-        if (y_val) if (bits_get_1(bs)) y_val = -y_val;
+        uint32_t count = (v_val != 0) + (w_val != 0) + (x_val != 0) + (y_val != 0);
+        uint32_t signs = count ? bits_get_fast(bs, count) : 0;
+        uint32_t remaining = count;
+        int sign;
+        /* Zero stays zero under either sign, avoiding per-value branches. */
+        remaining -= v_val != 0;
+        sign = (int)((signs >> remaining) & 1U);
+        v_val = (v_val ^ -sign) + sign;
+        remaining -= w_val != 0;
+        sign = (int)((signs >> remaining) & 1U);
+        w_val = (w_val ^ -sign) + sign;
+        remaining -= x_val != 0;
+        sign = (int)((signs >> remaining) & 1U);
+        x_val = (x_val ^ -sign) + sign;
+        remaining -= y_val != 0;
+        sign = (int)((signs >> remaining) & 1U);
+        y_val = (y_val ^ -sign) + sign;
         *v = v_val; *w = w_val; *x = x_val; *y = y_val;
     }
 }
