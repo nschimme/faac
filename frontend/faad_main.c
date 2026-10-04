@@ -21,6 +21,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <io.h>
+#include <fcntl.h>
 #endif
 
 #ifdef HAVE_GETOPT_H
@@ -399,6 +401,10 @@ int main(int argc, char **argv)
     long file_len = 0;
 
     if (strcmp(infile, "-") == 0) {
+#ifdef _WIN32
+        /* Text-mode translation changes AAC bytes and treats Ctrl-Z as EOF. */
+        _setmode(_fileno(stdin), _O_BINARY);
+#endif
         fin = stdin;
         if (!outfile && !write_stdout && !info_only && !adts_outfile) {
             write_stdout = true;
@@ -533,6 +539,10 @@ int main(int argc, char **argv)
     uint16_t header_channels = 2; /* the count the header was first written with; its size depends on it */
     if (!info_only) {
         if (write_stdout) {
+#ifdef _WIN32
+            /* PCM samples can contain newline bytes; preserve them verbatim. */
+            _setmode(_fileno(stdout), _O_BINARY);
+#endif
             fout = stdout;
             quiet = true;
             header_pending = !raw_format;
