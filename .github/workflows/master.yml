@@ -6,7 +6,7 @@ on:
     tags-ignore: ['*']
     paths-ignore: ['**.md']
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "add-faad-decoder" ]
     paths-ignore: ['**.md']
 
 jobs:
@@ -118,6 +118,9 @@ jobs:
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
+
+      - name: Test
+        run: meson test -C build --print-errorlogs
 
       - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v7
