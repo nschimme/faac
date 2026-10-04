@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <assert.h>
 
 #include "sbr.h"
 #include "sbr_tables.h"
@@ -301,6 +300,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
     unsigned int channel;
     Resampler *rs = sCtx->resampler;
     float *fullPtrs[MAX_CHANNELS];
+    float spectralCarrier[2 * FRAME_LEN];
 
     /* SbrEncode quantizes into the new head; SbrWrite (via SbrContextGetBits)
      * emits the oldest slot, which is the payload for this frame's core audio. */
@@ -334,11 +334,36 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
          * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
          * would inflate its levels, and the QMF-overlap save below reads the last
          * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
+#if FAAC_ENCODER_PS
+        if (sCtx->sbrInfo->is_he_v2) {
+            PsSpectralDownmix(&sCtx->psCarrier, fullPtrs[0], fullPtrs[1], spectralCarrier, 2 * FRAME_LEN);
+            float original[2 * FRAME_LEN];
+            memcpy(original, fullPtrs[0], sizeof(original));
+            PsDownmix(original, fullPtrs[1], 2 * FRAME_LEN);
+            double l = 0, r = 0, cross = 0;
+            for (int i = 0; i < 2 * FRAME_LEN; i++) {
+                l += (double)fullPtrs[0][i] * fullPtrs[0][i];
+                r += (double)fullPtrs[1][i] * fullPtrs[1][i];
+                cross += (double)fullPtrs[0][i] * fullPtrs[1][i];
+            }
+            sCtx->psCarrier.smoothL = 0.9 * sCtx->psCarrier.smoothL + l;
+            sCtx->psCarrier.smoothR = 0.9 * sCtx->psCarrier.smoothR + r;
+            sCtx->psCarrier.smoothCross = 0.9 * sCtx->psCarrier.smoothCross + cross;
+            l = sCtx->psCarrier.smoothL;
+            r = sCtx->psCarrier.smoothR;
+            cross = sCtx->psCarrier.smoothCross;
+            double rho = cross / (sqrt(l * r) + 1e-20);
+            float blend = (float)fmax(0, fmin(1, (0.99 - rho) / 0.005));
+            for (int i = 0; i < 2 * FRAME_LEN; i++)
+                spectralCarrier[i] = blend * spectralCarrier[i] + (1-blend) * original[i];
+        }
+#endif
         SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
         SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
         /* Dual-rate decimation: produces the halved-rate core signal. */
 #if FAAC_ENCODER_PS
-        if (sCtx->sbrInfo->is_he_v2) PsDownmix(rs->fullRate[0], rs->fullRate[1], 2 * FRAME_LEN);
+        if (sCtx->sbrInfo->is_he_v2)
+            memcpy(rs->fullRate[0], spectralCarrier, sizeof(spectralCarrier));
 #endif
         Resample(rs, 2 * FRAME_LEN);
     }
@@ -526,4 +551,3 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
  * Replays the write sequence into a counting sink during rate control to
  * ensure accurate bit budget allocation. */
-

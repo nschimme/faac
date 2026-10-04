@@ -110,7 +110,7 @@ pkgconfig.generate(
 )
 
 if encoder_ps
-    test_ps = executable('test_ps', ['test_ps.c', 'ps.c', 'bitstream.c', '../common/ps_tables.c'],
+    test_ps = executable('test_ps', ['test_ps.c', 'ps.c', 'bitstream.c', '../common/ps_tables.c', '../common/fft.c'],
         include_directories: ['..', '../include', common_inc],
         c_args: c_args + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG'], dependencies: [libm])
     test('faac_ps_test', test_ps)

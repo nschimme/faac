@@ -51,11 +51,19 @@ typedef struct SbrFrameData {
     int enable_icc;
     int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
     int enable_phase;
+    int ps_num_env;
+    struct {
+        int iid[PS_BANDS], icc[PS_BANDS];
+        int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
+    } ps_extra[1];
 #endif
 } SbrFrameData;
 
 struct SBRInfo {
     int is_he_v2;
+#if FAAC_ENCODER_PS
+    PsHybrid psHybrid;
+#endif
     int sbrPresent;
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
     int numChannels;
@@ -109,6 +117,9 @@ struct SBRContext {
        the payload the current access unit emits. */
     SbrFrameData frameFIFO[SBR_FRAME_FIFO];
     int          frameHead;
+#if FAAC_ENCODER_PS
+    PsCarrier psCarrier;
+#endif
 };
 
 /* The envelope band table this frame codes over. The quantizer and the writer

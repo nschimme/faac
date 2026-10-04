@@ -56,8 +56,6 @@ static const float ps_g1_q2[7]  = { 0.0f, 0.01899487526049f, 0.0f, -0.0729313916
 
 /* IID quantisation levels in dB (Tables 8.24 / 8.25) and ICC values (Table 8.26). */
 
-static const int8_t ps_iid_db_fine[31] = { -50, -45, -40, -35, -30, -25, -22, -19, -16, -13, -10, -8, -6, -4, -2, 0,
-                                           2, 4, 6, 8, 10, 13, 16, 19, 22, 25, 30, 35, 40, 45, 50 };
 
 
 /* Sub-band centre frequencies in QMF-band units, hybrid bands only. */

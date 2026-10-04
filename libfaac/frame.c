@@ -760,7 +760,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * sections; the frequency resolution they buy loses to the bits. */
     if (IsHEAAC(hEncoder->config.aacObjectType)
         && (hEncoder->config.bitRate
-            ? hEncoder->config.bitRate < HE_SHORT_ONLY_BITRATE
+            ? hEncoder->config.bitRate * (IsHEV2(hEncoder->config.aacObjectType) ? 2 : 1) < HE_SHORT_ONLY_BITRATE
             : hEncoder->config.quantqual < HE_SHORT_ONLY_QUANTQUAL))
         shortctl = SHORTCTL_NOLONG;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;

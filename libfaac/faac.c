@@ -23,7 +23,6 @@
  */
 
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <faac.h>
@@ -303,13 +302,14 @@ FAACAPI faac_status faac_encoder_close(faac_encoder **enc)
 /* LC: one frame of 50% MDCT overlap. HE-AAC: that same core delay at full
  * rate, plus the half-band downsampler's FIR group delay, plus the one sample
  * the input FIFO is primed with to make the count even. The SBR decoder's QMF
- * delay is excluded from priming; decoders add it themselves when trimming. */
+ * delay is excluded from priming; decoders add it themselves when trimming.
+ * PS adds one 256-sample hop of spectral-carrier overlap. */
 static uint32_t faacEncoderDelay(const faacEncStruct *h)
 {
     switch (h->config.aacObjectType) {
         case LOW:   return FRAME_LEN;
-        case HE_V1:
-        case HE_V2: return 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1;
+        case HE_V1: return 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1;
+        case HE_V2: return 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1 + 256;
     }
     assert(0 && "faacEncoderDelay: unhandled aacObjectType");
     return FRAME_LEN;

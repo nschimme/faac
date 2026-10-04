@@ -58,6 +58,7 @@ typedef struct SignalAnalysis {
 #if FAAC_ENCODER_PS
     float bandCrossE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
     float bandCrossIm[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+    float psE[2][4][64], psCross[4][64], psCrossIm[4][64];
 #endif
 } SignalAnalysis;
 

@@ -20,13 +20,13 @@
 #include "sbr_tables.h"
 #include "bitstream.h"
 #include "util.h"
+#include "fft.h"
 #define SBR_PS_BANDS PS_BANDS
-#define SBR_PS_IID_LEVELS 15
+#define PHASE_BANDS PS_PHASE_BANDS
+#define PS_MODE 1
 #define SBR_PS_ICC_LEVELS 8
 #define SBR_PS_ICC_MAX_INDEX 7
 #define SBR_EXT_ID_PS 2
-#define PS_HUFF_IID_NSYMS 29
-#define PS_HUFF_IID_OFFSET 14
 #define PS_HUFF_ICC_NSYMS 15
 #define PS_HUFF_ICC_OFFSET 7
 static int put_huff(BitStream *bs, bool write, const SBRHuffEntry *table, int nsyms, int offset, int delta)
@@ -37,10 +37,68 @@ static int put_huff(BitStream *bs, bool write, const SBRHuffEntry *table, int ns
 }
 
 
-static const unsigned char ps_band_qmf[SBR_PS_BANDS][2] = {
-    { 0,  1}, { 0,  1}, { 1,  2}, { 2,  3}, { 3,  5},
-    { 5,  7}, { 7,  9}, { 9, 14}, {14, 23}, {23, 64}
-};
+/* ISO/IEC 14496-3 8.6.4.3: the low three QMF bands need finer stereo
+ * resolution. Six slots of SBR analysis look-ahead centre the 13-tap bank. */
+void PsHybridAnalyze(PsHybrid *state, const float in[2][3][44][2],
+                     float energy[2][4][64], float cross[4][64],
+                     float crossImag[4][64], int slots)
+{
+    static const float g8[7] = { .00746082949812f, .02270420949825f, .04546865930473f,
+        .07266113929591f, .09885108575264f, .11793710567217f, .125f };
+    static const float g2[7] = { 0, .01899487526049f, 0, -.07293139167538f,
+        0, .30596630545168f, .5f };
+    static const unsigned char map[10] = {1,0,0,1,2,3,4,5,6,7};
+    if (!state->initialized) {
+        for (int q = 0; q < 8; q++)
+            for (int j = 0; j < 7; j++) {
+                double phase = -2.0 * 3.14159265358979323846 * (q + .5) * (j - 6) / 8;
+                state->coef[q][j][0] = (float)(g8[j] * cos(phase));
+                state->coef[q][j][1] = (float)(g8[j] * sin(phase));
+            }
+        state->initialized = 1;
+    }
+    for (int n = 0; n < slots; n += FAAC_SBR_DECIMATION) {
+        float out[2][10][2];
+        for (int ch = 0; ch < 2; ch++) {
+            float t[8][2];
+            for (int q = 0; q < 8; q++) {
+                float sr = state->coef[q][6][0] * in[ch][0][n+6][0];
+                float si = state->coef[q][6][0] * in[ch][0][n+6][1];
+                for (int j = 0; j < 6; j++) {
+                    float fr = state->coef[q][j][0], fi = state->coef[q][j][1];
+                    float ar = in[ch][0][n+j][0], ai = in[ch][0][n+j][1];
+                    float br = in[ch][0][n+12-j][0], bi = in[ch][0][n+12-j][1];
+                    sr += fr*(ar+br) - fi*(ai-bi);
+                    si += fr*(ai+bi) + fi*(ar-br);
+                }
+                t[q][0] = sr; t[q][1] = si;
+            }
+            for (int i = 0; i < 2; i++) {
+                out[ch][0][i] = t[6][i]; out[ch][1][i] = t[7][i];
+                out[ch][2][i] = t[0][i]; out[ch][3][i] = t[1][i];
+                out[ch][4][i] = t[2][i]+t[5][i]; out[ch][5][i] = t[3][i]+t[4][i];
+            }
+            for (int k = 1; k < 3; k++) {
+                int reverse = k == 1;
+                for (int i = 0; i < 2; i++) {
+                    float c = g2[6]*in[ch][k][n+6][i], sum = 0;
+                    for (int j = 1; j < 6; j += 2)
+                        sum += g2[j]*(in[ch][k][n+j][i]+in[ch][k][n+12-j][i]);
+                    out[ch][6+2*(k-1)+reverse][i] = c+sum;
+                    out[ch][6+2*(k-1)+!reverse][i] = c-sum;
+                }
+            }
+        }
+        int e = n*4/slots;
+        for (int k = 0; k < 10; k++) {
+            int b = map[k];
+            float lr=out[0][k][0], li=out[0][k][1], rr=out[1][k][0], ri=out[1][k][1];
+            energy[0][e][b] += lr*lr+li*li; energy[1][e][b] += rr*rr+ri*ri;
+            cross[e][b] += lr*rr+li*ri;
+            crossImag[e][b] += (k<2 ? -1 : 1)*(li*rr-lr*ri);
+        }
+    }
+}
 
 /* Phase indices wrap in eighths of a turn, as do their frequency deltas. */
 static int ps_phase(float real, float imag)
@@ -48,42 +106,33 @@ static int ps_phase(float real, float imag)
     return (int)lrintf(atan2f(imag, real) * (4.0f / 3.14159265358979323846f)) & 7;
 }
 
-/* Coarse IID/ICC and optional low-band IPD/OPD share the SBR payload delay. */
-void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
+/* Estimate stereo parameters in the decoder's hybrid-band layout. */
+static void ps_analyze_frame(const float energy[2][64], const float crossReal[64],
+                             const float crossImag[64], SbrFrameData *fd)
 {
-    int n_env = sa->numEnvelopes;
     float l = 0, r = 0, cross = 0;
-    for (int h = 0; h < n_env; h++)
-        for (int k = 0; k < 64; k++) {
-            l += sa->bandE[0][h][k]; r += sa->bandE[1][h][k];
-            cross += sa->bandCrossE[h][k];
-        }
+    for (int k = 0; k < PS_BANDS; k++) {
+        l += energy[0][k]; r += energy[1][k];
+        cross += crossReal[k];
+    }
     float rho = cross / (sqrtf(l * r) + SBR_ENERGY_FLOOR);
     float w = 0.5f + 0.5f * fmaxf(0, fminf(1, -rho));
     fd->enable_phase = 0;
 
     for (int b = 0; b < SBR_PS_BANDS; b++) {
-        float eL = 0.0f, eR = 0.0f, eLR = 0.0f, eLRi = 0.0f;
-
-        for (int h = 0; h < n_env; h++) {
-            for (int k = ps_band_qmf[b][0]; k < ps_band_qmf[b][1]; k++) {
-                eL  += sa->bandE[0][h][k];
-                eR  += sa->bandE[1][h][k];
-                eLR += sa->bandCrossE[h][k];
-                eLRi += sa->bandCrossIm[h][k];
-            }
-        }
+        float eL = energy[0][b], eR = energy[1][b];
+        float eLR = crossReal[b], eLRi = crossImag[b];
 
         /* IID: pick the level nearest in dB. 10*log10(eL/eR) == 10/log2(10) *
-         * log2(eL/eR), with the default normative IID levels. */
+         * log2(eL/eR), with the fine normative IID levels. */
         float iid_db = 3.01029996f * log2f((eL + SBR_ENERGY_FLOOR) / (eR + SBR_ENERGY_FLOOR));
         int lvl = 0;
-        while (lvl < SBR_PS_IID_LEVELS - 1 && iid_db >= 0.5f * (ps_iid_db_default[lvl] + ps_iid_db_default[lvl + 1]))
+        while (lvl < 30 && iid_db >= 0.5f * (ps_iid_db_fine[lvl] + ps_iid_db_fine[lvl + 1]))
             lvl++;
-        fd->iid[b] = lvl - (SBR_PS_IID_LEVELS / 2);
+        fd->iid[b] = lvl - 15;
 
         float icc = eLR / (sqrtf(eL * eR) + SBR_ENERGY_FLOOR);
-        if (b < PS_PHASE_BANDS) {
+        if (b < PHASE_BANDS) {
             float coherence = hypotf(eLR, eLRi) / (sqrtf(eL * eR) + SBR_ENERGY_FLOOR);
             fd->ipd[b] = ps_phase(eLR, eLRi);
             fd->opd[b] = ps_phase(w * eL + (1 - w) * eLR, (1 - w) * eLRi);
@@ -111,6 +160,7 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
 
     }
 
+
     /* Signal ICC only when some band is actually decorrelated. Index 0 is
      * ICC = 1.0 (fully coherent), for which the decoder's default is identical
      * and the payload bits would be wasted. */
@@ -122,8 +172,34 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
         }
     }
 
-    /* SBR supplies mean stereo energy; the PS matrix splits it into L/R. */
-    for (int h = 0; h < n_env; h++)
+}
+
+void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
+{
+    fd->ps_num_env = 2;
+    float energy[2][64], crossReal[64], crossImag[64];
+    SbrFrameData params = {0};
+    fd->enable_icc = fd->enable_phase = 0;
+    for (int e = 0; e < fd->ps_num_env; e++) {
+        memset(energy, 0, sizeof(energy));
+        memset(crossReal, 0, sizeof(crossReal));
+        memset(crossImag, 0, sizeof(crossImag));
+        for (int p = e * 4 / fd->ps_num_env; p < (e + 1) * 4 / fd->ps_num_env; p++)
+            for (int k = 0; k < PS_BANDS; k++) {
+                energy[0][k] += sa->psE[0][p][k];
+                energy[1][k] += sa->psE[1][p][k];
+                crossReal[k] += sa->psCross[p][k];
+                crossImag[k] += sa->psCrossIm[p][k];
+            }
+        ps_analyze_frame(energy, crossReal, crossImag, &params);
+        fd->enable_icc |= params.enable_icc;
+        fd->enable_phase |= params.enable_phase;
+        memcpy(e ? fd->ps_extra[e-1].iid : fd->iid, params.iid, sizeof(params.iid));
+        memcpy(e ? fd->ps_extra[e-1].icc : fd->icc, params.icc, sizeof(params.icc));
+        memcpy(e ? fd->ps_extra[e-1].ipd : fd->ipd, params.ipd, sizeof(params.ipd));
+        memcpy(e ? fd->ps_extra[e-1].opd : fd->opd, params.opd, sizeof(params.opd));
+    }
+    for (int h = 0; h < sa->numEnvelopes; h++)
         for (int k = sbr->kx; k < sbr->k2; k++)
             sa->bandE[0][h][k] = 0.5f * (sa->bandE[0][h][k] + sa->bandE[1][h][k]);
 }
@@ -145,17 +221,77 @@ void PsDownmix(float *left, const float *right, int n)
     for (int i = 0; i < n; i++) left[i] = gain * (w * left[i] + (1 - w) * right[i]);
 }
 
-static int write_ps_params(BitStream *bs, bool write, const int *cur,
-                           const SBRHuffEntry *table, int nsyms, int offset)
+void PsSpectralDownmix(PsCarrier *state, float *left, float *right, float *carrier, int n)
 {
-    int bits = 0;
-    int ref = 0;
+    float work[1024], lf[1024], rf[1024];
+    if (!state->initialized) {
+        for (int i = 0; i < 512; i++)
+            state->window[i] = 0.5f - 0.5f * cosf(2.0f * 3.14159265358979323846f * i / 512);
+        state->initialized = 1;
+    }
+    for (int offset = 0; offset < n; offset += 256) {
+        float *inputs[2] = {left + offset, right + offset};
+        float *spectra[2] = {lf, rf};
+        for (int ch = 0; ch < 2; ch++) {
+            for (int i = 0; i < 256; i++) {
+                work[i] = state->history[ch][i] * state->window[i];
+                work[i+256] = inputs[ch][i] * state->window[i+256];
+                float sample = inputs[ch][i];
+                inputs[ch][i] = state->history[ch][i];
+                state->history[ch][i] = sample;
+            }
+            memset(work + 512, 0, 512 * sizeof(float));
+            fft(work, spectra[ch], FFT_LOGM_LONG);
+        }
+        for (int k = 0; k < 512; k++) {
+            float real = 0.5f * (lf[k] + rf[k]);
+            float imag = 0.5f * (lf[k+512] + rf[k+512]);
+            float target = sqrtf(0.5f * (lf[k]*lf[k] + rf[k]*rf[k] + lf[k+512]*lf[k+512] + rf[k+512]*rf[k+512]));
+            float magnitude = hypotf(real, imag);
+            if (magnitude < 1e-5f * target) {
+                real = lf[k]; imag = lf[k+512];
+                magnitude = hypotf(real, imag);
+            }
+            float gain = magnitude > 1e-20f ? target / magnitude : 0;
+            work[k] = real * gain;
+            work[k+512] = -imag * gain;
+        }
+        fft(work, lf, FFT_LOGM_LONG);
+        for (int i = 0; i < 256; i++) {
+            float w0 = state->window[i], w1 = state->window[i+256];
+            carrier[offset+i] = (state->overlap[i] + lf[i] * (w0 / 512)) / (w0*w0 + w1*w1);
+            state->overlap[i] = lf[i+256] * (w1 / 512);
+        }
+    }
+}
 
-    for (int b = 0; b < SBR_PS_BANDS; b++) {
-        bits += put_huff(bs, write, table, nsyms, offset, cur[b] - ref);
+static int ps_param_bits(BitStream *bs, bool write, const int *cur,
+                         const int *prev, int bands, int wrap,
+                         const SBRHuffEntry *table, int nsyms, int offset)
+{
+    int bits = 0, ref = 0;
+    for (int b = 0; b < bands; b++) {
+        int delta = cur[b] - (prev ? prev[b] : ref);
+        if (wrap) delta &= 7;
+        bits += put_huff(bs, write, table, nsyms, offset, delta);
         ref = cur[b];
     }
     return bits;
+}
+
+/* Choose the cheaper representation without changing the stereo parameters.
+ * The first envelope is self-contained; later envelopes may reference it. */
+static int write_ps_params(BitStream *bs, bool write, const int *cur,
+                           const int *prev, int bands, int wrap,
+                           const SBRHuffEntry *df, const SBRHuffEntry *dt,
+                           int nsyms, int offset)
+{
+    int freq = ps_param_bits(NULL, false, cur, NULL, bands, wrap, df, nsyms, offset);
+    int time = prev ? ps_param_bits(NULL, false, cur, prev, bands, wrap, dt, nsyms, offset) : freq;
+    bool temporal = prev && time < freq;
+    if (write) PutBit(bs, temporal, 1);
+    return 1 + ps_param_bits(bs, write, cur, temporal ? prev : NULL,
+                             bands, wrap, temporal ? dt : df, nsyms, offset);
 }
 
 /* Nested PS extension size excludes its own size field. */
@@ -169,23 +305,28 @@ static int ps_write_phase(const SbrFrameData *fd, BitStream *bs, bool write)
         WB(0, 2); /* ps_extension_id = IPD/OPD */
         WB(fd->enable_phase, 1);
         if (fd->enable_phase) {
-            const int *params[2] = { fd->ipd, fd->opd };
-            const SBRHuffEntry *books[2] = { ps_huff_ipd_df, ps_huff_opd_df };
-            for (int p = 0; p < 2; p++) {
-                WB(0, 1); /* frequency delta */
-                int ref = 0;
-                for (int b = 0; b < PS_PHASE_BANDS; b++) {
-                    n += put_huff(bs, emit, books[p], 8, 0, (params[p][b] - ref) & 7);
-                    ref = params[p][b];
-                }
+            for (int e = 0; e < (fd->ps_num_env ? fd->ps_num_env : 1); e++) {
+                const int *params[2] = {
+                    e ? fd->ps_extra[e - 1].ipd : fd->ipd,
+                    e ? fd->ps_extra[e - 1].opd : fd->opd
+                };
+                const int *prev[2] = { e ? fd->ipd : NULL, e ? fd->opd : NULL };
+                const SBRHuffEntry *df[2] = { ps_huff_ipd_df, ps_huff_opd_df };
+                const SBRHuffEntry *dt[2] = { ps_huff_ipd_dt, ps_huff_opd_dt };
+                for (int p = 0; p < 2; p++)
+                    n += write_ps_params(bs, emit, params[p], prev[p], PHASE_BANDS,
+                                         1, df[p], dt[p], 8, 0);
             }
         }
         WB(0, 1); /* reserved */
         WB(0, (8 - (n & 7)) & 7);
 #undef WB
         if (pass == 0) {
-            bits = 4 + n;
-            if (write) PutBit(bs, n / 8, 4);
+            bits = (n / 8 >= 15 ? 12 : 4) + n;
+            if (write) {
+                PutBit(bs, n / 8 >= 15 ? 15 : n / 8, 4);
+                if (n / 8 >= 15) PutBit(bs, n / 8 - 15, 8);
+            }
         }
     }
     return bits;
@@ -205,25 +346,29 @@ int PsWrite(const SbrFrameData *fd, BitStream *bs, bool write)
         PS_WB(SBR_EXT_ID_PS, 2);        /* bs_extension_id */
         PS_WB(1, 1);                    /* enable_ps_header: modes follow */
         PS_WB(1, 1);                    /* enable_iid */
-        PS_WB(0, 3);                    /* iid_mode = 0 (10 bands, default res) */
+        PS_WB(PS_MODE + 3, 3);
         PS_WB(fd->enable_icc, 1);       /* enable_icc */
         if (fd->enable_icc)
-            PS_WB(0, 3);                /* icc_mode = 0 (10 bands) */
+            PS_WB(PS_MODE, 3);
         PS_WB(1, 1);                    /* enable_ext: explicit phase state */
         PS_WB(0, 1);                    /* bs_frame_class = 0 (fixed borders) */
-        /* num_env_tab[0][1] == 1: one envelope for the whole frame. Index 0
-         * would mean *zero* envelopes, i.e. "hold the previous frame's image". */
-        PS_WB(1, 2);                    /* bs_num_env_idx */
+        /* Index 0 would mean no envelope, i.e. hold the previous image. */
+        int n_env = fd->ps_num_env ? fd->ps_num_env : 1;
+        PS_WB(n_env == 2 ? 2 : 1, 2);
 
-        PS_WB(0, 1);                    /* bs_iid_dt = 0 (frequency delta) */
-        n += write_ps_params(emit ? bs : NULL, emit, fd->iid,
-                             ps_huff_iid_df, PS_HUFF_IID_NSYMS, PS_HUFF_IID_OFFSET);
-
-        if (fd->enable_icc) {
-            PS_WB(0, 1);                /* bs_icc_dt = 0 (frequency delta) */
-            n += write_ps_params(emit ? bs : NULL, emit, fd->icc,
-                                 ps_huff_icc_df, PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
-        }
+        for (int e = 0; e < n_env; e++)
+            n += write_ps_params(emit ? bs : NULL, emit,
+                                 e ? fd->ps_extra[e - 1].iid : fd->iid,
+                                 e ? fd->iid : NULL, SBR_PS_BANDS, 0,
+                                 ps_huff_iid_df_fine, ps_huff_iid_dt_fine,
+                                 PS_HUFF_IID_DF_FINE_NSYMS, PS_HUFF_IID_DF_FINE_OFFSET);
+        if (fd->enable_icc)
+            for (int e = 0; e < n_env; e++)
+                n += write_ps_params(emit ? bs : NULL, emit,
+                                     e ? fd->ps_extra[e - 1].icc : fd->icc,
+                                     e ? fd->icc : NULL, SBR_PS_BANDS, 0,
+                                     ps_huff_icc_df, ps_huff_icc_dt,
+                                     PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
 
         n += ps_write_phase(fd, bs, emit);
 
