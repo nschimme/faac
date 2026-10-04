@@ -145,8 +145,17 @@ static void fifo_truncate_tail(PCMFifo *f, uint32_t bytes_to_remove)
 }
 
 /* libfaad emits host-order samples; WAV wants little-endian. */
-static void pcm_to_little_endian(uint8_t *buf, uint32_t bytes, uint32_t sample_bytes)
+static void pcm_to_little_endian(uint8_t *buf, uint32_t bytes, uint32_t sample_bytes, bool int24_in_32)
 {
+    if (int24_in_32) {
+        /* WAV integer PCM is left-aligned, inverse to the FAAC WAV reader. */
+        for (uint32_t i = 0; i + 4 <= bytes; i += 4) {
+            uint32_t v;
+            memcpy(&v, buf + i, 4);
+            v <<= 8;
+            memcpy(buf + i, &v, 4);
+        }
+    }
 #if WORDS_BIGENDIAN
     for (uint32_t i = 0; i + sample_bytes <= bytes; i += sample_bytes) {
         uint8_t *p = buf + i;
@@ -250,7 +259,7 @@ static void print_usage(const char *prog)
     printf("  -o, --output <file>    Set output filename (default: infile.wav, or stdout for stdin input)\n");
     printf("  -w, --stdout           Write output PCM to stdout\n");
     printf("  -f, --format <type>    Output container format: wav (default), raw\n");
-    printf("  -b, --bits <depth>     Sample depth: 16 (default), 24, 32f (32-bit float)\n");
+    printf("  -b, --bits <depth>     Sample depth: 16 (default), 24, 32, 32f (32-bit float)\n");
     printf("  -a, --adts <file>      Extract raw ADTS stream from MP4 without decoding\n\n");
     printf("Processing Options:\n");
     printf("  -d, --downmix [mode]   Downmix audio (mono/1 or stereo/2, default: mono)\n");
@@ -345,8 +354,9 @@ int main(int argc, char **argv)
         case 'b':
             if (strcmp(optarg, "1") == 0 || strcmp(optarg, "16") == 0) { bit_depth = 16; is_float = false; }
             else if (strcmp(optarg, "2") == 0 || strcmp(optarg, "24") == 0) { bit_depth = 24; is_float = false; }
-            else if (strcmp(optarg, "3") == 0 || strcmp(optarg, "4") == 0 || strcmp(optarg, "32f") == 0 || strcmp(optarg, "32") == 0) { bit_depth = 32; is_float = true; }
-            else { fprintf(stderr, "Unknown bit depth '%s' (16, 24 or 32f)\n", optarg); return 1; }
+            else if (strcmp(optarg, "3") == 0 || strcmp(optarg, "32") == 0) { bit_depth = 32; is_float = false; }
+            else if (strcmp(optarg, "4") == 0 || strcmp(optarg, "32f") == 0) { bit_depth = 32; is_float = true; }
+            else { fprintf(stderr, "Unknown bit depth '%s' (16, 24, 32 or 32f)\n", optarg); return 1; }
             break;
         case 'a': adts_outfile = optarg; break;
         case 'd': {
@@ -522,7 +532,7 @@ int main(int argc, char **argv)
     faad_config cfg;
     faad_config_init(&cfg, sizeof(cfg));
     cfg.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
-    cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : bit_depth == 24 ? FAAD_OUTPUT_24BIT : FAAD_OUTPUT_16BIT;
+    cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : bit_depth == 32 ? FAAD_OUTPUT_32BIT : bit_depth == 24 ? FAAD_OUTPUT_24BIT : FAAD_OUTPUT_16BIT;
     cfg.downmix_mode = downmix;
 
     faad_decoder *dec = NULL;
@@ -644,7 +654,7 @@ int main(int argc, char **argv)
 
                 uint32_t dec_bytes_per_sample = is_float ? 4 : bit_depth / 8;
                 uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
-                pcm_to_little_endian(outbuf, bytes_written, dec_bytes_per_sample);
+                pcm_to_little_endian(outbuf, bytes_written, dec_bytes_per_sample, !raw_format && !is_float && bit_depth == 32);
                 uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
                 if (!gapless_scaled) {
                     uint32_t core_rate = (flags & FAAD_FRAME_SBR) && sinfo.frame_samples == 2048
@@ -734,7 +744,7 @@ int main(int argc, char **argv)
             obj_type = (flags & FAAD_FRAME_PS) ? FAAD_OBJ_HE_AAC_V2 : (flags & FAAD_FRAME_SBR) ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
             if (fout && bytes_written > 0) {
-                pcm_to_little_endian(outbuf, bytes_written, is_float ? 4 : bit_depth / 8);
+                pcm_to_little_endian(outbuf, bytes_written, is_float ? 4 : bit_depth / 8, !raw_format && !is_float && bit_depth == 32);
                 fifo_push(&fifo, outbuf, bytes_written);
 
                 uint8_t pop_buf[4096];

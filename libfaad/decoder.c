@@ -533,21 +533,12 @@ static inline int16_t pcm_to_s16(float v)
     return (int16_t)bits;
 }
 
-/* Full-scale 32-bit: the core's 16-bit scale times 2^16, clamped. The sample
- * is rounded at the float's own resolution, not at the 16-bit LSB. */
+/* Both integer 24-bit containers share scaling, rounding and clipping. */
 static inline int32_t pcm_to_s24(float v)
 {
     v *= 256.0f;
     v = v < 8388607.0f ? v : 8388607.0f;
     v = v > -8388608.0f ? v : -8388608.0f;
-    return (int32_t)lrintf(v);
-}
-
-static inline int32_t pcm_to_s32(float v)
-{
-    v *= 65536.0f;
-    v = v < 2147483520.0f ? v : 2147483520.0f; /* largest float below 2^31 */
-    v = v > -2147483648.0f ? v : -2147483648.0f;
     return (int32_t)lrintf(v);
 }
 
@@ -885,7 +876,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         int32_t * restrict out_int32 = (int32_t *)out_pcm;
         for (uint32_t i = 0; i < frame_samples; i++)
             for (uint32_t c = 0; c < num_chs; c++)
-                out_int32[i * num_chs + c] = pcm_to_s32(src[c][i]);
+                out_int32[i * num_chs + c] = pcm_to_s24(src[c][i]);
     } else {
         /* The core reconstructs at 16-bit full scale; float output is unity full scale. */
         const float norm = 1.0f / 32768.0f;
