@@ -59,7 +59,7 @@ Lesser General Public License for more details.
 | `encoder` | true | Build `libfaac` and the `faac` frontend |
 | `decoder` | true | Build `libfaad` and the `faad` frontend |
 | `frontend` | true | Build the command-line tools for the enabled components |
-| `encoder-ps` | false | Enable HE-AAC v2 Parametric Stereo encoding (stereo input) |
+| `encoder-ps` | true | Enable HE-AAC v2 Parametric Stereo encoding (stereo input) |
 | `decoder-sbr` | true | SBR (HE-AAC v1) support in `libfaad` |
 | `decoder-ps` | true | Parametric Stereo (HE-AAC v2) support in `libfaad` |
 | `max-channels` | 8 | Maximum number of channels (1-8) |
@@ -67,7 +67,8 @@ Lesser General Public License for more details.
 | `stats` | false | End-of-stream diagnostics on stderr, encoder and decoder (instrumentation only) |
 
 For an encoder-only build pass `-Ddecoder=false`; for a decoder-only build pass `-Dencoder=false`.
-Enable PS encoding with `-Dencoder-ps=true`; force it with
+PS encoding is enabled by default; disable it with `-Dencoder-ps=false`.
+Force HE v2 with
 `faac --object-type he-aac-v2 -b 12 input.wav -o output.m4a`.
 The bitrate is the total stereo bitrate in kb/s. With PS enabled, AUTO uses
 HE v2 through 12 kb/s at 32/44.1 kHz and 16 kb/s at 48 kHz

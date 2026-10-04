@@ -1,6 +1,7 @@
 # HE-AAC v2 quality and AUTO selection
 
-The encoder PS option is disabled by default. These measurements describe the
+The encoder PS option is enabled by default; disable it with
+`-Dencoder-ps=false`. These measurements describe the
 optional implementation; they do not establish a patent or licensing conclusion.
 
 The evaluation used the sibling faac-benchmark Zimtohrli MOS scorer and stereo
