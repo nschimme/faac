@@ -68,7 +68,6 @@ typedef struct faacEncStruct {
 
     /* Filterbank buffers */
     float *freqBuff[MAX_CHANNELS];
-    float *kbdTrial;                /* spare spectrum buffer, swapped with a freqBuff on a KBD win */
 
     /* Channel and Coder data for all channels */
     CoderInfo coderInfo[MAX_CHANNELS];

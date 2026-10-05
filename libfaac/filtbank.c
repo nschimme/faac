@@ -102,8 +102,6 @@ void FilterBankInit(faacEncStruct* hEncoder)
         if (!hEncoder->freqBuff[channel]) return;
     }
 
-    hEncoder->kbdTrial = (float*)AllocMemory(2*FRAME_LEN*sizeof(float));
-    if (!hEncoder->kbdTrial) return;
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
 }
 
@@ -115,7 +113,6 @@ void FilterBankEnd(faacEncStruct* hEncoder)
         if (hEncoder->freqBuff[channel]) FreeMemory(hEncoder->freqBuff[channel]);
     }
 
-    if (hEncoder->kbdTrial) FreeMemory(hEncoder->kbdTrial);
     if (hEncoder->gpsyInfo.sharedWorkBuffLong) FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffLong);
 }
 
@@ -162,8 +159,8 @@ static void WindowAndMdct(faacEncStruct* hEncoder, int block_type, int lshape, i
                           float * restrict p_out_mdct)
 {
     float * restrict overlapBuf = hEncoder->gpsyInfo.sharedWorkBuffLong;
-    const float *winL = lshape ? kbd_window_long : sin_window_long;
-    const float *winR = rshape ? kbd_window_long : sin_window_long;
+    const float *winL = lshape == KBD_WINDOW ? kbd_window_long : sin_window_long;
+    const float *winR = rshape == KBD_WINDOW ? kbd_window_long : sin_window_long;
     int k;
 
     /* Assemble the 2048-sample overlap window from the previous and
@@ -225,7 +222,7 @@ static void WindowAndMdct(faacEncStruct* hEncoder, int block_type, int lshape, i
  * KBD costs resolution next to strong content, so it is used only where it
  * measurably removes energy. Energy above this split frequency stands in for
  * "everything but the bass". */
-#define KBD_SPLIT_HZ        1000.0
+#define KBD_SPLIT_HZ        1000
 /* Bass has to dominate by this much (dB, below/above the split in the sine
  * spectrum) before KBD is even tried; ordinary music stays well under it, so
  * the second transform runs only on frames that can benefit. */
@@ -248,18 +245,18 @@ static float BandEnergy(const float *x, int from, int to, float limit)
 
 /* Every channel's spectrum ends up in freqBuff. The sine transform is made
  * first and kept unless a KBD one wins, so a frame that never qualifies costs
- * one transform; a winning trial is swapped in rather than copied. Both
- * channels of an element share one shape (common_window carries a single
- * ics_info). Shapes follow the decoder's rule: the left long half uses the
- * previous frame's shape, the right half this frame's. A frame that ends in
- * a short slope stays sine, since short windows are always sine here.
+ * one transform. Both channels of an element share one shape (common_window
+ * carries a single ics_info). Shapes follow the decoder's rule: the left long
+ * half uses the previous frame's shape, the right half this frame's. A frame
+ * that ends in a short slope stays sine, since short windows are always sine
+ * here.
  *
- * Passes: 0 sine, 1 KBD trial where bass dominates, 2 KBD for the channels of
- * a KBD element that did not try or win. Windowing sits in one place so it is
- * not duplicated per pass. */
+ * Passes: 0 sine, 1 KBD over the whole element once a channel qualifies, 2
+ * sine again if no channel won. Windowing sits in one place so it is not
+ * duplicated per pass. */
 void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
 {
-    const int kc = (int)(KBD_SPLIT_HZ * 2.0 * BLOCK_LEN_LONG / (double)hEncoder->sampleRate + 0.5);
+    const int kc = (int)((2 * KBD_SPLIT_HZ * BLOCK_LEN_LONG + hEncoder->sampleRate / 2) / hEncoder->sampleRate);
     int e;
 
     for (e = 0; e < hEncoder->numElements; e++) {
@@ -268,10 +265,14 @@ void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
         int bt = coderInfo[el->channels[0]].block_type;
         int eligible = (el->type != ID_LFE) &&
                        (bt == ONLY_LONG_WINDOW || bt == SHORT_LONG_WINDOW);
-        int shape = 0, ready = 0, cand = 0, pass, c;
+        int shape = SINE_WINDOW, cand = 0, pass, c;
         float hi[2] = { 0.0f, 0.0f };
 
         for (pass = 0; pass < 3; pass++) {
+            int rshape = pass == 1 ? KBD_WINDOW : SINE_WINDOW;
+
+            if (pass && (!cand || (pass == 2 && shape == KBD_WINDOW)))
+                break;
             for (c = 0; c < nch; c++) {
                 int ch = el->channels[c];
                 CoderInfo *ci = &coderInfo[ch];
@@ -279,16 +280,10 @@ void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
 
                 if (pass == 0) {
                     ci->prev_window_shape = ci->window_shape;
-                    ci->window_shape = 0;
-                } else if (pass == 1) {
-                    if (!(cand >> c & 1))
-                        continue;
-                    dst = hEncoder->kbdTrial;
-                } else if (!shape || (ready >> c & 1)) {
-                    continue;
+                    ci->window_shape = SINE_WINDOW;
                 }
 
-                WindowAndMdct(hEncoder, ci->block_type, ci->prev_window_shape, pass > 0,
+                WindowAndMdct(hEncoder, ci->block_type, ci->prev_window_shape, rshape,
                               hEncoder->audioFIFO[ch][FIFO_PAST],
                               hEncoder->audioFIFO[ch][FIFO_CURR], dst);
 
@@ -300,11 +295,9 @@ void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
                     hi[c] = BandEnergy(dst, kc, BLOCK_LEN_LONG, lo / KBD_MIN_LOW);
                     if (lo > 0.0f && hi[c] <= lo / KBD_MIN_LOW)
                         cand |= 1 << c;
-                } else if (hi[c] >= KBD_MIN_GAIN * BandEnergy(dst, kc, BLOCK_LEN_LONG, INFINITY)) {
-                    hEncoder->kbdTrial = hEncoder->freqBuff[ch];
-                    hEncoder->freqBuff[ch] = dst;
-                    ready |= 1 << c;
-                    shape = 1;
+                } else if ((cand >> c & 1) &&
+                           hi[c] >= KBD_MIN_GAIN * BandEnergy(dst, kc, BLOCK_LEN_LONG, INFINITY)) {
+                    shape = KBD_WINDOW;
                 }
             }
         }
