@@ -118,6 +118,11 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 #define SF_SMOOTH              0.6f     // long-block pull of each scalefactor towards its neighbours
 #define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
 #define QUIET_BAND_FRAC        0.0003f  // ~-35 dB below the frame mean: masked by the frame as a whole
+/* Bands this far under the whole frame are the loud part's window leakage.
+ * Over a clean source, noise substituted for them is audible as a haze that
+ * zeroing the band does not leave. VBR zeroes coded bands there too, because
+ * its high qualities lift their targets past the substitution threshold. */
+#define PNS_FLOOR_FRAC         1e-8f    // -80 dB below the group's total energy
 
 typedef struct
 {
@@ -297,7 +302,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
-                                   const BandEnergy * __restrict be, int gnum, int pnslevel,
+                                   const BandEnergy * __restrict be, int gnum, int pnslevel, int zero_coded,
                                    int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
 {
     int gsize = ci->groups.len[gnum];
@@ -307,10 +312,15 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int n = ci->sfbn;
     /* per band: sf bias minus the wanted scalefactor, or INT_MIN if not coded */
     int want[MAX_SCFAC_BANDS];
+    float pns_floor = 0.0f;
     int sb;
 
     if (n > MAX_SCFAC_BANDS - base)
         n = MAX_SCFAC_BANDS - base;
+
+    for (sb = 0; sb < n; sb++)
+        pns_floor += be[sb].sum;
+    pns_floor *= PNS_FLOOR_FRAC;
 
     /* Pass 1: settle zero and PNS bands, and the scalefactor each coded band wants. */
     for (sb = 0; sb < n; sb++)
@@ -329,7 +339,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         float avg_per_window = be[sb].sum / (float)gsize;
         float rms = sqrtf(avg_per_window / width);
 
-        if (rms < SILENCE_RMS || target[sb] == 0.0f)
+        if (rms < SILENCE_RMS || target[sb] == 0.0f || (zero_coded && be[sb].sum < pns_floor))
         {
             ci->book[band] = HCB_ZERO;
             continue;
@@ -347,6 +357,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * zero instead, leaving the band mono. */
         if (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band]))
         {
+            if (be[sb].sum < pns_floor)
+            {
+                ci->book[band] = HCB_ZERO;
+                continue;
+            }
             if (ci->msEl[band] > 0.0f)
             {
                 CoderInfo *r = ci->partner;
@@ -490,7 +505,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, aacquantCfg->zero_coded_floor, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);

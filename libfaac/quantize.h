@@ -25,6 +25,7 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    int zero_coded_floor;   /* also zero coded bands under the floor, not just noise-substituted ones */
     float treble_slope;
 } AACQuantCfg;
 

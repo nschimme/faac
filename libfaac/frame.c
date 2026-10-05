@@ -348,6 +348,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.zero_coded_floor = (config->rateControl == RATE_VBR);
     /* A rate that already codes the treble well spends its margin better on
      * the low bands, where the de-emphasis leaves the most audible error. */
     hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)
