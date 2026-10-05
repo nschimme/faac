@@ -179,8 +179,10 @@ jobs:
           summary-output: summary_${{ matrix.rate_control }}.md
           cases-output: cases_${{ matrix.rate_control }}.md
 
+      # A failed gate fails the step above, but the consolidated report still has
+      # to be built from these files, so upload whatever was produced.
       - name: Upload Results
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.arch }}-${{ matrix.rate_control }}
@@ -294,6 +296,7 @@ jobs:
           strict-decode: true
 
       - name: Upload Full Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-report-full
