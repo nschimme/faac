@@ -269,7 +269,10 @@ void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
         AACElement *el = &hEncoder->elements[e];
         int nch = (el->type == ID_CPE) ? 2 : 1;
         int bt = coderInfo[el->channels[0]].block_type;
-        int eligible = (el->type != ID_LFE) &&
+        /* LC only: the HE core's long frames are not worth the second transform
+         * (it has its own, bass-aware block switching) and KBD there costs more
+         * above 10 kHz than it saves below. */
+        int eligible = (el->type != ID_LFE) && hEncoder->config.aacObjectType != HE_V1 &&
                        (bt == ONLY_LONG_WINDOW || bt == SHORT_LONG_WINDOW);
         int kbdFirst = eligible && coderInfo[el->channels[0]].window_shape == KBD_WINDOW;
         int step = kbdFirst ? KBD_KEEP_STEP : 1;
