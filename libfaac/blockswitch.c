@@ -43,6 +43,9 @@ typedef struct
      when the sub-block's energy is produced, so the per-frame decision is a
      mask test rather than a re-walk of the timeline. */
   unsigned attack;
+  /* Bit i set: sub-block i is bass dominated (see PSY_BASS_DOM_HE). Kept only
+     while the frame is being judged for the short-only exemption. */
+  unsigned bass;
   psyfloat level; /* running level of the sub-block energies so far */
 }
 psydata_t;
@@ -78,14 +81,22 @@ psydata_t;
 
 /* Attack anywhere in the frame or its immediate temporal context, sub-blocks
    [cur-2, cur+9], wants a short block. */
-static void PsyCheckShort(PsyInfo * psyInfo)
+static void PsyCheckShort(PsyInfo * psyInfo, bool shortOnly)
 {
   enum {PREVS = 2, NEXTS = 2};
   const psydata_t *psydata = (const psydata_t *)psyInfo->data;
   unsigned span = (1u << (PREVS + SUBBLOCKS_PER_FRAME + NEXTS - 1)) - 1;
 
-  psyInfo->block_type = (psydata->attack >> (ENG_WIN_CUR - PREVS + 1)) & span
-                        ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
+  /* Short-only frames are the rule, not the question: only a frame whose whole
+     context is bass dominated and free of attacks (a bass attack still wants
+     short windows), where a long window costs fewer bits than the short ones it
+     would replace, is let off. */
+  if (shortOnly)
+    psyInfo->block_type = (((psydata->bass & ~psydata->attack) >> (ENG_WIN_CUR - PREVS + 1)) & span) == span
+                          ? ONLY_LONG_WINDOW : ONLY_SHORT_WINDOW;
+  else
+    psyInfo->block_type = (psydata->attack >> (ENG_WIN_CUR - PREVS + 1)) & span
+                          ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
 }
 
 void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
@@ -168,14 +179,14 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 
 /* Do psychoacoustical analysis */
 void PsyCalculate(PsyInfo * psyInfo, const bool * isLfeChannel,
-			 unsigned int numChannels)
+			 unsigned int numChannels, bool shortOnly)
 {
   for (unsigned int channel = 0; channel < numChannels; channel++)
   {
       if (isLfeChannel[channel])
           psyInfo[channel].block_type = ONLY_LONG_WINDOW;
       else
-          PsyCheckShort(&psyInfo[channel]);
+          PsyCheckShort(&psyInfo[channel], shortOnly);
   }
 }
 
@@ -193,6 +204,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   memmove(psydata->eng, psydata->eng + SUBBLOCKS_PER_FRAME,
           2 * SUBBLOCKS_PER_FRAME * sizeof(psyfloat));
   psydata->attack >>= SUBBLOCKS_PER_FRAME;
+  psydata->bass >>= SUBBLOCKS_PER_FRAME;
 
   /* Assembly of the newest 2048-sample window for energy analysis */
   memcpy(transBuff, p_lookahead1, BLOCK_LEN_LONG * sizeof(float));
@@ -214,15 +226,19 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
     psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
     trip = e > gpsyInfo->levelRatio * level || e * gpsyInfo->dropRatio < level;
     /* The LC band is wider than the HE one, so a sub-block that does not trip the
-     * HE test cannot trip it: the total energy is only needed once it has. */
-    if (trip && gpsyInfo->bassDom > 0.0f)
+     * HE test cannot trip it: the total energy is only needed once it has, or
+     * when the short-only exemption wants every sub-block's verdict. */
+    if (gpsyInfo->bassDom > 0.0f && (trip || gpsyInfo->needBass))
     {
       float total = 0.0f;
 
       for (l = 0; l < n; l++)
         total += seg[l] * seg[l];
       if (e < gpsyInfo->bassDom * total)
-        trip = e > PSY_LEVEL_RATIO_LC * level || e * PSY_DROP_RATIO_LC < level;
+      {
+        psydata->bass |= 1u << (ENG_WIN_NEXT + win);
+        trip = trip && (e > PSY_LEVEL_RATIO_LC * level || e * PSY_DROP_RATIO_LC < level);
+      }
     }
     if (trip)
       psydata->attack |= 1u << (ENG_WIN_NEXT + win);
