@@ -21,7 +21,6 @@
 #include "filtbank.h"
 #include "frame.h"
 #include "fft.h"
-#include "atomic.h"
 #include "util.h"
 
 /* Sine windows, ISO/IEC 13818-7 4.6.4, and the MDCT pre/post-twiddles
@@ -63,16 +62,6 @@ static void kbd_window(float *w, int n, double alpha)
     }
 }
 
-/* Built the first time a frame wants it rather than at open: most streams never
- * do, and the build is a thousand Bessel series. One-shot like the other
- * shared tables, so handles on different threads can race to it safely. */
-static faac_once_t kbd_table_once = FAAC_ONCE_INIT;
-
-static void KbdTableInit(void)
-{
-    kbd_window(kbd_window_long, BLOCK_LEN_LONG, 4.0);
-}
-
 void FilterBankTablesInit(void)
 {
     static const unsigned char logms[2] = { FFT_LOGM_SHORT, FFT_LOGM_LONG };
@@ -80,6 +69,8 @@ void FilterBankTablesInit(void)
 
     /* One loop body for both sizes: two constant-argument calls would be
      * cloned and unrolled separately under LTO. */
+    kbd_window(kbd_window_long, BLOCK_LEN_LONG, 4.0);
+
     for (t = 0; t < 2; t++)
     {
         int logm = logms[t];
@@ -282,8 +273,6 @@ void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
 
             if (pass && (!cand || (pass == 2 && shape == KBD_WINDOW)))
                 break;
-            if (pass == 1)
-                faac_once_run(&kbd_table_once, KbdTableInit);
             for (c = 0; c < nch; c++) {
                 int ch = el->channels[c];
                 CoderInfo *ci = &coderInfo[ch];
