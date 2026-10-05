@@ -28,10 +28,39 @@
  * per process in double, rounded to float when stored, and shared read-only
  * by every handle. A twiddle table breaks the serial cos/sin recurrence that
  * kept the MDCT twiddle loops from vectorizing, and is more accurate. */
+static float kbd_window_long[BLOCK_LEN_LONG];
 static float sin_window_long[BLOCK_LEN_LONG];
 static float sin_window_short[BLOCK_LEN_SHORT];
 static fftfloat mdct_cos[FFT_TBL_LEN];
 static fftfloat mdct_sin[FFT_TBL_LEN];
+
+/* Kaiser-Bessel-derived window, rising half, ISO/IEC 14496-3 4.6.11.3.2: the
+ * cumulative Kaiser kernel, normalised, under a square root. The kernel is
+ * evaluated once into w[] and accumulated in place; its last point (v = 1) is
+ * I0(0) = 1. */
+static void kbd_window(float *w, int n, double alpha)
+{
+    double sum = 1.0, run = 0.0;
+    int i;
+
+    for (i = 0; i < n; i++) {
+        double v = (2.0 * i / n) - 1.0;
+        double q = M_PI_DOUBLE * alpha * M_PI_DOUBLE * alpha * (1.0 - v * v) / 4.0;
+        double term = 1.0, k = 1.0;
+        int m;
+
+        for (m = 1; term > k * 1e-17; m++) {
+            term *= q / ((double)m * m);
+            k += term;
+        }
+        w[i] = (float)k;
+        sum += k;
+    }
+    for (i = 0; i < n; i++) {
+        run += w[i];
+        w[i] = (float)sqrt(run / sum);
+    }
+}
 
 void FilterBankTablesInit(void)
 {
@@ -40,6 +69,8 @@ void FilterBankTablesInit(void)
 
     /* One loop body for both sizes: two constant-argument calls would be
      * cloned and unrolled separately under LTO. */
+    kbd_window(kbd_window_long, BLOCK_LEN_LONG, 4.0);
+
     for (t = 0; t < 2; t++)
     {
         int logm = logms[t];
@@ -71,6 +102,8 @@ void FilterBankInit(faacEncStruct* hEncoder)
         if (!hEncoder->freqBuff[channel]) return;
     }
 
+    hEncoder->kbdTrial = (float*)AllocMemory(2*FRAME_LEN*sizeof(float));
+    if (!hEncoder->kbdTrial) return;
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
 }
 
@@ -82,6 +115,7 @@ void FilterBankEnd(faacEncStruct* hEncoder)
         if (hEncoder->freqBuff[channel]) FreeMemory(hEncoder->freqBuff[channel]);
     }
 
+    if (hEncoder->kbdTrial) FreeMemory(hEncoder->kbdTrial);
     if (hEncoder->gpsyInfo.sharedWorkBuffLong) FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffLong);
 }
 
@@ -120,14 +154,16 @@ static inline void ZeroFlat(float * restrict dst, int len)
     SetMemory(dst, 0, len * sizeof(float));
 }
 
-void FilterBank(faacEncStruct* hEncoder,
-                CoderInfo *coderInfo,
-                float * restrict p_prev_data,
-                float * restrict p_in_data,
-                float * restrict p_out_mdct)
+/* Left long half is windowed with the previous frame's shape and the right
+ * with this frame's, as the decoder does; short slopes are always sine. */
+static void WindowAndMdct(faacEncStruct* hEncoder, int block_type, int lshape, int rshape,
+                          const float * restrict p_prev_data,
+                          const float * restrict p_in_data,
+                          float * restrict p_out_mdct)
 {
     float * restrict overlapBuf = hEncoder->gpsyInfo.sharedWorkBuffLong;
-    int block_type = coderInfo->block_type;
+    const float *winL = lshape ? kbd_window_long : sin_window_long;
+    const float *winR = rshape ? kbd_window_long : sin_window_long;
     int k;
 
     /* Assemble the 2048-sample overlap window from the previous and
@@ -137,14 +173,14 @@ void FilterBank(faacEncStruct* hEncoder,
 
     switch (block_type) {
     case ONLY_LONG_WINDOW: {
-        ApplyWindowDirect(p_out_mdct, overlapBuf, sin_window_long, BLOCK_LEN_LONG);
-        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, sin_window_long, BLOCK_LEN_LONG);
+        ApplyWindowDirect(p_out_mdct, overlapBuf, winL, BLOCK_LEN_LONG);
+        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, winR, BLOCK_LEN_LONG);
         MDCT(p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
         break;
     }
 
     case LONG_SHORT_WINDOW: {
-        ApplyWindowDirect(p_out_mdct, overlapBuf, sin_window_long, BLOCK_LEN_LONG);
+        ApplyWindowDirect(p_out_mdct, overlapBuf, winL, BLOCK_LEN_LONG);
         CopyFlat(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, NFLAT_LS);
         ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS, overlapBuf+BLOCK_LEN_LONG+NFLAT_LS, sin_window_short, BLOCK_LEN_SHORT);
         ZeroFlat(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
@@ -156,7 +192,7 @@ void FilterBank(faacEncStruct* hEncoder,
         ZeroFlat(p_out_mdct, NFLAT_LS);
         ApplyWindowDirect(p_out_mdct+NFLAT_LS, overlapBuf+NFLAT_LS, sin_window_short, BLOCK_LEN_SHORT);
         CopyFlat(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT, overlapBuf+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
-        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, sin_window_long, BLOCK_LEN_LONG);
+        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, winR, BLOCK_LEN_LONG);
         MDCT(p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
         break;
     }
@@ -176,6 +212,105 @@ void FilterBank(faacEncStruct* hEncoder,
         }
         break;
     }
+    }
+}
+
+/* A sine window's sidelobes leak a loud, stationary low-frequency tone across
+ * the whole spectrum as a smooth skirt. A clean source's own floor is far
+ * below it, so the skirt is the loudest thing above the bass, and it can only
+ * be coded or discarded: discarded, it comes back as broadband haze (and a
+ * smooth skirt is what TNS fits at absurd gain). A KBD window falls off far
+ * faster, so on such a frame the skirt is simply not there.
+ *
+ * KBD costs resolution next to strong content, so it is used only where it
+ * measurably removes energy. Energy above this split frequency stands in for
+ * "everything but the bass". */
+#define KBD_SPLIT_HZ        1000.0
+/* Bass has to dominate by this much (dB, below/above the split in the sine
+ * spectrum) before KBD is even tried; ordinary music stays well under it, so
+ * the second transform runs only on frames that can benefit. */
+#define KBD_MIN_LOW         2.0e5f   /* 53 dB */
+/* KBD must remove at least this much energy above the split to be chosen. */
+#define KBD_MIN_GAIN        1.4f     /* 1.5 dB */
+
+/* Energy of lines [from, to), abandoned as soon as it exceeds limit: the
+ * dominance test below fails within a few lines on ordinary music, so the
+ * full sum is only paid for the frames that can use KBD. */
+static float BandEnergy(const float *x, int from, int to, float limit)
+{
+    float e = 0.0f;
+    int i;
+
+    for (i = from; i < to && e <= limit; i++)
+        e += x[i] * x[i];
+    return e;
+}
+
+/* Every channel's spectrum ends up in freqBuff. The sine transform is made
+ * first and kept unless a KBD one wins, so a frame that never qualifies costs
+ * one transform; a winning trial is swapped in rather than copied. Both
+ * channels of an element share one shape (common_window carries a single
+ * ics_info). Shapes follow the decoder's rule: the left long half uses the
+ * previous frame's shape, the right half this frame's. A frame that ends in
+ * a short slope stays sine, since short windows are always sine here.
+ *
+ * Passes: 0 sine, 1 KBD trial where bass dominates, 2 KBD for the channels of
+ * a KBD element that did not try or win. Windowing sits in one place so it is
+ * not duplicated per pass. */
+void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
+{
+    const int kc = (int)(KBD_SPLIT_HZ * 2.0 * BLOCK_LEN_LONG / (double)hEncoder->sampleRate + 0.5);
+    int e;
+
+    for (e = 0; e < hEncoder->numElements; e++) {
+        AACElement *el = &hEncoder->elements[e];
+        int nch = (el->type == ID_CPE) ? 2 : 1;
+        int bt = coderInfo[el->channels[0]].block_type;
+        int eligible = (el->type != ID_LFE) &&
+                       (bt == ONLY_LONG_WINDOW || bt == SHORT_LONG_WINDOW);
+        int shape = 0, ready = 0, cand = 0, pass, c;
+        float hi[2] = { 0.0f, 0.0f };
+
+        for (pass = 0; pass < 3; pass++) {
+            for (c = 0; c < nch; c++) {
+                int ch = el->channels[c];
+                CoderInfo *ci = &coderInfo[ch];
+                float *dst = hEncoder->freqBuff[ch];
+
+                if (pass == 0) {
+                    ci->prev_window_shape = ci->window_shape;
+                    ci->window_shape = 0;
+                } else if (pass == 1) {
+                    if (!(cand >> c & 1))
+                        continue;
+                    dst = hEncoder->kbdTrial;
+                } else if (!shape || (ready >> c & 1)) {
+                    continue;
+                }
+
+                WindowAndMdct(hEncoder, ci->block_type, ci->prev_window_shape, pass > 0,
+                              hEncoder->audioFIFO[ch][FIFO_PAST],
+                              hEncoder->audioFIFO[ch][FIFO_CURR], dst);
+
+                if (!eligible || pass == 2)
+                    continue;
+                if (pass == 0) {
+                    float lo = BandEnergy(dst, 0, kc, INFINITY);
+
+                    hi[c] = BandEnergy(dst, kc, BLOCK_LEN_LONG, lo / KBD_MIN_LOW);
+                    if (lo > 0.0f && hi[c] <= lo / KBD_MIN_LOW)
+                        cand |= 1 << c;
+                } else if (hi[c] >= KBD_MIN_GAIN * BandEnergy(dst, kc, BLOCK_LEN_LONG, INFINITY)) {
+                    hEncoder->kbdTrial = hEncoder->freqBuff[ch];
+                    hEncoder->freqBuff[ch] = dst;
+                    ready |= 1 << c;
+                    shape = 1;
+                }
+            }
+        }
+
+        for (c = 0; c < nch; c++)
+            coderInfo[el->channels[c]].window_shape = shape;
     }
 }
 

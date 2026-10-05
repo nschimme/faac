@@ -76,6 +76,10 @@ typedef struct {
 typedef struct CoderInfo {
     int block_type;
     int desired_block_type;
+    /* ics_info window_shape of this frame (right overlap half) and of the one
+     * before it (left half): 0 = sine, 1 = KBD. */
+    int window_shape;
+    int prev_window_shape;
 
     int global_gain;
     int sf[MAX_SCFAC_BANDS];
