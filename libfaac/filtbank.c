@@ -229,31 +229,37 @@ static void WindowAndMdct(faacEncStruct* hEncoder, int block_type, int lshape, i
 #define KBD_MIN_LOW         2.0e5f   /* 53 dB */
 /* KBD must remove at least this much energy above the split to be chosen. */
 #define KBD_MIN_GAIN        1.4f     /* 1.5 dB */
+/* The test that keeps KBD on after a KBD frame has a wide margin (the band
+ * above the split is far under the limit), so it looks at every fourth line. */
+#define KBD_KEEP_STEP       4
 
-/* Energy of lines [from, to), abandoned as soon as it exceeds limit: the
+/* Energy of lines [from, to), abandoned once it reaches limit (strict, so a limit of zero
+ * ends the scan of a silent frame at once): the
  * dominance test below fails within a few lines on ordinary music, so the
  * full sum is only paid for the frames that can use KBD. */
-static float BandEnergy(const float *x, int from, int to, float limit)
+static float BandEnergy(const float *x, int from, int to, int step, float limit)
 {
     float e = 0.0f;
     int i;
 
-    for (i = from; i < to && e <= limit; i++)
+    for (i = from; i < to && e < limit; i += step)
         e += x[i] * x[i];
     return e;
 }
 
-/* Every channel's spectrum ends up in freqBuff. The sine transform is made
- * first and kept unless a KBD one wins, so a frame that never qualifies costs
- * one transform. Both channels of an element share one shape (common_window
- * carries a single ics_info). Shapes follow the decoder's rule: the left long
- * half uses the previous frame's shape, the right half this frame's. A frame
- * that ends in a short slope stays sine, since short windows are always sine
- * here.
+/* Every channel's spectrum ends up in freqBuff. Both channels of an element
+ * share one shape (common_window carries a single ics_info). Shapes follow the
+ * decoder's rule: the left long half uses the previous frame's shape, the
+ * right half this frame's. A frame that ends in a short slope stays sine,
+ * since short windows are always sine here.
  *
- * Passes: 0 sine, 1 KBD over the whole element once a channel qualifies, 2
- * sine again if no channel won. Windowing sits in one place so it is not
- * duplicated per pass. */
+ * A bass passage lasts many frames, so the previous frame's shape says which
+ * transform to make first. After a sine frame: sine, then KBD if bass
+ * dominates it, kept when it removes enough, else sine again. After a KBD
+ * frame: KBD, kept while bass still dominates it (a steady tone then costs one
+ * transform per frame, not two), else sine. A frame that never qualifies costs
+ * one transform. Windowing sits in one place so it is not duplicated per
+ * pass. */
 void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
 {
     const int kc = (int)((2 * KBD_SPLIT_HZ * BLOCK_LEN_LONG + hEncoder->sampleRate / 2) / hEncoder->sampleRate);
@@ -265,13 +271,15 @@ void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
         int bt = coderInfo[el->channels[0]].block_type;
         int eligible = (el->type != ID_LFE) &&
                        (bt == ONLY_LONG_WINDOW || bt == SHORT_LONG_WINDOW);
+        int kbdFirst = eligible && coderInfo[el->channels[0]].window_shape == KBD_WINDOW;
+        int step = kbdFirst ? KBD_KEEP_STEP : 1;
         int shape = SINE_WINDOW, cand = 0, pass, c;
         float hi[2] = { 0.0f, 0.0f };
 
         for (pass = 0; pass < 3; pass++) {
-            int rshape = pass == 1 ? KBD_WINDOW : SINE_WINDOW;
+            int rshape = pass == (kbdFirst ? 0 : 1) ? KBD_WINDOW : SINE_WINDOW;
 
-            if (pass && (!cand || (pass == 2 && shape == KBD_WINDOW)))
+            if (pass && !(kbdFirst ? !cand && pass == 1 : cand && (pass == 1 || shape != KBD_WINDOW)))
                 break;
             for (c = 0; c < nch; c++) {
                 int ch = el->channels[c];
@@ -290,13 +298,16 @@ void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
                 if (!eligible || pass == 2)
                     continue;
                 if (pass == 0) {
-                    float lo = BandEnergy(dst, 0, kc, INFINITY);
+                    float lo = BandEnergy(dst, 0, kc, 1, INFINITY);
 
-                    hi[c] = BandEnergy(dst, kc, BLOCK_LEN_LONG, lo / KBD_MIN_LOW);
-                    if (lo > 0.0f && hi[c] <= lo / KBD_MIN_LOW)
+                    hi[c] = step * BandEnergy(dst, kc, BLOCK_LEN_LONG, step, lo / KBD_MIN_LOW / step);
+                    if (lo > 0.0f && hi[c] < lo / KBD_MIN_LOW) {
                         cand |= 1 << c;
-                } else if ((cand >> c & 1) &&
-                           hi[c] >= KBD_MIN_GAIN * BandEnergy(dst, kc, BLOCK_LEN_LONG, INFINITY)) {
+                        if (kbdFirst)
+                            shape = KBD_WINDOW;
+                    }
+                } else if (!kbdFirst && (cand >> c & 1) &&
+                           hi[c] >= KBD_MIN_GAIN * BandEnergy(dst, kc, BLOCK_LEN_LONG, 1, INFINITY)) {
                     shape = KBD_WINDOW;
                 }
             }
