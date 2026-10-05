@@ -65,6 +65,17 @@ psydata_t;
 #define PSY_LEVEL_SMOOTH_LC (0.3f)
 #define PSY_LEVEL_RATIO_HE  (1.5f)
 
+/* A stationary bass note whose period is longer than the 256-sample analysis
+ * window makes the first-difference energy swing with phase by more than the
+ * tight HE band, which then trips nearly every sub-block and turns a steady
+ * passage into short windows (their sidelobes then leak the bass over the whole
+ * spectrum, and they cost bits). That happens when the energy sits below one
+ * cycle per window, where the first difference is a fraction of the total of
+ * about (2 sin(pi/256))^2 = -32 dB at any sample rate. In such a sub-block the
+ * LC band decides instead; a real attack is broadband at its start, so it is not
+ * bass dominated and keeps the tight HE test. */
+#define PSY_BASS_DOM_HE     (6.3e-4f)
+
 /* Attack anywhere in the frame or its immediate temporal context, sub-blocks
    [cur-2, cur+9], wants a short block. */
 static void PsyCheckShort(PsyInfo * psyInfo)
@@ -87,6 +98,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
   gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_LEVEL_RATIO_LC;
   gpsyInfo->dropRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_DROP_RATIO_LC;
   gpsyInfo->levelSmooth = heCore ? 1.0f : PSY_LEVEL_SMOOTH_LC;
+  gpsyInfo->bassDom = heCore ? PSY_BASS_DOM_HE : 0.0f;
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -192,7 +204,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
      * difference carries across the sub-block boundary instead of resetting. */
     float *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
     float e = 0.0f;
-    int l, n = 2 * psyInfo->sizeS;
+    int l, n = 2 * psyInfo->sizeS, trip;
 
     for (l = 0; l < n; l++)
     {
@@ -200,7 +212,19 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
       e += d * d;
     }
     psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
-    if (e > gpsyInfo->levelRatio * level || e * gpsyInfo->dropRatio < level)
+    trip = e > gpsyInfo->levelRatio * level || e * gpsyInfo->dropRatio < level;
+    /* The LC band is wider than the HE one, so a sub-block that does not trip the
+     * HE test cannot trip it: the total energy is only needed once it has. */
+    if (trip && gpsyInfo->bassDom > 0.0f)
+    {
+      float total = 0.0f;
+
+      for (l = 0; l < n; l++)
+        total += seg[l] * seg[l];
+      if (e < gpsyInfo->bassDom * total)
+        trip = e > PSY_LEVEL_RATIO_LC * level || e * PSY_DROP_RATIO_LC < level;
+    }
+    if (trip)
       psydata->attack |= 1u << (ENG_WIN_NEXT + win);
     level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
   }

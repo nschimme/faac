@@ -39,6 +39,7 @@ typedef struct {
 	float levelRatio;
 	float dropRatio;
 	float levelSmooth;
+	float bassDom;   /* first-difference / total energy below which a sub-block is judged by the LC band; 0 = never (LC) */
 
 	/* shared work buffers */
 	float *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, mdct) */
