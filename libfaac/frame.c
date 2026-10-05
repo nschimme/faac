@@ -724,12 +724,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
     unsigned int useTns = hEncoder->config.useTns;
     unsigned int shortctl = hEncoder->config.shortctl;
     /* A starved HE core can't afford a long window's scalefactors and
-     * sections; the frequency resolution they buy loses to the bits. */
-    if (hEncoder->config.aacObjectType == HE_V1
+     * sections; the frequency resolution they buy loses to the bits. Only a
+     * bass-dominated frame, where the short windows leak and cost more than a
+     * long one, is let off (PsyCheckShort). */
+    bool shortOnly = hEncoder->config.aacObjectType == HE_V1
         && (hEncoder->config.bitRate
             ? hEncoder->config.bitRate < HE_SHORT_ONLY_BITRATE
-            : hEncoder->config.quantqual < HE_SHORT_ONLY_QUANTQUAL))
-        shortctl = SHORTCTL_NOLONG;
+            : hEncoder->config.quantqual < HE_SHORT_ONLY_QUANTQUAL);
+    hEncoder->gpsyInfo.needBass = shortOnly;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
     /* The input FIFO decouples the caller's chunk size from the encoder frame
@@ -839,7 +841,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         return 0;
 
     /* Psychoacoustics */
-    PsyCalculate(hEncoder->psyInfo, hEncoder->isLfeChannel, numChannels);
+    PsyCalculate(hEncoder->psyInfo, hEncoder->isLfeChannel, numChannels, shortOnly);
 
     BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
