@@ -726,7 +726,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* A starved HE core can't afford a long window's scalefactors and
      * sections; the frequency resolution they buy loses to the bits. Only a
      * bass-dominated frame, where the short windows leak and cost more than a
-     * long one, is let off (PsyCheckShort). */
+     * long one, is let off (PsyBufferUpdate). */
     bool shortOnly = hEncoder->config.aacObjectType == HE_V1
         && (hEncoder->config.bitRate
             ? hEncoder->config.bitRate < HE_SHORT_ONLY_BITRATE
@@ -841,7 +841,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         return 0;
 
     /* Psychoacoustics */
-    PsyCalculate(hEncoder->psyInfo, hEncoder->isLfeChannel, numChannels, shortOnly);
+    PsyCalculate(hEncoder->psyInfo, hEncoder->isLfeChannel, numChannels);
 
     BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
@@ -861,9 +861,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         else if ((hEncoder->frameNum <= (LOOKAHEAD_DEPTH + 1)) || (shortctl == SHORTCTL_NOLONG))
             coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
     }
-
-    /* AAC Filterbank, MDCT with overlap and add */
-    FilterBankFrame(hEncoder, coderInfo);
 
     for (channel = 0; channel < numChannels; channel++) {
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
@@ -886,6 +883,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
         int r = (el->type == ID_CPE) ? el->channels[1] : -1;
         CoderInfo *a = NULL, *b = NULL;
         float *xa = NULL, *xb = NULL;
+
+        /* AAC Filterbank, MDCT with overlap and add */
+        FilterBankElement(hEncoder, coderInfo, el);
 
         if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
         {

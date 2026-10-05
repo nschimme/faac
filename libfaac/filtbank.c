@@ -27,25 +27,27 @@
  * cos/sin(freq*(i+1/8)) for both block sizes, short slice first. Built once
  * per process in double, rounded to float when stored, and shared read-only
  * by every handle. A twiddle table breaks the serial cos/sin recurrence that
- * kept the MDCT twiddle loops from vectorizing, and is more accurate. */
-static float kbd_window_long[BLOCK_LEN_LONG];
-static float sin_window_long[BLOCK_LEN_LONG];
+ * kept the MDCT twiddle loops from vectorizing, and is more accurate. The two
+ * long slopes sit in one array indexed by ics_info window_shape, so picking a
+ * window is address arithmetic, not a pointer select the compiler would unswitch
+ * the windowing loops on. */
+static float window_long[2][BLOCK_LEN_LONG];
 static float sin_window_short[BLOCK_LEN_SHORT];
 static fftfloat mdct_cos[FFT_TBL_LEN];
 static fftfloat mdct_sin[FFT_TBL_LEN];
 
-/* Kaiser-Bessel-derived window, rising half, ISO/IEC 14496-3 4.6.11.3.2: the
- * cumulative Kaiser kernel, normalised, under a square root. The kernel is
- * evaluated once into w[] and accumulated in place; its last point (v = 1) is
- * I0(0) = 1. */
-static void kbd_window(float *w, int n, double alpha)
+/* Kaiser-Bessel-derived window, alpha 4, rising half, ISO/IEC 14496-3
+ * 4.6.11.3.2: the cumulative Kaiser kernel, normalised, under a square root.
+ * The kernel is evaluated once into w[] and accumulated in place; its last
+ * point (v = 1) is I0(0) = 1. With v = 2i/n - 1, 1 - v^2 = 4i(n - i)/n^2. */
+static void kbd_window(float *w, int n)
 {
+    const double c = 16.0 * M_PI_DOUBLE * M_PI_DOUBLE / ((double)n * n);
     double sum = 1.0, run = 0.0;
     int i;
 
     for (i = 0; i < n; i++) {
-        double v = (2.0 * i / n) - 1.0;
-        double q = M_PI_DOUBLE * alpha * M_PI_DOUBLE * alpha * (1.0 - v * v) / 4.0;
+        double q = c * (i * (n - i));
         double term = 1.0, k = 1.0;
         int m;
 
@@ -58,7 +60,9 @@ static void kbd_window(float *w, int n, double alpha)
     }
     for (i = 0; i < n; i++) {
         run += w[i];
-        w[i] = (float)sqrt(run / sum);
+        /* fabs: the quotient is never negative, which tells the compiler sqrt
+         * needs no errno path (a libm call inside the loop, with its spills). */
+        w[i] = (float)sqrt(fabs(run / sum));
     }
 }
 
@@ -69,14 +73,14 @@ void FilterBankTablesInit(void)
 
     /* One loop body for both sizes: two constant-argument calls would be
      * cloned and unrolled separately under LTO. */
-    kbd_window(kbd_window_long, BLOCK_LEN_LONG, 4.0);
+    kbd_window(window_long[KBD_WINDOW], BLOCK_LEN_LONG);
 
     for (t = 0; t < 2; t++)
     {
         int logm = logms[t];
         int size = 1 << logm;
         int halfLen = 2 * size;
-        float *win = (logm == FFT_LOGM_SHORT) ? sin_window_short : sin_window_long;
+        float *win = (logm == FFT_LOGM_SHORT) ? sin_window_short : window_long[SINE_WINDOW];
         int off = FFT_TBL_OFFSET(logm);
         double freq = 2.0 * M_PI_DOUBLE / (double)(4 * size);
         int i;
@@ -159,8 +163,8 @@ static void WindowAndMdct(faacEncStruct* hEncoder, int block_type, int lshape, i
                           float * restrict p_out_mdct)
 {
     float * restrict overlapBuf = hEncoder->gpsyInfo.sharedWorkBuffLong;
-    const float *winL = lshape == KBD_WINDOW ? kbd_window_long : sin_window_long;
-    const float *winR = rshape == KBD_WINDOW ? kbd_window_long : sin_window_long;
+    const float *winL = window_long[lshape];
+    const float *winR = window_long[rshape];
     int k;
 
     /* Assemble the 2048-sample overlap window from the previous and
@@ -260,65 +264,54 @@ static float BandEnergy(const float *x, int from, int to, int step, float limit)
  * transform per frame, not two), else sine. A frame that never qualifies costs
  * one transform. Windowing sits in one place so it is not duplicated per
  * pass. */
-void FilterBankFrame(faacEncStruct* hEncoder, CoderInfo *coderInfo)
+void FilterBankElement(faacEncStruct* hEncoder, CoderInfo *coderInfo, const AACElement *el)
 {
     const int kc = (int)((2 * KBD_SPLIT_HZ * BLOCK_LEN_LONG + hEncoder->sampleRate / 2) / hEncoder->sampleRate);
-    int e;
+    int nch = (el->type == ID_CPE) ? 2 : 1;
+    int bt = coderInfo[el->channels[0]].block_type;
+    int prev = coderInfo[el->channels[0]].window_shape;
+    /* LC only: the HE core's long frames are not worth the second transform
+     * (it has its own, bass-aware block switching) and KBD there costs more
+     * above 10 kHz than it saves below. */
+    int eligible = (el->type != ID_LFE) && hEncoder->config.aacObjectType != HE_V1 &&
+                   (bt == ONLY_LONG_WINDOW || bt == SHORT_LONG_WINDOW);
+    int kbdFirst = eligible && prev == KBD_WINDOW;
+    int step = kbdFirst ? KBD_KEEP_STEP : 1;
+    int rshape = kbdFirst ? KBD_WINDOW : SINE_WINDOW;
+    int cand = 0, pass, c;
+    float hi[2] = { 0.0f, 0.0f };
 
-    for (e = 0; e < hEncoder->numElements; e++) {
-        AACElement *el = &hEncoder->elements[e];
-        int nch = (el->type == ID_CPE) ? 2 : 1;
-        int bt = coderInfo[el->channels[0]].block_type;
-        /* LC only: the HE core's long frames are not worth the second transform
-         * (it has its own, bass-aware block switching) and KBD there costs more
-         * above 10 kHz than it saves below. */
-        int eligible = (el->type != ID_LFE) && hEncoder->config.aacObjectType != HE_V1 &&
-                       (bt == ONLY_LONG_WINDOW || bt == SHORT_LONG_WINDOW);
-        int kbdFirst = eligible && coderInfo[el->channels[0]].window_shape == KBD_WINDOW;
-        int step = kbdFirst ? KBD_KEEP_STEP : 1;
-        int shape = SINE_WINDOW, cand = 0, pass, c;
-        float hi[2] = { 0.0f, 0.0f };
+    for (pass = 0;; pass++) {
+        for (c = 0; c < nch; c++) {
+            int ch = el->channels[c];
+            float *dst = hEncoder->freqBuff[ch];
 
-        for (pass = 0; pass < 3; pass++) {
-            int rshape = pass == (kbdFirst ? 0 : 1) ? KBD_WINDOW : SINE_WINDOW;
+            WindowAndMdct(hEncoder, coderInfo[ch].block_type, prev, rshape,
+                          hEncoder->audioFIFO[ch][FIFO_PAST],
+                          hEncoder->audioFIFO[ch][FIFO_CURR], dst);
 
-            if (pass && !(kbdFirst ? !cand && pass == 1 : cand && (pass == 1 || shape != KBD_WINDOW)))
-                break;
-            for (c = 0; c < nch; c++) {
-                int ch = el->channels[c];
-                CoderInfo *ci = &coderInfo[ch];
-                float *dst = hEncoder->freqBuff[ch];
+            if (!eligible)
+                continue;
+            if (pass == 0) {
+                float lim = BandEnergy(dst, 0, kc, 1, INFINITY) / KBD_MIN_LOW / step;
 
-                if (pass == 0) {
-                    ci->prev_window_shape = ci->window_shape;
-                    ci->window_shape = SINE_WINDOW;
-                }
-
-                WindowAndMdct(hEncoder, ci->block_type, ci->prev_window_shape, rshape,
-                              hEncoder->audioFIFO[ch][FIFO_PAST],
-                              hEncoder->audioFIFO[ch][FIFO_CURR], dst);
-
-                if (!eligible || pass == 2)
-                    continue;
-                if (pass == 0) {
-                    float lo = BandEnergy(dst, 0, kc, 1, INFINITY);
-
-                    hi[c] = step * BandEnergy(dst, kc, BLOCK_LEN_LONG, step, lo / KBD_MIN_LOW / step);
-                    if (lo > 0.0f && hi[c] < lo / KBD_MIN_LOW) {
-                        cand |= 1 << c;
-                        if (kbdFirst)
-                            shape = KBD_WINDOW;
-                    }
-                } else if (!kbdFirst && (cand >> c & 1) &&
-                           hi[c] >= KBD_MIN_GAIN * BandEnergy(dst, kc, BLOCK_LEN_LONG, 1, INFINITY)) {
-                    shape = KBD_WINDOW;
-                }
+                hi[c] = BandEnergy(dst, kc, BLOCK_LEN_LONG, step, lim);
+                if (hi[c] < lim)
+                    cand |= 1 << c;
+            } else if (pass == 1 && !kbdFirst &&
+                       !(hi[c] >= KBD_MIN_GAIN * BandEnergy(dst, kc, BLOCK_LEN_LONG, 1, INFINITY))) {
+                cand &= ~(1 << c);
             }
         }
-
-        for (c = 0; c < nch; c++)
-            coderInfo[el->channels[c]].window_shape = shape;
+        /* Redo with the shape the tests ended on, unless that is the one
+         * just made. */
+        if ((cand ? KBD_WINDOW : SINE_WINDOW) == rshape)
+            break;
+        rshape ^= KBD_WINDOW;
     }
+
+    for (c = 0; c < nch; c++)
+        coderInfo[el->channels[c]].window_shape = rshape;
 }
 
 void MDCT( float * restrict data, int N, float * restrict work )

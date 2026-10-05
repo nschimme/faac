@@ -39,7 +39,7 @@ typedef struct {
 	float levelRatio;
 	float dropRatio;
 	float levelSmooth;
-	int needBass;    /* judge every sub-block's bass dominance, for the short-only exemption */
+	int needBass;    /* short-only regime: a sub-block that is not bass dominated counts as an attack */
 	float bassDom;   /* first-difference / total energy below which a sub-block is judged by the LC band; 0 = never (LC) */
 
 	/* shared work buffers */
@@ -51,7 +51,7 @@ void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 void PsyEnd (PsyInfo *psyInfo, unsigned int numChannels);
 float PsyGetAttack (PsyInfo *psyInfo);
 void PsyCalculate (PsyInfo *psyInfo, const bool *isLfeChannel,
-		unsigned int numChannels, bool shortOnly);
+		unsigned int numChannels);
 void PsyBufferUpdate (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 		float * restrict p_lookahead1,
 		float * restrict p_lookahead2);
