@@ -210,39 +210,51 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   memcpy(transBuff, p_lookahead1, BLOCK_LEN_LONG * sizeof(float));
   memcpy(transBuff + BLOCK_LEN_LONG, p_lookahead2, BLOCK_LEN_LONG * sizeof(float));
 
-  for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
+  /* Sub-block windows are 256 samples at a 128 hop, so each 128-sample half
+   * serves two windows: sum every half once. seg[-1] is in bounds (the first
+   * block starts >= 448 samples in), so the first difference carries across the
+   * block boundary instead of resetting. */
   {
-    /* seg[-1] is in bounds (seg starts >= 448 samples in), so the first
-     * difference carries across the sub-block boundary instead of resetting. */
-    float *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
-    float e = 0.0f;
-    int l, n = 2 * psyInfo->sizeS, trip;
+    const float *base = transBuff + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
+    float diff[SUBBLOCKS_PER_FRAME + 1], tot[SUBBLOCKS_PER_FRAME + 1];
+    int l;
 
-    for (l = 0; l < n; l++)
+    for (win = 0; win <= SUBBLOCKS_PER_FRAME; win++)
     {
-      float d = seg[l] - seg[l - 1];
-      e += d * d;
+      const float *seg = base + win * BLOCK_LEN_SHORT;
+      float e = 0.0f, t = 0.0f;
+
+      for (l = 0; l < BLOCK_LEN_SHORT; l++)
+      {
+        float d = seg[l] - seg[l - 1];
+        e += d * d;
+      }
+      /* Only the HE core judges bass dominance. */
+      if (gpsyInfo->bassDom > 0.0f)
+        for (l = 0; l < BLOCK_LEN_SHORT; l++)
+          t += seg[l] * seg[l];
+      diff[win] = e;
+      tot[win] = t;
     }
-    psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
-    trip = e > gpsyInfo->levelRatio * level || e * gpsyInfo->dropRatio < level;
-    /* The LC band is wider than the HE one, so a sub-block that does not trip the
-     * HE test cannot trip it: the total energy is only needed once it has, or
-     * when the short-only exemption wants every sub-block's verdict. */
-    if (gpsyInfo->bassDom > 0.0f && (trip || gpsyInfo->needBass))
-    {
-      float total = 0.0f;
 
-      for (l = 0; l < n; l++)
-        total += seg[l] * seg[l];
-      if (e < gpsyInfo->bassDom * total)
+    for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
+    {
+      float e = diff[win] + diff[win + 1];
+      int trip;
+
+      psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
+      trip = e > gpsyInfo->levelRatio * level || e * gpsyInfo->dropRatio < level;
+      /* The LC band is wider than the HE one, so a sub-block that does not trip
+       * the HE test cannot trip it. */
+      if (gpsyInfo->bassDom > 0.0f && e < gpsyInfo->bassDom * (tot[win] + tot[win + 1]))
       {
         psydata->bass |= 1u << (ENG_WIN_NEXT + win);
         trip = trip && (e > PSY_LEVEL_RATIO_LC * level || e * PSY_DROP_RATIO_LC < level);
       }
+      if (trip)
+        psydata->attack |= 1u << (ENG_WIN_NEXT + win);
+      level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
     }
-    if (trip)
-      psydata->attack |= 1u << (ENG_WIN_NEXT + win);
-    level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
   }
   psydata->level = level;
 }
