@@ -16,22 +16,13 @@ git_version_h = vcs_tag(
 
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
 
-libfrontend = static_library('frontend',
-    ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c',
-     'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'help.h', 'output.h', 'encode_engine.h', 'endian.h', git_version_h],
-    include_directories: ['..', '../include'],
-    link_with: frontend_link_libs,
-    c_args: c_args_list,
-    dependencies: [libiconv]
-)
-
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
 
 if get_option('encoder')
     frontend_link_libs = [libfaac]
     libfrontend = static_library('frontend',
-        ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c',
-         'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
+        ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c',
+         'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', 'help.h', '../common/endian.h', git_version_h],
         include_directories: ['..', '../include', '../common'],
         link_with: frontend_link_libs,
         c_args: c_args_list,
