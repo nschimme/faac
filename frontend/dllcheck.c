@@ -13,7 +13,7 @@
  * Lesser General Public License for more details.
  */
 
-#include "win32_utils.h"
+#include "dllcheck.h"
 
 #ifdef _WIN32
 #include <windows.h>

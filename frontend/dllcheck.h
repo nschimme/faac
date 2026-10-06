@@ -13,8 +13,8 @@
  * Lesser General Public License for more details.
  */
 
-#ifndef WIN32_UTILS_H
-#define WIN32_UTILS_H
+#ifndef DLLCHECK_H
+#define DLLCHECK_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -34,4 +34,4 @@ bool win32_check_dll_available(const char *dll_name, char *err_msg, size_t err_m
 }
 #endif
 
-#endif /* WIN32_UTILS_H */
+#endif /* DLLCHECK_H */

@@ -34,8 +34,8 @@ if target_machine.system() == 'windows'
 endif
 
 libfrontend = static_library('frontend',
-    ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'win32_utils.c',
-     'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', 'endian.h', 'win32_utils.h', git_version_h],
+    ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'dllcheck.c',
+     'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', 'endian.h', 'dllcheck.h', git_version_h],
     include_directories: ['..', '../include'],
     link_with: libfaac,
     c_args: (has_iconv ? ['-DHAVE_ICONV'] : []) + win_c_args,
