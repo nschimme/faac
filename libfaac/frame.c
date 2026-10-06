@@ -352,6 +352,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * the low bands, where the de-emphasis leaves the most audible error. */
     hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)
         ? TREBLE_SLOPE_RICH : 1.0f;
+    /* Where bits are scarce, one coarser step on a band often frees more than
+     * the added error costs; at rich rates it rarely does, for the extra pass. */
+    hEncoder->aacquantCfg.coarsen = hEncoder->config.bitRate < TREBLE_SLOPE_BITRATE;
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
