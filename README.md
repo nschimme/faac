@@ -15,11 +15,6 @@ FAAC is an open-source, dependency-free AAC encoder, and FAAD its decoder counte
 - `faac` and `faad` read and write MP4/M4A with gapless playback info, as well as raw ADTS
 - WAV and raw PCM input, with stdin/stdout piping
 
-### Command-line tools:
-
-- `faac` writes MP4/M4A with gapless playback info, as well as raw ADTS
-- WAV and raw PCM input, with stdin/stdout piping
-
 ## Copyrights
 
 FAAC and FAAD are free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
@@ -76,8 +71,6 @@ Decoder PS support requires SBR and at least two compiled channels;
 
 Library integration: [FAAD decoder API](docs/libfaad.md) and
 [FAAC encoder API](docs/libfaac.md).
-
-Library integration: [FAAC encoder API](docs/libfaac.md).
 
 ## Usage
 
