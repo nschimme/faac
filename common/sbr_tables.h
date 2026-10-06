@@ -1,6 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * Copyright (C) 2026 Nils Schimmelmann
+ * SBR tables reproduced from ISO/IEC 14496-3 (non-copyrightable facts)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -13,33 +13,26 @@
  * Lesser General Public License for more details.
  */
 
-#ifndef HELP_H
-#define HELP_H
+/* Shared SBR tables: QMF prototype filter and frequency-band offsets.
+ * All values are normative data from ISO/IEC 14496-3:2005. */
+
+#ifndef SBR_TABLES_H
+#define SBR_TABLES_H
+
+#include <stdint.h>
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct {
-    const char *opt;
-    const char *shorthelp;
-    const char *longhelp;
-} help_t;
+typedef float sbrfloat;
 
-typedef struct {
-    int id;
-    const char *name;
-    const char *option;
-    const help_t *help;
-    int show_short;
-} help_group_t;
-
-/* usage_args is the positional-argument part of the Usage line, e.g. "infile". */
-void show_help(const char *prog_name, int mode, const char *version, const char *usage_args,
-               const help_group_t *groups);
+extern const sbrfloat qmf_c[640];
+extern const int8_t sbr_offset[6][16];
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* HELP_H */
+#endif /* SBR_TABLES_H */
