@@ -1,8 +1,31 @@
-option('frontend',
-    description: 'Build the frontend',
+# Components. At least one of encoder/decoder must be enabled.
+option('encoder',
+    description: 'Build the FAAC encoder library (libfaac)',
     type: 'boolean',
     value: true)
 
+option('decoder',
+    description: 'Build the FAAD decoder library (libfaad) and the faad frontend',
+    type: 'boolean',
+    value: true)
+
+option('frontend',
+    description: 'Build the command-line frontends for the enabled components',
+    type: 'boolean',
+    value: true)
+
+# Decoder tuning
+option('decoder-sbr',
+    description: 'Enable SBR (HE-AAC v1) support in libfaad',
+    type: 'boolean',
+    value: true)
+
+option('decoder-ps',
+    description: 'Enable Parametric Stereo (HE-AAC v2) support in libfaad',
+    type: 'boolean',
+    value: true)
+
+# Encoder tuning
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.
@@ -12,22 +35,24 @@ option('frontend',
 #   4: every 4th   -- ~26% faster HE-AAC encode; MOS d: -0.010
 #   8: every 8th   -- ~30% faster HE-AAC encode; MOS d: -0.038
 option('sbr-decimation',
-    description: 'SBR spectral analysis density: analyse every Nth slot (1=full quality, max=8)',
+    description: 'Encoder SBR spectral analysis density: analyse every Nth slot (1=full quality, max=8)',
     type: 'integer',
     min: 1,
     max: 8,
     value: 1)
 
+# Shared
 option('max-channels',
-    description: 'Maximum number of channels',
+    description: 'Maximum number of channels (encoder and decoder)',
     type: 'integer',
     min: 1,
     max: 8,
     value: 8)
 
-# End-of-encode diagnostics banner (Qavg, transient/tool-usage %, rate-control
-# health, etc), printed to stderr on faacEncClose().
+# End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
+# Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();
+# the decoder (FAAD_STATS) prints its own on close.
 option('stats',
-    description: 'Enable optional end-of-encode statistics banner',
+    description: 'Enable optional end-of-stream statistics banners (encoder and decoder)',
     type: 'boolean',
     value: false)

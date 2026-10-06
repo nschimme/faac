@@ -241,7 +241,7 @@ static void help(int mode, const char *lib_version)
 {
     char version[128];
     show_help("faac", mode,
-              faac_version_string(version, sizeof(version), lib_version), g_help);
+              faac_version_string(version, sizeof(version), lib_version), "infile", g_help);
 }
 
 static bool cli_progress_callback(const progress_info_t *info, void *user_data)
