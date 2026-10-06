@@ -32,9 +32,6 @@
 #include "encode_engine.h"
 #include "help.h"
 
-#ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "2.2.0"
-#endif
 
 static int get_terminal_width(void)
 {
@@ -212,7 +209,7 @@ void show_help(const char *prog_name, int mode, const char *lib_version, const h
     upper_name[i] = '\0';
 
     char ver_buf[128];
-    printf("%s %s\n", upper_name, faac_version_string(ver_buf, sizeof(ver_buf), lib_version ? lib_version : PACKAGE_VERSION));
+    printf("%s %s\n", upper_name, faac_version_string(ver_buf, sizeof(ver_buf), lib_version));
     printf("Usage: %s [options] infile\n\n", name);
 
     if (!groups)
