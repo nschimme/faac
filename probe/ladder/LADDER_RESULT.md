@@ -1907,3 +1907,46 @@ the references' windows nor their M/S decisions are the lever; both lose inside 
 As at LC (Stage H: windows alone ≈ 0), FAAC's long-block coding cannot carry the references' long windows; at LC it
 took Apple's scalefactors too, and at HE that arm cannot be built inside the rate loop (WS catastrophic; step1 KA
 fails at HE, S3-E0). The HE core gap is coding efficiency of FAAC's long path, not a decision to copy.
+
+
+## Stage S10: HE long-block and allocation line, closed (2026-10-06)
+
+Scripts `scripts/s10/`, pre-registrations `results/s10/prereg*.md` (written before each phase), per-clip results
+`results/s10/mos_*.json` (`[arm, rate, clip, mos, bytes]`), probe patches `results/s10/*.patch` (env knobs on
+`kbd-long-window` 1ff88b33, FAAD3 per-ICS bit classes on `add-faad-decoder` 252f2522). Base: HE `-b` total, 49 clips of
+`audio/`, zimtohrli via `score_clip.py`, bits-adjusted with the per-clip slope from the base at the neighbouring
+rates (28/40 for 32k, 40/56 for 48k, 20/28 for 24k). PR #17 and #20 produce byte-identical HE encodes (49/49 at 32k
+and 48k), so every number applies to #20.
+
+**Accounting (long frames, FAAC vs refs).** Side info (sect+sf) 38 % vs 16 % of the frame at 32k (FDK), 22 % vs 13 % at
+48k. FAAC covers 70 % / 63 % of the 0-12 kHz core with PNS (32k/48k) and codes 14 % / 29 %; FDK and Apple use no PNS,
+code 37-39 % / 57-58 % and hand 25-51 % of the core to SBR (crossover 5.6 kHz at 32k, 8.25 kHz at 48k; FAAC 11.6 kHz).
+Bits per nonzero line are equal (4.3 vs 4.4-4.8); FAAC codes ~300-600 lines at density 0.49 and codebook 6.8, the refs
+765-1180 lines at density ~0.25 and codebook 4.2-4.8. Apple "32k" is resampled to 32 kHz output (153 vs 227 frames per
+clip) and is not comparable. Controls: class split sums to the decoder's `sf` on 89,084/89,084 frames.
+
+**Arms (bits-adjusted vs base, 48k unless noted).**
+
+| arm | result |
+|---|---|
+| PNS energy Viterbi, tolerance ±1 step (1.5 dB), ABR respends | 24k -0.017, 32k -0.025, 48k -0.030; ±2: -0.11..-0.14. 16k ±1 heavy-tailed (median +0.007, trimmed mean +0.064) |
+| lower SBR crossover (kx 22/18/16) | PNS bits swap for SBR bits; coded share, density, gain, codebook unchanged |
+| `pnslevel` 3 / 5 (raw delta vs 4) | 16k -0.043/-0.030; 24k -0.034/+0.005; 32k -0.016/-0.011; 40k -0.003/-0.015; 48k +0.009/-0.020; 64k +0.006/-0.018 |
+| crossover 12 + level 2 / level 1 | 48k -0.214 / -0.735 (passed the FDK-split accounting gate and lost) |
+| LC block switcher on the HE core (short 58 % -> 26 %), joint with crossover/level | best L15p3 -0.009; L12p3 -0.018; L12p2 -0.091; 32k -0.05..-0.24 |
+| long windows only | -0.33..-0.50, worst clip -2.7 |
+| treble slope 0.5 / 0.25 / 0 | 48k -0.003 / -0.016 / -0.037; 32k -0.010 / -0.022 / -0.044 |
+
+Per-clip loss of crossover 12 + level 2 by short share (base): 29 % short -0.089, 61 % -0.248, 86 % -0.312
+(spearman -0.45). Region view at 48k: the refs spend less below 2 kHz (codebook 5.7-6.0 vs FAAC 7.0-7.4) and more at 4-8
+kHz (density 0.18-0.22 vs 0.11-0.13); TNS or pulse data on long frames FDK 13 %, Apple 7 %, FAAC 0 %; M/S on 83-89 % of
+coded bands vs 62-65 %; band coded<->zero flicker 6.7-8.0 % vs 9.8-11.6 %.
+
+**Where the gap is (FAAC vs ref, same corpus).** 48k: FDK +0.062, Apple +0.022 adjusted (+0.080 raw at +6.1 % bytes).
+32k: level (FDK -0.010). 24k: FAAC +0.14 ahead of `fdkaac -p 5`. 16k: not a FAAC lead (`-p 5` 2.119 was off-design;
+`-p 29` 2.715 at -7.8 % bytes vs FAAC 2.781). FAAC switches to LC above 56 kbps total.
+
+**Verdict.** No single or joint arm clears +0.015 (best +0.009, within noise). With S3-E0 (A: FAAC's quantizer on
+Apple's full HE decisions -0.147, 0/49, +13 % bytes) and LC step1, the gap is quantizer execution (the refs hold 10-20 %
+more zeros), not a decision to copy; per-line RD edits are dead (HE48 +0.001). The one lever left is the per-band sf+-1
+search (#592, `lean-sfrd`): HE 24-56k +0.013..+0.026 in CI at +5.6 KB and -7..-17 % throughput, parked for cost.

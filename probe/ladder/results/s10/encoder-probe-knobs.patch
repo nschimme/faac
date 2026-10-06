@@ -1,0 +1,121 @@
+diff --git a/libfaac/blockswitch.c b/libfaac/blockswitch.c
+index b31e87bf..adee3401 100644
+--- a/libfaac/blockswitch.c
++++ b/libfaac/blockswitch.c
+@@ -95,6 +95,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
+   int size;
+ 
+   gpsyInfo->sampleRate = (float) sampleRate;
++  if (heCore && getenv("FAAC_HE_LCSW")) heCore = false; /* PROBE: LC detector on the HE core */
+   gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_LEVEL_RATIO_LC;
+   gpsyInfo->dropRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_DROP_RATIO_LC;
+   gpsyInfo->levelSmooth = heCore ? 1.0f : PSY_LEVEL_SMOOTH_LC;
+@@ -240,7 +241,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
+              * fewer bits than the short ones it would replace, is let off. */
+             trip = 1;
+         }
+-        if (trip)
++        if (trip && !getenv("FAAC_HE_LONGONLY"))
+           psydata->attack |= 1u << (ENG_WIN_NEXT + win - 1);
+         level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
+       }
+diff --git a/libfaac/frame.c b/libfaac/frame.c
+index 7d36be43..0f14e49b 100644
+--- a/libfaac/frame.c
++++ b/libfaac/frame.c
+@@ -352,6 +352,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
+      * the low bands, where the de-emphasis leaves the most audible error. */
+     hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)
+         ? TREBLE_SLOPE_RICH : 1.0f;
++    if (getenv("FAAC_TSLOPE")) hEncoder->aacquantCfg.treble_slope = (float)atof(getenv("FAAC_TSLOPE")); /* PROBE */
+ 
+     if (hEncoder->config.aacObjectType == HE_V1) {
+         SBRContext *sCtx = hEncoder->sbrContext;
+@@ -727,7 +728,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
+      * sections; the frequency resolution they buy loses to the bits. Only a
+      * bass-dominated frame, where the short windows leak and cost more than a
+      * long one, is let off (PsyBufferUpdate). */
+-    bool shortOnly = hEncoder->config.aacObjectType == HE_V1
++    bool shortOnly = !getenv("HE_NOSO") && hEncoder->config.aacObjectType == HE_V1
+         && (hEncoder->config.bitRate
+             ? hEncoder->config.bitRate < HE_SHORT_ONLY_BITRATE
+             : hEncoder->config.quantqual < HE_SHORT_ONLY_QUANTQUAL);
+diff --git a/libfaac/quantize.c b/libfaac/quantize.c
+index bca0efae..e81f5567 100644
+--- a/libfaac/quantize.c
++++ b/libfaac/quantize.c
+@@ -295,6 +295,41 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
+     return gain;
+ }
+ 
++/* PROBE: choose each PNS energy within +-tol steps of its target so the
++ * delta chain codes in the fewest bits (Viterbi over book12 lengths). */
++#include "huffdata.h"
++static void pns_smooth(CoderInfo *coder, int tol)
++{
++    int idx[MAX_SCFAC_BANDS], n = 0, i, o;
++    for (i = 0; i < coder->bandcnt; i++)
++        if (coder->book[i] == HCB_PNS) idx[n++] = i;
++    if (n < 2 || tol < 1) return;
++    enum { W = 9 };
++    int cost[W], ncost[W], back[MAX_SCFAC_BANDS][W];
++    int orig[MAX_SCFAC_BANDS];
++    for (i = 0; i < n; i++) orig[i] = coder->sf[idx[i]];
++    for (o = 0; o < W; o++) cost[o] = 0; /* band 0 is coded absolute and stays put */
++    for (i = 1; i < n; i++) {
++        for (o = -tol; o <= tol; o++) {
++            int best = 1 << 28, bp = 0;
++            for (int po = -tol; po <= tol; po++) {
++                int c0 = cost[po + tol];
++                if (i == 1 && po != 0) continue;
++                int d = (orig[i] + o) - (orig[i - 1] + po);
++                if (d < -60 || d > 60) continue;
++                int v = c0 + book12[SF_DELTA + d].len;
++                if (v < best) { best = v; bp = po; }
++            }
++            ncost[o + tol] = best; back[i][o + tol] = bp;
++        }
++        for (o = 0; o < 2 * tol + 1; o++) cost[o] = ncost[o];
++    }
++    int bo = 0, bc = 1 << 28;
++    for (o = -tol; o <= tol; o++) if (cost[o + tol] < bc) { bc = cost[o + tol]; bo = o; }
++    if (bc >= 1 << 28) return;
++    for (i = n - 1; i >= 1; i--) { coder->sf[idx[i]] = orig[i] + bo; bo = back[i][bo + tol]; }
++}
++
+ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
+                                    const float * __restrict target,
+                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
+@@ -490,7 +525,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
+             group_total = coder->refTotal[i];
+ 
+         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
+-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
++        assign_band_codebooks(coder, gxr, target, be, i, getenv("FAAC_PNSL") ? atoi(getenv("FAAC_PNSL")) : aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
+     }
+     huffbook(coder, qs);
+@@ -526,6 +561,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
+             coder->sf[i] = lastpns;
+         }
+     }
++    {
++        const char *pv = getenv("FAAC_PNS_VIT");
++        if (pv) pns_smooth(coder, atoi(pv));
++    }
+     if (coder->partner)
+         ResolveIntensityNoise(coder, coder->partner);
+     return 1;
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index 9d08cadf..71c4ccad 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -168,7 +168,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
+     /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
+      * Higher-order parametric reconstruction below 10 kHz is audible and
+      * generally inferior to the bit-starved LC core. */
+-    sbr->bs_start_freq = 15;
++    sbr->bs_start_freq = getenv("FAAC_SBR_BSF") ? atoi(getenv("FAAC_SBR_BSF")) : 15;
+     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
+      * what they save, rate control hands to the core. */
+     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;

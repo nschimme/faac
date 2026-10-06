@@ -1,5 +1,7 @@
 # Plan: HE core long-block side-info efficiency (handoff for a cloud agent, 2026-10-01)
 
+**SUPERSEDED 2026-10-06: do not run this plan.** Its phases were measured by other means; see "Stage S10" in `LADDER_RESULT.md`. Phase 0 (accounting) cleared its 5 % bar but the free-bits ceilings did not survive MOS (Phase 1/2 equivalents lose at 24-48k), and the decision-copy questions are answered by the earlier ladder stages.
+
 Self-contained brief. Read it fully, then `NEXT_PLAN.md` §0-S9, §4 (method rules), §5 (dead ends), §6 (gotchas), and
 `LADDER_RESULT.md` "Stage S9", "Stage S6-X", "Stage S3-E0" before running anything. Bootstrap per NEXT_PLAN "S4
 session facts" (faac-benchmark venv + 49-clip corpus, `faad-ladder-dump` branch build, fdk-aac build for `fdkaac`).

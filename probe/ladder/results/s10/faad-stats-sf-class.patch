@@ -1,0 +1,70 @@
+diff --git a/libfaad/huffman.c b/libfaad/huffman.c
+index 09f6b483..2c231b73 100644
+--- a/libfaad/huffman.c
++++ b/libfaad/huffman.c
+@@ -453,6 +453,10 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
+     int is_pos = 0;
+     int pns_energy = ics->global_gain - 90; /* §4.6.13.3: noise_nrg starts from global_gain, not the running sf */
+     bool is_first_pns = true;
++#ifdef FAAD_STATS
++    unsigned cls_bits[3] = {0, 0, 0}, cls_n[4] = {0, 0, 0, 0}; /* regular, pns, is; zero */
++    unsigned mark;
++#endif
+ 
+     int max_sfb = ics->max_sfb < ics->num_sfbs ? ics->max_sfb : ics->num_sfbs;
+     if (max_sfb > MAX_SFB) max_sfb = MAX_SFB;
+@@ -461,8 +465,14 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
+             int cb = ics->sfb_cb[g][sfb];
+ #ifdef FAAD_STATS
+             g_faadStats.totalBands++;
++#endif
++#ifdef FAAD_STATS
++            mark = bits_get_consumed(bs);
+ #endif
+             if (cb == 0) {
++#ifdef FAAD_STATS
++                cls_n[3]++;
++#endif
+                 continue;
+             } else if (cb == 13) { /* PNS */
+ #ifdef FAAD_STATS
+@@ -476,6 +486,9 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
+                     pns_energy += dpns - 60;
+                 }
+                 ics->scalefactors[g][sfb] = (int16_t)pns_energy;
++#ifdef FAAD_STATS
++                cls_bits[1] += bits_get_consumed(bs) - mark; cls_n[1]++;
++#endif
+             } else if (cb == 14 || cb == 15) { /* Intensity stereo */
+ #ifdef FAAD_STATS
+                 g_faadStats.isBands++;
+@@ -483,15 +496,29 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
+                 int dis = DECODE_HUFF_SF(bs);
+                 is_pos += dis - 60; /* signed: negative positions boost the right channel */
+                 ics->scalefactors[g][sfb] = (int16_t)is_pos;
++#ifdef FAAD_STATS
++                cls_bits[2] += bits_get_consumed(bs) - mark; cls_n[2]++;
++#endif
+             } else {
+                 int dsf = DECODE_HUFF_SF(bs);
+                 sf += dsf - 60;
+                 if (sf < 0) sf = 0;
+                 if (sf > 255) sf = 255;
+                 ics->scalefactors[g][sfb] = (int16_t)sf;
++#ifdef FAAD_STATS
++                cls_bits[0] += bits_get_consumed(bs) - mark; cls_n[0]++;
++#endif
+             }
+         }
+     }
++#ifdef FAAD_STATS
++    {
++        extern FILE *faad_dump_file(void);
++        FILE *df = faad_dump_file();
++        if (df) fprintf(df, "S %u %u %u %u %u %u %u %u %u\n", g_faadStats.totalFrames, ics->window_sequence == 2,
++                        cls_bits[0], cls_bits[1], cls_bits[2], cls_n[0], cls_n[1], cls_n[2], cls_n[3]);
++    }
++#endif
+     return FAAD_OK;
+ }
+ 
