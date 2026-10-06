@@ -37,6 +37,7 @@
 #include "endian.h"
 #include "asc_codec.h"
 #include "mp4read.h"
+#include "help.h"
 
 typedef struct {
     uint8_t *data;
@@ -243,7 +244,63 @@ static bool output_exists(const char *path)
     return true;
 }
 
-static void print_usage(const char *prog)
+enum {
+    OPT_NO_GAPLESS = 300,
+    OPT_JSON,
+    OPT_STRICT,
+    OPT_OVERWRITE,
+    OPT_LICENSE,
+    HELP_IO,
+    HELP_PROCESSING,
+    HELP_INFO
+};
+
+static const help_t help_io[] = {
+    {"-o, --output <file>",
+     "Set output filename (default: infile.wav, or stdout for stdin input)", NULL},
+    {"-w, --stdout",
+     "Write output PCM to stdout", NULL},
+    {"-f, --format <type>",
+     "Output container format: wav (default), raw", NULL},
+    {"-b, --bits <depth>",
+     "Sample depth: 16 (default), 24, 32, 32f (32-bit float)", NULL},
+    {"-a, --adts <file>",
+     "Extract raw ADTS stream from MP4 without decoding", NULL},
+    {NULL, NULL, NULL}
+};
+
+static const help_t help_processing[] = {
+    {"-d, --downmix [mode]",
+     "Downmix audio (mono/1 or stereo/2, default: mono)", NULL},
+    {"-j, --jump <seconds>",
+     "Start decoding from specified timestamp", NULL},
+    {"-g, --no-gapless",
+     "Disable automatic gapless trim/padding handling", NULL},
+    {NULL, NULL, NULL}
+};
+
+static const help_t help_info[] = {
+    {"-i, --info",
+     "Display bitstream & container metadata, then exit", NULL},
+    {"--json",
+     "Output bitstream info in JSON format", NULL},
+    {"-q, --quiet",
+     "Quiet mode (suppress decoding progress)", NULL},
+    {"--overwrite",
+     "Overwrite an existing output file", NULL},
+    {"--strict",
+     "Strict mode (noisily error and report debug details on failure)", NULL},
+    {NULL, NULL, NULL}
+};
+
+static const help_group_t g_help[] = {
+    {HELP_IO, "I/O and format options", "--help-io", help_io, 1},
+    {HELP_PROCESSING, "Processing options", "--help-processing", help_processing, 1},
+    {HELP_INFO, "Information and general options", "--help-info", help_info, 1},
+    {0, NULL, NULL, NULL, 0}
+};
+
+static void print_usage(int mode)
 {
     faad_library_info info;
     info.struct_size = sizeof(info);
@@ -252,36 +309,10 @@ static void print_usage(const char *prog)
     }
 
     char version_buf[128];
-    printf("FAAD %s\n",
-           cli_version_string(version_buf, sizeof(version_buf), info.version));
-    printf("Usage: %s [options] <infile.aac|infile.m4a>\n\n", prog);
-    printf("I/O & Format Options:\n");
-    printf("  -o, --output <file>    Set output filename (default: infile.wav, or stdout for stdin input)\n");
-    printf("  -w, --stdout           Write output PCM to stdout\n");
-    printf("  -f, --format <type>    Output container format: wav (default), raw\n");
-    printf("  -b, --bits <depth>     Sample depth: 16 (default), 24, 32, 32f (32-bit float)\n");
-    printf("  -a, --adts <file>      Extract raw ADTS stream from MP4 without decoding\n\n");
-    printf("Processing Options:\n");
-    printf("  -d, --downmix [mode]   Downmix audio (mono/1 or stereo/2, default: mono)\n");
-    printf("  -j, --jump <seconds>   Start decoding from specified timestamp\n");
-    printf("  -g, --no-gapless       Disable automatic gapless trim/padding handling\n\n");
-    printf("Information & General:\n");
-    printf("  -i, --info             Display bitstream & container metadata, then exit\n");
-    printf("      --json             Output bitstream info in JSON format\n");
-    printf("  -q, --quiet            Quiet mode (suppress decoding progress)\n");
-    printf("      --overwrite        Overwrite an existing output file\n");
-    printf("      --strict           Strict mode (noisily error and report debug details on failure)\n");
-    printf("      --license          Display copyright and license information\n");
-    printf("  -h, --help             Display this help text\n");
+    show_help("faad", mode,
+              cli_version_string(version_buf, sizeof(version_buf), info.version),
+              "<infile.aac|infile.m4a>", g_help);
 }
-
-enum {
-    OPT_NO_GAPLESS = 300,
-    OPT_JSON,
-    OPT_STRICT,
-    OPT_OVERWRITE,
-    OPT_LICENSE
-};
 
 static void print_strict_error(const char *filename, uint64_t offset, uint32_t frame_idx, faad_status st)
 {
@@ -338,12 +369,15 @@ int main(int argc, char **argv)
         {"overwrite", no_argument, 0, OPT_OVERWRITE},
         {"license", no_argument, 0, OPT_LICENSE},
         {"help", no_argument, 0, 'h'},
+        {"help-io", no_argument, 0, HELP_IO},
+        {"help-processing", no_argument, 0, HELP_PROCESSING},
+        {"help-info", no_argument, 0, HELP_INFO},
         {0, 0, 0, 0}
     };
 
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "o:wf:b:a:d::j:giqh", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "o:wf:b:a:d::j:giqhH", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'o': outfile = optarg; break;
         case 'w': write_stdout = true; break;
@@ -392,8 +426,12 @@ int main(int argc, char **argv)
             cli_print_lgpl_notice(stderr, "library");
             return 0;
         }
-        case 'h': print_usage(argv[0]); return 0;
-        default: print_usage(argv[0]); return 1;
+        case 'h':
+        case 'H':
+        case HELP_IO:
+        case HELP_PROCESSING:
+        case HELP_INFO: print_usage(opt); return 0;
+        default: print_usage('h'); return 1;
         }
     }
 
@@ -402,7 +440,7 @@ int main(int argc, char **argv)
     }
 
     if (!infile) {
-        print_usage(argv[0]);
+        print_usage('h');
         return 1;
     }
 

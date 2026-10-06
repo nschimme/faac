@@ -62,7 +62,7 @@ if get_option('decoder')
         gc_args += ['-Wl,-dead_strip']
     endif
     faad = executable('faad',
-        ['faad_main.c', 'mp4read.c', 'charset.c', git_version_h],
+        ['faad_main.c', 'mp4read.c', 'charset.c', 'help.c', git_version_h],
         include_directories: ['..', '../include', '../common'],
         link_with: decoder_link_libs,
         c_args: c_args_list,

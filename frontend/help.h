@@ -34,7 +34,9 @@ typedef struct {
     int show_short;
 } help_group_t;
 
-void show_help(const char *prog_name, int mode, const char *version, const help_group_t *groups);
+/* usage_args is the positional-argument part of the Usage line, e.g. "infile". */
+void show_help(const char *prog_name, int mode, const char *version, const char *usage_args,
+               const help_group_t *groups);
 
 #ifdef __cplusplus
 }
