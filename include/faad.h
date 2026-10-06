@@ -109,10 +109,7 @@ typedef struct faad_library_info {
 
 FAADAPI faad_status faad_get_library_info(faad_library_info *out);
 
-/*
- * AAC object type, numbered per the MPEG-4 Audio Object Type (AOT) registry,
- * matching enum faac_object_type.
- */
+/* AAC object type, numbered per the MPEG-4 Audio Object Type (AOT) registry. */
 enum faad_object_type {
     FAAD_OBJ_NULL      = 0,          /* unset                                */
     FAAD_OBJ_LC        = 2,          /* AAC-LC (Low Complexity)              */
@@ -127,8 +124,7 @@ enum faad_stream_format {
     FAAD_STREAM_MAX  = 0x7fffffff
 };
 
-/* Interpretation of the interleaved PCM produced by faad_decode_frame(),
- * mirroring enum faac_input_format. */
+/* Interpretation of the interleaved PCM produced by faad_decode_frame(). */
 enum faad_output_format {
     FAAD_OUTPUT_NULL  = 0,           /* invalid / unset                          */
     FAAD_OUTPUT_16BIT,               /* native-endian int16                      */
@@ -150,10 +146,6 @@ enum faad_downmix_mode {
  *
  * ALWAYS initialize with faad_config_init() before setting fields: it stamps
  * struct_size, which is how the library stays compatible as this struct grows.
- *
- * Maintainers: here and in the info structs, append fields after the previous
- * sizeof, never into tail padding or reserved bytes, and keep the alignment: a
- * populated-size check cannot tell a new field in old padding from padding.
  */
 typedef struct faad_config {
     uint32_t                struct_size;   /* set by faad_config_init() */

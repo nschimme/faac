@@ -13,17 +13,7 @@
  * Lesser General Public License for more details.
  */
 
-/* Generated from libfaac's own per-rate band-width tables (SR_INFO in
- * libfaac/frame.c) rather than transcribed independently: that table is the
- * one actually driving real encoder output, cross-checked decodable by
- * ffmpeg. The two had drifted apart -- every rate group here except
- * 44100/48000's long table was wrong (some by one inserted/dropped band,
- * some by different band widths throughout), and 96000/88200's and 64000's
- * short tables were folded into 44100's despite having a different SFB
- * count, which desynced spectral-data decoding for any content using short
- * blocks at those rates, or long blocks at any rate other than
- * 44100/48000/96000/88200.
- */
+/* Scalefactor band offsets per sampling rate. */
 
 #include "sfb_tables.h"
 

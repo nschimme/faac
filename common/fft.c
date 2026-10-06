@@ -27,7 +27,7 @@
  * by stage, six floats per butterfly (W^j, W^2j, W^3j as cos, -sin). One
  * unit-stride stream instead of three gathers keeps the kernel's inner loop
  * inside the register file. Built once per process and read-only afterwards,
- * so every encoder handle shares them. */
+ * so every handle shares them. */
 
 /* Butterflies per transform: n/4 + n/16 + ... over the radix-4 stages. */
 #define TW_SHORT (16 + 4 + 1)

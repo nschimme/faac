@@ -45,8 +45,7 @@ void apply_ms_stereo(CPEInfo *cpe, float * restrict spec_l, float * restrict spe
             if (pns_l != pns_r) continue;
 
 #ifdef FAAD_STATS
-            /* Counted per channel slot, same granularity as totalBands, so
-             * msBands/totalBands lines up with libfaac's own ratio. */
+            /* Counted per channel slot, the granularity of totalBands. */
             g_faadStats.msBands += 2;
 #endif
 

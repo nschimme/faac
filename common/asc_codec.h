@@ -13,15 +13,9 @@
  * Lesser General Public License for more details.
  */
 
-/* Parses/builds the core-LC-plus-implicit-SBR/PS-sync-extension bitstream
- * that faac's own encoder emits (see SbrContextGetASC() in sbr.c, which
- * calls asc_codec_build() directly) and that libfaad's decoder and the
- * frontend's MP4 reader/writer both need to read back or reconstruct.
- *
- * Header-only with static-inline internal linkage on purpose: libfaac
- * and libfaad each compile their own private copy of this code from source.
- * No library links against the other; only CLI frontends combine them.
- */
+/* AudioSpecificConfig parser and builder for core AAC-LC with an implicit
+ * SBR/PS sync extension. Header-only with internal linkage, so each library
+ * and frontend compiles its own copy. */
 
 #ifndef FAAC_ASC_CODEC_H
 #define FAAC_ASC_CODEC_H
@@ -98,7 +92,7 @@ static inline uint32_t asc_parse_sample_rate(asc_bitreader *br)
  * PCE parsing (needed only when channelConfiguration==0, i.e. a
  * program_config_element carries the real channel layout) is intentionally
  * not implemented here; num_channels is left 0 and the implicit-extension
- * scan is skipped in that case, matching each caller's own prior behavior.
+ * scan is skipped in that case.
  */
 static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *out)
 {
@@ -143,7 +137,7 @@ static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *ou
     if (asc_br_remaining(&br) >= 16 && asc_br_get(&br, 11) == ASC_SYNC_EXTENSION_SBR) {
         uint32_t ext_aot = asc_br_get(&br, 5);
         /* sbrPresentFlag is a real bit: an encoder may append the extension
-         * to state explicitly that there is no SBR (FFmpeg does), and then
+         * to state explicitly that there is no SBR, and then
          * no sample-rate index follows. */
         if (ext_aot == 5 && asc_br_get(&br, 1)) {
             out->sbr_present = true;

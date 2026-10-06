@@ -42,7 +42,7 @@ typedef struct faadDecStats {
     bool dumpOpenTried;
 } faadDecStats;
 
-/* Like FAAC_STATS, diagnostics are global and intended for one stream at a
+/* Diagnostics are global and intended for one stream at a
  * time. Successful decoder initialization resets the counters. */
 extern faadDecStats g_faadStats;
 #endif /* FAAD_STATS */
