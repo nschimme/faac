@@ -14,11 +14,13 @@ git_version_h = vcs_tag(
     fallback: '',
 )
 
+libfaac_for_frontend = target_machine.system() == 'windows' ? libfaac_static : libfaac
+
 libfrontend = static_library('frontend',
     ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c',
      'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', 'endian.h', git_version_h],
     include_directories: ['..', '../include'],
-    link_with: libfaac,
+    link_with: libfaac_for_frontend,
     c_args: has_iconv ? ['-DHAVE_ICONV'] : [],
     dependencies: [libiconv]
 )
@@ -28,7 +30,7 @@ libshell32 = cc.find_library('shell32', required: target_machine.system() == 'wi
 faac = executable('faac',
     ['main.c'],
     include_directories: ['..', '../include'],
-    link_with: [libfaac, libfrontend],
+    link_with: [libfaac_for_frontend, libfrontend],
     dependencies: [libshell32],
     install: true
 )
@@ -41,7 +43,7 @@ if target_machine.system() == 'windows'
     faacgui = executable('faacgui',
         ['maingui.c', 'resource.h'] + resource_src,
         include_directories: ['..', '../include'],
-        link_with: [libfaac, libfrontend],
+        link_with: [libfaac_for_frontend, libfrontend],
         dependencies: [libcomctl32],
         win_subsystem: 'windows',
         install: true

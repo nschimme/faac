@@ -68,7 +68,7 @@ common_args = {
 default_lib = get_option('default_library')
 
 # LTO on the static archive ships unportable compiler bytecode, so keep it off.
-if default_lib == 'static' or default_lib == 'both'
+if default_lib == 'static' or default_lib == 'both' or target_machine.system() == 'windows'
     libfaac_static = static_library(
         'faac',
         common_src,
