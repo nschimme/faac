@@ -256,7 +256,7 @@ void show_help(const char *prog_name, int mode, const char *lib_version, const h
         printf("\n");
         if (mode == 'h')
         {
-            for (cnt = 0; cnt < 2; cnt++)
+            for (cnt = 0; cnt < 2 && groups[cnt].id; cnt++)
             {
                 printf("%s:\n", groups[cnt].name);
                 help0(groups[cnt].help, 0, opt_col, term_width);
