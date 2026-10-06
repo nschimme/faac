@@ -1,5 +1,5 @@
 /*
- * Win32 Utilities
+ * Win32 DLL Check
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -24,16 +24,12 @@
 #include <delayimp.h>
 #endif
 
-#ifndef DLL_NAME_DEFAULT
-#define DLL_NAME_DEFAULT "library.dll"
-#endif
-
 #ifdef _MSC_VER
 static FARPROC WINAPI win32_delay_load_hook(unsigned dliNotify, PDelayLoadInfo pdli)
 {
     if (dliNotify == dliFailLoadLib)
     {
-        const char *dll_name = (pdli && pdli->szDll) ? pdli->szDll : DLL_NAME_DEFAULT;
+        const char *dll_name = (pdli && pdli->szDll) ? pdli->szDll : "DLL";
         fprintf(stderr, "Error: %s was not found. Please ensure %s is in the same directory or system PATH.\n",
                 dll_name, dll_name);
         exit(1);
@@ -47,15 +43,17 @@ const PfnDliHook __pfnDliFailureHook2 = win32_delay_load_hook;
 bool win32_check_dll_available(const char *dll_name, char *err_msg, size_t err_msg_len)
 {
 #ifdef FAAC_DYNAMIC_BUILD
-    const char *name = dll_name ? dll_name : DLL_NAME_DEFAULT;
-    HMODULE hDll = LoadLibraryA(name);
+    if (!dll_name)
+        return false;
+
+    HMODULE hDll = LoadLibraryA(dll_name);
     if (!hDll)
     {
         if (err_msg && err_msg_len > 0)
         {
             snprintf(err_msg, err_msg_len,
                      "Error: %s was not found. Please ensure %s is in the same directory or system PATH.",
-                     name, name);
+                     dll_name, dll_name);
         }
         return false;
     }
