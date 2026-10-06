@@ -315,6 +315,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
      * de-emphasis in Hz as 44.1 kHz. */
     if (hEncoder->sampleRate > 48000)
         hEncoder->aacquantCfg.treble_slope *= ((float)hEncoder->sampleRate / 44100.0f);
+    /* Where bits are scarce, one coarser step on a band often frees more than
+     * the added error costs; at rich rates it rarely does, for the extra pass. */
+    hEncoder->aacquantCfg.coarsen = hEncoder->config.bitRate < TREBLE_SLOPE_BITRATE;
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;

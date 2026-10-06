@@ -26,6 +26,7 @@ typedef struct
     int max_l;
     int pnslevel;
     float treble_slope;
+    int coarsen;       /* try one scalefactor step coarser per band */
 } AACQuantCfg;
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054f minimizes average
