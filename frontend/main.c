@@ -42,12 +42,14 @@
 #include <faac.h>
 #include "output.h"
 #include "charset.h"
+#include "win32_utils.h"
 #include "encode_engine.h"
 
 #ifdef _WIN32
 # undef stderr
 # define stderr stdout
 #endif
+
 
 #define MAX_COVER_ART_SIZE ((size_t)32 * 1024 * 1024)
 
@@ -446,6 +448,15 @@ static void cli_summary_callback(const encode_summary_t *summary, void *user_dat
 
 int main(int argc, char *argv[])
 {
+#ifdef _WIN32
+    char dll_err[256];
+    if (!win32_check_faac_dll_available(dll_err, sizeof(dll_err)))
+    {
+        fprintf(stderr, "%s\n", dll_err);
+        return 1;
+    }
+#endif
+
     encode_options_t opts;
     init_encode_options(&opts);
 

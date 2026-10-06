@@ -29,7 +29,9 @@
 #include "resource.h"
 #include "output.h"
 #include "charset.h"
+#include "win32_utils.h"
 #include "encode_engine.h"
+
 
 #define WM_USER_PROGRESS    (WM_USER + 101)
 #define WM_USER_SESS_START  (WM_USER + 102)
@@ -729,6 +731,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     (void)hPrevInstance;
     (void)lpCmdLine;
     (void)nCmdShow;
+
+    char dll_err[256];
+    if (!win32_check_faac_dll_available(dll_err, sizeof(dll_err)))
+    {
+        MessageBoxA(NULL, dll_err, "FAAC Error", MB_OK | MB_ICONERROR);
+        return 1;
+    }
 
     hInstance = hInst;
     INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_BAR_CLASSES | ICC_WIN95_CLASSES };
