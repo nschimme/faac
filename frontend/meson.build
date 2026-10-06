@@ -23,7 +23,7 @@ if get_option('encoder')
     libfrontend = static_library('frontend',
         ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c',
          'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', 'help.h', '../common/endian.h', git_version_h],
-        include_directories: ['..', '../include', '../common'],
+        include_directories: ['..', '../include', common_inc],
         link_with: frontend_link_libs,
         c_args: c_args_list,
         dependencies: [libiconv]
@@ -63,7 +63,7 @@ if get_option('decoder')
     endif
     faad = executable('faad',
         ['faad_main.c', 'mp4read.c', 'charset.c', 'help.c', git_version_h],
-        include_directories: ['..', '../include', '../common'],
+        include_directories: ['..', '../include', common_inc],
         link_with: decoder_link_libs,
         c_args: c_args_list,
         link_args: gc_args,

@@ -10,7 +10,7 @@ if config_h.get('HAVE_SSE2')
     quantize_simd_libs += quantize_sse
 endif
 
-common_src = [
+libfaac_src = [
     'bitstream.c',
     'bitstream.h',
     'blockswitch.c',
@@ -71,7 +71,7 @@ default_lib = get_option('default_library')
 if default_lib == 'static' or default_lib == 'both'
     libfaac_static = static_library(
         'faac',
-        common_src,
+        libfaac_src,
         kwargs : common_args + {
           'override_options' : ['b_lto=false'],
         },
@@ -81,7 +81,7 @@ endif
 if default_lib == 'shared' or default_lib == 'both'
     libfaac_shared = shared_library(
         'faac',
-        common_src,
+        libfaac_src,
         kwargs : common_args + {
           'version' : project_ver,
           'vs_module_defs' : 'libfaac.def',
