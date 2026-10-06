@@ -1,8 +1,5 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * Copyright (C) 2001 Menno Bakker
- * Copyright (C) 2002-2017 Krzysztof Nikiel
- * Copyright (C) 2004 Dan Villiom P. Christiansen
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -31,7 +28,6 @@
 #include <faac.h>
 #include "encode_engine.h"
 #include "help.h"
-
 
 static int get_terminal_width(void)
 {
