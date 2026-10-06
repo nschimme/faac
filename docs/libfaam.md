@@ -20,6 +20,7 @@
   - [Recording to removable storage](#recording-to-removable-storage)
   - [Reading and editing tags without remuxing](#reading-and-editing-tags-without-remuxing)
   - [Files with many tracks](#files-with-many-tracks)
+  - [Reading MP4 for the FAAD decoder](#reading-mp4-for-the-faad-decoder)
   - [Thread safety](#thread-safety)
   - [Complete examples](#complete-examples)
 - [ABI compatibility](#abi-compatibility)
@@ -491,6 +492,150 @@ for codec data and gapless queries. Do not confuse track IDs with indices.
 Generic sample entries retain fourcc and readable payloads; other handlers
 use FAAM_TRACK_OTHER. next_frame_loc interleaves all held tracks in file order;
 filter its track_id and read or skip every frame to advance.
+
+### Reading MP4 for the FAAD decoder
+
+Applications using the legacy `faad.h`/mp4ff sequence can replace it with
+`faam.h` and [libfaad's current API](libfaad.md). libfaam parses the container;
+libfaad decodes its AAC access units.
+
+| Legacy step | Current calls |
+|---|---|
+| `mp4ff_open_read` | `faam_demuxer_open(NULL, &io, &demuxer)`, with memory or stdio `faam_io` callbacks. |
+| Find the audio track | `faam_demuxer_get_num_tracks()` and `faam_demuxer_get_track_info()`; choose an audio track with `codec_id == FAAM_CODEC_AAC`. Match `track_id` for an explicit selection. |
+| `mp4ff_get_decoder_config` | `faam_demuxer_get_codec_data()` copies the track's AudioSpecificConfig (ASC) into your buffer. |
+| `NeAACDecOpen` + `NeAACDecInit2` | Initialize `faad_config`, set `stream_format = FAAD_STREAM_RAW`, then call `faad_decoder_open(&cfg, asc, asc_len, &decoder)`. |
+| `mp4ff_read_sample` + decode loop | `faam_demuxer_next_frame_loc()` then `faam_demuxer_read_frame()` and `faad_decode_frame()`. Filter `loc.track_id`; skip other tracks with `read_frame(d, NULL, 0, &bytes)`. |
+| mp4ff gapless/metadata | `faam_demuxer_get_track_gapless()`, `faam_demuxer_get_metadata()` and `faam_demuxer_get_custom_tag()`. |
+
+A file may hold several tracks; track IDs are not enumeration indices.
+The CLI's `faad --track <id>` selects one (`faad -i` lists them). AAC codec
+identification alone does not guarantee a profile supported by libfaad.
+`frontend/mp4read.c` shows a memory-backed adapter: it skips each frame to
+advance the demuxer, validates `file_offset`/`frame_bytes` against the input
+size, then feeds the original bytes to libfaad without a payload copy.
+With a file stream, you can likewise read at `file_offset` yourself, but must
+still advance the demuxer with `read_frame`.
+
+Gapless values are track-timescale samples, normally the AAC core rate for
+HE-AAC, not output-rate samples. Query by the selected track ID; iTunSMPB
+applies to the first audio track, otherwise that track's edit list is used.
+As in `frontend/faad_main.c`, after output format discovery convert delay and
+padding with `(uint64_t)value * output_rate / track_timescale`. If timescale
+is zero, the frontend uses the core rate (half the output rate for SBR with
+2048-sample frames, otherwise the output rate). Add `decoder_delay` to the
+leading trim and subtract it from converted padding, bounded at zero.
+Drop leading samples per channel and retain enough trailing PCM to discard
+padding at EOF; re-query stream info on `FAAD_FRAME_FORMAT_CHANGED`. See
+[Decoder delay](libfaad.md#decoder-delay) for edit-list boundaries.
+
+For tags, initialize `faam_metadata.struct_size`; retrieve custom tags by
+index up to `num_custom_tags`. For chapters, use
+`faam_demuxer_get_num_chapters()` and `faam_demuxer_get_chapter()` (Nero `chpl`,
+with start times in milliseconds). Initialize every output struct's
+`struct_size`. Metadata strings, artwork and chapter titles are borrowed
+until demuxer close; copy them if needed afterwards. ASC is copied into your
+buffer and consumed by decoder open, so it need not outlive that call.
+Keep the stream/callback context alive through demuxer close, which does not
+close the FILE. Encoded and aligned PCM buffers belong to the caller;
+close both handles and release the buffers on every exit path.
+
+Save this as `m4a_decode.c`, alongside `stdio_io.h` from
+[Stream I/O](#stream-io), which supplies 64-bit seeking. It decodes the first
+AAC track to native-endian interleaved signed 16-bit PCM, with no header or
+gapless trimming. It stops on demux/decode errors and accepts recovered PCM.
+
+```c
+/* m4a_decode.c */
+#include "stdio_io.h"
+#include <faad.h>
+#include <stdlib.h>
+
+int main(int argc, char **argv)
+{
+    FILE *in = NULL, *out = NULL;
+    faam_demuxer *d = NULL;
+    faad_decoder *dec = NULL;
+    uint8_t *packet = NULL;
+    void *pcm = NULL;
+    uint32_t held = 0, id = 0, asc_len = 0, cap = 0;
+    uint8_t asc[FAAM_CODEC_DATA_MAX];
+    faam_status ms = FAAM_OK;
+    faad_status ds = FAAD_OK;
+    faad_config cfg;
+    faad_stream_info info = { .struct_size = sizeof(info) };
+    faam_frame_loc loc = { .struct_size = sizeof(loc) };
+    int result = 1;
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s input.m4a output.pcm\n", argv[0]); return 1;
+    }
+    in = fopen(argv[1], "rb");
+    if (!in) { perror(argv[1]); goto done; }
+    faam_io io = stdio_io(in);
+    if ((ms = faam_demuxer_open(NULL, &io, &d)) != FAAM_OK) goto done;
+    if ((ms = faam_demuxer_get_num_tracks(d, &held, NULL)) != FAAM_OK) goto done;
+    for (uint32_t i = 0; i < held; ++i) {
+        faam_track_info t = { .struct_size = sizeof(t) };
+        if ((ms = faam_demuxer_get_track_info(d, i, &t)) != FAAM_OK) goto done;
+        if (t.track_type == FAAM_TRACK_AUDIO && t.codec_id == FAAM_CODEC_AAC) {
+            id = t.track_id; break;
+        }
+    }
+    if (!id) { fprintf(stderr, "No AAC track\n"); goto done; }
+    if ((ms = faam_demuxer_get_codec_data(d, id, asc, sizeof(asc), &asc_len)) != FAAM_OK) goto done;
+    if ((ds = faad_config_init(&cfg, sizeof(cfg))) != FAAD_OK) goto done;
+    cfg.stream_format = FAAD_STREAM_RAW;
+    if ((ds = faad_decoder_open(&cfg, asc, asc_len, &dec)) != FAAD_OK) goto done;
+    if ((ds = faad_decoder_get_info(dec, &info)) != FAAD_OK) goto done;
+    pcm = malloc(info.max_output_bytes);
+    if (!pcm) { fprintf(stderr, "PCM allocation failed\n"); goto done; }
+    out = fopen(argv[2], "wb");
+    if (!out) { perror(argv[2]); goto done; }
+    while ((ms = faam_demuxer_next_frame_loc(d, &loc)) == FAAM_OK) {
+        uint32_t n = 0, consumed = 0, written = 0, flags = 0;
+        if (loc.track_id != id) {
+            if ((ms = faam_demuxer_read_frame(d, NULL, 0, &n)) != FAAM_OK) goto done;
+            continue;
+        }
+        if (loc.frame_bytes > cap) {
+            uint8_t *p = realloc(packet, loc.frame_bytes);
+            if (!p) { fprintf(stderr, "Packet allocation failed\n"); goto done; }
+            packet = p; cap = loc.frame_bytes;
+        }
+        if ((ms = faam_demuxer_read_frame(d, packet, cap, &n)) != FAAM_OK) goto done;
+        ds = faad_decode_frame(dec, packet, n, &consumed,
+                               pcm, info.max_output_bytes, &written, &flags);
+        if (ds != FAAD_OK) goto done;
+        if (flags & FAAD_FRAME_FORMAT_CHANGED)
+            if ((ds = faad_decoder_get_info(dec, &info)) != FAAD_OK) goto done;
+        if (fwrite(pcm, 1, written, out) != written) { perror("write"); goto done; }
+    }
+    if (ms == FAAM_END_OF_STREAM) result = 0;
+done:
+    if (ms < 0) fprintf(stderr, "%s\n", faam_strerror(ms));
+    if (ds != FAAD_OK) fprintf(stderr, "%s\n", faad_strerror(ds));
+    if (faad_decoder_close(&dec) != FAAD_OK) result = 1;
+    if (faam_demuxer_close(&d) != FAAM_OK) result = 1;
+    free(packet); free(pcm);
+    if (in) fclose(in);
+    if (out && fclose(out) != 0) { perror("close output"); result = 1; }
+    return result;
+}
+```
+
+For an installed build, compile with `pkg-config --cflags --libs faam faad`.
+For source-tree static archives built in `b/`:
+
+```sh
+cc -std=c11 -Wall -Wextra -DFAAM_STATIC -DFAAD_STATIC -Iinclude -Icommon \
+  m4a_decode.c b/libfaam/libfaam.a b/libfaad/libfaad.a -lm -o m4a_decode
+```
+
+Run `./m4a_decode input.m4a output.pcm`. On a little-endian host,
+compare with `faad --no-gapless -f raw -o reference.pcm input.m4a`.
+The CLI writes little-endian PCM; byte-swap the example's output before
+comparison on a big-endian host. Omitting `--no-gapless` trims container
+priming/padding and decoder delay, so its output can differ.
 
 ### Thread safety
 
