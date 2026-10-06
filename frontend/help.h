@@ -36,7 +36,7 @@ typedef struct {
     const help_t *help;
 } help_group_t;
 
-void show_help(int mode, const char *lib_version, const help_group_t *groups);
+void show_help(const char *prog_name, int mode, const char *lib_version, const help_group_t *groups);
 
 #ifdef __cplusplus
 }

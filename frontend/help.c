@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <faac.h>
 #include "encode_engine.h"
@@ -34,8 +35,6 @@
 #ifndef PACKAGE_VERSION
 #define PACKAGE_VERSION "2.2.0"
 #endif
-
-static const char *usage = "Usage: faac [options] infile\n\n";
 
 static int get_terminal_width(void)
 {
@@ -190,7 +189,7 @@ static void help0(const help_t *h, int l, int opt_col, int term_width)
     printf("\n");
 }
 
-void show_help(int mode, const char *lib_version, const help_group_t *groups)
+void show_help(const char *prog_name, int mode, const char *lib_version, const help_group_t *groups)
 {
     int cnt;
     int term_width = get_terminal_width();
@@ -202,9 +201,19 @@ void show_help(int mode, const char *lib_version, const help_group_t *groups)
     if (opt_col < 20)
         opt_col = 20;
 
+    const char *name = (prog_name && *prog_name) ? prog_name : "faac";
+
+    char upper_name[64];
+    size_t i = 0;
+    for (; name[i] && i < sizeof(upper_name) - 1; i++)
+    {
+        upper_name[i] = (char)toupper((unsigned char)name[i]);
+    }
+    upper_name[i] = '\0';
+
     char ver_buf[128];
-    printf("FAAC %s\n", faac_version_string(ver_buf, sizeof(ver_buf), lib_version ? lib_version : PACKAGE_VERSION));
-    printf("%s", usage);
+    printf("%s %s\n", upper_name, faac_version_string(ver_buf, sizeof(ver_buf), lib_version ? lib_version : PACKAGE_VERSION));
+    printf("Usage: %s [options] infile\n\n", name);
 
     if (!groups)
         return;
@@ -216,17 +225,25 @@ void show_help(int mode, const char *lib_version, const help_group_t *groups)
     case 'H':
         printf("Help options:\n");
         {
-            static const help_t general_help[] = {
-                {"-h", "Short help on using FAAC", NULL},
-                {"-H", "Description of all options for FAAC.", NULL},
-                {"--license", "License terms for FAAC.", NULL},
+            char short_help_msg[128];
+            char desc_help_msg[128];
+            char license_help_msg[128];
+            snprintf(short_help_msg, sizeof(short_help_msg), "Short help on using %s", upper_name);
+            snprintf(desc_help_msg, sizeof(desc_help_msg), "Description of all options for %s.", upper_name);
+            snprintf(license_help_msg, sizeof(license_help_msg), "License terms for %s.", upper_name);
+
+            const help_t general_help[] = {
+                {"-h", short_help_msg, NULL},
+                {"-H", desc_help_msg, NULL},
+                {"--license", license_help_msg, NULL},
                 {NULL, NULL, NULL}
             };
+
             for (cnt = 0; general_help[cnt].opt; cnt++)
             {
                 printf("    %s", general_help[cnt].opt);
                 int len = 4 + (int)strlen(general_help[cnt].opt);
-                for (int i = len; i < opt_col; i++)
+                for (int j = len; j < opt_col; j++)
                     putchar(' ');
                 print_wrapped_text(general_help[cnt].shorthelp, opt_col, opt_col, term_width);
             }
@@ -234,7 +251,7 @@ void show_help(int mode, const char *lib_version, const help_group_t *groups)
             {
                 printf("    %s", groups[cnt].option);
                 int len = 4 + (int)strlen(groups[cnt].option);
-                for (int i = len; i < opt_col; i++)
+                for (int j = len; j < opt_col; j++)
                     putchar(' ');
                 print_wrapped_text(groups[cnt].name, opt_col, opt_col, term_width);
             }

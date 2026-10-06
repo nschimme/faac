@@ -39,10 +39,6 @@
 # include "getopt.c"
 #endif
 
-#ifndef _WIN32
-# include <sys/ioctl.h>
-# include <unistd.h>
-#endif
 
 #include <faac.h>
 #include "output.h"
@@ -461,7 +457,7 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        show_help('?', libinfo.version, g_help);
+        show_help("faac", '?', libinfo.version, g_help);
         ret = 1;
         goto cleanup;
     }
@@ -767,12 +763,12 @@ int main(int argc, char *argv[])
         case HELP_ADVANCED:
         case 'H':
         case 'h':
-            show_help(c, libinfo.version, g_help);
+            show_help("faac", c, libinfo.version, g_help);
             ret = 1;
             goto cleanup;
         case '?':
         default:
-            show_help('?', libinfo.version, g_help);
+            show_help("faac", '?', libinfo.version, g_help);
             ret = 1;
             goto cleanup;
         }
