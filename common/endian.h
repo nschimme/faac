@@ -106,6 +106,23 @@ static inline int32_t read_pcm24(const uint8_t *src, bool bigendian) {
     return bigendian ? read_pcm24_be(src) : read_pcm24_le(src);
 }
 
+static inline void write_pcm24_le(uint8_t *dst, int32_t v) {
+    dst[0] = (uint8_t)v;
+    dst[1] = (uint8_t)(v >> 8);
+    dst[2] = (uint8_t)(v >> 16);
+}
+
+static inline void write_pcm24_be(uint8_t *dst, int32_t v) {
+    dst[0] = (uint8_t)(v >> 16);
+    dst[1] = (uint8_t)(v >> 8);
+    dst[2] = (uint8_t)v;
+}
+
+static inline void write_pcm24(uint8_t *dst, int32_t v, bool bigendian) {
+    if (bigendian) write_pcm24_be(dst, v);
+    else write_pcm24_le(dst, v);
+}
+
 static inline int32_t read_pcm32_le(const int32_t *src) { return (int32_t)le32toh(*src); }
 static inline int32_t read_pcm32_be(const int32_t *src) { return (int32_t)be32toh(*src); }
 static inline int32_t read_pcm32(const int32_t *src, bool bigendian) {
