@@ -733,7 +733,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     (void)nCmdShow;
 
     char dll_err[256];
-    if (!win32_check_faac_dll_available(dll_err, sizeof(dll_err)))
+    if (!win32_check_dll_available(LIBFAAC_DLL_NAME, dll_err, sizeof(dll_err)))
     {
         MessageBoxA(NULL, dll_err, "FAAC Error", MB_OK | MB_ICONERROR);
         return 1;

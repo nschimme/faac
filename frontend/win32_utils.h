@@ -1,5 +1,5 @@
 /*
- * FAAC - Freeware Advanced Audio Coder
+ * Win32 Utilities
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -24,10 +24,10 @@ extern "C" {
 #endif
 
 #ifdef _WIN32
-/* Verify that the libfaac DLL is available on Windows.
+/* Verify that the specified DLL is available on Windows.
    Returns true if available, false if missing.
    If missing and err_msg is provided, populates err_msg with a descriptive message. */
-bool win32_check_faac_dll_available(char *err_msg, size_t err_msg_len);
+bool win32_check_dll_available(const char *dll_name, char *err_msg, size_t err_msg_len);
 #endif
 
 #ifdef __cplusplus

@@ -450,7 +450,7 @@ int main(int argc, char *argv[])
 {
 #ifdef _WIN32
     char dll_err[256];
-    if (!win32_check_faac_dll_available(dll_err, sizeof(dll_err)))
+    if (!win32_check_dll_available(LIBFAAC_DLL_NAME, dll_err, sizeof(dll_err)))
     {
         fprintf(stderr, "%s\n", dll_err);
         return 1;
