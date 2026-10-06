@@ -23,15 +23,20 @@
 extern "C" {
 #endif
 
-enum help_section
-{
-    HELP_QUAL = 320,
-    HELP_IO,
-    HELP_MP4,
-    HELP_ADVANCED
-};
+typedef struct {
+    const char *opt;
+    const char *shorthelp;
+    const char *longhelp;
+} help_t;
 
-void show_help(int mode, const char *lib_version);
+typedef struct {
+    int id;
+    const char *name;
+    const char *option;
+    const help_t *help;
+} help_group_t;
+
+void show_help(int mode, const char *lib_version, const help_group_t *groups);
 
 #ifdef __cplusplus
 }

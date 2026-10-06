@@ -78,7 +78,11 @@ enum flags
     WRITER_SORT_FLAG,
     TAG_FLAG,
     CREATION_TIME_FLAG,
-    OPT_JOINT = 330,
+    HELP_QUAL,
+    HELP_IO,
+    HELP_MP4,
+    HELP_ADVANCED,
+    OPT_JOINT,
     OPT_PNS_DISABLE,
     OBJTYPE_FLAG,
     CAP_RATE_FLAG,
@@ -88,6 +92,145 @@ enum flags
     OPT_COMPILATION,
     OPT_IGNORE_LENGTH,
     LANG_FLAG
+};
+
+static help_t help_qual[] = {
+    {NULL,
+     "Rate control: -q (VBR), -b (ABR, default 128), -b --cbr (CBR); --cap-rate bounds any frame in any mode.",
+     "VBR holds a quality and lets the bitrate follow the material; ABR holds an average over the file; CBR holds it in every frame. -q with --cap-rate is capped VBR: constant quality, no frame above the cap. -q and -b are exclusive."},
+    {"-q <quality>",
+     "Set encoding quality (1-5000, default 100). (VBR)",
+     "Constant quality, 1..5000, default 100; higher is better and costs more bits. The bitrate follows the material and moves between releases as the encoder is tuned. With --object-type auto, -q up to 75 uses HE-AAC v1; from 76 it is AAC-LC at a much higher bitrate. Use -b for a predictable size."},
+    {"-b <bitrate>",
+     "Set average bitrate to <bitrate> kbps. (ABR)",
+     "Approximate over the file; max. ~500 kbps (stereo)."},
+    {"--cbr",
+     "Hold -b as a constant bitrate. (CBR)",
+     "A bit reservoir keeps every frame inside the decoder's input buffer and stuffs any frame that would otherwise overflow it, so the rate lands exactly; ADTS declares the buffer fullness, MP4 the buffer size. For constant-rate channels and matched-rate tests; on a file or a packet network the stuffing is bytes for nothing."},
+    {"-c <freq>",
+     "Cut the audio off above <freq> Hz.",
+     "Left out, the encoder chooses the cutoff from the bitrate, between 14 and 19 kHz on most stereo settings; VBR codes up to 19 kHz. It is printed at the start. Set it as high as half the sample rate to keep everything; the bitrate rises with it. HE-AAC sets its own and ignores this. The actual frequency is adjusted to a band edge."},
+    {"--cap-rate <bitrate>",
+     "Cap any single frame at <bitrate> kbps.",
+     "For packet-oriented transports that cannot fragment a frame, where an oversized frame is dropped rather than split, and for bounding VBR (-q). Must be >= the -b bitrate. Best-effort: quality is backed off until the frame fits, so pathological input can still exceed the cap."},
+    {NULL, NULL, NULL}
+};
+
+static help_t help_io[] = {
+    {"-o <filename>",
+     "Set output file name (only for one input file)",
+     "Format is auto-detected from extension (.aac/.adts -> ADTS, .m4a/.mp4/.m4b -> MP4; default: MP4)."},
+    {"-a",
+     "Use ADTS stream output format.",
+     "Generate ADTS transport stream output."},
+    {"-",
+     "Use stdin/stdout",
+     "If you simply use a hyphen/minus sign instead of a filename, FAAC can encode directly from stdin, thus enabling piping from other applications and utilities. The same works for stdout as well, so FAAC can pipe its output to other apps such as a server."},
+    {"-v <verbose>",
+     "Set verbosity level (-v0 is quiet mode).",
+     NULL},
+    {"-r",
+     "Use RAW AAC output file.",
+     "Generate raw AAC bitstream (i.e. without any headers). Not advised: raw AAC files are practically useless."},
+    {"-P",
+     "Raw PCM input mode (default 44100 Hz, 16-bit, stereo).",
+     "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
+    {"-R <samplerate>",
+     "Raw PCM input rate.",
+     "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},
+    {"-B <samplebits>",
+     "Raw PCM input sample size (8, 16 (default), 24 or 32 bits).",
+     "Raw PCM input sample size (default: 16, also possible 8, 24, 32 bit fixed or float input)."},
+    {"-C <channels>",
+     "Raw PCM input channels.",
+     "Raw PCM input channels (default: 2, max. 8)."},
+    {"-X",
+     "Swap raw PCM input byte order.",
+     "Raw PCM input is read big-endian by default; -X reads it little-endian."},
+    {"-I <C[,LFE]>",
+     "Input channel config, default is 3,4 (Center third, LFE fourth)",
+     "Input multichannel configuration (default: 3,4 which means Center is third and LFE is fourth like in 5.1 WAV, so you only have to specify a different position of these two mono channels in your multichannel input files if they haven't been reordered already)."},
+    {"--ignorelength",
+     "Ignore wav length from header (useful with files over 4 GB)",
+     NULL},
+    {"--overwrite",
+     "Overwrite existing output file",
+     NULL},
+    {NULL, NULL, NULL}
+};
+
+static help_t help_mp4[] = {
+    {"--tag <tagname=tagvalue>",
+     "Add named tag (iTunes '----')",
+     "Separated by = or ,. Enclose in quotes if spaces are present."},
+    {"--artist <name>",
+     "Set artist name", NULL},
+    {"--artistsort <name>",
+     "Set artist sort order", NULL},
+    {"--composer <name>",
+     "Set composer name", NULL},
+    {"--composersort <name>",
+     "Set composer sort order", NULL},
+    {"--title <name>",
+     "Set title/track name", NULL},
+    {"--genre <number|name>",
+     "Set genre number or name", NULL},
+    {"--album <name>",
+     "Set album/performer", NULL},
+    {"--albumartist <name>",
+     "Set album artist", NULL},
+    {"--albumartistsort <name>",
+     "Set album artist sort order", NULL},
+    {"--albumsort <name>",
+     "Set album sort order", NULL},
+    {"--compilation",
+     "Mark as compilation", NULL},
+    {"--track <number/total>",
+     "Set track number", NULL},
+    {"--disc <number/total>",
+     "Set disc number", NULL},
+    {"--year <number>",
+     "Set year", NULL},
+    {"--cover-art <filename>",
+     "Read cover art from <filename>",
+     "Supported image formats are GIF, JPEG, and PNG."},
+    {"--comment <string>",
+     "Set comment", NULL},
+    {"--lang <code3>",
+     "Set ISO 639-2/T 3-letter language code (e.g. eng, ger)", NULL},
+    {"--creation-time <value>",
+     "Set creation/modification time (auto, now, or timestamp)", NULL},
+    {NULL, NULL, NULL}
+};
+
+static help_t help_advanced[] = {
+    {"--no-tns",
+     "Disable coding of TNS, temporal noise shaping (default: on).", NULL},
+    {"--no-pns",
+     "Disable coding of PNS, perceptual noise substitution (default: on).", NULL},
+    {"--joint 0",
+     "Disable joint stereo coding.", NULL},
+    {"--joint 1",
+     "Use Mid/Side coding.", NULL},
+    {"--joint 2",
+     "Use Intensity Stereo coding.", NULL},
+    {"--joint 3",
+     "Use Mixed Mode (dynamic M/S and IS) coding (default).", NULL},
+    {"--mpeg-vers X",
+     "Force AAC MPEG version, X can be 2 or 4", NULL},
+    {"--object-type X",
+     "Force AAC object type: lc, he-aac-v1, or auto (default)", NULL},
+    {"--shortctl X",
+     "Enforce block type (0 = both (default); 1 = no short; 2 = no long).", NULL},
+    {NULL, NULL, NULL}
+};
+
+static const help_group_t g_help[] = {
+    {HELP_QUAL, "Quality-related options", "--help-qual", help_qual},
+    {HELP_IO, "Input/output options", "--help-io", help_io},
+    {HELP_MP4, "MP4 specific options", "--help-mp4", help_mp4},
+    {HELP_ADVANCED, "Advanced options, only for testing purposes", "--help-advanced", help_advanced},
+    {0, NULL, NULL, NULL}
 };
 
 #ifndef _WIN32
@@ -318,7 +461,7 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        show_help('?', libinfo.version);
+        show_help('?', libinfo.version, g_help);
         ret = 1;
         goto cleanup;
     }
@@ -624,12 +767,12 @@ int main(int argc, char *argv[])
         case HELP_ADVANCED:
         case 'H':
         case 'h':
-            show_help(c, libinfo.version);
+            show_help(c, libinfo.version, g_help);
             ret = 1;
             goto cleanup;
         case '?':
         default:
-            show_help('?', libinfo.version);
+            show_help('?', libinfo.version, g_help);
             ret = 1;
             goto cleanup;
         }
