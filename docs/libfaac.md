@@ -50,7 +50,7 @@ user of the API.
 Include `<faac.h>`. Build and install the encoder with Meson:
 
 ```sh
-meson setup build-faac -Dfrontend=false
+meson setup build-faac -Ddecoder=false -Dfrontend=false
 meson compile -C build-faac
 meson install -C build-faac
 ```
@@ -308,6 +308,7 @@ clamped to the available range. Read effective values with `get_info()`.
 
 All formats are interleaved. Convert normalized float PCM by multiplying by
 32768; convert full-scale 32-bit PCM to 24-bit scale before passing it.
+In particular, FAAD's float and 32-bit outputs require conversion for FAAC.
 NaN, infinity and float magnitudes at least 8388608 are replaced with silence;
 this is not a clipping or normalization service.
 
