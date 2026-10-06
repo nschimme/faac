@@ -145,7 +145,7 @@ static int get_global_max_opt_len(const help_group_t *groups)
     return max_len;
 }
 
-static void help0(const help_t *h, int l, int opt_col, int term_width)
+static void print_help_items(const help_t *h, int l, int opt_col, int term_width)
 {
     int cnt;
 
@@ -255,7 +255,7 @@ void show_help(const char *prog_name, int mode, const char *lib_version, const h
             for (cnt = 0; cnt < 2 && groups[cnt].id; cnt++)
             {
                 printf("%s:\n", groups[cnt].name);
-                help0(groups[cnt].help, 0, opt_col, term_width);
+                print_help_items(groups[cnt].help, 0, opt_col, term_width);
             }
         }
         if (mode == 'H')
@@ -263,7 +263,7 @@ void show_help(const char *prog_name, int mode, const char *lib_version, const h
             for (cnt = 0; groups[cnt].id; cnt++)
             {
                 printf("%s:\n", groups[cnt].name);
-                help0(groups[cnt].help, 1, opt_col, term_width);
+                print_help_items(groups[cnt].help, 1, opt_col, term_width);
             }
         }
         break;
@@ -272,7 +272,7 @@ void show_help(const char *prog_name, int mode, const char *lib_version, const h
             if (groups[cnt].id == mode)
             {
                 printf("%s:\n", groups[cnt].name);
-                help0(groups[cnt].help, 1, opt_col, term_width);
+                print_help_items(groups[cnt].help, 1, opt_col, term_width);
                 break;
             }
         break;
