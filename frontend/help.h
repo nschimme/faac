@@ -1,0 +1,40 @@
+/*
+ * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2001 Menno Bakker
+ * Copyright (C) 2002-2017 Krzysztof Nikiel
+ * Copyright (C) 2004 Dan Villiom P. Christiansen
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ */
+
+#ifndef HELP_H
+#define HELP_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum help_section
+{
+    HELP_QUAL = 320,
+    HELP_IO,
+    HELP_MP4,
+    HELP_ADVANCED
+};
+
+void show_help(int mode, const char *lib_version);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* HELP_H */
