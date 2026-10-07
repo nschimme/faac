@@ -71,6 +71,9 @@
  * treble of some material. */
 #define TREBLE_SLOPE_BITRATE  56000
 #define TREBLE_SLOPE_RICH     3.0f
+/* Per-channel rate below which the coarser-scalefactor pass runs; the
+ * quality-driven mode (no target rate) skips it. */
+#define COARSEN_BITRATE       80000
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -352,6 +355,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * the low bands, where the de-emphasis leaves the most audible error. */
     hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)
         ? TREBLE_SLOPE_RICH : 1.0f;
+    /* Where bits are scarce, one coarser step on a band often frees more than
+     * the added error costs; the gain fades with rate, so rich rates skip the
+     * extra pass. */
+    hEncoder->aacquantCfg.coarsen = hEncoder->config.bitRate && hEncoder->config.bitRate < COARSEN_BITRATE;
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
