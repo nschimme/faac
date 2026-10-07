@@ -20,10 +20,28 @@
 #include "sbr_analysis.h"
 #include "resample.h"
 
+/* A written frame's last envelope and the layout it was coded in: the
+ * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
+typedef struct {
+    int env[SBR_MAX_BANDS];
+    int nb;
+    int ampRes;
+    int coupled;
+} SbrEnvRef;
+
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
     float qmfOvl64[SBR_QMF_HIST_LEN]; /* QMF overlap plus analysis delay (carries across frames) */
+    /* By access-unit parity: a frame reads the previous frame's slot and writes
+     * its own, so a frame the rate loop writes again codes against the same
+     * reference as the first time. */
+    SbrEnvRef ref[2];
 } SBRChannel;
+
+/* A channel's quantized envelopes, one level per band. */
+typedef struct {
+    int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+} SbrEnvData;
 
 /* One frame's coded SBR payload: every field SbrWrite reads that varies per
  * frame. What it reads that is constant for the stream (bs_* header fields,
@@ -41,13 +59,13 @@ typedef struct SbrFrameData {
     int freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
-    struct {
-        int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
-    } ch[MAX_CHANNELS];
+    SbrEnvData ch[MAX_CHANNELS];
 } SbrFrameData;
 
 struct SBRInfo {
     int sbrPresent;
+    /* Coupled rendition of the pair being written: level, then balance. */
+    SbrEnvData cpl[2];
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
     int numChannels;
     int sampleRate;        /* full output rate; the dual-rate core runs at sampleRate/2 */
