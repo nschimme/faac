@@ -295,10 +295,44 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
+/* Rough spectral bits for one line of magnitude q < 16, averaged over the
+ * books a band of that size would pick. */
+static int line_bits(int q)
+{
+    static const unsigned char tab[16] = { 1, 3, 5, 6, 7, 7, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10 };
+    return tab[q];
+}
+
+static float line_pow43(int q)
+{
+    static const float tab[16] = { 0.0f, 1.0f, 2.5198421f, 4.3267487f, 6.3496042f, 8.5498797f,
+        10.902724f, 13.390519f, 16.0f, 18.720754f, 21.544347f, 24.463781f, 27.473142f,
+        30.567351f, 33.742649f, 36.994781f };
+    return tab[q];
+}
+
+/* Squared error added and bits saved when a band's lines go from qo to qn,
+ * one run of width lines per window. */
+static float band_delta(const float *xr, const int *qo, const int *qn, int width, int nwin,
+                        float invo, float invn, int *saved)
+{
+    float d = 0.0f;
+    int j, i;
+    for (j = 0; j < nwin; j++)
+        for (i = 0; i < width; i++) {
+            int o = abs(qo[j * width + i]), n = abs(qn[j * width + i]);
+            float x = fabsf(xr[j * BLOCK_LEN_SHORT + i]);
+            float eo = line_pow43(o) * invo - x, en = line_pow43(n) * invn - x;
+            d += en * en - eo * eo;
+            *saved += line_bits(o) - line_bits(n);
+        }
+    return d;
+}
+
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
-                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
+                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen, float lambda)
 {
     int gsize = ci->groups.len[gnum];
     float pns_threshold = 0.1f * (float)pnslevel;
@@ -416,6 +450,38 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width >> 2, gain);
             if (qm > maxq) maxq = qm;
         }
+        /* One step coarser, kept when the masking-weighted error it adds costs
+         * less than the bits it saves. Magnitudes only shrink, so no book
+         * overflows. The first coded band sets global_gain and is left alone. */
+        if (lambda > 0.0f && maxq && maxq < 15 && gsize * width <= 256 && *p_last_abs != SF_CHAIN_UNSET)
+        {
+            int cand[256], qm2 = 0;
+            /* scalefactor delta bits grow about one per step; the next band's
+             * scalefactor is read off its wanted one (SF_OFFSET + want) */
+            int d = sf_abs - *p_last_abs;
+            int saved = abs(d) - abs(d + 1);
+            if (sb + 1 < n && want[sb + 1] != INT_MIN)
+            {
+                d = SF_OFFSET + want[sb + 1] - sf_abs;
+                saved += abs(d) - abs(d - 1);
+            }
+            float gain2 = sfac_to_gain(SF_OFFSET - sf_rel - 1);
+            if (sf_abs < SF_MAX_ABS && sf_abs + 1 - *p_last_abs <= SF_DELTA)
+            {
+                for (win = 0; win < gsize; win++)
+                {
+                    int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, cand + win * width, width >> 2, gain2);
+                    if (qm > qm2) qm2 = qm;
+                }
+                if (band_delta(xr0 + lo, xi, cand, width, gsize, 1.0f / gain, 1.0f / gain2, &saved)
+                    * target[sb] * target[sb] * (float)(width * gsize) / be[sb].sum
+                    < lambda * saved)
+                {
+                    memcpy(xi, cand, gsize * width * sizeof(int));
+                    gain = gain2; sf_rel++; sf_abs++; maxq = qm2;
+                }
+            }
+        }
         /* huffbook picks the final book; record the lowest that covers maxq */
         ci->book[band] = !maxq ? HCB_ZERO : maxq <= LAV_1 ? HCB_1 : maxq <= LAV_2 ? HCB_3
                        : maxq <= LAV_4 ? HCB_5 : maxq <= LAV_7 ? HCB_7 : maxq <= LAV_12 ? HCB_9 : HCB_ESC;
@@ -490,7 +556,8 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen,
+                              aacquantCfg->coarsen ? 0.025f * fminf(1.2f, fmaxf(0.6f, DEFQUAL / aacquantCfg->quality)) : 0.0f);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);
