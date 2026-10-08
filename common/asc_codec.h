@@ -75,6 +75,15 @@ static inline uint32_t asc_br_remaining(const asc_bitreader *br)
     return br->pos < br->len_bits ? br->len_bits - br->pos : 0;
 }
 
+/* Some muxers (Audible's among them) set dependsOnCoreCoder on a plain AAC-LC
+ * config yet leave out the 14-bit coreCoderDelay, ending the ASC right after
+ * extensionFlag. A conforming ASC always has room for the delay plus
+ * extensionFlag, so the delay is read only when those 15 bits are present. */
+static inline void asc_skip_core_coder_delay(asc_bitreader *br)
+{
+    if (asc_br_remaining(br) >= 15) asc_br_get(br, 14);
+}
+
 static inline uint32_t asc_parse_sample_rate(asc_bitreader *br)
 {
     uint32_t idx = asc_br_get(br, 4);
@@ -125,9 +134,7 @@ static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *ou
     if (aot != 2) return; /* GASpecificConfig only walked here for AAC-LC */
 
     out->frame_length_flag = asc_br_get(&br, 1) != 0; /* frameLengthFlag */
-    if (asc_br_get(&br, 1)) {
-        asc_br_get(&br, 14); /* coreCoderDelay, iff dependsOnCoreCoder */
-    }
+    if (asc_br_get(&br, 1)) asc_skip_core_coder_delay(&br); /* coreCoderDelay */
     bool extension_flag = asc_br_get(&br, 1) != 0;
     if (out->num_channels == 0) return; /* PCE follows; not handled here */
     if (extension_flag) {
