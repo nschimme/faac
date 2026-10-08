@@ -58,7 +58,7 @@ project_ver = meson.project_version()
 
 common_args = {
     'include_directories' : ['..', '../include', common_inc],
-    'c_args' : c_args,
+    'c_args' : c_args + ['-DCOMMON_PREFIX=faac_'],
     'dependencies' : [libm, codec_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,

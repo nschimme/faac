@@ -13,6 +13,8 @@
  * Lesser General Public License for more details.
  */
 
+#include "common_symbols.h"
+
 #include <math.h>
 
 #include "fft.h"

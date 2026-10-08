@@ -13,6 +13,8 @@
  * Lesser General Public License for more details.
  */
 
+#include "common_symbols.h"
+
 #ifndef SFB_TABLES_H
 #define SFB_TABLES_H
 
