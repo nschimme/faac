@@ -68,6 +68,10 @@ For a custom installation prefix, add its pkg-config directory to
 for shared linking. Remove legacy FAAD2 include and library paths from the
 application's build configuration.
 
+On Windows, a program that links the static library must define `FAAD_STATIC` before
+including `faad.h`; otherwise the API is declared `dllimport`. Meson's pkg-config file
+describes the shared library, so add the define yourself for a static link.
+
 ### Building without Meson
 
 The Meson build writes a `config.h` that every source includes. A build system
