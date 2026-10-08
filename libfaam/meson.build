@@ -85,3 +85,66 @@ pkg.generate(
   description: 'Freeware Advanced Audio Muxer',
   version: meson.project_version(),
 )
+
+test_faam_args = faam_args + ['-DFAAM_HAVE_TAG_CHAPTER=1']
+
+test_faam = executable(
+  'test_faam',
+  'test_faam.c',
+  include_directories: libfaam_inc,
+  link_with: libfaam_static,
+  c_args: test_faam_args + ['-DFAAM_STATIC'],
+)
+
+test('faam_smoke_test', test_faam)
+
+test_master_layout = executable(
+  'test_master_layout',
+  'test_master_layout.c',
+  include_directories: libfaam_inc,
+  link_with: libfaam_static,
+  c_args: ['-DFAAM_STATIC'],
+)
+test('faam_master_layout_test', test_master_layout)
+
+test_faam_media = executable(
+  'test_faam_media',
+  'test_faam_media.c',
+  include_directories: libfaam_inc,
+  link_with: libfaam_static,
+  c_args: faam_args + ['-DFAAM_STATIC'],
+)
+test('faam_media_test', test_faam_media)
+
+test_faam_contract = executable(
+  'test_faam_contract',
+  'test_faam_contract.c',
+  include_directories: libfaam_inc,
+  link_with: libfaam_static,
+  c_args: faam_args + ['-DFAAM_STATIC'],
+)
+test('faam_contract_test', test_faam_contract)
+
+test_faam_abi = executable(
+  'test_faam_abi',
+  'test_faam_abi.c',
+  include_directories: libfaam_inc,
+  link_with: libfaam_static,
+  c_args: faam_args + ['-DFAAM_STATIC'],
+)
+foreach abi_case : ['outputs', 'future_inputs', 'track_limits_ids', 'odd_and_many', 'metadata', 'updates_close_flags', 'video']
+  test('faam_abi_' + abi_case + '_test', test_faam_abi, args: [abi_case])
+endforeach
+
+# Links the library sources directly so the allocator hook in test_faam_alloc.h
+# counts every allocation; the library itself is built without it.
+if get_option('muxer-fragmented')
+    force_include = (cc.get_argument_syntax() == 'msvc') ? '/FI' : '-include'
+    test_faam_alloc = executable(
+      'test_faam_alloc',
+      ['test_faam_alloc.c'] + libfaam_sources,
+      include_directories: libfaam_inc,
+      c_args: faam_args + ['-DFAAM_STATIC', force_include, meson.current_source_dir() / 'test_faam_alloc.h'],
+    )
+    test('faam_alloc_test', test_faam_alloc)
+endif
