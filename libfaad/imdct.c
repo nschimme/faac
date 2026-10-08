@@ -166,7 +166,7 @@ static void imdct_emit_long(float * restrict out_pcm, float * restrict overlap, 
 
 void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequence, uint8_t window_shape, float * restrict spec, float * restrict out_pcm)
 {
-    float * restrict work = dec->scratch.work;
+    float * restrict work = dec->scratch->work;
     /* ISO/IEC 14496-3 §4.6.11.3.2: the left half of the window uses the
      * previous block's shape, the right half this block's. */
     uint8_t prev_shape = dec->prev_window_shape[ch];

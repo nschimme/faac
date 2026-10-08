@@ -362,8 +362,17 @@ options except as listed, not storage requirements guaranteed across builds:
 | 2 channels, LC only (`-Ddecoder-sbr=false`) | 41 KB | 34.3 KB | 4 KB |
 | 8 channels, SBR+PS (default) | 374 KB | 52.7 KB | 32 KB |
 
+`faad_get_state_size()` reports only the single contiguous block needed by
+`faad_decoder_init()`. `faad_decoder_open()` allocates a small handle and
+separate blocks for the spectra, overlap, SBR channels, SBR working buffers,
+and PCM staging. The core frame scratch shares storage with the SBR low-band
+scratch because those stages run at different times. On the two-channel SBR
+build without PS, the largest requested block is 33,760 bytes and the sum of
+requests is about 126 KB. Explicit SBR and PS configurations allocate their optional state at open.
+For ADTS, those parts are allocated on first use when the bitstream signals them.
+
 Query state size at runtime with `faad_get_state_size()`; it is independent of
-configuration and excludes shared tables, input and PCM. Table arrays use
+configuration and excludes shared tables, input and caller-owned output PCM. Table arrays use
 float/int elements, so their sizes carry across targets up to alignment.
 Writable tables are initialized on first initialization and remain in static
 storage, separate from caller-owned state. Their placement depends on the

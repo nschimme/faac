@@ -230,7 +230,7 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
                                       const uint8_t *asc_buf, uint32_t asc_len,
                                       faad_decoder **out_dec);
 
-/* Desktop convenience wrapper: allocates the state block with malloc(). */
+/* Heap-backed wrapper: allocates decoder state in independent blocks. */
 FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
                                         const uint8_t *asc_buf, uint32_t asc_len,
                                         faad_decoder **out_dec);

@@ -616,6 +616,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
 {
     int nch = (syntax_id == ID_CPE) ? 2 : 1;
     if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
+    if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
     SBRElement *el = &dec->sbr_el[ch0];
     if (crc) bits_skip(bs, 10); /* bs_sbr_crc_bits, not verified */
     uint32_t sbr_sr = dec->asc.sbr_sample_rate > 0 ? dec->asc.sbr_sample_rate : 2 * dec->core_sample_rate;
@@ -747,6 +748,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
 #ifndef FAAD_DISABLE_PS
             if (id == PS_EXTENSION_DATA) {
                 uint32_t here = bits_get_consumed(bs);
+                if (faad_ensure_ps(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
                 ps_read_data(dec, bs, end > here ? end - here : 0);
 #ifdef FAAD_STATS
                 g_faadStats.framePsBits += bits_get_consumed(bs) - here;
@@ -1135,7 +1137,7 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
      * the region this frame adjusts, the adjuster rewrites it in place
      * (each envelope's energy is read before its slots are scaled), and
      * the rest stays zero. */
-    memset(sc->y, 0, sizeof(sc->y));
+    memset(sc->y, 0, sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2]));
     for (int k = 0; k < SBR_MAX_BANDS; k++)
         memcpy(sc->y[k], ch->y_tail[k], sizeof(ch->y_tail[k]));
 
@@ -1234,7 +1236,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 {
     float *pcm_in = pcm, *pcm_out = pcm;
 #ifndef FAAD_DISABLE_SBR
-    SBRScratch *sc = &dec->scratch.sbr;
+    SBRScratch *sc = &dec->sbr_scratch;
     float E0[SBR_MAX_ENV][SBR_MAX_BANDS], E1[SBR_MAX_ENV][SBR_MAX_BANDS];
     float Q0[2][SBR_MAX_NQ], Q1[2][SBR_MAX_NQ];
 
@@ -1260,11 +1262,11 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
         if (dec->ps_seen && num_ch == 1) {
             sbr_process_channel(el, &dec->sbr[0], sc, pcm_in, E0, Q0, have_hf, PS_IN_SLOTS);
             dec->num_channels = 2;
-            if (dec->ps.start) ps_frame_begin(dec, sc->x, have_hf ? el->kx + el->M : 32);
+            if (dec->ps->start) ps_frame_begin(dec, sc->x, have_hf ? el->kx + el->M : 32);
             for (int t = 0; t < SBR_SLOTS; t++) {
                 float L[64][2], R[64][2];
                 float (*l)[2] = sc->x[t], (*r)[2] = sc->x[t]; /* no PS data yet: dual mono */
-                if (dec->ps.start) {
+                if (dec->ps->start) {
                     ps_slot(dec, t, sc->x, L, R);
                     l = L; r = R;
                 }

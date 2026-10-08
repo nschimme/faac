@@ -86,6 +86,15 @@ test_faad = executable('test_faad',
 )
 test('faad_smoke_test', test_faad)
 
+if host_machine.system() == 'linux' and (default_lib == 'static' or default_lib == 'both')
+    test_faad_alloc = executable('test_faad_alloc', 'test_faad_alloc.c',
+        c_args: faad_c_args + ['-DFAAD_STATIC'],
+        include_directories: ['..', '../include', common_inc],
+        link_with: [libfaad_static],
+        link_args: ['-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=free'])
+    test('faad_alloc_test', test_faad_alloc)
+endif
+
 test_faad_api = executable('test_faad_api', 'test_faad_api.c',
     c_args: faad_c_args + test_static_args,
     include_directories: ['..', '../include', common_inc], link_with: [libfaad])
