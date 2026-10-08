@@ -72,6 +72,10 @@ force archive selection. For a custom prefix, set `PKG_CONFIG_PATH` and the
 platform's shared-library runtime search path. Remove old FAAC include and
 library paths when migrating.
 
+On Windows, a program that links the static library must define `FAAC_STATIC` before
+including `faac.h`; otherwise the API is declared `dllimport`. Meson's pkg-config file
+describes the shared library, so add the define yourself for a static link.
+
 ## Supported streams
 
 | Feature | Support and requirements |

@@ -44,6 +44,7 @@ libfaam_static = static_library(
   'faam',
   libfaam_sources,
   kwargs: libfaam_args + {
+    'c_args': libfaam_args['c_args'] + ['-DFAAM_STATIC'],
     'install': default_lib != 'shared',
     'override_options': ['b_lto=false'],
   },
@@ -54,6 +55,7 @@ if default_lib == 'shared' or default_lib == 'both'
     'faam',
     libfaam_sources,
     kwargs: libfaam_args + {
+      'c_args': libfaam_args['c_args'] + ['-DFAAM_BUILDING'],
       # Same version as libfaac until the libraries are versioned together.
       'version': '3.0.0',
       'vs_module_defs': 'libfaam.def',
