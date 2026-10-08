@@ -56,10 +56,15 @@ extern "C" {
 #define FAAD_VERSION_HEX \
     ((FAAD_VERSION_MAJOR << 16) | (FAAD_VERSION_MINOR << 8) | FAAD_VERSION_PATCH)
 
-/* Export/visibility marker. */
+/* Export/visibility marker. On Windows a program that links the static library
+ * defines FAAD_STATIC; the shared library is built with FAAD_BUILDING. */
 #ifndef FAADAPI
-# if defined(_WIN32)
+# if defined(_WIN32) && defined(FAAD_STATIC)
+#  define FAADAPI
+# elif defined(_WIN32) && defined(FAAD_BUILDING)
 #  define FAADAPI __declspec(dllexport)
+# elif defined(_WIN32)
+#  define FAADAPI __declspec(dllimport)
 # elif defined(__GNUC__) && (__GNUC__ >= 4)
 #  define FAADAPI __attribute__((visibility("default")))
 # else
