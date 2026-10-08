@@ -310,6 +310,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
      * by tick 2 both are zero, so the rest of the drain is known silence. */
     if (realPerCh == 0 && flushTick > 1) {
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
+            rs->halfRate[channel] = inputFifo[channel];
             memset(rs->halfRate[channel], 0, FRAME_LEN * sizeof(float));
             heHalfRate[channel] = rs->halfRate[channel];
             sCtx->signalAnalysis.ch[channel].transientStrength = 0.0f;
@@ -317,10 +318,10 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         sbr_frame_silence(fd);
     } else {
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
-            float *fullRate = rs->fullRate[channel];
+            /* SBR finishes before the FIR overwrites the consumed FIFO front. */
+            float *fullRate = inputFifo[channel];
+            rs->fullRate[channel] = rs->halfRate[channel] = fullRate;
             fullPtrs[channel] = fullRate;
-            if (realPerCh)
-                memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(float));
             /* Final partial frame: silence-pad the unfilled full-rate tail to
              * prevent the resampler from consuming stale data. */
             if (realPerCh < 2 * FRAME_LEN)

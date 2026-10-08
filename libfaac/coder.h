@@ -84,7 +84,7 @@ typedef struct CoderInfo {
 
     int global_gain;
     int sf[MAX_SCFAC_BANDS];
-    int book[MAX_SCFAC_BANDS];
+    uint8_t book[MAX_SCFAC_BANDS]; /* HCB_ZERO through HCB_NONE (0..16) */
     int bandcnt;
     int sfbn;
     /* Points at the encoder's prebuilt long or short table (frame.c); the
@@ -100,10 +100,8 @@ typedef struct CoderInfo {
     /* worst case: one codeword with two escapes per two spectral lines */
 #define DATASIZE (3*FRAME_LEN/2)
 
-    struct {
-        int data;
-        int len;
-    } s[DATASIZE];
+    /* Escape suffixes need at most 21 bits; the top byte holds the length. */
+    uint32_t s[DATASIZE];
     int datacnt;
 
 
