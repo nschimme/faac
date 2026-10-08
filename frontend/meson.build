@@ -80,6 +80,11 @@ if get_option('decoder')
         dependencies: [libshell32, libiconv],
         install: true
     )
+    if get_option('encoder') and not meson.is_cross_build()
+        test('faad_frontend_test', find_program('python3'),
+            args: [files('../tests/faad_frontend_test.py'), faac, faad,
+                   get_option('max-channels').to_string(), get_option('decoder-sbr').to_string()])
+    endif
 endif
 
 if get_option('muxer')
@@ -95,4 +100,8 @@ if get_option('muxer')
         dependencies: [libshell32, libiconv],
         install: true
     )
+    if get_option('encoder') and get_option('decoder') and not meson.is_cross_build()
+        test('faam_cli_test', find_program('python3'),
+            args: [files('../tests/faam_cli_test.py'), faac, faam, faad], timeout: 300)
+    endif
 endif
