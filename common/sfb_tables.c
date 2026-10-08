@@ -15,6 +15,8 @@
 
 /* Scalefactor band offsets per sampling rate. */
 
+#include "common_symbols.h"
+
 #include "sfb_tables.h"
 
 /* 96000 Hz/88200 Hz Long (41 SFBs, 42 entries) */
