@@ -16,6 +16,8 @@
 /* Shared SBR tables: QMF prototype filter and frequency-band offsets.
  * All values are normative data from ISO/IEC 14496-3:2005. */
 
+#include "common_symbols.h"
+
 #ifndef SBR_TABLES_H
 #define SBR_TABLES_H
 

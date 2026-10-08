@@ -13,6 +13,8 @@
  * Lesser General Public License for more details.
  */
 
+#include "common_symbols.h"
+
 #include "sbr_tables.h"
 
 const sbrfloat qmf_c[640] = {

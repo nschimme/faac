@@ -13,6 +13,8 @@
  * Lesser General Public License for more details.
  */
 
+#include "faad_symbols.h"
+
 #ifndef FAAD_INTERNAL_H
 #define FAAD_INTERNAL_H
 
