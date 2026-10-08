@@ -50,7 +50,7 @@ static faad_status validate_asc(const uint8_t *buf, uint32_t len, bool *frame_le
     if (aot != 2) return FAAD_ERR_UNSUPPORTED;
     if (explicit_sbr && output_rate != 2 * rate) return FAAD_ERR_UNSUPPORTED;
     *frame_length = asc_br_get(&br, 1) != 0;
-    if (asc_br_get(&br, 1)) asc_br_get(&br, 14);
+    if (asc_br_get(&br, 1)) asc_skip_core_coder_delay(&br);
     bool extension = asc_br_get(&br, 1) != 0;
     if (!channels) {
         /* Skip and validate the ASC's PCE; its layout remains unresolved in
