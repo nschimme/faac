@@ -135,7 +135,7 @@ enum faad_output_format {
     FAAD_OUTPUT_16BIT,               /* native-endian int16                      */
     FAAD_OUTPUT_24BIT,               /* native-endian int24 packed in 3 bytes   */
     FAAD_OUTPUT_32BIT,               /* native-endian int24 in 32 bits           */
-    FAAD_OUTPUT_FLOAT,               /* 32-bit float                             */
+    FAAD_OUTPUT_FLOAT,               /* 32-bit float, unity full scale (+-1.0)   */
     FAAD_OUTPUT_MAX   = 0x7fffffff
 };
 
