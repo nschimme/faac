@@ -58,7 +58,7 @@ extern "C" {
  *
  *   #if defined(FAAC_VERSION_MAJOR) && (FAAC_VERSION_MAJOR >= 1)
  */
-#define FAAC_VERSION_MAJOR 2
+#define FAAC_VERSION_MAJOR 3
 #define FAAC_VERSION_MINOR 0
 #define FAAC_VERSION_PATCH 0
 #define FAAC_VERSION_HEX \
