@@ -158,10 +158,27 @@ jobs:
           path: results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
           key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}-bench-${{ steps.bench-sha.outputs.sha }}
 
+      - name: Select Decoder Comparison
+        id: decoder-diff
+        if: github.event_name == 'pull_request' && matrix.rate_control != 'cbr'
+        run: |
+          # The decoder gate needs a faad in both builds; without one in the
+          # baseline there is nothing to compare against and the gate skips.
+          # Decoding does not depend on the rate control, so one job per
+          # architecture is enough.
+          if [ -x baseline/build_base/frontend/faad ] && [ -x candidate/build_cand/frontend/faad ]; then
+            echo "faad-ref-bin=./baseline/build_base/frontend/faad" >> $GITHUB_OUTPUT
+            echo "faad-bin=./candidate/build_cand/frontend/faad" >> $GITHUB_OUTPUT
+          else
+            echo "No faad in the baseline or the candidate; the decoder gate will skip."
+          fi
+
       - name: Run Benchmark (Candidate)
         if: github.event_name == 'pull_request'
         uses: nschimme/faac-benchmark@master
         with:
+          faad-bin: ${{ steps.decoder-diff.outputs.faad-bin }}
+          faad-ref-bin: ${{ steps.decoder-diff.outputs.faad-ref-bin }}
           faac-bin: ./candidate/build_cand/frontend/faac
           libfaac-so: ./candidate/build_cand/libfaac/libfaac.so
           rate-control: ${{ matrix.rate_control }}
