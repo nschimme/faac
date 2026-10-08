@@ -41,6 +41,7 @@ if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') a
         'faad',
         faad_src,
         kwargs : common_args + {
+          'c_args' : common_args['c_args'] + ['-DFAAD_STATIC'],
           'override_options' : ['b_lto=false'],
         },
     )
@@ -51,6 +52,7 @@ if default_lib == 'shared' or default_lib == 'both'
         'faad',
         faad_src,
         kwargs : common_args + {
+          'c_args' : common_args['c_args'] + ['-DFAAD_BUILDING'],
           'version' : '3.0.0',
           'soversion' : '3',
         },
