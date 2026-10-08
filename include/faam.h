@@ -90,8 +90,12 @@ extern "C" {
     ((FAAM_VERSION_MAJOR << 16) | (FAAM_VERSION_MINOR << 8) | FAAM_VERSION_PATCH)
 
 #ifndef FAAMAPI
-# if defined(_WIN32)
+# if defined(_WIN32) && defined(FAAM_STATIC)
+#  define FAAMAPI
+# elif defined(_WIN32) && defined(FAAM_BUILDING)
 #  define FAAMAPI __declspec(dllexport)
+# elif defined(_WIN32)
+#  define FAAMAPI __declspec(dllimport)
 # elif defined(__GNUC__) && (__GNUC__ >= 4)
 #  define FAAMAPI __attribute__((visibility("default")))
 # else

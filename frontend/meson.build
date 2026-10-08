@@ -17,6 +17,10 @@ git_version_h = vcs_tag(
 # Large-file semantics on 32-bit POSIX for every fopen(), stat() and seek in the frontends: without
 # them a file past 2 GiB cannot be opened.
 c_args_list = (has_iconv ? ['-DHAVE_ICONV'] : []) + ['-D_FILE_OFFSET_BITS=64']
+# A program linked to the static libraries must not import their symbols from a DLL.
+if get_option('frontend-static') or get_option('default_library') == 'static'
+    c_args_list += ['-DFAAC_STATIC', '-DFAAM_STATIC']
+endif
 
 libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
 
@@ -33,6 +37,7 @@ libshell32 = cc.find_library('shell32', required: target_machine.system() == 'wi
 
 faac = executable('faac',
     ['main.c'],
+    c_args: c_args_list,
     include_directories: ['..', '../include', '../common'],
     link_with: [libfaac_for_frontend, libfrontend],
     dependencies: [libshell32],
@@ -46,6 +51,7 @@ if target_machine.system() == 'windows'
     libcomctl32 = cc.find_library('comctl32', required: true)
     faacgui = executable('faacgui',
         ['maingui.c', 'resource.h'] + resource_src,
+        c_args: c_args_list,
         include_directories: ['..', '../include', '../common'],
         link_with: [libfaac_for_frontend, libfrontend],
         dependencies: [libcomctl32],

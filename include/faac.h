@@ -64,10 +64,15 @@ extern "C" {
 #define FAAC_VERSION_HEX \
     ((FAAC_VERSION_MAJOR << 16) | (FAAC_VERSION_MINOR << 8) | FAAC_VERSION_PATCH)
 
-/* Export/visibility marker. */
+/* Export/visibility marker. On Windows a program that links the static library
+ * defines FAAC_STATIC; the shared library is built with FAAC_BUILDING. */
 #ifndef FAACAPI
-# if defined(_WIN32)
+# if defined(_WIN32) && defined(FAAC_STATIC)
+#  define FAACAPI
+# elif defined(_WIN32) && defined(FAAC_BUILDING)
 #  define FAACAPI __declspec(dllexport)
+# elif defined(_WIN32)
+#  define FAACAPI __declspec(dllimport)
 # elif defined(__GNUC__) && (__GNUC__ >= 4)
 #  define FAACAPI __attribute__((visibility("default")))
 # else
