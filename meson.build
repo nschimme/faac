@@ -58,6 +58,7 @@ endif
 subdir('docs')
 subdir('include')
 subdir('libfaac')
+subdir('libfaam')
 
 if get_option('frontend')
     subdir('frontend')

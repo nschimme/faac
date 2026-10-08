@@ -23,6 +23,7 @@
 #endif
 
 #include "input.h"
+#include "cli_io.h"
 #include "charset.h"
 #include "endian.h"
 
@@ -260,14 +261,9 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
       sndf->samples = 0;
     else
     {
-#ifdef _WIN32
-      _fseeki64(sndf->f, 0, SEEK_END);
-      sndf->samples = _ftelli64(sndf->f);
-#else
-      fseeko(sndf->f, 0, SEEK_END);
-      sndf->samples = (int64_t)ftello(sndf->f);
-#endif
-      rewind(sndf->f);
+      uint64_t bytes = 0;
+      cli_fsize(sndf->f, &bytes);
+      sndf->samples = (int64_t)bytes;
     }
   }
   else
