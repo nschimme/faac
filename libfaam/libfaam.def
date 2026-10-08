@@ -1,0 +1,33 @@
+EXPORTS
+;
+; libfaam public API (faam.h)
+;
+faam_get_library_info                    @1
+faam_demuxer_get_state_size              @2
+faam_demuxer_init                        @3
+faam_demuxer_open                        @4
+faam_demuxer_close                       @5
+faam_demuxer_get_num_tracks              @6
+faam_demuxer_get_track_info              @7
+faam_demuxer_get_codec_data              @8
+faam_demuxer_get_major_brand             @9
+faam_demuxer_get_track_gapless           @10
+faam_demuxer_get_metadata                @11
+faam_demuxer_get_custom_tag              @12
+faam_demuxer_get_num_chapters            @13
+faam_demuxer_get_chapter                 @14
+faam_demuxer_next_frame_loc              @15
+faam_demuxer_read_frame                  @16
+faam_muxer_config_init                   @17
+faam_muxer_get_state_size                @18
+faam_muxer_init                          @19
+faam_muxer_open                          @20
+faam_muxer_close                         @21
+faam_muxer_get_track_id                  @22
+faam_muxer_update                        @23
+faam_muxer_write_frame                   @24
+faam_muxer_finalize                      @25
+faam_muxer_get_info                      @26
+faam_strerror                            @27
+faam_update_tags_stream                  @28
+faam_update_chapters_stream              @29

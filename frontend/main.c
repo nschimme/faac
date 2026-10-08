@@ -50,8 +50,6 @@
 # define stderr stdout
 #endif
 
-#define MAX_COVER_ART_SIZE ((size_t)32 * 1024 * 1024)
-
 enum flags
 {
     SHORTCTL_FLAG = 300,
@@ -383,8 +381,8 @@ static void cli_summary_callback(const encode_summary_t *summary, void *user_dat
                 summary->avg_bitrate, summary->max_frame_size);
     }
 
-    long input_size = get_file_size(opts->input_filename);
-    long output_size = get_file_size(opts->output_filename);
+    int64_t input_size = get_file_size(opts->input_filename);
+    int64_t output_size = get_file_size(opts->output_filename);
     if (input_size > 0 && output_size > 0)
     {
         fprintf(stderr, " File Size           : Input = %.2f MB | Output = %.2f MB | Ratio = %.1f:1\n",
@@ -626,11 +624,11 @@ int main(int argc, char *argv[])
             opts.metadata.album_sort = trim_quotes_and_spaces(optarg);
             break;
         case TRACK_FLAG:
-            if (sscanf(optarg, "%hu/%hu", &opts.metadata.track, &opts.metadata.ntracks) < 1)
+            if (!parse_index_arg(optarg, &opts.metadata.track, &opts.metadata.ntracks))
                 dieMessage = "Wrong track number.\n";
             break;
         case DISC_FLAG:
-            if (sscanf(optarg, "%hu/%hu", &opts.metadata.disc, &opts.metadata.ndiscs) < 1)
+            if (!parse_index_arg(optarg, &opts.metadata.disc, &opts.metadata.ndiscs))
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
@@ -669,33 +667,12 @@ int main(int argc, char *argv[])
             break;
         case TAG_FLAG:
             {
-                char *tagname = optarg;
-                char *eq = strchr(optarg, '=');
-                char *comma = strchr(optarg, ',');
+                char *tagname = NULL;
                 char *tagval = NULL;
+                const char *tag_err = parse_tag_arg(optarg, &tagname, &tagval);
 
-                if (eq && comma)
-                    tagval = (eq < comma) ? eq : comma;
-                else if (eq)
-                    tagval = eq;
-                else
-                    tagval = comma;
-
-                if (!tagval)
-                {
-                    dieMessage = "Missing tag value.\n";
-                }
-                else
-                {
-                    *tagval++ = '\0';
-                    tagname = trim_quotes_and_spaces(tagname);
-                    tagval = trim_quotes_and_spaces(tagval);
-
-                    if (*tagname == '\0')
-                        dieMessage = "Tag name cannot be empty.\n";
-                    else if (*tagval == '\0')
-                        dieMessage = "Tag value cannot be empty.\n";
-                }
+                if (tag_err)
+                    dieMessage = tag_err;
                 if (!dieMessage)
                 {
                     if (!add_custom_tag_to_options(&opts, tagname, tagval))
@@ -706,49 +683,19 @@ int main(int argc, char *argv[])
             break;
         case COVER_ART_FLAG:
             {
-                FILE *f = cli_fopen(optarg, "rb");
-                if (f)
-                {
-                    fseek(f, 0, SEEK_END);
-                    long sz = ftell(f);
-                    fseek(f, 0, SEEK_SET);
-                    clearerr(f);
+                uint8_t *art = NULL;
+                uint64_t art_size = 0;
+                const char *art_err = load_cover_art(optarg, &art, &art_size);
 
-                    if (sz <= 0 || (size_t)sz > MAX_COVER_ART_SIZE)
-                    {
-                        dieMessage = "Invalid cover art file size!\n";
-                    }
-                    else
-                    {
-                        opts.art_size = (uint64_t)sz;
-                        opts.art_data = malloc((size_t)opts.art_size);
-                        if (opts.art_data)
-                        {
-                            if (fread((void *)opts.art_data, 1, (size_t)opts.art_size, f) != (size_t)opts.art_size)
-                            {
-                                dieMessage = "Error reading cover art file!\n";
-                                free((void *)opts.art_data);
-                                opts.art_data = NULL;
-                                opts.art_size = 0;
-                            }
-                            else if (opts.art_size < 12 || !check_image_header((const char *)opts.art_data))
-                            {
-                                dieMessage = "Unsupported cover image file format!\n";
-                                free((void *)opts.art_data);
-                                opts.art_data = NULL;
-                                opts.art_size = 0;
-                            }
-                        }
-                        else
-                        {
-                            dieMessage = "Out of memory reading cover art file!\n";
-                        }
-                    }
-                    fclose(f);
+                if (art_err)
+                {
+                    dieMessage = art_err;
                 }
                 else
                 {
-                    dieMessage = "Error opening cover art file!\n";
+                    free((void *)opts.art_data);
+                    opts.art_data = art;
+                    opts.art_size = art_size;
                 }
             }
             break;
@@ -837,6 +784,20 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Metadata requires MP4 output!\n");
         ret = 1;
         goto cleanup;
+    }
+
+    /* Refuse before encoding: the time is only applied once the MP4 is finalised. */
+    if (opts.container_mp4)
+    {
+        char time_msg[512];
+        uint32_t creation_time;
+        if (!resolve_creation_time(opts.creation_time_str, opts.input_filename,
+                                   &creation_time, time_msg, sizeof(time_msg)))
+        {
+            fprintf(stderr, "Error: %s", time_msg);
+            ret = 1;
+            goto cleanup;
+        }
     }
 
     if (opts.verbose > 0 && libinfo.version)
