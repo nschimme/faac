@@ -190,7 +190,7 @@ static void ps_clear_params(PSState *ps)
 /* ps_data(): bits_left is the extension payload still available. */
 void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
 {
-    PSState *ps = &dec->ps;
+    PSState *ps = dec->ps;
     uint32_t start_pos = bits_get_consumed(bs);
     bool ok = true;
 
@@ -719,7 +719,7 @@ static void ps_mix_slot(PSState *ps, int n, float l[PS_NR_BANDS][2], float r[PS_
  * mixing matrices, and the resets a band-layout change needs. */
 void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int top)
 {
-    PSState *ps = &dec->ps;
+    PSState *ps = dec->ps;
     bool is34 = ps->is34;
 
     for (int i = 0; i < 5; i++)
@@ -753,7 +753,7 @@ void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int t
 /* One slot: hybrid domain, decorrelated copy, mix, back to the QMF domain. */
 void ps_slot(struct faad_decoder *dec, int n, float X[PS_IN_SLOTS][64][2], float L[64][2], float R[64][2])
 {
-    PSState *ps = &dec->ps;
+    PSState *ps = dec->ps;
     float l[PS_NR_BANDS][2], r[PS_NR_BANDS][2];
 
     ps_hybrid_analysis_slot(ps, n, l, X);
