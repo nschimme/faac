@@ -68,6 +68,15 @@ For a custom installation prefix, add its pkg-config directory to
 for shared linking. Remove legacy FAAD2 include and library paths from the
 application's build configuration.
 
+### Building without Meson
+
+The Meson build writes a `config.h` that every source includes. A build system
+that compiles the sources directly must define the same macros: `PACKAGE`,
+`PACKAGE_VERSION`, `WORDS_BIGENDIAN` (`1` on big-endian targets, `0`
+otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8) and, for a combined
+build with the encoder, `FAAC_SBR_DECIMATION`. Add `common/` and `include/`
+to the include path.
+
 ## Supported streams
 
 | Feature | Option (default) | Runtime detection | When absent |
@@ -410,6 +419,11 @@ ticks to output samples before applying this additional delay. The frontend
 adds it to leading trim and deducts it from trailing padding, bounded at zero.
 Query this value at runtime; filter delay can change without changing its units.
 Re-query stream info on `FAAD_FRAME_FORMAT_CHANGED` to obtain the emitted delay.
+
+When the container carries an edit list, the playable audio ends
+`decoder_delay` samples past the end of the edit, so a player that cuts at the
+edit's end loses the last `decoder_delay` samples of an SBR stream. Keep the
+access units that start up to that far beyond the edit.
 
 ### Packet errors and seeking
 

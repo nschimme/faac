@@ -76,6 +76,15 @@ On Windows, a program that links the static library must define `FAAC_STATIC` be
 including `faac.h`; otherwise the API is declared `dllimport`. Meson's pkg-config file
 describes the shared library, so add the define yourself for a static link.
 
+### Building without Meson
+
+The Meson build writes a `config.h` that every source includes. A build system
+that compiles the sources directly must define the same macros: `PACKAGE`,
+`PACKAGE_VERSION`, `WORDS_BIGENDIAN` (`1` on big-endian targets, `0`
+otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8), `FAAC_SBR_DECIMATION`
+(`-Dsbr-decimation`, default 1) and `FAAC_STATS` (`-Dstats`). Add `common/` and
+`include/` to the include path.
+
 ## Supported streams
 
 | Feature | Support and requirements |
