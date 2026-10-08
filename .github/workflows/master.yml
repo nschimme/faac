@@ -120,10 +120,10 @@ jobs:
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
 
-          for exe in ../temp/bin/faac.exe ../temp/bin/faacgui.exe; do
+          for exe in ../temp/bin/faac.exe ../temp/bin/faacgui.exe ../temp/bin/faam.exe; do
             test -f "$exe"
-            if objdump -p "$exe" | grep -iE 'DLL Name:.*faac.*\.dll'; then
-              echo "Unexpected FAAC DLL dependency in $exe" >&2
+            if objdump -p "$exe" | grep -iE 'DLL Name:.*fa(ac|am).*\.dll'; then
+              echo "Unexpected FAAC/FAAM DLL dependency in $exe" >&2
               exit 1
             fi
           done
@@ -144,10 +144,10 @@ jobs:
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
 
-          foreach ($exe in @('faac.exe', 'faacgui.exe')) {
+          foreach ($exe in @('faac.exe', 'faacgui.exe', 'faam.exe')) {
             $imports = dumpbin /DEPENDENTS "temp/bin/$exe"
             if ($LASTEXITCODE -ne 0) { throw "Cannot inspect $exe imports" }
-            if ($imports -match 'faac.*\.dll') { throw "$exe imports the FAAC DLL" }
+            if ($imports -match 'fa(ac|am).*\.dll') { throw "$exe imports a FAAC/FAAM DLL" }
           }
           if (-not (Get-ChildItem 'temp/bin/*faac*.dll')) { throw 'FAAC DLL is missing from the package' }
 
