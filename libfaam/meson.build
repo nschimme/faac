@@ -55,7 +55,7 @@ if default_lib == 'shared' or default_lib == 'both'
     libfaam_sources,
     kwargs: libfaam_args + {
       # Same version as libfaac until the libraries are versioned together.
-      'version': '2.0.0',
+      'version': '3.0.0',
       'vs_module_defs': 'libfaam.def',
       'install': true,
     },
