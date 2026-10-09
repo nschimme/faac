@@ -136,6 +136,14 @@ foreach abi_case : ['outputs', 'future_inputs', 'track_limits_ids', 'odd_and_man
   test('faam_abi_' + abi_case + '_test', test_faam_abi, args: [abi_case])
 endforeach
 
+if cc.has_argument('-fshort-enums')
+  test_faam_abi_short = executable('test_faam_abi_short', 'test_faam_abi.c',
+    include_directories: libfaam_inc,
+    link_with: libfaam_static,
+    c_args: faam_args + ['-DFAAM_STATIC', '-fshort-enums'])
+  test('faam_abi_short_enums_test', test_faam_abi_short)
+endif
+
 # Links the library sources directly so the allocator hook in test_faam_alloc.h
 # counts every allocation; the library itself is built without it.
 force_include = (cc.get_argument_syntax() == 'msvc') ? '/FI' : '-include'
