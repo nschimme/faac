@@ -232,36 +232,6 @@ faam_status faam_write_ilst_ext(const faam_metadata *metadata, const faam_gaples
                                 const uint8_t *extra, uint32_t extra_bytes,
                                 faam_bytes_writer write, void *user, uint32_t *out_size);
 
-/* Endian utilities */
-static inline uint16_t read_u16_be(const uint8_t *b) {
-    return (uint16_t)((b[0] << 8) | b[1]);
-}
-
-static inline uint32_t read_u32_be(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
-}
-
-static inline uint64_t read_u64_be(const uint8_t *b) {
-    return ((uint64_t)read_u32_be(b) << 32) | (uint64_t)read_u32_be(b + 4);
-}
-
-static inline void write_u16_be(uint8_t *b, uint16_t val) {
-    b[0] = (uint8_t)(val >> 8);
-    b[1] = (uint8_t)val;
-}
-
-static inline void write_u32_be(uint8_t *b, uint32_t val) {
-    b[0] = (uint8_t)(val >> 24);
-    b[1] = (uint8_t)(val >> 16);
-    b[2] = (uint8_t)(val >> 8);
-    b[3] = (uint8_t)val;
-}
-
-static inline void write_u64_be(uint8_t *b, uint64_t val) {
-    write_u32_be(b, (uint32_t)(val >> 32));
-    write_u32_be(b + 4, (uint32_t)val);
-}
-
 /* Input structs from a caller: zero a library-sized copy, then take the bytes both sides know.
  * The caller's struct_size must be at least the baseline of the struct (checked by the caller). */
 static inline void faam_copy_in(void *dst, size_t dst_size, const void *src, uint32_t src_size) {

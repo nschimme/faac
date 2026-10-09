@@ -13,8 +13,8 @@
  * Lesser General Public License for more details.
  */
 
-#ifndef ENDIAN_H
-#define ENDIAN_H
+#ifndef FAAC_COMMON_ENDIAN_H
+#define FAAC_COMMON_ENDIAN_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -129,8 +129,38 @@ static inline int32_t read_pcm32(const int32_t *src, bool bigendian) {
     return bigendian ? read_pcm32_be(src) : read_pcm32_le(src);
 }
 
+/* Endian utilities */
+static inline uint16_t read_u16_be(const uint8_t *b) {
+    return (uint16_t)((b[0] << 8) | b[1]);
+}
+
+static inline uint32_t read_u32_be(const uint8_t *b) {
+    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
+}
+
+static inline uint64_t read_u64_be(const uint8_t *b) {
+    return ((uint64_t)read_u32_be(b) << 32) | (uint64_t)read_u32_be(b + 4);
+}
+
+static inline void write_u16_be(uint8_t *b, uint16_t val) {
+    b[0] = (uint8_t)(val >> 8);
+    b[1] = (uint8_t)val;
+}
+
+static inline void write_u32_be(uint8_t *b, uint32_t val) {
+    b[0] = (uint8_t)(val >> 24);
+    b[1] = (uint8_t)(val >> 16);
+    b[2] = (uint8_t)(val >> 8);
+    b[3] = (uint8_t)val;
+}
+
+static inline void write_u64_be(uint8_t *b, uint64_t val) {
+    write_u32_be(b, (uint32_t)(val >> 32));
+    write_u32_be(b + 4, (uint32_t)val);
+}
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ENDIAN_H */
+#endif /* FAAC_COMMON_ENDIAN_H */

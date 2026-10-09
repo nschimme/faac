@@ -80,7 +80,7 @@ test_static_args = default_lib == 'static' ? ['-DFAAD_STATIC', '-DFAAC_STATIC'] 
 test_faad = executable('test_faad',
     'test_faad.c',
     c_args: faad_c_args + test_static_args,
-    include_directories: ['..', '../include'],
+    include_directories: ['..', '../include', common_inc],
     link_with: [libfaad],
     dependencies: [dependency('threads', required: false)],
 )
@@ -102,7 +102,7 @@ test('faad_api_test', test_faad_api)
 
 test_faad_asc = executable('test_faad_asc', 'test_faad_asc.c',
     c_args: faad_c_args + test_static_args,
-    include_directories: ['..', '../include'], link_with: [libfaad])
+    include_directories: ['..', '../include', common_inc], link_with: [libfaad])
 test('faad_asc_test', test_faad_asc)
 if cc.has_argument('-fshort-enums')
     test_faad_api_short = executable('test_faad_api_short', 'test_faad_api.c',
@@ -115,7 +115,7 @@ if get_option('stats')
     test_faad_dump = executable('test_faad_dump',
         'test_faad_dump.c',
         c_args: faad_c_args + test_static_args,
-        include_directories: ['..', '../include'],
+        include_directories: ['..', '../include', common_inc],
         link_with: [libfaad],
     )
     test('faad_dump_test', find_program('python3'),

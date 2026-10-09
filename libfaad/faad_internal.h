@@ -28,6 +28,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "endian.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -159,8 +160,7 @@ static inline uint32_t bits_get_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
-                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t word = read_u32_be(ptr);
         uint32_t val = (word >> (32 - bs->bit_pos - nbits)) & ((1U << nbits) - 1U);
         uint32_t total_bits = bs->bit_pos + nbits;
         bs->byte_pos += total_bits >> 3;
@@ -174,8 +174,7 @@ static inline uint32_t bits_show_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits > 0 && nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
-                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t word = read_u32_be(ptr);
         return (word << bs->bit_pos) >> (32 - nbits);
     }
     return bits_show(bs, nbits);

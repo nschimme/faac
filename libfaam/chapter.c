@@ -17,6 +17,7 @@
  * Stream-based Chapter / Bookmark management for libfaam (QuickTime chpl atom)
  */
 
+#include "endian.h"
 #include "libfaam_internal.h"
 
 faam_status faam_update_chapters_stream(const faam_io *caller_io, const faam_chapter *chapters, uint32_t count, uint32_t flags)

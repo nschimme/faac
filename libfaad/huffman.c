@@ -17,12 +17,13 @@
 #include "sfb_tables.h"
 #include <math.h>
 
-static float pow_4_3_lut[128];
+#define POW_4_3_LUT_SIZE 128
+static float pow_4_3_lut[POW_4_3_LUT_SIZE];
 static float sf_scale_lut[256];
 
 void init_dequant_tables(void)
 {
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < POW_4_3_LUT_SIZE; i++) {
         pow_4_3_lut[i] = powf((float)i, 4.0f / 3.0f);
     }
     for (int i = 0; i < 256; i++) {
@@ -498,7 +499,7 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
 static inline float pow_4_3_fast(int x)
 {
     int abs_x = abs(x);
-    if (abs_x < 128) {
+    if (abs_x < POW_4_3_LUT_SIZE) {
         return copysignf(pow_4_3_lut[abs_x], (float)x);
     }
     return copysignf(powf((float)abs_x, 4.0f / 3.0f), (float)x);

@@ -17,6 +17,7 @@
  * Stream-based Tagging utilities for libfaam (iTunes ilst metadata atom writer)
  */
 
+#include "endian.h"
 #include "libfaam_internal.h"
 
 /* meta header, version/flags and the 33-byte mdir handler that precedes ilst. */
