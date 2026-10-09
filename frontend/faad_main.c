@@ -64,13 +64,21 @@ static void json_str(const char *s)
     putchar('"');
 }
 
-static void fifo_init(PCMFifo *f, uint32_t capacity)
+static bool fifo_init(PCMFifo *f, uint32_t capacity)
 {
     f->data = (uint8_t *)malloc(capacity > 0 ? capacity : 65536);
+    if (!f->data) {
+        f->size = 0;
+        f->head = 0;
+        f->tail = 0;
+        f->fill = 0;
+        return false;
+    }
     f->size = capacity > 0 ? capacity : 65536;
     f->head = 0;
     f->tail = 0;
     f->fill = 0;
+    return true;
 }
 
 static void fifo_free(PCMFifo *f)
@@ -83,13 +91,17 @@ static void fifo_free(PCMFifo *f)
     f->fill = 0;
 }
 
-static void fifo_push(PCMFifo *f, const uint8_t *src, uint32_t len)
+static bool fifo_push(PCMFifo *f, const uint8_t *src, uint32_t len)
 {
-    if (len == 0) return;
+    if (len == 0) return true;
     if (f->fill + len > f->size) {
-        uint32_t new_size = f->size * 2;
-        while (new_size < f->fill + len) new_size *= 2;
+        uint32_t new_size = f->size > 0 ? f->size * 2 : 65536;
+        while (new_size < f->fill + len) {
+            if (new_size > UINT32_MAX / 2) { new_size = f->fill + len; break; }
+            new_size *= 2;
+        }
         uint8_t *new_data = (uint8_t *)malloc(new_size);
+        if (!new_data) return false;
         if (f->fill > 0) {
             if (f->tail < f->head) {
                 memcpy(new_data, f->data + f->tail, f->fill);
@@ -99,7 +111,7 @@ static void fifo_push(PCMFifo *f, const uint8_t *src, uint32_t len)
                 memcpy(new_data + first, f->data, f->head);
             }
         }
-        free(f->data);
+        if (f->data) free(f->data);
         f->data = new_data;
         f->size = new_size;
         f->tail = 0;
@@ -115,6 +127,7 @@ static void fifo_push(PCMFifo *f, const uint8_t *src, uint32_t len)
         f->head = len - first;
     }
     f->fill += len;
+    return true;
 }
 
 static uint32_t fifo_pop(PCMFifo *f, uint8_t *dst, uint32_t len)
@@ -626,6 +639,17 @@ int main(int argc, char **argv)
         }
     }
 
+    char *io_buf = NULL;
+    if (fout && fout != stdout) {
+        io_buf = (char *)malloc(65536);
+        if (io_buf) {
+            if (setvbuf(fout, io_buf, _IOFBF, 65536) != 0) {
+                free(io_buf);
+                io_buf = NULL;
+            }
+        }
+    }
+
     _Alignas(float) uint8_t outbuf[65536];
     uint32_t total_pcm_bytes = 0;
     uint32_t sample_rate = 44100;
@@ -653,8 +677,10 @@ int main(int argc, char **argv)
     uint32_t samples_to_skip = (is_mp4 && gapless) ? track.delay : 0;
     uint32_t padding_samples = (is_mp4 && gapless) ? track.padding : 0;
     bool gapless_scaled = false;
+    uint32_t padding_bytes = 0;
+    bool fifo_initialized = false;
+    bool fallback_mode = false;
     PCMFifo fifo = {0};
-    if (is_mp4) fifo_init(&fifo, 262144);
 
     if (is_mp4) {
         for (uint32_t s = start_frame; s < track.num_samples; s++) {
@@ -677,11 +703,22 @@ int main(int argc, char **argv)
                     faad_decoder_close(&dec);
                     free(inbuf);
                     mp4_free_track(&track);
+                    if (fout && fout != stdout) fclose(fout);
+                    if (io_buf) free(io_buf);
                     return 1;
                 }
             } else if (bytes_written > 0) {
                 if (flags & FAAD_FRAME_FORMAT_CHANGED) {
                     faad_decoder_get_info(dec, &sinfo);
+                    if (frames_decoded > 0 && (sinfo.sample_rate != sample_rate || sinfo.channels != num_channels)) {
+                        if (is_mp4 && !fallback_mode) {
+                            fallback_mode = true;
+                            if (!fifo_initialized) {
+                                fifo_init(&fifo, 262144);
+                                fifo_initialized = true;
+                            }
+                        }
+                    }
                     sample_rate = sinfo.sample_rate;
                     num_channels = sinfo.channels;
                 }
@@ -705,6 +742,21 @@ int main(int argc, char **argv)
                     padding_samples = (uint32_t)((uint64_t)padding_samples * sinfo.sample_rate / timescale);
                     padding_samples = padding_samples > delay ? padding_samples - delay : 0;
                     gapless_scaled = true;
+
+                    uint64_t pad_bytes_64 = (uint64_t)padding_samples * dec_bytes_per_frame_sample;
+                    if (pad_bytes_64 <= 64 * 1024 * 1024) {
+                        padding_bytes = (uint32_t)pad_bytes_64;
+                    } else {
+                        padding_bytes = 0;
+                    }
+
+                    if (padding_bytes > 0 && !fallback_mode) {
+                        if (fifo_init(&fifo, padding_bytes)) {
+                            fifo_initialized = true;
+                        } else {
+                            padding_bytes = 0;
+                        }
+                    }
                 }
 
                 uint8_t *write_ptr = outbuf;
@@ -722,30 +774,52 @@ int main(int argc, char **argv)
                 }
 
                 if (fout && samples_to_write > 0) {
-                    uint32_t padding_bytes = padding_samples * num_channels * (bit_depth / 8);
                     uint32_t frame_bytes = samples_to_write * dec_bytes_per_frame_sample;
-                    /* Coalesce file writes in the existing ring, flushing first
-                     * when needed so batching cannot force a larger allocation. */
-                    if (!write_stdout && frame_bytes > fifo.size - fifo.fill &&
-                        fifo.fill > padding_bytes) {
-                        total_pcm_bytes += fifo_write(fout, &fifo, fifo.fill - padding_bytes);
-                    }
-                    fifo_push(&fifo, write_ptr, frame_bytes);
 
-                    if (fifo.fill > padding_bytes) {
-                        uint32_t can_pop = fifo.fill - padding_bytes;
-                        if (write_stdout) {
-                            uint8_t pop_buf[4096];
-                            while (can_pop > 0) {
-                                uint32_t chunk = can_pop < sizeof(pop_buf) ? can_pop : sizeof(pop_buf);
-                                uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
-                                if (popped == 0) break;
-                                fwrite(pop_buf, 1, popped, fout);
-                                total_pcm_bytes += popped;
-                                can_pop -= popped;
+                    if (padding_bytes == 0 && !fallback_mode) {
+                        fwrite(write_ptr, 1, frame_bytes, fout);
+                        total_pcm_bytes += frame_bytes;
+                    } else if (!fallback_mode) {
+                        uint32_t total_avail = fifo.fill + frame_bytes;
+                        if (total_avail > padding_bytes) {
+                            uint32_t safe_bytes = total_avail - padding_bytes;
+                            if (fifo.fill > 0) {
+                                uint32_t from_ring = (fifo.fill < safe_bytes) ? fifo.fill : safe_bytes;
+                                total_pcm_bytes += fifo_write(fout, &fifo, from_ring);
+                                safe_bytes -= from_ring;
                             }
-                        } else if (can_pop >= 64u * 1024u) {
-                            total_pcm_bytes += fifo_write(fout, &fifo, can_pop);
+                            if (safe_bytes > 0) {
+                                fwrite(write_ptr, 1, safe_bytes, fout);
+                                total_pcm_bytes += safe_bytes;
+                                write_ptr += safe_bytes;
+                                frame_bytes -= safe_bytes;
+                            }
+                        }
+                        if (frame_bytes > 0) {
+                            fifo_push(&fifo, write_ptr, frame_bytes);
+                        }
+                    } else {
+                        if (!write_stdout && frame_bytes > fifo.size - fifo.fill &&
+                            fifo.fill > padding_bytes) {
+                            total_pcm_bytes += fifo_write(fout, &fifo, fifo.fill - padding_bytes);
+                        }
+                        fifo_push(&fifo, write_ptr, frame_bytes);
+
+                        if (fifo.fill > padding_bytes) {
+                            uint32_t can_pop = fifo.fill - padding_bytes;
+                            if (write_stdout) {
+                                uint8_t pop_buf[4096];
+                                while (can_pop > 0) {
+                                    uint32_t chunk = can_pop < sizeof(pop_buf) ? can_pop : sizeof(pop_buf);
+                                    uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
+                                    if (popped == 0) break;
+                                    fwrite(pop_buf, 1, popped, fout);
+                                    total_pcm_bytes += popped;
+                                    can_pop -= popped;
+                                }
+                            } else if (can_pop >= 64u * 1024u) {
+                                total_pcm_bytes += fifo_write(fout, &fifo, can_pop);
+                            }
                         }
                     }
                 }
@@ -892,15 +966,22 @@ int main(int argc, char **argv)
             if (track.cover_bytes) printf("  Cover Art: present (%u bytes)\n", track.cover_bytes);
         }
     } else if (fout) {
-        if (!raw_format && fout != stdout) {
-            if (!header_pending) num_channels = header_channels;
-            write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes, bit_depth, is_float);
+        if (fout != stdout) {
+            if (!raw_format) {
+                if (!header_pending) num_channels = header_channels;
+                write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes, bit_depth, is_float);
+            }
             fclose(fout);
+            fout = NULL;
         }
         if (!quiet) {
             printf("Decoded %u frames (%u bytes, %d-bit %s) to %s\n",
                    frames_decoded, total_pcm_bytes, bit_depth, is_float ? "float" : "PCM", outfile ? outfile : "stdout");
         }
+    }
+    if (io_buf) {
+        free(io_buf);
+        io_buf = NULL;
     }
 
     faad_decoder_close(&dec);
