@@ -42,6 +42,7 @@
 #include <faac.h>
 #include "output.h"
 #include "charset.h"
+#include "cli_io.h"
 #include "encode_engine.h"
 #include "help.h"
 
