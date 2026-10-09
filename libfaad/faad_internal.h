@@ -155,12 +155,31 @@ static inline uint32_t bits_get_1(BitReader *bs)
     return 0;
 }
 
+static inline uint32_t bits_load_be32(const uint8_t *ptr)
+{
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    uint32_t w;
+    memcpy(&w, ptr, sizeof(w));
+    return w;
+#elif defined(__GNUC__) || defined(__clang__)
+    uint32_t w;
+    memcpy(&w, ptr, sizeof(w));
+    return __builtin_bswap32(w);
+#elif defined(_MSC_VER)
+    uint32_t w;
+    memcpy(&w, ptr, sizeof(w));
+    return _byteswap_ulong(w);
+#else
+    return ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
+           ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+#endif
+}
+
 static inline uint32_t bits_get_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
-                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t word = bits_load_be32(ptr);
         uint32_t val = (word >> (32 - bs->bit_pos - nbits)) & ((1U << nbits) - 1U);
         uint32_t total_bits = bs->bit_pos + nbits;
         bs->byte_pos += total_bits >> 3;
@@ -174,8 +193,7 @@ static inline uint32_t bits_show_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits > 0 && nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
-                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t word = bits_load_be32(ptr);
         return (word << bs->bit_pos) >> (32 - nbits);
     }
     return bits_show(bs, nbits);

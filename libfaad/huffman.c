@@ -17,7 +17,7 @@
 #include "sfb_tables.h"
 #include <math.h>
 
-#define POW_4_3_LUT_SIZE 8192
+#define POW_4_3_LUT_SIZE 1024
 static float pow_4_3_lut[POW_4_3_LUT_SIZE];
 static float sf_scale_lut[256];
 
@@ -33,25 +33,26 @@ void init_dequant_tables(void)
 
 void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
 {
-    memset(ics->sfb_offsets, 0, sizeof(ics->sfb_offsets));
     int sr_idx = get_sr_index(sample_rate);
     ics->sample_rate_index = (int8_t)sr_idx;
     if (sr_idx < 0) {
         ics->num_sfbs = 0;      /* faad_decoder_open() rejects such rates */
+        memset(ics->sfb_offsets, 0, sizeof(ics->sfb_offsets));
         return;
     }
+    const uint16_t *offsets;
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         ics->num_sfbs = num_sfbs_128[sr_idx];
-        const uint16_t *offsets = sfb_offsets_128[sr_idx];
-        for (int i = 0; i <= ics->num_sfbs && i < 68; i++) {
-            ics->sfb_offsets[i] = offsets[i];
-        }
+        offsets = sfb_offsets_128[sr_idx];
     } else {
         ics->num_sfbs = num_sfbs_1024[sr_idx];
-        const uint16_t *offsets = sfb_offsets_1024[sr_idx];
-        for (int i = 0; i <= ics->num_sfbs && i < 68; i++) {
-            ics->sfb_offsets[i] = offsets[i];
-        }
+        offsets = sfb_offsets_1024[sr_idx];
+    }
+    int count = (int)ics->num_sfbs + 1;
+    if (count > 68) count = 68;
+    memcpy(ics->sfb_offsets, offsets, sizeof(uint16_t) * count);
+    if (count < 68) {
+        memset(ics->sfb_offsets + count, 0, sizeof(uint16_t) * (68 - count));
     }
 }
 
