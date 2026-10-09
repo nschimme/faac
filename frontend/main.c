@@ -188,7 +188,7 @@ static const help_t help_mp4[] = {
      "Set year", NULL},
     {"--cover-art <filename>",
      "Read cover art from <filename>",
-     "Supported image formats are GIF, JPEG, and PNG."},
+     "Supported image formats are GIF, JPEG, PNG, and BMP."},
     {"--comment <string>",
      "Set comment", NULL},
     {"--lang <code3>",
