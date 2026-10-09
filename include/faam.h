@@ -300,9 +300,11 @@ typedef struct faam_custom_tag {
 } faam_custom_tag;
 #define FAAM_CUSTOM_TAG_BASELINE FAAM_STRUCT_END(faam_custom_tag, mean)
 
-/* faam_metadata.cover_type. AUTO detects PNG, GIF (GIF87a/GIF89a), and JPEG
- * (FF D8 FF) by signature, falling back to JPEG for anything else.
- * BMP is explicit only: a BM prefix is too weak for auto-detection. */
+/* faam_metadata.cover_type. AUTO detects PNG, GIF (GIF87a/GIF89a), JPEG
+ * (FF D8 FF), and BMP (file/DIB header checks). Unrecognized AUTO artwork
+ * returns FAAM_ERR_INVALID_ARG when writing. Explicit types are honored.
+ * Demux reports AUTO for unrecognized artwork with an unknown declared type,
+ * preserving the bytes. Detection identifies formats, not pixel validity. */
 enum faam_cover_type {
     FAAM_COVER_AUTO = 0,
     FAAM_COVER_JPEG = 1,

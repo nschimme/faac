@@ -244,13 +244,7 @@ static void parse_ilst_children(const uint8_t *buf, long offset, long end, struc
                 case 14: meta->cover_type = FAAM_COVER_PNG; break;
                 case 27: meta->cover_type = FAAM_COVER_BMP; break;
                 default:
-                    if (val_len >= 8 && !memcmp(val, "\x89PNG\r\n\x1a\n", 8))
-                        meta->cover_type = FAAM_COVER_PNG;
-                    else if (val_len >= 6 &&
-                             (!memcmp(val, "GIF87a", 6) || !memcmp(val, "GIF89a", 6)))
-                        meta->cover_type = FAAM_COVER_GIF;
-                    else
-                        meta->cover_type = FAAM_COVER_JPEG; /* JPEG signature or fallback. */
+                    meta->cover_type = faam_detect_cover_type(val, val_len);
                     break;
                 }
             }

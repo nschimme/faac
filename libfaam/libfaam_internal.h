@@ -231,6 +231,9 @@ struct faam_muxer {
     faam_muxer_track *tracks;
 };
 
+/* AUTO means no supported image format was recognized. */
+uint8_t faam_detect_cover_type(const uint8_t *data, uint32_t size);
+
 typedef faam_status (*faam_bytes_writer)(void *user, const void *data, uint32_t bytes);
 faam_status faam_write_ilst(const faam_metadata *metadata, const faam_gapless_info *gapless,
                             const uint8_t *smpb, uint32_t smpb_bytes,

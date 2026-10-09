@@ -389,11 +389,15 @@ Genre code is the ID3v1 number plus one, zero absent. Cover type is
 `FAAM_COVER_JPEG`, `FAAM_COVER_PNG`, `FAAM_COVER_GIF` or `FAAM_COVER_BMP`,
 written as iTunes data types 13, 14, 12 and 27 respectively.
 `FAAM_COVER_AUTO` detects PNG, GIF (`GIF87a`/`GIF89a`) and JPEG (`FF D8 FF`)
-by signature and falls back to JPEG for anything else. BMP requires an explicit
-cover type; its `BM` prefix is too weak for auto-detection. Unknown cover type
-values are rejected with `FAAM_ERR_INVALID_ARG` when writing artwork.
+by signature. BMP detection checks the file header, a supported DIB header
+(12, 40, 52, 56, 108 or 124 bytes), dimensions, planes, bit depth and offset/size
+bounds; the `BM` prefix alone is insufficient. This identifies the format,
+without decoding or validating pixel data. Unrecognized AUTO artwork and unknown
+cover type values return `FAAM_ERR_INVALID_ARG` when writing artwork. An explicit
+supported cover type is honored even when the bytes do not match.
 Demux returns the declared type for 12/13/14/27, even if the bytes differ;
-other declared types use the same byte detection as AUTO.
+other declared types use the same detection as AUTO. If detection fails, demux
+returns `FAAM_COVER_AUTO` and preserves the artwork bytes without labeling them.
 Custom tags have name/value/mean; NULL mean defaults to `com.apple.iTunes`.
 Demux metadata returns custom_tags NULL and num_custom_tags; initialize a
 `faam_custom_tag` and call `faam_demuxer_get_custom_tag()` for each index.
