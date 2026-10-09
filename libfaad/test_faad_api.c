@@ -230,6 +230,178 @@ static void put_bits(uint8_t *buf, uint32_t *pos, uint32_t value, uint32_t count
         buf[*pos / 8] |= (uint8_t)(((value >> (i - 1)) & 1) << (7 - *pos % 8));
 }
 
+static uint32_t make_pns_core(uint8_t *packet)
+{
+    uint32_t pos = 0;
+    put_bits(packet, &pos, 0, 3);   /* SCE */
+    put_bits(packet, &pos, 0, 4);   /* tag */
+    put_bits(packet, &pos, 100, 8); /* global_gain */
+    put_bits(packet, &pos, 0, 4);   /* long ICS header before max_sfb */
+    put_bits(packet, &pos, 1, 6);   /* one scalefactor band */
+    put_bits(packet, &pos, 0, 1);   /* no prediction */
+    put_bits(packet, &pos, 13, 4);  /* PNS codebook */
+    put_bits(packet, &pos, 1, 5);   /* one-band section */
+    put_bits(packet, &pos, 300, 9); /* first PNS energy */
+    put_bits(packet, &pos, 0, 3);   /* pulse/TNS/gain flags */
+    put_bits(packet, &pos, 7, 3);   /* END */
+    return (pos + 7) / 8;
+}
+
+static void test_nonzero_conceal_history(void)
+{
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    cfg.stream_format = FAAD_STREAM_RAW;
+    const uint8_t asc[] = { 0x12, 0x08 };
+    faad_decoder *dec;
+    assert(faad_decoder_open(&cfg, asc, sizeof(asc), &dec) == FAAD_OK);
+    faad_stream_info info = { .struct_size = sizeof(info) };
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+    void *pcm = malloc(info.max_output_bytes);
+    assert(pcm);
+    uint8_t pns[8] = { 0 };
+    uint32_t pns_len = make_pns_core(pns), used, written, flags;
+    const uint8_t end[] = { 0xe0 };
+    assert(faad_decode_frame(dec, pns, pns_len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(!(flags & FAAD_FRAME_CONCEALED) && written == 2048);
+    bool nonzero = false;
+    for (uint32_t i = 0; i < written; i++) nonzero |= ((uint8_t *)pcm)[i] != 0;
+    assert(nonzero);
+
+    assert(faad_decode_frame(dec, end, sizeof(end), &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert((flags & FAAD_FRAME_CONCEALED) && written == 2048);
+    nonzero = false;
+    for (uint32_t i = 0; i < written; i++) nonzero |= ((uint8_t *)pcm)[i] != 0;
+    assert(nonzero);
+    assert(faad_decode_frame(dec, pns, pns_len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(!(flags & FAAD_FRAME_CONCEALED) && written == 2048);
+
+    assert(faad_decoder_flush(dec) == FAAD_OK);
+    assert(faad_decode_frame(dec, end, sizeof(end), &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert((flags & FAAD_FRAME_CONCEALED) && written == 2048);
+    for (uint32_t i = 0; i < written; i++) assert(((uint8_t *)pcm)[i] == 0);
+    free(pcm);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+}
+
+#if MAX_CHANNELS >= 2
+static uint32_t make_silent_adts(uint8_t *packet, uint32_t channel_config)
+{
+    uint8_t payload[8] = { 0 };
+    uint32_t pos = 0;
+    if (channel_config == 1) {
+        put_bits(payload, &pos, 0, 3);   /* SCE */
+        put_bits(payload, &pos, 0, 4);   /* tag */
+        put_bits(payload, &pos, 100, 8); /* global_gain */
+        put_bits(payload, &pos, 0, 11);  /* long ICS, max_sfb=0, no prediction */
+        put_bits(payload, &pos, 0, 3);   /* pulse/TNS/gain flags */
+    } else {
+        put_bits(payload, &pos, 1, 3);   /* CPE */
+        put_bits(payload, &pos, 0, 4);   /* tag */
+        put_bits(payload, &pos, 0, 1);   /* no common window */
+        for (int ch = 0; ch < 2; ch++) {
+            put_bits(payload, &pos, 100, 8); /* global_gain */
+            put_bits(payload, &pos, 0, 11);  /* long ICS, max_sfb=0, no prediction */
+            put_bits(payload, &pos, 0, 3);   /* pulse/TNS/gain flags */
+        }
+    }
+    put_bits(payload, &pos, 7, 3); /* END */
+    uint32_t payload_bytes = (pos + 7) / 8;
+    uint32_t frame_len = 7 + payload_bytes;
+    packet[0] = 0xff;
+    packet[1] = 0xf1;
+    packet[2] = 0x50; /* AAC-LC, 44.1 kHz */
+    packet[3] = (uint8_t)(channel_config << 6);
+    packet[4] = (uint8_t)(frame_len >> 3);
+    packet[5] = (uint8_t)(((frame_len & 7) << 5) | 0x1f);
+    packet[6] = 0xfc;
+    memcpy(packet + 7, payload, payload_bytes);
+    return frame_len;
+}
+
+static void test_channel_history_rotation(void)
+{
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    faad_decoder *dec;
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    faad_stream_info info = { .struct_size = sizeof(info) };
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+    void *pcm = malloc(info.max_output_bytes);
+    assert(pcm);
+
+    uint8_t packet[15];
+    uint32_t len = make_silent_adts(packet, 1), used, written, flags;
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 2048 && flags == FAAD_FRAME_FORMAT_CHANGED);
+
+    /* A stale right-channel history must not enter the next decoded CPE. */
+    dec->prev_spec[1][0] = 16384.0f;
+    len = make_silent_adts(packet, 2);
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 4096 && flags == FAAD_FRAME_FORMAT_CHANGED);
+    for (uint32_t i = 0; i < written; i++) assert(((uint8_t *)pcm)[i] == 0);
+    info.struct_size = sizeof(info);
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.channels == 2);
+
+    /* A mono success must leave the inactive right-channel concealment history intact. */
+    dec->prev_spec[1][0] = 16384.0f;
+    len = make_silent_adts(packet, 1);
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 2048 && flags == FAAD_FRAME_FORMAT_CHANGED);
+    assert(dec->prev_spec[1][0] == 16384.0f);
+    const uint8_t end[] = { 0xe0 };
+    packet[0] = 0xff;
+    packet[1] = 0xf1;
+    packet[2] = 0x50;
+    packet[3] = 0x80;
+    packet[4] = 1;
+    packet[5] = 0x1f;
+    packet[6] = 0xfc;
+    memcpy(packet + 7, end, sizeof(end));
+    len = 8;
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 4096 && (flags & (FAAD_FRAME_CONCEALED | FAAD_FRAME_FORMAT_CHANGED))
+        == (FAAD_FRAME_CONCEALED | FAAD_FRAME_FORMAT_CHANGED));
+    bool right_nonzero = false;
+    const int16_t *samples = (const int16_t *)pcm;
+    for (uint32_t i = 0; i < 1024; i++) right_nonzero |= samples[2 * i + 1] != 0;
+    assert(right_nonzero);
+
+    len = make_silent_adts(packet, 1);
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 2048 && !(flags & FAAD_FRAME_CONCEALED));
+    len = make_silent_adts(packet, 2);
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 4096 && (flags & FAAD_FRAME_FORMAT_CHANGED)
+        && !(flags & FAAD_FRAME_CONCEALED));
+
+    len = make_silent_adts(packet, 1);
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 2048 && flags == FAAD_FRAME_FORMAT_CHANGED);
+    len = make_silent_adts(packet, 2);
+
+    assert(faad_decoder_flush(dec) == FAAD_OK);
+    assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+        &written, &flags) == FAAD_OK);
+    assert(written == 4096 && flags == FAAD_FRAME_FORMAT_CHANGED);
+    for (uint32_t i = 0; i < written; i++) assert(((uint8_t *)pcm)[i] == 0);
+    free(pcm);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+}
+#endif
+
 static void test_degraded(void)
 {
     /* Valid silent SCE, followed by an SBR header whose stop band is below
@@ -345,6 +517,10 @@ static void test_known_extensions(void)
 int main(void)
 {
     test_layouts(); test_boundaries(); test_raw_init(); test_endian_helpers(); test_degraded();
+#if MAX_CHANNELS >= 2
+    test_channel_history_rotation();
+#endif
+    test_nonzero_conceal_history();
     test_known_extensions();
     puts("FAAD ABI, packet boundaries and endian helpers passed");
     return 0;
