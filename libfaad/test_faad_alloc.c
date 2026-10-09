@@ -40,8 +40,57 @@ void __wrap_free(void *ptr)
     __real_free(ptr);
 }
 
+#ifndef FAAD_DISABLE_SBR
+static void test_lazy_allocations(bool ps)
+{
+    faad_config cfg;
+    assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
+    /* Each failed first-use request must be retryable, including when earlier
+     * optional blocks were already allocated successfully. */
+    size_t optional_calls = 0;
+    for (size_t failure = 0; failure <= optional_calls; failure++) {
+        calls = live = total = largest = fail_at = 0;
+        faad_decoder *dec = NULL;
+        assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+        assert(!dec->sbr && !dec->sbr_scratch.x);
+        if (ps) assert(faad_ensure_sbr(dec) == FAAD_OK);
+        size_t before = calls;
+        if (failure) fail_at = before + failure;
+        faad_status status;
+#ifndef FAAD_DISABLE_PS
+        if (ps) status = faad_ensure_ps(dec);
+        else
+#endif
+            status = faad_ensure_sbr(dec);
+        if (!failure) {
+            assert(status == FAAD_OK);
+            optional_calls = calls - before;
+        } else {
+            assert(status == FAAD_ERR_INSUFFICIENT_MEM);
+            fail_at = 0;
+#ifndef FAAD_DISABLE_PS
+            if (ps) assert(faad_ensure_ps(dec) == FAAD_OK);
+            else
+#endif
+                assert(faad_ensure_sbr(dec) == FAAD_OK);
+        }
+        assert(dec->sbr && dec->sbr_scratch.y);
+        assert(ps ? dec->sbr_scratch.x != NULL : dec->sbr_scratch.x == NULL);
+        assert(dec->allocated_bytes == total);
+        assert(faad_decoder_close(&dec) == FAAD_OK && !live);
+    }
+}
+#endif
+
 int main(void)
 {
+#ifndef FAAD_DISABLE_SBR
+    test_lazy_allocations(false);
+#ifndef FAAD_DISABLE_PS
+    test_lazy_allocations(true);
+#endif
+    calls = live = total = largest = fail_at = 0;
+#endif
     faad_config cfg;
     assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
     faad_decoder *dec = NULL;
@@ -54,6 +103,7 @@ int main(void)
     assert(faad_decoder_open(&cfg, he_asc, sizeof(he_asc), &dec) == FAAD_OK);
 #ifndef FAAD_DISABLE_SBR
     assert(total > plain_total);
+    assert(!dec->sbr_scratch.x);
 #endif
     assert(dec && live == calls);
     assert(dec->allocated_bytes == total && dec->largest_allocation == largest);
@@ -77,6 +127,7 @@ int main(void)
     calls = live = total = largest = fail_at = 0;
     assert(faad_decoder_open(&cfg, ps_asc, sizeof(ps_asc), &dec) == FAAD_OK);
     assert(total > he_total);
+    assert(dec->ps && dec->sbr_scratch.x);
     allocs = calls;
     assert(faad_decoder_close(&dec) == FAAD_OK && !live);
     for (size_t failure = 1; failure <= allocs; failure++) {

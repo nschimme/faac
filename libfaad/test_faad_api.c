@@ -1,5 +1,5 @@
 /* Public ABI and packet-boundary regressions. No encoder dependency. */
-#include "faad.h"
+#include "faad_internal.h"
 #include "endian.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -79,14 +79,44 @@ static void test_layouts(void)
     assert(faad_decoder_close(&dec) == FAAD_OK);
 }
 
-static void *aligned_storage(uint32_t bytes, void **allocation)
+/* ADTS has no optional state before its first accepted packet. */
+typedef struct {
+    faad_decoder dec;
+    float spec[MAX_CHANNELS][FRAME_LEN_LONG];
+    float overlap[MAX_CHANNELS][FRAME_LEN_LONG];
+    float prev_spec[MAX_CHANNELS][FRAME_LEN_LONG];
+#ifdef FAAD_DISABLE_SBR
+    FrameScratch scratch;
+#else
+    float scratch[32][SBR_BUF_SLOTS][2];
+#endif
+    float pcm[MAX_CHANNELS * FRAME_SAMPLES_MAX];
+} StateSnapshot;
+
+static void snapshot_state(const faad_decoder *dec, StateSnapshot *snapshot)
 {
-    *allocation = malloc((size_t)bytes + FAAD_STATE_ALIGNMENT - 1);
-    assert(*allocation);
-    uintptr_t ptr = (uintptr_t)*allocation;
-    size_t offset = (FAAD_STATE_ALIGNMENT - (ptr & (FAAD_STATE_ALIGNMENT - 1)))
-        & (FAAD_STATE_ALIGNMENT - 1);
-    return (uint8_t *)*allocation + offset;
+    memset(snapshot, 0, sizeof(*snapshot));
+    memcpy(&snapshot->dec, dec, sizeof(*dec));
+    memcpy(snapshot->spec, dec->spec, sizeof(snapshot->spec));
+    memcpy(snapshot->overlap, dec->overlap, sizeof(snapshot->overlap));
+    memcpy(snapshot->prev_spec, dec->prev_spec, sizeof(snapshot->prev_spec));
+#ifdef FAAD_DISABLE_SBR
+    memcpy(&snapshot->scratch, dec->scratch, sizeof(snapshot->scratch));
+#else
+    assert(!dec->sbr && !dec->sbr_el && !dec->sbr_scratch.y && !dec->sbr_scratch.x);
+    memcpy(snapshot->scratch, dec->sbr_scratch.x_low, sizeof(snapshot->scratch));
+#endif
+#ifndef FAAD_DISABLE_PS
+    assert(!dec->ps);
+#endif
+    memcpy(snapshot->pcm, dec->pcm, sizeof(snapshot->pcm));
+}
+
+static bool state_unchanged(const faad_decoder *dec, const StateSnapshot *before,
+                            StateSnapshot *after)
+{
+    snapshot_state(dec, after);
+    return memcmp(before, after, sizeof(*before)) == 0;
 }
 
 static const uint8_t mono_adts[] = { 0xff, 0xf1, 0x50, 0x40, 0x01, 0x1f, 0xfc, 0xe0 };
@@ -96,19 +126,12 @@ static void test_boundaries(void)
 {
     faad_config cfg;
     assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
-    uint32_t bytes;
-    assert(faad_get_state_size(NULL) == FAAD_ERR_INVALID_ARGUMENT);
-    assert(faad_get_state_size(&bytes) == FAAD_OK);
-    void *allocation, *mem = aligned_storage(bytes, &allocation);
     faad_decoder *dec = NULL;
-    assert(faad_decoder_init(mem, bytes - 1, &cfg, NULL, 0, &dec) == FAAD_ERR_INSUFFICIENT_MEM);
-    assert(!dec);
-    assert(faad_decoder_init((uint8_t *)mem + 1, bytes, &cfg, NULL, 0, &dec) == FAAD_ERR_INVALID_ARGUMENT);
-    assert(!dec);
-    assert(faad_decoder_init(mem, bytes, &cfg, NULL, 0, &dec) == FAAD_OK);
-    void *before = malloc(bytes);
-    assert(before);
-    memcpy(before, mem, bytes);
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    StateSnapshot *before = malloc(sizeof(*before));
+    StateSnapshot *after = malloc(sizeof(*after));
+    assert(before && after);
+    snapshot_state(dec, before);
     faad_stream_info info = { .struct_size = sizeof(info) };
     assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
     uint8_t *pcm = malloc(info.max_output_bytes);
@@ -118,7 +141,7 @@ static void test_boundaries(void)
     assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
         info.max_output_bytes - 1, &written, &flags) == FAAD_ERR_OUTPUT_TOO_SMALL);
     assert(!used && !written && !flags);
-    assert(memcmp(before, mem, bytes) == 0);
+    assert(state_unchanged(dec, before, after));
     for (size_t crc = 0; crc < 2; crc++) {
         const uint8_t *packet = crc ? mono_crc : mono_adts;
         uint32_t len = crc ? sizeof(mono_crc) : sizeof(mono_adts);
@@ -127,24 +150,24 @@ static void test_boundaries(void)
             flags = UINT32_MAX;
             assert(faad_decode_frame(dec, packet, split, &used, pcm, info.max_output_bytes,
                 &written, &flags) == FAAD_ERR_NEED_MORE_DATA);
-            assert(!used && !written && !flags && memcmp(before, mem, bytes) == 0);
+            assert(!used && !written && !flags && state_unchanged(dec, before, after));
         }
     }
     flags = UINT32_MAX;
     used = written = 99;
     assert(faad_decode_frame(NULL, mono_adts, sizeof(mono_adts), &used, pcm,
         info.max_output_bytes, &written, &flags) == FAAD_ERR_INVALID_ARGUMENT);
-    assert(!used && !written && !flags && memcmp(before, mem, bytes) == 0);
+    assert(!used && !written && !flags && state_unchanged(dec, before, after));
     const uint8_t lost[] = { 0, 1, 0xff };
     assert(faad_decode_frame(dec, lost, sizeof(lost), &used, pcm, info.max_output_bytes,
         &written, NULL) == FAAD_ERR_SYNC_LOST);
-    assert(used == 2 && !written && memcmp(before, mem, bytes) == 0);
+    assert(used == 2 && !written && state_unchanged(dec, before, after));
     uint8_t unsupported[sizeof(mono_adts)];
     memcpy(unsupported, mono_adts, sizeof(unsupported));
     unsupported[2] &= 0x3f; /* AAC Main */
     assert(faad_decode_frame(dec, unsupported, sizeof(unsupported), &used, pcm,
         info.max_output_bytes, &written, NULL) == FAAD_ERR_UNSUPPORTED);
-    assert(used == sizeof(unsupported) && !written && memcmp(before, mem, bytes) == 0);
+    assert(used == sizeof(unsupported) && !written && state_unchanged(dec, before, after));
     assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
         info.max_output_bytes, &written, &flags) == FAAD_OK);
     assert(used == sizeof(mono_adts) && written == 2048);
@@ -171,7 +194,7 @@ static void test_boundaries(void)
         info.max_output_bytes, &written, &flags) == FAAD_OK);
     assert(written && !(flags & FAAD_FRAME_FORMAT_CHANGED));
     assert(faad_decoder_close(&dec) == FAAD_OK);
-    free(pcm); free(before); free(allocation);
+    free(pcm); free(before); free(after);
 }
 
 static void test_raw_init(void)

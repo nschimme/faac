@@ -199,13 +199,6 @@ static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
             || resolved->downmix_mode == FAAD_DOWNMIX_MONO) ? FAAD_OK : FAAD_ERR_INVALID_ARGUMENT;
 }
 
-FAADAPI faad_status faad_get_state_size(uint32_t *state_bytes_out)
-{
-    if (!state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
-    *state_bytes_out = (uint32_t)sizeof(FAADInlineState);
-    return FAAD_OK;
-}
-
 static void faad_init_global_tables_impl(void)
 {
     extern void init_dequant_tables(void);
@@ -278,49 +271,6 @@ static faad_status init_decoder(faad_decoder *dec, const faad_config *resolved,
     return FAAD_OK;
 }
 
-FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
-                                      const faad_config *cfg,
-                                      const uint8_t *asc_buf, uint32_t asc_len,
-                                      faad_decoder **out_dec)
-{
-    if (out_dec) *out_dec = NULL;
-    faad_config resolved;
-    if (resolve_config(cfg, &resolved) != FAAD_OK || !mem_buf || !out_dec
-        || ((uintptr_t)mem_buf & (FAAD_STATE_ALIGNMENT - 1))
-        || ((asc_buf == NULL) != (asc_len == 0))
-        || (resolved.stream_format == FAAD_STREAM_RAW && !asc_len)) {
-        return FAAD_ERR_INVALID_ARGUMENT;
-    }
-    uint32_t state_size;
-    faad_get_state_size(&state_size);
-    if (mem_size < state_size) return FAAD_ERR_INSUFFICIENT_MEM;
-
-    faad_init_global_tables();
-    faad_decoder *dec = (faad_decoder *)mem_buf;
-    memset(mem_buf, 0, sizeof(FAADInlineState));
-    FAADInlineState *state = (FAADInlineState *)mem_buf;
-    dec->spec = state->spec;
-    dec->overlap = state->overlap;
-    dec->prev_spec = state->prev_spec;
-#ifndef FAAD_DISABLE_SBR
-    dec->sbr = state->sbr;
-    dec->sbr_el = state->sbr_el;
-    dec->sbr_scratch.x_low = state->work.x_low;
-    dec->scratch = &state->work.scratch;
-    dec->sbr_scratch.y = state->y;
-    dec->sbr_scratch.x = state->x;
-#endif
-#ifndef FAAD_DISABLE_PS
-    dec->ps = &state->ps;
-#endif
-#ifdef FAAD_DISABLE_SBR
-    dec->scratch = &state->scratch;
-#endif
-    dec->pcm = state->pcm;
-
-    return init_decoder(dec, &resolved, asc_buf, asc_len, out_dec);
-}
-
 static void free_split_state(faad_decoder *dec)
 {
     if (!dec) return;
@@ -342,7 +292,7 @@ static void free_split_state(faad_decoder *dec)
     FREE_PART(scratch);
 #endif
     FREE_PART(pcm);
-    FREE_PART(heap_storage);
+    FreeMemory(dec);
 #undef FREE_PART
 }
 
@@ -360,13 +310,10 @@ static faad_status alloc_optional(faad_decoder *dec, void **ptr, size_t size)
 
 faad_status faad_ensure_sbr(faad_decoder *dec)
 {
-    if (!dec->is_heap_allocated) return FAAD_OK;
     if (alloc_optional(dec, (void **)&dec->sbr, sizeof(SBRChannel[MAX_CHANNELS])) != FAAD_OK
         || alloc_optional(dec, (void **)&dec->sbr_el, sizeof(SBRElement[MAX_CHANNELS])) != FAAD_OK
         || alloc_optional(dec, (void **)&dec->sbr_scratch.y,
-                          sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2])) != FAAD_OK
-        || alloc_optional(dec, (void **)&dec->sbr_scratch.x,
-                          sizeof(float[PS_IN_SLOTS][64][2])) != FAAD_OK)
+                          sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2])) != FAAD_OK)
         return FAAD_ERR_INSUFFICIENT_MEM;
     return FAAD_OK;
 }
@@ -374,8 +321,10 @@ faad_status faad_ensure_sbr(faad_decoder *dec)
 #ifndef FAAD_DISABLE_PS
 faad_status faad_ensure_ps(faad_decoder *dec)
 {
-    if (!dec->is_heap_allocated) return FAAD_OK;
-    return alloc_optional(dec, (void **)&dec->ps, sizeof(PSState));
+    if (alloc_optional(dec, (void **)&dec->ps, sizeof(PSState)) != FAAD_OK)
+        return FAAD_ERR_INSUFFICIENT_MEM;
+    return alloc_optional(dec, (void **)&dec->sbr_scratch.x,
+                          sizeof(float[PS_IN_SLOTS][64][2]));
 }
 #endif
 #endif
@@ -400,17 +349,11 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
         || (resolved.stream_format == FAAD_STREAM_RAW && !asc_len))
         return FAAD_ERR_INVALID_ARGUMENT;
     faad_init_global_tables();
-    void *storage = AllocMemory(sizeof(faad_decoder) + FAAD_STATE_ALIGNMENT - 1);
-    if (!storage) return FAAD_ERR_INSUFFICIENT_MEM;
-    uintptr_t address = (uintptr_t)storage;
-    size_t offset = (FAAD_STATE_ALIGNMENT - (address & (FAAD_STATE_ALIGNMENT - 1)))
-        & (FAAD_STATE_ALIGNMENT - 1);
-    faad_decoder *dec = (faad_decoder *)((uint8_t *)storage + offset);
+    faad_decoder *dec = AllocMemory(sizeof(*dec));
+    if (!dec) return FAAD_ERR_INSUFFICIENT_MEM;
     memset(dec, 0, sizeof(*dec));
-    dec->heap_storage = storage;
-    dec->is_heap_allocated = true;
-    dec->allocated_bytes = sizeof(faad_decoder) + FAAD_STATE_ALIGNMENT - 1;
-    dec->largest_allocation = dec->allocated_bytes;
+    dec->allocated_bytes = sizeof(*dec);
+    dec->largest_allocation = sizeof(*dec);
     ALLOC_PART(spec, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
     ALLOC_PART(overlap, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
     ALLOC_PART(prev_spec, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
@@ -500,7 +443,7 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **handle)
     g_faadStats.dumpFile = NULL;
     g_faadStats.dumpOpenTried = false;
 #endif
-    if (dec->is_heap_allocated) free_split_state(dec);
+    free_split_state(dec);
     return FAAD_OK;
 }
 

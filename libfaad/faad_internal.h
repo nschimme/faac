@@ -369,7 +369,7 @@ typedef struct {
 typedef struct {
     float (*x_low)[SBR_BUF_SLOTS][2];
     float (*y)[SBR_BUF_SLOTS][2]; /* generated HF, adjusted in place */
-    float (*x)[64][2]; /* assembled output per slot (38 for the PS look-ahead) */
+    float (*x)[64][2]; /* PS frame output, allocated only when PS is signaled */
 } SBRScratch;
 
 /* Working memory of one frame's decode phases, which never overlap: the
@@ -379,17 +379,16 @@ typedef union {
     CPEInfo cpe;
     struct { ICSInfo ics; float spec[FRAME_LEN_LONG]; } cce;
     float work[2 * FRAME_LEN_LONG];
-#ifndef FAAD_DISABLE_SBR
-
-#endif
 } FrameScratch;
+#ifndef FAAD_DISABLE_SBR
+_Static_assert(sizeof(FrameScratch) <= sizeof(float[32][SBR_BUF_SLOTS][2]),
+               "core scratch must fit in SBR low-band storage");
+#endif
 
 struct faad_decoder {
     faad_config config;
     AudioSpecificConfig asc;
     bool asc_parsed;
-    bool is_heap_allocated;
-    void *heap_storage; /* original allocator pointer before alignment */
     size_t allocated_bytes, largest_allocation;
     bool format_known;
     bool pcm_emitted;
@@ -438,42 +437,8 @@ struct faad_decoder {
     float *pcm; /* core output, then SBR output in place */
 };
 
-/* Inline backing for the caller-owned, zero-allocation path. */
-typedef struct {
-    struct faad_decoder dec;
-    float spec[MAX_CHANNELS][FRAME_LEN_LONG];
-    float overlap[MAX_CHANNELS][FRAME_LEN_LONG];
-    float prev_spec[MAX_CHANNELS][FRAME_LEN_LONG];
-#ifndef FAAD_DISABLE_SBR
-    SBRChannel sbr[MAX_CHANNELS];
-    SBRElement sbr_el[MAX_CHANNELS];
-    union {
-        FrameScratch scratch;
-        float x_low[32][SBR_BUF_SLOTS][2];
-    } work;
-    float y[SBR_MAX_BANDS][SBR_BUF_SLOTS][2];
-    float x[PS_IN_SLOTS][64][2];
-#endif
-#ifndef FAAD_DISABLE_PS
-    PSState ps;
-#endif
-#ifdef FAAD_DISABLE_SBR
-    FrameScratch scratch;
-#endif
-    float pcm[MAX_CHANNELS * FRAME_SAMPLES_MAX];
-} FAADInlineState;
-#ifndef FAAD_DISABLE_SBR
-_Static_assert(sizeof(FrameScratch) <= sizeof(float[32][SBR_BUF_SLOTS][2]),
-               "core scratch must fit in SBR low-band storage");
-#endif
-
 /* Core-rate QMF delay; public metadata converts it to output samples. */
 #define FAAD_SBR_CORE_DELAY 481u
-_Static_assert(_Alignof(FAADInlineState) <= FAAD_STATE_ALIGNMENT,
-               "decoder exceeds public placement alignment");
-_Static_assert(sizeof(FAADInlineState) <= UINT32_MAX - (FAAD_STATE_ALIGNMENT - 1),
-               "decoder storage size must fit 32-bit allocation arithmetic");
-
 void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate);
 faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate);
 faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec);

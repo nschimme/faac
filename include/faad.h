@@ -16,12 +16,12 @@
 /*
  * libfaad decoder API.
  *
- * Designed for bare-metal, RTOS, and zero-allocation environments.
+ * Designed for bare-metal and RTOS environments with overridable allocators.
  *
  * Design summary:
- *   - Configuration is supplied once, up front, to faad_decoder_init() or
- *     faad_decoder_open(). PCM capacity is queryable immediately; format is
- *     discovered from ASC or decoded packets and may change with implicit SBR/PS.
+ *   - Configuration is supplied once, up front, to faad_decoder_open().
+ *     PCM capacity is queryable immediately; format is discovered from ASC or
+ *     decoded packets and may change with implicit SBR/PS.
  *   - Every fallible call returns a faad_status; faad_strerror() maps a status
  *     to a human-readable string.
  *   - Fixed-width integer types and width-pinned enums preserve the ABI within
@@ -161,12 +161,6 @@ typedef struct faad_config {
 } faad_config;
 
 /*
- * Caller-owned decoder state must be aligned to this boundary. The size query
- * includes instance storage, not shared tables or caller-owned input/PCM.
- */
-#define FAAD_STATE_ALIGNMENT 16u
-
-/*
  * Describes the most recently emitted PCM; before any PCM, the ASC/ADTS snapshot. Set
  * struct_size to sizeof(faad_stream_info) before faad_decoder_get_info(); it is
  * updated to the bytes populated.
@@ -209,41 +203,23 @@ FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
 
 
 /*
- * Query the exact bytes of instance storage required to instantiate the decoder.
- * The size is independent of configuration. Embedded applications use this
- * to allocate static .bss/.dram memory.
+ * Allocate decoder state in independent blocks.
+ * asc_buf must contain a valid, nonempty AudioSpecificConfig for RAW streams;
+ * it is optional for ADTS. Configuration and ASC need not outlive this call.
  */
-FAADAPI faad_status faad_get_state_size(uint32_t *state_bytes_out);
-
-/*
- * Initialize the decoder in a caller-provided memory block, with zero internal
- * heap allocations (no malloc/free).
- *
- * mem_buf  - static memory block, aligned to FAAD_STATE_ALIGNMENT
- * mem_size - size of mem_buf, at least the size faad_get_state_size() returned
- * asc_buf  - valid, nonempty AudioSpecificConfig required for RAW streams;
- *            optional for ADTS. Configuration/ASC need not outlive this call.
- * asc_len  - length of asc_buf
- */
-FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
-                                      const faad_config *cfg,
-                                      const uint8_t *asc_buf, uint32_t asc_len,
-                                      faad_decoder **out_dec);
-
-/* Heap-backed wrapper: allocates decoder state in independent blocks. */
 FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
                                         const uint8_t *asc_buf, uint32_t asc_len,
                                         faad_decoder **out_dec);
 
 /*
  * Destroy a decoder. Pass the address of your handle; on success the handle is
- * set to NULL. Frees only memory allocated by faad_decoder_open(). A pointer to
+ * set to NULL and all instance allocations are freed. A pointer to
  * a NULL handle is a no-op that returns FAAD_OK; a NULL pointer is invalid.
  */
 FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
 
 /*
- * Query current stream metadata. Safe immediately after init. Before ADTS
+ * Query current stream metadata. Safe immediately after open. Before ADTS
  * discovery, format_known is false and format fields are zero/FAAD_OBJ_NULL.
  * ASC may supply a usable snapshot, but implicit SBR/PS can change it later;
  * frame metadata is authoritative for emitted PCM. Set

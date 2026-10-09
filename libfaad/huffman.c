@@ -36,7 +36,7 @@ void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
     int sr_idx = get_sr_index(sample_rate);
     ics->sample_rate_index = (int8_t)sr_idx;
     if (sr_idx < 0) {
-        ics->num_sfbs = 0;      /* faad_decoder_init() rejects such rates */
+        ics->num_sfbs = 0;      /* faad_decoder_open() rejects such rates */
         return;
     }
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
