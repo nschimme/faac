@@ -232,8 +232,6 @@ faam_status faam_write_ilst_ext(const faam_metadata *metadata, const faam_gaples
                                 const uint8_t *extra, uint32_t extra_bytes,
                                 faam_bytes_writer write, void *user, uint32_t *out_size);
 
-/* Endian utilities */
-#include "endian.h"
 
 /* Input structs from a caller: zero a library-sized copy, then take the bytes both sides know.
  * The caller's struct_size must be at least the baseline of the struct (checked by the caller). */

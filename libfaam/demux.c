@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include "endian.h"
 #include "libfaam_internal.h"
 
 typedef struct {
