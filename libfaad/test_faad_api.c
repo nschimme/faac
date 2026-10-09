@@ -98,7 +98,7 @@ static void snapshot_state(const faad_decoder *dec, StateSnapshot *snapshot)
     memcpy(snapshot->prev_spec, dec->prev_spec, sizeof(snapshot->prev_spec));
     memcpy(&snapshot->scratch, dec->scratch, sizeof(snapshot->scratch));
 #ifndef FAAD_DISABLE_SBR
-    assert(!dec->sbr && !dec->sbr_el && !dec->sbr_scratch.y && !dec->sbr_scratch.x);
+    assert(!dec->sbr && !dec->sbr_el && !dec->sbr_scratch.y);
 #endif
 #ifndef FAAD_DISABLE_PS
     assert(!dec->ps);

@@ -330,9 +330,9 @@ options except as listed, not storage requirements guaranteed across builds:
 
 | Build | Decoder state (PS input where enabled) | Shared tables (.bss, once per process) | 16-bit PCM buffer |
 |---|---|---|---|
-| 2 channels, SBR+PS | 135 KB | 52.7 KB | 8 KB |
+| 2 channels, SBR+PS | 116 KB | 52.7 KB | 8 KB |
 | 2 channels, LC only (`-Ddecoder-sbr=false`) | 41 KB | 34.3 KB | 4 KB |
-| 8 channels, SBR+PS (default) | 355 KB | 52.7 KB | 32 KB |
+| 8 channels, SBR+PS (default) | 336 KB | 52.7 KB | 32 KB |
 
 `faad_decoder_open()` allocates a small handle and
 separate blocks for the spectra, overlap, SBR channels, SBR working buffers,
@@ -340,12 +340,13 @@ and PCM staging. In SBR builds with at least two channels, core frame scratch
 uses the unused second half of PCM staging until all core IMDCTs finish. SBR
 analysis and HF generation share one QMF workspace; the low bands remain live
 while HF replaces the upper bands. On the two-channel SBR build without PS,
-the largest requested block is 31,712 bytes and the sum of requests is 93,996
-bytes in the measured arm64 build. Non-PS synthesis assembles
+the largest requested block is 31,712 bytes and the sum of requests is 93,988
+bytes in the measured arm64 build. Synthesis assembles
 one QMF slot at a time in the current spectrum buffer, after all core IMDCTs
 have finished. Concealment history remains in a separate previous-spectrum
-buffer. Only PS allocates the full QMF output frame for its look-ahead; this
-also saves RAM for HE-AAC v1 streams in PS-enabled builds. Explicit SBR and PS
+buffer. PS retains look-ahead for its five hybrid input bands and assembles
+the remaining QMF bands one slot at a time, without a full-frame QMF allocation.
+Explicit SBR and PS
 configurations allocate their optional state at open.
 For ADTS, those parts are allocated on first use when the bitstream signals them.
 
