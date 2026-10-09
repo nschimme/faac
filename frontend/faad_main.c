@@ -714,7 +714,16 @@ int main(int argc, char **argv)
                         if (is_mp4 && !fallback_mode) {
                             fallback_mode = true;
                             if (!fifo_initialized) {
-                                fifo_init(&fifo, 262144);
+                                if (!fifo_init(&fifo, 262144)) {
+                                    fprintf(stderr, "Error allocating PCM buffer\n");
+                                    faad_decoder_close(&dec);
+                                    free(inbuf);
+                                    mp4_free_track(&track);
+                                    if (fout && fout != stdout) fclose(fout);
+                                    if (io_buf) free(io_buf);
+                                    fifo_free(&fifo);
+                                    return 1;
+                                }
                                 fifo_initialized = true;
                             }
                         }
@@ -744,18 +753,30 @@ int main(int argc, char **argv)
                     gapless_scaled = true;
 
                     uint64_t pad_bytes_64 = (uint64_t)padding_samples * dec_bytes_per_frame_sample;
-                    if (pad_bytes_64 <= 64 * 1024 * 1024) {
-                        padding_bytes = (uint32_t)pad_bytes_64;
-                    } else {
-                        padding_bytes = 0;
+                    if (pad_bytes_64 > 64 * 1024 * 1024) {
+                        fprintf(stderr, "Error: gapless trailing padding exceeds maximum allowed buffer size\n");
+                        faad_decoder_close(&dec);
+                        free(inbuf);
+                        mp4_free_track(&track);
+                        if (fout && fout != stdout) fclose(fout);
+                        if (io_buf) free(io_buf);
+                        fifo_free(&fifo);
+                        return 1;
                     }
+                    padding_bytes = (uint32_t)pad_bytes_64;
 
                     if (padding_bytes > 0 && !fallback_mode) {
-                        if (fifo_init(&fifo, padding_bytes)) {
-                            fifo_initialized = true;
-                        } else {
-                            padding_bytes = 0;
+                        if (!fifo_init(&fifo, padding_bytes)) {
+                            fprintf(stderr, "Error allocating gapless padding buffer\n");
+                            faad_decoder_close(&dec);
+                            free(inbuf);
+                            mp4_free_track(&track);
+                            if (fout && fout != stdout) fclose(fout);
+                            if (io_buf) free(io_buf);
+                            fifo_free(&fifo);
+                            return 1;
                         }
+                        fifo_initialized = true;
                     }
                 }
 
@@ -775,6 +796,10 @@ int main(int argc, char **argv)
 
                 if (fout && samples_to_write > 0) {
                     uint32_t frame_bytes = samples_to_write * dec_bytes_per_frame_sample;
+
+                    if (fallback_mode) {
+                        padding_bytes = padding_samples * num_channels * (bit_depth / 8);
+                    }
 
                     if (padding_bytes == 0 && !fallback_mode) {
                         fwrite(write_ptr, 1, frame_bytes, fout);
@@ -796,14 +821,32 @@ int main(int argc, char **argv)
                             }
                         }
                         if (frame_bytes > 0) {
-                            fifo_push(&fifo, write_ptr, frame_bytes);
+                            if (!fifo_push(&fifo, write_ptr, frame_bytes)) {
+                                fprintf(stderr, "Error allocating PCM buffer\n");
+                                faad_decoder_close(&dec);
+                                free(inbuf);
+                                mp4_free_track(&track);
+                                if (fout && fout != stdout) fclose(fout);
+                                if (io_buf) free(io_buf);
+                                fifo_free(&fifo);
+                                return 1;
+                            }
                         }
                     } else {
                         if (!write_stdout && frame_bytes > fifo.size - fifo.fill &&
                             fifo.fill > padding_bytes) {
                             total_pcm_bytes += fifo_write(fout, &fifo, fifo.fill - padding_bytes);
                         }
-                        fifo_push(&fifo, write_ptr, frame_bytes);
+                        if (!fifo_push(&fifo, write_ptr, frame_bytes)) {
+                            fprintf(stderr, "Error allocating PCM buffer\n");
+                            faad_decoder_close(&dec);
+                            free(inbuf);
+                            mp4_free_track(&track);
+                            if (fout && fout != stdout) fclose(fout);
+                            if (io_buf) free(io_buf);
+                            fifo_free(&fifo);
+                            return 1;
+                        }
 
                         if (fifo.fill > padding_bytes) {
                             uint32_t can_pop = fifo.fill - padding_bytes;

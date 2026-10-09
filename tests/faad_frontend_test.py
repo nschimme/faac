@@ -86,6 +86,15 @@ def main():
             assert result.returncode == 1 and result.stderr, (track, result.returncode, result.stderr)
         assert pcm(adts2, ["--track", "99"]) == second_pcm, "ADTS ignores --track"
 
+        # Format-change transition with non-zero effective padding
+        concat_adts = os.path.join(d, "concat.aac")
+        with open(concat_adts, "wb") as f_out:
+            f_out.write(open(adts1, "rb").read())
+            f_out.write(open(adts2, "rb").read())
+        concat_out = os.path.join(d, "concat.wav")
+        subprocess.run([faad, "-q", "-o", concat_out, concat_adts], check=True)
+        assert os.path.getsize(concat_out) > 44, "Format change transition produced output"
+
         # Runtime SBR delay uses output samples; preserve gapless track length.
         he = os.path.join(d, "he.m4a")
         subprocess.run([faac, "--object-type", "he-aac-v1", "-b", "64", "-o", he, src],
