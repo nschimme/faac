@@ -56,7 +56,7 @@ build_target "fuzz_encode" \
 build_target "fuzz_wav" \
     -include "$bd/config.h" -I"$root/include" -I"$root/common" -I"$root/frontend" -I"$bd/frontend" \
     "$root/tests/fuzz/fuzz_wav.c" "$root/frontend/input.c" "$root/frontend/charset.c" \
-    $(ls "$root/frontend/cli_common.c" 2>/dev/null) -lm
+    "$root/frontend/cli_io.c" -lm
 
 # 3. fuzz_faad_adts
 build_target "fuzz_faad_adts" \
