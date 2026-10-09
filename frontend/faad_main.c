@@ -653,8 +653,8 @@ int main(int argc, char **argv)
     uint32_t samples_to_skip = (is_mp4 && gapless) ? track.delay : 0;
     uint32_t padding_samples = (is_mp4 && gapless) ? track.padding : 0;
     bool gapless_scaled = false;
-    PCMFifo fifo;
-    fifo_init(&fifo, 262144);
+    PCMFifo fifo = {0};
+    if (is_mp4) fifo_init(&fifo, 262144);
 
     if (is_mp4) {
         for (uint32_t s = start_frame; s < track.num_samples; s++) {
@@ -796,16 +796,8 @@ int main(int argc, char **argv)
 
             if (fout && bytes_written > 0) {
                 pcm_to_little_endian(outbuf, bytes_written, is_float ? 4 : bit_depth / 8, !raw_format && !is_float && bit_depth == 32);
-                fifo_push(&fifo, outbuf, bytes_written);
-
-                uint8_t pop_buf[4096];
-                while (fifo.fill > 0) {
-                    uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
-                    uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
-                    if (popped == 0) break;
-                    fwrite(pop_buf, 1, popped, fout);
-                    total_pcm_bytes += popped;
-                }
+                fwrite(outbuf, 1, bytes_written, fout);
+                total_pcm_bytes += bytes_written;
             }
 
             frames_decoded++;
