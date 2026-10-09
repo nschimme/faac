@@ -137,3 +137,12 @@ if get_option('encoder') and (default_lib == 'static' or default_lib == 'both') 
     test('static_archives_test', find_program('python3'),
         args: [files('../tests/static_archives_test.py'), libfaac_static.full_path(), libfaad_static.full_path()])
 endif
+
+if get_option('decoder-sbr') and (default_lib == 'static' or default_lib == 'both')
+    test_sbr_workspace = executable('test_sbr_workspace', 'test_sbr_workspace.c',
+        c_args: faad_c_args + ['-DFAAD_STATIC'],
+        include_directories: ['..', '../include', common_inc],
+        link_with: [libfaad_static],
+        dependencies: [libm])
+    test('faad_sbr_workspace_test', test_sbr_workspace)
+endif

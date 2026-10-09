@@ -1108,7 +1108,7 @@ static void sbr_analyse(SBRChannel *ch, SBRScratch *sc, const float *pcm)
  * look-ahead or synthesizing each immediately into PCM,
  * honouring the previous frame's band split where its last envelope reaches
  * into this frame (§4.6.18.7.6 / 4.6.18.8.1). */
-static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int nslots, float *pcm, float (*output_slot)[2])
+static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int nslots, float *pcm, float (*output_slot)[2], float (*low_head)[SBR_T_HFGEN][2])
 {
     int i_temp = have_hf ? (int)ch->t_E_end_prev - SBR_SLOTS : 0;
     if (i_temp < 0) i_temp = 0;
@@ -1118,11 +1118,26 @@ static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, b
         int kx = have_hf ? ((i < i_temp) ? ch->kx_prev : el->kx) : 32;
         int kend = have_hf ? ((i < i_temp) ? ch->kx_prev + ch->M_prev : el->kx + el->M) : 32;
         if (i >= SBR_SLOTS) kend = kx; /* look-ahead slots: low band only */
-        for (int k = 0; k < kx && k < 32; k++) {
+        int low_end = kx < 32 ? kx : 32;
+        int shared_end = have_hf && n < SBR_T_HFGEN && el->kx < low_end
+            ? el->kx : low_end;
+        for (int k = 0; k < shared_end; k++) {
             slot[k][0] = sc->x_low[k][n][0];
             slot[k][1] = sc->x_low[k][n][1];
         }
-        for (int k = kx; k < kend; k++) {
+        for (int k = shared_end; k < low_end; k++) {
+            slot[k][0] = low_head[k][n][0];
+            slot[k][1] = low_head[k][n][1];
+        }
+        int high_start = kx;
+        if (have_hf && high_start < el->kx) {
+            int tail_end = el->kx < kend ? el->kx : kend;
+            for (; high_start < tail_end; high_start++) {
+                slot[high_start][0] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n][0] : 0.0f;
+                slot[high_start][1] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n][1] : 0.0f;
+            }
+        }
+        for (int k = high_start; k < kend; k++) {
             slot[k][0] = sc->y[k][n][0];
             slot[k][1] = sc->y[k][n][1];
         }
@@ -1132,17 +1147,20 @@ static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, b
 }
 
 static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, const float *pcm,
-                                float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots, float *out_pcm, float (*output_slot)[2])
+                                float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots, float *out_pcm, float (*output_slot)[2], float (*low_head)[SBR_T_HFGEN][2])
 {
     sbr_analyse(ch, sc, pcm);
 
-    /* Y carries the previous frame's tail; the HF generator then writes
-     * the region this frame adjusts, the adjuster rewrites it in place
-     * (each envelope's energy is read before its slots are scaled), and
-     * the rest stays zero. */
-    memset(sc->y, 0, sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2]));
-    for (int k = 0; k < SBR_MAX_BANDS; k++)
+    int kx = have_hf ? el->kx : 32;
+    /* A previous envelope may still use a higher crossover in the leading
+     * slots. Save those low bands before HF replaces them in shared storage. */
+    if (have_hf && ch->t_E_end_prev > SBR_SLOTS)
+        for (int k = kx; k < ch->kx_prev && k < 32; k++)
+            memcpy(low_head[k], sc->x_low[k], sizeof(low_head[k]));
+    for (int k = kx; k < SBR_MAX_BANDS; k++) {
+        memset(sc->y[k], 0, sizeof(sc->y[k]));
         memcpy(sc->y[k], ch->y_tail[k], sizeof(ch->y_tail[k]));
+    }
 
     if (have_hf) {
         sbr_chirp(el, ch);
@@ -1150,9 +1168,11 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
         sbr_hf_adjust(el, ch, sc, E, Q);
     }
 
-    sbr_assemble(el, ch, sc, have_hf, nslots, out_pcm, output_slot);
+    sbr_assemble(el, ch, sc, have_hf, nslots, out_pcm, output_slot, low_head);
 
-    for (int k = 0; k < SBR_MAX_BANDS; k++)
+    for (int k = 0; k < kx; k++)
+        memset(ch->y_tail[k], 0, sizeof(ch->y_tail[k]));
+    for (int k = kx; k < SBR_MAX_BANDS; k++)
         memcpy(ch->y_tail[k], &sc->y[k][SBR_SLOTS], sizeof(ch->y_tail[k]));
 
     if (have_hf) {
@@ -1240,6 +1260,10 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
     float *pcm_in = pcm, *pcm_out = pcm;
 #ifndef FAAD_DISABLE_SBR
     SBRScratch *sc = &dec->sbr_scratch;
+    /* The first 128 spectrum floats hold streaming output; the remaining
+     * storage preserves leading low bands across a crossover change. */
+    float (*low_head)[SBR_T_HFGEN][2] =
+        (float (*)[SBR_T_HFGEN][2])(dec->spec[0] + 128);
     float E0[SBR_MAX_ENV][SBR_MAX_BANDS], E1[SBR_MAX_ENV][SBR_MAX_BANDS];
     float Q0[2][SBR_MAX_NQ], Q1[2][SBR_MAX_NQ];
 
@@ -1263,7 +1287,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 
 #ifndef FAAD_DISABLE_PS
         if (dec->ps_seen && num_ch == 1) {
-            sbr_process_channel(el, &dec->sbr[0], sc, pcm_in, E0, Q0, have_hf, PS_IN_SLOTS, NULL, NULL);
+            sbr_process_channel(el, &dec->sbr[0], sc, pcm_in, E0, Q0, have_hf, PS_IN_SLOTS, NULL, NULL, low_head);
             dec->num_channels = 2;
             if (dec->ps->start) ps_frame_begin(dec, sc->x, have_hf ? el->kx + el->M : 32);
             for (int t = 0; t < SBR_SLOTS; t++) {
@@ -1285,7 +1309,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
         float (*output_slot)[2] = (float (*)[2])dec->spec[0];
         for (int c = 0; c < nch; c++) {
             SBRChannel *sch = &dec->sbr[ch + c];
-            sbr_process_channel(el, sch, sc, pcm_in + (ch + c) * SBR_OUT_LEN, c ? E1 : E0, c ? Q1 : Q0, have_hf, SBR_SLOTS, pcm_out + (ch + c) * SBR_OUT_LEN, output_slot);
+            sbr_process_channel(el, sch, sc, pcm_in + (ch + c) * SBR_OUT_LEN, c ? E1 : E0, c ? Q1 : Q0, have_hf, SBR_SLOTS, pcm_out + (ch + c) * SBR_OUT_LEN, output_slot, low_head);
         }
         ch += (uint32_t)nch;
     }
