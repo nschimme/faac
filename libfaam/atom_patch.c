@@ -25,6 +25,7 @@
  * absolute file positions that just moved.
  */
 
+#include "endian.h"
 #include "libfaam_internal.h"
 
 #define FAAM_ATOM_TAIL_CHUNK 65536

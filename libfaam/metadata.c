@@ -15,6 +15,7 @@
 
 /* Shared ilst serialization keeps frontend and retrofit tag layouts aligned. */
 #include <stdio.h>
+#include "endian.h"
 #include "libfaam_internal.h"
 
 typedef struct {

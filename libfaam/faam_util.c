@@ -67,7 +67,7 @@ const char *faam_strerror(faam_status status)
     case FAAM_ERR_IO_WRITE:
         return "I/O write error";
     case FAAM_ERR_INSUFFICIENT_MEM:
-        return "Insufficient memory arena or allocation buffer";
+        return "Insufficient memory";
     case FAAM_ERR_NO_TRACK:
         return "No matching video/audio track found in container";
     case FAAM_ERR_OUTPUT_TOO_SMALL:

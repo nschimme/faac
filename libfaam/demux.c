@@ -20,34 +20,25 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include "endian.h"
 #include "libfaam_internal.h"
 
+/* Borrowed views into moov, valid only while constructing the sample index. */
 typedef struct {
-    uint32_t first_chunk;
-    uint32_t samples_per_chunk;
-    uint32_t sample_description_index;
-} STSCEntry;
-
-typedef struct {
-    uint32_t sample_count;
-    uint32_t sample_delta;
-} STTSEntry;
-
-/* Per-track sample tables gathered while walking moov. */
-typedef struct {
-    uint32_t *stsz[FAAM_MAX_TRACKS];
+    const uint8_t *stsz[FAAM_MAX_TRACKS];
     uint32_t  num_stsz[FAAM_MAX_TRACKS];
     uint32_t  fixed_size[FAAM_MAX_TRACKS];
-    STSCEntry *stsc[FAAM_MAX_TRACKS];
+    const uint8_t *stsc[FAAM_MAX_TRACKS];
     uint32_t  num_stsc[FAAM_MAX_TRACKS];
-    uint64_t *stco[FAAM_MAX_TRACKS];
+    const uint8_t *stco[FAAM_MAX_TRACKS];
     uint32_t  num_stco[FAAM_MAX_TRACKS];
-    STTSEntry *stts[FAAM_MAX_TRACKS];
+    const uint8_t *stts[FAAM_MAX_TRACKS];
     uint32_t  num_stts[FAAM_MAX_TRACKS];
-    uint32_t *stss[FAAM_MAX_TRACKS];
+    const uint8_t *stss[FAAM_MAX_TRACKS];
     uint32_t  num_stss[FAAM_MAX_TRACKS];
-    STTSEntry *ctts[FAAM_MAX_TRACKS]; /* sample_delta carries the (signed) offset */
+    const uint8_t *ctts[FAAM_MAX_TRACKS];
     uint32_t  num_ctts[FAAM_MAX_TRACKS];
+    bool co64[FAAM_MAX_TRACKS];
 } faam_trak_tables;
 
 /* A moov this large cannot be a camera or audiobook file; refuse it before allocating. */
@@ -175,11 +166,22 @@ static void parse_ilst_children(const uint8_t *buf, long offset, long end, struc
                 if ((size_t)count >= SIZE_MAX / sizeof(faam_custom_tag) - 1) {
                     d->error = FAAM_ERR_INSUFFICIENT_MEM;
                 } else {
-                    faam_custom_tag *tags = (faam_custom_tag *)ReallocMemory(d->custom_tags,
-                        ((size_t)count + 1) * sizeof(*tags));
-                    if (!tags) d->error = FAAM_ERR_INSUFFICIENT_MEM;
-                    else {
-                        d->custom_tags = tags;
+                    faam_custom_tag *tags = d->custom_tags;
+                    if (count == d->custom_tags_cap) {
+                        size_t cap = d->custom_tags_cap ? (size_t)d->custom_tags_cap * 2 : 8;
+                        if (cap > UINT32_MAX || cap > SIZE_MAX / sizeof(*tags)) {
+                            d->error = FAAM_ERR_INSUFFICIENT_MEM;
+                        } else {
+                            tags = (faam_custom_tag *)faam_grow_memory(tags,
+                                (size_t)count * sizeof(*tags), cap * sizeof(*tags));
+                            if (!tags) d->error = FAAM_ERR_INSUFFICIENT_MEM;
+                            else {
+                                d->custom_tags = tags;
+                                d->custom_tags_cap = (uint32_t)cap;
+                            }
+                        }
+                    }
+                    if (!d->error) {
                         meta->custom_tags = tags;
                         tags[count].struct_size = sizeof(faam_custom_tag);
                         tags[count].mean = tagmean_len ? own_string(d, tagmean, tagmean_len) : NULL;
@@ -227,6 +229,7 @@ static void parse_ilst_children(const uint8_t *buf, long offset, long end, struc
             meta->disc_total = read_u16_be(val + 4);
         } else if (!memcmp(name, "covr", 4) && val_len > 0) {
             uint8_t *owned = (uint8_t *)AllocMemory(val_len);
+            if (!owned) d->error = FAAM_ERR_INSUFFICIENT_MEM;
             if (owned) {
                 memcpy(owned, val, val_len);
                 if (d->cover_art_owned) FreeMemory(d->cover_art_owned);
@@ -466,39 +469,24 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                 else { memcpy(tr->codec_data, asc, asc_len); tr->codec_data_len = asc_len; }
             }
         } else if (memcmp(type, "stts", 4) == 0 && current_trak_idx >= 0 && !tb->stts[current_trak_idx] && payload_offset + 8 <= payload_end) {
-            /* A track's sample tables come once; a repeated box is corrupt, and replacing the
-             * table would drop the earlier allocation, so the first one wins like the edit list. */
+            /* The first valid table wins, as with the edit list. */
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
             if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 8) {
                 tb->num_stts[current_trak_idx] = entries;
-                tb->stts[current_trak_idx] = (STTSEntry *)AllocMemory(entries * sizeof(STTSEntry));
-                if (!tb->stts[current_trak_idx]) { tb->num_stts[current_trak_idx] = 0; cur = payload_end; continue; }
-                for (uint32_t e = 0; e < entries; e++) {
-                    tb->stts[current_trak_idx][e].sample_count = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 8);
-                    tb->stts[current_trak_idx][e].sample_delta = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 8 + 4);
-                }
+                tb->stts[current_trak_idx] = buf + payload_offset + 8;
             }
 #ifdef FAAM_MUXER_VIDEO
         } else if (memcmp(type, "stss", 4) == 0 && current_trak_idx >= 0 && !tb->stss[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
             if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 4) {
                 tb->num_stss[current_trak_idx] = entries;
-                tb->stss[current_trak_idx] = (uint32_t *)AllocMemory(entries * sizeof(uint32_t));
-                if (!tb->stss[current_trak_idx]) { tb->num_stss[current_trak_idx] = 0; cur = payload_end; continue; }
-                for (uint32_t e = 0; e < entries; e++) {
-                    tb->stss[current_trak_idx][e] = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 4);
-                }
+                tb->stss[current_trak_idx] = buf + payload_offset + 8;
             }
         } else if (memcmp(type, "ctts", 4) == 0 && current_trak_idx >= 0 && !tb->ctts[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
             if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 8) {
-                tb->ctts[current_trak_idx] = (STTSEntry *)AllocMemory(entries * sizeof(STTSEntry));
-                if (!tb->ctts[current_trak_idx]) { cur = payload_end; continue; }
+                tb->ctts[current_trak_idx] = buf + payload_offset + 8;
                 tb->num_ctts[current_trak_idx] = entries;
-                for (uint32_t e = 0; e < entries; e++) {
-                    tb->ctts[current_trak_idx][e].sample_count = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 8);
-                    tb->ctts[current_trak_idx][e].sample_delta = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 8 + 4);
-                }
             }
 #endif
         } else if (memcmp(type, "elst", 4) == 0 && current_trak_idx >= 0 && !d->tracks[current_trak_idx].has_elst && payload_offset + 8 <= payload_end) {
@@ -530,47 +518,28 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
             if (sample_count > 0 && (tb->fixed_size[current_trak_idx] || sample_count <= (uint64_t)(payload_end - payload_offset - 12) / 4) && (uint64_t)sample_count * sizeof(faam_sample) <= SIZE_MAX) {
                 tb->num_stsz[current_trak_idx] = sample_count;
                 if (tb->fixed_size[current_trak_idx] == 0) {
-                    tb->stsz[current_trak_idx] = (uint32_t *)AllocMemory(sample_count * sizeof(uint32_t));
-                    if (tb->stsz[current_trak_idx]) {
-                        for (uint32_t s = 0; s < sample_count; s++) {
-                            tb->stsz[current_trak_idx][s] = read_u32_be(buf + payload_offset + 12 + (uint64_t)s * 4);
-                        }
-                    }
+                    tb->stsz[current_trak_idx] = buf + payload_offset + 12;
                 }
             }
         } else if (memcmp(type, "stsc", 4) == 0 && current_trak_idx >= 0 && !tb->stsc[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
             if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 12) {
                 tb->num_stsc[current_trak_idx] = entries;
-                tb->stsc[current_trak_idx] = (STSCEntry *)AllocMemory(entries * sizeof(STSCEntry));
-                if (!tb->stsc[current_trak_idx]) { tb->num_stsc[current_trak_idx] = 0; cur = payload_end; continue; }
-                for (uint32_t e = 0; e < entries; e++) {
-                    tb->stsc[current_trak_idx][e].first_chunk = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 12);
-                    tb->stsc[current_trak_idx][e].samples_per_chunk = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 12 + 4);
-                    tb->stsc[current_trak_idx][e].sample_description_index = read_u32_be(buf + payload_offset + 8 + (uint64_t)e * 12 + 8);
-                }
+                tb->stsc[current_trak_idx] = buf + payload_offset + 8;
             }
         } else if (memcmp(type, "stco", 4) == 0 && current_trak_idx >= 0 && !tb->stco[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t chunks = read_u32_be(buf + payload_offset + 4);
             if (chunks > 0 && chunks <= (uint64_t)(payload_end - payload_offset - 8) / 4 && (uint64_t)chunks * sizeof(uint64_t) <= SIZE_MAX) {
                 tb->num_stco[current_trak_idx] = chunks;
-                tb->stco[current_trak_idx] = (uint64_t *)AllocMemory(chunks * sizeof(uint64_t));
-                if (tb->stco[current_trak_idx]) {
-                    for (uint32_t c = 0; c < chunks; c++) {
-                        tb->stco[current_trak_idx][c] = read_u32_be(buf + payload_offset + 8 + (uint64_t)c * 4);
-                    }
-                }
+                tb->stco[current_trak_idx] = buf + payload_offset + 8;
+                tb->co64[current_trak_idx] = false;
             }
         } else if (memcmp(type, "co64", 4) == 0 && current_trak_idx >= 0 && !tb->stco[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t chunks = read_u32_be(buf + payload_offset + 4);
             if (chunks > 0 && chunks <= (uint64_t)(payload_end - payload_offset - 8) / 8) {
                 tb->num_stco[current_trak_idx] = chunks;
-                tb->stco[current_trak_idx] = (uint64_t *)AllocMemory(chunks * sizeof(uint64_t));
-                if (tb->stco[current_trak_idx]) {
-                    for (uint32_t c = 0; c < chunks; c++) {
-                        tb->stco[current_trak_idx][c] = read_u64_be(buf + payload_offset + 8 + (uint64_t)c * 8);
-                    }
-                }
+                tb->stco[current_trak_idx] = buf + payload_offset + 8;
+                tb->co64[current_trak_idx] = true;
             }
         }
 
@@ -599,6 +568,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
     memset(tb, 0, sizeof(*tb));
 
     parse_boxes_recursive(buf, 0, moov_size, d, -1, tb, 0);
+    if (d->error) return d->error;
 
     /* Only the audio edit list carries priming; a video edit list (B-frame
      * delay) must not be mistaken for it. */
@@ -620,9 +590,9 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
          * chunk tables place in the file are real, so size the index by those. */
         uint64_t placed = 0;
         for (uint32_t c = 0; tb->stco[t] && tb->stsc[t] && c < tb->num_stco[t] && placed < n_samples; c++) {
-            uint32_t per_chunk = tb->stsc[t][0].samples_per_chunk;
-            for (uint32_t e = 0; e < tb->num_stsc[t] && c + 1 >= tb->stsc[t][e].first_chunk; e++)
-                per_chunk = tb->stsc[t][e].samples_per_chunk;
+            uint32_t per_chunk = read_u32_be(tb->stsc[t] + 4);
+            for (uint32_t e = 0; e < tb->num_stsc[t] && c + 1 >= read_u32_be(tb->stsc[t] + (uint64_t)e * 12); e++)
+                per_chunk = read_u32_be(tb->stsc[t] + (uint64_t)e * 12 + 4);
             placed += per_chunk;
         }
         if (placed < n_samples) n_samples = (uint32_t)placed;
@@ -636,7 +606,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
         if (n_samples == 0) continue;
 
         tr->samples = (faam_sample *)AllocMemory(n_samples * sizeof(faam_sample));
-        if (!tr->samples) continue;
+        if (!tr->samples) { d->error = FAAM_ERR_INSUFFICIENT_MEM; return d->error; }
         memset(tr->samples, 0, n_samples * sizeof(faam_sample));
         tr->total_frames = n_samples;
         tr->info.total_frames = n_samples;
@@ -644,10 +614,10 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
 #ifdef FAAM_MUXER_VIDEO
         uint32_t sync_idx = 0;
         uint32_t ctts_entry_idx = 0;
-        uint32_t ctts_run_remaining = tb->num_ctts[t] > 0 ? tb->ctts[t][0].sample_count : 0;
+        uint32_t ctts_run_remaining = tb->num_ctts[t] > 0 ? read_u32_be(tb->ctts[t]) : 0;
 #endif
         uint32_t stts_entry_idx = 0;
-        uint32_t stts_run_remaining = tb->num_stts[t] > 0 ? tb->stts[t][0].sample_count : 0;
+        uint32_t stts_run_remaining = tb->num_stts[t] > 0 ? read_u32_be(tb->stts[t]) : 0;
 
         uint64_t track_tot_duration = 0;
 
@@ -655,27 +625,28 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
             uint32_t sample_idx = 0;
             for (uint32_t chunk_idx = 0; chunk_idx < tb->num_stco[t]; chunk_idx++) {
                 uint32_t chunk_num = chunk_idx + 1;
-                uint64_t chunk_offset = tb->stco[t][chunk_idx];
+                uint64_t chunk_offset = tb->co64[t] ? read_u64_be(tb->stco[t] + (uint64_t)chunk_idx * 8)
+                    : read_u32_be(tb->stco[t] + (uint64_t)chunk_idx * 4);
 
-                uint32_t samples_in_chunk = tb->stsc[t][0].samples_per_chunk;
+                uint32_t samples_in_chunk = read_u32_be(tb->stsc[t] + 4);
                 for (uint32_t e = 0; e < tb->num_stsc[t]; e++) {
-                    if (chunk_num >= tb->stsc[t][e].first_chunk) {
-                        samples_in_chunk = tb->stsc[t][e].samples_per_chunk;
+                    if (chunk_num >= read_u32_be(tb->stsc[t] + (uint64_t)e * 12)) {
+                        samples_in_chunk = read_u32_be(tb->stsc[t] + (uint64_t)e * 12 + 4);
                     } else break;
                 }
 
                 uint64_t sample_offset_in_chunk = 0;
                 for (uint32_t s = 0; s < samples_in_chunk && sample_idx < n_samples; s++) {
-                    uint32_t size = (tb->fixed_size[t] != 0) ? tb->fixed_size[t] : (tb->stsz[t] ? tb->stsz[t][sample_idx] : 0);
+                    uint32_t size = (tb->fixed_size[t] != 0) ? tb->fixed_size[t] : (tb->stsz[t] ? read_u32_be(tb->stsz[t] + (uint64_t)sample_idx * 4) : 0);
 
                     uint32_t duration = (tr->info.track_type == FAAM_TRACK_AUDIO) ? 1024 : 3000;
                     if (tb->stts[t]) {
                         while (stts_run_remaining == 0 && stts_entry_idx + 1 < tb->num_stts[t]) {
                             stts_entry_idx++;
-                            stts_run_remaining = tb->stts[t][stts_entry_idx].sample_count;
+                            stts_run_remaining = read_u32_be(tb->stts[t] + (uint64_t)stts_entry_idx * 8);
                         }
                         if (stts_run_remaining > 0) {
-                            duration = tb->stts[t][stts_entry_idx].sample_delta;
+                            duration = read_u32_be(tb->stts[t] + (uint64_t)stts_entry_idx * 8 + 4);
                             stts_run_remaining--;
                         }
                     }
@@ -684,9 +655,9 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
 #ifdef FAAM_MUXER_VIDEO
                     if (tb->num_stss[t] > 0 && tb->stss[t]) {
                         is_keyframe = false;
-                        while (sync_idx < tb->num_stss[t] && tb->stss[t][sync_idx] < sample_idx + 1)
+                        while (sync_idx < tb->num_stss[t] && read_u32_be(tb->stss[t] + (uint64_t)sync_idx * 4) < sample_idx + 1)
                             sync_idx++;
-                        is_keyframe = sync_idx < tb->num_stss[t] && tb->stss[t][sync_idx] == sample_idx + 1;
+                        is_keyframe = sync_idx < tb->num_stss[t] && read_u32_be(tb->stss[t] + (uint64_t)sync_idx * 4) == sample_idx + 1;
                     }
 #endif
 
@@ -694,10 +665,10 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
                     if (tb->ctts[t]) {
                         while (ctts_run_remaining == 0 && ctts_entry_idx + 1 < tb->num_ctts[t]) {
                             ctts_entry_idx++;
-                            ctts_run_remaining = tb->ctts[t][ctts_entry_idx].sample_count;
+                            ctts_run_remaining = read_u32_be(tb->ctts[t] + (uint64_t)ctts_entry_idx * 8);
                         }
                         if (ctts_run_remaining > 0) {
-                            tr->samples[sample_idx].cts_offset = (int32_t)tb->ctts[t][ctts_entry_idx].sample_delta;
+                            tr->samples[sample_idx].cts_offset = (int32_t)read_u32_be(tb->ctts[t] + (uint64_t)ctts_entry_idx * 8 + 4);
                             ctts_run_remaining--;
                         }
                     }
@@ -715,15 +686,6 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
             }
         }
         tr->info.total_duration = track_tot_duration;
-    }
-
-    for (uint32_t t = 0; t < FAAM_MAX_TRACKS; t++) {
-        if (tb->stsz[t]) FreeMemory(tb->stsz[t]);
-        if (tb->stsc[t]) FreeMemory(tb->stsc[t]);
-        if (tb->stco[t]) FreeMemory(tb->stco[t]);
-        if (tb->stts[t]) FreeMemory(tb->stts[t]);
-        if (tb->stss[t]) FreeMemory(tb->stss[t]);
-        if (tb->ctts[t]) FreeMemory(tb->ctts[t]);
     }
 
     return d->error;
@@ -745,7 +707,7 @@ static bool reserve_samples(faam_demuxer *d, faam_demuxer_track *tr, uint32_t ne
     if (need <= tr->samples_cap) return true;
     uint32_t cap = tr->samples_cap * 2 > need ? tr->samples_cap * 2 : need;
     if (cap < 64) cap = 64;
-    faam_sample *p = (faam_sample *)ReallocMemory(tr->samples, (size_t)cap * sizeof(faam_sample));
+    faam_sample *p = (faam_sample *)faam_grow_memory(tr->samples, (size_t)tr->total_frames * sizeof(*tr->samples), (size_t)cap * sizeof(faam_sample));
     if (!p) { d->error = FAAM_ERR_INSUFFICIENT_MEM; return false; }
     tr->samples = p;
     tr->samples_cap = cap;
@@ -879,24 +841,17 @@ static bool demuxer_config_ok(const faam_demuxer_config *cfg)
     return !cfg || cfg->struct_size >= FAAM_DEMUXER_CONFIG_BASELINE;
 }
 
-faam_status faam_demuxer_get_state_size(const faam_demuxer_config *cfg, uint32_t *state_bytes)
-{
-    if (!state_bytes || !demuxer_config_ok(cfg)) return FAAM_ERR_INVALID_ARG;
-    *state_bytes = sizeof(struct faam_demuxer);
-    return FAAM_OK;
-}
-
-faam_status faam_demuxer_init(void *mem_buf, uint32_t mem_bytes, const faam_demuxer_config *cfg, const faam_io *io, faam_demuxer **out_demuxer)
+faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io, faam_demuxer **out_demuxer)
 {
     if (!out_demuxer) return FAAM_ERR_INVALID_ARG;
     *out_demuxer = NULL;
-    if (!mem_buf || !io || !demuxer_config_ok(cfg)) return FAAM_ERR_INVALID_ARG;
-    if (mem_bytes < sizeof(struct faam_demuxer)) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!io || !demuxer_config_ok(cfg)) return FAAM_ERR_INVALID_ARG;
     faam_io loaded;
     if (!faam_io_load(&loaded, io)) return FAAM_ERR_INVALID_ARG;
     if (!loaded.read || !loaded.seek) return FAAM_ERR_UNSUPPORTED;
 
-    struct faam_demuxer *d = (struct faam_demuxer *)mem_buf;
+    faam_demuxer *d = (faam_demuxer *)AllocMemory(sizeof(*d));
+    if (!d) return FAAM_ERR_INSUFFICIENT_MEM;
     memset(d, 0, sizeof(*d));
     d->io = loaded;
     d->metadata.struct_size = sizeof(d->metadata);
@@ -977,22 +932,8 @@ faam_status faam_demuxer_close(faam_demuxer **handle)
         FreeMemory(d->strings);
         d->strings = next;
     }
-    if (d->heap_owned) FreeMemory(d);
+    FreeMemory(d);
     return FAAM_OK;
-}
-
-faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io, faam_demuxer **out_demuxer) {
-    if (!out_demuxer) return FAAM_ERR_INVALID_ARG;
-    *out_demuxer = NULL;
-    uint32_t size;
-    faam_status sz = faam_demuxer_get_state_size(cfg, &size);
-    if (sz != FAAM_OK) return sz;
-    void *mem = AllocMemory(size);
-    if (!mem) return FAAM_ERR_INSUFFICIENT_MEM;
-    faam_status st = faam_demuxer_init(mem, size, cfg, io, out_demuxer);
-    if (st != FAAM_OK) FreeMemory(mem);
-    else (*out_demuxer)->heap_owned = true;
-    return st;
 }
 
 faam_status faam_demuxer_get_num_tracks(faam_demuxer *d, uint32_t *out_held, uint32_t *out_total)

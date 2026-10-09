@@ -27,23 +27,33 @@
 
 #include "faam.h"
 
-/* Memory management macros; ports override them with -D or a force-included
- * header (embedded PSRAM / fast internal SRAM) */
-#ifndef AllocMemory
-#define AllocMemory(size) malloc(size)
+/* Ports override both hooks with -D or a force-included header. Detect the
+ * overrides first: libc realloc must never see a custom allocator's block. */
+#if defined(AllocMemory) != defined(FreeMemory)
+#error "Override AllocMemory and FreeMemory together"
 #endif
-#ifndef FreeMemory
+#if defined(AllocMemory)
+#define FAAM_CUSTOM_ALLOCATOR 1
+#else
+#define AllocMemory(size) malloc(size)
 #define FreeMemory(block) free(block)
 #endif
-#ifndef AllocMemoryFast
-#define AllocMemoryFast(size) malloc(size)
+
+/* Grow a block, preserving only initialized bytes. On failure the old block
+ * remains owned by the caller. Standard builds retain in-place libc growth. */
+static inline void *faam_grow_memory(void *block, size_t used, size_t bytes)
+{
+#ifdef FAAM_CUSTOM_ALLOCATOR
+    void *grown = AllocMemory(bytes);
+    if (!grown) return NULL;
+    if (used) memcpy(grown, block, used);
+    FreeMemory(block);
+    return grown;
+#else
+    (void)used;
+    return realloc(block, bytes);
 #endif
-#ifndef FreeMemoryFast
-#define FreeMemoryFast(block) free(block)
-#endif
-#ifndef ReallocMemory
-#define ReallocMemory(block, size) realloc(block, size)
-#endif
+}
 
 #define FAAM_MAX_TRACKS 8
 #define FAAM_CODEC_INLINE 256 /* codec config bytes a muxer track holds inline */
@@ -93,10 +103,10 @@ typedef struct {
 } faam_trex;
 
 struct faam_demuxer {
-    bool heap_owned;
     faam_status error;
     faam_owned_string *strings;
     faam_custom_tag *custom_tags;
+    uint32_t custom_tags_cap;
     faam_io io;
 
     faam_gapless_info gapless;
@@ -109,7 +119,7 @@ struct faam_demuxer {
 
     faam_metadata metadata;
     uint8_t *cover_art_owned; /* heap copy backing metadata.cover_art; the ilst-source
-                                * buffer it was parsed from is freed right after init() */
+                                * buffer it was parsed from is freed right after open() */
     faam_chapter *chapters;  /* heap, sized by the chpl atom (at most 255) */
     uint32_t num_chapters;
 
@@ -133,8 +143,7 @@ typedef struct {
     faam_gapless_info gapless; /* copy of *cfg.gapless */
     bool has_gapless;
     uint8_t codec_data[FAAM_CODEC_INLINE]; /* Annex-B avcC capture and every config that fits */
-    uint8_t *codec_ext;      /* codec_data_len > FAAM_CODEC_INLINE: arena (fragmented) or heap */
-    bool codec_ext_heap;
+    uint8_t *codec_ext;      /* codec_data_len > FAAM_CODEC_INLINE: owned buffer */
     uint32_t codec_data_len;
     uint32_t sps_len; /* Annex-B avcC capture: SPS parked in codec_data until the PPS arrives */
 
@@ -198,12 +207,11 @@ struct faam_muxer {
     uint32_t staged_bytes;
     faam_status error;
     bool gapless_present;
-    bool heap_owned;
     bool finalized;
     uint64_t file_bytes;
 
-    /* Fragmented mode (fragment_ms > 0). The per-fragment sample index lives
-     * in the caller's arena right behind tracks[], so nothing is allocated. */
+    /* Fragmented mode: separate index buffers allocated at open, reused for
+     * every fragment without further allocations. */
     bool fragmented;
     bool frag_open;
     bool has_video;
@@ -220,7 +228,7 @@ struct faam_muxer {
     int32_t *fi_cts;         /* NULL unless the file has a video track */
     uint8_t *fi_flags;       /* bit 0: sync sample */
     uint8_t *fi_track;       /* index into tracks[] */
-    faam_muxer_track tracks[];
+    faam_muxer_track *tracks;
 };
 
 typedef faam_status (*faam_bytes_writer)(void *user, const void *data, uint32_t bytes);
@@ -231,36 +239,6 @@ faam_status faam_write_ilst_ext(const faam_metadata *metadata, const faam_gaples
                                 const uint8_t *smpb, uint32_t smpb_bytes,
                                 const uint8_t *extra, uint32_t extra_bytes,
                                 faam_bytes_writer write, void *user, uint32_t *out_size);
-
-/* Endian utilities */
-static inline uint16_t read_u16_be(const uint8_t *b) {
-    return (uint16_t)((b[0] << 8) | b[1]);
-}
-
-static inline uint32_t read_u32_be(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
-}
-
-static inline uint64_t read_u64_be(const uint8_t *b) {
-    return ((uint64_t)read_u32_be(b) << 32) | (uint64_t)read_u32_be(b + 4);
-}
-
-static inline void write_u16_be(uint8_t *b, uint16_t val) {
-    b[0] = (uint8_t)(val >> 8);
-    b[1] = (uint8_t)val;
-}
-
-static inline void write_u32_be(uint8_t *b, uint32_t val) {
-    b[0] = (uint8_t)(val >> 24);
-    b[1] = (uint8_t)(val >> 16);
-    b[2] = (uint8_t)(val >> 8);
-    b[3] = (uint8_t)val;
-}
-
-static inline void write_u64_be(uint8_t *b, uint64_t val) {
-    write_u32_be(b, (uint32_t)(val >> 32));
-    write_u32_be(b + 4, (uint32_t)val);
-}
 
 /* Input structs from a caller: zero a library-sized copy, then take the bytes both sides know.
  * The caller's struct_size must be at least the baseline of the struct (checked by the caller). */

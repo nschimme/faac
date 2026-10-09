@@ -506,15 +506,10 @@ static int cmd_info(int argc, char **argv)
 
     faam_io io = cli_faam_io(f);
 
-    uint32_t demux_size = 0;
-    faam_demuxer_get_state_size(NULL, &demux_size);
-    void *mem = malloc(demux_size);
-
     faam_demuxer *d = NULL;
-    faam_status st = mem ? faam_demuxer_init(mem, demux_size, NULL, &io, &d) : FAAM_ERR_INSUFFICIENT_MEM;
+    faam_status st = faam_demuxer_open(NULL, &io, &d);
     if (st != FAAM_OK) {
         fprintf(stderr, "Error parsing %s: %s\n", filepath, faam_strerror(st));
-        free(mem);
         fclose(f);
         return 1;
     }
@@ -637,7 +632,6 @@ static int cmd_info(int argc, char **argv)
     }
 
     faam_demuxer_close(&d);
-    free(mem);
     fclose(f);
     return 0;
 }
@@ -943,7 +937,6 @@ static int cmd_mux(int argc, char **argv)
     FILE *fin[FAAM_MUX_MAX_TRACKS] = {0};
     FILE *fout = NULL;
     bool out_created = false;
-    void *mem = NULL;
     faam_muxer *m = NULL;
     faam_muxer_config cfg;
     faam_track_config tc[FAAM_MUX_MAX_TRACKS];
@@ -951,13 +944,12 @@ static int cmd_mux(int argc, char **argv)
     uint32_t track_id[FAAM_MUX_MAX_TRACKS] = {0};
     uint32_t frames[FAAM_MUX_MAX_TRACKS] = {0};
     adts_info adts[FAAM_MUX_MAX_TRACKS];
-    uint32_t muxer_size = 0;
     bool has_audio_track = false;
     char time_warn[512];
     faam_status st;
 
     /* Each track's extradata buffer must stay valid until the single
-     * faam_muxer_init() call below (it memcpy's codec_data into its own
+     * faam_muxer_open() call below (it memcpy's codec_data into its own
      * storage at that point) -- since all tracks are configured before
      * that one call, each needs its own buffer alive simultaneously. */
     uint8_t asc_buf[FAAM_MUX_MAX_TRACKS][16];
@@ -1251,13 +1243,7 @@ static int cmd_mux(int argc, char **argv)
 
     io = cli_faam_io(fout);
 
-    st = faam_muxer_get_state_size(&cfg, &muxer_size);
-    mem = st == FAAM_OK ? malloc(muxer_size) : NULL;
-    if (!mem) {
-        fprintf(stderr, "Error initializing muxer: %s\n", faam_strerror(st == FAAM_OK ? FAAM_ERR_INSUFFICIENT_MEM : st));
-        goto done;
-    }
-    st = faam_muxer_init(mem, muxer_size, &cfg, &io, &m);
+    st = faam_muxer_open(&cfg, &io, &m);
     if (st != FAAM_OK) {
         fprintf(stderr, "Error initializing muxer: %s\n", faam_strerror(st));
         goto done;
@@ -1319,7 +1305,6 @@ static int cmd_mux(int argc, char **argv)
 
 done:
     if (m) faam_muxer_close(&m);
-    free(mem);
     for (int i = 0; i < FAAM_MUX_MAX_TRACKS; i++) {
         if (fin[i]) fclose(fin[i]);
         free(vbuf_store[i]);
@@ -1389,9 +1374,7 @@ static int cmd_demux(int argc, char **argv)
     bool out_created = false;
     bool asc_created = false;
     bool write_failed = false;
-    void *mem = NULL;
     faam_demuxer *d = NULL;
-    uint32_t demux_size = 0;
     uint32_t num_tracks = 0;
     faam_track_info ti;
     faam_status st;
@@ -1402,9 +1385,8 @@ static int cmd_demux(int argc, char **argv)
         fclose(fin);
         return 1;
     }
-    faam_demuxer_get_state_size(NULL, &demux_size);
-    mem = malloc(demux_size);
-    st = mem ? faam_demuxer_init(mem, demux_size, NULL, &io_in, &d) : FAAM_ERR_INSUFFICIENT_MEM;
+
+    st = faam_demuxer_open(NULL, &io_in, &d);
     if (st != FAAM_OK) {
         fprintf(stderr, "Error initializing demuxer on %s: %s\n", input_file, faam_strerror(st));
         goto done;
@@ -1566,7 +1548,6 @@ done:
         if (asc_created) cli_remove(export_asc);
     }
     faam_demuxer_close(&d);
-    free(mem);
     free(frame);
     fclose(fin);
     return ret;
@@ -1583,7 +1564,6 @@ static int cmd_tag(int argc, char **argv)
     bool want_clear = false;
     char remove_names[FAAM_TAG_MAX_REMOVE][32];
     int num_remove = 0;
-    void *dmem = NULL;
     faam_demuxer *d = NULL;
     FILE *f = NULL;
     int ret = 1;
@@ -1647,17 +1627,10 @@ static int cmd_tag(int argc, char **argv)
     if (!want_clear) {
         /* The rewrite replaces the whole tag list, so what is kept is only as good as this read:
          * any failure here must stop, not carry on with an empty list. */
-        uint32_t demux_size = 0;
         uint32_t num_tracks = 0;
         faam_status rd;
-        faam_demuxer_get_state_size(NULL, &demux_size);
-        dmem = malloc(demux_size);
-        if (!dmem) {
-            fprintf(stderr, "Out of memory.\n");
-            goto done;
-        }
         /* Kept open until the update: the metadata strings are borrowed from it. */
-        rd = faam_demuxer_init(dmem, demux_size, NULL, &io, &d);
+        rd = faam_demuxer_open(NULL, &io, &d);
         if (rd != FAAM_OK) {
             fprintf(stderr, "Error reading the existing tags of %s: %s (nothing was changed)\n", filepath, faam_strerror(rd));
             goto done;
@@ -1727,7 +1700,6 @@ static int cmd_tag(int argc, char **argv)
 done:
     tag_free(&t);
     faam_demuxer_close(&d);
-    free(dmem);
     fclose(f);
     return ret;
 }
@@ -1838,14 +1810,10 @@ static int cmd_chapter_export(const char *filepath, const char *output_path, boo
 
     faam_io io = cli_faam_io(f);
 
-    uint32_t demux_size = 0;
-    faam_demuxer_get_state_size(NULL, &demux_size);
-    void *mem = malloc(demux_size);
     faam_demuxer *d = NULL;
-    faam_status st = mem ? faam_demuxer_init(mem, demux_size, NULL, &io, &d) : FAAM_ERR_INSUFFICIENT_MEM;
+    faam_status st = faam_demuxer_open(NULL, &io, &d);
     if (st != FAAM_OK) {
         fprintf(stderr, "Error parsing %s: %s\n", filepath, faam_strerror(st));
-        free(mem);
         fclose(f);
         return 1;
     }
@@ -1900,7 +1868,6 @@ static int cmd_chapter_export(const char *filepath, const char *output_path, boo
 
 done:
     faam_demuxer_close(&d);
-    free(mem);
     fclose(f);
     return ret;
 }
