@@ -18,6 +18,7 @@ can be "\-", which means stdin/stdout.
 .SH DESCRIPTION
 .B FAAC
 is an open source MPEG-4 and MPEG-2 AAC encoder, it is licensed under the LGPL license.
+It reads WAV or raw PCM and writes MP4/M4A/M4B, ADTS or raw AAC.
 Note that the quality of 
 .B FAAC
 is not up to par with the currently best AAC encoders available.
@@ -146,6 +147,9 @@ to 19 kHz. It is printed at the start of the encode. Set it as high as half
 the sample rate to keep everything; the bitrate rises with it. HE-AAC sets its
 own cutoff and ignores this. The actual frequency is adjusted to a band edge.
 .SH INPUT/OUTPUT OPTIONS
+WAV input supports RIFF and RF64, including files larger than 4 GiB.
+Input is read incrementally, including from stdin.
+WAV streams with an unknown data size (0xFFFFFFFF) are read to EOF.
 .TP
 .BR -o\ <\fIfilename\fP>
 Set output file name (only for one input file). Format is auto-detected from
@@ -203,7 +207,8 @@ in your multichannel input files if they haven't been reordered
 already).
 .TP
 .BR --ignorelength
-Ignore wav length from header (useful with files over 4 GB)
+Ignore the WAV data length in the header and read to EOF.
+Use for an incorrect length; RF64 input does not require this option.
 .TP
 .BR --overwrite
 Overwrite existing output file
@@ -257,7 +262,8 @@ Set year
 .TP
 .BR --cover-art\ <\fIfilename\fP>
 Read cover art from <filename>
-Supported image formats are GIF, JPEG, and PNG.
+Supported image formats are GIF, JPEG, PNG, and BMP.
+The format is detected from the contents; BMP requires valid file and DIB headers.
 .TP
 .BR --comment\ <\fIstring\fP>
 Set comment

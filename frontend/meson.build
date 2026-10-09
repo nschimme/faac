@@ -23,12 +23,13 @@ if get_option('frontend-static') or get_option('default_library') == 'static'
 endif
 
 libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
+libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
 
 libfrontend = static_library('frontend',
     ['input.c', 'mp4write.c', 'cli_io.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c',
      'input.h', 'mp4write.h', 'cli_io.h', 'charset.h', 'progress.h', 'help.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
     include_directories: ['..', '../include', '../common'],
-    link_with: libfaac_for_frontend,
+    link_with: [libfaac_for_frontend, libfaam_for_frontend],
     c_args: c_args_list,
     dependencies: [libiconv]
 )
@@ -39,7 +40,7 @@ faac = executable('faac',
     ['main.c'],
     c_args: c_args_list,
     include_directories: ['..', '../include', '../common'],
-    link_with: [libfaac_for_frontend, libfrontend],
+    link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
     dependencies: [libshell32],
     install: true
 )
@@ -53,14 +54,12 @@ if target_machine.system() == 'windows'
         ['maingui.c', 'resource.h'] + resource_src,
         c_args: c_args_list,
         include_directories: ['..', '../include', '../common'],
-        link_with: [libfaac_for_frontend, libfrontend],
+        link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
         dependencies: [libcomctl32],
         win_subsystem: 'windows',
         install: true
     )
 endif
-
-libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
 
 if get_option('muxer')
     faam = executable('faam',
