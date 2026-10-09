@@ -130,14 +130,38 @@ static inline int32_t read_pcm32(const int32_t *src, bool bigendian) {
     return bigendian ? read_pcm32_be(src) : read_pcm32_le(src);
 }
 
-#ifndef read_u32_be
+static inline uint16_t read_u16_be(const uint8_t *src) {
+    uint16_t v;
+    memcpy(&v, src, sizeof(v));
+    return be16toh(v);
+}
+
 static inline uint32_t read_u32_be(const uint8_t *src) {
     uint32_t v;
     memcpy(&v, src, sizeof(v));
     return be32toh(v);
 }
-#define read_u32_be read_u32_be
-#endif
+
+static inline uint64_t read_u64_be(const uint8_t *src) {
+    uint64_t v;
+    memcpy(&v, src, sizeof(v));
+    return be64toh(v);
+}
+
+static inline void write_u16_be(uint8_t *dst, uint16_t val) {
+    uint16_t be = htobe16(val);
+    memcpy(dst, &be, sizeof(be));
+}
+
+static inline void write_u32_be(uint8_t *dst, uint32_t val) {
+    uint32_t be = htobe32(val);
+    memcpy(dst, &be, sizeof(be));
+}
+
+static inline void write_u64_be(uint8_t *dst, uint64_t val) {
+    uint64_t be = htobe64(val);
+    memcpy(dst, &be, sizeof(be));
+}
 
 #ifdef __cplusplus
 }
