@@ -1383,7 +1383,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 #endif
 
 #ifndef FAAD_DISABLE_PS
-        if (dec->ps_seen && num_ch == 1) {
+        if (dec->ps_seen && num_ch == 1 && dec->config.downmix_mode != FAAD_DOWNMIX_MONO) {
             SBRChannel *sch = &dec->sbr[0];
             sbr_prepare_channel(el, sch, sc, pcm_in, E0, Q0, have_hf, low_head);
             dec->num_channels = 2;
