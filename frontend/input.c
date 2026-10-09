@@ -42,7 +42,7 @@ riff_t;
 typedef struct
 {
   uint32_t label;
-  uint32_t len;
+  uint64_t len;
 }
 riffsub_t;
 
@@ -109,50 +109,91 @@ static void unsuperr(const char *name)
   fprintf(stderr, "%s: file format not supported\n", name);
 }
 
-#define SEEK_STEP 0x40000000u
+typedef struct {
+    char id[4];
+    uint64_t size;
+    bool used;
+} rf64_entry;
 
-static void seekcur(FILE *f, uint32_t ofs)
+typedef struct {
+    bool enabled;
+    uint64_t data_size;
+    uint32_t count;
+    rf64_entry *entries;
+} rf64_sizes;
+
+static bool seekcur(FILE *f, uint64_t ofs)
 {
-    /* Chunk lengths are 32-bit and untrusted, and fseek takes a long: skip in
-       bounded steps so nothing past 2 GiB turns into a skip of nothing. */
-    while (ofs)
-    {
-        uint32_t step = ofs < SEEK_STEP ? ofs : SEEK_STEP;
-
-        if (fseek(f, (long)step, SEEK_CUR) != 0)
-        {
-            /* fseek fails on non-seekable streams (stdin/pipes); fall back to
-               reading and discarding bytes one at a time */
-            for (uint32_t n = step; n; n--)
-            {
-                if (fgetc(f) == EOF)
-                    return;
-            }
-        }
-        ofs -= step;
+    uint64_t pos = cli_ftell(f);
+    if (pos != UINT64_MAX && ofs <= INT64_MAX && pos <= INT64_MAX - ofs &&
+        cli_fseek(f, pos + ofs)) return true;
+    uint8_t discard[16384];
+    while (ofs) {
+        size_t n = ofs < sizeof(discard) ? (size_t)ofs : sizeof(discard);
+        if (fread(discard, 1, n, f) != n) return false;
+        ofs -= n;
     }
+    return true;
 }
 
-static int seekchunk(FILE *f, riffsub_t *riffsub, const char *name)
+static bool read_ds64(FILE *f, rf64_sizes *sizes)
 {
- int skipped;
+    uint8_t header[8], body[28];
+    uint32_t length, count;
+    uint64_t data_size;
+    if (fread(header, 1, 8, f) != 8 || memcmp(header, "ds64", 4)) return false;
+    memcpy(&length, header + 4, 4);
+    length = le32toh(length);
+    if (length < 28 || fread(body, 1, 28, f) != 28) return false;
+    memcpy(&data_size, body + 8, 8);
+    memcpy(&count, body + 24, 4);
+    sizes->data_size = le64toh(data_size);
+    sizes->count = le32toh(count);
+    if (sizes->data_size > INT64_MAX || sizes->count > 65536 ||
+        sizes->count > (length - 28) / 12) return false;
+    if (sizes->count) {
+        sizes->entries = calloc(sizes->count, sizeof(*sizes->entries));
+        if (!sizes->entries) return false;
+    }
+    for (uint32_t i = 0; i < sizes->count; i++) {
+        uint8_t entry[12];
+        if (fread(entry, 1, 12, f) != 12) return false;
+        memcpy(sizes->entries[i].id, entry, 4);
+        memcpy(&data_size, entry + 4, 8);
+        sizes->entries[i].size = le64toh(data_size);
+    }
+    return seekcur(f, (uint64_t)length + (length & 1) - 28 - 12 * sizes->count);
+}
 
- for(skipped = 0; skipped < 10; skipped++)
- {
-   if (fread(riffsub, 1, sizeof(*riffsub), f) != sizeof(*riffsub))
-     return 0;
-
-   riffsub->len = le32toh(riffsub->len);
-   if ((riffsub->len & 1) && riffsub->len != UINT32_MAX)
-     riffsub->len++;
-
-   if (!memcmp(&(riffsub->label), name, 4))
-     return 1;
-
-   seekcur(f, riffsub->len);
- }
-
- return 0;
+static int seekchunk(FILE *f, riffsub_t *chunk, const char *name, rf64_sizes *sizes)
+{
+    for (unsigned skipped = 0; skipped < 10000; skipped++) {
+        uint8_t header[8];
+        uint32_t length;
+        if (fread(header, 1, 8, f) != 8) return 0;
+        memcpy(&chunk->label, header, 4);
+        memcpy(&length, header + 4, 4);
+        chunk->len = le32toh(length);
+        if (sizes->enabled && chunk->len == UINT32_MAX) {
+            if (!memcmp(header, "data", 4)) chunk->len = sizes->data_size;
+            else {
+                bool found = false;
+                for (uint32_t i = 0; i < sizes->count; i++) {
+                    rf64_entry *entry = &sizes->entries[i];
+                    if (!entry->used && !memcmp(entry->id, header, 4)) {
+                        chunk->len = entry->size;
+                        entry->used = true;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) return 0;
+            }
+        }
+        if (!memcmp(header, name, 4)) return 1;
+        if (chunk->len > INT64_MAX || !seekcur(f, chunk->len + (chunk->len & 1))) return 0;
+    }
+    return 0;
 }
 
 pcmfile_t *wav_open_read(const char *name, bool rawinput)
@@ -164,6 +205,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   int fmtsize;
   pcmfile_t *sndf;
   int dostdin = 0;
+  rf64_sizes sizes = {0};
 
   if (!strcmp(name, "-"))
   {
@@ -187,12 +229,15 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   {
     if (fread(&riff, 1, sizeof(riff), wave_f) != sizeof(riff))
       goto bad;
-    if (memcmp(&(riff.label), "RIFF", 4))
-      goto bad;
+    sizes.enabled = !memcmp(&(riff.label), "RF64", 4);
+    if (!sizes.enabled && memcmp(&(riff.label), "RIFF", 4)) goto bad;
+    if (sizes.enabled && le32toh(riff.length) != UINT32_MAX) goto bad;
     if (memcmp(&(riff.chunk_type), "WAVE", 4))
       goto bad;
 
-    if (!seekchunk(wave_f, &riffsub, "fmt "))
+    if (sizes.enabled && !read_ds64(wave_f, &sizes)) goto bad;
+
+    if (!seekchunk(wave_f, &riffsub, "fmt ", &sizes))
       goto bad;
 
     if (memcmp(&(riffsub.label), "fmt ", 4))
@@ -207,9 +252,10 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
    if (fread(&wave, 1, fmtsize, wave_f) != (size_t)fmtsize)
         goto bad;
 
-    seekcur(wave_f, riffsub.len - fmtsize);
+    if (riffsub.len > INT64_MAX ||
+        !seekcur(wave_f, riffsub.len + (riffsub.len & 1) - fmtsize)) goto bad;
 
-    if (!seekchunk(wave_f, &riffsub, "data"))
+    if (!seekchunk(wave_f, &riffsub, "data", &sizes))
       goto bad;
 
     uint16_t tag = le16toh(wave.Format.wFormatTag);
@@ -234,6 +280,8 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
     }
   }
 
+  free(sizes.entries);
+  sizes.entries = NULL;
   sndf = (pcmfile_t*)malloc(sizeof(*sndf));
   if (!sndf)
   {
@@ -283,12 +331,17 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
       return NULL;
     }
 
-    sndf->samples = (int64_t)riffsub.len / ((int64_t)sndf->samplebytes * sndf->channels);
+    if (riffsub.len > INT64_MAX) { free(sndf); goto bad; }
+    sndf->bounded_data = sizes.enabled || riffsub.len != UINT32_MAX;
+    sndf->data_remaining = riffsub.len;
+    sndf->samples = sndf->bounded_data
+        ? (int64_t)riffsub.len / ((int64_t)sndf->samplebytes * sndf->channels) : 0;
   }
 
   return sndf;
 
 bad:
+  free(sizes.entries);
   if (wave_f != stdin) fclose(wave_f);
   return NULL;
 }
@@ -371,7 +424,9 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
   isize = num * sndf->samplebytes;
   bufi = (char*)(buf + num);
   bufi -= isize;
+  if (sndf->bounded_data && isize > sndf->data_remaining) isize = (size_t)sndf->data_remaining;
   isize = fread(bufi, 1, isize, sndf->f);
+  if (sndf->bounded_data) sndf->data_remaining -= isize;
   isize /= sndf->samplebytes;
 
   // perform in-place conversion
@@ -381,8 +436,14 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
   {
       if (sndf->samplebytes == 4)
       {
-          for (size_t i = 0; i < cnt; i++)
-              buf[i] *= PCM_16BIT_FLOAT_SCALE;
+          for (size_t i = 0; i < cnt; i++) {
+              uint32_t bits;
+              float value;
+              memcpy(&bits, bufi + 4 * i, 4);
+              bits = sndf->bigendian ? be32toh(bits) : le32toh(bits);
+              memcpy(&value, &bits, 4);
+              buf[i] = value * PCM_16BIT_FLOAT_SCALE;
+          }
       }
       else
       {
@@ -443,7 +504,11 @@ bool wav_native_ok(const pcmfile_t *sndf)
 
 size_t wav_read_native(pcmfile_t *sndf, void *buf, size_t num)
 {
-  return fread(buf, sndf->samplebytes, num, sndf->f);
+  if (sndf->bounded_data && num > sndf->data_remaining / sndf->samplebytes)
+    num = (size_t)(sndf->data_remaining / sndf->samplebytes);
+  size_t got = fread(buf, sndf->samplebytes, num, sndf->f);
+  if (sndf->bounded_data) sndf->data_remaining -= got * sndf->samplebytes;
+  return got;
 }
 
 int wav_close(pcmfile_t *sndf)

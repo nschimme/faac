@@ -146,7 +146,7 @@ static const help_t help_io[] = {
      "Input channel config, default is 3,4 (Center third, LFE fourth)",
      "Input multichannel configuration (default: 3,4 which means Center is third and LFE is fourth like in 5.1 WAV, so you only have to specify a different position of these two mono channels in your multichannel input files if they haven't been reordered already)."},
     {"--ignorelength",
-     "Ignore wav length from header (useful with files over 4 GB)",
+     "Ignore the WAV data length in the header and read to EOF (for an incorrect length; not required for RF64)",
      NULL},
     {"--overwrite",
      "Overwrite existing output file",
