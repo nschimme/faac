@@ -91,7 +91,7 @@ void init_windows(void)
  * inputs against reversed odd-index inputs, rotate, transform, rotate again
  * and unzip. buf holds 2*M floats: z, which the result u then overwrites
  * (the FFT is done with it by then), and w. The result is buf[0..M). */
-static void dct4(const float *in, float *buf, int M)
+static void dct4(const float * restrict in, float * restrict buf, int M)
 {
     int K = M / 2;
     int logm = (M == 1024) ? 9 : 6;
@@ -115,7 +115,7 @@ static void dct4(const float *in, float *buf, int M)
 
 /* IMDCT (ISO/IEC 14496-3 §4.6.11.3.1): n0 = N/4 + 1/2 makes the transform a
  * DCT-IV of the coefficients, folded out with its odd/even symmetries. */
-static void fast_imdct(const float *in, float *out, int n, float *tmp)
+static void fast_imdct(const float * restrict in, float * restrict out, int n, float * restrict tmp)
 {
     int M = n / 2, H = M / 2;
     float *u = tmp; /* 2*M floats of work */
