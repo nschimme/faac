@@ -24,37 +24,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     cfg.downmix_mode  = (enum faad_downmix_mode)((mode >> 3) & 3);
 
     faad_decoder *dec = NULL;
-    void *allocated_mem = NULL;
-    faad_status st;
-
-    /* Test both heap open and static init */
-    if (mode & 0x20) {
-        uint32_t state_bytes = 0;
-        if (faad_get_state_size(&state_bytes) == FAAD_OK && state_bytes > 0) {
-            allocated_mem = malloc(state_bytes);
-            if (allocated_mem) {
-                st = faad_decoder_init(allocated_mem, state_bytes, &cfg, payload, (uint32_t)(payload_len < 64 ? payload_len : 64), &dec);
-                if (st != FAAD_OK) {
-                    free(allocated_mem);
-                    allocated_mem = NULL;
-                    dec = NULL;
-                }
-            }
-        }
-    } else {
-        st = faad_decoder_open(&cfg, payload, (uint32_t)(payload_len < 64 ? payload_len : 64), &dec);
-        if (st != FAAD_OK) {
-            dec = NULL;
-        }
-    }
-
-    if (!dec) {
-        /* Try init/open without ASC bytes */
-        if (faad_decoder_open(&cfg, NULL, 0, &dec) != FAAD_OK) {
-            free(allocated_mem);
-            return 0;
-        }
-    }
+    faad_status st = faad_decoder_open(&cfg, payload,
+        (uint32_t)(payload_len < 64 ? payload_len : 64), &dec);
+    if (st != FAAD_OK && faad_decoder_open(&cfg, NULL, 0, &dec) != FAAD_OK)
+        return 0;
 
     faad_stream_info info;
     info.struct_size = sizeof(info);
@@ -94,6 +67,5 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
 
     faad_decoder_close(&dec);
-    free(allocated_mem);
     return 0;
 }

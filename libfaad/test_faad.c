@@ -185,10 +185,6 @@ static void test_struct_sizes_and_enums(void)
     assert(out.info.struct_size == sizeof(out.info));
     assert(out.guard == 0xa5a5a5a5u);
     assert(faad_decoder_close(&dec) == FAAD_OK && dec == NULL);
-    uint32_t bytes;
-    assert(faad_get_state_size(&bytes) == FAAD_OK);
-    void *mem = malloc(bytes);
-    assert(mem != NULL);
     for (int i = 0; i < 4; i++) {
         faad_config_init(&c.cfg, sizeof(c.cfg));
         if (i == 0) c.cfg.struct_size--;
@@ -197,10 +193,7 @@ static void test_struct_sizes_and_enums(void)
         if (i == 3) c.cfg.downmix_mode = FAAD_DOWNMIX_MAX;
         assert(faad_decoder_open(&c.cfg, NULL, 0, &dec) == FAAD_ERR_INVALID_ARGUMENT);
         assert(dec == NULL);
-        assert(faad_decoder_init(mem, bytes, &c.cfg, NULL, 0, &dec) == FAAD_ERR_INVALID_ARGUMENT);
-        assert(dec == NULL);
     }
-    free(mem);
 }
 
 int main(void)
@@ -215,25 +208,12 @@ int main(void)
     assert(st == FAAD_OK);
     assert(cfg.stream_format == FAAD_STREAM_ADTS);
 
-    uint32_t state_bytes = 0;
-    st = faad_get_state_size(&state_bytes);
-    assert(st == FAAD_OK);
-    assert(state_bytes > 0);
-
-    void *state_allocation = malloc((size_t)state_bytes + FAAD_STATE_ALIGNMENT - 1);
-    assert(state_allocation != NULL);
-    uintptr_t address = (uintptr_t)state_allocation;
-    size_t offset = (FAAD_STATE_ALIGNMENT - (address & (FAAD_STATE_ALIGNMENT - 1)))
-        & (FAAD_STATE_ALIGNMENT - 1);
-    void *static_mem = (uint8_t *)state_allocation + offset;
-
-    faad_decoder *dec_static = NULL;
-    st = faad_decoder_init(static_mem, state_bytes, &cfg, NULL, 0, &dec_static);
-    assert(st == FAAD_OK);
-    assert(dec_static != NULL);
+    faad_decoder *dec = NULL;
+    st = faad_decoder_open(&cfg, NULL, 0, &dec);
+    assert(st == FAAD_OK && dec != NULL);
 
     faad_stream_info info = { .struct_size = sizeof(faad_stream_info) };
-    st = faad_decoder_get_info(dec_static, &info);
+    st = faad_decoder_get_info(dec, &info);
     assert(st == FAAD_OK);
     assert(!info.format_known && info.channels == 0);
 
@@ -241,18 +221,17 @@ int main(void)
     void *pcm = malloc(info.max_output_bytes);
     assert(pcm != NULL);
     uint32_t used, written, flags;
-    st = faad_decode_frame(dec_static, packet, sizeof(packet), &used, pcm,
+    st = faad_decode_frame(dec, packet, sizeof(packet), &used, pcm,
                            info.max_output_bytes, &written, &flags);
     assert(st == FAAD_OK && written && flags == (FAAD_FRAME_FORMAT_CHANGED | FAAD_FRAME_CONCEALED));
-    assert(faad_decoder_get_info(dec_static, &info) == FAAD_OK && info.channels == 1);
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.channels == 1);
     free(pcm);
 
-    st = faad_decoder_flush(dec_static);
+    st = faad_decoder_flush(dec);
     assert(st == FAAD_OK);
 
-    assert(faad_decoder_close(&dec_static) == FAAD_OK);
-    assert(dec_static == NULL);
-    free(state_allocation);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+    assert(dec == NULL);
 
     faad_decoder *dec_heap = NULL;
     st = faad_decoder_open(&cfg, NULL, 0, &dec_heap);
@@ -290,10 +269,10 @@ int main(void)
     }
 #endif
 
-    printf("FAAD3 static placement, heap, and concurrent multi-threading tests passed successfully.\n");
+    printf("FAAD3 allocation and concurrent multi-threading tests passed successfully.\n");
 #else
     /* Global diagnostic state is intended for one decoder at a time. */
-    printf("FAAD3 static placement and heap tests passed (global stats enabled).\n");
+    printf("FAAD3 allocation tests passed (global stats enabled).\n");
 #endif
     return 0;
 }

@@ -1104,32 +1104,35 @@ static void sbr_analyse(SBRChannel *ch, SBRScratch *sc, const float *pcm)
         memcpy(ch->x_low_tail[k], &sc->x_low[k][SBR_SLOTS], sizeof(ch->x_low_tail[k]));
 }
 
-/* Assemble X for the 32 output slots from the low band and the adjusted HF,
+/* Assemble X from the low band and the adjusted HF, retaining slots for PS
+ * look-ahead or synthesizing each immediately into PCM,
  * honouring the previous frame's band split where its last envelope reaches
  * into this frame (§4.6.18.7.6 / 4.6.18.8.1). */
-static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int nslots)
+static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int nslots, float *pcm, float (*output_slot)[2])
 {
     int i_temp = have_hf ? (int)ch->t_E_end_prev - SBR_SLOTS : 0;
     if (i_temp < 0) i_temp = 0;
     for (int i = 0; i < nslots; i++) {
+        float (*slot)[2] = pcm ? output_slot : sc->x[i];
         int n = i + SBR_T_HFADJ;
         int kx = have_hf ? ((i < i_temp) ? ch->kx_prev : el->kx) : 32;
         int kend = have_hf ? ((i < i_temp) ? ch->kx_prev + ch->M_prev : el->kx + el->M) : 32;
         if (i >= SBR_SLOTS) kend = kx; /* look-ahead slots: low band only */
         for (int k = 0; k < kx && k < 32; k++) {
-            sc->x[i][k][0] = sc->x_low[k][n][0];
-            sc->x[i][k][1] = sc->x_low[k][n][1];
+            slot[k][0] = sc->x_low[k][n][0];
+            slot[k][1] = sc->x_low[k][n][1];
         }
         for (int k = kx; k < kend; k++) {
-            sc->x[i][k][0] = sc->y[k][n][0];
-            sc->x[i][k][1] = sc->y[k][n][1];
+            slot[k][0] = sc->y[k][n][0];
+            slot[k][1] = sc->y[k][n][1];
         }
-        for (int k = kend; k < 64; k++) sc->x[i][k][0] = sc->x[i][k][1] = 0.0f;
+        for (int k = kend; k < 64; k++) slot[k][0] = slot[k][1] = 0.0f;
+        if (pcm) qmf_synthesis_slot(ch, slot, pcm + i * 64);
     }
 }
 
 static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, const float *pcm,
-                                float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots)
+                                float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots, float *out_pcm, float (*output_slot)[2])
 {
     sbr_analyse(ch, sc, pcm);
 
@@ -1147,7 +1150,7 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
         sbr_hf_adjust(el, ch, sc, E, Q);
     }
 
-    sbr_assemble(el, ch, sc, have_hf, nslots);
+    sbr_assemble(el, ch, sc, have_hf, nslots, out_pcm, output_slot);
 
     for (int k = 0; k < SBR_MAX_BANDS; k++)
         memcpy(ch->y_tail[k], &sc->y[k][SBR_SLOTS], sizeof(ch->y_tail[k]));
@@ -1260,7 +1263,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 
 #ifndef FAAD_DISABLE_PS
         if (dec->ps_seen && num_ch == 1) {
-            sbr_process_channel(el, &dec->sbr[0], sc, pcm_in, E0, Q0, have_hf, PS_IN_SLOTS);
+            sbr_process_channel(el, &dec->sbr[0], sc, pcm_in, E0, Q0, have_hf, PS_IN_SLOTS, NULL, NULL);
             dec->num_channels = 2;
             if (dec->ps->start) ps_frame_begin(dec, sc->x, have_hf ? el->kx + el->M : 32);
             for (int t = 0; t < SBR_SLOTS; t++) {
@@ -1276,11 +1279,13 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
             return;
         }
 #endif
+        /* All core IMDCTs have finished; their spectra are dead until the next
+         * packet. Concealment history lives in prev_spec, so one QMF output
+         * slot can reuse the first spectrum without adding stack or heap RAM. */
+        float (*output_slot)[2] = (float (*)[2])dec->spec[0];
         for (int c = 0; c < nch; c++) {
             SBRChannel *sch = &dec->sbr[ch + c];
-            sbr_process_channel(el, sch, sc, pcm_in + (ch + c) * SBR_OUT_LEN, c ? E1 : E0, c ? Q1 : Q0, have_hf, SBR_SLOTS);
-            for (int t = 0; t < SBR_SLOTS; t++)
-                qmf_synthesis_slot(sch, sc->x[t], pcm_out + (ch + c) * 2048 + t * 64);
+            sbr_process_channel(el, sch, sc, pcm_in + (ch + c) * SBR_OUT_LEN, c ? E1 : E0, c ? Q1 : Q0, have_hf, SBR_SLOTS, pcm_out + (ch + c) * SBR_OUT_LEN, output_slot);
         }
         ch += (uint32_t)nch;
     }

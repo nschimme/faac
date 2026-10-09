@@ -89,7 +89,7 @@ static faad_status validate_asc(const uint8_t *buf, uint32_t len, bool *frame_le
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
 {
     /* asc_decode() is always called on a BitReader freshly bits_init()'d over
-     * exactly the ASC bytes (see faad_decoder_init()), so the shared codec
+     * exactly the ASC bytes (see faad_decoder_open()), so the shared codec
      * can parse straight from its underlying buffer. */
     AscInfo info;
     bool frame_length;
