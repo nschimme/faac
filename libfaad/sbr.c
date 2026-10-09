@@ -1133,8 +1133,8 @@ static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, b
         if (have_hf && high_start < el->kx) {
             int tail_end = el->kx < kend ? el->kx : kend;
             for (; high_start < tail_end; high_start++) {
-                slot[high_start][0] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n][0] : 0.0f;
-                slot[high_start][1] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n][1] : 0.0f;
+                slot[high_start][0] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n - SBR_T_HFADJ][0] : 0.0f;
+                slot[high_start][1] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n - SBR_T_HFADJ][1] : 0.0f;
             }
         }
         for (int k = high_start; k < kend; k++) {
@@ -1159,7 +1159,8 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
             memcpy(low_head[k], sc->x_low[k], sizeof(low_head[k]));
     for (int k = kx; k < SBR_MAX_BANDS; k++) {
         memset(sc->y[k], 0, sizeof(sc->y[k]));
-        memcpy(sc->y[k], ch->y_tail[k], sizeof(ch->y_tail[k]));
+        /* Synthesis starts at HFADJ; the preceding HF slots are never read. */
+        memcpy(sc->y[k] + SBR_T_HFADJ, ch->y_tail[k], sizeof(ch->y_tail[k]));
     }
 
     if (have_hf) {
@@ -1173,7 +1174,7 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
     for (int k = 0; k < kx; k++)
         memset(ch->y_tail[k], 0, sizeof(ch->y_tail[k]));
     for (int k = kx; k < SBR_MAX_BANDS; k++)
-        memcpy(ch->y_tail[k], &sc->y[k][SBR_SLOTS], sizeof(ch->y_tail[k]));
+        memcpy(ch->y_tail[k], &sc->y[k][SBR_SLOTS + SBR_T_HFADJ], sizeof(ch->y_tail[k]));
 
     if (have_hf) {
         /* remember what the next frame's leading slots and deltas refer to */
