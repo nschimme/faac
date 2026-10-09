@@ -6,6 +6,7 @@ Usage: faad_frontend_test.py <faac> <faad> <max-channels> <decoder-sbr>
 """
 
 import math
+import json
 import os
 import struct
 import subprocess
@@ -15,15 +16,16 @@ import wave
 
 
 def make_wav(path, channels, rate=44100, secs=2):
+    freqs = (440, 660, 880, 1100, 1320, 1540, 1760, 1980)
     with wave.open(path, "wb") as w:
         w.setnchannels(channels)
         w.setsampwidth(2)
         w.setframerate(rate)
         w.writeframes(b"".join(
             struct.pack("<" + "h" * channels,
-                        *(int(8000 * math.sin(2 * math.pi * freq * i / rate))
-                          for freq in (440, 660)[:channels]))
-            for i in range(rate * secs)))
+                        *(int(8000 * math.sin(2 * math.pi * freqs[c % len(freqs)] * i / rate))
+                          for c in range(channels)))
+            for i in range(int(rate * secs))))
 
 
 def wav_sizes(data):
@@ -75,6 +77,8 @@ def main():
 
         def pcm(path, extra=()):
             result = subprocess.run([faad, "-q", "-w"] + list(extra) + [path], check=True, capture_output=True)
+            if "raw" in extra:
+                return result.stdout
             return result.stdout[44:]
 
         first_pcm, second_pcm = pcm(adts1), pcm(adts2)
@@ -86,6 +90,74 @@ def main():
             assert result.returncode == 1 and result.stderr, (track, result.returncode, result.stderr)
         assert pcm(adts2, ["--track", "99"]) == second_pcm, "ADTS ignores --track"
 
+        for source in (adts2, multi):
+            extra = ["--track", "2"] if source == multi else []
+            metadata = json.loads(subprocess.run([faad, "--json", *extra, source],
+                                                 check=True, capture_output=True).stdout)
+            assert metadata["audio"]["channels"] == channels
+            assert metadata["audio"]["sample_rate_hz"] == 48000
+
+        if int(sys.argv[3]) >= 6:
+            # MP4 gapless format-change transition with channel increase near EOF
+            six_ch_wav = os.path.join(d, "six_ch.wav")
+            make_wav(six_ch_wav, 6, rate=44100, secs=0.1)
+            six_ch_adts = os.path.join(d, "six_ch.aac")
+            subprocess.run([faac, "-a", "--object-type", "lc", "-b", "384",
+                            "-o", six_ch_adts, six_ch_wav], check=True, capture_output=True)
+
+            # faam skips headers whose channel configuration changes. Keep
+            # the initial ADTS configuration while preserving the six-channel
+            # raw AAC elements, so those frames reach the MP4 decoder.
+            six_ch_frames = bytearray(open(six_ch_adts, "rb").read())
+            offset = 0
+            while offset < len(six_ch_frames):
+                length = ((six_ch_frames[offset + 3] & 3) << 11 |
+                          six_ch_frames[offset + 4] << 3 |
+                          six_ch_frames[offset + 5] >> 5)
+                six_ch_frames[offset + 2] &= 0xFE
+                six_ch_frames[offset + 3] = (six_ch_frames[offset + 3] & 0x3F) | (channels << 6)
+                offset += length
+
+            concat_adts = os.path.join(d, "concat.aac")
+            with open(concat_adts, "wb") as f_out:
+                f_out.write(open(adts1, "rb").read())
+                f_out.write(six_ch_frames)
+
+            mp4_gapless = os.path.join(d, "gapless_transition.m4a")
+            subprocess.run([faam, "-i", concat_adts, "--encoder-delay", "1024", "--padding-delay", "2000", "-o", mp4_gapless], check=True, capture_output=True)
+            # A raw AAC decoder rejects elements exceeding the ASC layout.
+            # Allow six channels in the ASC; decoded element counts still
+            # transition from two to six in the actual frames.
+            mp4_bytes = open(mp4_gapless, "rb").read()
+            asc_descriptor = bytes((5, 0x80, 0x80, 0x80, 2, 0x12, channels << 3))
+            assert mp4_bytes.count(asc_descriptor) == 1
+            with open(mp4_gapless, "wb") as f:
+                f.write(mp4_bytes.replace(asc_descriptor, asc_descriptor[:-1] + bytes((6 << 3,))))
+            metadata = json.loads(subprocess.run([faad, "--json", mp4_gapless],
+                                                 check=True, capture_output=True).stdout)
+            assert metadata["audio"]["channels"] == 6, "fixture did not reach six-channel frames"
+
+            mp4_gapless_out = os.path.join(d, "gapless_transition.wav")
+            subprocess.run([faad, "-q", "-o", mp4_gapless_out, mp4_gapless], check=True)
+            riff, data, actual = wav_sizes(open(mp4_gapless_out, "rb").read())
+            assert data == actual > 0 and riff == data + 36, "MP4 gapless format transition produced valid WAV"
+
+            mp4_gapless_piped = subprocess.run([faad, "-q", "-w", mp4_gapless], check=True, capture_output=True).stdout
+            assert mp4_gapless_piped[44:] == open(mp4_gapless_out, "rb").read()[44:], "MP4 gapless transition -w PCM differs from -o PCM"
+
+            # Compare both output paths to explicit trimming of the untrimmed
+            # stream, including a final channel count larger than the header.
+            for bits in ("16", "24", "32", "32f"):
+                width = 4 if bits == "32f" else int(bits) // 8
+                full_pcm = pcm(mp4_gapless, ["-g", "-f", "raw", "-b", bits])
+                expected = full_pcm[1024 * channels * width:-2000 * 6 * width]
+                actual = pcm(mp4_gapless, ["-f", "raw", "-b", bits])
+                assert actual == expected, "streaming format-change padding differs from explicit trim"
+                out = os.path.join(d, "transition.raw")
+                subprocess.run([faad, "-q", "--overwrite", "-f", "raw", "-b", bits,
+                                "-o", out, mp4_gapless], check=True)
+                assert open(out, "rb").read() == expected, "file format-change padding differs from explicit trim"
+
         # Runtime SBR delay uses output samples; preserve gapless track length.
         he = os.path.join(d, "he.m4a")
         subprocess.run([faac, "--object-type", "he-aac-v1", "-b", "64", "-o", he, src],
@@ -95,6 +167,20 @@ def main():
         with wave.open(he_out) as w:
             assert w.getframerate() == (44100 if sbr else 22050) and w.getnchannels() == channels
             assert w.getnframes() == (88200 if sbr else 44100), "runtime decoder delay changed gapless length"
+
+        metadata = json.loads(subprocess.run([faad, "--json", he],
+                                             check=True, capture_output=True).stdout)
+        assert metadata["audio"]["channels"] == channels
+        assert metadata["audio"]["sample_rate_hz"] == (44100 if sbr else 22050)
+        assert metadata["audio"]["profile"].startswith("HE-AAC v1" if sbr else "AAC-LC")
+
+        he_adts = os.path.join(d, "he.aac")
+        subprocess.run([faad, "-q", "-a", he_adts, he], check=True, capture_output=True)
+        # ADTS must preserve decoder delay regardless of the gapless option.
+        for bits in ("16", "24", "32", "32f"):
+            for fmt in ("wav", "raw"):
+                opts = ["-b", bits, "-f", fmt]
+                assert pcm(he_adts, opts) == pcm(he_adts, [*opts, "-g"]), "ADTS delay was trimmed"
 
         # Concealed core and damaged-SBR recovery both produce usable audio
         # normally, but strict mode must reject them.

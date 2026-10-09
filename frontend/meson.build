@@ -80,6 +80,16 @@ if get_option('decoder')
         dependencies: [libshell32, libiconv],
         install: true
     )
+    if not meson.is_cross_build()
+        pcm_writer_test = executable('test_faad_pcm_writer',
+            ['../tests/faad_pcm_writer_test.c', 'mp4read.c', 'adts.c', 'cli_io.c', 'charset.c', 'help.c', git_version_h],
+            include_directories: ['..', '../include', common_inc],
+            link_with: [libfaad_for_frontend, libfaam_for_frontend],
+            c_args: c_args_list,
+            dependencies: [libshell32, libiconv])
+        test('faad_pcm_writer_test', find_program('python3'),
+            args: [files('../tests/faad_pcm_writer_test.py'), pcm_writer_test])
+    endif
     if get_option('encoder') and not meson.is_cross_build()
         test('faad_frontend_test', find_program('python3'),
             args: [files('../tests/faad_frontend_test.py'), faac, faad,
