@@ -83,7 +83,7 @@ if get_option('decoder')
 endif
 
 if get_option('muxer')
-    # Large-file semantics on 32-bit POSIX for every fopen() and stat() in faam, charset.c's
+    # Large-file semantics on 32-bit POSIX for every fopen() and stat() in faam, cli_io.c's
     # included: without them a file past 2 GiB cannot be opened, and cli_same_file() could not
     # see it.
     faam = executable('faam',
