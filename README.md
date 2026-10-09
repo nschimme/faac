@@ -1,10 +1,10 @@
 # <img src="frontend/faac.svg" alt="FAAC" width="48" height="48" align="top" /> Freeware Advanced Audio Coder
 
-FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeline use cases where footprint and throughput matter as much as quality.
+FAAC is an open-source, dependency-free AAC encoder, and FAAD its decoder counterpart. Both are aimed at embedded and pipeline use cases where footprint and throughput matter as much as quality.
 
 ### Key features:
 
-- MPEG-4 AAC-LC and HE-AAC v1 (SBR) profiles
+- MPEG-4 AAC-LC and HE-AAC v1 (SBR) encoding and decoding, plus HE-AAC v2 (PS) decoding
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
@@ -12,12 +12,13 @@ FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeli
 
 ### Command-line tools:
 
-- `faac` writes MP4/M4A with gapless playback info, as well as raw ADTS
-- WAV and raw PCM input, with stdin/stdout piping
+- `faac` and `faad` write and read MP4/M4A with gapless playback info, as well as raw ADTS
+- `faac` reads WAV and raw PCM; `faad` writes WAV and raw PCM, with large-file support and stdin/stdout piping
+- `faam` muxes ADTS AAC and Annex-B H.264/H.265 into MP4/M4A/M4B, and inspects, demuxes, tags and chapters existing files. H.264/H.265 needs `-Dmuxer-video=true` and reading fragmented MP4 needs `-Dmuxer-fragmented=true` (both on by default)
 
 ## Copyrights
 
-FAAC is free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
+FAAC, FAAD and FAAM are free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
 
 ```
 FAAC - Freeware Advanced Audio Coder
@@ -55,16 +56,32 @@ Lesser General Public License for more details.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `frontend` | true | Build the `faac` command-line tool |
-| `frontend-static` | false | Link the frontend executables to the static libfaac library |
+| `encoder` | true | Build `libfaac` and the `faac` frontend |
+| `decoder` | true | Build `libfaad` and the `faad` frontend |
+| `frontend` | true | Build the command-line tools for the enabled components |
+| `frontend-static` | false | Link the frontend executables to the static libraries (libfaac, libfaad, libfaam) |
+| `decoder-sbr` | true | SBR (HE-AAC v1) support in `libfaad` |
+| `decoder-ps` | true | Parametric Stereo (HE-AAC v2) support in `libfaad` |
 | `max-channels` | 8 | Maximum number of channels (1-8) |
+| `muxer` | true | Build the `faam` command-line tool (`libfaam` itself is always built) |
+| `muxer-video` | true | `libfaam` and `faam`: H.264/H.265 video tracks; off leaves an audio-only muxer/demuxer |
+| `muxer-fragmented` | true | `libfaam`: fragmented MP4 (moof/mdat) crash-safe recording and demuxing; `faam` reads such files but does not write them |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
-| `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
+| `stats` | false | End-of-stream diagnostics on stderr, encoder and decoder (instrumentation only) |
 
-Library integration: [FAAC encoder API](docs/libfaac.md).
+For an encoder-only build pass `-Ddecoder=false`; for a decoder-only build pass `-Dencoder=false`.
+Decoder PS support requires SBR and at least two compiled channels;
+`faad_get_library_info()` reports the capabilities of the loaded build.
+
+Library integration: [FAAC encoder API](docs/libfaac.md), [FAAD decoder API](docs/libfaad.md) and
+[FAAM MP4 muxer/demuxer API](docs/libfaam.md).
 
 ## Usage
 
 ```bash
 faac input.wav -o output.m4a        # encode
+faad output.m4a -o decoded.wav      # decode
+faad -i output.m4a                  # show stream info
+faam -i output.aac -o output.m4a    # mux ADTS into MP4
+faam tag output.m4a --title Song    # edit tags in place
 ```

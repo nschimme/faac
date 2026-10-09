@@ -20,10 +20,11 @@
 #include <string.h>
 
 #include "output.h"
+#include "charset.h"
+#include "cli_io.h"
 
 #ifdef _WIN32
 #define strcasecmp _stricmp
-#include "charset.h"
 #else
 #include <strings.h>
 #endif
@@ -103,37 +104,17 @@ bool detect_container_mp4(const char *filename)
     return true;
 }
 
-bool check_image_header(const char *buf)
-{
-    if (!buf)
-        return false;
-
-    if (!strncmp(buf, "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8))
-        return true;               /* PNG */
-    else if (!strncmp(buf, "\xFF\xD8\xFF\xE0", 4) ||
-             !strncmp(buf, "\xFF\xD8\xFF\xE1", 4))
-        return true;               /* JPEG */
-    else if (!strncmp(buf, "GIF87a", 6) || !strncmp(buf, "GIF89a", 6))
-        return true;               /* GIF */
-
-    return false;
-}
-
-long get_file_size(const char *filename)
+int64_t get_file_size(const char *filename)
 {
     if (!filename || !strcmp(filename, "-"))
         return -1;
 
-#ifdef _WIN32
-    FILE *f = win32_fopen_utf8(filename, "rb");
-#else
-    FILE *f = fopen(filename, "rb");
-#endif
+    FILE *f = cli_fopen(filename, "rb");
     if (!f)
         return -1;
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
+    uint64_t size = 0;
+    bool ok = cli_fsize(f, &size);
     fclose(f);
-    return size;
+    return ok ? (int64_t)size : -1;
 }

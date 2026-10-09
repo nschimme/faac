@@ -1,0 +1,483 @@
+.TH FAAM 1 "2026-10-07" "1.0.0" "Freeware Advanced Audio Muxer"
+
+.SH NAME
+faam \- MP4 muxer, demuxer and tag editor for AAC audio and H.264/H.265 video
+
+.SH SYNOPSIS
+.B faam
+.B \-i
+.I input
+.RB [ \-i
+.IR input ...]
+.B \-o
+.I out.mp4
+.RI [ options ]
+.br
+.B faam
+.RB { info | dump }
+.I file
+.br
+.B faam demux
+.I file
+.RI [ options ]
+.br
+.B faam tag
+.I file
+.RI [ options ]
+.br
+.B faam chapter
+.RB { import | export }
+.I file
+.RI [ options ]
+
+.SH DESCRIPTION
+.B FAAM
+reads and writes ISO BMFF files: MP4, M4A and M4B.
+It is a front end to the
+.B libfaam
+library, licensed under the LGPL license.
+It does not encode or decode audio or video.
+The subcommands are:
+.TP
+.B \-i, \-o
+With no subcommand word, mux one or more elementary streams (ADTS AAC,
+Annex-B H.264 or H.265) into an MP4.
+.TP
+.B info
+Print container, track, tag, gapless and chapter summaries.
+.TP
+.B dump
+Print the MP4 atom tree.
+.TP
+.B demux
+Extract one track's elementary stream.
+.TP
+.B tag
+Edit iTunes metadata tags in place.
+.TP
+.B chapter
+Import or export the chapters of an audiobook.
+.PP
+Each subcommand prints a result line to stdout on success and an error
+message to stderr on failure.
+H.264 and H.265 need a build with the
+.B muxer-video
+option (enabled by default); without it muxing video fails with an error.
+.B faam
+writes progressive files only.
+Fragmented MP4 files can be read by
+.BR info ,
+.B dump
+and
+.B demux
+in a build with the
+.B muxer-fragmented
+option (enabled by default).
+
+.SH HELP OPTIONS
+\-\-help\-<group> and \-\-license must be the first argument.
+.TP
+.BR \-h ,\  \-\-help
+Display a short help text.
+After a subcommand, display the options of that subcommand.
+.TP
+.BR \-H
+Display a description of all options.
+.TP
+.BR \-\-help\-commands ,\  \-\-help\-mux ,\  \-\-help\-inspect ,\  \-\-help\-tag ,\  \-\-help\-chapter
+Display the description of one group of options.
+.TP
+.BR \-\-license
+Display copyright and license information.
+
+.SH MUX OPTIONS
+.TP
+.BR \-i ,\  \-\-input\ <\fIfile\fP>
+Elementary stream to mux: ADTS AAC, or Annex-B H.264 or H.265.
+Repeat for more tracks, up to 8.
+.TP
+.BR \-o ,\  \-\-output\ <\fIfile\fP>
+Output MP4 file.
+Required.
+An output that exists is refused unless
+.B \-\-overwrite
+is given.
+An output that is one of the inputs, spelled another way or reached through a
+link, is refused even with
+.BR \-\-overwrite .
+A failed mux removes the partial output.
+.TP
+.BR \-\-overwrite
+Overwrite an existing output file.
+.TP
+.BR \-\-codec:\fIN\fP\ <\fIcodec\fP>
+Codec of the Nth
+.BR \-i ,
+counting from 0: aac, h264 (or avc) or h265 (or hevc).
+Without it the codec follows the file extension:
+.BR .264 / .h264
+for H.264,
+.BR .265 / .hevc
+for H.265, anything else AAC.
+.TP
+.BR \-\-brand\ <\fIname\fP>
+.B m4b
+writes an audiobook brand;
+.B m4a
+is the default.
+Anything else is an error.
+Files with a video track use the
+.B isom
+brand regardless.
+.TP
+.BR \-\-width\ <\fIpixels\fP> ,\  \-\-height\ <\fIpixels\fP>
+Size of video tracks, 1 to 65535.
+Required for video, as the stream is not parsed for it.
+.TP
+.BR \-\-rotation\ <\fIdegrees\fP>
+Display rotation of video tracks, clockwise: 0 (the default), 90, 180 or 270.
+It is written to the track's display matrix; the pictures are not rotated.
+.TP
+.BR \-\-fps\ <\fIn[/d]\fP>
+Frame rate of video tracks, a whole number or a fraction such as 30000/1001.
+The default is 30.
+.TP
+.BR \-\-encoder\-delay\ <\fIsamples\fP>
+Leading priming samples of the audio, written as gapless information
+(an
+.B iTunSMPB
+atom and an edit list).
+An error without an audio track.
+The value is in samples at the track's sample rate, which for HE-AAC is the
+core rate, half the output rate.
+The encoder reports it: see
+.BR EXAMPLES .
+.TP
+.BR \-\-padding\-delay\ <\fIsamples\fP>
+Trailing padding samples of the audio, written as gapless information.
+The length of the programme is derived from the frames muxed minus the delay
+and the padding, so without this option the padding is not trimmed.
+.TP
+.BR \-\-sbr\-signaling\ <\fImode\fP>
+ADTS cannot say whether SBR or PS follow, so the caller does.
+.B none
+(the default) leaves it to the decoder,
+.B compatible
+writes backward-compatible signaling,
+.B explicit
+hierarchical signaling,
+.B ps
+and
+.B ps-explicit
+the same for HE-AAC v2, which needs a mono core.
+Anything else is an error.
+.TP
+.BR \-\-language\ <\fIcode3\fP> ,\  \-\-lang\ <\fIcode3\fP>
+ISO 639-2/T language code of the audio tracks, for example eng or ger.
+It must be three letters, in either case; the default is und.
+.TP
+.BR \-\-creation\-time\ <\fIvalue\fP>
+Creation and modification time of the file.
+.B auto
+uses the modification time of the first input,
+.B now
+the current time, and a number is a Unix time in seconds that fits 32 bits;
+larger or negative values are refused.
+Without the option the
+.B SOURCE_DATE_EPOCH
+environment variable is used when set, otherwise the time is left unset (0).
+An invalid value gives a warning and 0.
+.PP
+Every option listed under
+.B TAG OPTIONS
+except
+.B \-\-remove
+and
+.B \-\-clear
+also applies when muxing.
+.PP
+ADTS input:
+.IP \(bu 3
+The AAC object type, sample rate and channel configuration are read from the
+first ADTS header, which must be valid and must follow an optional ID3v2 tag.
+.IP \(bu 3
+Each frame is muxed as one 1024-sample unit, so a stream whose frames hold more
+than one raw data block (number_of_raw_data_blocks above 0) is an error, as is
+a channel configuration of 0.
+.IP \(bu 3
+Bytes that are not a frame header are skipped, and so are frames whose
+profile, rate or channels differ from the first header's, as they are most
+likely false syncs.
+.IP \(bu 3
+The
+.B ps
+modes need a mono core.
+.PP
+Video input:
+.IP \(bu 3
+One picture is muxed per sample in stream order.
+The avcC or hvcC is built from the parameter sets in the stream, which must
+hold them.
+.IP \(bu 3
+B-frames are not supported: no composition time offsets are written, so
+reordered pictures would play out of order.
+.IP \(bu 3
+\-\-width and \-\-height are required.
+
+.SH INSPECT AND EXTRACT OPTIONS
+.B info
+and
+.B dump
+take only the file name.
+.B info
+prints, in this order and omitting sections the file does not have:
+.PP
+.nf
+Container: ISO BMFF (major brand M4A)
+Tracks Count: 1
+
+Track #1 (ID 1):
+  Type: Audio
+  Codec: AAC
+  Timescale: 44100
+  Sample Rate: 44100 Hz
+  Channels: 2
+  AAC Object Type: 2 (AAC-LC)
+  SBR Present: No
+  PS Present: No
+  Total Frames: 131
+
+Metadata Tags:
+  Title: Song
+  Track: 3/12
+
+Gapless Audio Metadata:
+  Encoder Delay: 1024 samples
+  Trailing Padding: 820 samples
+
+Chapters / Bookmarks (2 entries):
+  Chapter #1: start=0 ms, title="Intro"
+  Chapter #2: start=90500 ms, title="Part 2"
+.fi
+.PP
+A track whose codec is not AAC, H.264 or H.265 is listed as Generic.
+.B dump
+lists the top-level boxes and what is inside
+.BR moov .
+.PP
+.B demux
+accepts:
+.TP
+.BR \-o ,\  \-\-output\ <\fIfile\fP>
+Output file, output.raw by default.
+A name containing
+.B .aac
+or
+.B .adts
+gets ADTS headers, built from the track's AudioSpecificConfig, on AAC frames;
+video is written as Annex-B.
+An output that exists is refused unless
+.B \-\-overwrite
+is given; an output that is the input is always refused.
+A failed run removes the partial output.
+.TP
+.BR \-t ,\  \-\-track\ <\fIid\fP>
+Track ID to extract, the first track by default.
+.TP
+.BR \-\-export\-asc\ <\fIfile\fP>
+Also write the track's codec configuration (AudioSpecificConfig, avcC or hvcC).
+.TP
+.BR \-\-overwrite
+Overwrite an existing output or
+.B \-\-export\-asc
+file.
+
+.SH TAG OPTIONS
+.B faam tag
+rewrites the tags of
+.I file
+in place.
+Existing tags are kept unless removed, so only the given fields change;
+tags libfaam does not model (such as grouping or description) and extra cover art images are preserved byte-for-byte in original relative order.
+Files using QuickTime keys metadata (mdta handler) are refused without modification.
+A file that cannot be read as an MP4 is refused and left untouched.
+The edit is not crash-safe: work on a copy of a file that matters.
+Text is converted to UTF-8.
+All options except
+.B \-\-remove
+and
+.B \-\-clear
+also work when muxing.
+.TP
+.BR \-\-title ,\  \-\-artist ,\  \-\-album ,\  \-\-albumartist ,\  \-\-composer\ <\fItext\fP>
+Set the field.
+.TP
+.BR \-\-titlesort ,\  \-\-artistsort ,\  \-\-albumsort ,\  \-\-albumartistsort ,\  \-\-composersort\ <\fItext\fP>
+Set the sort name of the field.
+.TP
+.BR \-\-year ,\  \-\-comment\ <\fItext\fP>
+Set the field.
+.TP
+.BR \-\-genre\ <\fIvalue\fP>
+An ID3v1 genre number (0 to 255) or name sets both the numeric and the text
+genre.
+Anything else is stored as free text without the numeric atom.
+.TP
+.BR \-\-compilation
+Mark the file as part of a compilation.
+.TP
+.BR \-\-track\ <\fIn[/total]\fP> ,\  \-\-disc\ <\fIn[/total]\fP>
+Set the track or disc number.
+.TP
+.BR \-\-cover\-art\ <\fIfile\fP>
+Cover image, GIF, JPEG, PNG or BMP, up to 32 MiB.
+The format is detected from the file contents; a BMP needs valid file and DIB headers.
+.TP
+.BR \-\-tag\ <\fIname=value\fP>
+Custom tag; the name and the value are separated by the first
+.B =
+or
+.BR , .
+Both must be non-empty.
+Repeat for more.
+.TP
+.BR \-\-remove\ <\fIfield\fP>
+Remove a field before the other options apply.
+The fields are title, titlesort, artist, artistsort, album, albumsort,
+albumartist, albumartistsort, composer, composersort, year, comment, genre,
+compilation, track, disc, cover-art and custom (all custom tags).
+Repeatable, up to 32 times.
+An unknown field is an error.
+.TP
+.BR \-\-clear
+Remove every existing tag and preserved atom before the other options apply.
+
+.SH CHAPTER OPTIONS
+.TP
+.BR import\ <\fIfile\fP>
+Replace the chapters of
+.I file
+with those of the
+.B \-\-chapters
+file.
+The tags are kept.
+.TP
+.BR export\ <\fIfile\fP>
+Write the chapters of
+.I file
+to the
+.B \-o
+file.
+A file without chapters is an error.
+.TP
+.BR \-\-chapters\ <\fIfile\fP>
+Chapter list to import.
+.TP
+.BR \-o ,\  \-\-output\ <\fIfile\fP>
+Chapter list to write.
+An output that exists is refused unless
+.B \-\-overwrite
+is given; the input file is always refused.
+.TP
+.BR \-\-overwrite
+Overwrite an existing chapter list on export.
+.PP
+A chapter list has one line per chapter, a time, a tab and a title, as in
+.BR "00:01:30.500<TAB>Chapter 2" .
+The time is HH:MM:SS.mmm with one to three fractional digits, so
+.B .5
+is 500 ms.
+At most 255 chapters are read, a list without chapters is an error, and titles
+are cut at 255 bytes.
+Chapters are stored as a Nero
+.B chpl
+atom.
+Apple players do not read these chapters, and QuickTime chapter tracks are not
+written.
+
+.SH EXAMPLES
+Gapless playback needs the encoder's priming and padding, which the encoder
+reports; ADTS does not carry them.
+The .m4a that
+.BR faac (1)
+writes records them, and
+.B faam info
+shows them as Encoder Delay and Trailing Padding.
+For AAC-LC from faac the delay is 1024 samples.
+For HE-AAC v1 it is 1040: faac reports 2080 at the output rate, and the file
+counts samples at the core rate, which is half.
+The padding depends on the length of the input.
+.PP
+Mux an AAC-LC ADTS stream from faac into an M4A with gapless information:
+.IP
+.B faam -i song.aac -o song.m4a --encoder-delay 1024 --padding-delay 820
+.PP
+Mux an HE-AAC v1 ADTS stream from faac, announcing SBR:
+.IP
+.B faam -i song.aac -o song.m4a --sbr-signaling compatible --encoder-delay 1040 --padding-delay 1418
+.PP
+Mux an audiobook:
+.IP
+.B faam -i book.aac -o book.m4b --brand m4b --title "Book" --language eng
+.PP
+Mux H.264 video and AAC audio:
+.IP
+.B faam -i clip.264 -i sound.aac -o clip.mp4 --width 1280 --height 720 --fps 30000/1001
+.PP
+Show what a file contains:
+.IP
+.B faam info song.m4a
+.PP
+Extract the audio as an ADTS stream:
+.IP
+.B faam demux song.m4a -o song.aac
+.PP
+Set tags and cover art:
+.IP
+.B faam tag song.m4a --title "Song" --artist "Artist" --track 3/12 --cover-art cover.jpg
+.PP
+Replace all tags:
+.IP
+.B faam tag song.m4a --clear --title "Song"
+.PP
+Copy chapters from one audiobook to another:
+.IP
+.B faam chapter export a.m4b -o chapters.txt
+.br
+.B faam chapter import b.m4b --chapters chapters.txt
+
+.SH EXIT STATUS
+.B 0
+on success and
+.B 1
+on a usage or option error, an invalid option value, an unreadable input, an
+uncreatable output, an output that exists without
+.BR \-\-overwrite ,
+an output that is also an input, an invalid chapter list, a file that
+.B tag
+cannot read, or a library error.
+
+.SH ENVIRONMENT
+.TP
+.B SOURCE_DATE_EPOCH
+Creation time of muxed files when
+.B \-\-creation\-time
+is not given.
+
+.SH SEE ALSO
+.BR faac (1),
+.BR faad (1)
+.PP
+.BR faac (1)
+is the AAC encoder.
+It is built and installed unless the
+.B encoder
+build option is disabled.
+.PP
+.BR faad (1)
+is the AAC decoder.
+It is built and installed unless the
+.B decoder
+build option is disabled.
+.SH AUTHORS
+Developed and maintained by Nils Schimmelmann.

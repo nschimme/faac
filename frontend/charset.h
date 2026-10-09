@@ -19,7 +19,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +33,15 @@ char *utf8_ensure(const char *str);
 /* Trim surrounding whitespace, ASCII quotes, and UTF-8 Unicode curly quotes */
 char *trim_quotes_and_spaces(char *s);
 
+/* Split a --tag argument at its first '=' or ',', trim both halves, and check
+   them. Returns NULL, or an error message (newline-terminated) for the CLI
+   to print. arg is modified; name and value point into it. */
+const char *parse_tag_arg(char *arg, char **name, char **value);
+
+/* Parse "n" or "n/total" (track and disc numbers); total is left alone when
+   the argument has none. Returns false when n is missing. */
+bool parse_index_arg(const char *arg, uint16_t *n, uint16_t *total);
+
 /* Parse a genre argument (number or string name) into ID3v1 genre_id and genre_name */
 bool parse_genre(const char *arg, uint16_t *genre_id, const char **genre_name);
 
@@ -45,23 +53,7 @@ char *win32_utf16_to_utf8(const wchar_t *wstr);
 /* Convert UTF-8 string to heap-allocated UTF-16 wchar_t string */
 wchar_t *win32_utf8_to_utf16(const char *utf8_str);
 
-/* fopen() on a UTF-8 path: converts to UTF-16 and calls _wfopen(), since the
-   narrow CRT's fopen() interprets its argument in the current ANSI code
-   page, not UTF-8. */
-FILE *win32_fopen_utf8(const char *utf8_path, const char *mode);
-
-/* access() on a UTF-8 path, same rationale as win32_fopen_utf8(). */
-int win32_access_utf8(const char *utf8_path, int amode);
-
-/* mtime of a UTF-8 path, same rationale as win32_fopen_utf8(). Returns 0 and
-   sets *mtime on success, -1 on failure (path not found, etc). */
-int win32_mtime_utf8(const char *utf8_path, time_t *mtime);
 #endif
-
-/* fopen() a UTF-8 path: win32_fopen_utf8() on Windows, plain fopen()
-   elsewhere. Same open-failure semantics as fopen() either way -- callers
-   still check the returned NULL and report the error themselves. */
-FILE *cli_fopen(const char *path, const char *mode);
 
 /* Format a CLI version with the build's short Git revision when available. */
 const char *cli_version_string(char *buf, size_t buf_size, const char *version);

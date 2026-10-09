@@ -39,6 +39,7 @@
 #include "input.h"
 #include "mp4write.h"
 #include "charset.h"
+#include "cli_io.h"
 
 void init_encode_options(encode_options_t *opts)
 {
@@ -328,70 +329,17 @@ static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts, u
         faac_encoder_asc(hEncoder, &asc_data, &asc_size);
         mp4_set_decoder_config((unsigned char *)asc_data, asc_size);
     }
-    uint32_t creation_time = 0;
-    if (opts->creation_time_str)
+    char time_warn[512];
+    uint32_t creation_time;
+    if (!resolve_creation_time(opts->creation_time_str, opts->input_filename,
+                               &creation_time, time_warn, sizeof(time_warn)))
     {
-        if (!strcmp(opts->creation_time_str, "auto"))
-        {
-            if (opts->input_filename && strcmp(opts->input_filename, "-") != 0)
-            {
-                time_t mtime;
-#ifdef _WIN32
-                bool ok = win32_mtime_utf8(opts->input_filename, &mtime) == 0;
-#else
-                struct stat st;
-                bool ok = stat(opts->input_filename, &st) == 0;
-                mtime = st.st_mtime;
-#endif
-                if (ok)
-                {
-                    creation_time = (uint32_t)mtime;
-                }
-                else if (opts->verbose)
-                {
-                    finalize_log(log_cb, user_data, 0, "couldn't stat() input file %s, defaulting to 0\n", opts->input_filename);
-                }
-            }
-            else if (opts->verbose)
-            {
-                finalize_log(log_cb, user_data, 0, "cannot use --creation-time auto with stdin, defaulting to 0\n");
-            }
-        }
-        else if (!strcmp(opts->creation_time_str, "now"))
-        {
-            creation_time = (uint32_t)time(NULL);
-        }
-        else
-        {
-            char *endptr;
-            errno = 0;
-            creation_time = (uint32_t)strtoul(opts->creation_time_str, &endptr, 10);
-            if (errno != 0 || *endptr != '\0')
-            {
-                if (opts->verbose)
-                    finalize_log(log_cb, user_data, 0, "invalid creation time %s, defaulting to 0\n", opts->creation_time_str);
-                creation_time = 0;
-            }
-        }
-        mp4_set_creation_time(creation_time);
+        finalize_log(log_cb, user_data, 1, "%s", time_warn);
+        return false;
     }
-    else
-    {
-        const char *sde = getenv("SOURCE_DATE_EPOCH");
-        if (sde)
-        {
-            char *endptr;
-            errno = 0;
-            creation_time = (uint32_t)strtoul(sde, &endptr, 10);
-            if (errno != 0 || *endptr != '\0')
-            {
-                if (opts->verbose)
-                    finalize_log(log_cb, user_data, 0, "invalid SOURCE_DATE_EPOCH %s, ignoring\n", sde);
-                creation_time = 0;
-            }
-        }
-        mp4_set_creation_time(creation_time);
-    }
+    if (time_warn[0] && opts->verbose)
+        finalize_log(log_cb, user_data, 0, "%s", time_warn);
+    mp4_set_creation_time(creation_time);
 
     if (opts->art_data && opts->art_size > 0)
     {
@@ -560,6 +508,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (!infile)
         FAIL("Couldn't open input file %s\n", opts->input_filename);
+
+    if (opts->ignore_wav_length) infile->bounded_data = false;
 
     uint32_t sample_rate = infile->samplerate;
     uint16_t num_channels = (uint16_t)infile->channels;
