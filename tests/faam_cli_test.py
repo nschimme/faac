@@ -243,7 +243,12 @@ def run_all(t, d):
     open(os.path.join(d, "c.gif"), "wb").write(b"GIF89a" + b"\x01\x00\x01\x00\x00\x00\x00;" + b"\x00" * 8)
     open(os.path.join(d, "c.png"), "wb").write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 24)
     open(os.path.join(d, "c.jpg"), "wb").write(b"\xff\xd8\xff\xe0" + b"\x00" * 24)
-    open(os.path.join(d, "c.bmp"), "wb").write(b"BM" + b"\x00" * 30)
+    open(os.path.join(d, "bad.bmp"), "wb").write(b"BM" + b"\x00" * 30)
+    bmp = struct.pack("<2sIHHI", b"BM", 58, 0, 0, 54) + struct.pack(
+        "<IiiHHIIiiII", 40, 1, 1, 1, 24, 0, 4, 0, 0, 0, 0) + b"\x00" * 4
+    open(os.path.join(d, "c.bmp"), "wb").write(bmp)
+    # JPEG without an APP0/APP1 marker must pass the shared signature detector.
+    open(os.path.join(d, "alt.jpg"), "wb").write(b"\xff\xd8\xff\xdb" + b"\x00" * 24)
 
     # ADTS and faac's own .m4a for the same audio: LC and HE-AAC v1
     for name, extra in (("lc", ["-q", "100", "--object-type", "lc"]), ("he", ["-b", "48", "--object-type", "he-aac-v1"])):
@@ -313,7 +318,7 @@ def run_all(t, d):
         "bad disc": ["-i", "lc.aac", "--disc", "x"],
         "bad genre": ["-i", "lc.aac", "--genre", "999"],
         "bad cover file": ["-i", "lc.aac", "--cover-art", "nope.png"],
-        "unsupported cover": ["-i", "lc.aac", "--cover-art", "c.bmp"],
+        "unsupported cover": ["-i", "lc.aac", "--cover-art", "bad.bmp"],
         "unknown option": ["-i", "lc.aac", "--bogus"],
     }
     sc = b"\x00\x00\x00\x01"
@@ -434,9 +439,21 @@ def run_all(t, d):
           "Cover Art: present" in mux_tags and "my key = my value" in mux_tags and "other = second" in mux_tags and
           "Compilation: Yes" in mux_tags, "mux-time tags equal tag-command tags and show in info:\n" + mux_tags)
     check(read(os.path.join(d, "mt.m4a")).count(b"GIF89a") == 1, "GIF cover stored as given")
-    for cover in ("c.png", "c.jpg"):
+    for cover in ("c.png", "c.jpg", "alt.jpg", "c.bmp"):
         r = t.faam_run(["-i", "lc.aac", "-o", "cv.m4a", "--cover-art", cover, "--overwrite"], d)
         check(r.returncode == 0, f"cover {cover}")
+    # BMP works through FAAM mux/tag and FAAC, with covr type 27 and intact bytes.
+    r = t.run(t.faac, ["-v0", "-q", "100", "--cover-art", "c.bmp", "-o", "bmp_faac.m4a", "s.wav"], d)
+    check(r.returncode == 0, "FAAC accepts BMP cover")
+    shutil_copy(os.path.join(d, "lc.m4a"), os.path.join(d, "bmp_tag.m4a"))
+    r = t.faam_run(["tag", "bmp_tag.m4a", "--cover-art", "c.bmp"], d)
+    check(r.returncode == 0, "FAAM tag accepts BMP cover")
+    for filename in ("cv.m4a", "bmp_faac.m4a", "bmp_tag.m4a"):
+        data = read(os.path.join(d, filename)); offset = data.index(b"covr")
+        check(struct.unpack_from(">I", data, offset + 12)[0] == 27,
+              f"{filename}: BMP covr type")
+        check(data[offset + 20:offset + 20 + len(bmp)] == bmp,
+              f"{filename}: BMP bytes preserved")
     # same cover atom bytes as faac
     t.run(t.faac, ["-v0", "-q", "100", "--cover-art", "c.gif", "--creation-time", "0", "-o", "cv_faac.m4a", "s.wav"], d)
     cov = lambda b: b[b.index(b"covr") - 4:][: struct.unpack_from(">I", b, b.index(b"covr") - 4)[0]]
@@ -465,7 +482,7 @@ def run_all(t, d):
     r = t.faam_run(["tag", "g.m4a", "--genre", "256"], d)
     check(r.returncode == 1, "tag --genre out of range")
     # shared option table: faac and faam agree on the validation they share
-    for args in (["--track", "x"], ["--disc", "z"], ["--cover-art", "nope.png"], ["--cover-art", "c.bmp"], ["--tag", "novalue"]):
+    for args in (["--track", "x"], ["--disc", "z"], ["--cover-art", "nope.png"], ["--cover-art", "bad.bmp"], ["--tag", "novalue"]):
         rf = t.run(t.faac, ["-v0", "-o", "e.m4a", "--overwrite"] + args + ["s.wav"], d)
         rm = t.faam_run(["-i", "lc.aac", "-o", "e2.m4a", "--overwrite"] + args, d)
         check(rf.returncode == 1 and rm.returncode == 1 and rf.stderr.strip() == rm.stderr.strip(),
