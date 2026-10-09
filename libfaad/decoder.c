@@ -817,7 +817,6 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 
     if (decode_success && ch_idx > 0) {
         dec->consecutive_errors = 0;
-        memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);
         dec->num_channels = ch_idx;
         dec->core_channels = ch_idx;
 #ifdef FAAD_STATS
@@ -872,6 +871,17 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     float *pcm_final = dec->pcm;
     for (uint32_t c = 0; c < dec->num_channels; c++) {
         imdct_and_window(dec, c, dec->win_seq[c], dec->win_shape[c], dec->spec[c], pcm_final + c * FRAME_LEN_LONG);
+    }
+    if (decode_success && ch_idx > 0) {
+        if (ch_idx == MAX_CHANNELS) {
+            /* IMDCT has consumed this spectrum; rotate before SBR reuses spec[0]. */
+            float (*tmp)[FRAME_LEN_LONG] = dec->prev_spec;
+            dec->prev_spec = dec->spec;
+            dec->spec = tmp;
+        } else {
+            /* A later ADTS header can expand concealment before that channel decodes. */
+            memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);
+        }
     }
     if (sbr_frame) {
         /* Move backwards after IMDCT scratch is dead, making room for each
@@ -934,9 +944,22 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         /* The core reconstructs at 16-bit full scale; float output is unity full scale. */
         const float norm = 1.0f / 32768.0f;
         float * restrict out_f32 = (float *)out_pcm;
-        for (uint32_t i = 0; i < frame_samples; i++)
-            for (uint32_t c = 0; c < num_chs; c++)
-                out_f32[i * num_chs + c] = src[c][i] * norm;
+        if (num_chs == 2) {
+            const float * restrict pcm_l = src[0];
+            const float * restrict pcm_r = src[1];
+            for (uint32_t i = 0; i < frame_samples; i++) {
+                out_f32[2 * i] = pcm_l[i] * norm;
+                out_f32[2 * i + 1] = pcm_r[i] * norm;
+            }
+        } else if (num_chs == 1) {
+            const float * restrict pcm_m = src[0];
+            for (uint32_t i = 0; i < frame_samples; i++)
+                out_f32[i] = pcm_m[i] * norm;
+        } else {
+            for (uint32_t i = 0; i < frame_samples; i++)
+                for (uint32_t c = 0; c < num_chs; c++)
+                    out_f32[i * num_chs + c] = src[c][i] * norm;
+        }
     }
 
     *bytes_consumed = adts_frame_len;

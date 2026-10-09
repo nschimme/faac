@@ -1116,11 +1116,8 @@ static void sbr_analyse(SBRChannel *ch, SBRScratch *sc, const float *pcm)
  * look-ahead or synthesizing each immediately into PCM,
  * honouring the previous frame's band split where its last envelope reaches
  * into this frame (§4.6.18.7.6 / 4.6.18.8.1). */
-#ifndef FAAD_DISABLE_PS
-static inline void sbr_assemble_slot(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int i, float (*slot)[2], float (*low_head)[SBR_T_HFGEN][2])
+static inline void sbr_assemble_slot(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int i, int i_temp, float (*slot)[2], float (*low_head)[SBR_T_HFGEN][2])
 {
-    int i_temp = have_hf ? (int)ch->t_E_end_prev - SBR_SLOTS : 0;
-    if (i_temp < 0) i_temp = 0;
     int n = i + SBR_T_HFADJ;
     int kx = have_hf ? ((i < i_temp) ? ch->kx_prev : el->kx) : 32;
     int kend = have_hf ? ((i < i_temp) ? ch->kx_prev + ch->M_prev : el->kx + el->M) : 32;
@@ -1151,6 +1148,7 @@ static inline void sbr_assemble_slot(const SBRElement *el, SBRChannel *ch, SBRSc
     for (int k = kend; k < 64; k++) slot[k][0] = slot[k][1] = 0.0f;
 }
 
+#ifndef FAAD_DISABLE_PS
 static void sbr_assemble_hybrid_input(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int i, float (*slot)[2], float (*low_head)[SBR_T_HFGEN][2])
 {
     int n = i + SBR_T_HFADJ;
@@ -1181,34 +1179,7 @@ static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, b
     if (i_temp < 0) i_temp = 0;
     for (int i = 0; i < nslots; i++) {
         float (*slot)[2] = pcm ? output_slot : output_slot + i * 64;
-        int n = i + SBR_T_HFADJ;
-        int kx = have_hf ? ((i < i_temp) ? ch->kx_prev : el->kx) : 32;
-        int kend = have_hf ? ((i < i_temp) ? ch->kx_prev + ch->M_prev : el->kx + el->M) : 32;
-        if (i >= SBR_SLOTS) kend = kx; /* look-ahead slots: low band only */
-        int low_end = kx < 32 ? kx : 32;
-        int shared_end = have_hf && n < SBR_T_HFGEN && el->kx < low_end
-            ? el->kx : low_end;
-        for (int k = 0; k < shared_end; k++) {
-            slot[k][0] = sc->x_low[k][n][0];
-            slot[k][1] = sc->x_low[k][n][1];
-        }
-        for (int k = shared_end; k < low_end; k++) {
-            slot[k][0] = low_head[k][n][0];
-            slot[k][1] = low_head[k][n][1];
-        }
-        int high_start = kx;
-        if (have_hf && high_start < el->kx) {
-            int tail_end = el->kx < kend ? el->kx : kend;
-            for (; high_start < tail_end; high_start++) {
-                slot[high_start][0] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n - SBR_T_HFADJ][0] : 0.0f;
-                slot[high_start][1] = n < SBR_T_HFGEN ? ch->y_tail[high_start][n - SBR_T_HFADJ][1] : 0.0f;
-            }
-        }
-        for (int k = high_start; k < kend; k++) {
-            slot[k][0] = sc->y[k][n][0];
-            slot[k][1] = sc->y[k][n][1];
-        }
-        for (int k = kend; k < 64; k++) slot[k][0] = slot[k][1] = 0.0f;
+        sbr_assemble_slot(el, ch, sc, have_hf, i, i_temp, slot, low_head);
         if (pcm) qmf_synthesis_slot(ch, slot, pcm + i * 64);
     }
 }
@@ -1268,6 +1239,7 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
                                 float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots, float *out_pcm, float (*output_slot)[2], float (*low_head)[SBR_T_HFGEN][2])
 {
 #ifdef FAAD_DISABLE_PS
+    /* Keep no-PS processing in one function so the compiler can optimize the hot path in context. */
     sbr_analyse(ch, sc, pcm);
 
     int kx = have_hf ? el->kx : 32;
@@ -1434,8 +1406,10 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
                     }
                 }
             }
+            int i_temp = have_hf ? (int)sch->t_E_end_prev - SBR_SLOTS : 0;
+            if (i_temp < 0) i_temp = 0;
             for (int i = 0; i < SBR_SLOTS; i++) {
-                sbr_assemble_slot(el, sch, sc, have_hf, i, slot, low_head);
+                sbr_assemble_slot(el, sch, sc, have_hf, i, i_temp, slot, low_head);
                 if (ps_active) {
                     ps_slot(dec, i, slot, L, R);
                     qmf_synthesis_slot(&dec->sbr[0], L, pcm_out + i * 64);

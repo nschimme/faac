@@ -88,9 +88,9 @@ void apply_tns(ICSInfo *ics, float *spec)
             if (num_lines <= 0) continue;
 
             /* Reflection coefficients to LPC by Levinson-Durbin step-down. */
-            float rc[32];
-            float lpc[32];
-            float lpc_tmp[32];
+            float rc[TNS_MAX_ORDER];
+            float lpc[TNS_MAX_ORDER];
+            float lpc_tmp[TNS_MAX_ORDER];
             /* §4.6.9.3: the quantiser is asymmetric, one more step on the
              * negative side: iqfac = (2^(bits-1) -/+ 0.5) / (pi/2). */
             static const float tns_rc_lut[2][16] = {
