@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -128,6 +129,15 @@ static inline int32_t read_pcm32_be(const int32_t *src) { return (int32_t)be32to
 static inline int32_t read_pcm32(const int32_t *src, bool bigendian) {
     return bigendian ? read_pcm32_be(src) : read_pcm32_le(src);
 }
+
+#ifndef read_u32_be
+static inline uint32_t read_u32_be(const uint8_t *src) {
+    uint32_t v;
+    memcpy(&v, src, sizeof(v));
+    return be32toh(v);
+}
+#define read_u32_be read_u32_be
+#endif
 
 #ifdef __cplusplus
 }
