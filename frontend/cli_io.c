@@ -34,6 +34,7 @@
 #endif
 
 #include "cli_io.h"
+#include "cover_art.h"
 #include "charset.h"
 
 static int32_t cli_io_read(void *user_data, void *buf, uint32_t bytes)
@@ -126,15 +127,6 @@ bool cli_read_all(FILE *f, size_t max, uint8_t **buf, size_t *len)
 
 #define COVER_ART_MAX_BYTES ((size_t)32 * 1024 * 1024)
 
-static bool is_cover_image(const uint8_t *buf, size_t len)
-{
-    if (len < 12)
-        return false;
-    return !memcmp(buf, "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8) ||            /* PNG */
-           !memcmp(buf, "\xFF\xD8\xFF\xE0", 4) || !memcmp(buf, "\xFF\xD8\xFF\xE1", 4) || /* JPEG */
-           !memcmp(buf, "GIF87a", 6) || !memcmp(buf, "GIF89a", 6);                  /* GIF */
-}
-
 const char *load_cover_art(const char *path, uint8_t **data, uint64_t *size)
 {
     const char *err = NULL;
@@ -161,7 +153,7 @@ const char *load_cover_art(const char *path, uint8_t **data, uint64_t *size)
             err = "Out of memory reading cover art file!\n";
         else if (fread(buf, 1, (size_t)sz, f) != (size_t)sz)
             err = "Error reading cover art file!\n";
-        else if (!is_cover_image(buf, (size_t)sz))
+        else if (faam_detect_cover_type(buf, (uint32_t)sz) == FAAM_COVER_AUTO)
             err = "Unsupported cover image file format!\n";
 
         if (err)

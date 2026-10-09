@@ -26,6 +26,7 @@
 #include <stdbool.h>
 
 #include "faam.h"
+#include "cover_art.h"
 
 /* Ports override both hooks with -D or a force-included header. Detect the
  * overrides first: libc realloc must never see a custom allocator's block. */
@@ -230,9 +231,6 @@ struct faam_muxer {
     uint8_t *fi_track;       /* index into tracks[] */
     faam_muxer_track *tracks;
 };
-
-/* AUTO means no supported image format was recognized. */
-uint8_t faam_detect_cover_type(const uint8_t *data, uint32_t size);
 
 typedef faam_status (*faam_bytes_writer)(void *user, const void *data, uint32_t bytes);
 faam_status faam_write_ilst(const faam_metadata *metadata, const faam_gapless_info *gapless,
