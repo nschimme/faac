@@ -24,6 +24,28 @@
 #include "faam.h"
 #include "../tests/faam_test_helpers.h"
 
+/* Public constant groups remain 32-bit enums, even with -fshort-enums. */
+_Static_assert(sizeof(enum faam_feature) == 4, "feature enum width");
+_Static_assert(sizeof(enum faam_track_flag) == 4, "track_flag enum width");
+_Static_assert(sizeof(enum faam_track_info_flag) == 4, "track_info_flag enum width");
+_Static_assert(sizeof(enum faam_cover_type) == 4, "cover_type enum width");
+_Static_assert(sizeof(enum faam_muxer_flag) == 4, "muxer_flag enum width");
+_Static_assert(sizeof(enum faam_update_flag) == 4, "update_flag enum width");
+_Static_assert(sizeof(enum faam_frame_flag) == 4, "frame_flag enum width");
+_Static_assert(sizeof(enum faam_tag_update_flag) == 4, "tag_update_flag enum width");
+_Static_assert(FAAM_FEATURE_VIDEO == 1 && FAAM_FEATURE_FRAGMENTED == 2, "feature values");
+_Static_assert(FAAM_TRACK_ANNEXB == 1 && FAAM_TRACK_INBAND_PARAMS == 2, "track values");
+_Static_assert(FAAM_TRACK_INFO_INBAND_PARAMS == 1, "track info values");
+_Static_assert(FAAM_COVER_AUTO == 0 && FAAM_COVER_JPEG == 1 && FAAM_COVER_PNG == 2
+               && FAAM_COVER_GIF == 3 && FAAM_COVER_BMP == 4, "cover values");
+_Static_assert(FAAM_MUXER_M4B == 1 && FAAM_MUXER_CONSTANT_RATE == 2, "muxer values");
+_Static_assert(FAAM_UPDATE_CREATION_TIME == 1 && FAAM_UPDATE_GAPLESS == 2
+               && FAAM_UPDATE_CODEC_DATA == 4 && FAAM_UPDATE_LANGUAGE == 8
+               && FAAM_UPDATE_AUDIO_SAMPLE_SIZE == 16, "update values");
+_Static_assert(FAAM_FRAME_KEYFRAME == 1 && FAAM_TAG_UPDATE_CLEAR == 1, "operation values");
+_Static_assert(sizeof(((faam_metadata *)0)->cover_type) == 1, "cover storage width");
+_Static_assert(sizeof(((faam_track_config *)0)->flags) == 4, "mask storage width");
+
 #define CHECK(c) do { if (!(c)) { \
     fprintf(stderr, "%s:%d: CHECK failed: %s\n", __FILE__, __LINE__, #c); exit(1); } } while (0)
 
