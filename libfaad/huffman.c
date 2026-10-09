@@ -17,7 +17,7 @@
 #include "sfb_tables.h"
 #include <math.h>
 
-#define POW_4_3_LUT_SIZE 1024
+#define POW_4_3_LUT_SIZE 128
 static float pow_4_3_lut[POW_4_3_LUT_SIZE];
 static float sf_scale_lut[256];
 
