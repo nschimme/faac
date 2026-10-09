@@ -21,6 +21,16 @@ file.
 is an open source MPEG-4 and MPEG-2 AAC decoder, it is licensed under the LGPL license.
 It decodes AAC-LC and HE-AAC v1 (SBR) streams, and HE-AAC v2 (PS) when built with
 parametric stereo support, to PCM.
+ADTS input is decoded incrementally with bounded buffering, including files
+4 GiB and larger. MP4 input uses 64-bit file offsets and reads compressed
+samples on demand; sample indexes and metadata are retained in memory.
+MP4 from a pipe is spooled to a temporary file before decoding.
+Regular inputs up to 32 MiB retain a direct-memory path for performance.
+.PP
+Seekable WAV output automatically switches to RF64 when its RIFF size
+exceeds the 32-bit limit. A reserved JUNK chunk becomes ds64, holding
+64-bit RIFF size, data size, and sample count, without moving audio.
+.PP
 By default the output is a WAV file named after the input, with the extension
 replaced by
 .BR .wav .

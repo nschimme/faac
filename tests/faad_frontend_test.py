@@ -48,13 +48,13 @@ def main():
             out = os.path.join(d, ext + ".wav")
             subprocess.run([faad, "-q", "-o", out, enc], check=True)
             riff, data, actual = wav_sizes(open(out, "rb").read())
-            assert data == actual > 0 and riff == data + 36, f"{ext}: bad WAV header {riff}/{data}/{actual}"
+            assert data == actual > 0 and riff == data + 72, f"{ext}: bad WAV header {riff}/{data}/{actual}"
 
             piped = subprocess.run([faad, "-q", "-w", enc], check=True, capture_output=True).stdout
             riff, data, actual = wav_sizes(piped)
             assert actual > 0, f"{ext}: -w produced no PCM"
             assert riff == 0xFFFFFFFF and data == 0xFFFFFFFF, f"{ext}: -w header must declare a streaming length, got {riff}/{data}"
-            assert piped[44:] == open(out, "rb").read()[44:], f"{ext}: -w PCM differs from -o PCM"
+            assert piped[80:] == open(out, "rb").read()[80:], f"{ext}: -w PCM differs from -o PCM"
 
             with open(enc, "rb") as stream:
                 stdin_pcm = subprocess.run([faad, "-q", "-w", "-"],
@@ -79,7 +79,7 @@ def main():
             result = subprocess.run([faad, "-q", "-w"] + list(extra) + [path], check=True, capture_output=True)
             if "raw" in extra:
                 return result.stdout
-            return result.stdout[44:]
+            return result.stdout[80:]
 
         first_pcm, second_pcm = pcm(adts1), pcm(adts2)
         assert first_pcm != second_pcm, "track selection fixtures must differ"
@@ -140,10 +140,10 @@ def main():
             mp4_gapless_out = os.path.join(d, "gapless_transition.wav")
             subprocess.run([faad, "-q", "-o", mp4_gapless_out, mp4_gapless], check=True)
             riff, data, actual = wav_sizes(open(mp4_gapless_out, "rb").read())
-            assert data == actual > 0 and riff == data + 36, "MP4 gapless format transition produced valid WAV"
+            assert data == actual > 0 and riff == data + 72, "MP4 gapless format transition produced valid WAV"
 
             mp4_gapless_piped = subprocess.run([faad, "-q", "-w", mp4_gapless], check=True, capture_output=True).stdout
-            assert mp4_gapless_piped[44:] == open(mp4_gapless_out, "rb").read()[44:], "MP4 gapless transition -w PCM differs from -o PCM"
+            assert mp4_gapless_piped[80:] == open(mp4_gapless_out, "rb").read()[80:], "MP4 gapless transition -w PCM differs from -o PCM"
 
             # Compare both output paths to explicit trimming of the untrimmed
             # stream, including a final channel count larger than the header.

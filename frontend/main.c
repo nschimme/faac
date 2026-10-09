@@ -128,7 +128,7 @@ static const help_t help_io[] = {
      "Generate raw AAC bitstream (i.e. without any headers). Not advised: raw AAC files are practically useless."},
     {"-P",
      "Raw PCM input mode (default 44100 Hz, 16-bit, stereo).",
-     "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
+     "Raw PCM input mode (default: off, i.e. expecting a WAV/RF64 header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
     {"-R <samplerate>",
      "Raw PCM input rate.",
      "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},

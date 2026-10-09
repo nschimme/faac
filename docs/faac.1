@@ -16,6 +16,10 @@ and/or
 can be "\-", which means stdin/stdout.
 
 .SH DESCRIPTION
+RF64 WAV input is supported, including 64-bit data sizes and ds64 chunk
+size tables. Input is read incrementally, including from stdin.
+RIFF streams with an unknown data size (0xFFFFFFFF) are read to EOF.
+.PP
 .B FAAC
 is an open source MPEG-4 and MPEG-2 AAC encoder, it is licensed under the LGPL license.
 Note that the quality of 

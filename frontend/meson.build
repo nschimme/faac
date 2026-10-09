@@ -46,6 +46,16 @@ if get_option('encoder')
         install: true
     )
 
+    if not meson.is_cross_build()
+        rf64_input_test = executable('test_rf64_input',
+            ['../tests/rf64_input_test.c', 'input.c', 'cli_io.c', 'charset.c'],
+            c_args: c_args_list,
+            include_directories: ['..', '../include', common_inc],
+            dependencies: [libiconv])
+        test('rf64_input_test', find_program('python3'),
+            args: [files('../tests/rf64_input_test.py'), rf64_input_test, faac, get_option('max-channels').to_string()])
+    endif
+
     if target_machine.system() == 'windows'
         windows = import('windows')
         resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
@@ -91,6 +101,8 @@ if get_option('decoder')
             args: [files('../tests/faad_pcm_writer_test.py'), pcm_writer_test])
     endif
     if get_option('encoder') and not meson.is_cross_build()
+        test('faad_large_input_test', find_program('python3'),
+            args: [files('../tests/faad_large_input_test.py'), faac, faad, get_option('max-channels').to_string()], timeout: 120)
         test('faad_frontend_test', find_program('python3'),
             args: [files('../tests/faad_frontend_test.py'), faac, faad,
                    get_option('max-channels').to_string(), get_option('decoder-sbr').to_string()])

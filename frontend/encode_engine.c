@@ -508,6 +508,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (!infile)
         FAIL("Couldn't open input file %s\n", opts->input_filename);
 
+    if (opts->ignore_wav_length) infile->bounded_data = false;
+
     uint32_t sample_rate = infile->samplerate;
     uint16_t num_channels = (uint16_t)infile->channels;
 

@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 typedef struct {
     uint64_t offset;
@@ -60,6 +61,7 @@ typedef struct {
  * it is an MP4 without an AAC track, or without the AAC track want_track_id (0: the
  * first one). */
 bool mp4_read_track_buf(const uint8_t *buf, uint64_t file_size, uint32_t want_track_id, MP4Track *track);
+bool mp4_read_track_file(FILE *f, uint64_t file_size, uint32_t want_track_id, MP4Track *track);
 void mp4_free_track(MP4Track *track);
 
 #endif
