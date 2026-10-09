@@ -30,6 +30,7 @@
 #define init_qmf_twiddles faad_init_qmf_twiddles
 #define init_windows faad_init_windows
 #define ps_frame_begin faad_ps_frame_begin
+#define ps_frame_input faad_ps_frame_input
 #define ps_huff_icc_df faad_ps_huff_icc_df
 #define ps_huff_icc_dt faad_ps_huff_icc_dt
 #define ps_huff_iid_df faad_ps_huff_iid_df

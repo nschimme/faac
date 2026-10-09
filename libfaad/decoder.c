@@ -282,7 +282,6 @@ static void free_split_state(faad_decoder *dec)
     FREE_PART(sbr);
     FREE_PART(sbr_el);
     FREE_PART(sbr_scratch.y);
-    FREE_PART(sbr_scratch.x);
 #endif
 #ifndef FAAD_DISABLE_PS
     FREE_PART(ps);
@@ -321,10 +320,7 @@ faad_status faad_ensure_sbr(faad_decoder *dec)
 #ifndef FAAD_DISABLE_PS
 faad_status faad_ensure_ps(faad_decoder *dec)
 {
-    if (alloc_optional(dec, (void **)&dec->ps, sizeof(PSState)) != FAAD_OK)
-        return FAAD_ERR_INSUFFICIENT_MEM;
-    return alloc_optional(dec, (void **)&dec->sbr_scratch.x,
-                          sizeof(float[PS_IN_SLOTS][64][2]));
+    return alloc_optional(dec, (void **)&dec->ps, sizeof(PSState));
 }
 #endif
 #endif

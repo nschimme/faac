@@ -16,7 +16,7 @@ static void sbr_assemble_reference(const SBRElement *el, SBRChannel *ch, SBRScra
     int i_temp = have_hf ? (int)ch->t_E_end_prev - SBR_SLOTS : 0;
     if (i_temp < 0) i_temp = 0;
     for (int i = 0; i < nslots; i++) {
-        float (*slot)[2] = pcm ? output_slot : sc->x[i];
+        float (*slot)[2] = pcm ? output_slot : output_slot + i * 64;
         int n = i + SBR_T_HFADJ;
         int kx = have_hf ? ((i < i_temp) ? ch->kx_prev : el->kx) : 32;
         int kend = have_hf ? ((i < i_temp) ? ch->kx_prev + ch->M_prev : el->kx + el->M) : 32;
@@ -76,8 +76,135 @@ static void sbr_process_reference(const SBRElement *el, SBRChannel *ch, SBRScrat
     }
 }
 
+#ifndef FAAD_DISABLE_PS
+/* The low-band prepass must match full assembly even when the crossover
+ * lies inside the five hybrid inputs, including the preceding frame's tail. */
+static void check_hybrid_input(void)
+{
+    float shared[SBR_MAX_BANDS][SBR_BUF_SLOTS][2];
+    float low[32][SBR_BUF_SLOTS][2];
+    float high[SBR_MAX_BANDS][SBR_BUF_SLOTS][2];
+    float head[32][SBR_T_HFGEN][2];
+    float frame[PS_IN_SLOTS][64][2];
+    SBRChannel ch = {0};
+    SBRScratch sc = { .x_low = shared, .y = shared };
+    SBRScratch reference = { .x_low = low, .y = high };
+    for (int k = 0; k < SBR_MAX_BANDS; k++)
+        for (int n = 0; n < SBR_BUF_SLOTS; n++)
+            for (int z = 0; z < 2; z++) shared[k][n][z] = sample();
+    for (int k = 0; k < 32; k++)
+        for (int n = 0; n < SBR_T_HFGEN; n++)
+            for (int z = 0; z < 2; z++) head[k][n][z] = sample();
+    for (int k = 0; k < SBR_MAX_BANDS; k++)
+        for (int n = 0; n < SBR_HF_TAIL_SLOTS; n++)
+            for (int z = 0; z < 2; z++) ch.y_tail[k][n][z] = sample();
+    for (int current = 1; current <= 32; current++)
+    for (int previous = 1; previous <= 32; previous++)
+    for (int hf = 0; hf <= 1; hf++) {
+        SBRElement el = { .kx = current, .M = 24 };
+        ch.kx_prev = previous;
+        ch.M_prev = 24;
+        ch.t_E_end_prev = 38;
+        memcpy(low, shared, sizeof(low));
+        memcpy(high, shared, sizeof(high));
+        if (hf) {
+            for (int k = current; k < 32; k++)
+                memcpy(low[k], head[k], sizeof(head[k]));
+            for (int k = 0; k < current; k++) {
+                memset(high[k], 0, sizeof(high[k]));
+                memcpy(high[k] + SBR_T_HFADJ, ch.y_tail[k], sizeof(ch.y_tail[k]));
+            }
+        }
+        sbr_assemble_reference(&el, &ch, &reference, hf, PS_IN_SLOTS,
+                               NULL, (float (*)[2])frame);
+        for (int i = 0; i < PS_IN_SLOTS; i++) {
+            float input[6][2];
+            for (int k = 0; k < 6; k++) input[k][0] = input[k][1] = 123.0f;
+            sbr_assemble_hybrid_input(&el, &ch, &sc, hf, i, input, head);
+            assert(memcmp(input, frame[i], sizeof(float[5][2])) == 0);
+            assert(input[5][0] == 123.0f && input[5][1] == 123.0f);
+        }
+    }
+}
+
+#if MAX_CHANNELS >= 2
+static void check_ps_streaming(void)
+{
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    faad_decoder *dec = NULL, *control = NULL;
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    assert(faad_decoder_open(&cfg, NULL, 0, &control) == FAAD_OK);
+    assert(faad_ensure_sbr(dec) == FAAD_OK && faad_ensure_ps(dec) == FAAD_OK);
+    assert(faad_ensure_sbr(control) == FAAD_OK && faad_ensure_ps(control) == FAAD_OK);
+    dec->ps_seen = control->ps_seen = true;
+    SBRScratch scratch = {0};
+    scratch.x_low = calloc(32, sizeof(*scratch.x_low));
+    scratch.y = calloc(SBR_MAX_BANDS, sizeof(*scratch.y));
+    float (*frame)[64][2] = calloc(PS_IN_SLOTS, sizeof(*frame));
+    assert(scratch.x_low && scratch.y && frame);
+    float tail[SBR_MAX_BANDS][SBR_T_HFGEN][2] = {0};
+    float E[SBR_MAX_ENV][SBR_MAX_BANDS] = {0};
+    float Q[2][SBR_MAX_NQ] = {0};
+    /* Start without PS data, then exercise both layout transitions with
+     * persistent hybrid and decorrelator history. */
+    for (int pass = 0; pass < 4; pass++) {
+        PSState *ps = dec->ps;
+        ps->start = pass != 0;
+        ps->is34 = pass == 2;
+        ps->num_env = 1;
+        ps->border[0] = -1;
+        ps->border[1] = 31;
+        ps->nr_iid_par = ps->nr_icc_par = ps->is34 ? 34 : 20;
+        for (int k = 0; k < PS_NR_PAR; k++) {
+            ps->iid_par[0][k] = (k % 5) - 2;
+            ps->icc_par[0][k] = k % 8;
+        }
+        memcpy(control->ps, ps, sizeof(*ps));
+        for (int i = 0; i < FRAME_LEN_LONG; i++)
+            dec->pcm[i] = control->pcm[i] = sample();
+        sbr_process_reference(&control->sbr_el[0], &control->sbr[0], &scratch,
+                              control->pcm, E, Q, false, PS_IN_SLOTS, NULL,
+                              (float (*)[2])frame, tail);
+        if (control->ps->start) {
+            for (int k = 0; k < 5; k++)
+                for (int i = 0; i < PS_IN_SLOTS; i++)
+                    memcpy(control->ps->in_buf[k][i + 6], frame[i][k], sizeof(float[2]));
+            ps_frame_begin(control, 32);
+        }
+        for (int i = 0; i < SBR_SLOTS; i++) {
+            float L[64][2], R[64][2];
+            float (*left)[2] = frame[i], (*right)[2] = frame[i];
+            if (control->ps->start) {
+                ps_slot(control, i, frame[i], L, R);
+                left = L;
+                right = R;
+            }
+            qmf_synthesis_slot(&control->sbr[0], left, control->pcm + i * 64);
+            qmf_synthesis_slot(&control->sbr[1], right, control->pcm + 2048 + i * 64);
+        }
+        sbr_apply(dec, 1, dec->pcm);
+        assert(memcmp(dec->pcm, control->pcm, sizeof(float[4096])) == 0);
+        assert(memcmp(dec->ps, control->ps, sizeof(*ps)) == 0);
+        assert(memcmp(dec->sbr, control->sbr, sizeof(SBRChannel[2])) == 0);
+    }
+    free(scratch.x_low);
+    free(scratch.y);
+    free(frame);
+    faad_decoder_close(&dec);
+    faad_decoder_close(&control);
+}
+#endif
+#endif
+
 int main(void)
 {
+#ifndef FAAD_DISABLE_PS
+    check_hybrid_input();
+#if MAX_CHANNELS >= 2
+    check_ps_streaming();
+#endif
+#endif
     SBRElement tables[2048];
     int nt = 0;
     for (int start = 0; start < 16; start++)
@@ -102,16 +229,15 @@ int main(void)
     faad_decoder *dec = NULL;
     assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
     assert(faad_ensure_sbr(dec) == FAAD_OK);
-    dec->sbr_scratch.x = calloc(PS_IN_SLOTS, sizeof(*dec->sbr_scratch.x));
-    assert(dec->sbr_scratch.x);
     float *output = dec->pcm;
     SBRScratch reference = {0};
     reference.x_low = calloc(32, sizeof(*reference.x_low));
     reference.y = calloc(SBR_MAX_BANDS, sizeof(*reference.y));
-    reference.x = calloc(PS_IN_SLOTS, sizeof(*reference.x));
+    float (*reference_frame)[64][2] = calloc(PS_IN_SLOTS, sizeof(*reference_frame));
+    float (*candidate_frame)[64][2] = calloc(PS_IN_SLOTS, sizeof(*candidate_frame));
     SBRChannel *saved = malloc(sizeof(*saved));
     float *pcm_ref = malloc(sizeof(float[2048]));
-    assert(reference.x_low && reference.y && reference.x && saved && pcm_ref);
+    assert(reference.x_low && reference.y && reference_frame && candidate_frame && saved && pcm_ref);
     size_t cases = 0, up = 0, down = 0;
     for (int t = 0;t < nt; t++) for (int mode = 0;mode < 8; mode++) {
         SBRElement el = tables[t],prev = tables[(t*7+3)%nt];
@@ -152,7 +278,7 @@ int main(void)
         bool hf = (mode!=7);
         int slots = (mode&1)?PS_IN_SLOTS:SBR_SLOTS;
         float *out = (mode&1)?NULL:output;
-        float (*slot)[2] = (float (*)[2])dec->spec[0];
+        float (*slot)[2] = (float (*)[2])candidate_frame;
         memcpy(saved,ch, sizeof(*saved));
         memcpy(pcm_ref,output, sizeof(float[1024]));
         float ref_slot[64][2];
@@ -165,12 +291,12 @@ int main(void)
             memcpy(ref_tail[k] + SBR_T_HFADJ, ch->y_tail[k], sizeof(ch->y_tail[k]));
         }
         sbr_process_reference(&el,saved, &reference,pcm_ref,E,Q,hf,slots,
-                              out ? pcm_ref : NULL, ref_slot, ref_tail);
+                              out ? pcm_ref : NULL, out ? ref_slot : (float (*)[2])reference_frame, ref_tail);
         float (*head)[SBR_T_HFGEN][2] = (float (*)[SBR_T_HFGEN][2])(dec->spec[0]+128);
         sbr_process_channel(&el,ch, &dec->sbr_scratch,output,E,Q,hf,slots,out,slot,head);
         assert(memcmp(ch,saved, sizeof(*ch)) == 0);
         if (out) assert(memcmp(output,pcm_ref, sizeof(float[2048])) == 0);
-        else assert(memcmp(dec->sbr_scratch.x,reference.x,
+        else assert(memcmp(candidate_frame,reference_frame,
                             sizeof(float[PS_IN_SLOTS][64][2])) == 0);
         cases++;
         up+=hf && ch->t_E[0] > 0 && prev.kx < el.kx;
@@ -180,7 +306,8 @@ int main(void)
     assert(cases && up && down);
     free(reference.x_low);
     free(reference.y);
-    free(reference.x);
+    free(reference_frame);
+    free(candidate_frame);
     free(saved);
     free(pcm_ref);
     faad_decoder_close(&dec);

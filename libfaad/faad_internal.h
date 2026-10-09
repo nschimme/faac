@@ -370,7 +370,6 @@ typedef struct {
 typedef struct {
     float (*x_low)[SBR_BUF_SLOTS][2]; /* low bands of the shared QMF workspace */
     float (*y)[SBR_BUF_SLOTS][2]; /* shared QMF workspace: generated HF replaces unused low bands */
-    float (*x)[64][2]; /* PS frame output, allocated only when PS is signaled */
 } SBRScratch;
 
 /* Working memory of one frame's decode phases, which never overlap: the
@@ -460,8 +459,9 @@ void faad_init_global_tables(void);
 void sbr_init_tables(void);
 faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc);
 void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left);
-void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int top);
-void ps_slot(struct faad_decoder *dec, int n, float X[PS_IN_SLOTS][64][2], float L[64][2], float R[64][2]);
+void ps_frame_input(struct faad_decoder *dec, int n, float X[64][2]);
+void ps_frame_begin(struct faad_decoder *dec, int top);
+void ps_slot(struct faad_decoder *dec, int n, float X[64][2], float L[64][2], float R[64][2]);
 void init_ps_tables(void);
 void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm);
 #ifndef FAAD_DISABLE_SBR
