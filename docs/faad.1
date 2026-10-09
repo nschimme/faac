@@ -21,15 +21,7 @@ file.
 is an open source MPEG-4 and MPEG-2 AAC decoder, it is licensed under the LGPL license.
 It decodes AAC-LC and HE-AAC v1 (SBR) streams, and HE-AAC v2 (PS) when built with
 parametric stereo support, to PCM.
-ADTS input is decoded incrementally with bounded buffering, including files
-4 GiB and larger. MP4 input uses 64-bit file offsets and reads compressed
-samples on demand; sample indexes and metadata are retained in memory.
-MP4 from a pipe is spooled to a temporary file before decoding.
-Regular inputs up to 32 MiB retain a direct-memory path for performance.
-.PP
-Seekable WAV output automatically switches to RF64 when its RIFF size
-exceeds the 32-bit limit. A reserved JUNK chunk becomes ds64, holding
-64-bit RIFF size, data size, and sample count, without moving audio.
+It reads ADTS or MP4/M4A/M4B and writes WAV or raw PCM.
 .PP
 By default the output is a WAV file named after the input, with the extension
 replaced by
@@ -42,6 +34,9 @@ is given; with
 they are suppressed so they do not mix with the audio.
 
 .SH I/O AND FORMAT OPTIONS
+ADTS and MP4 input support files larger than 4 GiB.
+ADTS input is decoded incrementally; MP4 input from a pipe is spooled to a
+temporary file before decoding.
 .TP
 .BR -o ,\  --output\ <\fIfile\fP>
 Set output filename.
@@ -57,6 +52,8 @@ consume it until end of file.
 .BR -f ,\  --format\ <\fItype\fP>
 Output container format: wav (default) or raw (headerless PCM).
 Any other value is an error.
+Seekable WAV output automatically uses RF64 when its RIFF size exceeds
+the 32-bit limit.
 .TP
 .BR -b ,\  --bits\ <\fIdepth\fP>
 Sample depth: 16 (default), 24 or 32f (32-bit float).
