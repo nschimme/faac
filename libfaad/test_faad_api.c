@@ -85,11 +85,7 @@ typedef struct {
     float spec[MAX_CHANNELS][FRAME_LEN_LONG];
     float overlap[MAX_CHANNELS][FRAME_LEN_LONG];
     float prev_spec[MAX_CHANNELS][FRAME_LEN_LONG];
-#ifdef FAAD_DISABLE_SBR
     FrameScratch scratch;
-#else
-    float scratch[32][SBR_BUF_SLOTS][2];
-#endif
     float pcm[MAX_CHANNELS * FRAME_SAMPLES_MAX];
 } StateSnapshot;
 
@@ -100,11 +96,9 @@ static void snapshot_state(const faad_decoder *dec, StateSnapshot *snapshot)
     memcpy(snapshot->spec, dec->spec, sizeof(snapshot->spec));
     memcpy(snapshot->overlap, dec->overlap, sizeof(snapshot->overlap));
     memcpy(snapshot->prev_spec, dec->prev_spec, sizeof(snapshot->prev_spec));
-#ifdef FAAD_DISABLE_SBR
     memcpy(&snapshot->scratch, dec->scratch, sizeof(snapshot->scratch));
-#else
+#ifndef FAAD_DISABLE_SBR
     assert(!dec->sbr && !dec->sbr_el && !dec->sbr_scratch.y && !dec->sbr_scratch.x);
-    memcpy(snapshot->scratch, dec->sbr_scratch.x_low, sizeof(snapshot->scratch));
 #endif
 #ifndef FAAD_DISABLE_PS
     assert(!dec->ps);

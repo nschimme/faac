@@ -367,8 +367,8 @@ typedef struct {
 
 /* Per-frame working buffers, one channel at a time. */
 typedef struct {
-    float (*x_low)[SBR_BUF_SLOTS][2];
-    float (*y)[SBR_BUF_SLOTS][2]; /* generated HF, adjusted in place */
+    float (*x_low)[SBR_BUF_SLOTS][2]; /* low bands of the shared QMF workspace */
+    float (*y)[SBR_BUF_SLOTS][2]; /* shared QMF workspace: generated HF replaces unused low bands */
     float (*x)[64][2]; /* PS frame output, allocated only when PS is signaled */
 } SBRScratch;
 
@@ -380,9 +380,9 @@ typedef union {
     struct { ICSInfo ics; float spec[FRAME_LEN_LONG]; } cce;
     float work[2 * FRAME_LEN_LONG];
 } FrameScratch;
-#ifndef FAAD_DISABLE_SBR
-_Static_assert(sizeof(FrameScratch) <= sizeof(float[32][SBR_BUF_SLOTS][2]),
-               "core scratch must fit in SBR low-band storage");
+#if !defined(FAAD_DISABLE_SBR) && MAX_CHANNELS >= 2
+_Static_assert(sizeof(FrameScratch) <= sizeof(float[MAX_CHANNELS * FRAME_LEN_LONG]),
+               "core scratch must fit in the second half of PCM storage");
 #endif
 
 struct faad_decoder {

@@ -107,7 +107,9 @@ int main(void)
 #endif
     assert(dec && live == calls);
     assert(dec->allocated_bytes == total && dec->largest_allocation == largest);
-#if MAX_CHANNELS == 2 && !defined(FAAD_DISABLE_SBR) && defined(FAAD_DISABLE_PS)
+#if MAX_CHANNELS == 2 && !defined(FAAD_DISABLE_SBR)
+    /* HE-v1 must fit the embedded budget even when PS support is compiled in. */
+    assert(total <= 100 * 1024);
     assert(largest <= 48 * 1024);
 #endif
     size_t allocs = calls;

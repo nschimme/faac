@@ -281,14 +281,13 @@ static void free_split_state(faad_decoder *dec)
 #ifndef FAAD_DISABLE_SBR
     FREE_PART(sbr);
     FREE_PART(sbr_el);
-    FREE_PART(sbr_scratch.x_low);
     FREE_PART(sbr_scratch.y);
     FREE_PART(sbr_scratch.x);
 #endif
 #ifndef FAAD_DISABLE_PS
     FREE_PART(ps);
 #endif
-#ifdef FAAD_DISABLE_SBR
+#if defined(FAAD_DISABLE_SBR) || MAX_CHANNELS < 2
     FREE_PART(scratch);
 #endif
     FREE_PART(pcm);
@@ -315,6 +314,7 @@ faad_status faad_ensure_sbr(faad_decoder *dec)
         || alloc_optional(dec, (void **)&dec->sbr_scratch.y,
                           sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2])) != FAAD_OK)
         return FAAD_ERR_INSUFFICIENT_MEM;
+    dec->sbr_scratch.x_low = dec->sbr_scratch.y;
     return FAAD_OK;
 }
 
@@ -357,15 +357,13 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
     ALLOC_PART(spec, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
     ALLOC_PART(overlap, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
     ALLOC_PART(prev_spec, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
-#ifndef FAAD_DISABLE_SBR
-    ALLOC_PART(sbr_scratch.x_low, sizeof(float[32][SBR_BUF_SLOTS][2]));
-#endif
-#ifndef FAAD_DISABLE_SBR
-    dec->scratch = (FrameScratch *)dec->sbr_scratch.x_low;
+    ALLOC_PART(pcm, sizeof(float[MAX_CHANNELS * FRAME_SAMPLES_MAX]));
+#if !defined(FAAD_DISABLE_SBR) && MAX_CHANNELS >= 2
+    /* Core PCM is packed into the first half until every IMDCT finishes. */
+    dec->scratch = (FrameScratch *)(dec->pcm + MAX_CHANNELS * FRAME_LEN_LONG);
 #else
     ALLOC_PART(scratch, sizeof(FrameScratch));
 #endif
-    ALLOC_PART(pcm, sizeof(float[MAX_CHANNELS * FRAME_SAMPLES_MAX]));
     faad_status st = init_decoder(dec, &resolved, asc_buf, asc_len, out_dec);
     if (st != FAAD_OK) { free_split_state(dec); return st; }
 #ifndef FAAD_DISABLE_SBR
@@ -877,9 +875,16 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     dec->frame_samples = sbr_frame ? 2048 : 1024;
     float *pcm_final = dec->pcm;
     for (uint32_t c = 0; c < dec->num_channels; c++) {
-        imdct_and_window(dec, c, dec->win_seq[c], dec->win_shape[c], dec->spec[c], pcm_final + c * dec->frame_samples);
+        imdct_and_window(dec, c, dec->win_seq[c], dec->win_shape[c], dec->spec[c], pcm_final + c * FRAME_LEN_LONG);
     }
-    if (sbr_frame) sbr_apply(dec, dec->num_channels, pcm_final);
+    if (sbr_frame) {
+        /* Move backwards after IMDCT scratch is dead, making room for each
+         * channel's doubled output without overwriting another core frame. */
+        for (uint32_t c = dec->num_channels; c-- > 1; )
+            memmove(pcm_final + c * 2048, pcm_final + c * FRAME_LEN_LONG,
+                    sizeof(float[FRAME_LEN_LONG]));
+        sbr_apply(dec, dec->num_channels, pcm_final);
+    }
 
     uint32_t frame_samples = dec->frame_samples;
     uint32_t num_chs = dec->num_channels;

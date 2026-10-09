@@ -330,16 +330,18 @@ options except as listed, not storage requirements guaranteed across builds:
 
 | Build | Decoder state (PS input where enabled) | Shared tables (.bss, once per process) | 16-bit PCM buffer |
 |---|---|---|---|
-| 2 channels, SBR+PS | 147 KB | 52.7 KB | 8 KB |
+| 2 channels, SBR+PS | 137 KB | 52.7 KB | 8 KB |
 | 2 channels, LC only (`-Ddecoder-sbr=false`) | 41 KB | 34.3 KB | 4 KB |
-| 8 channels, SBR+PS (default) | 374 KB | 52.7 KB | 32 KB |
+| 8 channels, SBR+PS (default) | 363 KB | 52.7 KB | 32 KB |
 
 `faad_decoder_open()` allocates a small handle and
 separate blocks for the spectra, overlap, SBR channels, SBR working buffers,
-and PCM staging. The core frame scratch shares storage with the SBR low-band
-scratch because those stages run at different times. On the two-channel SBR
-build without PS, the largest requested block is 33,760 bytes and the sum of
-requests is 106,284 bytes in the measured arm64 build. Non-PS synthesis assembles
+and PCM staging. In SBR builds with at least two channels, core frame scratch
+uses the unused second half of PCM staging until all core IMDCTs finish. SBR
+analysis and HF generation share one QMF workspace; the low bands remain live
+while HF replaces the upper bands. On the two-channel SBR build without PS,
+the largest requested block is 33,760 bytes and the sum of requests is 96,044
+bytes in the measured arm64 build. Non-PS synthesis assembles
 one QMF slot at a time in the current spectrum buffer, after all core IMDCTs
 have finished. Concealment history remains in a separate previous-spectrum
 buffer. Only PS allocates the full QMF output frame for its look-ahead; this
