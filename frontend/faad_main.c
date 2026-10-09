@@ -134,6 +134,23 @@ static uint32_t fifo_pop(PCMFifo *f, uint8_t *dst, uint32_t len)
     return len;
 }
 
+static uint32_t fifo_write(FILE *out, PCMFifo *f, uint32_t len)
+{
+    if (len > f->fill) len = f->fill;
+    if (len == 0) return 0;
+
+    uint32_t first = f->size - f->tail;
+    if (first > len) first = len;
+    fwrite(f->data + f->tail, 1, first, out);
+    if (first < len)
+        fwrite(f->data, 1, len - first, out);
+
+    uint32_t to_end = f->size - f->tail;
+    f->tail = len >= to_end ? len - to_end : f->tail + len;
+    f->fill -= len;
+    return len;
+}
+
 static void fifo_truncate_tail(PCMFifo *f, uint32_t bytes_to_remove)
 {
     if (bytes_to_remove >= f->fill) {
@@ -705,19 +722,30 @@ int main(int argc, char **argv)
                 }
 
                 if (fout && samples_to_write > 0) {
-                    fifo_push(&fifo, write_ptr, samples_to_write * dec_bytes_per_frame_sample);
-
                     uint32_t padding_bytes = padding_samples * num_channels * (bit_depth / 8);
+                    uint32_t frame_bytes = samples_to_write * dec_bytes_per_frame_sample;
+                    /* Coalesce file writes in the existing ring, flushing first
+                     * when needed so batching cannot force a larger allocation. */
+                    if (!write_stdout && frame_bytes > fifo.size - fifo.fill &&
+                        fifo.fill > padding_bytes) {
+                        total_pcm_bytes += fifo_write(fout, &fifo, fifo.fill - padding_bytes);
+                    }
+                    fifo_push(&fifo, write_ptr, frame_bytes);
+
                     if (fifo.fill > padding_bytes) {
                         uint32_t can_pop = fifo.fill - padding_bytes;
-                        uint8_t pop_buf[4096];
-                        while (can_pop > 0) {
-                            uint32_t chunk = can_pop < sizeof(pop_buf) ? can_pop : sizeof(pop_buf);
-                            uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
-                            if (popped == 0) break;
-                            fwrite(pop_buf, 1, popped, fout);
-                            total_pcm_bytes += popped;
-                            can_pop -= popped;
+                        if (write_stdout) {
+                            uint8_t pop_buf[4096];
+                            while (can_pop > 0) {
+                                uint32_t chunk = can_pop < sizeof(pop_buf) ? can_pop : sizeof(pop_buf);
+                                uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
+                                if (popped == 0) break;
+                                fwrite(pop_buf, 1, popped, fout);
+                                total_pcm_bytes += popped;
+                                can_pop -= popped;
+                            }
+                        } else if (can_pop >= 64u * 1024u) {
+                            total_pcm_bytes += fifo_write(fout, &fifo, can_pop);
                         }
                     }
                 }
@@ -794,13 +822,17 @@ int main(int argc, char **argv)
                 fifo.fill = 0;
             }
         }
-        uint8_t pop_buf[4096];
-        while (fifo.fill > 0) {
-            uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
-            uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
-            if (popped == 0) break;
-            fwrite(pop_buf, 1, popped, fout);
-            total_pcm_bytes += popped;
+        if (is_mp4 && !write_stdout) {
+            total_pcm_bytes += fifo_write(fout, &fifo, fifo.fill);
+        } else {
+            uint8_t pop_buf[4096];
+            while (fifo.fill > 0) {
+                uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
+                uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
+                if (popped == 0) break;
+                fwrite(pop_buf, 1, popped, fout);
+                total_pcm_bytes += popped;
+            }
         }
     }
     fifo_free(&fifo);
