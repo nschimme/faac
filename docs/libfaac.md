@@ -434,7 +434,12 @@ Use one encoder at a time with this pool and serialize access. Measure `used`
 after open and a successful ASC request to determine consumption on your
 build. Reset only after close or a failed open. Insufficient storage returns
 `FAAC_ERR_NO_MEMORY` from open or ASC, respectively. Shared tables, stack,
-and caller-owned input and output buffers remain separate from the pool.
+and caller-owned input and output buffers remain separate from the pool. See the matching
+[FAAD example](libfaad.md#running-without-a-heap) and
+[FAAM example](libfaam.md#running-without-a-heap).
+
+If this pool is shared across libraries, reset it only after every pool-backed
+handle is closed and no operation still uses its storage.
 
 ### Encoder delay and gapless output
 

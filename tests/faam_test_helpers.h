@@ -18,12 +18,7 @@ static inline faam_status test_append_track(faam_muxer_config *cfg,
                                            const faam_track_config *track,
                                            uint32_t *id)
 {
-    if (cfg->num_tracks >= 8) {
-        faam_muxer_config overflow = *cfg;
-        uint32_t bytes;
-        overflow.num_tracks++;
-        return faam_muxer_get_state_size(&overflow, &bytes);
-    }
+    if (cfg->num_tracks >= 8) return FAAM_ERR_INVALID_ARG;
     tracks[cfg->num_tracks] = *track;
     cfg->tracks = tracks;
     cfg->num_tracks++;

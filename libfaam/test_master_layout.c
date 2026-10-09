@@ -56,11 +56,8 @@ static void run_case(unsigned count, bool constant, bool wide_time) {
     memcpy(track.language, "ENG", 4);
     unsigned char asc[] = {0x12, 0x10}; track.codec_data = asc; track.codec_data_len = sizeof(asc);
     CHECK(test_append_track(&cfg, cfg_tracks, &track, NULL) == FAAM_OK);
-    uint32_t state_size;
-    CHECK(faam_muxer_get_state_size(&cfg, &state_size) == FAAM_OK);
-    void *state = malloc(state_size); CHECK(state);
     faam_muxer *m;
-    CHECK(faam_muxer_init(state, state_size, &cfg, &io, &m) == FAAM_OK);
+    CHECK(faam_muxer_open(&cfg, &io, &m) == FAAM_OK);
     unsigned char frame[300] = {0};
     uint64_t bytes = 0, ticks = 0, window_bytes = 0, window_ticks = 0;
     uint32_t peak = 0;
@@ -82,7 +79,7 @@ static void run_case(unsigned count, bool constant, bool wide_time) {
     CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_GAPLESS, .gapless = &gapless }) == FAAM_OK);
     CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_CREATION_TIME, .creation_time = 123 }) == FAAM_OK);
     CHECK(faam_muxer_finalize(m) == FAAM_OK);
-    faam_muxer_close(&m); free(state);
+    faam_muxer_close(&m);
     CHECK(fseek(f, 0, SEEK_END) == 0);
     long length = ftell(f); CHECK(length > 0);
     unsigned char *data = malloc((size_t)length); CHECK(data);

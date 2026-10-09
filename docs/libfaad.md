@@ -313,7 +313,7 @@ when compiling). The allocator must return storage suitably aligned for C types,
 as `malloc()` does. Embedded builds can place the separate blocks in internal
 RAM, PSRAM, or an application-managed pool.
 
-The heap path is:
+The instance lifecycle is:
 
 ```c
 faad_config cfg;
@@ -324,6 +324,45 @@ if (st == FAAD_OK)
 /* Check st, decode packets, then release the instance. */
 faad_decoder_close(&dec);
 ```
+
+#### Running without a heap
+
+A fixed-pool override can avoid the system heap. Force-include a header
+declaring `pool_alloc(size_t)` and `pool_free(void *)` when compiling libfaad with
+`-DAllocMemory=pool_alloc -DFreeMemory=pool_free`. Compile their definitions
+into your application:
+
+```c
+#include <stddef.h>
+
+/* Define POOL_BYTES for your build and decoder configuration. */
+static _Alignas(16) unsigned char pool[POOL_BYTES];
+static size_t used;
+
+void *pool_alloc(size_t n)
+{
+    if (n > sizeof(pool) - used)
+        return NULL;
+    n = (n + 15u) & ~(size_t)15u;
+    if (n > sizeof(pool) - used)
+        return NULL;
+    void *p = pool + used;
+    used += n;
+    return p;
+}
+
+void pool_free(void *p) { (void)p; }
+void pool_reset(void) { used = 0; }
+```
+
+Use one decoder at a time with this pool and serialize access. Measure `used`
+after open and after decoding streams that exercise SBR/PS: ADTS can allocate
+optional state on first use. A bump allocator does not reclaim individual
+blocks, including allocations freed during failed initialization. Reset only
+after close or a failed open, once no pool-backed instance remains. Allocation
+failure returns `FAAD_ERR_INSUFFICIENT_MEM`; reserve room for optional state
+before decoding. Shared tables, stack, input and caller-owned PCM remain
+separate from the pool. See the matching [FAAC example](libfaac.md#running-without-a-heap).
 
 The following are indicative measurements from an arm64 build with default
 options except as listed, not storage requirements guaranteed across builds:
@@ -357,6 +396,9 @@ in the instance, but measure stack requirements on your target separately.
 
 Independent handles can run concurrently; one handle is owned by one thread at a time. Instrumented
 stats builds use process-global diagnostics and require external serialization.
+
+If this pool is shared across libraries, reset it only after every pool-backed
+handle is closed and no operation still uses its storage.
 
 ### PCM and format discovery
 

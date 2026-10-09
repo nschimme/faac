@@ -178,15 +178,15 @@ static void test_future_inputs(void) {
     CHECK(plain.len == newer.len && !memcmp(plain.buf, newer.buf, plain.len));
     faam_demuxer_config dc = { .struct_size = sizeof(dc) }; EXTEND(dx, dc);
     newer.pos = 0; faam_demuxer *d = NULL; STATUS(faam_demuxer_open(&dx.v, &ix.v, &d), FAAM_OK); faam_demuxer_close(&d);
-    uint32_t size; et[1].v.struct_size = sizeof(faam_track_config);
-    STATUS(faam_muxer_get_state_size(&cx.v, &size), FAAM_ERR_INVALID_ARG);
+    et[1].v.struct_size = sizeof(faam_track_config);
+    STATUS(faam_muxer_open(&cx.v, &ix.v, &m), FAAM_ERR_INVALID_ARG);
     et[1].v.struct_size = sizeof(et[1]);
 #define BAD_INPUT(v, baseline, call) do { uint32_t saved = (v).struct_size; (v).struct_size = (baseline)-1; STATUS(call, FAAM_ERR_INVALID_ARG); (v).struct_size = saved; } while (0)
-    BAD_INPUT(cx.v, FAAM_MUXER_CONFIG_BASELINE, faam_muxer_get_state_size(&cx.v, &size));
-    BAD_INPUT(et[0].v, FAAM_TRACK_CONFIG_BASELINE, faam_muxer_get_state_size(&cx.v, &size));
+    BAD_INPUT(cx.v, FAAM_MUXER_CONFIG_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
+    BAD_INPUT(et[0].v, FAAM_TRACK_CONFIG_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
     BAD_INPUT(ec[0].v, FAAM_CHAPTER_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
     BAD_INPUT(gapx.v, FAAM_GAPLESS_INFO_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
-    BAD_INPUT(dx.v, FAAM_DEMUXER_CONFIG_BASELINE, faam_demuxer_get_state_size(&dx.v, &size));
+    BAD_INPUT(dx.v, FAAM_DEMUXER_CONFIG_BASELINE, faam_demuxer_open(&dx.v, &ix.v, &d));
     BAD_INPUT(ix.v, FAAM_IO_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
     m = start(&newer, &cfg);
     BAD_INPUT(ux.v, FAAM_MUXER_UPDATE_PARAMS_BASELINE, faam_muxer_update(m, &ux.v));
@@ -202,10 +202,10 @@ static void test_track_limits_ids(void) {
     faam_library_info info = { .struct_size = sizeof(info) }; STATUS(faam_get_library_info(&info), FAAM_OK); CHECK(info.max_tracks == 8);
     faam_track_config t[9]; for (unsigned i = 0; i < 9; i++) t[i] = audio();
     faam_muxer_config cfg; STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK); cfg.tracks = t;
-    memfile f = {0}; faam_io io = mem_io(&f); uint32_t bytes; faam_muxer *m = NULL;
+    memfile f = {0}; faam_io io = mem_io(&f); faam_muxer *m = NULL;
     for (unsigned n = 0; n <= 9; n += 9) {
-        cfg.num_tracks = n; STATUS(faam_muxer_get_state_size(&cfg, &bytes), FAAM_ERR_INVALID_ARG);
-        uint8_t arena[16]; STATUS(faam_muxer_init(arena, sizeof(arena), &cfg, &io, &m), FAAM_ERR_INVALID_ARG); CHECK(m == NULL);
+        cfg.num_tracks = n;
+        STATUS(faam_muxer_open(&cfg, &io, &m), FAAM_ERR_INVALID_ARG); CHECK(m == NULL);
     }
     cfg.num_tracks = 8; m = start(&f, &cfg);
     for (unsigned i = 0; i < 8; i++) { uint32_t id; STATUS(faam_muxer_get_track_id(m, i, &id), FAAM_OK); CHECK(id == i+1); }

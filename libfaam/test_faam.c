@@ -145,7 +145,6 @@ static void make_faststart_layout(const char *path) {
 }
 #endif /* FAAM_HAVE_TAG_CHAPTER */
 
-
 /* Payload writes advance a virtual file; only headers and moov occupy memory. */
 typedef struct {
     uint64_t pos;
@@ -217,9 +216,7 @@ static void test_virtual_mux(void) {
     st = test_append_track(&cfg, cfg_tracks, &invalid, NULL); assert(st == FAAM_OK);
     faam_gapless_info gap = { .struct_size = sizeof(gap), .encoder_delay = 10 };
     cfg.gapless = &gap;
-    uint32_t state_size;
-    st = faam_muxer_get_state_size(&cfg, &state_size); assert(st == FAAM_OK);
-    void *mem = malloc(state_size); assert(mem);
+
     uint8_t payload = 0;
     for (unsigned mode = 0; mode < 7; mode++) {
         virtual_file v = {0};
@@ -228,10 +225,10 @@ static void test_virtual_mux(void) {
         faam_muxer *m;
         if (mode == 6) {
             /* A progressive muxer needs seek up front, not at finalize. */
-            st = faam_muxer_init(mem, state_size, &cfg, &io, &m); assert(st == FAAM_ERR_UNSUPPORTED && !m);
+            st = faam_muxer_open(&cfg, &io, &m); assert(st == FAAM_ERR_UNSUPPORTED && !m);
             continue;
         }
-        st = faam_muxer_init(mem, state_size, &cfg, &io, &m); assert(st == FAAM_OK);
+        st = faam_muxer_open(&cfg, &io, &m); assert(st == FAAM_OK);
         st = faam_muxer_write_frame(m, 999, &payload, 1, 1, 0, FAAM_FRAME_KEYFRAME); assert(st == FAAM_ERR_NO_TRACK);
         if (mode == 0) {
             for (unsigned i = 0; i < 5; i++) {
@@ -293,7 +290,6 @@ static void test_virtual_mux(void) {
         }
         faam_muxer_close(&m);
     }
-    free(mem);
 }
 
 int main(void)
@@ -359,16 +355,8 @@ int main(void)
     uint32_t v_track_id = 0;
 #endif
 
-    uint32_t muxer_size = 0;
-    st = faam_muxer_get_state_size(&cfg, &muxer_size);
-    assert(st == FAAM_OK);
-    assert(muxer_size > 0);
-
-    void *mem_m = malloc(muxer_size);
-    assert(mem_m != NULL);
-
     faam_muxer *m = NULL;
-    st = faam_muxer_init(mem_m, muxer_size, &cfg, &io_out, &m);
+    st = faam_muxer_open(&cfg, &io_out, &m);
     assert(st == FAAM_OK);
     assert(m != NULL);
     st = faam_muxer_get_track_id(m, 0, &a_track_id);
@@ -392,7 +380,7 @@ int main(void)
     st = faam_muxer_finalize(m);
     assert(st == FAAM_OK);
     faam_muxer_close(&m);
-    free(mem_m);
+
     fclose(fout);
 
     /* Test 2: Stream Demuxer file reading */
@@ -401,16 +389,8 @@ int main(void)
 
     faam_io io_in = { sizeof(faam_io), fin, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
-    uint32_t demuxer_size = 0;
-    st = faam_demuxer_get_state_size(NULL, &demuxer_size);
-    assert(st == FAAM_OK);
-    assert(demuxer_size > 0);
-
-    void *mem_d = malloc(demuxer_size);
-    assert(mem_d != NULL);
-
     faam_demuxer *d = NULL;
-    st = faam_demuxer_init(mem_d, demuxer_size, NULL, &io_in, &d);
+    st = faam_demuxer_open(NULL, &io_in, &d);
     assert(st == FAAM_OK);
     assert(d != NULL);
 
@@ -450,7 +430,7 @@ int main(void)
     assert(strcmp(read_chaps[1].title, "Event") == 0);
 
     faam_demuxer_close(&d);
-    free(mem_d);
+
     fclose(fin);
 
     remove("test_output.mp4");
@@ -506,14 +486,8 @@ int main(void)
         st = test_append_track(&gcfg, gcfg_tracks, &g_tr, &g_track_id);
         assert(st == FAAM_OK);
 
-        uint32_t g_muxer_size = 0;
-        st = faam_muxer_get_state_size(&gcfg, &g_muxer_size);
-        assert(st == FAAM_OK);
-        void *g_mem = malloc(g_muxer_size);
-        assert(g_mem != NULL);
-
         faam_muxer *gm = NULL;
-        st = faam_muxer_init(g_mem, g_muxer_size, &gcfg, &gio, &gm);
+        st = faam_muxer_open(&gcfg, &gio, &gm);
         assert(st == FAAM_OK);
 
         uint8_t frame_buf[TEST_FRAME_SIZE];
@@ -526,7 +500,7 @@ int main(void)
         st = faam_muxer_finalize(gm);
         assert(st == FAAM_OK);
         faam_muxer_close(&gm);
-        free(g_mem);
+
         fclose(gf);
 
         /* faam's own muxer always writes mdat before moov -- cfg.faststart
@@ -637,14 +611,8 @@ int main(void)
         assert(df != NULL);
         faam_io dio = { sizeof(faam_io), df, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb, NULL };
 
-        uint32_t d_size = 0;
-        st = faam_demuxer_get_state_size(NULL, &d_size);
-        assert(st == FAAM_OK);
-        void *d_mem = malloc(d_size);
-        assert(d_mem != NULL);
-
         faam_demuxer *dd = NULL;
-        st = faam_demuxer_init(d_mem, d_size, NULL, &dio, &dd);
+        st = faam_demuxer_open(NULL, &dio, &dd);
         assert(st == FAAM_OK);
 
         faam_chapter updated_read[2];
@@ -674,7 +642,7 @@ int main(void)
         assert(frames_seen == TEST_FRAME_COUNT);
 
         faam_demuxer_close(&dd);
-        free(d_mem);
+
         fclose(df);
 
         remove(path);

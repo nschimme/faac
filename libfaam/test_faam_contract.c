@@ -177,33 +177,24 @@ static void test_status_contract(void) {
     faam_muxer_config cfg;
     faam_track_config cfg_tracks[8];
     CHECK(faam_muxer_config_init(&cfg, sizeof(cfg)) == FAAM_OK);
-    uint32_t empty_size;
-    CHECK(faam_muxer_get_state_size(&cfg, &empty_size) == FAAM_ERR_INVALID_ARG);
+    faam_muxer *empty = (faam_muxer *)0x1;
+    CHECK(faam_muxer_open(&cfg, &full, &empty) == FAAM_ERR_INVALID_ARG && !empty);
     CHECK(FAAM_END_OF_STREAM > 0);
     faam_track_config tc = { .struct_size = sizeof(tc) };
     tc.track_type = FAAM_TRACK_AUDIO; tc.codec_id = FAAM_CODEC_AAC; tc.timescale = tc.sample_rate = 44100; tc.channels = 2;
     CHECK(test_append_track(&cfg, cfg_tracks, &tc, NULL) == FAAM_OK);
-    uint32_t need;
-    CHECK(faam_muxer_get_state_size(&cfg, &need) == FAAM_OK);
-    void *mem = malloc(need);
     faam_muxer *m = (faam_muxer *)0x1;
 
-    CHECK(faam_muxer_init(mem, need, &cfg, &full, NULL) == FAAM_ERR_INVALID_ARG);
-    CHECK(faam_muxer_init(mem, need, NULL, &full, &m) == FAAM_ERR_INVALID_ARG && !m);
+    CHECK(faam_muxer_open(&cfg, &full, NULL) == FAAM_ERR_INVALID_ARG);
+    CHECK(faam_muxer_open(NULL, &full, &m) == FAAM_ERR_INVALID_ARG && !m);
     m = (faam_muxer *)0x1;
-    CHECK(faam_muxer_init(mem, need, &cfg, NULL, &m) == FAAM_ERR_INVALID_ARG && !m);
-    m = (faam_muxer *)0x1;
-    CHECK(faam_muxer_init(NULL, need, &cfg, &full, &m) == FAAM_ERR_INVALID_ARG && !m);
-    m = (faam_muxer *)0x1;
-    CHECK(faam_muxer_init(mem, need - 1, &cfg, &full, &m) == FAAM_ERR_INSUFFICIENT_MEM && !m);
+    CHECK(faam_muxer_open(&cfg, NULL, &m) == FAAM_ERR_INVALID_ARG && !m);
 
     /* Missing callbacks are UNSUPPORTED, and fail before the file gets a single byte. */
     faam_io no_write = full, no_seek = full, no_tell = full;
     no_write.write = NULL; no_seek.seek = NULL; no_tell.tell = NULL;
     const faam_io *bad[3] = { &no_write, &no_seek, &no_tell };
     for (int i = 0; i < 3; i++) {
-        m = (faam_muxer *)0x1;
-        CHECK(faam_muxer_init(mem, need, &cfg, bad[i], &m) == FAAM_ERR_UNSUPPORTED && !m);
         m = (faam_muxer *)0x1;
         CHECK(faam_muxer_open(&cfg, bad[i], &m) == FAAM_ERR_UNSUPPORTED && !m);
     }
@@ -220,37 +211,24 @@ static void test_status_contract(void) {
     faam_chapter nulltitle[1] = { { sizeof(faam_chapter), 0, 0, NULL } };
     faam_muxer_config bad_cfg = cfg;
     bad_cfg.chapters = nulltitle; bad_cfg.num_chapters = 1;
-    CHECK(faam_muxer_get_state_size(&bad_cfg, &need) == FAAM_OK);
     m = (faam_muxer *)0x1;
     CHECK(faam_muxer_open(&bad_cfg, &full, &m) == FAAM_ERR_INVALID_ARG && !m);
 
 #ifndef FAAM_MUXER_FRAGMENTED
     faam_muxer_config frag = cfg; frag.fragment_ms = 1000;
-    CHECK(faam_muxer_get_state_size(&frag, &need) == FAAM_ERR_NOT_BUILT);
-    m = (faam_muxer *)0x1;
-    CHECK(faam_muxer_init(mem, 1 << 20, &frag, &full, &m) == FAAM_ERR_NOT_BUILT && !m);
     m = (faam_muxer *)0x1;
     CHECK(faam_muxer_open(&frag, &full, &m) == FAAM_ERR_NOT_BUILT && !m);
 #endif
-    free(mem);
 
     /* Demuxer. */
-    uint32_t dneed;
-    CHECK(faam_demuxer_get_state_size(NULL, &dneed) == FAAM_OK);
-    void *dmem = malloc(dneed);
     faam_demuxer *d = (faam_demuxer *)0x1;
-    CHECK(faam_demuxer_init(dmem, dneed, NULL, &full, NULL) == FAAM_ERR_INVALID_ARG);
-    CHECK(faam_demuxer_init(NULL, dneed, NULL, &full, &d) == FAAM_ERR_INVALID_ARG && !d);
+    CHECK(faam_demuxer_open(NULL, &full, NULL) == FAAM_ERR_INVALID_ARG);
     d = (faam_demuxer *)0x1;
-    CHECK(faam_demuxer_init(dmem, dneed, NULL, NULL, &d) == FAAM_ERR_INVALID_ARG && !d);
-    d = (faam_demuxer *)0x1;
-    CHECK(faam_demuxer_init(dmem, dneed - 1, NULL, &full, &d) == FAAM_ERR_INSUFFICIENT_MEM && !d);
+    CHECK(faam_demuxer_open(NULL, NULL, &d) == FAAM_ERR_INVALID_ARG && !d);
     faam_io no_read = full, no_dseek = full;
     no_read.read = NULL; no_dseek.seek = NULL;
     d = (faam_demuxer *)0x1;
-    CHECK(faam_demuxer_init(dmem, dneed, NULL, &no_read, &d) == FAAM_ERR_UNSUPPORTED && !d);
-    d = (faam_demuxer *)0x1;
-    CHECK(faam_demuxer_init(dmem, dneed, NULL, &no_dseek, &d) == FAAM_ERR_UNSUPPORTED && !d);
+    CHECK(faam_demuxer_open(NULL, &no_dseek, &d) == FAAM_ERR_UNSUPPORTED && !d);
     d = (faam_demuxer *)0x1;
     CHECK(faam_demuxer_open(NULL, &no_read, &d) == FAAM_ERR_UNSUPPORTED && !d);
     d = (faam_demuxer *)0x1;
@@ -263,7 +241,6 @@ static void test_status_contract(void) {
     CHECK(faam_demuxer_get_num_tracks(d, &nt, NULL) == FAAM_OK && nt == 0);
     faam_demuxer_close(&d);
     free(junk.buf);
-    free(dmem);
 
     /* In-place updates. */
     faam_metadata meta = { .struct_size = sizeof(meta) }; meta.title = "t";

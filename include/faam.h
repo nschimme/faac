@@ -20,6 +20,9 @@
  * over abstract faam_io stream callbacks (no file path dependency) and supports
  * video (H.264/AVC, H.265/HEVC) and audio (AAC) tracks, metadata, and chapters.
  *
+ * Allocation uses overridable AllocMemory / FreeMemory macros in source builds.
+ * Open owns all instance allocations; close releases them.
+ *
  * Design summary:
  *   - Every struct the caller fills or receives starts with uint32_t struct_size.
  *     Callers set it to sizeof of their struct; the library accepts any size at or
@@ -34,7 +37,7 @@
  *     (tracks, chapters, custom tags) are a pointer and a count, strided by the
  *     struct_size of the first element, so a list is one array of one struct
  *     size. Output lists are read one element at a time by index.
- *   - Every open or sizing call takes a config struct (the demuxer's may be NULL for
+ *   - Every open call takes a config struct (the demuxer's may be NULL for
  *     defaults), so a knob can be added later without changing a signature.
  *   - Compile-time options (muxer-video, muxer-fragmented) change what a call
  *     accepts, never a layout; faam_get_library_info() reports them.
@@ -47,9 +50,9 @@
  *     feature compiled out of this build returns FAAM_ERR_NOT_BUILT. Each function
  *     below says which callbacks it needs; they are checked before any byte is read
  *     or written.
- *   - A caller arena that is too small, or an allocation that failed, returns
+ *   - An allocation that failed returns
  *     FAAM_ERR_INSUFFICIENT_MEM.
- *   - On failure init/open functions set *out_muxer / *out_demuxer to NULL
+ *   - On failure open functions set *out_muxer / *out_demuxer to NULL
  *     before anything else, so the pointer is always safe to pass to close.
  *
  * I/O contract (faam_io):
@@ -112,7 +115,7 @@ typedef enum faam_status {
     FAAM_ERR_BAD_CONTAINER    = -2, /* Invalid MP4 atom structure or missing track */
     FAAM_ERR_IO_READ          = -3, /* A read callback failed or a read ended short of data the caller needs */
     FAAM_ERR_IO_WRITE         = -4, /* I/O write failure */
-    FAAM_ERR_INSUFFICIENT_MEM = -5, /* Provided memory arena is too small, or an allocation failed */
+    FAAM_ERR_INSUFFICIENT_MEM = -5, /* An allocation failed */
     FAAM_ERR_NO_TRACK         = -6, /* No matching video/audio track found */
     FAAM_ERR_UNSUPPORTED      = -7, /* A required io callback is NULL, or the call or content is not supported */
     FAAM_ERR_OUTPUT_TOO_SMALL = -8, /* *out_len reports the required output capacity */
@@ -176,7 +179,7 @@ typedef struct faam_io {
  * not positive the programme is empty and the edit list gets a zero segment length, as
  * master's writer does. The edit list needs encoder_delay > 0. It is
  * written, identical, into every audio track unless a track config carries its own. A
- * fragmented muxer writes it only when total_samples is given at init. The demuxer fills
+ * fragmented muxer writes it only when total_samples is given at open. The demuxer fills
  * this from iTunSMPB, else from the edit list of the first audio track that has one
  * (media time, segment length and the media past it); the getters report all zeros when
  * neither exists. */
@@ -345,20 +348,13 @@ typedef struct faam_demuxer_config {
 
 /* The demuxer needs read and seek (FAAM_ERR_UNSUPPORTED otherwise; FAAM_ERR_NOT_BUILT for a
  * fragmented file in a build without muxer-fragmented; a read callback that
- * returns a negative value during init gives FAAM_ERR_IO_READ). A source without a moov
+ * returns a negative value during open gives FAAM_ERR_IO_READ). A source without a moov
  * opens with zero tracks. It keeps only moov in memory; samples of progressive
  * files are indexed up front, fragmented files (muxer-fragmented option) are read one
  * moof at a time and a fragment whose data was cut short is ignored, so a crashed
  * recording yields exactly its completed fragments. A file may hold more tracks than
  * max_tracks: the demuxer holds the first max_tracks and counts the rest (see
  * faam_demuxer_get_num_tracks). Tracks are addressed by their tkhd track id or by index. */
-
-FAAMAPI faam_status faam_demuxer_get_state_size(const faam_demuxer_config *cfg, uint32_t *state_bytes);
-
-FAAMAPI faam_status faam_demuxer_init(void *mem_buf, uint32_t mem_bytes,
-                                      const faam_demuxer_config *cfg,
-                                      const faam_io *io,
-                                      faam_demuxer **out_demuxer);
 
 FAAMAPI faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
                                       faam_demuxer **out_demuxer);
@@ -413,9 +409,9 @@ FAAMAPI faam_status faam_demuxer_read_frame(faam_demuxer *d,
 #define FAAM_MUXER_CONSTANT_RATE 0x2 /* esds maxBitrate equals avgBitrate */
 
 /* Muxer open parameters. Fill with faam_muxer_config_init(), then set the fields you need.
- * tracks are read at init. chapters and metadata are borrowed until finalize: a progressive file
+ * tracks are read at open. chapters and metadata are borrowed until finalize: a progressive file
  * reads the metadata then, so that struct may still be filled in until finalize (set its
- * struct_size before finalize); a fragmented file writes both at init. tracks and chapters are
+ * struct_size before finalize); a fragmented file writes both at open. tracks and chapters are
  * arrays strided by their first element's struct_size. */
 typedef struct faam_muxer_config {
     uint32_t            struct_size;
@@ -425,7 +421,7 @@ typedef struct faam_muxer_config {
                                           * header boxes are used instead of wrapping */
     uint32_t            fragment_ms;     /* 0: progressive file, moov written by finalize.
                                           * >0: fragmented MP4 (needs the muxer-fragmented build option),
-                                          * see faam_muxer_init */
+                                          * see faam_muxer_open */
     uint32_t            num_tracks;      /* 1 to max_tracks */
     uint32_t            num_chapters;    /* Chapter count, at most 255 */
     const faam_track_config *tracks;     /* num_tracks entries */
@@ -440,20 +436,19 @@ typedef struct faam_muxer_config {
 FAAMAPI faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size);
 
 /* Fragmented recording (cfg->fragment_ms > 0) is meant for crash-safe capture to SD:
- * ftyp and a moov with empty sample tables are written at init, then [moof][mdat]
+ * ftyp and a moov with empty sample tables are written at open, then [moof][mdat]
  * fragments follow, each closed at the first video keyframe once fragment_ms of video
  * (audio-only files: of audio) has accumulated, or earlier when its sample index
  * (about 128 samples per second of fragment_ms, at least 64) or 1 GiB fills. A fragment's
  * moof is written when it closes, so a crash loses at most the open fragment and every
- * completed one stays playable. The sample index is carved from the caller's arena:
- * get_state_size is exact and no heap allocation happens while muxing. In this mode
+ * completed one stays playable. The sample index is allocated in separate blocks
+ * at open; no allocation happens while muxing. In this mode
  * video tracks need codec_data (the moov precedes any frame),
- * metadata, chapters and gapless are written at init from cfg (faam_muxer_update returns
+ * metadata, chapters and gapless are written at open from cfg (faam_muxer_update returns
  * FAAM_ERR_UNSUPPORTED afterwards), io.flush runs after every completed fragment, and
  * finalize closes the last fragment and records the total duration in mehd. B-frame
  * offsets travel in the trun boxes; no edit list shifts the first frame to t=0, so such
  * video starts at its first cts_offset. */
-FAAMAPI faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *state_bytes);
 
 /* Both modes need write, seek and tell in the io (read is not used; flush is
  * optional); a missing one is FAAM_ERR_UNSUPPORTED, and a fragmented config in a
@@ -461,9 +456,7 @@ FAAMAPI faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint
  * once finalize has written its moov: closing without finalize leaves a file with no moov
  * that cannot be recovered, while a fragmented file closed without finalize keeps every
  * completed fragment playable. */
-FAAMAPI faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes,
-                                    const faam_muxer_config *cfg,
-                                    const faam_io *io,
+FAAMAPI faam_status faam_muxer_open(const faam_muxer_config *cfg, const faam_io *io,
                                     faam_muxer **out_muxer);
 
 /* The track ids in cfg->tracks order, after auto-assignment. */
@@ -514,13 +507,10 @@ FAAMAPI faam_status faam_muxer_write_frame(faam_muxer *m,
                                            uint32_t frame_flags);
 
 /* Progressive: writes the sample tables and moov, patching the mdat size, so it needs the
- * seek/tell checked at init. Fails with FAAM_ERR_INVALID_ARG (not sticky) when a chapter
+ * seek/tell checked at open. Fails with FAAM_ERR_INVALID_ARG (not sticky) when a chapter
  * title is NULL or a video track never obtained its codec_data. I/O and allocation
  * failures are sticky. */
 FAAMAPI faam_status faam_muxer_finalize(faam_muxer *m);
-
-FAAMAPI faam_status faam_muxer_open(const faam_muxer_config *cfg, const faam_io *io,
-                                    faam_muxer **out_muxer);
 
 /* Releases the muxer; *m is NULL afterwards. Returns the sticky I/O status, so a caller
  * that never finalized still learns whether a write failed. */

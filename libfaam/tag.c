@@ -60,7 +60,7 @@ static faam_status append_bytes(uint8_t **buffer, uint32_t *length,
             if (grown > UINT32_MAX / 2) { grown = needed; break; }
             grown *= 2;
         }
-        uint8_t *tmp = (uint8_t *)ReallocMemory(*buffer, grown);
+        uint8_t *tmp = (uint8_t *)faam_grow_memory(*buffer, *length, grown);
         if (!tmp) return FAAM_ERR_INSUFFICIENT_MEM;
         *buffer = tmp;
         *capacity = grown;

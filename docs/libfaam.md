@@ -106,8 +106,8 @@ keep `user_data` alive until close. Seek offsets are absolute, in bytes.
 
 | Operation | Required callbacks |
 |---|---|
-| Demuxer init/open | `read`, `seek` |
-| Muxer init/open, both modes | `write`, `seek`, `tell` |
+| Demuxer open | `read`, `seek` |
+| Muxer open, both modes | `write`, `seek`, `tell` |
 | Tag/chapter updates | `read`, `write`, `seek`, `tell` |
 
 Missing required callbacks return `FAAM_ERR_UNSUPPORTED` before any I/O.
@@ -118,7 +118,7 @@ truncation: the file opens with whatever was parsed, possibly no tracks.
 `write` must return exactly the requested count. Any other count, or a failed
 muxer seek/flush, is `FAAM_ERR_IO_WRITE`. Muxer I/O failures are sticky.
 The demuxer does not use write/tell; the muxer does not use read.
-Optional flush runs at muxer finalize and at fragmented init and fragment completion.
+Optional flush runs at muxer finalize and at fragmented open and fragment completion.
 
 Save this adapter as `stdio_io.h`. Include it before other headers so the
 POSIX declarations and large-file offsets are enabled:
@@ -201,11 +201,6 @@ The declarations below are from `faam.h`; output structs require `struct_size`.
 
 ```c
 faam_status faam_get_library_info(faam_library_info *out);
-faam_status faam_demuxer_get_state_size(const faam_demuxer_config *cfg, uint32_t *state_bytes);
-faam_status faam_demuxer_init(void *mem_buf, uint32_t mem_bytes,
-                                      const faam_demuxer_config *cfg,
-                                      const faam_io *io,
-                                      faam_demuxer **out_demuxer);
 faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
                                       faam_demuxer **out_demuxer);
 faam_status faam_demuxer_close(faam_demuxer **d);
@@ -226,11 +221,6 @@ faam_status faam_demuxer_read_frame(faam_demuxer *d,
                                             uint8_t *out_frame, uint32_t frame_cap,
                                             uint32_t *frame_bytes);
 faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size);
-faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *state_bytes);
-faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes,
-                                    const faam_muxer_config *cfg,
-                                    const faam_io *io,
-                                    faam_muxer **out_muxer);
 faam_status faam_muxer_get_track_id(const faam_muxer *m, uint32_t track_index, uint32_t *out_track_id);
 faam_status faam_muxer_update(faam_muxer *m, const faam_muxer_update_params *params);
 faam_status faam_muxer_write_frame(faam_muxer *m,
@@ -252,7 +242,7 @@ faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *c
 ### Demuxer lifecycle
 
 1. Pass a `faam_demuxer_config` with `struct_size` set and `flags` zero, or
-   NULL for defaults, to open or sizing/init. Opening retains `moov` and
+   NULL for defaults, to open. Opening retains `moov` and
    indexes progressive samples; no `moov` means zero tracks.
 2. Get held/total counts, then query track info by index. Other track calls
    use the returned `track_id`. Codec data is copied to your buffer; NULL
@@ -285,9 +275,9 @@ is the largest seen so far, zero before the first fragment is loaded.
    gapless pointers. `flags` accepts `FAAM_MUXER_M4B` (progressive audio-only
    M4B branding) and `FAAM_MUXER_CONSTANT_RATE` (esds maxBitrate equals avgBitrate).
    Supply a populated config: the current muxer rejects NULL.
-3. Open, or size and initialize caller storage. Track ID zero auto-assigns;
+3. Open with `faam_muxer_open()`. Track ID zero auto-assigns;
    `faam_muxer_get_track_id()` retrieves IDs in config order. Explicit IDs
-   must be unique. Progressive init writes ftyp/mdat; video and fragmented
+   must be unique. Progressive open writes ftyp/mdat; video and fragmented
    files use isom, otherwise M4A or M4B.
 4. Write one encoded access unit per call using that ID, in decode order per
    track. duration_ticks is the DTS delta; cts_offset is PTS minus DTS.
@@ -310,18 +300,76 @@ when the stored 1904-epoch time reaches 2040.
 
 ### Allocation and ownership
 
-Open allocates state; close frees it. get_state_size plus init lets the caller
-supply aligned storage (malloc or max_align_t alignment); retain it through
-close and then free it. Size for the final configuration before init.
-Progressive sample tables and demuxer indexes/strings still allocate on the
-heap. Fragmented muxer sizing includes its sample index and uses no heap while muxing.
+Open owns all instance allocations; close releases them. Muxer handles, tracks,
+fragment indexes and oversized codec configurations are independent blocks.
+Progressive sample tables and demuxer indexes/strings allocate as needed.
+Fragmented muxers allocate their entire index at open and allocate nothing while muxing.
+The demuxer uses views into its loaded `moov` buffer for temporary sample tables,
+avoiding duplicate allocations while constructing the final sample index.
 
-Tracks and codec data are read/copied at init. Progressive metadata and
+Source builds can override `AllocMemory` and `FreeMemory` together using `-D`
+or a force-included header with function declarations. They default to
+`malloc`/`free`. Return storage aligned as `malloc` does, and allow NULL
+arguments to `FreeMemory`. Default builds use libc `realloc` for growing buffers;
+custom-allocator builds allocate, copy initialized bytes and free the old block,
+so growth preserves the custom allocator's memory placement. There are no
+separate fast-memory or reallocation hooks.
+
+Tracks and codec data are read/copied at open. Progressive metadata and
 chapters are borrowed until finalize; metadata may be filled in before then.
-Fragmented metadata/chapters are written at init. Strings, artwork and input
+Fragmented metadata/chapters are written at open. Strings, artwork and input
 list contents must remain valid through finalize/update as specified by the
 header. Demuxer output pointers live until close. Library information and
 error strings are static. Custom-tag output is accessed by index, not an array pointer.
+
+#### Running without a heap
+
+A fixed-pool override can avoid the system heap. Force-include a header
+declaring `pool_alloc(size_t)` and `pool_free(void *)` when compiling libfaam with
+`-DAllocMemory=pool_alloc -DFreeMemory=pool_free`. Compile their definitions
+into your application:
+
+```c
+#include <stddef.h>
+
+/* Define POOL_BYTES for your build and container workload. */
+static _Alignas(16) unsigned char pool[POOL_BYTES];
+static size_t used;
+
+void *pool_alloc(size_t n)
+{
+    if (n > sizeof(pool) - used)
+        return NULL;
+    n = (n + 15u) & ~(size_t)15u;
+    if (n > sizeof(pool) - used)
+        return NULL;
+    void *p = pool + used;
+    used += n;
+    return p;
+}
+
+void pool_free(void *p) { (void)p; }
+void pool_reset(void) { used = 0; }
+```
+
+Use one FAAM operation or instance at a time with this pool and serialize
+access. Reset only after close or a failed open/standalone update, once no
+pool-backed instance or borrowed output remains. Allocation failure returns
+`FAAM_ERR_INSUFFICIENT_MEM`.
+
+A bump allocator never reuses freed blocks. Budget for every allocation over
+the whole operation, including temporary parsing buffers and both old and new
+buffers during growth. Progressive tables grow with recording length;
+fragmented demuxing allocates temporary buffers for each fragment. Use a
+reclaiming pool for long or unbounded workloads. Fragmented muxing allocates
+its state and complete index during open and allocates nothing while writing
+or finalizing, making a bounded static pool practical. Input/output buffers,
+stack and the stream callback's storage remain separate. See the matching
+[FAAC example](libfaac.md#running-without-a-heap) and
+[FAAD example](libfaad.md#running-without-a-heap).
+
+If this pool is shared across libraries, reset it only after every pool-backed
+handle is closed and no operation still uses its storage.
 
 ### Gapless playback, metadata and chapters
 
@@ -331,7 +379,7 @@ priming yourself. cfg.gapless supplies iTunSMPB and every audio edit list;
 track.gapless overrides that track's edit list. The edit list requires a
 non-zero delay. Progressive finalize derives an unknown total from coded
 duration minus delay/padding, saturating at zero for an empty programme.
-Fragmented gapless information is written at init; total_samples must be given
+Fragmented gapless information is written at open; total_samples must be given
 for its edit list. Query `faam_demuxer_get_track_gapless()` by ID, or zero for
 the first audio track: iTunSMPB takes precedence on the first audio track,
 otherwise each track uses its own edit list. Missing information gives zeros.
@@ -403,8 +451,8 @@ H.265 always needs supplied hvcC. Dimensions are still required.
 ### Recording to removable storage
 
 Set fragment_ms greater than zero and check FAAM_FEATURE_FRAGMENTED.
-Size a caller arena with `faam_muxer_get_state_size()` and initialize it with
-the same config. ftyp/moov are written at init, then moof/mdat fragments.
+Open with `faam_muxer_open()`; it allocates the fragment index up front.
+ftyp/moov are written at open, then moof/mdat fragments.
 A fragment closes at the first video keyframe after the requested duration
 (audio-only: accumulated audio duration), or earlier at sample-index capacity
 (about 128 samples per second of fragment_ms, at least 64) or 1 GiB.
@@ -414,8 +462,8 @@ A crash loses at most the open fragment. The demuxer ignores a fragment with
 truncated data and exposes completed fragments. Finalize closes the last one
 and writes mehd duration. Closing without finalize preserves completed
 fragments; progressive files closed without finalize have no moov and cannot
-be recovered. Fragmented video requires codec_data at init. Metadata,
-chapters and gapless are fixed at init; update is unsupported. B-frame offsets
+be recovered. Fragmented video requires codec_data at open. Metadata,
+chapters and gapless are fixed at open; update is unsupported. B-frame offsets
 are stored in trun without shifting the first presentation time to zero.
 
 ### Reading and editing tags without remuxing
@@ -596,7 +644,7 @@ run on the calling thread. The library has no global mutable state.
 Each example uses `stdio_io.h` from [Stream I/O](#stream-io). They print their
 errors to stderr and return non-zero on failure.
 
-`inspect.c` opens a file with caller-owned state, prints tracks, tags and
+`inspect.c` opens a file with allocator-owned state, prints tracks, tags and
 chapters, and counts frames per track:
 
 ```c
@@ -611,14 +659,10 @@ int main(int argc, char **argv)
     if (!f) { perror(argv[1]); return 1; }
 
     faam_io io = stdio_io(f);
-    uint32_t size = 0;
-    faam_status sized = faam_demuxer_get_state_size(NULL, &size);
-    void *mem = sized == FAAM_OK ? malloc(size) : NULL;
     faam_demuxer *d = NULL;
-    faam_status st = mem ? faam_demuxer_init(mem, size, NULL, &io, &d) : FAAM_ERR_INSUFFICIENT_MEM;
+    faam_status st = faam_demuxer_open(NULL, &io, &d);
     if (st != FAAM_OK) {
         fprintf(stderr, "%s: %s\n", argv[1], faam_strerror(st));
-        free(mem);
         fclose(f);
         return 1;
     }
@@ -676,7 +720,6 @@ int main(int argc, char **argv)
 
     free(frames); free(ids);
     faam_demuxer_close(&d);
-    free(mem);
     fclose(f);
     if (st < 0) fprintf(stderr, "%s\n", faam_strerror(st));
     return st < 0 ? 1 : 0;
@@ -802,7 +845,7 @@ int main(int argc, char **argv)
 }
 ```
 
-`record.c` writes a fragmented, crash-safe file from caller-owned memory. It
+`record.c` writes a fragmented, crash-safe file with a preallocated fragment index. It
 needs the `muxer-fragmented` option. Its synthetic payload tests container
 writing only; replace it with encoded AAC-LC stereo 44.1 kHz access units
 for playback:
@@ -827,20 +870,16 @@ int main(int argc, char **argv)
         .struct_size = sizeof(track), .track_type = FAAM_TRACK_AUDIO, .codec_id = FAAM_CODEC_AAC,
         .timescale = 44100, .sample_rate = 44100, .channels = 2, .codec_data = asc, .codec_data_len = 2,
     };
-    uint32_t id = 0, size = 0;
+    uint32_t id = 0;
     cfg.tracks = &track;
     cfg.num_tracks = 1;
-    faam_status st = faam_muxer_get_state_size(&cfg, &size);
 
-    void *mem = malloc(size ? size : 1);
     faam_muxer *m = NULL;
-    if (st == FAAM_OK && mem) st = faam_muxer_init(mem, size, &cfg, &io, &m);
-    if (st == FAAM_OK && !mem) st = FAAM_ERR_INSUFFICIENT_MEM;
+    faam_status st = faam_muxer_open(&cfg, &io, &m);
     if (st == FAAM_OK) st = faam_muxer_get_track_id(m, 0, &id);
     if (st != FAAM_OK || !m) {
         faam_muxer_close(&m);
-        fprintf(stderr, "init: %s\n", faam_strerror(st));
-        free(mem);
+        fprintf(stderr, "open: %s\n", faam_strerror(st));
         fclose(out);
         return 1;
     }
@@ -853,7 +892,6 @@ int main(int argc, char **argv)
 
     faam_status closed = faam_muxer_close(&m);
     if (st == FAAM_OK) st = closed;
-    free(mem);
     fclose(out);
     return st == FAAM_OK ? 0 : 1;
 }
@@ -915,11 +953,9 @@ version. The design excludes embedded structs and embedded list arrays:
 tracks, chapters and custom tags use pointers/counts. The header still has
 fixed language and reserved byte arrays; these are not extensible lists.
 Input arrays have one uniform element size, strided by the first element's
-struct_size. Output lists use index getters. The current fragmented state-size
-calculation has one native-size track traversal; use native-size track arrays
-for fragmented muxing until that implementation follows the stride contract.
+struct_size. Output lists use index getters.
 
-Open/sizing calls take config pointers so future knobs can be appended;
+Open calls take config pointers so future knobs can be appended;
 NULL means defaults for the demuxer. The design summary allows NULL defaults
 generally, but the current muxer requires a config with at least one track.
 Compile-time options never change public layouts; query library features.

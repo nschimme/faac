@@ -80,8 +80,6 @@ static const uint8_t *find_box(const memfile *f, const char *name, size_t from) 
 #endif
 
 static faam_muxer *open_muxer(const faam_muxer_config *cfg, const faam_io *io) {
-    uint32_t size;
-    CHECK(faam_muxer_get_state_size(cfg, &size) == FAAM_OK);
     faam_muxer *m;
     CHECK(faam_muxer_open(cfg, io, &m) == FAAM_OK);
     return m;
@@ -696,13 +694,14 @@ int main(int argc, char **argv) {
     {
         faam_muxer_config cfg;
         faam_track_config cfg_tracks[8];
-        uint32_t size;
         CHECK(faam_muxer_config_init(&cfg, sizeof(cfg)) == FAAM_OK);
         faam_track_config track = { .struct_size = sizeof(track), .track_type = FAAM_TRACK_AUDIO,
                                     .codec_id = FAAM_CODEC_AAC, .timescale = 44100 };
         cfg_tracks[0] = track; cfg.tracks = cfg_tracks; cfg.num_tracks = 1;
         cfg.fragment_ms = 1000;
-        CHECK(faam_muxer_get_state_size(&cfg, &size) == FAAM_ERR_NOT_BUILT);
+        faam_io io = { .struct_size = sizeof(io) };
+        faam_muxer *m = (faam_muxer *)0x1;
+        CHECK(faam_muxer_open(&cfg, &io, &m) == FAAM_ERR_NOT_BUILT && !m);
     }
 #endif
     puts("libfaam media tests passed.");

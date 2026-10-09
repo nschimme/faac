@@ -138,13 +138,11 @@ endforeach
 
 # Links the library sources directly so the allocator hook in test_faam_alloc.h
 # counts every allocation; the library itself is built without it.
-if get_option('muxer-fragmented')
-    force_include = (cc.get_argument_syntax() == 'msvc') ? '/FI' : '-include'
-    test_faam_alloc = executable(
-      'test_faam_alloc',
-      ['test_faam_alloc.c'] + libfaam_sources,
-      include_directories: libfaam_inc,
-      c_args: faam_args + ['-DFAAM_STATIC', force_include, meson.current_source_dir() / 'test_faam_alloc.h'],
-    )
-    test('faam_alloc_test', test_faam_alloc)
-endif
+force_include = (cc.get_argument_syntax() == 'msvc') ? '/FI' : '-include'
+test_faam_alloc = executable(
+  'test_faam_alloc',
+  ['test_faam_alloc.c'] + libfaam_sources,
+  include_directories: libfaam_inc,
+  c_args: faam_args + ['-DFAAM_STATIC', force_include, meson.current_source_dir() / 'test_faam_alloc.h'],
+)
+test('faam_alloc_test', test_faam_alloc)
