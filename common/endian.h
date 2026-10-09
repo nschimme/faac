@@ -13,8 +13,8 @@
  * Lesser General Public License for more details.
  */
 
-#ifndef ENDIAN_H
-#define ENDIAN_H
+#ifndef COMMON_ENDIAN_H
+#define COMMON_ENDIAN_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -167,4 +167,4 @@ static inline void write_u64_be(uint8_t *dst, uint64_t val) {
 }
 #endif
 
-#endif /* ENDIAN_H */
+#endif /* COMMON_ENDIAN_H */

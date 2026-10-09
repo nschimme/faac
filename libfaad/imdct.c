@@ -97,11 +97,11 @@ static void dct4(const float * restrict in, float * restrict buf, int M)
     int logm = (M == 1024) ? 9 : 6;
     const float * restrict cs = (M == 1024) ? dct4_cos_1024 : dct4_cos_128;
     const float * restrict sn = (M == 1024) ? dct4_sin_1024 : dct4_sin_128;
-    float * restrict z = buf;
-    float * restrict w = buf + M;
-    float * restrict u = buf;
-    float * restrict zr = z;
-    float * restrict zi = z + K;
+    float *z = buf;
+    float *w = buf + M;
+    float *u = buf;
+    float *zr = z;
+    float *zi = z + K;
 
     for (int n = 0; n < K; n++) {
         float a = in[2 * n], b = in[M - 1 - 2 * n];
