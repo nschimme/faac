@@ -10,7 +10,7 @@ if config_h.get('HAVE_SSE2')
     quantize_simd_libs += quantize_sse
 endif
 
-common_src = [
+libfaac_src = [
     'bitstream.c',
     'bitstream.h',
     'blockswitch.c',
@@ -24,8 +24,6 @@ common_src = [
     'faac_internal.h',
     'filtbank.c',
     'filtbank.h',
-    'fft.c',
-    'fft.h',
     'frame.c',
     'frame.h',
     'huff2.c',
@@ -40,8 +38,7 @@ common_src = [
     'sbr.h',
     'sbr_internal.h',
     'sbr_bitstream.c',
-    'sbr_tables.c',
-    'sbr_tables.h',
+    'sbr_huff_tables.c',
     'sbr_analysis.c',
     'sbr_analysis.h',
     'resample.c',
@@ -56,10 +53,13 @@ common_src = [
 
 libfaac = disabler()
 
+# Derives library shared object version directly from project_version in root meson.build
+project_ver = meson.project_version()
+
 common_args = {
-    'include_directories' : ['..', '../include'],
-    'c_args' : c_args,
-    'dependencies' : [libm],
+    'include_directories' : ['..', '../include', common_inc],
+    'c_args' : c_args + ['-DCOMMON_PREFIX=faac_'],
+    'dependencies' : [libm, codec_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
@@ -71,7 +71,7 @@ default_lib = get_option('default_library')
 if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') and get_option('frontend-static'))
     libfaac_static = static_library(
         'faac',
-        common_src,
+        libfaac_src,
         kwargs : common_args + {
           'c_args' : common_args['c_args'] + ['-DFAAC_STATIC'],
           'override_options' : ['b_lto=false'],
@@ -82,7 +82,7 @@ endif
 if default_lib == 'shared' or default_lib == 'both'
     libfaac_shared = shared_library(
         'faac',
-        common_src,
+        libfaac_src,
         kwargs : common_args + {
           'c_args' : common_args['c_args'] + ['-DFAAC_BUILDING'],
           # Keep in sync with FAAC_VERSION_MAJOR/MINOR/PATCH in include/faac.h.
@@ -104,6 +104,6 @@ pkgconfig.generate(
     libfaac,
     name: 'FAAC',
     description: 'Freeware Advanced Audio Coder',
-    version: meson.project_version(),
+    version: project_ver,
     filebase: 'faac'
 )

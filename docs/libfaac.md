@@ -50,7 +50,7 @@ user of the API.
 Include `<faac.h>`. Build and install the encoder with Meson:
 
 ```sh
-meson setup build-faac -Dfrontend=false
+meson setup build-faac -Ddecoder=false -Dfrontend=false
 meson compile -C build-faac
 meson install -C build-faac
 ```
@@ -75,6 +75,15 @@ library paths when migrating.
 On Windows, a program that links the static library must define `FAAC_STATIC` before
 including `faac.h`; otherwise the API is declared `dllimport`. Meson's pkg-config file
 describes the shared library, so add the define yourself for a static link.
+
+### Building without Meson
+
+The Meson build writes a `config.h` that every source includes. A build system
+that compiles the sources directly must define the same macros: `PACKAGE`,
+`PACKAGE_VERSION`, `WORDS_BIGENDIAN` (`1` on big-endian targets, `0`
+otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8), `FAAC_SBR_DECIMATION`
+(`-Dsbr-decimation`, default 1) and `FAAC_STATS` (`-Dstats`). Add `common/` and
+`include/` to the include path.
 
 ## Supported streams
 
@@ -308,6 +317,7 @@ clamped to the available range. Read effective values with `get_info()`.
 
 All formats are interleaved. Convert normalized float PCM by multiplying by
 32768; convert full-scale 32-bit PCM to 24-bit scale before passing it.
+In particular, FAAD's float and 32-bit outputs require conversion for FAAC.
 NaN, infinity and float magnitudes at least 8388608 are replaced with silence;
 this is not a clipping or normalization service.
 
@@ -424,7 +434,12 @@ Use one encoder at a time with this pool and serialize access. Measure `used`
 after open and a successful ASC request to determine consumption on your
 build. Reset only after close or a failed open. Insufficient storage returns
 `FAAC_ERR_NO_MEMORY` from open or ASC, respectively. Shared tables, stack,
-and caller-owned input and output buffers remain separate from the pool.
+and caller-owned input and output buffers remain separate from the pool. See the matching
+[FAAD example](libfaad.md#running-without-a-heap) and
+[FAAM example](libfaam.md#running-without-a-heap).
+
+If this pool is shared across libraries, reset it only after every pool-backed
+handle is closed and no operation still uses its storage.
 
 ### Encoder delay and gapless output
 
@@ -596,7 +611,7 @@ against ABI 2. To compile source against either header:
 ```
 
 `FAAC_VERSION_MAJOR` identifies the library ABI, not the project release.
-Version 3.0 moved FAAC and FAAM to one project version and SONAME 3 without changing
+Version 3.0 moved FAAC, FAAD and FAAM to one project version and SONAME 3 without changing
 the `faac_*` API, so code written for ABI 2 builds and runs unchanged.
 An ABI 1 binary must not load ABI 2 as a drop-in replacement. Do not cast
 legacy configuration or handle types to the new public types; migrate the

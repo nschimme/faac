@@ -46,7 +46,7 @@ void adts_parse_header(const uint8_t *h, adts_params *out);
    SBR/PS-signalled stream is described by its underlying AAC-LC, SBR and PS ride inside
    the frames), the core sample rate and the channelConfiguration. Returns NULL, or why
    ADTS cannot say it.
-   lenient extraction preserves legacy behavior: an object type outside Main..LTP is written as
+   lenient is how faad has always extracted: an object type outside Main..LTP is written as
    LC and the channel field is the configuration masked to 3 bits, so only a rate with no
    index fails. Without it each of those is an error, which is what a muxer round trip needs
    rather than a header that names another stream. */
