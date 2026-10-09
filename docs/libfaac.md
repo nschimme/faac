@@ -40,8 +40,8 @@ provided for usage in C/C++ programs:
 
 `faac.h`: the `faac_*` API — function prototypes and types.
 
-The encoder is the shared library `libfaac` (`libfaac.so.2`,
-`libfaac.2.dylib` or `libfaac.dll`; the build also produces the static archive). The
+The encoder is the shared library `libfaac` (`libfaac.so.3`,
+`libfaac.3.dylib` or `libfaac.dll`; the build also produces the static archive). The
 `faac` command-line encoder in `frontend/` is the reference
 user of the API.
 
@@ -71,6 +71,10 @@ archive-selection options. `--static` adds private dependencies but does not
 force archive selection. For a custom prefix, set `PKG_CONFIG_PATH` and the
 platform's shared-library runtime search path. Remove old FAAC include and
 library paths when migrating.
+
+On Windows, a program that links the static library must define `FAAC_STATIC` before
+including `faac.h`; otherwise the API is declared `dllimport`. Meson's pkg-config file
+describes the shared library, so add the define yourself for a static link.
 
 ## Supported streams
 
@@ -592,6 +596,8 @@ against ABI 2. To compile source against either header:
 ```
 
 `FAAC_VERSION_MAJOR` identifies the library ABI, not the project release.
+Version 3.0 moved FAAC and FAAM to one project version and SONAME 3 without changing
+the `faac_*` API, so code written for ABI 2 builds and runs unchanged.
 An ABI 1 binary must not load ABI 2 as a drop-in replacement. Do not cast
 legacy configuration or handle types to the new public types; migrate the
 calls and rebuild.

@@ -173,7 +173,8 @@ static void print_help_items(const help_t *h, int l, int opt_col, int term_width
     printf("\n");
 }
 
-void show_help(const char *prog_name, int mode, const char *version, const help_group_t *groups)
+void show_help_usage(const char *prog_name, int mode, const char *version, const char *usage,
+                     const help_group_t *groups)
 {
     int cnt;
     int term_width = get_terminal_width();
@@ -194,7 +195,7 @@ void show_help(const char *prog_name, int mode, const char *version, const help_
     upper_name[i] = '\0';
 
     printf("%s %s\n", upper_name, version ? version : "");
-    printf("Usage: %s [options] infile\n\n", name);
+    printf("Usage: %s\n\n", usage);
 
     if (!groups)
         return;
@@ -284,4 +285,13 @@ void show_help(const char *prog_name, int mode, const char *version, const help_
             }
         break;
     }
+}
+
+void show_help(const char *prog_name, int mode, const char *version, const help_group_t *groups)
+{
+    const char *name = (prog_name && *prog_name) ? prog_name : "program";
+    char usage[256];
+
+    snprintf(usage, sizeof(usage), "%s [options] infile", name);
+    show_help_usage(prog_name, mode, version, usage, groups);
 }

@@ -1,5 +1,5 @@
 project('faac', 'c',
-    version: '2.2.0',
+    version: '3.0.0',
     default_options: [
         'default_library=both',
         'buildtype=release',
@@ -58,6 +58,7 @@ endif
 subdir('docs')
 subdir('include')
 subdir('libfaac')
+subdir('libfaam')
 
 if get_option('frontend')
     subdir('frontend')

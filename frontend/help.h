@@ -36,6 +36,11 @@ typedef struct {
 
 void show_help(const char *prog_name, int mode, const char *version, const help_group_t *groups);
 
+/* Same as show_help, but usage is the whole text after "Usage: " (may span lines), for
+ * programs whose invocation is not "prog [options] args", such as subcommand CLIs. */
+void show_help_usage(const char *prog_name, int mode, const char *version, const char *usage,
+                     const help_group_t *groups);
+
 #ifdef __cplusplus
 }
 #endif

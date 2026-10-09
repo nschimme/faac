@@ -73,6 +73,7 @@ if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') a
         'faac',
         common_src,
         kwargs : common_args + {
+          'c_args' : common_args['c_args'] + ['-DFAAC_STATIC'],
           'override_options' : ['b_lto=false'],
         },
     )
@@ -83,8 +84,9 @@ if default_lib == 'shared' or default_lib == 'both'
         'faac',
         common_src,
         kwargs : common_args + {
+          'c_args' : common_args['c_args'] + ['-DFAAC_BUILDING'],
           # Keep in sync with FAAC_VERSION_MAJOR/MINOR/PATCH in include/faac.h.
-          'version' : '2.0.0',
+          'version' : '3.0.0',
           'vs_module_defs' : 'libfaac.def',
         },
     )
