@@ -35,7 +35,8 @@ static void sbr_assemble_reference(const SBRElement *el, SBRChannel *ch, SBRScra
 }
 
 static void sbr_process_reference(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, const float *pcm,
-                                float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots, float *out_pcm, float (*output_slot)[2])
+                                float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots, float *out_pcm, float (*output_slot)[2],
+                                float tail[SBR_MAX_BANDS][SBR_T_HFGEN][2])
 {
     sbr_analyse(ch, sc, pcm);
 
@@ -45,7 +46,7 @@ static void sbr_process_reference(const SBRElement *el, SBRChannel *ch, SBRScrat
      * the rest stays zero. */
     memset(sc->y, 0, sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2]));
     for (int k = 0; k < SBR_MAX_BANDS; k++)
-        memcpy(sc->y[k], ch->y_tail[k], sizeof(ch->y_tail[k]));
+        memcpy(sc->y[k], tail[k], sizeof(tail[k]));
 
     if (have_hf) {
         sbr_chirp(el, ch);
@@ -55,8 +56,10 @@ static void sbr_process_reference(const SBRElement *el, SBRChannel *ch, SBRScrat
 
     sbr_assemble_reference(el, ch, sc, have_hf, nslots, out_pcm, output_slot);
 
-    for (int k = 0; k < SBR_MAX_BANDS; k++)
-        memcpy(ch->y_tail[k], &sc->y[k][SBR_SLOTS], sizeof(ch->y_tail[k]));
+    for (int k = 0; k < SBR_MAX_BANDS; k++) {
+        memcpy(tail[k], &sc->y[k][SBR_SLOTS], sizeof(tail[k]));
+        memcpy(ch->y_tail[k], tail[k] + SBR_T_HFADJ, sizeof(ch->y_tail[k]));
+    }
 
     if (have_hf) {
         /* remember what the next frame's leading slots and deltas refer to */
@@ -135,7 +138,7 @@ int main(void)
         ch->L_E_prev = 2;
         ch->hist_pos = mode&3;
         for (int k = 0;k < 32; k++) for (int n = 0;n < 8; n++) for (int z = 0;z < 2; z++) ch->x_low_tail[k][n][z] = sample();
-        for (int k = prev.kx;k < prev.kx+prev.M; k++) for (int n = 0;n < 8; n++) for (int z = 0;z < 2; z++) ch->y_tail[k][n][z] = sample();
+        for (int k = prev.kx;k < prev.kx+prev.M; k++) for (int n = 0;n < SBR_HF_TAIL_SLOTS; n++) for (int z = 0;z < 2; z++) ch->y_tail[k][n][z] = sample();
         for (int h = 0;h < 4; h++) for (int k = 0;k < 64; k++) {ch->g_hist[h][k] = 0.5f;
             ch->q_hist[h][k] = 0.025f;
         }
@@ -153,8 +156,16 @@ int main(void)
         memcpy(saved,ch, sizeof(*saved));
         memcpy(pcm_ref,output, sizeof(float[1024]));
         float ref_slot[64][2];
+        /* The reference retains all eight slots, including nonzero values in
+         * the discarded prefix, to catch accidental reads of those slots. */
+        float ref_tail[SBR_MAX_BANDS][SBR_T_HFGEN][2];
+        for (int k = 0; k < SBR_MAX_BANDS; k++) {
+            for (int n = 0; n < SBR_T_HFADJ; n++)
+                ref_tail[k][n][0] = ref_tail[k][n][1] = 0.25f;
+            memcpy(ref_tail[k] + SBR_T_HFADJ, ch->y_tail[k], sizeof(ch->y_tail[k]));
+        }
         sbr_process_reference(&el,saved, &reference,pcm_ref,E,Q,hf,slots,
-                              out ? pcm_ref : NULL, ref_slot);
+                              out ? pcm_ref : NULL, ref_slot, ref_tail);
         float (*head)[SBR_T_HFGEN][2] = (float (*)[SBR_T_HFGEN][2])(dec->spec[0]+128);
         sbr_process_channel(&el,ch, &dec->sbr_scratch,output,E,Q,hf,slots,out,slot,head);
         assert(memcmp(ch,saved, sizeof(*ch)) == 0);

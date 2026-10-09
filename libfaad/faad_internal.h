@@ -306,6 +306,7 @@ int  sbr_huff_decode(BitReader *bs, const SBRHuffBook *book);
 #define SBR_SLOTS        32  /* QMF time slots per frame: numTimeSlots (16) * RATE (2) */
 #define SBR_T_HFGEN      8   /* slots of the previous frame kept for the covariance and X_low */
 #define SBR_T_HFADJ      2   /* offset of the envelope-adjusted region within the buffer */
+#define SBR_HF_TAIL_SLOTS (SBR_T_HFGEN - SBR_T_HFADJ)
 #define SBR_BUF_SLOTS    (SBR_SLOTS + SBR_T_HFGEN)
 #define SBR_MAX_BANDS    64
 #define SBR_MAX_ENV      5
@@ -342,7 +343,7 @@ typedef struct {
     bool    have_frame;   /* a payload has been decoded since the last reset */
     bool    primed;       /* smoothing history holds real gains */
     float   x_low_tail[32][SBR_T_HFGEN][2];
-    float   y_tail[SBR_MAX_BANDS][SBR_T_HFGEN][2];
+    float   y_tail[SBR_MAX_BANDS][SBR_HF_TAIL_SLOTS][2];
     float   qmf_x[640];  /* analysis delay line, newest sample first, mirrored ring */
     uint16_t qmf_x_pos;  /* start of the newest block in qmf_x */
     float   qmf_v[1280]; /* synthesis delay line, ring of 128-sample blocks */
