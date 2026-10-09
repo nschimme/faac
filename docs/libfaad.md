@@ -25,8 +25,8 @@
 
 FAAD decodes one raw AAC access unit or ADTS frame into caller-owned,
 interleaved PCM. The application handles containers, transport buffering,
-resampling, timestamps and audio-device playback. Both heap-backed and
-caller-owned decoder state use the same decode interface.
+resampling, timestamps and audio-device playback. Decoder state is allocated
+in separate blocks through overridable allocators.
 
 ## Interface description
 
@@ -123,8 +123,6 @@ and metadata are returned through out-parameters.
    downmix.
 2. Call `faad_decoder_open()`. For RAW input, select `FAAD_STREAM_RAW` and
    supply a valid, nonempty AudioSpecificConfig (ASC) from your demuxer.
-   For caller-owned decoder state, use `faad_decoder_init()` instead; see
-   [Allocation and initialization](#allocation-and-initialization).
 3. Set a `faad_stream_info`'s `struct_size` to `sizeof(info)` and call
    `faad_decoder_get_info()`. Allocate aligned PCM storage of at least
    `info.max_output_bytes` and supply that capacity on every decode call.
@@ -136,7 +134,7 @@ and metadata are returned through out-parameters.
 5. On a seek or discontinuity, call `faad_decoder_flush()` to discard audio
    history. Flush does not drain PCM. Reopen for a different stream configuration.
 6. Call `faad_decoder_close(&dec)`. It sets the handle to NULL on success;
-   caller-owned state and PCM remain yours to release.
+   it frees decoder state. Caller-owned PCM remains yours to release.
 
 ### Error handling
 
@@ -162,13 +160,6 @@ faad_status faad_decoder_open(const faad_config *cfg,
                               const uint8_t *asc_buf, uint32_t asc_len,
                               faad_decoder **out_dec);
 faad_status faad_decoder_close(faad_decoder **dec);  /* sets *dec = NULL */
-
-/* Caller-owned state: query size, then initialize aligned storage. */
-faad_status faad_get_state_size(uint32_t *state_bytes_out);
-faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
-                              const faad_config *cfg,
-                              const uint8_t *asc_buf, uint32_t asc_len,
-                              faad_decoder **out_dec);
 
 /* Current format and lifetime PCM capacity; set out_info->struct_size. */
 faad_status faad_decoder_get_info(const faad_decoder *dec,
@@ -318,9 +309,11 @@ configuration selects the defaults.
 Heap allocation uses the `AllocMemory` / `FreeMemory` macros in
 `libfaad/faad_internal.h`. A source build can override them, for example with
 `-DAllocMemory=my_alloc -DFreeMemory=my_free` (provide the function declarations
-when compiling). Caller-owned state via `faad_decoder_init()` needs no allocator.
+when compiling). The allocator must return storage suitably aligned for C types,
+as `malloc()` does. Embedded builds can place the separate blocks in internal
+RAM, PSRAM, or an application-managed pool.
 
-The heap path is:
+The instance lifecycle is:
 
 ```c
 faad_config cfg;
@@ -332,46 +325,80 @@ if (st == FAAD_OK)
 faad_decoder_close(&dec);
 ```
 
-For static allocation, query the build's exact instance size and provide a
-16-byte-aligned block. This example's board-specific reserve must accommodate
-the returned requirement; downmixing reduces PCM capacity, not decoder state.
+#### Running without a heap
+
+A fixed-pool override can avoid the system heap. Force-include a header
+declaring `pool_alloc(size_t)` and `pool_free(void *)` when compiling libfaad with
+`-DAllocMemory=pool_alloc -DFreeMemory=pool_free`. Compile their definitions
+into your application:
 
 ```c
-/* Define BOARD_AAC_STATE_BYTES for your build and memory budget. */
-_Alignas(FAAD_STATE_ALIGNMENT) static uint8_t state[BOARD_AAC_STATE_BYTES];
-faad_config cfg;
-faad_decoder *dec = NULL;
-uint32_t required = 0;
-faad_status st = faad_config_init(&cfg, sizeof(cfg));
-if (st == FAAD_OK)
-    st = faad_get_state_size(&required);
-if (st == FAAD_OK && required > sizeof(state))
-    st = FAAD_ERR_INSUFFICIENT_MEM;
-if (st == FAAD_OK)
-    st = faad_decoder_init(state, sizeof(state), &cfg, NULL, 0, &dec);
-/* No internal heap allocation; close does not free caller-owned storage. */
-faad_decoder_close(&dec);
+#include <stddef.h>
+
+/* Define POOL_BYTES for your build and decoder configuration. */
+static _Alignas(16) unsigned char pool[POOL_BYTES];
+static size_t used;
+
+void *pool_alloc(size_t n)
+{
+    if (n > sizeof(pool) - used)
+        return NULL;
+    n = (n + 15u) & ~(size_t)15u;
+    if (n > sizeof(pool) - used)
+        return NULL;
+    void *p = pool + used;
+    used += n;
+    return p;
+}
+
+void pool_free(void *p) { (void)p; }
+void pool_reset(void) { used = 0; }
 ```
+
+Use one decoder at a time with this pool and serialize access. Measure `used`
+after open and after decoding streams that exercise SBR/PS: ADTS can allocate
+optional state on first use. A bump allocator does not reclaim individual
+blocks, including allocations freed during failed initialization. Reset only
+after close or a failed open, once no pool-backed instance remains. Allocation
+failure returns `FAAD_ERR_INSUFFICIENT_MEM`; reserve room for optional state
+before decoding. Shared tables, stack, input and caller-owned PCM remain
+separate from the pool. See the matching [FAAC example](libfaac.md#running-without-a-heap).
 
 The following are indicative measurements from an arm64 build with default
 options except as listed, not storage requirements guaranteed across builds:
 
-| Build | Decoder state | Shared tables (.bss, once per process) | 16-bit PCM buffer |
+| Build | Decoder state (PS input where enabled) | Shared tables (.bss, once per process) | 16-bit PCM buffer |
 |---|---|---|---|
-| 2 channels, SBR+PS | 147 KB | 52.7 KB | 8 KB |
+| 2 channels, SBR+PS | 116 KB | 52.7 KB | 8 KB |
 | 2 channels, LC only (`-Ddecoder-sbr=false`) | 41 KB | 34.3 KB | 4 KB |
-| 8 channels, SBR+PS (default) | 374 KB | 52.7 KB | 32 KB |
+| 8 channels, SBR+PS (default) | 336 KB | 52.7 KB | 32 KB |
 
-Query state size at runtime with `faad_get_state_size()`; it is independent of
-configuration and excludes shared tables, input and PCM. Table arrays use
-float/int elements, so their sizes carry across targets up to alignment.
-Writable tables are initialized on first initialization and remain in static
-storage, separate from caller-owned state. Their placement depends on the
-linker configuration. Per-frame scratch is stored in the instance, but measure
-stack requirements on your target separately.
+`faad_decoder_open()` allocates a small handle and
+separate blocks for the spectra, overlap, SBR channels, SBR working buffers,
+and PCM staging. In SBR builds with at least two channels, core frame scratch
+uses the unused second half of PCM staging until all core IMDCTs finish. SBR
+analysis and HF generation share one QMF workspace; the low bands remain live
+while HF replaces the upper bands. On the two-channel SBR build without PS,
+the largest requested block is 31,712 bytes and the sum of requests is 93,988
+bytes in the measured arm64 build. Synthesis assembles
+one QMF slot at a time in the current spectrum buffer, after all core IMDCTs
+have finished. Concealment history remains in a separate previous-spectrum
+buffer. PS retains look-ahead for its five hybrid input bands and assembles
+the remaining QMF bands one slot at a time, without a full-frame QMF allocation.
+Explicit SBR and PS
+configurations allocate their optional state at open.
+For ADTS, those parts are allocated on first use when the bitstream signals them.
+
+Instance allocation totals exclude shared tables, input and caller-owned output
+PCM. Writable tables are initialized on first open and remain in static storage.
+Their placement depends on the linker configuration. Per-frame scratch is stored
+in the instance, but measure stack requirements on your target separately.
 
 Independent handles can run concurrently; one handle is owned by one thread at a time. Instrumented
 stats builds use process-global diagnostics and require external serialization.
+
+If this pool is shared across libraries, reset it only after every pool-backed
+handle is closed and no operation still uses its storage.
 
 ### PCM and format discovery
 
@@ -474,8 +501,6 @@ no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
   assignments, and one `faad_decoder_open()` call. Configuration is supplied
   once; there is no live configuration pointer or reconfiguration setter.
 
-  `faad_decoder_init()` is the alternative for caller-owned, aligned state;
-  see [Allocation and initialization](#allocation-and-initialization).
 - **ADTS initialization.** For the ADTS use of `NeAACDecInit()`, select
   `FAAD_STREAM_ADTS` (the default) and open with NULL ASC and length 0.
   Opening consumes no input bytes: pass the first ADTS frame, including its

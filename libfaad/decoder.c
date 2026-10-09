@@ -199,13 +199,6 @@ static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
             || resolved->downmix_mode == FAAD_DOWNMIX_MONO) ? FAAD_OK : FAAD_ERR_INVALID_ARGUMENT;
 }
 
-FAADAPI faad_status faad_get_state_size(uint32_t *state_bytes_out)
-{
-    if (!state_bytes_out) return FAAD_ERR_INVALID_ARGUMENT;
-    *state_bytes_out = (uint32_t)sizeof(faad_decoder);
-    return FAAD_OK;
-}
-
 static void faad_init_global_tables_impl(void)
 {
     extern void init_dequant_tables(void);
@@ -237,29 +230,11 @@ void faad_init_global_tables(void)
     faac_once_run(&once, faad_init_global_tables_impl);
 }
 
-FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
-                                      const faad_config *cfg,
-                                      const uint8_t *asc_buf, uint32_t asc_len,
-                                      faad_decoder **out_dec)
+static faad_status init_decoder(faad_decoder *dec, const faad_config *resolved,
+                                const uint8_t *asc_buf, uint32_t asc_len,
+                                faad_decoder **out_dec)
 {
-    if (out_dec) *out_dec = NULL;
-    faad_config resolved;
-    if (resolve_config(cfg, &resolved) != FAAD_OK || !mem_buf || !out_dec
-        || ((uintptr_t)mem_buf & (FAAD_STATE_ALIGNMENT - 1))
-        || ((asc_buf == NULL) != (asc_len == 0))
-        || (resolved.stream_format == FAAD_STREAM_RAW && !asc_len)) {
-        return FAAD_ERR_INVALID_ARGUMENT;
-    }
-    uint32_t state_size;
-    faad_get_state_size(&state_size);
-    if (mem_size < state_size) return FAAD_ERR_INSUFFICIENT_MEM;
-
-    faad_init_global_tables();
-
-    faad_decoder *dec = (faad_decoder *)mem_buf;
-    memset(dec, 0, sizeof(faad_decoder));
-
-    dec->config = resolved;
+    dec->config = *resolved;
 
     dec->pns_seed = 0x12345678;
 
@@ -296,35 +271,108 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
     return FAAD_OK;
 }
 
+static void free_split_state(faad_decoder *dec)
+{
+    if (!dec) return;
+#define FREE_PART(field) do { if (dec->field) FreeMemory(dec->field); } while (0)
+    FREE_PART(spec);
+    FREE_PART(overlap);
+    FREE_PART(prev_spec);
+#ifndef FAAD_DISABLE_SBR
+    FREE_PART(sbr);
+    FREE_PART(sbr_el);
+    FREE_PART(sbr_scratch.y);
+#endif
+#ifndef FAAD_DISABLE_PS
+    FREE_PART(ps);
+#endif
+#if defined(FAAD_DISABLE_SBR) || MAX_CHANNELS < 2
+    FREE_PART(scratch);
+#endif
+    FREE_PART(pcm);
+    FreeMemory(dec);
+#undef FREE_PART
+}
+
+#ifndef FAAD_DISABLE_SBR
+static faad_status alloc_optional(faad_decoder *dec, void **ptr, size_t size)
+{
+    if (*ptr) return FAAD_OK;
+    *ptr = AllocMemory(size);
+    if (!*ptr) return FAAD_ERR_INSUFFICIENT_MEM;
+    memset(*ptr, 0, size);
+    dec->allocated_bytes += size;
+    if (size > dec->largest_allocation) dec->largest_allocation = size;
+    return FAAD_OK;
+}
+
+faad_status faad_ensure_sbr(faad_decoder *dec)
+{
+    if (alloc_optional(dec, (void **)&dec->sbr, sizeof(SBRChannel[MAX_CHANNELS])) != FAAD_OK
+        || alloc_optional(dec, (void **)&dec->sbr_el, sizeof(SBRElement[MAX_CHANNELS])) != FAAD_OK
+        || alloc_optional(dec, (void **)&dec->sbr_scratch.y,
+                          sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2])) != FAAD_OK)
+        return FAAD_ERR_INSUFFICIENT_MEM;
+    dec->sbr_scratch.x_low = dec->sbr_scratch.y;
+    return FAAD_OK;
+}
+
+#ifndef FAAD_DISABLE_PS
+faad_status faad_ensure_ps(faad_decoder *dec)
+{
+    return alloc_optional(dec, (void **)&dec->ps, sizeof(PSState));
+}
+#endif
+#endif
+
+#define ALLOC_PART(field, size) do { \
+    dec->field = AllocMemory(size); \
+    if (!dec->field) { free_split_state(dec); return FAAD_ERR_INSUFFICIENT_MEM; } \
+    memset(dec->field, 0, size); \
+    dec->allocated_bytes += (size); \
+    if ((size) > dec->largest_allocation) dec->largest_allocation = (size); \
+} while (0)
+
 FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
-                                        const uint8_t *asc_buf, uint32_t asc_len,
-                                        faad_decoder **out_dec)
+                                      const uint8_t *asc_buf, uint32_t asc_len,
+                                      faad_decoder **out_dec)
 {
     if (!out_dec) return FAAD_ERR_INVALID_ARGUMENT;
     *out_dec = NULL;
-
-    uint32_t state_size = 0;
-    if (faad_get_state_size(&state_size) != FAAD_OK) return FAAD_ERR_INVALID_ARGUMENT;
-
-    /* malloc may only align to 8 bytes on 32-bit targets. Keep its original
-     * pointer for free, and align instance placement independently. */
-    void *storage = AllocMemory((size_t)state_size + FAAD_STATE_ALIGNMENT - 1);
-    if (!storage) return FAAD_ERR_INSUFFICIENT_MEM;
-    uintptr_t address = (uintptr_t)storage;
-    size_t offset = (FAAD_STATE_ALIGNMENT - (address & (FAAD_STATE_ALIGNMENT - 1)))
-        & (FAAD_STATE_ALIGNMENT - 1);
-    void *mem = (uint8_t *)storage + offset;
-
-    faad_status st = faad_decoder_init(mem, state_size, cfg, asc_buf, asc_len, out_dec);
-    if (st != FAAD_OK) {
-        FreeMemory(storage);
-        return st;
-    }
-
-    (*out_dec)->is_heap_allocated = true;
-    (*out_dec)->heap_storage = storage;
-    return FAAD_OK;
+    faad_config resolved;
+    if (resolve_config(cfg, &resolved) != FAAD_OK
+        || ((asc_buf == NULL) != (asc_len == 0))
+        || (resolved.stream_format == FAAD_STREAM_RAW && !asc_len))
+        return FAAD_ERR_INVALID_ARGUMENT;
+    faad_init_global_tables();
+    faad_decoder *dec = AllocMemory(sizeof(*dec));
+    if (!dec) return FAAD_ERR_INSUFFICIENT_MEM;
+    memset(dec, 0, sizeof(*dec));
+    dec->allocated_bytes = sizeof(*dec);
+    dec->largest_allocation = sizeof(*dec);
+    ALLOC_PART(spec, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
+    ALLOC_PART(overlap, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
+    ALLOC_PART(prev_spec, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
+    ALLOC_PART(pcm, sizeof(float[MAX_CHANNELS * FRAME_SAMPLES_MAX]));
+#if !defined(FAAD_DISABLE_SBR) && MAX_CHANNELS >= 2
+    /* Core PCM is packed into the first half until every IMDCT finishes. */
+    dec->scratch = (FrameScratch *)(dec->pcm + MAX_CHANNELS * FRAME_LEN_LONG);
+#else
+    ALLOC_PART(scratch, sizeof(FrameScratch));
+#endif
+    faad_status st = init_decoder(dec, &resolved, asc_buf, asc_len, out_dec);
+    if (st != FAAD_OK) { free_split_state(dec); return st; }
+#ifndef FAAD_DISABLE_SBR
+    if (dec->asc.is_sbr && faad_ensure_sbr(dec) != FAAD_OK) st = FAAD_ERR_INSUFFICIENT_MEM;
+#ifndef FAAD_DISABLE_PS
+    if (st == FAAD_OK && dec->asc.is_ps && faad_ensure_ps(dec) != FAAD_OK)
+        st = FAAD_ERR_INSUFFICIENT_MEM;
+#endif
+#endif
+    if (st != FAAD_OK) { *out_dec = NULL; free_split_state(dec); }
+    return st;
 }
+#undef ALLOC_PART
 
 #ifdef FAAD_STATS
 faadDecStats g_faadStats;
@@ -389,9 +437,7 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **handle)
     g_faadStats.dumpFile = NULL;
     g_faadStats.dumpOpenTried = false;
 #endif
-    if (dec->is_heap_allocated) {
-        FreeMemory(dec->heap_storage);
-    }
+    free_split_state(dec);
     return FAAD_OK;
 }
 
@@ -442,22 +488,22 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
 {
     if (!dec) return FAAD_ERR_INVALID_ARGUMENT;
 
-    memset(dec->overlap, 0, sizeof(dec->overlap));
-    memset(dec->spec, 0, sizeof(dec->spec));
-    memset(dec->prev_spec, 0, sizeof(dec->prev_spec));
+    memset(dec->overlap, 0, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
+    memset(dec->spec, 0, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
+    memset(dec->prev_spec, 0, sizeof(float[MAX_CHANNELS][FRAME_LEN_LONG]));
     memset(dec->prev_window_shape, 0, sizeof(dec->prev_window_shape));
     memset(dec->prev_window_seq, 0, sizeof(dec->prev_window_seq));
     memset(dec->win_shape, 0, sizeof(dec->win_shape));
     memset(dec->win_seq, 0, sizeof(dec->win_seq));
-    memset(dec->pcm, 0, sizeof(dec->pcm));
+    memset(dec->pcm, 0, sizeof(float[MAX_CHANNELS * FRAME_SAMPLES_MAX]));
     dec->consecutive_errors = 0;
     dec->pns_seed = 0x12345678;
 #ifndef FAAD_DISABLE_SBR
-    memset(dec->sbr, 0, sizeof(dec->sbr));
-    memset(dec->sbr_el, 0, sizeof(dec->sbr_el));
+    if (dec->sbr) memset(dec->sbr, 0, sizeof(SBRChannel[MAX_CHANNELS]));
+    if (dec->sbr_el) memset(dec->sbr_el, 0, sizeof(SBRElement[MAX_CHANNELS]));
 #endif
 #ifndef FAAD_DISABLE_PS
-    memset(&dec->ps, 0, sizeof(dec->ps));
+    if (dec->ps) memset(dec->ps, 0, sizeof(PSState));
 #endif
     dec->sbr_present = false;
     dec->ps_present = false;
@@ -639,7 +685,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #ifdef FAAD_STATS
                 unsigned b0 = bits_get_consumed(&bs);
 #endif
-                ICSInfo *ics = &dec->scratch.cpe.ics[0]; /* cleared by decode_sce */
+                ICSInfo *ics = &dec->scratch->cpe.ics[0]; /* cleared by decode_sce */
                 if (decode_sce(&bs, dec, ics, ch_idx) != FAAD_OK) {
                     decode_success = false; /* the rest of the payload is out of step */
                     break;
@@ -656,7 +702,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
             } else if (syntax_id == ID_CPE) {
                 if (ch_idx + 1 >= MAX_CHANNELS) { decode_success = false; break; }
                 last_elem_type = ID_CPE;
-                CPEInfo *cpe = &dec->scratch.cpe;
+                CPEInfo *cpe = &dec->scratch->cpe;
                 memset(cpe, 0, sizeof(*cpe));
 #ifdef FAAD_STATS
                 unsigned b0 = bits_get_consumed(&bs);
@@ -714,6 +760,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #endif
                         faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
 #ifndef FAAD_DISABLE_SBR
+                        if (sbr_st == FAAD_ERR_INSUFFICIENT_MEM) return sbr_st;
                         if (sbr_st != FAAD_OK) {
                             /* The core is intact: play it band-limited rather than
                              * conceal it, and keep the half-read payload out of
@@ -770,7 +817,6 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 
     if (decode_success && ch_idx > 0) {
         dec->consecutive_errors = 0;
-        memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);
         dec->num_channels = ch_idx;
         dec->core_channels = ch_idx;
 #ifdef FAAD_STATS
@@ -824,9 +870,27 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     dec->frame_samples = sbr_frame ? 2048 : 1024;
     float *pcm_final = dec->pcm;
     for (uint32_t c = 0; c < dec->num_channels; c++) {
-        imdct_and_window(dec, c, dec->win_seq[c], dec->win_shape[c], dec->spec[c], pcm_final + c * dec->frame_samples);
+        imdct_and_window(dec, c, dec->win_seq[c], dec->win_shape[c], dec->spec[c], pcm_final + c * FRAME_LEN_LONG);
     }
-    if (sbr_frame) sbr_apply(dec, dec->num_channels, pcm_final);
+    if (decode_success && ch_idx > 0) {
+        if (ch_idx == MAX_CHANNELS) {
+            /* IMDCT has consumed this spectrum; rotate before SBR reuses spec[0]. */
+            float (*tmp)[FRAME_LEN_LONG] = dec->prev_spec;
+            dec->prev_spec = dec->spec;
+            dec->spec = tmp;
+        } else {
+            /* A later ADTS header can expand concealment before that channel decodes. */
+            memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);
+        }
+    }
+    if (sbr_frame) {
+        /* Move backwards after IMDCT scratch is dead, making room for each
+         * channel's doubled output without overwriting another core frame. */
+        for (uint32_t c = dec->num_channels; c-- > 1; )
+            memmove(pcm_final + c * 2048, pcm_final + c * FRAME_LEN_LONG,
+                    sizeof(float[FRAME_LEN_LONG]));
+        sbr_apply(dec, dec->num_channels, pcm_final);
+    }
 
     uint32_t frame_samples = dec->frame_samples;
     uint32_t num_chs = dec->num_channels;
@@ -880,9 +944,22 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         /* The core reconstructs at 16-bit full scale; float output is unity full scale. */
         const float norm = 1.0f / 32768.0f;
         float * restrict out_f32 = (float *)out_pcm;
-        for (uint32_t i = 0; i < frame_samples; i++)
-            for (uint32_t c = 0; c < num_chs; c++)
-                out_f32[i * num_chs + c] = src[c][i] * norm;
+        if (num_chs == 2) {
+            const float * restrict pcm_l = src[0];
+            const float * restrict pcm_r = src[1];
+            for (uint32_t i = 0; i < frame_samples; i++) {
+                out_f32[2 * i] = pcm_l[i] * norm;
+                out_f32[2 * i + 1] = pcm_r[i] * norm;
+            }
+        } else if (num_chs == 1) {
+            const float * restrict pcm_m = src[0];
+            for (uint32_t i = 0; i < frame_samples; i++)
+                out_f32[i] = pcm_m[i] * norm;
+        } else {
+            for (uint32_t i = 0; i < frame_samples; i++)
+                for (uint32_t c = 0; c < num_chs; c++)
+                    out_f32[i * num_chs + c] = src[c][i] * norm;
+        }
     }
 
     *bytes_consumed = adts_frame_len;

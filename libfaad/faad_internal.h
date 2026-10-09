@@ -28,6 +28,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "endian.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -159,8 +160,7 @@ static inline uint32_t bits_get_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
-                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t word = read_u32_be(ptr);
         uint32_t val = (word >> (32 - bs->bit_pos - nbits)) & ((1U << nbits) - 1U);
         uint32_t total_bits = bs->bit_pos + nbits;
         bs->byte_pos += total_bits >> 3;
@@ -174,8 +174,7 @@ static inline uint32_t bits_show_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits > 0 && nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
-                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t word = read_u32_be(ptr);
         return (word << bs->bit_pos) >> (32 - nbits);
     }
     return bits_show(bs, nbits);
@@ -306,6 +305,7 @@ int  sbr_huff_decode(BitReader *bs, const SBRHuffBook *book);
 #define SBR_SLOTS        32  /* QMF time slots per frame: numTimeSlots (16) * RATE (2) */
 #define SBR_T_HFGEN      8   /* slots of the previous frame kept for the covariance and X_low */
 #define SBR_T_HFADJ      2   /* offset of the envelope-adjusted region within the buffer */
+#define SBR_HF_TAIL_SLOTS (SBR_T_HFGEN - SBR_T_HFADJ)
 #define SBR_BUF_SLOTS    (SBR_SLOTS + SBR_T_HFGEN)
 #define SBR_MAX_BANDS    64
 #define SBR_MAX_ENV      5
@@ -342,8 +342,8 @@ typedef struct {
     bool    have_frame;   /* a payload has been decoded since the last reset */
     bool    primed;       /* smoothing history holds real gains */
     float   x_low_tail[32][SBR_T_HFGEN][2];
-    float   y_tail[SBR_MAX_BANDS][SBR_T_HFGEN][2];
-    float   qmf_x[640];  /* analysis delay line, newest sample first, mirrored ring */
+    float   y_tail[SBR_MAX_BANDS][SBR_HF_TAIL_SLOTS][2];
+    float   qmf_x[320];  /* analysis delay line, newest sample first, ring */
     uint16_t qmf_x_pos;  /* start of the newest block in qmf_x */
     float   qmf_v[1280]; /* synthesis delay line, ring of 128-sample blocks */
     uint16_t qmf_v_pos;  /* start of the newest block in qmf_v */
@@ -367,9 +367,8 @@ typedef struct {
 
 /* Per-frame working buffers, one channel at a time. */
 typedef struct {
-    float x_low[32][SBR_BUF_SLOTS][2];
-    float y[SBR_MAX_BANDS][SBR_BUF_SLOTS][2]; /* generated HF, adjusted in place */
-    float x[PS_IN_SLOTS][64][2]; /* assembled output per slot (38 for the PS look-ahead) */
+    float (*x_low)[SBR_BUF_SLOTS][2]; /* low bands of the shared QMF workspace */
+    float (*y)[SBR_BUF_SLOTS][2]; /* shared QMF workspace: generated HF replaces unused low bands */
 } SBRScratch;
 
 /* Working memory of one frame's decode phases, which never overlap: the
@@ -379,17 +378,17 @@ typedef union {
     CPEInfo cpe;
     struct { ICSInfo ics; float spec[FRAME_LEN_LONG]; } cce;
     float work[2 * FRAME_LEN_LONG];
-#ifndef FAAD_DISABLE_SBR
-    SBRScratch sbr;
-#endif
 } FrameScratch;
+#if !defined(FAAD_DISABLE_SBR) && MAX_CHANNELS >= 2
+_Static_assert(sizeof(FrameScratch) <= sizeof(float[MAX_CHANNELS * FRAME_LEN_LONG]),
+               "core scratch must fit in the second half of PCM storage");
+#endif
 
 struct faad_decoder {
     faad_config config;
     AudioSpecificConfig asc;
     bool asc_parsed;
-    bool is_heap_allocated;
-    void *heap_storage; /* original allocator pointer before alignment */
+    size_t allocated_bytes, largest_allocation;
     bool format_known;
     bool pcm_emitted;
     /* Parsing and synthesis may advance on rejected packets; only emitted PCM
@@ -406,41 +405,39 @@ struct faad_decoder {
     uint32_t sample_rate;      /* nominal (post-SBR) rate, for reporting */
     uint32_t core_sample_rate; /* window/sfb layout rate: half of sample_rate with SBR */
 
-    float spec[MAX_CHANNELS][FRAME_LEN_LONG];
-    float overlap[MAX_CHANNELS][FRAME_LEN_LONG];
+    float (*spec)[FRAME_LEN_LONG];
+    float (*overlap)[FRAME_LEN_LONG];
     uint8_t prev_window_shape[MAX_CHANNELS]; /* the left window half follows the previous block's shape */
     uint8_t prev_window_seq[MAX_CHANNELS];   /* what a concealed frame continues from */
 
 #ifndef FAAD_DISABLE_SBR
-    SBRChannel sbr[MAX_CHANNELS];
-    SBRElement sbr_el[MAX_CHANNELS];
+    SBRChannel *sbr;
+    SBRElement *sbr_el;
 #endif
     bool sbr_present;
     bool sbr_seen; /* an SBR payload has appeared: frames without one still run at the SBR rate */
 
 #ifndef FAAD_DISABLE_PS
-    PSState ps;
+    PSState *ps;
 #endif
     bool ps_present;
 
     uint32_t pns_seed;
     uint32_t consecutive_errors;
-    float prev_spec[MAX_CHANNELS][FRAME_LEN_LONG];
+    float (*prev_spec)[FRAME_LEN_LONG];
 
-    FrameScratch scratch;
+    FrameScratch *scratch;
+#ifndef FAAD_DISABLE_SBR
+    SBRScratch sbr_scratch;
+#endif
     uint8_t win_seq[MAX_CHANNELS];   /* this frame's window of each decoded channel, for the IMDCT */
     uint8_t win_shape[MAX_CHANNELS];
 
-    float pcm[MAX_CHANNELS * FRAME_SAMPLES_MAX]; /* core output, then SBR output in place */
+    float *pcm; /* core output, then SBR output in place */
 };
 
 /* Core-rate QMF delay; public metadata converts it to output samples. */
 #define FAAD_SBR_CORE_DELAY 481u
-_Static_assert(_Alignof(struct faad_decoder) <= FAAD_STATE_ALIGNMENT,
-               "decoder exceeds public placement alignment");
-_Static_assert(sizeof(struct faad_decoder) <= UINT32_MAX - (FAAD_STATE_ALIGNMENT - 1),
-               "decoder storage size must fit 32-bit allocation arithmetic");
-
 void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate);
 faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate);
 faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec);
@@ -461,10 +458,17 @@ void faad_init_global_tables(void);
 void sbr_init_tables(void);
 faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc);
 void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left);
-void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int top);
-void ps_slot(struct faad_decoder *dec, int n, float X[PS_IN_SLOTS][64][2], float L[64][2], float R[64][2]);
+void ps_frame_input(struct faad_decoder *dec, int n, float X[64][2]);
+void ps_frame_begin(struct faad_decoder *dec, int top);
+void ps_slot(struct faad_decoder *dec, int n, float X[64][2], float L[64][2], float R[64][2]);
 void init_ps_tables(void);
 void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm);
+#ifndef FAAD_DISABLE_SBR
+faad_status faad_ensure_sbr(struct faad_decoder *dec);
+#ifndef FAAD_DISABLE_PS
+faad_status faad_ensure_ps(struct faad_decoder *dec);
+#endif
+#endif
 #ifdef FAAD_STATS
 FILE *faad_dump_file(void);
 #endif

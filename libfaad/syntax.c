@@ -131,8 +131,8 @@ faad_status decode_cce(BitReader *bs, struct faad_decoder *dec)
     bits_skip(bs, 2); /* gain_element_scale */
 
     /* The payload is parsed to stay in step, then discarded. */
-    memset(&dec->scratch.cce.ics, 0, sizeof(dec->scratch.cce.ics));
-    return decode_ics(bs, dec, &dec->scratch.cce.ics, dec->scratch.cce.spec, false);
+    memset(&dec->scratch->cce.ics, 0, sizeof(dec->scratch->cce.ics));
+    return decode_ics(bs, dec, &dec->scratch->cce.ics, dec->scratch->cce.spec, false);
 }
 
 faad_status decode_dse(BitReader *bs)

@@ -13,7 +13,7 @@ FAAC is an open-source, dependency-free AAC encoder, and FAAD its decoder counte
 ### Command-line tools:
 
 - `faac` and `faad` write and read MP4/M4A with gapless playback info, as well as raw ADTS
-- WAV and raw PCM input, with stdin/stdout piping
+- `faac` reads WAV and raw PCM; `faad` writes WAV and raw PCM, with large-file support and stdin/stdout piping
 - `faam` muxes ADTS AAC and Annex-B H.264/H.265 into MP4/M4A/M4B, and inspects, demuxes, tags and chapters existing files. H.264/H.265 needs `-Dmuxer-video=true` and reading fragmented MP4 needs `-Dmuxer-fragmented=true` (both on by default)
 
 ## Copyrights

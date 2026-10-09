@@ -16,8 +16,7 @@
 /*
  * MP4 reader for the faad frontend: a thin adapter over the libfaam demuxer
  * that finds the first AAC track and exposes its AudioSpecificConfig, sample
- * locations, gapless trim and tags. The whole file is already in memory, so
- * the demuxer reads it through a memory stream.
+ * locations, gapless trim and tags through either file or memory callbacks.
  */
 
 #include <stdio.h>
@@ -28,6 +27,7 @@
 
 #include "faam.h"
 #include "mp4read.h"
+#include "cli_io.h"
 
 typedef struct {
     const uint8_t *buf;
@@ -132,7 +132,9 @@ static void collect_samples(faam_demuxer *d, uint32_t track_id, uint64_t file_si
         if (loc.track_id != track_id) continue;
         if (loc.file_offset > file_size || loc.frame_bytes > file_size - loc.file_offset) break;
         if (out->num_samples == cap) {
+            if (cap > UINT32_MAX / 2) break;
             uint32_t ncap = cap ? cap * 2 : 1024;
+            if ((uint64_t)ncap * sizeof(MP4Sample) > SIZE_MAX) break;
             MP4Sample *p = (MP4Sample *)realloc(out->samples, (size_t)ncap * sizeof(*p));
             if (!p) break;
             out->samples = p;
@@ -144,19 +146,13 @@ static void collect_samples(faam_demuxer *d, uint32_t track_id, uint64_t file_si
     }
 }
 
-bool mp4_read_track_buf(const uint8_t *buf, uint64_t file_size, uint32_t want_track_id, MP4Track *track)
+static bool read_track_io(faam_io *io, const uint8_t *prefix, uint64_t file_size,
+                          uint32_t want_track_id, MP4Track *track)
 {
     memset(track, 0, sizeof(*track));
-    if (!buf || file_size < 32) return false;
-
-    mem_stream ms = { buf, file_size, 0 };
-    faam_io io = { sizeof(io), &ms, mem_read, NULL, mem_seek, mem_tell, NULL };
     faam_demuxer *d = NULL;
-    if (faam_demuxer_open(NULL, &io, &d) != FAAM_OK) {
-        /* A container the demuxer refuses (oversized moov, fragments compiled
-         * out) is still an MP4 for the caller to report, not a raw stream. */
-        return !memcmp(buf + 4, "ftyp", 4) || !memcmp(buf + 4, "moov", 4);
-    }
+    if (faam_demuxer_open(NULL, io, &d) != FAAM_OK)
+        return !memcmp(prefix + 4, "ftyp", 4) || !memcmp(prefix + 4, "moov", 4);
 
     uint32_t num_tracks = 0, total_tracks = 0;
     faam_demuxer_get_num_tracks(d, &num_tracks, &total_tracks);
@@ -211,6 +207,25 @@ bool mp4_read_track_buf(const uint8_t *buf, uint64_t file_size, uint32_t want_tr
      * Without any track the input is not a container at all (e.g. ADTS), so
      * hand it back to be treated as a raw stream. */
     return total_tracks > 0;
+}
+
+bool mp4_read_track_buf(const uint8_t *buf, uint64_t file_size, uint32_t want_track_id, MP4Track *track)
+{
+    memset(track, 0, sizeof(*track));
+    if (!buf || file_size < 32) return false;
+    mem_stream ms = { buf, file_size, 0 };
+    faam_io io = { sizeof(io), &ms, mem_read, NULL, mem_seek, mem_tell, NULL };
+    return read_track_io(&io, buf, file_size, want_track_id, track);
+}
+
+bool mp4_read_track_file(FILE *f, uint64_t file_size, uint32_t want_track_id, MP4Track *track)
+{
+    uint8_t prefix[32];
+    memset(track, 0, sizeof(*track));
+    if (!cli_fseek(f, 0) || fread(prefix, 1, sizeof(prefix), f) != sizeof(prefix) ||
+        !cli_fseek(f, 0)) return false;
+    faam_io io = cli_faam_io(f);
+    return read_track_io(&io, prefix, file_size, want_track_id, track);
 }
 
 void mp4_free_track(MP4Track *track)

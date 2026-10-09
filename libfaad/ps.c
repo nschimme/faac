@@ -190,7 +190,7 @@ static void ps_clear_params(PSState *ps)
 /* ps_data(): bits_left is the extension payload still available. */
 void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
 {
-    PSState *ps = &dec->ps;
+    PSState *ps = dec->ps;
     uint32_t start_pos = bits_get_consumed(bs);
     bool ok = true;
 
@@ -358,7 +358,7 @@ static void ps_split2_slot(float out[2][2], float (*in)[2], int reverse)
 /* Slot n of the hybrid domain: the low QMF bands split, the rest passed
  * through. in_buf holds the QMF slots with six of look-back, so the filter
  * centred on slot n reads in_buf[n .. n+12]. */
-static void ps_hybrid_analysis_slot(PSState *ps, int n, float out[PS_NR_BANDS][2], float X[PS_IN_SLOTS][64][2])
+static void ps_hybrid_analysis_slot(PSState *ps, int n, float out[PS_NR_BANDS][2], float X[64][2])
 {
     if (ps->is34) {
         ps_split_slot(out,      ps->in_buf[0] + n, ps_split12_g0, 12);
@@ -366,7 +366,7 @@ static void ps_hybrid_analysis_slot(PSState *ps, int n, float out[PS_NR_BANDS][2
         ps_split_slot(out + 20, ps->in_buf[2] + n, ps_split4_g2, 4);
         ps_split_slot(out + 24, ps->in_buf[3] + n, ps_split4_g2, 4);
         ps_split_slot(out + 28, ps->in_buf[4] + n, ps_split4_g2, 4);
-        for (int k = 5; k < 64; k++) { out[k + 27][0] = X[n][k][0]; out[k + 27][1] = X[n][k][1]; }
+        for (int k = 5; k < 64; k++) { out[k + 27][0] = X[k][0]; out[k + 27][1] = X[k][1]; }
     } else {
         /* QMF band 0 splits eight ways and the sub-bands merge to six in
          * frequency order; bands 1 and 2 split two ways. */
@@ -380,7 +380,7 @@ static void ps_hybrid_analysis_slot(PSState *ps, int n, float out[PS_NR_BANDS][2
         out[5][0] = t[3][0] + t[4][0]; out[5][1] = t[3][1] + t[4][1];
         ps_split2_slot(out + 6, ps->in_buf[1] + n, 1);
         ps_split2_slot(out + 8, ps->in_buf[2] + n, 0);
-        for (int k = 3; k < 64; k++) { out[k + 7][0] = X[n][k][0]; out[k + 7][1] = X[n][k][1]; }
+        for (int k = 3; k < 64; k++) { out[k + 7][0] = X[k][0]; out[k + 7][1] = X[k][1]; }
     }
 }
 
@@ -715,18 +715,21 @@ static void ps_mix_slot(PSState *ps, int n, float l[PS_NR_BANDS][2], float r[PS_
 
 /* Frame driver */
 
-/* Prepares a frame: the QMF input line with its six slots of look-back, the
- * mixing matrices, and the resets a band-layout change needs. */
-void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int top)
+/* Stage the five hybrid bands without retaining the high-band frame. */
+void ps_frame_input(struct faad_decoder *dec, int n, float X[64][2])
 {
-    PSState *ps = &dec->ps;
-    bool is34 = ps->is34;
+    PSState *ps = dec->ps;
+    for (int i = 0; i < 5; i++) {
+        ps->in_buf[i][n + 6][0] = X[i][0];
+        ps->in_buf[i][n + 6][1] = X[i][1];
+    }
+}
 
-    for (int i = 0; i < 5; i++)
-        for (int j = 0; j < PS_IN_SLOTS; j++) {
-            ps->in_buf[i][j + 6][0] = X[j][i][0];
-            ps->in_buf[i][j + 6][1] = X[j][i][1];
-        }
+/* Prepare mixing matrices and reset histories when the band layout changes. */
+void ps_frame_begin(struct faad_decoder *dec, int top)
+{
+    PSState *ps = dec->ps;
+    bool is34 = ps->is34;
     if (is34 != ps->is34_old) {
         memset(ps->peak_decay_nrg, 0, sizeof(ps->peak_decay_nrg));
         memset(ps->power_smooth, 0, sizeof(ps->power_smooth));
@@ -751,9 +754,9 @@ void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int t
 }
 
 /* One slot: hybrid domain, decorrelated copy, mix, back to the QMF domain. */
-void ps_slot(struct faad_decoder *dec, int n, float X[PS_IN_SLOTS][64][2], float L[64][2], float R[64][2])
+void ps_slot(struct faad_decoder *dec, int n, float X[64][2], float L[64][2], float R[64][2])
 {
-    PSState *ps = &dec->ps;
+    PSState *ps = dec->ps;
     float l[PS_NR_BANDS][2], r[PS_NR_BANDS][2];
 
     ps_hybrid_analysis_slot(ps, n, l, X);

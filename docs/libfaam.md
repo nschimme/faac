@@ -365,7 +365,8 @@ reclaiming pool for long or unbounded workloads. Fragmented muxing allocates
 its state and complete index during open and allocates nothing while writing
 or finalizing, making a bounded static pool practical. Input/output buffers,
 stack and the stream callback's storage remain separate. See the matching
-[FAAC example](libfaac.md#running-without-a-heap).
+[FAAC example](libfaac.md#running-without-a-heap) and
+[FAAD example](libfaad.md#running-without-a-heap).
 
 If this pool is shared across libraries, reset it only after every pool-backed
 handle is closed and no operation still uses its storage.
