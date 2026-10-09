@@ -326,7 +326,14 @@ static void test_metadata(void) {
 
     static const uint8_t gif87[] = {'G','I','F','8','7','a',0};
     static const uint8_t gif89[] = {'G','I','F','8','9','a',0};
-    static const uint8_t bmp[] = {'B','M',0,0,0,0};
+    static const uint8_t bmp[58] = {
+        [0]='B', [1]='M', [2]=58, [10]=54, [14]=40,
+        [18]=1, [22]=1, [26]=1, [28]=24, [34]=4
+    };
+    static const uint8_t bmp_core[30] = {
+        [0]='B', [1]='M', [2]=30, [10]=26, [14]=12,
+        [18]=1, [20]=1, [22]=1, [24]=24
+    };
     static const uint8_t junk[] = {1,2,3,4,5,6,7,8};
     static const struct {
         const uint8_t *bytes;
@@ -339,9 +346,10 @@ static void test_metadata(void) {
         {gif87, sizeof(gif87), FAAM_COVER_AUTO, FAAM_COVER_GIF, 12},
         {gif89, sizeof(gif89), FAAM_COVER_AUTO, FAAM_COVER_GIF, 12},
         {bmp, sizeof(bmp), FAAM_COVER_BMP, FAAM_COVER_BMP, 27},
-        {bmp, sizeof(bmp), FAAM_COVER_AUTO, FAAM_COVER_JPEG, 13},
+        {bmp, sizeof(bmp), FAAM_COVER_AUTO, FAAM_COVER_BMP, 27},
+        {bmp_core, sizeof(bmp_core), FAAM_COVER_AUTO, FAAM_COVER_BMP, 27},
         {gif89, sizeof(gif89), FAAM_COVER_PNG, FAAM_COVER_PNG, 14},
-        {junk, sizeof(junk), FAAM_COVER_AUTO, FAAM_COVER_JPEG, 13},
+        {junk, sizeof(junk), FAAM_COVER_JPEG, FAAM_COVER_JPEG, 13},
         {gif87, sizeof(gif87), FAAM_COVER_GIF, FAAM_COVER_GIF, 12},
     };
     for (unsigned i = 0; i < sizeof(covers)/sizeof(covers[0]); i++) {
@@ -355,6 +363,20 @@ static void test_metadata(void) {
         faam_muxer *m = start(&f, &cfg); frames(m, 1); finish(&m);
         check_cover(&f, &meta, covers[i].declared, covers[i].data_type);
 
+        /* Unknown container declarations use the same detector and preserve bytes. */
+        long covr = find_tag(&f, "covr", 0); CHECK(covr > 0);
+        put32(f.buf + covr + 12, 0);
+        faam_demuxer *unknown = open_mem(&f);
+        faam_metadata got = { .struct_size = sizeof(got) };
+        STATUS(faam_demuxer_get_metadata(unknown, &got), FAAM_OK);
+        uint8_t detected = covers[i].bytes == junk ? FAAM_COVER_AUTO
+            : covers[i].bytes == png ? FAAM_COVER_PNG
+            : covers[i].bytes == jpg ? FAAM_COVER_JPEG
+            : (covers[i].bytes == bmp || covers[i].bytes == bmp_core) ? FAAM_COVER_BMP : FAAM_COVER_GIF;
+        CHECK(got.cover_type == detected && got.cover_bytes == meta.cover_bytes);
+        CHECK(!memcmp(got.cover_art, meta.cover_art, meta.cover_bytes));
+        faam_demuxer_close(&unknown);
+
         /* Replace existing artwork through the retrofit writer. */
         meta.cover_art = gif89; meta.cover_bytes = sizeof(gif89);
         meta.cover_type = FAAM_COVER_AUTO;
@@ -362,6 +384,49 @@ static void test_metadata(void) {
         STATUS(faam_update_tags_stream(&io, &meta, 0), FAAM_OK);
         check_cover(&f, &meta, FAAM_COVER_GIF, 12);
         free(f.buf);
+    }
+
+    /* Unknown signatures, truncated headers and malformed BMP fields are rejected. */
+    for (unsigned bad = 0; bad < 17; bad++) {
+        uint8_t artwork[sizeof(bmp)]; memcpy(artwork, bmp, sizeof(artwork));
+        uint32_t size = sizeof(artwork);
+        switch (bad) {
+        case 0: memcpy(artwork, junk, sizeof(junk)); size = sizeof(junk); break;
+        case 1: memcpy(artwork, jpg, 2); size = 2; break;
+        case 2: memcpy(artwork, png, 7); size = 7; break;
+        case 3: memcpy(artwork, gif89, 5); size = 5; break;
+        case 4: size = 2; break; /* BM is insufficient */
+        case 5: size = 25; break;
+        case 6: size = 53; break;
+        case 7: size = 57; break; /* declared file size exceeds bytes */
+        case 8: artwork[6] = 1; break; /* reserved field */
+        case 9: artwork[10] = 20; break; /* pixels overlap headers */
+        case 10: artwork[10] = 59; break; /* pixels outside file */
+        case 11: artwork[14] = 16; break; /* unsupported DIB */
+        case 12: artwork[18] = 0; break; /* zero width */
+        case 13: artwork[22] = 0; break; /* zero height */
+        case 14: artwork[26] = 2; break; /* planes */
+        case 15: artwork[28] = 3; break; /* bit depth */
+        case 16: memset(artwork + 14, 255, 4); break; /* oversized DIB */
+        }
+        memfile f = {0}; faam_track_config t = audio();
+        faam_metadata meta = { .struct_size = sizeof(meta), .cover_art = artwork,
+            .cover_bytes = size, .cover_type = FAAM_COVER_AUTO };
+        faam_muxer_config cfg;
+        STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK);
+        cfg.tracks = &t; cfg.num_tracks = 1; cfg.metadata = &meta;
+        faam_muxer *m = start(&f, &cfg); frames(m, 1);
+        STATUS(faam_muxer_finalize(m), FAAM_ERR_INVALID_ARG);
+        STATUS(faam_muxer_close(&m), FAAM_ERR_INVALID_ARG); free(f.buf);
+
+        /* A rejected tag update must leave the original file unchanged. */
+        memset(&f, 0, sizeof(f)); cfg.metadata = NULL;
+        m = start(&f, &cfg); frames(m, 1); finish(&m);
+        size_t before_len = f.len; uint8_t *before = malloc(f.len); CHECK(before);
+        memcpy(before, f.buf, f.len); faam_io io = mem_io(&f);
+        STATUS(faam_update_tags_stream(&io, &meta, 0), FAAM_ERR_INVALID_ARG);
+        CHECK(f.len == before_len && !memcmp(f.buf, before, before_len));
+        free(before); free(f.buf);
     }
 
     memfile f = {0}; faam_track_config t = audio();
