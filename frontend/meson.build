@@ -46,6 +46,16 @@ if get_option('encoder')
         install: true
     )
 
+    if not meson.is_cross_build()
+        rf64_input_test = executable('test_rf64_input',
+            ['../tests/rf64_input_test.c', 'input.c', 'cli_io.c', 'charset.c'],
+            c_args: c_args_list,
+            include_directories: ['..', '../include', common_inc],
+            dependencies: [libiconv])
+        test('rf64_input_test', find_program('python3'),
+            args: [files('../tests/rf64_input_test.py'), rf64_input_test, faac, get_option('max-channels').to_string()])
+    endif
+
     if target_machine.system() == 'windows'
         windows = import('windows')
         resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
@@ -80,6 +90,23 @@ if get_option('decoder')
         dependencies: [libshell32, libiconv],
         install: true
     )
+    if not meson.is_cross_build()
+        pcm_writer_test = executable('test_faad_pcm_writer',
+            ['../tests/faad_pcm_writer_test.c', 'mp4read.c', 'adts.c', 'cli_io.c', 'charset.c', 'help.c', git_version_h],
+            include_directories: ['..', '../include', common_inc],
+            link_with: [libfaad_for_frontend, libfaam_for_frontend],
+            c_args: c_args_list,
+            dependencies: [libshell32, libiconv])
+        test('faad_pcm_writer_test', find_program('python3'),
+            args: [files('../tests/faad_pcm_writer_test.py'), pcm_writer_test])
+    endif
+    if get_option('encoder') and not meson.is_cross_build()
+        test('faad_large_input_test', find_program('python3'),
+            args: [files('../tests/faad_large_input_test.py'), faac, faad, get_option('max-channels').to_string()], timeout: 120)
+        test('faad_frontend_test', find_program('python3'),
+            args: [files('../tests/faad_frontend_test.py'), faac, faad,
+                   get_option('max-channels').to_string(), get_option('decoder-sbr').to_string()])
+    endif
 endif
 
 if get_option('muxer')
@@ -95,4 +122,8 @@ if get_option('muxer')
         dependencies: [libshell32, libiconv],
         install: true
     )
+    if get_option('encoder') and get_option('decoder') and not meson.is_cross_build()
+        test('faam_cli_test', find_program('python3'),
+            args: [files('../tests/faam_cli_test.py'), faac, faam, faad], timeout: 300)
+    endif
 endif

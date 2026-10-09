@@ -138,6 +138,10 @@ jobs:
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
 
+      - name: Test (General)
+        if: matrix.config.shell != 'msys2 {0}' && matrix.config.compiler != 'cl' && !contains(matrix.config.options, 'm32')
+        run: meson test -C build --print-errorlogs
+
       - name: Build (MSVC)
         if: matrix.config.compiler == 'cl'
         run: |
