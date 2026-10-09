@@ -127,9 +127,15 @@ typedef enum faam_status {
 /* Offset just past the named member: the size of a struct as first released. */
 #define FAAM_STRUCT_END(type, member) (offsetof(type, member) + sizeof(((type *)0)->member))
 
+/* Public flag constants are enums; combinable masks retain fixed-width storage.
+ * MAX sentinels pin enum widths and are not valid flags or cover types. */
+
 /* faam_library_info.features */
-#define FAAM_FEATURE_VIDEO      0x1 /* muxer-video: H.264/H.265 tracks, Annex-B, B-frame offsets */
-#define FAAM_FEATURE_FRAGMENTED 0x2 /* muxer-fragmented: fragmented MP4 recording and demuxing */
+enum faam_feature {
+    FAAM_FEATURE_VIDEO = 0x1, /* muxer-video: H.264/H.265 tracks, Annex-B, B-frame offsets */
+    FAAM_FEATURE_FRAGMENTED = 0x2, /* muxer-fragmented: fragmented MP4 recording and demuxing */
+    FAAM_FEATURE_MAX = 0x7fffffff
+};
 
 /* Global library metadata; set struct_size to sizeof(faam_library_info) before the call. */
 typedef struct faam_library_info {
@@ -203,9 +209,12 @@ typedef struct faam_chapter {
 #define FAAM_CHAPTER_BASELINE FAAM_STRUCT_END(faam_chapter, title)
 
 /* faam_track_config.flags */
-#define FAAM_TRACK_ANNEXB         0x1 /* Video frames arrive as Annex-B (start-code) access units */
-#define FAAM_TRACK_INBAND_PARAMS  0x2 /* Video: the samples repeat the parameter sets (avc3/hev1 sample
+enum faam_track_flag {
+    FAAM_TRACK_ANNEXB = 0x1, /* Video frames arrive as Annex-B (start-code) access units */
+    FAAM_TRACK_INBAND_PARAMS = 0x2, /* Video: the samples repeat the parameter sets (avc3/hev1 sample
                                        * entry); codec_data is still required for the avcC/hvcC box */
+    FAAM_TRACK_FLAG_MAX = 0x7fffffff
+};
 
 /* Track configuration parameters for muxer initialization. Set struct_size to sizeof. */
 typedef struct faam_track_config {
@@ -240,7 +249,10 @@ typedef struct faam_track_config {
  * H.265 needs a caller-supplied hvcC. */
 
 /* faam_track_info.flags */
-#define FAAM_TRACK_INFO_INBAND_PARAMS 0x1 /* avc3/hev1 sample entry */
+enum faam_track_info_flag {
+    FAAM_TRACK_INFO_INBAND_PARAMS = 0x1, /* avc3/hev1 sample entry */
+    FAAM_TRACK_INFO_FLAG_MAX = 0x7fffffff
+};
 
 /* Information about a parsed track in a container. Set struct_size to sizeof before the call. */
 typedef struct faam_track_info {
@@ -291,11 +303,14 @@ typedef struct faam_custom_tag {
 /* faam_metadata.cover_type. AUTO detects PNG, GIF (GIF87a/GIF89a), and JPEG
  * (FF D8 FF) by signature, falling back to JPEG for anything else.
  * BMP is explicit only: a BM prefix is too weak for auto-detection. */
-#define FAAM_COVER_AUTO 0
-#define FAAM_COVER_JPEG 1
-#define FAAM_COVER_PNG  2
-#define FAAM_COVER_GIF  3
-#define FAAM_COVER_BMP  4
+enum faam_cover_type {
+    FAAM_COVER_AUTO = 0,
+    FAAM_COVER_JPEG = 1,
+    FAAM_COVER_PNG = 2,
+    FAAM_COVER_GIF = 3,
+    FAAM_COVER_BMP = 4,
+    FAAM_COVER_MAX = 0x7fffffff
+};
 
 /* Strings, artwork, arrays, and their contents are borrowed until finalize/update.
  * Demuxer output pointers remain valid until that demuxer is closed. From the demuxer,
@@ -404,9 +419,12 @@ FAAMAPI faam_status faam_demuxer_read_frame(faam_demuxer *d,
 /* --- Stream Muxer API (Muxer -> MP4/M4A/M4B) --- */
 
 /* faam_muxer_config.flags */
-#define FAAM_MUXER_M4B           0x1 /* Write M4B brand headers (progressive audio-only files;
+enum faam_muxer_flag {
+    FAAM_MUXER_M4B = 0x1, /* Write M4B brand headers (progressive audio-only files;
                                       * video and fragmented files get the isom brand) */
-#define FAAM_MUXER_CONSTANT_RATE 0x2 /* esds maxBitrate equals avgBitrate */
+    FAAM_MUXER_CONSTANT_RATE = 0x2, /* esds maxBitrate equals avgBitrate */
+    FAAM_MUXER_FLAG_MAX = 0x7fffffff
+};
 
 /* Muxer open parameters. Fill with faam_muxer_config_init(), then set the fields you need.
  * tracks are read at open. chapters and metadata are borrowed until finalize: a progressive file
@@ -463,11 +481,14 @@ FAAMAPI faam_status faam_muxer_open(const faam_muxer_config *cfg, const faam_io 
 FAAMAPI faam_status faam_muxer_get_track_id(const faam_muxer *m, uint32_t track_index, uint32_t *out_track_id);
 
 /* faam_muxer_update_params.flags: the fields to apply */
-#define FAAM_UPDATE_CREATION_TIME     0x1
-#define FAAM_UPDATE_GAPLESS           0x2
-#define FAAM_UPDATE_CODEC_DATA        0x4 /* track_id, codec_data, codec_data_len */
-#define FAAM_UPDATE_LANGUAGE          0x8 /* track_id, language */
-#define FAAM_UPDATE_AUDIO_SAMPLE_SIZE 0x10 /* track_id, audio_sample_size */
+enum faam_update_flag {
+    FAAM_UPDATE_CREATION_TIME = 0x1,
+    FAAM_UPDATE_GAPLESS = 0x2,
+    FAAM_UPDATE_CODEC_DATA = 0x4, /* track_id, codec_data, codec_data_len */
+    FAAM_UPDATE_LANGUAGE = 0x8, /* track_id, language */
+    FAAM_UPDATE_AUDIO_SAMPLE_SIZE = 0x10, /* track_id, audio_sample_size */
+    FAAM_UPDATE_FLAG_MAX = 0x7fffffff
+};
 
 /* Late configuration for progressive files whose writer learns something only after the
  * first frame (an encoder's AudioSpecificConfig, the programme length). Fields not named
@@ -497,7 +518,10 @@ FAAMAPI faam_status faam_muxer_update(faam_muxer *m, const faam_muxer_update_par
  * cts_offset is PTS - DTS (negative allowed) for B-frame video; pass 0 for audio and
  * I/P-only video, which then writes no ctts box. Non-zero offsets need the muxer-video
  * build option (FAAM_ERR_NOT_BUILT otherwise) and are invalid on audio tracks. */
-#define FAAM_FRAME_KEYFRAME 0x1 /* Sync sample / IDR; audio frames are all keyframes, the flag is ignored there */
+enum faam_frame_flag {
+    FAAM_FRAME_KEYFRAME = 0x1, /* Sync sample / IDR; audio frames are all keyframes, the flag is ignored there */
+    FAAM_FRAME_FLAG_MAX = 0x7fffffff
+};
 
 FAAMAPI faam_status faam_muxer_write_frame(faam_muxer *m,
                                            uint32_t track_id,
@@ -541,7 +565,10 @@ FAAMAPI const char *faam_strerror(faam_status status);
  * borrowing rules. FAAM_ERR_BAD_CONTAINER means the file has no moov; a moov or one of
  * the boxes being edited with a 64-bit size header is FAAM_ERR_UNSUPPORTED, and the file
  * is left as it was. */
-#define FAAM_TAG_UPDATE_CLEAR 0x1 /* Drop all existing ilst atoms, including unmodeled ones */
+enum faam_tag_update_flag {
+    FAAM_TAG_UPDATE_CLEAR = 0x1, /* Drop all existing ilst atoms, including unmodeled ones */
+    FAAM_TAG_UPDATE_FLAG_MAX = 0x7fffffff
+};
 
 FAAMAPI faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta, uint32_t flags);
 /* flags is reserved and must be 0. */
