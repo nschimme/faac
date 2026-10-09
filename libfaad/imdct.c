@@ -91,14 +91,17 @@ void init_windows(void)
  * inputs against reversed odd-index inputs, rotate, transform, rotate again
  * and unzip. buf holds 2*M floats: z, which the result u then overwrites
  * (the FFT is done with it by then), and w. The result is buf[0..M). */
-static void dct4(const float *in, float *buf, int M)
+static void dct4(const float * restrict in, float * restrict buf, int M)
 {
     int K = M / 2;
     int logm = (M == 1024) ? 9 : 6;
-    const float *cs = (M == 1024) ? dct4_cos_1024 : dct4_cos_128;
-    const float *sn = (M == 1024) ? dct4_sin_1024 : dct4_sin_128;
-    float *z = buf, *w = buf + M, *u = buf;
-    float *zr = z, *zi = z + K;
+    const float * restrict cs = (M == 1024) ? dct4_cos_1024 : dct4_cos_128;
+    const float * restrict sn = (M == 1024) ? dct4_sin_1024 : dct4_sin_128;
+    float * restrict z = buf;
+    float * restrict w = buf + M;
+    float * restrict u = buf;
+    float * restrict zr = z;
+    float * restrict zi = z + K;
 
     for (int n = 0; n < K; n++) {
         float a = in[2 * n], b = in[M - 1 - 2 * n];
@@ -106,7 +109,8 @@ static void dct4(const float *in, float *buf, int M)
         zi[n] = a * sn[n] + b * cs[n];
     }
     fft(z, w, logm);
-    const float *wr = w, *wi = w + K;
+    const float * restrict wr = w;
+    const float * restrict wi = w + K;
     for (int k = 0; k < K; k++) {
         u[2 * k]         =  wr[k] * cs[k] - wi[k] * sn[k];
         u[M - 1 - 2 * k] = -(wr[k] * sn[k] + wi[k] * cs[k]);
@@ -115,10 +119,10 @@ static void dct4(const float *in, float *buf, int M)
 
 /* IMDCT (ISO/IEC 14496-3 §4.6.11.3.1): n0 = N/4 + 1/2 makes the transform a
  * DCT-IV of the coefficients, folded out with its odd/even symmetries. */
-static void fast_imdct(const float *in, float *out, int n, float *tmp)
+static void fast_imdct(const float * restrict in, float * restrict out, int n, float * restrict tmp)
 {
     int M = n / 2, H = M / 2;
-    float *u = tmp; /* 2*M floats of work */
+    float * restrict u = tmp; /* 2*M floats of work */
     float scale = 2.0f / (float)n;
 
     dct4(in, tmp, M);
