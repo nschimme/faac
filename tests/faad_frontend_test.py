@@ -87,20 +87,27 @@ def main():
             assert result.returncode == 1 and result.stderr, (track, result.returncode, result.stderr)
         assert pcm(adts2, ["--track", "99"]) == second_pcm, "ADTS ignores --track"
 
-        # Format-change transition with non-zero effective padding and channel increase
+        # MP4 gapless format-change transition with channel increase near EOF
         six_ch_wav = os.path.join(d, "six_ch.wav")
-        make_wav(six_ch_wav, 6, rate=44100, secs=1)
+        make_wav(six_ch_wav, 6, rate=44100, secs=0.1)
         six_ch_adts = os.path.join(d, "six_ch.aac")
         subprocess.run([faac, "-a", "-o", six_ch_adts, six_ch_wav], check=True, capture_output=True)
 
         concat_adts = os.path.join(d, "concat.aac")
         with open(concat_adts, "wb") as f_out:
             f_out.write(open(adts1, "rb").read())
-            f_out.write(open(adts2, "rb").read())
             f_out.write(open(six_ch_adts, "rb").read())
-        concat_out = os.path.join(d, "concat.wav")
-        subprocess.run([faad, "-q", "-o", concat_out, concat_adts], check=True)
-        assert os.path.getsize(concat_out) > 44, "Format change transition produced output"
+
+        mp4_gapless = os.path.join(d, "gapless_transition.m4a")
+        subprocess.run([faam, "-i", concat_adts, "--encoder-delay", "1024", "--padding-delay", "2000", "-o", mp4_gapless], check=True, capture_output=True)
+
+        mp4_gapless_out = os.path.join(d, "gapless_transition.wav")
+        subprocess.run([faad, "-q", "-o", mp4_gapless_out, mp4_gapless], check=True)
+        riff, data, actual = wav_sizes(open(mp4_gapless_out, "rb").read())
+        assert data == actual > 0 and riff == data + 36, "MP4 gapless format transition produced valid WAV"
+
+        mp4_gapless_piped = subprocess.run([faad, "-q", "-w", mp4_gapless], check=True, capture_output=True).stdout
+        assert mp4_gapless_piped[44:] == open(mp4_gapless_out, "rb").read()[44:], "MP4 gapless transition -w PCM differs from -o PCM"
 
         # Runtime SBR delay uses output samples; preserve gapless track length.
         he = os.path.join(d, "he.m4a")
