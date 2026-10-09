@@ -62,19 +62,27 @@ void init_qmf_twiddles(void)
 
 /* Push one 32-sample block into the analysis delay line and window it:
  * u(n) = sum_j x(n + 64j) c(2(n + 64j)), newest sample first. The line is
- * a ring of ten 32-sample blocks kept twice over, so the five 64-sample
- * runs never wrap. */
+ * a ring of ten 32-sample blocks. Resolve tap pointers before accumulation. */
 static void qmf_analysis_window(SBRChannel *ch, const float *in, float u[64])
 {
     int pos = ch->qmf_x_pos - 32;
     if (pos < 0) pos += 320;
     ch->qmf_x_pos = pos;
     float *x = ch->qmf_x + ch->qmf_x_pos;
-    for (int n = 0; n < 32; n++) x[n] = x[320 + n] = in[31 - n];
-    for (int n = 0; n < 64; n++) {
-        float acc = 0.0f;
-        for (int j = 0; j < 5; j++) acc += x[n + 64 * j] * qmf_c[2 * (n + 64 * j)];
-        u[n] = acc;
+    for (int n = 0; n < 32; n++) x[n] = in[31 - n];
+    for (int half = 0; half < 2; half++) {
+        const float *run[5];
+        for (int j = 0; j < 5; j++) {
+            int offset = pos + half * 32 + 64 * j;
+            if (offset >= 320) offset -= 320;
+            run[j] = ch->qmf_x + offset;
+        }
+        for (int n = 0; n < 32; n++) {
+            float acc = 0.0f;
+            for (int j = 0; j < 5; j++)
+                acc += run[j][n] * qmf_c[2 * (half * 32 + n + 64 * j)];
+            u[half * 32 + n] = acc;
+        }
     }
 }
 
