@@ -156,11 +156,16 @@ static inline uint32_t bits_get_1(BitReader *bs)
     return 0;
 }
 
+static inline uint32_t bits_load_be32(const uint8_t *ptr)
+{
+    return read_u32_be(ptr);
+}
+
 static inline uint32_t bits_get_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = read_u32_be(ptr);
+        uint32_t word = bits_load_be32(ptr);
         uint32_t val = (word >> (32 - bs->bit_pos - nbits)) & ((1U << nbits) - 1U);
         uint32_t total_bits = bs->bit_pos + nbits;
         bs->byte_pos += total_bits >> 3;
@@ -174,7 +179,7 @@ static inline uint32_t bits_show_fast(BitReader *bs, uint32_t nbits)
 {
     if (nbits > 0 && nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = read_u32_be(ptr);
+        uint32_t word = bits_load_be32(ptr);
         return (word << bs->bit_pos) >> (32 - nbits);
     }
     return bits_show(bs, nbits);

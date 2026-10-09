@@ -233,16 +233,11 @@ faam_status faam_write_ilst_ext(const faam_metadata *metadata, const faam_gaples
                                 faam_bytes_writer write, void *user, uint32_t *out_size);
 
 /* Endian utilities */
+#include "endian.h"
+
 static inline uint16_t read_u16_be(const uint8_t *b) {
     return (uint16_t)((b[0] << 8) | b[1]);
 }
-
-#ifndef read_u32_be
-static inline uint32_t read_u32_be(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
-}
-#define read_u32_be read_u32_be
-#endif
 
 static inline uint64_t read_u64_be(const uint8_t *b) {
     return ((uint64_t)read_u32_be(b) << 32) | (uint64_t)read_u32_be(b + 4);
