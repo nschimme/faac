@@ -514,6 +514,54 @@ static void test_known_extensions(void)
     }
 }
 
+static void test_ps_mono_downmix(void)
+{
+    const uint8_t ps_asc[] = { 0xec, 0x0a, 0x88, 0x00 };
+    const uint8_t end[] = { 0xe0 };
+    faad_library_info library = { .struct_size = sizeof(library) };
+    assert(faad_get_library_info(&library) == FAAD_OK);
+
+    const enum faad_downmix_mode modes[] = {
+        FAAD_DOWNMIX_MONO,
+        FAAD_DOWNMIX_STEREO,
+        FAAD_DOWNMIX_NONE
+    };
+
+    for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); i++) {
+        enum faad_downmix_mode mode = modes[i];
+        faad_config cfg;
+        faad_config_init(&cfg, sizeof(cfg));
+        cfg.stream_format = FAAD_STREAM_RAW;
+        cfg.downmix_mode = mode;
+
+        faad_decoder *dec;
+        assert(faad_decoder_open(&cfg, ps_asc, sizeof(ps_asc), &dec) == FAAD_OK);
+        faad_stream_info info = { .struct_size = sizeof(info) };
+        assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.format_known);
+        uint32_t expected_channels = (mode == FAAD_DOWNMIX_MONO) ? 1 : (library.ps_supported ? 2 : 1);
+        assert(info.channels == expected_channels);
+        assert(info.object_type == FAAD_OBJ_HE_AAC_V2);
+
+        uint32_t bound = info.max_output_bytes;
+        void *pcm = malloc(bound);
+        assert(pcm);
+
+        uint32_t flags = 0, used = 0, written = 0;
+        assert(faad_decode_frame(dec, end, sizeof(end), &used, pcm, bound, &written, &flags) == FAAD_OK);
+        assert(flags & FAAD_FRAME_CONCEALED);
+        assert(!!(flags & FAAD_FRAME_SBR) == library.sbr_supported);
+        assert(!!(flags & FAAD_FRAME_PS) == library.ps_supported);
+        assert(written == 2048 * expected_channels * sizeof(int16_t));
+
+        info.struct_size = sizeof(info);
+        assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+        assert(info.channels == expected_channels);
+
+        free(pcm);
+        assert(faad_decoder_close(&dec) == FAAD_OK);
+    }
+}
+
 int main(void)
 {
     test_layouts(); test_boundaries(); test_raw_init(); test_endian_helpers(); test_degraded();
@@ -522,6 +570,7 @@ int main(void)
 #endif
     test_nonzero_conceal_history();
     test_known_extensions();
+    test_ps_mono_downmix();
     puts("FAAD ABI, packet boundaries and endian helpers passed");
     return 0;
 }
