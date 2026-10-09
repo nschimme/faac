@@ -725,6 +725,32 @@ int main(int argc, char **argv)
                                     return 1;
                                 }
                                 fifo_initialized = true;
+                            } else if (fifo.size < 262144) {
+                                uint8_t *new_data = (uint8_t *)malloc(262144);
+                                if (!new_data) {
+                                    fprintf(stderr, "Error allocating PCM buffer\n");
+                                    faad_decoder_close(&dec);
+                                    free(inbuf);
+                                    mp4_free_track(&track);
+                                    if (fout && fout != stdout) fclose(fout);
+                                    if (io_buf) free(io_buf);
+                                    fifo_free(&fifo);
+                                    return 1;
+                                }
+                                if (fifo.fill > 0) {
+                                    if (fifo.tail < fifo.head) {
+                                        memcpy(new_data, fifo.data + fifo.tail, fifo.fill);
+                                    } else {
+                                        uint32_t first = fifo.size - fifo.tail;
+                                        memcpy(new_data, fifo.data + fifo.tail, first);
+                                        memcpy(new_data + first, fifo.data, fifo.head);
+                                    }
+                                }
+                                free(fifo.data);
+                                fifo.data = new_data;
+                                fifo.size = 262144;
+                                fifo.tail = 0;
+                                fifo.head = fifo.fill;
                             }
                         }
                     }
@@ -922,8 +948,8 @@ int main(int argc, char **argv)
         }
     }
 
-    if (fout) {
-        if (is_mp4 && gapless && padding_samples > 0) {
+    if (fout && is_mp4) {
+        if (gapless && padding_samples > 0) {
             uint32_t padding_bytes = padding_samples * num_channels * (bit_depth / 8);
             if (fifo.fill > padding_bytes) {
                 fifo_truncate_tail(&fifo, padding_bytes);
@@ -931,16 +957,18 @@ int main(int argc, char **argv)
                 fifo.fill = 0;
             }
         }
-        if (is_mp4 && !write_stdout) {
-            total_pcm_bytes += fifo_write(fout, &fifo, fifo.fill);
-        } else {
-            uint8_t pop_buf[4096];
-            while (fifo.fill > 0) {
-                uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
-                uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
-                if (popped == 0) break;
-                fwrite(pop_buf, 1, popped, fout);
-                total_pcm_bytes += popped;
+        if (fallback_mode) {
+            if (!write_stdout) {
+                total_pcm_bytes += fifo_write(fout, &fifo, fifo.fill);
+            } else {
+                uint8_t pop_buf[4096];
+                while (fifo.fill > 0) {
+                    uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
+                    uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
+                    if (popped == 0) break;
+                    fwrite(pop_buf, 1, popped, fout);
+                    total_pcm_bytes += popped;
+                }
             }
         }
     }
@@ -948,6 +976,19 @@ int main(int argc, char **argv)
 
     double duration_sec = (double)(frames_decoded * (obj_type == FAAD_OBJ_HE_AAC_V1 ? 2048 : 1024)) / (sample_rate ? sample_rate : 44100);
     double avg_bitrate_kbps = (file_len * 8.0) / (duration_sec > 0 ? duration_sec * 1000.0 : 1.0);
+
+    if (fout && fout != stdout) {
+        if (!raw_format) {
+            if (!header_pending) num_channels = header_channels;
+            write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes, bit_depth, is_float);
+        }
+        fclose(fout);
+        fout = NULL;
+    }
+    if (io_buf) {
+        free(io_buf);
+        io_buf = NULL;
+    }
 
     const char *brand = track.major_brand[0] ? track.major_brand : "M4A";
     if (json_info) {
@@ -1008,23 +1049,11 @@ int main(int argc, char **argv)
                 printf("  %s: %s\n", track.tags[i].name, track.tags[i].value);
             if (track.cover_bytes) printf("  Cover Art: present (%u bytes)\n", track.cover_bytes);
         }
-    } else if (fout) {
-        if (fout != stdout) {
-            if (!raw_format) {
-                if (!header_pending) num_channels = header_channels;
-                write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes, bit_depth, is_float);
-            }
-            fclose(fout);
-            fout = NULL;
-        }
+    } else {
         if (!quiet) {
             printf("Decoded %u frames (%u bytes, %d-bit %s) to %s\n",
                    frames_decoded, total_pcm_bytes, bit_depth, is_float ? "float" : "PCM", outfile ? outfile : "stdout");
         }
-    }
-    if (io_buf) {
-        free(io_buf);
-        io_buf = NULL;
     }
 
     faad_decoder_close(&dec);

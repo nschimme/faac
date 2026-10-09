@@ -15,15 +15,16 @@ import wave
 
 
 def make_wav(path, channels, rate=44100, secs=2):
+    freqs = (440, 660, 880, 1100, 1320, 1540, 1760, 1980)
     with wave.open(path, "wb") as w:
         w.setnchannels(channels)
         w.setsampwidth(2)
         w.setframerate(rate)
         w.writeframes(b"".join(
             struct.pack("<" + "h" * channels,
-                        *(int(8000 * math.sin(2 * math.pi * freq * i / rate))
-                          for freq in (440, 660)[:channels]))
-            for i in range(rate * secs)))
+                        *(int(8000 * math.sin(2 * math.pi * freqs[c % len(freqs)] * i / rate))
+                          for c in range(channels)))
+            for i in range(int(rate * secs))))
 
 
 def wav_sizes(data):
@@ -86,11 +87,17 @@ def main():
             assert result.returncode == 1 and result.stderr, (track, result.returncode, result.stderr)
         assert pcm(adts2, ["--track", "99"]) == second_pcm, "ADTS ignores --track"
 
-        # Format-change transition with non-zero effective padding
+        # Format-change transition with non-zero effective padding and channel increase
+        six_ch_wav = os.path.join(d, "six_ch.wav")
+        make_wav(six_ch_wav, 6, rate=44100, secs=1)
+        six_ch_adts = os.path.join(d, "six_ch.aac")
+        subprocess.run([faac, "-a", "-o", six_ch_adts, six_ch_wav], check=True, capture_output=True)
+
         concat_adts = os.path.join(d, "concat.aac")
         with open(concat_adts, "wb") as f_out:
             f_out.write(open(adts1, "rb").read())
             f_out.write(open(adts2, "rb").read())
+            f_out.write(open(six_ch_adts, "rb").read())
         concat_out = os.path.join(d, "concat.wav")
         subprocess.run([faad, "-q", "-o", concat_out, concat_adts], check=True)
         assert os.path.getsize(concat_out) > 44, "Format change transition produced output"
