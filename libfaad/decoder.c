@@ -78,6 +78,7 @@ static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uin
     /* surround indices in the WAV order output_channel_map() produces */
     int c = -1, ls = -1, rs = -1;
     switch (num_chs) {
+    case 2: break;
     case 3: c = 2; break;
     case 4: c = 2; ls = rs = 3; break;
     case 5: c = 2; ls = 3; rs = 4; break;
@@ -120,7 +121,9 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs, uin
     case 5: c = 2; ls = 3; rs = 4; break;
     case 6: c = 2; ls = 4; rs = 5; break;
     case 8: c = 2; ls = 4; rs = 5; break;
-    default: break;
+    default:
+        dec->spectrally_downmixed = false;
+        return false;
     }
 
     const uint8_t *map = output_channel_map(dec->asc.num_channels, num_chs);
@@ -167,107 +170,79 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs, uin
     float lsw = (ls == rs) ? 0.5f * k : k;
     bool prev_downmixed = dec->spectrally_downmixed;
 
+    float * restrict sl = dec->spec[n_l];
+    float * restrict sr = dec->spec[n_r];
+    const float * restrict sc_ptr = (c >= 0 && n_c >= 0) ? dec->spec[n_c] : NULL;
+    const float * restrict sls_ptr = (ls >= 0 && n_ls >= 0) ? dec->spec[n_ls] : NULL;
+    const float * restrict srs_ptr = (rs >= 0 && n_rs >= 0) ? dec->spec[n_rs] : NULL;
+    const float * restrict s6_ptr = (num_chs == 8 && n_6 >= 0) ? dec->spec[n_6] : NULL;
+    const float * restrict s7_ptr = (num_chs == 8 && n_7 >= 0) ? dec->spec[n_7] : NULL;
+
+    float * restrict ol = dec->overlap[n_l];
+    float * restrict or_ptr = dec->overlap[n_r];
+    const float * restrict oc_ptr = (c >= 0 && n_c >= 0) ? dec->overlap[n_c] : NULL;
+    const float * restrict ols_ptr = (ls >= 0 && n_ls >= 0) ? dec->overlap[n_ls] : NULL;
+    const float * restrict ors_ptr = (rs >= 0 && n_rs >= 0) ? dec->overlap[n_rs] : NULL;
+    const float * restrict o6_ptr = (num_chs == 8 && n_6 >= 0) ? dec->overlap[n_6] : NULL;
+    const float * restrict o7_ptr = (num_chs == 8 && n_7 >= 0) ? dec->overlap[n_7] : NULL;
+
+    if (!prev_downmixed) {
+        for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
+            float lo = sl[i], ro = sr[i];
+            float o_lo = ol[i], o_ro = or_ptr[i];
+            if (sc_ptr) {
+                float mc = k * sc_ptr[i], moc = k * oc_ptr[i];
+                lo += mc; ro += mc; o_lo += moc; o_ro += moc;
+            }
+            if (sls_ptr && srs_ptr) {
+                lo += lsw * sls_ptr[i]; ro += lsw * srs_ptr[i];
+                o_lo += lsw * ols_ptr[i]; o_ro += lsw * ors_ptr[i];
+            }
+            if (s6_ptr && s7_ptr) {
+                lo += k * s6_ptr[i]; ro += k * s7_ptr[i];
+                o_lo += k * o6_ptr[i]; o_ro += k * o7_ptr[i];
+            }
+            if (mode == FAAD_DOWNMIX_MONO) {
+                sl[i] = lo + ro;
+                ol[i] = o_lo + o_ro;
+            } else {
+                sl[i] = lo; sr[i] = ro;
+                ol[i] = o_lo; or_ptr[i] = o_ro;
+            }
+        }
+    } else {
+        for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
+            float lo = sl[i], ro = sr[i];
+            if (sc_ptr) { float mc = k * sc_ptr[i]; lo += mc; ro += mc; }
+            if (sls_ptr && srs_ptr) { lo += lsw * sls_ptr[i]; ro += lsw * srs_ptr[i]; }
+            if (s6_ptr && s7_ptr) { lo += k * s6_ptr[i]; ro += k * s7_ptr[i]; }
+            if (mode == FAAD_DOWNMIX_MONO) {
+                sl[i] = lo + ro;
+            } else {
+                sl[i] = lo; sr[i] = ro;
+            }
+        }
+    }
+
+    for (uint32_t ch = 0; ch < num_chs; ch++) {
+        if ((int)ch != n_l && (mode == FAAD_DOWNMIX_MONO || (int)ch != n_r)) {
+            memset(dec->overlap[ch], 0, sizeof(dec->overlap[0]));
+        }
+        dec->prev_window_shape[ch] = shape;
+        dec->prev_window_seq[ch] = seq;
+    }
+
+    imdct_and_window(dec, n_l, seq, shape, sl, pcm_final);
+
     if (mode == FAAD_DOWNMIX_MONO) {
-        float m2k = 2.0f * k;
-        float * restrict sl = dec->spec[n_l];
-        const float * restrict sr = dec->spec[n_r];
-        const float * restrict sc_ptr = (c >= 0 && n_c >= 0) ? dec->spec[n_c] : NULL;
-        const float * restrict sls_ptr = (ls >= 0 && n_ls >= 0) ? dec->spec[n_ls] : NULL;
-        const float * restrict srs_ptr = (rs >= 0 && n_rs >= 0) ? dec->spec[n_rs] : NULL;
-        const float * restrict s6_ptr = (num_chs == 8 && n_6 >= 0) ? dec->spec[n_6] : NULL;
-        const float * restrict s7_ptr = (num_chs == 8 && n_7 >= 0) ? dec->spec[n_7] : NULL;
-
-        float * restrict ol = dec->overlap[n_l];
-        const float * restrict or_ptr = dec->overlap[n_r];
-        const float * restrict oc_ptr = (c >= 0 && n_c >= 0) ? dec->overlap[n_c] : NULL;
-        const float * restrict ols_ptr = (ls >= 0 && n_ls >= 0) ? dec->overlap[n_ls] : NULL;
-        const float * restrict ors_ptr = (rs >= 0 && n_rs >= 0) ? dec->overlap[n_rs] : NULL;
-        const float * restrict o6_ptr = (num_chs == 8 && n_6 >= 0) ? dec->overlap[n_6] : NULL;
-        const float * restrict o7_ptr = (num_chs == 8 && n_7 >= 0) ? dec->overlap[n_7] : NULL;
-
-        if (!prev_downmixed) {
-            for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
-                float s_sum = sl[i] + sr[i];
-                float o_sum = ol[i] + or_ptr[i];
-                if (sc_ptr) { s_sum += m2k * sc_ptr[i]; o_sum += m2k * oc_ptr[i]; }
-                if (sls_ptr && srs_ptr) { s_sum += lsw * (sls_ptr[i] + srs_ptr[i]); o_sum += lsw * (ols_ptr[i] + ors_ptr[i]); }
-                if (s6_ptr && s7_ptr) { s_sum += k * (s6_ptr[i] + s7_ptr[i]); o_sum += k * (o6_ptr[i] + o7_ptr[i]); }
-                sl[i] = s_sum;
-                ol[i] = o_sum;
-            }
-        } else {
-            for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
-                float s_sum = sl[i] + sr[i];
-                if (sc_ptr) s_sum += m2k * sc_ptr[i];
-                if (sls_ptr && srs_ptr) s_sum += lsw * (sls_ptr[i] + srs_ptr[i]);
-                if (s6_ptr && s7_ptr) s_sum += k * (s6_ptr[i] + s7_ptr[i]);
-                sl[i] = s_sum;
-            }
-        }
-
-        for (uint32_t ch = 0; ch < num_chs; ch++) {
-            if ((int)ch != n_l) {
-                memset(dec->overlap[ch], 0, sizeof(dec->overlap[0]));
-            }
-            dec->prev_window_shape[ch] = shape;
-            dec->prev_window_seq[ch] = seq;
-        }
-
-        imdct_and_window(dec, n_l, seq, shape, sl, pcm_final);
-
         float mgain = (num_chs > 2) ? 0.5f * gain : 0.5f;
         float * restrict pcm_dst = pcm_final;
         for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
             pcm_dst[i] *= mgain;
         }
         *out_num_chs = 1;
-    } else { /* FAAD_DOWNMIX_STEREO */
-        float * restrict sl = dec->spec[n_l];
-        float * restrict sr = dec->spec[n_r];
-        const float * restrict sc_ptr = (c >= 0 && n_c >= 0) ? dec->spec[n_c] : NULL;
-        const float * restrict sls_ptr = (ls >= 0 && n_ls >= 0) ? dec->spec[n_ls] : NULL;
-        const float * restrict srs_ptr = (rs >= 0 && n_rs >= 0) ? dec->spec[n_rs] : NULL;
-        const float * restrict s6_ptr = (num_chs == 8 && n_6 >= 0) ? dec->spec[n_6] : NULL;
-        const float * restrict s7_ptr = (num_chs == 8 && n_7 >= 0) ? dec->spec[n_7] : NULL;
-
-        float * restrict ol = dec->overlap[n_l];
-        float * restrict or_ptr = dec->overlap[n_r];
-        const float * restrict oc_ptr = (c >= 0 && n_c >= 0) ? dec->overlap[n_c] : NULL;
-        const float * restrict ols_ptr = (ls >= 0 && n_ls >= 0) ? dec->overlap[n_ls] : NULL;
-        const float * restrict ors_ptr = (rs >= 0 && n_rs >= 0) ? dec->overlap[n_rs] : NULL;
-        const float * restrict o6_ptr = (num_chs == 8 && n_6 >= 0) ? dec->overlap[n_6] : NULL;
-        const float * restrict o7_ptr = (num_chs == 8 && n_7 >= 0) ? dec->overlap[n_7] : NULL;
-
-        if (!prev_downmixed) {
-            for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
-                float lo = sl[i], ro = sr[i];
-                float o_lo = ol[i], o_ro = or_ptr[i];
-                if (sc_ptr) { lo += k * sc_ptr[i]; ro += k * sc_ptr[i]; o_lo += k * oc_ptr[i]; o_ro += k * oc_ptr[i]; }
-                if (sls_ptr && srs_ptr) { lo += lsw * sls_ptr[i]; ro += lsw * srs_ptr[i]; o_lo += lsw * ols_ptr[i]; o_ro += lsw * ors_ptr[i]; }
-                if (s6_ptr && s7_ptr) { lo += k * s6_ptr[i]; ro += k * s7_ptr[i]; o_lo += k * o6_ptr[i]; o_ro += k * o7_ptr[i]; }
-                sl[i] = lo; sr[i] = ro;
-                ol[i] = o_lo; or_ptr[i] = o_ro;
-            }
-        } else {
-            for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
-                float lo = sl[i], ro = sr[i];
-                if (sc_ptr) { lo += k * sc_ptr[i]; ro += k * sc_ptr[i]; }
-                if (sls_ptr && srs_ptr) { lo += lsw * sls_ptr[i]; ro += lsw * srs_ptr[i]; }
-                if (s6_ptr && s7_ptr) { lo += k * s6_ptr[i]; ro += k * s7_ptr[i]; }
-                sl[i] = lo; sr[i] = ro;
-            }
-        }
-        for (uint32_t ch = 0; ch < num_chs; ch++) {
-            if ((int)ch != n_l && (int)ch != n_r) {
-                memset(dec->overlap[ch], 0, sizeof(dec->overlap[0]));
-            }
-            dec->prev_window_shape[ch] = shape;
-            dec->prev_window_seq[ch] = seq;
-        }
-
-        imdct_and_window(dec, n_l, seq, shape, sl, pcm_final);
+    } else {
         imdct_and_window(dec, n_r, seq, shape, sr, pcm_final + FRAME_LEN_LONG);
-
         if (num_chs > 2) {
             float * restrict pcm_l = pcm_final;
             float * restrict pcm_r = pcm_final + FRAME_LEN_LONG;
@@ -1086,10 +1061,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     /* Output in the WAV / SMPTE order (FL FR FC LFE BL BR SL SR), taken
      * from the element order the channel configuration implies. */
     const float *src[MAX_CHANNELS < 2 ? 2 : MAX_CHANNELS];
-    const uint8_t *map = spectrally_downmixed ? NULL : output_channel_map(dec->asc.num_channels, num_chs);
-    for (uint32_t c = 0; c < num_chs; c++)
-        src[c] = pcm_final + (map ? map[c] : c) * frame_samples;
-    num_chs = downmix_pcm(dec->config.downmix_mode, src, num_chs, frame_samples, pcm_final);
+    if (!spectrally_downmixed) {
+        const uint8_t *map = output_channel_map(dec->asc.num_channels, num_chs);
+        for (uint32_t c = 0; c < num_chs; c++)
+            src[c] = pcm_final + (map ? map[c] : c) * frame_samples;
+        num_chs = downmix_pcm(dec->config.downmix_mode, src, num_chs, frame_samples, pcm_final);
+    }
     if (num_chs <= 2)
         for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * frame_samples;
 
