@@ -409,6 +409,7 @@ struct faad_decoder {
     float (*overlap)[FRAME_LEN_LONG];
     uint8_t prev_window_shape[MAX_CHANNELS]; /* the left window half follows the previous block's shape */
     uint8_t prev_window_seq[MAX_CHANNELS];   /* what a concealed frame continues from */
+    bool spectrally_downmixed;
 
 #ifndef FAAD_DISABLE_SBR
     SBRChannel *sbr;
