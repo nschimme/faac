@@ -385,57 +385,52 @@ _Static_assert(sizeof(FrameScratch) <= sizeof(float[MAX_CHANNELS * FRAME_LEN_LON
 #endif
 
 struct faad_decoder {
+    /* Pointers and sizes (8-byte aligned on 64-bit, 4-byte on 32-bit) */
+    size_t allocated_bytes, largest_allocation;
+    float (*spec)[FRAME_LEN_LONG];
+    float (*overlap)[FRAME_LEN_LONG];
+    float (*prev_spec)[FRAME_LEN_LONG];
+    FrameScratch *scratch;
+    float *pcm; /* core output, then SBR output in place */
+#ifndef FAAD_DISABLE_SBR
+    SBRChannel *sbr;
+    SBRElement *sbr_el;
+    SBRScratch sbr_scratch;
+#endif
+#ifndef FAAD_DISABLE_PS
+    PSState *ps;
+#endif
+
+    /* 32-bit integers & embedded structs (4-byte aligned) */
     faad_config config;
     AudioSpecificConfig asc;
-    bool asc_parsed;
-    size_t allocated_bytes, largest_allocation;
-    bool format_known;
-    bool pcm_emitted;
-    /* Parsing and synthesis may advance on rejected packets; only emitted PCM
-     * may replace the output format that callers use. */
     struct {
         uint32_t sample_rate, channels, frame_samples, channel_mask, decoder_delay;
     } emitted_format;
-    bool ps_seen;
     uint32_t core_channels;
     uint32_t max_output_bytes;
-
     uint32_t frame_samples; /* 1024 or 2048 */
     uint32_t num_channels;
     uint32_t sample_rate;      /* nominal (post-SBR) rate, for reporting */
     uint32_t core_sample_rate; /* window/sfb layout rate: half of sample_rate with SBR */
-
-    float (*spec)[FRAME_LEN_LONG];
-    float (*overlap)[FRAME_LEN_LONG];
-    uint8_t prev_window_shape[MAX_CHANNELS]; /* the left window half follows the previous block's shape */
-    uint8_t prev_window_seq[MAX_CHANNELS];   /* what a concealed frame continues from */
-    bool spectrally_downmixed;
-
-
-#ifndef FAAD_DISABLE_SBR
-    SBRChannel *sbr;
-    SBRElement *sbr_el;
-#endif
-    bool sbr_present;
-    bool sbr_seen; /* an SBR payload has appeared: frames without one still run at the SBR rate */
-
-#ifndef FAAD_DISABLE_PS
-    PSState *ps;
-#endif
-    bool ps_present;
-
     uint32_t pns_seed;
     uint32_t consecutive_errors;
-    float (*prev_spec)[FRAME_LEN_LONG];
 
-    FrameScratch *scratch;
-#ifndef FAAD_DISABLE_SBR
-    SBRScratch sbr_scratch;
-#endif
+    /* Channel window arrays */
+    uint8_t prev_window_shape[MAX_CHANNELS]; /* the left window half follows the previous block's shape */
+    uint8_t prev_window_seq[MAX_CHANNELS];   /* what a concealed frame continues from */
     uint8_t win_seq[MAX_CHANNELS];   /* this frame's window of each decoded channel, for the IMDCT */
     uint8_t win_shape[MAX_CHANNELS];
 
-    float *pcm; /* core output, then SBR output in place */
+    /* Grouped 1-byte bool flags (zero struct padding gaps) */
+    bool asc_parsed;
+    bool format_known;
+    bool pcm_emitted;
+    bool ps_seen;
+    bool spectrally_downmixed;
+    bool sbr_present;
+    bool sbr_seen; /* an SBR payload has appeared: frames without one still run at the SBR rate */
+    bool ps_present;
 };
 
 /* Core-rate QMF delay; public metadata converts it to output samples. */
