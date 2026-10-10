@@ -65,9 +65,14 @@ static const uint8_t *output_channel_map(uint32_t channel_config, uint32_t num_c
     }
 }
 
-static bool get_downmix_params(uint32_t num_chs, int *out_c, int *out_ls, int *out_rs,
-                               float *out_gain, float *out_lsw)
+static void update_downmix_cache(struct faad_decoder *dec, uint32_t num_chs)
 {
+    if (dec->downmix_cached && dec->downmix_num_chs == num_chs && dec->downmix_mode == dec->config.downmix_mode)
+        return;
+
+    dec->downmix_num_chs = num_chs;
+    dec->downmix_mode = dec->config.downmix_mode;
+
     int c = -1, ls = -1, rs = -1;
     switch (num_chs) {
     case 2: break;
@@ -76,16 +81,27 @@ static bool get_downmix_params(uint32_t num_chs, int *out_c, int *out_ls, int *o
     case 5: c = 2; ls = 3; rs = 4; break;
     case 6: c = 2; ls = 4; rs = 5; break;
     case 8: c = 2; ls = 4; rs = 5; break;
-    default: return false;
+    default:
+        dec->downmix_cached = false;
+        return;
     }
     const float k = 0.70710678f;
-    if (out_c) *out_c = c;
-    if (out_ls) *out_ls = ls;
-    if (out_rs) *out_rs = rs;
-    if (out_lsw) *out_lsw = (ls == rs) ? 0.5f * k : k;
-    if (out_gain) *out_gain = 1.0f / (1.0f + (c >= 0 ? k : 0.0f) + (ls >= 0 ? (ls == rs ? 0.5f * k : k) : 0.0f)
+    dec->downmix_c = c;
+    dec->downmix_ls = ls;
+    dec->downmix_rs = rs;
+    dec->downmix_lsw = (ls == rs) ? 0.5f * k : k;
+    dec->downmix_gain = 1.0f / (1.0f + (c >= 0 ? k : 0.0f) + (ls >= 0 ? (ls == rs ? 0.5f * k : k) : 0.0f)
                                        + (num_chs == 8 ? k : 0.0f));
-    return true;
+
+    const uint8_t *map = output_channel_map(dec->asc.num_channels, num_chs);
+    dec->downmix_nl = map ? map[0] : 0;
+    dec->downmix_nr = map ? map[1] : 1;
+    dec->downmix_nc = (c >= 0) ? (map ? map[c] : c) : -1;
+    dec->downmix_nls = (ls >= 0) ? (map ? map[ls] : ls) : -1;
+    dec->downmix_nrs = (rs >= 0) ? (map ? map[rs] : rs) : -1;
+    dec->downmix_n6 = (num_chs == 8) ? (map ? map[6] : 6) : -1;
+    dec->downmix_n7 = (num_chs == 8) ? (map ? map[7] : 7) : -1;
+    dec->downmix_cached = true;
 }
 
 /* Time-domain downmix of the WAV-ordered channels src[] into pcm (one
@@ -93,15 +109,22 @@ static bool get_downmix_params(uint32_t num_chs, int *out_c, int *out_ls, int *o
  * Lo = L + 0.707 (C + Ls), Ro = R + 0.707 (C + Rs), LFE dropped, scaled
  * so a full-scale input cannot clip; mono as (Lo + Ro) / 2. Returns the
  * output channel count, num_chs itself when there is nothing to mix. */
-static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uint32_t num_chs,
+static uint32_t downmix_pcm(struct faad_decoder *dec, const float *src[], uint32_t num_chs,
                             uint32_t frame_samples, float *pcm)
 {
+    enum faad_downmix_mode mode = dec->config.downmix_mode;
     if (mode == FAAD_DOWNMIX_NONE || num_chs < 2 || (mode == FAAD_DOWNMIX_STEREO && num_chs == 2))
         return num_chs;
-    int c, ls, rs;
-    float gain, lsw;
-    if (!get_downmix_params(num_chs, &c, &ls, &rs, &gain, &lsw))
+
+    update_downmix_cache(dec, num_chs);
+    if (!dec->downmix_cached)
         return num_chs;
+
+    int c = dec->downmix_c;
+    int ls = dec->downmix_ls;
+    int rs = dec->downmix_rs;
+    float gain = dec->downmix_gain;
+    float lsw = dec->downmix_lsw;
 
     const float k = 0.70710678f;
     for (uint32_t i = 0; i < frame_samples; i++) {
@@ -128,21 +151,25 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs, uin
         return false;
     }
 
-    int c, ls, rs;
-    float gain, lsw;
-    if (!get_downmix_params(num_chs, &c, &ls, &rs, &gain, &lsw)) {
+    update_downmix_cache(dec, num_chs);
+    if (!dec->downmix_cached) {
         dec->spectrally_downmixed = false;
         return false;
     }
 
-    const uint8_t *map = output_channel_map(dec->asc.num_channels, num_chs);
-    int n_l = map ? map[0] : 0;
-    int n_r = map ? map[1] : 1;
-    int n_c = (c >= 0) ? (map ? map[c] : c) : -1;
-    int n_ls = (ls >= 0) ? (map ? map[ls] : ls) : -1;
-    int n_rs = (rs >= 0) ? (map ? map[rs] : rs) : -1;
-    int n_6 = (num_chs == 8) ? (map ? map[6] : 6) : -1;
-    int n_7 = (num_chs == 8) ? (map ? map[7] : 7) : -1;
+    int c = dec->downmix_c;
+    int ls = dec->downmix_ls;
+    int rs = dec->downmix_rs;
+    float gain = dec->downmix_gain;
+    float lsw = dec->downmix_lsw;
+
+    int n_l = dec->downmix_nl;
+    int n_r = dec->downmix_nr;
+    int n_c = dec->downmix_nc;
+    int n_ls = dec->downmix_nls;
+    int n_rs = dec->downmix_nrs;
+    int n_6 = dec->downmix_n6;
+    int n_7 = dec->downmix_n7;
 
     if (n_l < 0 || n_r < 0 || n_l >= (int)num_chs || n_r >= (int)num_chs) {
         dec->spectrally_downmixed = false;
@@ -643,6 +670,7 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
     memset(dec->win_seq, 0, sizeof(dec->win_seq));
     memset(dec->pcm, 0, sizeof(float[MAX_CHANNELS * FRAME_SAMPLES_MAX]));
     dec->spectrally_downmixed = false;
+    dec->downmix_cached = false;
     dec->consecutive_errors = 0;
     dec->pns_seed = 0x12345678;
 #ifndef FAAD_DISABLE_SBR
@@ -1058,7 +1086,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         const uint8_t *map = output_channel_map(dec->asc.num_channels, num_chs);
         for (uint32_t c = 0; c < num_chs; c++)
             src[c] = pcm_final + (map ? map[c] : c) * frame_samples;
-        num_chs = downmix_pcm(dec->config.downmix_mode, src, num_chs, frame_samples, pcm_final);
+        num_chs = downmix_pcm(dec, src, num_chs, frame_samples, pcm_final);
     }
     if (num_chs <= 2)
         for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * frame_samples;

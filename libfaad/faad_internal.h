@@ -411,6 +411,14 @@ struct faad_decoder {
     uint8_t prev_window_seq[MAX_CHANNELS];   /* what a concealed frame continues from */
     bool spectrally_downmixed;
 
+    /* Cached downmix state */
+    bool downmix_cached;
+    uint32_t downmix_num_chs;
+    enum faad_downmix_mode downmix_mode;
+    int downmix_c, downmix_ls, downmix_rs;
+    int downmix_nl, downmix_nr, downmix_nc, downmix_nls, downmix_nrs, downmix_n6, downmix_n7;
+    float downmix_gain, downmix_lsw;
+
 #ifndef FAAD_DISABLE_SBR
     SBRChannel *sbr;
     SBRElement *sbr_el;
