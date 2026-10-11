@@ -511,11 +511,11 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     int lastis = 0, lastpns = coder->global_gain - SF_PNS_OFFSET;
     int is_first_pns = 1;
-    /* PNS/IS side-info smoothing activates only near the MINQUAL floor (quality <= 10.0),
-     * where rate control is floored and bit budget is exhausted. At normal quality levels (> 10.0),
-     * q_factor is 0.0, leaving PNS noise energies and IS positions exact and preserving MOS quality. */
-    float q_factor = (aacquantCfg->quality < 10.0f)
-        ? (10.0f - aacquantCfg->quality) / (10.0f - (float)MINQUAL)
+    /* PNS/IS side-info smoothing activates only when quality is clamped near the MINQUAL floor (quality <= 2.0),
+     * where rate control is floored and bit budget is exhausted. At normal quality levels (> 2.0),
+     * q_factor is 0.0, leaving PNS noise energies and IS positions exact and preserving MOS quality across all rates. */
+    float q_factor = (aacquantCfg->quality < 2.0f)
+        ? (2.0f - aacquantCfg->quality) / (2.0f - (float)MINQUAL)
         : 0.0f;
     if (q_factor > 1.0f) q_factor = 1.0f;
 
