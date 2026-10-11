@@ -110,14 +110,12 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     if (bitRate <= 48000)
         return 14250 + ((bitRate - 32000) * 9 / 32);
 
-    /* For sample rates above 48 kHz (e.g. 64, 88.2, 96 kHz), bitrates above
-     * 48 kbps/ch continue scaling bandwidth smoothly past 18.75 kHz towards
-     * Nyquist (sampleRate / 2) following an asymptotic exponential saturation curve. */
+    /* For sample rates > 48 kHz, bitrates above 48 kbps/ch scale bandwidth
+     * past BANDWIDTH_CEILING towards Nyquist (sampleRate / 2). */
     if (sampleRate > 48000) {
-        double max_bw = (double)(sampleRate / 2);
-        double headroom = max_bw - 18750.0;
-        double ratio = (double)(bitRate - 48000) / (double)sampleRate;
-        double bw = 18750.0 + headroom * (1.0 - exp(-2.5 * ratio));
+        float max_bw = (float)(sampleRate >> 1);
+        float ratio = (float)(bitRate - 48000) / (float)sampleRate;
+        float bw = (float)BANDWIDTH_CEILING + (max_bw - (float)BANDWIDTH_CEILING) * (1.0f - expf(-2.5f * ratio));
         return (unsigned int)(bw > max_bw ? max_bw : bw);
     }
 
