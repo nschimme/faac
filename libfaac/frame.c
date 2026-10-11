@@ -92,7 +92,7 @@ static char *libCopyright =
   " Copyright (C) 2005-2026, Fabian Greffrath\n"
   " Copyright (C) 2026, Nils Schimmelmann\n";
 
-static unsigned int CalcBandwidth(unsigned long bitRate)
+static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
     /* Anchors land on long-block band edges, so CalcBW()'s snap is a no-op and
      * these constants are the cutoff you actually get. Divisors are powers of
@@ -109,6 +109,16 @@ static unsigned int CalcBandwidth(unsigned long bitRate)
     }
     if (bitRate <= 48000)
         return 14250 + ((bitRate - 32000) * 9 / 32);
+
+    /* For sample rates above 48 kHz (e.g. 64, 88.2, 96 kHz), bitrates above
+     * 48 kbps/ch continue scaling bandwidth smoothly past 18.75 kHz up to
+     * Nyquist (sampleRate / 2). */
+    if (sampleRate > 48000) {
+        unsigned int bw = 18750 + (unsigned int)((bitRate - 48000) * 9 / 32);
+        unsigned int max_bw = (unsigned int)(sampleRate / 2);
+        return (bw > max_bw) ? max_bw : bw;
+    }
+
     return BANDWIDTH_CEILING;
 }
 
@@ -281,7 +291,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
 
         if (!config->quantqual)
         {
@@ -314,8 +324,20 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->config.bitRate = config->bitRate;
 
     /* Only VBR reaches here without a bandwidth: ABR derived its own above. */
-    if (!config->bandWidth)
-        config->bandWidth = BANDWIDTH_CEILING;
+    if (!config->bandWidth) {
+        if (hEncoder->sampleRate > 48000) {
+            unsigned int max_bw = (unsigned int)(hEncoder->sampleRate / 2);
+            if (config->quantqual >= DEFQUAL) {
+                config->bandWidth = max_bw;
+            } else {
+                float factor = (float)config->quantqual / (float)DEFQUAL;
+                if (factor < 0.0f) factor = 0.0f;
+                config->bandWidth = BANDWIDTH_CEILING + (unsigned int)((float)(max_bw - BANDWIDTH_CEILING) * factor);
+            }
+        } else {
+            config->bandWidth = BANDWIDTH_CEILING;
+        }
+    }
 
     hEncoder->config.bandWidth = config->bandWidth;
 

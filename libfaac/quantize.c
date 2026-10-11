@@ -203,7 +203,8 @@ static float treble_rolloff(int lo, int hi, float slope_per_line)
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
-                                    float treble_slope, const BandEnergy * __restrict be, float group_total,
+                                    float treble_slope, uint32_t sample_rate,
+                                    const BandEnergy * __restrict be, float group_total,
                                     float * __restrict target_out)
 {
     int gsize = ci->groups.len[gnum];
@@ -223,6 +224,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     int block_len = (ci->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
     float inv_block_len = 1.0f / (float)block_len;
     float slope_per_line = treble_slope * inv_block_len;
+    if (sample_rate > 48000)
+        slope_per_line *= ((float)sample_rate / 44100.0f);
 
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
@@ -489,7 +492,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         if (coder->useRef)
             group_total = coder->refTotal[i];
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, aacquantCfg->sample_rate, be, group_total, target);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
@@ -559,6 +562,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
     sfbOffsetLong[i] = l;
     aacquantCfg->max_cbl = i;
     aacquantCfg->max_l = l;
+    aacquantCfg->sample_rate = (uint32_t)rate;
     *bw = (float)l * rate / (BLOCK_LEN_LONG << 1);
 }
 
