@@ -5,13 +5,31 @@ of 24-bit 96 kHz audio encoded with FAAC.
 """
 
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
-import numpy as np
-import soundfile as sf
 
-FAAC_BIN = os.path.abspath("./build/frontend/faac")
+try:
+    import numpy as np
+    import soundfile as sf
+    HAS_DEPS = True
+except ImportError:
+    HAS_DEPS = False
+
+
+def find_faac_bin():
+    if "FAAC_BIN" in os.environ:
+        return os.environ["FAAC_BIN"]
+    for path in ["./build/frontend/faac", "frontend/faac", "frontend/.libs/faac"]:
+        p = os.path.abspath(path)
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return "faac"
+
+
+FAAC_BIN = find_faac_bin()
+HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
 
 def generate_complex_96k_24bit_signal(filename, duration=3.0):
@@ -41,6 +59,7 @@ def resample_to_48k_16bit(in_wav, out_wav):
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
 
+@unittest.skipUnless(HAS_DEPS and HAS_FFMPEG, "Requires numpy, soundfile, and ffmpeg")
 class TestDownsampled48kMOS(unittest.TestCase):
 
     def setUp(self):

@@ -366,11 +366,11 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     /* A rate that already codes the treble well spends its margin better on
-     * the low bands, where the de-emphasis leaves the most audible error.
-     * Normalized by sampleRate / 44100 so treble de-emphasis per Hz stays
-     * consistent across all sampling rates. */
-    hEncoder->aacquantCfg.treble_slope = ((hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)
-        ? TREBLE_SLOPE_RICH : 1.0f) * ((float)hEncoder->sampleRate / 44100.0f);
+     * the low bands, where the de-emphasis leaves the most audible error. */
+    hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)
+        ? TREBLE_SLOPE_RICH : 1.0f;
+    if (hEncoder->sampleRate > 48000)
+        hEncoder->aacquantCfg.treble_slope *= ((float)hEncoder->sampleRate / 44100.0f);
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;

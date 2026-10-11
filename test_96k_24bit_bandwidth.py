@@ -6,14 +6,31 @@ encodes them with faac, decodes with ffmpeg, and performs FFT spectral analysis.
 """
 
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
-import numpy as np
-import soundfile as sf
+
+try:
+    import numpy as np
+    import soundfile as sf
+    HAS_DEPS = True
+except ImportError:
+    HAS_DEPS = False
 
 
-FAAC_BIN = os.path.abspath("./build/frontend/faac")
+def find_faac_bin():
+    if "FAAC_BIN" in os.environ:
+        return os.environ["FAAC_BIN"]
+    for path in ["./build/frontend/faac", "frontend/faac", "frontend/.libs/faac"]:
+        p = os.path.abspath(path)
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return "faac"
+
+
+FAAC_BIN = find_faac_bin()
+HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
 
 def generate_96k_24bit_multitone(filename, duration=2.0, frequencies=[5000, 10000, 20000, 30000, 40000]):
@@ -54,6 +71,7 @@ def get_peak_frequencies_and_energies(wav_file):
     return freqs, fft_vals
 
 
+@unittest.skipUnless(HAS_DEPS and HAS_FFMPEG, "Requires numpy, soundfile, and ffmpeg")
 class Test96k24bitBandwidth(unittest.TestCase):
 
     def setUp(self):
