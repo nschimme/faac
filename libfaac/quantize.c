@@ -510,20 +510,42 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     }
 
     int lastis = 0, lastpns = coder->global_gain - SF_PNS_OFFSET;
+    int is_first_pns = 1;
     for (i = 0; i < coder->bandcnt; i++)
     {
         int b = coder->book[i];
         if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
         {
             int diff = clamp_sf_diff(coder->sf[i] - lastis);
+            /* Repeat intensity position when change is within tolerance at low quality */
+            if (aacquantCfg->quality <= 30.0f && abs(diff) <= 2)
+                diff = 0;
             lastis += diff;
             coder->sf[i] = lastis;
         }
         else if (b == HCB_PNS)
         {
-            int diff = clamp_sf_diff(coder->sf[i] - lastpns);
-            lastpns += diff;
-            coder->sf[i] = lastpns;
+            if (is_first_pns)
+            {
+                /* First PNS band encodes absolute energy; preserve it exact as predictor base */
+                lastpns = coder->sf[i];
+                is_first_pns = 0;
+            }
+            else
+            {
+                int diff = clamp_sf_diff(coder->sf[i] - lastpns);
+                /* At low quality, smooth PNS noise energy across adjacent bands
+                 * so delta codes favor cheap 0-deltas (1 bit in book12). */
+                if (aacquantCfg->quality <= 30.0f)
+                {
+                    int smoothed = lrintf(0.5f * (float)coder->sf[i] + 0.5f * (float)lastpns);
+                    diff = clamp_sf_diff(smoothed - lastpns);
+                    if (abs(diff) <= 1)
+                        diff = 0;
+                }
+                lastpns += diff;
+                coder->sf[i] = lastpns;
+            }
         }
     }
     if (coder->partner)

@@ -655,6 +655,15 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Tool Allocation     : M/S     = %5.1f%% | I/S = %5.1f%% | PNS = %5.1f%% | TNS = %5.1f%%\n",
                     ms, is, pns, tns);
         }
+        if (g_faacStats.totalFrames > 0)
+        {
+            double total_sf = g_faacStats.totalSfBits / (double)g_faacStats.totalFrames;
+            double norm_sf = g_faacStats.normalSfBits / (double)g_faacStats.totalFrames;
+            double pns_sf = g_faacStats.pnsSfBits / (double)g_faacStats.totalFrames;
+            double is_sf = g_faacStats.isSfBits / (double)g_faacStats.totalFrames;
+            fprintf(stderr, " Scalefactor Bits    : Total = %6.1f bits/frame (Normal = %5.1f, PNS = %5.1f, IS = %5.1f)\n",
+                    total_sf, norm_sf, pns_sf, is_sf);
+        }
         RateControlStatsPrint(stderr);
         fprintf(stderr, "---------------------------\n");
     }

@@ -35,6 +35,11 @@ typedef struct faacEncStats {
     unsigned long isBands;
     unsigned long pnsBands;
 
+    unsigned long totalSfBits;
+    unsigned long normalSfBits;
+    unsigned long pnsSfBits;
+    unsigned long isSfBits;
+
     unsigned int longBlocks;
     unsigned int longBlocksTNS;
 

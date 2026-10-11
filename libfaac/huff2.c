@@ -22,6 +22,7 @@
 #include "huff2.h"
 #include "bitstream.h"
 #include "util.h"
+#include "stats.h"
 
 /* Escape coding for HCB_ESC as per ISO/IEC 14496-3.
  * Represents values |q| >= 16 by sending 16 plus an escape suffix. */
@@ -355,6 +356,12 @@ int writesf(CoderInfo *coder, BitStream *stream)
         if (book == HCB_INTENSITY || book == HCB_INTENSITY2) {
             diff = clamp_sf_diff(val - lastis);
             lastis += diff;
+            code = book12[SF_DELTA + diff].data;
+            len = book12[SF_DELTA + diff].len;
+#ifdef FAAC_STATS
+            g_faacStats.isSfBits += len;
+            g_faacStats.totalSfBits += len;
+#endif
         } else if (book == HCB_PNS) {
             diff = val - lastpns;
             if (is_first_pns) {
@@ -364,17 +371,31 @@ int writesf(CoderInfo *coder, BitStream *stream)
                 bits += 9;
                 lastpns = val;
                 is_first_pns = 0;
+#ifdef FAAC_STATS
+                g_faacStats.pnsSfBits += 9;
+                g_faacStats.totalSfBits += 9;
+#endif
                 continue;
             }
             diff = clamp_sf_diff(diff);
             lastpns += diff;
+            code = book12[SF_DELTA + diff].data;
+            len = book12[SF_DELTA + diff].len;
+#ifdef FAAC_STATS
+            g_faacStats.pnsSfBits += len;
+            g_faacStats.totalSfBits += len;
+#endif
         } else {
             diff = clamp_sf_diff(val - lastsf);
             lastsf += diff;
+            code = book12[SF_DELTA + diff].data;
+            len = book12[SF_DELTA + diff].len;
+#ifdef FAAC_STATS
+            g_faacStats.normalSfBits += len;
+            g_faacStats.totalSfBits += len;
+#endif
         }
 
-        code = book12[SF_DELTA + diff].data;
-        len = book12[SF_DELTA + diff].len;
         AccumPutBits(&acc, (uint32_t)code, len);
         bits += len;
     }
