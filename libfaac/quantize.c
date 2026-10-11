@@ -511,64 +511,51 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     int lastis = 0, lastpns = coder->global_gain - SF_PNS_OFFSET;
 
-    /* PNS/IS side-info smoothing activates only when quality is floored near MINQUAL (quality < 1.25).
-     * Bypassing this block for normal quality (>= 1.25) provides a zero-overhead fast path. */
-    if (aacquantCfg->quality < 1.25f)
-    {
-        float q_factor = (1.25f - aacquantCfg->quality) * (1.0f / (1.25f - (float)MINQUAL));
-        if (q_factor > 1.0f) q_factor = 1.0f;
-        int is_tol = (int)(2.0f * q_factor + 0.5f);
-        int pns_tol = (int)(1.0f * q_factor + 0.5f);
-        float pns_alpha = 0.25f * q_factor;
-        int is_first_pns = 1;
+    int is_first_pns = 1;
 
-        for (i = 0; i < coder->bandcnt; i++)
+    /* PNS/IS side-info smoothing activates only on stationary long blocks near the MINQUAL floor (quality < 1.25).
+     * Short window transient blocks (glockenspiel, castanets) are preserved exact to protect attack fidelity and MOS. */
+    float q_factor = (coder->block_type == ONLY_LONG_WINDOW && aacquantCfg->quality < 1.25f)
+        ? (1.25f - aacquantCfg->quality) * (1.0f / (1.25f - (float)MINQUAL))
+        : 0.0f;
+    if (q_factor > 1.0f) q_factor = 1.0f;
+
+    int is_tol = (int)(2.0f * q_factor + 0.5f);
+    int pns_tol = (int)(1.0f * q_factor + 0.5f);
+    float pns_alpha = 0.25f * q_factor;
+
+    for (i = 0; i < coder->bandcnt; i++)
+    {
+        int b = coder->book[i];
+        float freq_frac = (coder->bandcnt > 1) ? ((float)i / (float)(coder->bandcnt - 1)) : 0.0f;
+        int is_high_freq = (freq_frac >= 0.35f);
+
+        if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
         {
-            int b = coder->book[i];
-            if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
+            int diff = clamp_sf_diff(coder->sf[i] - lastis);
+            if (q_factor > 0.0f && is_high_freq && is_tol > 0 && abs(diff) <= is_tol)
+                diff = 0;
+            lastis += diff;
+            coder->sf[i] = lastis;
+        }
+        else if (b == HCB_PNS)
+        {
+            if (is_first_pns)
             {
-                int diff = clamp_sf_diff(coder->sf[i] - lastis);
-                if (is_tol > 0 && abs(diff) <= is_tol)
-                    diff = 0;
-                lastis += diff;
-                coder->sf[i] = lastis;
+                /* First PNS band encodes absolute energy; preserve it exact as predictor base */
+                lastpns = coder->sf[i];
+                is_first_pns = 0;
             }
-            else if (b == HCB_PNS)
+            else
             {
-                if (is_first_pns)
+                int diff = clamp_sf_diff(coder->sf[i] - lastpns);
+                if (q_factor > 0.0f && is_high_freq && pns_alpha > 0.0f)
                 {
-                    /* First PNS band encodes absolute energy; preserve it exact as predictor base */
-                    lastpns = coder->sf[i];
-                    is_first_pns = 0;
-                }
-                else
-                {
-                    int diff = clamp_sf_diff(coder->sf[i] - lastpns);
                     int smoothed = lrintf((1.0f - pns_alpha) * (float)coder->sf[i] + pns_alpha * (float)lastpns);
                     diff = clamp_sf_diff(smoothed - lastpns);
                     if (pns_tol > 0 && abs(diff) <= pns_tol)
                         diff = 0;
-                    lastpns += diff;
-                    coder->sf[i] = lastpns;
                 }
-            }
-        }
-    }
-    else
-    {
-        /* Fast normal path: zero extra calculations or branching */
-        for (i = 0; i < coder->bandcnt; i++)
-        {
-            int b = coder->book[i];
-            if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
-            {
-                int diff = clamp_sf_diff(coder->sf[i] - lastis);
-                lastis += diff;
-                coder->sf[i] = lastis;
-            }
-            else if (b == HCB_PNS)
-            {
-                int diff = clamp_sf_diff(coder->sf[i] - lastpns);
                 lastpns += diff;
                 coder->sf[i] = lastpns;
             }
