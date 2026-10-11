@@ -328,14 +328,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Only VBR reaches here without a bandwidth: ABR derived its own above. */
     if (!config->bandWidth) {
         if (hEncoder->sampleRate > 48000) {
-            unsigned int max_bw = (unsigned int)(hEncoder->sampleRate / 2);
-            if (config->quantqual >= DEFQUAL) {
-                config->bandWidth = max_bw;
-            } else {
-                float factor = (float)config->quantqual / (float)DEFQUAL;
-                if (factor < 0.0f) factor = 0.0f;
-                config->bandWidth = BANDWIDTH_CEILING + (unsigned int)((float)(max_bw - BANDWIDTH_CEILING) * factor);
-            }
+            config->bandWidth = (unsigned int)(hEncoder->sampleRate / 2);
         } else {
             config->bandWidth = BANDWIDTH_CEILING;
         }
