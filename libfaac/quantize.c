@@ -511,14 +511,26 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     int lastis = 0, lastpns = coder->global_gain - SF_PNS_OFFSET;
     int is_first_pns = 1;
+    /* PNS/IS side-info smoothing activates only near the MINQUAL floor (quality <= 10.0),
+     * where rate control is floored and bit budget is exhausted. At normal quality levels (> 10.0),
+     * q_factor is 0.0, leaving PNS noise energies and IS positions exact and preserving MOS quality. */
+    float q_factor = (aacquantCfg->quality < 10.0f)
+        ? (10.0f - aacquantCfg->quality) / (10.0f - (float)MINQUAL)
+        : 0.0f;
+    if (q_factor > 1.0f) q_factor = 1.0f;
+
+    int is_tol = (int)(2.0f * q_factor + 0.5f);
+    int pns_tol = (int)(1.0f * q_factor + 0.5f);
+    float pns_alpha = 0.5f * q_factor;
+
     for (i = 0; i < coder->bandcnt; i++)
     {
         int b = coder->book[i];
         if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
         {
             int diff = clamp_sf_diff(coder->sf[i] - lastis);
-            /* Repeat intensity position when change is within tolerance at low quality */
-            if (aacquantCfg->quality <= 30.0f && abs(diff) <= 2)
+            /* Repeat intensity position when change is within quality-scaled tolerance */
+            if (is_tol > 0 && abs(diff) <= is_tol)
                 diff = 0;
             lastis += diff;
             coder->sf[i] = lastis;
@@ -534,13 +546,11 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             else
             {
                 int diff = clamp_sf_diff(coder->sf[i] - lastpns);
-                /* At low quality, smooth PNS noise energy across adjacent bands
-                 * so delta codes favor cheap 0-deltas (1 bit in book12). */
-                if (aacquantCfg->quality <= 30.0f)
+                if (pns_alpha > 0.0f)
                 {
-                    int smoothed = lrintf(0.5f * (float)coder->sf[i] + 0.5f * (float)lastpns);
+                    int smoothed = lrintf((1.0f - pns_alpha) * (float)coder->sf[i] + pns_alpha * (float)lastpns);
                     diff = clamp_sf_diff(smoothed - lastpns);
-                    if (abs(diff) <= 1)
+                    if (pns_tol > 0 && abs(diff) <= pns_tol)
                         diff = 0;
                 }
                 lastpns += diff;
