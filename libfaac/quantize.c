@@ -521,7 +521,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     int is_tol = (int)(2.0f * q_factor + 0.5f);
     int pns_tol = (int)(1.0f * q_factor + 0.5f);
-    float pns_alpha = 0.5f * q_factor;
+    float pns_alpha = 0.25f * q_factor;
 
     for (i = 0; i < coder->bandcnt; i++)
     {
