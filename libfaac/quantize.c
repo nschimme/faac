@@ -510,49 +510,65 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     }
 
     int lastis = 0, lastpns = coder->global_gain - SF_PNS_OFFSET;
-    int is_first_pns = 1;
-    /* PNS/IS side-info smoothing activates only when quality is clamped near the MINQUAL floor (quality <= 2.0),
-     * where rate control is floored and bit budget is exhausted. At normal quality levels (> 2.0),
-     * q_factor is 0.0, leaving PNS noise energies and IS positions exact and preserving MOS quality across all rates. */
-    float q_factor = (aacquantCfg->quality < 2.0f)
-        ? (2.0f - aacquantCfg->quality) / (2.0f - (float)MINQUAL)
-        : 0.0f;
-    if (q_factor > 1.0f) q_factor = 1.0f;
 
-    int is_tol = (int)(2.0f * q_factor + 0.5f);
-    int pns_tol = (int)(1.0f * q_factor + 0.5f);
-    float pns_alpha = 0.25f * q_factor;
-
-    for (i = 0; i < coder->bandcnt; i++)
+    /* PNS/IS side-info smoothing activates only when quality is floored near MINQUAL (quality < 1.25).
+     * Bypassing this block for normal quality (>= 1.25) provides a zero-overhead fast path. */
+    if (aacquantCfg->quality < 1.25f)
     {
-        int b = coder->book[i];
-        if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
+        float q_factor = (1.25f - aacquantCfg->quality) * (1.0f / (1.25f - (float)MINQUAL));
+        if (q_factor > 1.0f) q_factor = 1.0f;
+        int is_tol = (int)(2.0f * q_factor + 0.5f);
+        int pns_tol = (int)(1.0f * q_factor + 0.5f);
+        float pns_alpha = 0.25f * q_factor;
+        int is_first_pns = 1;
+
+        for (i = 0; i < coder->bandcnt; i++)
         {
-            int diff = clamp_sf_diff(coder->sf[i] - lastis);
-            /* Repeat intensity position when change is within quality-scaled tolerance */
-            if (is_tol > 0 && abs(diff) <= is_tol)
-                diff = 0;
-            lastis += diff;
-            coder->sf[i] = lastis;
-        }
-        else if (b == HCB_PNS)
-        {
-            if (is_first_pns)
+            int b = coder->book[i];
+            if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
             {
-                /* First PNS band encodes absolute energy; preserve it exact as predictor base */
-                lastpns = coder->sf[i];
-                is_first_pns = 0;
+                int diff = clamp_sf_diff(coder->sf[i] - lastis);
+                if (is_tol > 0 && abs(diff) <= is_tol)
+                    diff = 0;
+                lastis += diff;
+                coder->sf[i] = lastis;
             }
-            else
+            else if (b == HCB_PNS)
             {
-                int diff = clamp_sf_diff(coder->sf[i] - lastpns);
-                if (pns_alpha > 0.0f)
+                if (is_first_pns)
                 {
+                    /* First PNS band encodes absolute energy; preserve it exact as predictor base */
+                    lastpns = coder->sf[i];
+                    is_first_pns = 0;
+                }
+                else
+                {
+                    int diff = clamp_sf_diff(coder->sf[i] - lastpns);
                     int smoothed = lrintf((1.0f - pns_alpha) * (float)coder->sf[i] + pns_alpha * (float)lastpns);
                     diff = clamp_sf_diff(smoothed - lastpns);
                     if (pns_tol > 0 && abs(diff) <= pns_tol)
                         diff = 0;
+                    lastpns += diff;
+                    coder->sf[i] = lastpns;
                 }
+            }
+        }
+    }
+    else
+    {
+        /* Fast normal path: zero extra calculations or branching */
+        for (i = 0; i < coder->bandcnt; i++)
+        {
+            int b = coder->book[i];
+            if (b == HCB_INTENSITY || b == HCB_INTENSITY2)
+            {
+                int diff = clamp_sf_diff(coder->sf[i] - lastis);
+                lastis += diff;
+                coder->sf[i] = lastis;
+            }
+            else if (b == HCB_PNS)
+            {
+                int diff = clamp_sf_diff(coder->sf[i] - lastpns);
                 lastpns += diff;
                 coder->sf[i] = lastpns;
             }
