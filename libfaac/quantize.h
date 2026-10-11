@@ -18,8 +18,6 @@
 
 #include "coder.h"
 
-#include <stdint.h>
-
 typedef struct
 {
     float quality;
@@ -28,7 +26,6 @@ typedef struct
     int max_l;
     int pnslevel;
     float treble_slope;
-    uint32_t sample_rate;
 } AACQuantCfg;
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054f minimizes average
