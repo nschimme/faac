@@ -197,18 +197,25 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   memcpy(transBuff, p_lookahead1, BLOCK_LEN_LONG * sizeof(float));
   memcpy(transBuff + BLOCK_LEN_LONG, p_lookahead2, BLOCK_LEN_LONG * sizeof(float));
 
-  /* Sub-block windows are 256 samples at a 128 hop, so each 128-sample half
-   * serves two windows: sum every half once. seg[-1] is in bounds (the first
-   * block starts >= 448 samples in), so the first difference carries across the
-   * block boundary instead of resetting. */
+  /* Sub-block windows span 5.3 ms (256 samples at 48 kHz) at a 128-sample hop,
+   * so each 128-sample half serves several windows: sum every half once. Above
+   * 48 kHz the window holds proportionally more halves so that it spans the
+   * same time, because a shorter window lets a bass note's phase swing the
+   * first-difference energy and trips short blocks on stationary material.
+   * seg[-1] is in bounds (the first block starts >= 448 samples in), so the
+   * first difference carries across the block boundary instead of resetting. */
   {
-    const float *seg = transBuff + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
-    float pe = 0.0f, pt = 0.0f;
-    int l;
+    int halves = (gpsyInfo->sampleRate > 48000.0f)
+                 ? 2 * (int)(gpsyInfo->sampleRate / 48000.0f + 0.5f) : 2;
+    float hist[8] = {0.0f};
+    float pt = 0.0f;
+    const float *seg = transBuff + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2
+                       - (halves - 2) * BLOCK_LEN_SHORT;
+    int idx, i, l;
 
-    for (win = 0; win <= SUBBLOCKS_PER_FRAME; win++, seg += BLOCK_LEN_SHORT)
+    for (idx = -(halves - 2); idx <= SUBBLOCKS_PER_FRAME; idx++, seg += BLOCK_LEN_SHORT)
     {
-      float de = 0.0f, dt = 0.0f;
+      float de = 0.0f, dt = 0.0f, e;
 
       for (l = 0; l < BLOCK_LEN_SHORT; l++)
       {
@@ -220,12 +227,20 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
         for (l = 0; l < BLOCK_LEN_SHORT; l++)
           dt += seg[l] * seg[l];
 
-      if (win)
-      {
-        float e = pe + de;
-        int trip = e > gpsyInfo->levelRatio * level || e * gpsyInfo->dropRatio < level;
+      for (i = 0; i < halves - 1; i++)
+        hist[i] = hist[i + 1];
+      hist[halves - 1] = de;
 
-        psydata->eng[ENG_WIN_NEXT + win - 1] = (psyfloat)e;
+      if (idx >= 1)
+      {
+        int trip;
+
+        e = hist[0];
+        for (i = 1; i < halves; i++)
+          e += hist[i];
+        trip = e > gpsyInfo->levelRatio * level || e * gpsyInfo->dropRatio < level;
+
+        psydata->eng[ENG_WIN_NEXT + idx - 1] = (psyfloat)e;
         if (gpsyInfo->bassDom > 0.0f)
         {
           /* The LC band is wider than the HE one, so a sub-block that does not
@@ -240,10 +255,9 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
             trip = 1;
         }
         if (trip)
-          psydata->attack |= 1u << (ENG_WIN_NEXT + win - 1);
+          psydata->attack |= 1u << (ENG_WIN_NEXT + idx - 1);
         level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
       }
-      pe = de;
       pt = dt;
     }
   }
