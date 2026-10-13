@@ -14,10 +14,11 @@ FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeli
 
 - `faac` writes MP4/M4A with gapless playback info, as well as raw ADTS
 - WAV and raw PCM input, with stdin/stdout piping
+- `faam` muxes, demuxes and tags MP4/M4A/M4B (AAC, H.264/H.265)
 
 ## Copyrights
 
-FAAC is free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
+FAAC and FAAM are free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
 
 ```
 FAAC - Freeware Advanced Audio Coder
@@ -55,16 +56,22 @@ Lesser General Public License for more details.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `frontend` | true | Build the `faac` command-line tool |
-| `frontend-static` | false | Link the frontend executables to the static libfaac library |
+| `encoder` | true | Build `libfaac` and the `faac` frontend |
+| `frontend` | true | Build the command-line tools |
+| `frontend-static` | false | Link the frontend executables to the static libraries (libfaac, libfaam) |
 | `max-channels` | 8 | Maximum number of channels (1-8) |
+| `muxer` | true | Build the `faam` command-line tool |
+| `muxer-video` | true | `libfaam`: H.264/H.265 video tracks |
+| `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
 | `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
 
-Library integration: [FAAC encoder API](docs/libfaac.md).
+Library integration: [FAAC encoder API](docs/libfaac.md) and [FAAM MP4 muxer/demuxer API](docs/libfaam.md).
 
 ## Usage
 
 ```bash
 faac input.wav -o output.m4a        # encode
+faam -i output.aac -o output.m4a    # mux ADTS into MP4
+faam tag output.m4a --title Song    # edit tags in place
 ```

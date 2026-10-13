@@ -1,5 +1,5 @@
 project('faac', 'c',
-    version: '2.2.0',
+    version: '3.0.0',
     default_options: [
         'default_library=both',
         'buildtype=release',
@@ -39,7 +39,7 @@ config_h.set('MAX_CHANNELS', get_option('max-channels'))
 
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
-    c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']
+    c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL']
 endif
 
 configure_file(
@@ -57,7 +57,10 @@ endif
 
 subdir('docs')
 subdir('include')
-subdir('libfaac')
+if get_option('encoder')
+    subdir('libfaac')
+endif
+subdir('libfaam')
 
 if get_option('frontend')
     subdir('frontend')

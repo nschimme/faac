@@ -28,6 +28,7 @@
 #include "mp4write.h"
 #ifdef _WIN32
 #include "charset.h"
+#include "cli_io.h"
 #endif
 #include "endian.h"
 

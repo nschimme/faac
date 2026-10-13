@@ -29,6 +29,7 @@
 #include "resource.h"
 #include "output.h"
 #include "charset.h"
+#include "cli_io.h"
 #include "encode_engine.h"
 
 #define WM_USER_PROGRESS    (WM_USER + 101)
