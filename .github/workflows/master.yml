@@ -147,7 +147,13 @@ jobs:
               echo "Unexpected FAAC/FAAD/FAAM DLL dependency in $exe" >&2
               exit 1
             fi
+            # A static link must not re-export the libraries' API from the program.
+            if objdump -p "$exe" | grep -E 'fa(ac|ad|am)_[a-z]'; then
+              echo "Unexpected FAAC/FAAD/FAAM export in $exe" >&2
+              exit 1
+            fi
           done
+          meson test link_faac_shared link_faac_static link_faad_shared link_faad_static link_faam_shared link_faam_static --print-errorlogs
           # Keep the shared library in the package for applications that link to libfaac.
           compgen -G '../temp/bin/*faac*.dll' > /dev/null
 
@@ -159,6 +165,10 @@ jobs:
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
 
+      - name: Test (General)
+        if: matrix.config.shell != 'msys2 {0}' && matrix.config.compiler != 'cl' && !contains(matrix.config.options, 'm32')
+        run: meson test -C build --print-errorlogs
+
       - name: Build (MSVC)
         if: matrix.config.compiler == 'cl'
         run: |
@@ -169,7 +179,12 @@ jobs:
             $imports = dumpbin /DEPENDENTS "temp/bin/$exe"
             if ($LASTEXITCODE -ne 0) { throw "Cannot inspect $exe imports" }
             if ($imports -match 'fa(ac|ad|am).*\.dll') { throw "$exe imports a FAAC/FAAD/FAAM DLL" }
+            $exports = dumpbin /EXPORTS "temp/bin/$exe"
+            if ($LASTEXITCODE -ne 0) { throw "Cannot inspect $exe exports" }
+            if ($exports -match 'fa(ac|ad|am)_[a-z]') { throw "$exe exports a FAAC/FAAD/FAAM function" }
           }
+          meson test -C build link_faac_shared link_faac_static link_faad_shared link_faad_static link_faam_shared link_faam_static --print-errorlogs
+          if ($LASTEXITCODE -ne 0) { throw 'link checks failed' }
           if (-not (Get-ChildItem 'temp/bin/*faac*.dll')) { throw 'FAAC DLL is missing from the package' }
 
       - name: Upload artifacts (Windows)
