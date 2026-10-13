@@ -64,10 +64,16 @@ extern "C" {
 #define FAAC_VERSION_HEX \
     ((FAAC_VERSION_MAJOR << 16) | (FAAC_VERSION_MINOR << 8) | FAAC_VERSION_PATCH)
 
-/* Export/visibility marker. */
+/* Export/visibility marker. Only the DLL build (FAAC_BUILDING) exports on
+ * Windows. No dllimport: the API has no data, so consumers of the DLL and of
+ * the static library link the same way with no define. */
 #ifndef FAACAPI
 # if defined(_WIN32)
-#  define FAACAPI __declspec(dllexport)
+#  ifdef FAAC_BUILDING
+#   define FAACAPI __declspec(dllexport)
+#  else
+#   define FAACAPI
+#  endif
 # elif defined(__GNUC__) && (__GNUC__ >= 4)
 #  define FAACAPI __attribute__((visibility("default")))
 # else
