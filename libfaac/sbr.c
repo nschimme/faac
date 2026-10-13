@@ -20,6 +20,7 @@
 
 #include "sbr.h"
 #include "sbr_tables.h"
+#include "sbr_huff_tables.h"
 #include "util.h"
 #include "sbr_analysis.h"
 #include "resample.h"

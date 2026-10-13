@@ -13,19 +13,17 @@
  * Lesser General Public License for more details.
  */
 
-/* SBR tables: QMF prototype filter, frequency-band offsets, Huffman tables.
+/* SBR envelope Huffman tables.
  * All values are normative data from ISO/IEC 14496-3:2005. */
 
-#ifndef SBR_TABLES_H
-#define SBR_TABLES_H
+#ifndef SBR_HUFF_TABLES_H
+#define SBR_HUFF_TABLES_H
 
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef float sbrfloat;
 
 /* Time-delta envelope codes, central entries only: a wider jump always costs
  * less as frequency deltas, so the encoder never needs the rest. */
@@ -35,9 +33,6 @@ typedef float sbrfloat;
  * frequency-delta entries, each book followed by its 13 time-delta ones. */
 #define SBR_ENV_CODES_LEN (121 + 63 + 49 + 25 + 4 * (2 * T_HUFF_ENV_LAV + 1))
 
-/* First 384 taps; the remaining taps are mirrored by SbrQmfAnalysis. */
-extern const sbrfloat qmf_c[384];
-extern const int8_t sbr_offset[6][16];
 /* Packed low six code bits and five length bits; see SBR_CODE. */
 extern const uint16_t sbr_env_codes[SBR_ENV_CODES_LEN];
 
@@ -45,4 +40,4 @@ extern const uint16_t sbr_env_codes[SBR_ENV_CODES_LEN];
 }
 #endif
 
-#endif /* SBR_TABLES_H */
+#endif /* SBR_HUFF_TABLES_H */
