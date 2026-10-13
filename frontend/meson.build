@@ -18,9 +18,8 @@ git_version_h = vcs_tag(
 # them a file past 2 GiB cannot be opened.
 c_args_list = (has_iconv ? ['-DHAVE_ICONV'] : []) + ['-D_FILE_OFFSET_BITS=64']
 
-libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
-
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
+libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
 
 frontend_common = static_library('frontend_common',
     ['input.c', 'cli_io.c', 'charset.c', 'help.c',
@@ -37,6 +36,7 @@ frontend_common_dep = declare_dependency(
 
 if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
+
     libfrontend = static_library('frontend',
         ['mp4write.c', 'output.c', 'encode_engine.c', 'progress.c',
          'mp4write.h', 'progress.h', 'output.h', 'encode_engine.h'],
@@ -46,7 +46,8 @@ if get_option('encoder')
 
     faac = executable('faac',
         ['main.c'],
-        include_directories: ['..', '../include', '../common'],
+        c_args: c_args_list,
+        include_directories: ['..', '../include', common_inc],
         link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
         dependencies: [libshell32],
         install: true
@@ -59,7 +60,8 @@ if get_option('encoder')
         libcomctl32 = cc.find_library('comctl32', required: true)
         faacgui = executable('faacgui',
             ['maingui.c', 'resource.h'] + resource_src,
-            include_directories: ['..', '../include', '../common'],
+            c_args: c_args_list,
+            include_directories: ['..', '../include', common_inc],
             link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
             dependencies: [libcomctl32],
             win_subsystem: 'windows',
@@ -68,7 +70,27 @@ if get_option('encoder')
     endif
 endif
 
+if get_option('decoder')
+    libfaad_for_frontend = get_option('frontend-static') ? libfaad_static : libfaad
+    gc_args = []
+    if cc.has_link_argument('-Wl,--gc-sections')
+        gc_args += ['-Wl,--gc-sections']
+    elif cc.has_link_argument('-Wl,-dead_strip')
+        gc_args += ['-Wl,-dead_strip']
+    endif
+    faad = executable('faad',
+        ['faad_main.c', 'mp4read.c', 'adts.c'],
+        link_with: [libfaad_for_frontend],
+        link_args: gc_args,
+        dependencies: [libshell32, frontend_common_dep],
+        install: true
+    )
+endif
+
 if get_option('muxer')
+    # Large-file semantics on 32-bit POSIX for every fopen() and stat() in faam, cli_io.c's
+    # included: without them a file past 2 GiB cannot be opened, and cli_same_file() could not
+    # see it.
     faam = executable('faam',
         ['faam_main.c', 'adts.c', 'annexb.c',
          'adts.h', 'annexb.h'],
