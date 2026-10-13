@@ -111,12 +111,12 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 
 // masking target per scalefactor band: 0 marks a band inaudible
 #define SILENCE_RMS            0.4f     // per-sample RMS gate for silence
-#define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
+#define AVG_ENERGY_WEIGHT      0.10f    // noise-like (average-energy) share of the target
 #define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
 #define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
-#define AVG_ENERGY_FLOOR_FRAC  0.0010f  // -30 dB floor, keeps quiet bands from collapsing the target
+#define AVG_ENERGY_FLOOR_FRAC  0.0020f  // -27 dB floor, keeps quiet bands from collapsing the target
 #define SF_SMOOTH              0.6f     // long-block pull of each scalefactor towards its neighbours
-#define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
+#define PEAK_ENERGY_FLOOR_FRAC 0.0200f  // -17 dB floor, same purpose for peak energy
 #define QUIET_BAND_FRAC        0.0003f  // ~-35 dB below the frame mean: masked by the frame as a whole
 
 typedef struct
