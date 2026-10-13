@@ -18,16 +18,17 @@ git_version_h = vcs_tag(
 # them a file past 2 GiB cannot be opened.
 c_args_list = (has_iconv ? ['-DHAVE_ICONV'] : []) + ['-D_FILE_OFFSET_BITS=64']
 
+libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
+
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
 
 if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
-
     libfrontend = static_library('frontend',
         ['input.c', 'mp4write.c', 'cli_io.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c',
          'input.h', 'mp4write.h', 'cli_io.h', 'charset.h', 'progress.h', 'help.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
         include_directories: ['..', '../include', '../common'],
-        link_with: libfaac_for_frontend,
+        link_with: [libfaac_for_frontend, libfaam_for_frontend],
         c_args: c_args_list,
         dependencies: [libiconv]
     )
@@ -35,7 +36,7 @@ if get_option('encoder')
     faac = executable('faac',
         ['main.c'],
         include_directories: ['..', '../include', '../common'],
-        link_with: [libfaac_for_frontend, libfrontend],
+        link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
         dependencies: [libshell32],
         install: true
     )
@@ -48,15 +49,13 @@ if get_option('encoder')
         faacgui = executable('faacgui',
             ['maingui.c', 'resource.h'] + resource_src,
             include_directories: ['..', '../include', '../common'],
-            link_with: [libfaac_for_frontend, libfrontend],
+            link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
             dependencies: [libcomctl32],
             win_subsystem: 'windows',
             install: true
         )
     endif
 endif
-
-libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
 
 if get_option('muxer')
     faam = executable('faam',

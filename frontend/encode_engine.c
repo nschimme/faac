@@ -509,6 +509,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (!infile)
         FAIL("Couldn't open input file %s\n", opts->input_filename);
 
+    if (opts->ignore_wav_length) infile->bounded_data = false;
+
     uint32_t sample_rate = infile->samplerate;
     uint16_t num_channels = (uint16_t)infile->channels;
 
@@ -594,7 +596,17 @@ int run_encoding_session_ext(const encode_options_t *opts,
        (pre-SBR) rate, half the reconstructed output rate. */
     rate_conv_t rc = { .div = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? 2 : 1 };
 
-    pcmbuf = malloc(samples_per_frame * sizeof(float));
+    enum { NATIVE_READ_AHEAD_FRAMES = 8 };
+    bool native_read_ahead = native && infile->f != stdin;
+    size_t pcm_bytes = (size_t)samples_per_frame * sizeof(float);
+    size_t native_batch_samples = 0;
+    size_t native_batch_offset = 0;
+    if (native_read_ahead) {
+        size_t batch_bytes = (size_t)samples_per_frame * NATIVE_READ_AHEAD_FRAMES * infile->samplebytes;
+        if (batch_bytes > pcm_bytes)
+            pcm_bytes = batch_bytes;
+    }
+    pcmbuf = malloc(pcm_bytes);
     bitbuf = malloc(max_output_bytes * sizeof(unsigned char));
 
     if (!pcmbuf || !bitbuf)
@@ -620,6 +632,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             access(opts->output_filename, 0) == 0)
 #endif
             FAIL("Output file %s already exists (use --overwrite)\n", opts->output_filename);
+        mp4_set_faststart(opts->faststart);
         if (mp4_open(opts->output_filename, opts->overwrite) != 0)
             FAIL("Couldn't create MP4 output file %s\n", opts->output_filename);
         mp4_is_open = true;
@@ -701,29 +714,35 @@ int run_encoding_session_ext(const encode_options_t *opts,
     for (;;)
     {
         int bytes_written = 0;
+        const void *input_pcm = pcmbuf;
 
         if (!input_eof)
         {
-            if (!opts->ignore_wav_length)
-            {
-                if (current_input_samples < total_input_samples || total_input_samples == 0)
-                {
-                    samples_read = (int)read_pcm();
+            bool should_read = opts->ignore_wav_length ||
+                               current_input_samples < total_input_samples ||
+                               total_input_samples == 0;
+            if (!should_read) {
+                samples_read = 0;
+            } else if (native_read_ahead) {
+                if (native_batch_offset == native_batch_samples) {
+                    native_batch_samples = wav_read_native(
+                        infile, pcmbuf, samples_per_frame * NATIVE_READ_AHEAD_FRAMES);
+                    native_batch_offset = 0;
                 }
-                else
-                {
-                    samples_read = 0;
-                }
-
-                if (total_input_samples > 0 &&
-                    current_input_samples + (samples_read / num_channels) > total_input_samples)
-                {
-                    samples_read = (int)((total_input_samples - current_input_samples) * num_channels);
-                }
-            }
-            else
-            {
+                samples_read = (int)(native_batch_samples - native_batch_offset);
+                if ((unsigned long)samples_read > samples_per_frame)
+                    samples_read = (int)samples_per_frame;
+                input_pcm = (const unsigned char *)pcmbuf +
+                            native_batch_offset * infile->samplebytes;
+                native_batch_offset += (size_t)samples_read;
+            } else {
                 samples_read = (int)read_pcm();
+            }
+
+            if (!opts->ignore_wav_length && total_input_samples > 0 &&
+                current_input_samples + (samples_read / num_channels) > total_input_samples)
+            {
+                samples_read = (int)((total_input_samples - current_input_samples) * num_channels);
             }
 
             if (samples_read == 0)
@@ -734,7 +753,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
         uint32_t nbytes = 0;
         faac_status st = faac_encoder_encode(hEncoder,
-                                             input_eof ? NULL : pcmbuf,
+                                             input_eof ? NULL : input_pcm,
                                              input_eof ? 0 : (uint32_t)samples_read,
                                              bitbuf,
                                              (uint32_t)max_output_bytes,

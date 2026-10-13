@@ -86,6 +86,7 @@ enum flags
     OPT_COMPILATION,
     OPT_IGNORE_LENGTH,
     OPT_NO_ENCODER_INFO,
+    OPT_FASTSTART,
     LANG_FLAG
 };
 
@@ -146,7 +147,7 @@ static const help_t help_io[] = {
      "Input channel config, default is 3,4 (Center third, LFE fourth)",
      "Input multichannel configuration (default: 3,4 which means Center is third and LFE is fourth like in 5.1 WAV, so you only have to specify a different position of these two mono channels in your multichannel input files if they haven't been reordered already)."},
     {"--ignorelength",
-     "Ignore wav length from header (useful with files over 4 GB)",
+     "Ignore the WAV data length in the header and read to EOF (for an incorrect length; not required for RF64)",
      NULL},
     {"--overwrite",
      "Overwrite existing output file",
@@ -188,7 +189,7 @@ static const help_t help_mp4[] = {
      "Set year", NULL},
     {"--cover-art <filename>",
      "Read cover art from <filename>",
-     "Supported image formats are GIF, JPEG, and PNG."},
+     "Supported image formats are GIF, JPEG, PNG, and BMP."},
     {"--comment <string>",
      "Set comment", NULL},
     {"--lang <code3>",
@@ -197,6 +198,9 @@ static const help_t help_mp4[] = {
      "Set creation/modification time (auto, now, or timestamp)", NULL},
     {"--no-encoder-info",
      "Do not write the encoder tag (FAAC version and settings) to the MP4", NULL},
+    {"--faststart",
+     "Write the index before the audio so the file plays while it downloads",
+     "The file is rewritten when encoding ends, so this takes a little longer and needs a seekable, readable output."},
     {NULL, NULL, NULL}
 };
 
@@ -518,6 +522,7 @@ int main(int argc, char *argv[])
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {"cbr", 0, 0, CBR_FLAG},
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
+            {"faststart", 0, 0, OPT_FASTSTART},
             {0, 0, 0, 0}
         };
 
@@ -536,6 +541,7 @@ int main(int argc, char *argv[])
         case OPT_COMPILATION: opts.metadata.compilation = true; break;
         case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;
         case OPT_NO_ENCODER_INFO: opts.encoder_info = false; break;
+        case OPT_FASTSTART: opts.faststart = true; break;
         case 'L':
             if (libinfo.copyright)
                 fprintf(stderr, "%s", libinfo.copyright);
