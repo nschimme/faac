@@ -80,13 +80,12 @@
  * treble to save bits on. Both are measured, not derived. */
 #define FLATNESS_STRENGTH     0.15f
 #define FLATNESS_MIN_RATE     24000
-/* A coded step finer than this much 16-bit LSB noise resolves only what the
- * source's own quantization put there, so near-silence, dither and fade tails
- * stop costing the bits of music at the same relative level. Only 16-bit
- * input carries that floor: a 24-bit or float source holds real signal below
- * it, which a listener turning a quiet passage up would hear lost. One LSB of
- * white noise reads this much per MDCT line, measured per window type. */
-#define VBR_STEP_FLOOR        1.0f
+/* Absolute floor on the VBR step, in 16-bit LSB units. Constant relative
+ * quality otherwise spends the bits of loud music on dither, fade tails and
+ * near-silence; the reference encoder does not, at normal listening level.
+ * One LSB of white noise reads this much per MDCT line, measured per window
+ * type. */
+#define VBR_STEP_FLOOR        2.0f
 #define LSB_COEF_RMS_LONG     33.0f
 #define LSB_COEF_RMS_SHORT    15.0f
 
@@ -341,7 +340,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         unsigned long lines = (unsigned long)BANDWIDTH_CEILING * 2 * FRAME_LEN / hEncoder->sampleRate;
         hEncoder->aacquantCfg.flat_exp = (hEncoder->config.bitRate || outputRate < FLATNESS_MIN_RATE) ? 0.0f : FLATNESS_STRENGTH;
         hEncoder->aacquantCfg.flat_lines = (int)(lines > FRAME_LEN ? FRAME_LEN : lines);
-        int floored = !hEncoder->config.bitRate && hEncoder->config.inputFormat == INPUT_16BIT;
+        int floored = !hEncoder->config.bitRate;
         hEncoder->aacquantCfg.sf_cap = !floored ? INT_MAX
             : (int)lrintf(log10f(1.0f / (VBR_STEP_FLOOR * LSB_COEF_RMS_LONG)) * SF_STEP_AMPL);
         hEncoder->aacquantCfg.sf_cap_short = !floored ? INT_MAX
