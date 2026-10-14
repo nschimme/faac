@@ -23,6 +23,9 @@ endif
 if not get_option('decoder-ps') or not get_option('decoder-sbr') or get_option('max-channels') < 2
     faad_c_args += ['-DFAAD_DISABLE_PS']
 endif
+if not get_option('decoder-dab')
+    faad_c_args += ['-DFAAD_DISABLE_DAB']
+endif
 
 project_ver = meson.project_version()
 

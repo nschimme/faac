@@ -106,7 +106,11 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
     asc->is_ps = info.ps_present;
 
     if (frame_length) {
+#ifndef FAAD_DISABLE_DAB
         asc->frame_length_flag = true;
+#else
+        return FAAD_ERR_UNSUPPORTED;
+#endif
     }
 
     if (asc->object_type == FAAD_OBJ_LC || asc->object_type == FAAD_OBJ_HE_AAC_V1 ||
@@ -118,6 +122,7 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
     return FAAD_ERR_UNSUPPORTED;
 }
 
+#ifndef FAAD_DISABLE_DAB
 faad_status adif_decode_header(BitReader *bs, AudioSpecificConfig *asc)
 {
     if (!bs) return FAAD_ERR_INVALID_ARGUMENT;
@@ -185,6 +190,7 @@ faad_status adif_decode_header(BitReader *bs, AudioSpecificConfig *asc)
     }
     return FAAD_OK;
 }
+#endif
 
 faad_status adts_decode_header(BitReader *bs, AudioSpecificConfig *asc, uint32_t *frame_length)
 {

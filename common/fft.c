@@ -32,18 +32,34 @@
  * so every handle shares them. */
 
 /* Butterflies per transform: n/4 + n/16 + ... over the radix-4 stages. */
+#ifndef FAAD_DISABLE_DAB
 #define TW_5     (8 + 2)
+#else
+#define TW_5     0
+#endif
 #define TW_SHORT (16 + 4 + 1)
 #define TW_LONG  (128 + 32 + 8 + 2)
+
+#ifndef FAAD_DISABLE_DAB
 #define TW_OFFSET(logm) (6 * ((logm) == FFT_LOGM_5 ? 0 : ((logm) == FFT_LOGM_SHORT ? TW_5 : (TW_5 + TW_SHORT))))
+#else
+#define TW_OFFSET(logm) (6 * ((logm) == FFT_LOGM_SHORT ? 0 : TW_SHORT))
+#endif
+
 static fftfloat twiddles[6 * (TW_5 + TW_SHORT + TW_LONG)];
 
 void fft_init(void)
 {
+#ifndef FAAD_DISABLE_DAB
     static const unsigned char logms[3] = { FFT_LOGM_5, FFT_LOGM_SHORT, FFT_LOGM_LONG };
+    int num_logms = 3;
+#else
+    static const unsigned char logms[2] = { FFT_LOGM_SHORT, FFT_LOGM_LONG };
+    int num_logms = 2;
+#endif
     int t;
 
-    for (t = 0; t < 3; t++)
+    for (t = 0; t < num_logms; t++)
     {
         int logm = logms[t];
         int size = 1 << logm;
@@ -326,6 +342,7 @@ static inline void dft4(const float *ir, const float *ii, float *or, float *oi)
     or[3] = c_r - d_r; oi[3] = c_i - d_i;
 }
 
+#ifndef FAAD_DISABLE_DAB
 void fft60(float * restrict x, float * restrict y)
 {
     const float *xr = x, *xi = x + 60;
@@ -411,3 +428,4 @@ void fft480(float * restrict x, float * restrict y)
         }
     }
 }
+#endif

@@ -11,14 +11,18 @@
 #define fft COMMON_CAT(COMMON_PREFIX, fft)
 #define fft_init COMMON_CAT(COMMON_PREFIX, fft_init)
 #define num_sfbs_1024 COMMON_CAT(COMMON_PREFIX, num_sfbs_1024)
-#define num_sfbs_960 COMMON_CAT(COMMON_PREFIX, num_sfbs_960)
 #define num_sfbs_128 COMMON_CAT(COMMON_PREFIX, num_sfbs_128)
+#ifndef FAAD_DISABLE_DAB
+#define num_sfbs_960 COMMON_CAT(COMMON_PREFIX, num_sfbs_960)
 #define num_sfbs_120 COMMON_CAT(COMMON_PREFIX, num_sfbs_120)
+#endif
 #define qmf_c COMMON_CAT(COMMON_PREFIX, qmf_c)
 #define sbr_offset COMMON_CAT(COMMON_PREFIX, sbr_offset)
 #define sfb_offsets_1024 COMMON_CAT(COMMON_PREFIX, sfb_offsets_1024)
-#define sfb_offsets_960 COMMON_CAT(COMMON_PREFIX, sfb_offsets_960)
 #define sfb_offsets_128 COMMON_CAT(COMMON_PREFIX, sfb_offsets_128)
+#ifndef FAAD_DISABLE_DAB
+#define sfb_offsets_960 COMMON_CAT(COMMON_PREFIX, sfb_offsets_960)
 #define sfb_offsets_120 COMMON_CAT(COMMON_PREFIX, sfb_offsets_120)
+#endif
 
 #endif

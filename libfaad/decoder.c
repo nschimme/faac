@@ -706,6 +706,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     bits_init(&bs, in_buf, in_bytes);
     uint32_t adts_frame_len = in_bytes;
 
+#ifndef FAAD_DISABLE_DAB
     if (dec->config.stream_format == FAAD_STREAM_ADIF && !dec->asc_parsed) {
         AudioSpecificConfig asc;
         faad_status st = adif_decode_header(&bs, &asc);
@@ -727,6 +728,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         bits_init(&bs, in_buf, in_bytes);
         adts_frame_len = in_bytes;
     }
+#endif
 
     if (dec->config.stream_format == FAAD_STREAM_ADTS) {
         /* Validate framing without touching the instance. Preserve a split

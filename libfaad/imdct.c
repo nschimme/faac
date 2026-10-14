@@ -22,22 +22,28 @@
 
 static float kbd_window_2048[1024];
 static float sine_window_2048[1024];
-static float kbd_window_1920[960];
-static float sine_window_1920[960];
 static float kbd_window_256[128];
 static float sine_window_256[128];
+
+#ifndef FAAD_DISABLE_DAB
+static float kbd_window_1920[960];
+static float sine_window_1920[960];
 static float kbd_window_240[120];
 static float sine_window_240[120];
+#endif
 
 /* DCT-IV twiddles exp(-j*pi*(n + 1/8)/M) */
 static float dct4_cos_1024[512];
 static float dct4_sin_1024[512];
-static float dct4_cos_960[480];
-static float dct4_sin_960[480];
 static float dct4_cos_128[64];
 static float dct4_sin_128[64];
+
+#ifndef FAAD_DISABLE_DAB
+static float dct4_cos_960[480];
+static float dct4_sin_960[480];
 static float dct4_cos_120[60];
 static float dct4_sin_120[60];
+#endif
 
 
 static double bessel_i0(double x)
@@ -74,40 +80,47 @@ void init_windows(void)
     for (int i = 0; i < 1024; i++) {
         sine_window_2048[i] = sinf((float)M_PI * (i + 0.5f) / 2048.0f);
     }
-    for (int i = 0; i < 960; i++) {
-        sine_window_1920[i] = sinf((float)M_PI * (i + 0.5f) / 1920.0f);
-    }
     for (int i = 0; i < 128; i++) {
         sine_window_256[i] = sinf((float)M_PI * (i + 0.5f) / 256.0f);
+    }
+#ifndef FAAD_DISABLE_DAB
+    for (int i = 0; i < 960; i++) {
+        sine_window_1920[i] = sinf((float)M_PI * (i + 0.5f) / 1920.0f);
     }
     for (int i = 0; i < 120; i++) {
         sine_window_240[i] = sinf((float)M_PI * (i + 0.5f) / 240.0f);
     }
+#endif
+
     kbd_window(kbd_window_2048, 1024, 4.0);
-    kbd_window(kbd_window_1920, 960, 4.0);
     kbd_window(kbd_window_256, 128, 6.0);
+#ifndef FAAD_DISABLE_DAB
+    kbd_window(kbd_window_1920, 960, 4.0);
     kbd_window(kbd_window_240, 120, 6.0);
+#endif
 
     for (int k = 0; k < 512; k++) {
         double ang = -M_PI * (k + 0.125) / 1024.0;
         dct4_cos_1024[k] = (float)cos(ang);
         dct4_sin_1024[k] = (float)sin(ang);
     }
-    for (int k = 0; k < 480; k++) {
-        double ang = -M_PI * (k + 0.125) / 960.0;
-        dct4_cos_960[k] = (float)cos(ang);
-        dct4_sin_960[k] = (float)sin(ang);
-    }
     for (int k = 0; k < 64; k++) {
         double ang = -M_PI * (k + 0.125) / 128.0;
         dct4_cos_128[k] = (float)cos(ang);
         dct4_sin_128[k] = (float)sin(ang);
+    }
+#ifndef FAAD_DISABLE_DAB
+    for (int k = 0; k < 480; k++) {
+        double ang = -M_PI * (k + 0.125) / 960.0;
+        dct4_cos_960[k] = (float)cos(ang);
+        dct4_sin_960[k] = (float)sin(ang);
     }
     for (int k = 0; k < 60; k++) {
         double ang = -M_PI * (k + 0.125) / 120.0;
         dct4_cos_120[k] = (float)cos(ang);
         dct4_sin_120[k] = (float)sin(ang);
     }
+#endif
 }
 
 /* DCT-IV of length M through an M/2-point complex FFT: pack even-index
@@ -117,8 +130,13 @@ void init_windows(void)
 static void dct4(const float * restrict in, float * restrict buf, int M)
 {
     int K = M / 2;
+#ifndef FAAD_DISABLE_DAB
     const float *cs = (M == 1024) ? dct4_cos_1024 : ((M == 960) ? dct4_cos_960 : ((M == 128) ? dct4_cos_128 : dct4_cos_120));
     const float *sn = (M == 1024) ? dct4_sin_1024 : ((M == 960) ? dct4_sin_960 : ((M == 128) ? dct4_sin_128 : dct4_sin_120));
+#else
+    const float *cs = (M == 1024) ? dct4_cos_1024 : dct4_cos_128;
+    const float *sn = (M == 1024) ? dct4_sin_1024 : dct4_sin_128;
+#endif
     float *z = buf, *w = buf + M, *u = buf;
     float *zr = z, *zi = z + K;
 
@@ -127,10 +145,14 @@ static void dct4(const float * restrict in, float * restrict buf, int M)
         zr[n] = a * cs[n] - b * sn[n];
         zi[n] = a * sn[n] + b * cs[n];
     }
+#ifndef FAAD_DISABLE_DAB
     if (M == 1024) fft(z, w, 9);
     else if (M == 960) fft480(z, w);
     else if (M == 128) fft(z, w, 6);
     else fft60(z, w);
+#else
+    fft(z, w, (M == 1024) ? 9 : 6);
+#endif
 
     const float *wr = w, *wi = w + K;
     for (int k = 0; k < K; k++) {
@@ -204,10 +226,17 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequ
     int short_win_len = 2 * short_len;
     int long_win_len = 2 * frame_len_long;
 
+#ifndef FAAD_DISABLE_DAB
     const float * restrict win_long_l = (prev_shape == KBD_WINDOW) ? ((frame_len_long == 960) ? kbd_window_1920 : kbd_window_2048) : ((frame_len_long == 960) ? sine_window_1920 : sine_window_2048);
     const float * restrict win_short_l = (prev_shape == KBD_WINDOW) ? ((frame_len_long == 960) ? kbd_window_240 : kbd_window_256) : ((frame_len_long == 960) ? sine_window_240 : sine_window_256);
     const float * restrict win_long = (window_shape == KBD_WINDOW) ? ((frame_len_long == 960) ? kbd_window_1920 : kbd_window_2048) : ((frame_len_long == 960) ? sine_window_1920 : sine_window_2048);
     const float * restrict win_short = (window_shape == KBD_WINDOW) ? ((frame_len_long == 960) ? kbd_window_240 : kbd_window_256) : ((frame_len_long == 960) ? sine_window_240 : sine_window_256);
+#else
+    const float * restrict win_long_l = (prev_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
+    const float * restrict win_short_l = (prev_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
+    const float * restrict win_long = (window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
+    const float * restrict win_short = (window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
+#endif
 
     float * restrict overlap = dec->overlap[ch];
     dec->prev_window_shape[ch] = window_shape;

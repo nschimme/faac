@@ -49,8 +49,13 @@ void apply_ms_stereo(CPEInfo *cpe, float * restrict spec_l, float * restrict spe
             g_faadStats.msBands += 2;
 #endif
 
+#ifndef FAAD_DISABLE_DAB
             int short_len = (ics->frame_len_long == 960) ? 120 : 128;
             int long_len = (ics->frame_len_long == 960) ? 960 : 1024;
+#else
+            int short_len = 128;
+            int long_len = 1024;
+#endif
             int start_k = ics->sfb_offsets[sfb];
             int end_k = ics->sfb_offsets[sfb + 1];
             if (start_k >= long_len) continue;
@@ -101,8 +106,13 @@ void apply_is_stereo(CPEInfo *cpe, float * restrict spec_l, float * restrict spe
                     if (cpe->ms_mask_present == 2 || (cpe->ms_mask_present == 1 && cpe->ms_used[g][sfb]))
                         scale = -scale;
 
+#ifndef FAAD_DISABLE_DAB
                     int short_len = (ics_r->frame_len_long == 960) ? 120 : 128;
                     int long_len = (ics_r->frame_len_long == 960) ? 960 : 1024;
+#else
+                    int short_len = 128;
+                    int long_len = 1024;
+#endif
                     int start_k = ics_r->sfb_offsets[sfb];
                     int end_k = ics_r->sfb_offsets[sfb + 1];
                     if (start_k >= long_len) continue;

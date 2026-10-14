@@ -11,6 +11,7 @@
 
 int main(void)
 {
+#ifndef FAAD_DISABLE_DAB
     faad_library_info lib_info;
     lib_info.struct_size = sizeof(lib_info);
     faad_status st = faad_get_library_info(&lib_info);
@@ -18,8 +19,6 @@ int main(void)
     printf("Testing FAAD version %s (SBR: %d, PS: %d)\n", lib_info.version, lib_info.sbr_supported, lib_info.ps_supported);
 
     /* Test 1: ASC build with 960 frame length (frame_length_flag = 1) */
-    /* 5 bits AOT=2 (00010), 4 bits sr_idx=4 (0100), 4 bits channels=2 (0010), 1 bit frameLengthFlag=1, 1 bit dependsOnCoreCoder=0, 1 bit extensionFlag=0 */
-    /* 0001 0010 0001 0100 -> 0x12, 0x14 */
     uint8_t asc_960[2] = { 0x12, 0x14 };
 
     faad_config cfg;
@@ -59,19 +58,21 @@ int main(void)
     uint32_t consumed = 0, written = 0, flags = 0;
     uint8_t pcm_out[65536];
     st = faad_decode_frame(dec, adif_buf, sizeof(adif_buf), &consumed, pcm_out, sizeof(pcm_out), &written, &flags);
-    printf("faad_decode_frame status: %d (%s), consumed: %u, written: %u\n", st, faad_strerror(st), consumed, written);
     assert(st == FAAD_OK);
 
     info.struct_size = sizeof(info);
     st = faad_decoder_get_info(dec, &info);
     assert(st == FAAD_OK);
-    printf("ADIF info parsed: format_known: %d, rate: %u, channels: %u\n", info.format_known, info.sample_rate, info.channels);
     assert(info.format_known);
     assert(info.sample_rate == 44100);
     assert(info.channels == 2);
+    printf("ADIF info parsed: format_known: %d, rate: %u, channels: %u\n", info.format_known, info.sample_rate, info.channels);
 
     faad_decoder_close(&dec);
 
     printf("DAB+ / ADIF unit tests passed successfully!\n");
+#else
+    printf("DAB+ support disabled via FAAD_DISABLE_DAB.\n");
+#endif
     return 0;
 }

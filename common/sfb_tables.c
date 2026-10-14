@@ -82,6 +82,7 @@ const uint8_t num_sfbs_1024[12] = {
     41, 41, 47, 49, 49, 51, 47, 47, 43, 43, 43, 40
 };
 
+#ifndef FAAD_DISABLE_DAB
 /* 96000 Hz/88200 Hz Long 960 (40 SFBs) */
 static const uint16_t sfb_960_96000[] = {
     0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56,
@@ -136,6 +137,7 @@ const uint16_t * const sfb_offsets_960[12] = {
 const uint8_t num_sfbs_960[12] = {
     40, 40, 46, 49, 49, 49, 46, 46, 42, 42, 42, 40
 };
+#endif
 
 /* 96000 Hz/88200 Hz/64000 Hz Short (12 SFBs) */
 static const uint16_t sfb_128_96000[] = { 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 92, 128 };
@@ -158,6 +160,7 @@ const uint8_t num_sfbs_128[12] = {
     12, 12, 12, 14, 14, 14, 15, 15, 15, 15, 15, 15
 };
 
+#ifndef FAAD_DISABLE_DAB
 /* 96000 Hz/88200 Hz/64000 Hz Short 120 (12 SFBs) */
 static const uint16_t sfb_120_96000[] = { 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 92, 120 };
 /* 48000 Hz/44100 Hz/32000 Hz Short 120 (14 SFBs) */
@@ -178,3 +181,4 @@ const uint16_t * const sfb_offsets_120[12] = {
 const uint8_t num_sfbs_120[12] = {
     12, 12, 12, 14, 14, 14, 15, 15, 15, 15, 15, 15
 };
+#endif

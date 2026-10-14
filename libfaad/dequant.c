@@ -32,8 +32,13 @@ void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed)
                 if (nrg > 120) nrg = 120;
                 float scale = powf(2.0f, 0.25f * (float)nrg);
 
+#ifndef FAAD_DISABLE_DAB
                 int short_len = (ics->frame_len_long == 960) ? 120 : 128;
                 int long_len = (ics->frame_len_long == 960) ? 960 : 1024;
+#else
+                int short_len = 128;
+                int long_len = 1024;
+#endif
                 int start_k = ics->sfb_offsets[sfb];
                 int end_k = ics->sfb_offsets[sfb + 1];
                 if (start_k >= long_len) continue;
