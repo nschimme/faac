@@ -317,7 +317,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
     {
         LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
-        opts.joint_mode = (mode == CB_ERR) ? FAAC_JOINT_MIXED : (enum faac_joint_mode)mode;
+        opts.joint_mode = (mode == CB_ERR) ? FAAC_STEREO_AUTO : (enum faac_stereo_mode)mode;
     }
 
     opts.shortctl = (enum faac_shortctl_mode)GetComboData(hWnd, IDC_SHORTCTL, FAAC_SHORTCTL_NORMAL);
@@ -543,7 +543,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_AUTO);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Low Complexity");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LOW);
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LC);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
 #if FAAC_ENCODER_PS
