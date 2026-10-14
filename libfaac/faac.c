@@ -39,7 +39,7 @@ _Static_assert(sizeof(enum faac_status)        == 4, "faac_status must be 32-bit
 _Static_assert(sizeof(enum faac_object_type)   == 4, "faac_object_type must be 32-bit");
 _Static_assert(sizeof(enum faac_mpeg_version)  == 4, "faac_mpeg_version must be 32-bit");
 _Static_assert(sizeof(enum faac_rate_control)  == 4, "faac_rate_control must be 32-bit");
-_Static_assert(sizeof(enum faac_joint_mode)    == 4, "faac_joint_mode must be 32-bit");
+_Static_assert(sizeof(enum faac_stereo_mode)   == 4, "faac_stereo_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_shortctl_mode) == 4, "faac_shortctl_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_stream_format) == 4, "faac_stream_format must be 32-bit");
 _Static_assert(sizeof(enum faac_channel_layout) == 4, "faac_channel_layout must be 32-bit");
@@ -47,9 +47,9 @@ _Static_assert(sizeof(enum faac_input_format)  == 4, "faac_input_format must be 
 
 /* These enums retain the internal numeric values, unlike rate control. */
 _Static_assert((int)FAAC_MPEG4 == MPEG4 && (int)FAAC_MPEG2 == MPEG2, "mpeg version drift");
-_Static_assert((int)FAAC_OBJ_AUTO == AUTO && (int)FAAC_OBJ_LOW == LOW
+_Static_assert((int)FAAC_OBJ_AUTO == AUTO && (int)FAAC_OBJ_LC == LOW
                && (int)FAAC_OBJ_HE_AAC_V1 == HE_V1, "object type drift");
-_Static_assert((int)FAAC_JOINT_NONE == JOINT_NONE && (int)FAAC_JOINT_MIXED == JOINT_MIXED, "joint mode drift");
+_Static_assert((int)FAAC_STEREO_LR == JOINT_NONE && (int)FAAC_STEREO_AUTO == JOINT_MIXED, "stereo mode drift");
 _Static_assert((int)FAAC_SHORTCTL_NORMAL == SHORTCTL_NORMAL && (int)FAAC_SHORTCTL_NOLONG == SHORTCTL_NOLONG, "shortctl drift");
 _Static_assert((int)FAAC_STREAM_RAW == RAW_STREAM && (int)FAAC_STREAM_ADTS == ADTS_STREAM, "stream format drift");
 _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == INPUT_16BIT
@@ -110,8 +110,8 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
 
     memset(&tmp, 0, sizeof(tmp));
     tmp.mpeg_version  = FAAC_MPEG4;
-    tmp.object_type   = FAAC_OBJ_LOW;
-    tmp.joint_mode    = FAAC_JOINT_MIXED;
+    tmp.object_type   = FAAC_OBJ_LC;
+    tmp.stereo_mode   = FAAC_STEREO_AUTO;
     tmp.use_tns       = true;
     tmp.use_pns       = true;
     tmp.bit_rate      = 0;
@@ -119,7 +119,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.quality       = 0;
     tmp.peak_bit_rate = 0;              /* no per-frame peak cap */
     tmp.rate_control  = FAAC_RC_ABR;
-    tmp.output_format = FAAC_STREAM_ADTS;
+    tmp.stream_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
 
@@ -150,16 +150,16 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
     switch (p->object_type) {
-        case FAAC_OBJ_AUTO: case FAAC_OBJ_LOW: case FAAC_OBJ_HE_AAC_V1:
+        case FAAC_OBJ_AUTO: case FAAC_OBJ_LC: case FAAC_OBJ_HE_AAC_V1:
             break;
         case FAAC_OBJ_HE_AAC_V2:
             return FAAC_ERR_UNSUPPORTED;   /* parametric stereo not implemented */
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
     }
-    switch (p->joint_mode) {
-        case FAAC_JOINT_NONE: case FAAC_JOINT_MS:
-        case FAAC_JOINT_IS:   case FAAC_JOINT_MIXED: break;
+    switch (p->stereo_mode) {
+        case FAAC_STEREO_LR: case FAAC_STEREO_MS:
+        case FAAC_STEREO_IS: case FAAC_STEREO_AUTO: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
     switch (p->short_control) {
@@ -167,7 +167,7 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         case FAAC_SHORTCTL_NOLONG: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
-    switch (p->output_format) {
+    switch (p->stream_format) {
         case FAAC_STREAM_RAW: case FAAC_STREAM_ADTS: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
@@ -255,13 +255,13 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg = &h->config;
     cfg->mpegVersion   = (unsigned int)p->mpeg_version;
     cfg->aacObjectType = (unsigned int)p->object_type;  /* LOW / HE_V1 / AUTO */
-    cfg->jointmode     = (unsigned int)p->joint_mode;
+    cfg->jointmode     = (unsigned int)p->stereo_mode;
     cfg->useLfe        = (p->channels == 6 || p->channels == 8);
     cfg->useTns        = p->use_tns ? 1 : 0;
     cfg->bitRate       = (unsigned long)bit_rate_per_channel;
     cfg->bandWidth     = p->bandwidth;
     cfg->quantqual     = p->rate_control == FAAC_RC_VBR ? p->quality : 0;
-    cfg->outputFormat  = (unsigned int)p->output_format;
+    cfg->outputFormat  = (unsigned int)p->stream_format;
     cfg->inputFormat   = (unsigned int)p->input_format;
     cfg->shortctl      = (int)p->short_control;
     cfg->usePns        = p->use_pns ? 1 : 0;

@@ -187,7 +187,7 @@ const char *faac_strerror(faac_status status);
 ```
 
 The `object_type` field of `faac_params` uses MPEG-4 Audio Object Type
-numbers: `FAAC_OBJ_LOW` (2) is AAC-LC and `FAAC_OBJ_HE_AAC_V1` (5) is
+numbers: `FAAC_OBJ_LC` (2) is AAC-LC and `FAAC_OBJ_HE_AAC_V1` (5) is
 HE-AAC v1 (AAC-LC core + SBR). `FAAC_OBJ_AUTO` (0) lets the library choose
 LC or HE-AAC from the bitrate, or from `quality` when there is none. `FAAC_OBJ_HE_AAC_V2` (29) is defined but not
 implemented; requesting it returns `FAAC_ERR_UNSUPPORTED`.
@@ -399,7 +399,7 @@ on your target separately.
 Use these figures for a first sizing, then measure your own build: sizes follow
 pointer width and alignment, and build options such as `-Dmax-channels` may
 change them. HE-AAC roughly doubles the heap because it runs a core at half
-the sample rate plus the SBR analysis state, so choose `FAAC_OBJ_LOW` when RAM
+the sample rate plus the SBR analysis state, so choose `FAAC_OBJ_LC` when RAM
 is tight.
 The core uses single-precision float; double precision appears only in
 one-time table generation at open.
@@ -583,15 +583,16 @@ shim — callers must move to `faac_*`. The changes are mechanical:
 
   - `numChannels` (passed to `faacEncOpen()`) → `channels`.
   - `aacObjectType` → `object_type` (now uses
-    `FAAC_OBJ_*` constants, numbered per the MPEG-4 AOT registry, rather
-    than the old MAIN/LOW/SSR/LTP enum — MAIN, SSR, and LTP are retired,
+    `FAAC_OBJ_*` constants (`FAAC_OBJ_LC` for AAC-LC), numbered per the
+    MPEG-4 AOT registry, rather than the old MAIN/LOW/SSR/LTP enum — MAIN,
+    SSR, and LTP are retired,
     unimplemented object types).
   - `mpegVersion` → `mpeg_version` (`FAAC_MPEG4` /
     `FAAC_MPEG2`).
-  - `jointmode` → `joint_mode` (`FAAC_JOINT_*`).
+  - `jointmode` → `stereo_mode` (`FAAC_STEREO_*`).
     `allowMidside` was a compatibility alias sharing storage with
     `jointmode` in a union; it has no separate replacement, use
-    `joint_mode` directly.
+    `stereo_mode` directly.
   - `useLfe` → automatic LFE for six or eight channels; no switch.
     `useTns` → `use_tns` (now `bool`).
   - `shortctl` → `short_control` (`FAAC_SHORTCTL_*`).
@@ -602,7 +603,7 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     `FAAC_RC_CBR`); select the mode explicitly.
   - `pnslevel` → `use_pns`: the level is now chosen by the
     encoder, leaving the caller an on/off switch.
-  - `outputFormat` → `output_format` (`FAAC_STREAM_*`);
+  - `outputFormat` → `stream_format` (`FAAC_STREAM_*`);
     `inputFormat` → `input_format` (`FAAC_INPUT_*`).
   - `channel_map[64]` → `channel_layout` (`FAAC_LAYOUT_AAC` or
     `FAAC_LAYOUT_WAV`). Apply custom permutations before encoding.

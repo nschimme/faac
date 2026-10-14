@@ -106,7 +106,7 @@ typedef enum faac_status {
  */
 enum faac_object_type {
     FAAC_OBJ_AUTO      = 0,          /* let the library choose LC or HE-AAC by bitrate */
-    FAAC_OBJ_LOW       = 2,          /* AAC-LC                                       */
+    FAAC_OBJ_LC        = 2,          /* AAC-LC                                       */
     FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR                                 */
     FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS  (reserved, unimplemented) */
     /* AOT 23 (LD), 39 (ELD), 42 (xHE-AAC/USAC) are intentionally NOT reserved
@@ -120,12 +120,12 @@ enum faac_mpeg_version {
     FAAC_MPEG_MAX = 0x7fffffff
 };
 
-enum faac_joint_mode {
-    FAAC_JOINT_NONE  = 0,            /* independent (L/R) stereo         */
-    FAAC_JOINT_MS,                   /* mid/side                          */
-    FAAC_JOINT_IS,                   /* intensity                         */
-    FAAC_JOINT_MIXED,                /* per-band mix of M/S and intensity */
-    FAAC_JOINT_MAX = 0x7fffffff
+enum faac_stereo_mode {
+    FAAC_STEREO_LR  = 0,            /* independent (L/R) stereo         */
+    FAAC_STEREO_MS,                  /* mid/side                          */
+    FAAC_STEREO_IS,                  /* intensity                         */
+    FAAC_STEREO_AUTO,                /* encoder adaptively mixes per-band M/S and intensity */
+    FAAC_STEREO_MAX = 0x7fffffff
 };
 
 enum faac_shortctl_mode {
@@ -201,7 +201,7 @@ typedef struct faac_params {
 
     enum faac_mpeg_version  mpeg_version;
     enum faac_object_type   object_type;
-    enum faac_joint_mode    joint_mode;
+    enum faac_stereo_mode   stereo_mode;
 
     bool                    use_tns;       /* temporal noise shaping                   */
     bool                    use_pns;       /* perceptual noise substitution            */
@@ -211,7 +211,7 @@ typedef struct faac_params {
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = from bit_rate, the curve's top in VBR (full band above 48 kHz at default quality or higher) */
     uint32_t                quality;       /* VBR quality 1..5000; 0 = default; must be 0 in ABR/CBR */
 
-    enum faac_stream_format output_format;
+    enum faac_stream_format stream_format;
     enum faac_input_format  input_format;
     enum faac_shortctl_mode short_control;
 

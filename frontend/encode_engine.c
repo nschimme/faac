@@ -51,7 +51,7 @@ void init_encode_options(encode_options_t *opts)
     opts->stream_format = FAAC_STREAM_ADTS;
     opts->mpeg_version = FAAC_MPEG4;
     opts->object_type = FAAC_OBJ_AUTO;
-    opts->joint_mode = FAAC_JOINT_MIXED;
+    opts->joint_mode = FAAC_STEREO_AUTO;
     opts->stream_format = FAAC_STREAM_ADTS;
     opts->shortctl = FAAC_SHORTCTL_NORMAL;
     opts->use_tns = true;
@@ -293,9 +293,9 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
        never ran. */
     if (num_channels >= 2) {
         switch (opts->joint_mode) {
-        case FAAC_JOINT_NONE:  ADD(", stereo L/R"); break;
-        case FAAC_JOINT_MS:    ADD(", stereo M/S"); break;
-        case FAAC_JOINT_IS:    ADD(", stereo IS"); break;
+        case FAAC_STEREO_LR:  ADD(", stereo L/R"); break;
+        case FAAC_STEREO_MS:  ADD(", stereo M/S"); break;
+        case FAAC_STEREO_IS:  ADD(", stereo IS"); break;
         default: break;
         }
     }
@@ -525,7 +525,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.channels = num_channels;
     params.mpeg_version = opts->mpeg_version;
     params.object_type = opts->object_type;
-    params.joint_mode = opts->joint_mode;
+    params.stereo_mode = opts->joint_mode;
     params.use_tns = opts->use_tns;
     params.use_pns = opts->use_pns;
     params.short_control = opts->shortctl;
@@ -561,7 +561,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
     params.bandwidth = opts->bandwidth;
-    params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
+    params.stream_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
     bool standard_layout = num_channels < 3 ||
