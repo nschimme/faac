@@ -48,6 +48,13 @@ jobs:
               options: -Dencoder=false,
             }
           - {
+              name: Linux GCC (DAB disabled),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Ddecoder-dab=false,
+            }
+          - {
               name: Linux GCC (32-bit),
               os: ubuntu-latest,
               compiler: gcc,

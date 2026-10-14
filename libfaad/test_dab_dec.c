@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "faad.h"
+#include "faad3.h"
 
 int main(void)
 {
