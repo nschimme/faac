@@ -260,7 +260,7 @@ static uint32_t rc_advance(rate_conv_t *rc, uint64_t new_pos)
 
 /* Settings for the (c)too atom, in fdkaac's style: ", "-separated fields, each
    a short phrase ("ABR 64kbps", "cutoff 14500Hz"). Rates are the whole stream,
-   as -b takes them; info->bit_rate is per channel.
+   as -b takes them; info->bit_rate is the whole stream.
    Rate, object type and cutoff are always written: the build resolves them, so
    their defaults aren't stable. Options the user sets are written only when
    they differ from init_encode_options(). */
@@ -277,9 +277,9 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
     } while (0)
 
     if (info->rate_control == FAAC_RC_VBR) {
-        ADD("VBR quality %u", info->quant_quality);
+        ADD("VBR quality %u", info->quality);
     } else {
-        uint32_t total = info->bit_rate * (num_channels ? num_channels : 1);
+        uint32_t total = info->bit_rate;
         ADD("%s %ukbps", info->rate_control == FAAC_RC_CBR ? "CBR" : "ABR", (total + 500) / 1000);
     }
 
@@ -536,17 +536,19 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {
-        params.quant_quality = opts->quant_quality;
+        params.rate_control = FAAC_RC_VBR;
+        params.quality = opts->quant_quality;
         params.bit_rate = 0;
     }
     else if (opts->bit_rate > 0)
     {
-        params.bit_rate = opts->bit_rate / (num_channels ? num_channels : 1);
-        params.quant_quality = 0;
+        params.rate_control = FAAC_RC_ABR;
+        params.bit_rate = opts->bit_rate;
+        params.quality = 0;
     }
 
     if (opts->max_bit_rate > 0)
-        params.max_bit_rate = opts->max_bit_rate;
+        params.peak_bit_rate = opts->max_bit_rate;
     if (opts->cbr)
     {
         if (opts->bit_rate == 0)
@@ -683,8 +685,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .object_type = info.object_type,
             .use_pns = use_pns,
             .bandwidth = info.bandwidth,
-            .quant_quality = (uint16_t)info.quant_quality,
-            .bit_rate = info.bit_rate,
+            .quant_quality = (uint16_t)info.quality,
+            .bit_rate = info.bit_rate / (num_channels ? num_channels : 1),
             .rate_control = info.rate_control,
 
             .remapping_channels = (chanmap != NULL),
