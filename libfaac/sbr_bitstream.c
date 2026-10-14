@@ -27,15 +27,20 @@
 
 static void put_header(const SBRInfo *sbr, BitStream *bs)
 {
-    /* sbr_header(), with extra_1 present and extra_2 absent (21 bits). */
+    /* sbr_header(), with extra_1 present: 21 bits, or 27 with extra_2 for the
+     * limiter fields (bands 2, gains 3, interpol_freq 1, smoothing 1). A gain
+     * limit can suppress the requested high-band envelope, hence gains 3. */
+    int extra2 = sbr->numEnvFixFix > 1;
     uint32_t header = SBR_AMP_RES;
     header = (header << 4) | sbr->bs_start_freq;
     header = (header << 4) | sbr->bs_stop_freq;
     header = (header << 3) | sbr->bs_xover_band;
-    header = (header << 4) | 2; /* reserved=0, extra_1=1, extra_2=0 */
+    header = (header << 4) | 2 | extra2; /* reserved=0, extra_1=1 */
     header = (header << 2) | sbr->bs_freq_scale;
     header = (header << 1) | sbr->bs_alter_scale;
-    PutBit(bs, header << 2, 21); /* noise_bands=0 */
+    header <<= 2; /* noise_bands=0 */
+    if (extra2) header = (header << 6) | 0x2f;
+    PutBit(bs, header, 21 + 6 * extra2);
 }
 
 static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
@@ -46,12 +51,11 @@ static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
         PutBit(bs, fd->tEnv[0], 2);
         PutBit(bs, num_env - 1, 2);
         for (int i = 0; i < num_env - 1; i++) PutBit(bs, (fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2);
-        /* ceil(log2(num_env + 1)) bits, which is num_env up to 2 envelopes. */
-        _Static_assert(SBR_MAX_ENVELOPES <= 2, "bs_pointer width needs a log2 beyond 2 envelopes");
-        PutBit(bs, fd->bsPointer, num_env);
+        /* VARFIX frames carry two envelopes and a two-bit pointer. */
+        PutBit(bs, fd->bsPointer, 2);
         for (int i = 0; i < num_env; i++) PutBit(bs, sbr->bs_freq_res, 1);
     } else {
-        PutBit(bs, num_env > 1, 2);
+        PutBit(bs, num_env >> 1, 2);
         PutBit(bs, sbr->bs_freq_res, 1);
     }
 }
@@ -230,9 +234,8 @@ static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
     int nch = (id_aac == ID_CPE) ? 2 : 1;
     int payloadBits = 0, coupled = 0;
     int fillBytes = 0;
-    /* Room for the largest payload the layouts can take: 2 channels of 2
-     * envelopes of 64 bands at 20 bits, and the fixed fields. */
-    uint8_t scratch[1024];
+    /* Room for 2 channels of 4 envelopes of 64 bands at 20 bits plus fields. */
+    uint8_t scratch[2048];
     BitStream dry;
 
     if (nch == 2) couple_envelopes(sbr, fd, ch0);

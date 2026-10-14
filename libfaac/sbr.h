@@ -53,7 +53,7 @@ struct BitStream;
 #define SBR_ANALYSIS_DELAY   (6 * SBR_QMF_BANDS_64)
 #define SBR_QMF_HIST_LEN     (SBR_QMF_OVL_LEN_64 + SBR_ANALYSIS_DELAY)
 #define SBR_MAX_BANDS        64
-#define SBR_MAX_ENVELOPES     2
+#define SBR_MAX_ENVELOPES     4
 #define SBR_HEADER_PERIOD    30
 
 /* Envelope time-slot resolution the decoder uses for an AAC-LC core frame
@@ -73,10 +73,9 @@ struct BitStream;
 #define SBR_LOG_ENERGY_FLOOR            (1e-20f)
 /* Noise floor level, written for the single noise band of every noise
  * envelope (ISO 14496-3 §4.6.18.6.4). The decoder adds noise at
- * 2^(6 - level) relative to the patched signal; quality keeps rising with
- * the level until the fill is effectively off, so this keeps a floor at
- * little cost. */
-#define SBR_NOISE_LEVEL_DEFAULT         12
+ * 2^(6 - level) relative to the patched signal; a higher level lowers
+ * synthesized noise in the patched bands. */
+#define SBR_NOISE_LEVEL_DEFAULT         18
 /* Inverse filtering mode, written for every channel (ISO 14496-3 §4.6.18.6.4). */
 #define SBR_INVF_MODE                   3
 /* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
@@ -85,10 +84,9 @@ struct BitStream;
  * buys at every rate; frames with one FIXFIX envelope use it regardless. */
 #define SBR_AMP_RES                     1
 /* Rate-dependent resolution thresholds. */
-/* Frames without a transient get two envelopes from here up, so the level
- * follows the signal through the frame; below it the bits buy more in the
- * core. */
-#define SBR_TWO_ENV_BITRATE_BPS         17000u
+/* Frames without a transient get four envelopes from here up; below it one
+ * envelope leaves more bits for the core. */
+#define SBR_FOUR_ENV_BITRATE_BPS        17000u
 /* Master table density, bands per octave 12/10/8 for bs_freq_scale 1/2/3:
  * the coarsest table wins from 12 kbps/ch up, but below that it costs
  * speech-like clips more than it saves. */

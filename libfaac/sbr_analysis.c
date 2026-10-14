@@ -19,13 +19,15 @@
 #include "util.h"
 #include <string.h>
 
-/* Which envelope a QMF slot falls in; slots before tEnv[0] fold into
- * envelope 0 rather than dropping their energy. */
-static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slot)
+/* Envelope border in QMF slots, for binning the per-slot energies. The first
+ * envelope also takes slots before tEnv[0] and the last the ones after its
+ * end, so no slot's energy is dropped. Computed on demand: an array of them
+ * is vectorized into more code than the whole analysis it serves. */
+static inline int env_border(const SignalAnalysis *sa, int e, int num_slots)
 {
-    int e = 0;
-    while (e + 1 < numEnvelopes && slot >= envStart[e + 1]) e++;
-    return e;
+    if (e == 0) return 0;
+    if (e == sa->numEnvelopes) return num_slots;
+    return sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
 }
 
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
@@ -95,21 +97,13 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         sa->bsPointer = 0;
     }
 
-    /* Envelope borders in QMF slots, for binning the per-slot energies below. */
-    int envStart[SBR_MAX_ENVELOPES + 1];
-    for (int e = 0; e <= sa->numEnvelopes; e++)
-        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
-
-    /* Count slots per envelope for power normalization. */
-    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
-    for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION != 0) continue;
-#endif
-        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
+    /* Slots analysed per envelope, for power normalization: the multiples of
+     * the decimation factor below each border. */
+    for (int e = 0; e < sa->numEnvelopes; e++) {
+        int n = (env_border(sa, e + 1, num_slots) + FAAC_SBR_DECIMATION - 1) / FAAC_SBR_DECIMATION
+              - (env_border(sa, e, num_slots) + FAAC_SBR_DECIMATION - 1) / FAAC_SBR_DECIMATION;
+        sa->envSampled[e] = n < 1 ? 1 : n;
     }
-    for (int e = 0; e < sa->numEnvelopes; e++)
-        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
 
     /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
      * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
@@ -118,17 +112,17 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         int kEnd = sbr->k2;
         for (int ch = 0; ch < nch; ch++) {
             if (isLfe[ch]) continue;
-            memset(sa->ch[ch].bandE, 0, sizeof(sa->ch[ch].bandE));
+            memset(sa->ch[ch].bandE, 0, (size_t)sa->numEnvelopes * sizeof(sa->ch[ch].bandE[0]));
 
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
             memcpy(workspace + SBR_QMF_HIST_LEN, fullPtrs[ch], numSamples * sizeof(float));
 
-            for (int slot = 0; slot < num_slots; slot++) {
+            for (int e = 0; e < sa->numEnvelopes; e++) {
+                int end = env_border(sa, e + 1, num_slots);
+                for (int slot = env_border(sa, e, num_slots); slot < end; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                if (slot % FAAC_SBR_DECIMATION == 0)
+                    if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
-                {
-                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
                     SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->ch[ch].bandE[e], kx, kEnd);
                 }
             }
