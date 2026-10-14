@@ -935,7 +935,7 @@ int main(int argc, char **argv)
     faad_config cfg;
     faad_config_init(&cfg, sizeof(cfg));
     cfg.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
-    cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : bit_depth == 32 ? FAAD_OUTPUT_32BIT : bit_depth == 24 ? FAAD_OUTPUT_24BIT : FAAD_OUTPUT_16BIT;
+    cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : bit_depth == 32 ? FAAD_OUTPUT_24IN32 : bit_depth == 24 ? FAAD_OUTPUT_24BIT : FAAD_OUTPUT_16BIT;
     cfg.downmix_mode = downmix;
 
     st = faad_decoder_open(&cfg, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);

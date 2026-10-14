@@ -63,9 +63,8 @@
  * hearing. VBR, having no rate, codes at the top. */
 #define BANDWIDTH_CEILING     18750
 
-/* Float PCM is in 16-bit sample units; 2^23 is the most 32-bit input can reach
- * after its scaling, so anything beyond it is not audio. */
-#define FLOAT_INPUT_LIMIT     8388608.0f
+/* Reject non-audio magnitudes before scaling into the encoder. */
+#define FLOAT_INPUT_LIMIT     256.0f
 
 /* From this rate (bps per channel) the quantizer's treble de-emphasis is
  * steepened by TREBLE_SLOPE_RICH; below it the steeper slope starves the
@@ -518,6 +517,8 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++)
                     if (!(fabsf(dst[i]) < FLOAT_INPUT_LIMIT))
                         dst[i] = 0.0f;
+                    else
+                        dst[i] *= 32768.0f;
                 break;
             }
             default: return -1;

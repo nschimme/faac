@@ -84,7 +84,7 @@ typedef enum faad_status {
     FAAD_OK                   = 0,
     FAAD_ERR_INVALID_ARGUMENT = -1,  /* NULL pointer or bad arguments                        */
     FAAD_ERR_UNSUPPORTED      = -2,  /* unsupported profile or bitstream feature             */
-    FAAD_ERR_INSUFFICIENT_MEM = -3,  /* allocation failed or provided state block too small   */
+    FAAD_ERR_NO_MEMORY        = -3,  /* allocation failed or provided state block too small   */
     FAAD_ERR_OUTPUT_TOO_SMALL = -4,  /* provided PCM output buffer capacity too small        */
     FAAD_ERR_NEED_MORE_DATA   = -5,  /* input buffer doesn't contain a full frame            */
     FAAD_ERR_DECODE_FAILED    = -6,  /* bitstream corruption or DSP error                    */
@@ -134,7 +134,7 @@ enum faad_output_format {
     FAAD_OUTPUT_NULL  = 0,           /* invalid / unset                          */
     FAAD_OUTPUT_16BIT,               /* native-endian int16                      */
     FAAD_OUTPUT_24BIT,               /* native-endian int24 packed in 3 bytes   */
-    FAAD_OUTPUT_32BIT,               /* native-endian int24 in 32 bits           */
+    FAAD_OUTPUT_24IN32,              /* 24 significant bits in a 32-bit word     */
     FAAD_OUTPUT_FLOAT,               /* 32-bit float, unity full scale (+-1.0)   */
     FAAD_OUTPUT_MAX   = 0x7fffffff
 };

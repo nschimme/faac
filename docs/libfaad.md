@@ -19,6 +19,7 @@
 - [Porting from the legacy NeAACDec* API](#porting-from-the-legacy-neaacdec-api)
   - [Configuration field mapping](#configuration-field-mapping)
   - [Frame metadata mapping](#frame-metadata-mapping)
+- [Porting from libfaad ABI 2 to ABI 3](#porting-from-libfaad-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 
 ## Scope
@@ -356,7 +357,7 @@ after open and after decoding streams that exercise SBR/PS: ADTS can allocate
 optional state on first use. A bump allocator does not reclaim individual
 blocks, including allocations freed during failed initialization. Reset only
 after close or a failed open, once no pool-backed instance remains. Allocation
-failure returns `FAAD_ERR_INSUFFICIENT_MEM`; reserve room for optional state
+failure returns `FAAD_ERR_NO_MEMORY`; reserve room for optional state
 before decoding. Shared tables, stack, input and caller-owned PCM remain
 separate from the pool. See the matching [FAAC example](libfaac.md#running-without-a-heap).
 
@@ -409,8 +410,10 @@ PCM is native-endian on both little-endian and big-endian machines:
 |---|---|---|
 | 16-bit | signed `int16_t` | 2 bytes |
 | 24-bit | signed packed three-byte samples | Any |
-| 32-bit | native-endian signed int24 in `int32_t`, same meaning as `FAAC_INPUT_32BIT` | 4 bytes |
+| `FAAD_OUTPUT_24IN32` | 24 significant bits in a native-endian 32-bit word, ALSA S24_LE style, same meaning as `FAAC_INPUT_24IN32` | 4 bytes |
 | Float | binary32, unity full scale | 4 bytes |
+
+FAAD float output can be passed directly to `FAAC_INPUT_FLOAT`.
 
 Convert native PCM to the device or file's required byte order separately.
 WAVE output from the frontend is little-endian regardless of host byte order.
@@ -552,7 +555,7 @@ no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
 
 | Legacy `NeAACDecConfiguration` field | New configuration or action |
 |---|---|
-| `outputFormat` | `faad_config.output_format`: `FAAD_FMT_16BIT`, `FAAD_FMT_24BIT`, `FAAD_FMT_32BIT`, and `FAAD_FMT_FLOAT` become `FAAD_OUTPUT_16BIT`, `FAAD_OUTPUT_24BIT`, `FAAD_OUTPUT_32BIT`, and `FAAD_OUTPUT_FLOAT` |
+| `outputFormat` | `faad_config.output_format`: `FAAD_FMT_16BIT`, `FAAD_FMT_24BIT`, `FAAD_FMT_32BIT`, and `FAAD_FMT_FLOAT` become `FAAD_OUTPUT_16BIT`, `FAAD_OUTPUT_24BIT`, `FAAD_OUTPUT_24IN32`, and `FAAD_OUTPUT_FLOAT` |
 | `downMatrix` | `faad_config.downmix_mode`: use `FAAD_DOWNMIX_STEREO` for the old stereo downmix request, or `FAAD_DOWNMIX_NONE` to preserve the layout; `FAAD_DOWNMIX_MONO` is also available |
 | `defObjectType`, `defSampleRate` | No replacement; ADTS or required RAW ASC supplies stream parameters |
 | `useOldADTSFormat` | No replacement for the legacy ADTS variant |
@@ -594,6 +597,13 @@ Stream info describes emitted PCM; re-query on `FAAD_FRAME_FORMAT_CHANGED`.
 public parser equivalent. Pass ASC to decoder initialization and query the
 available stream metadata; applications needing detailed ASC syntax must
 handle that in their container/parser layer.
+
+## Porting from libfaad ABI 2 to ABI 3
+
+| ABI 2 | ABI 3 / caller action |
+|---|---|
+| `FAAD_OUTPUT_32BIT` | `FAAD_OUTPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
+| `FAAD_ERR_INSUFFICIENT_MEM` | `FAAD_ERR_NO_MEMORY`; allocation failure or supplied state block too small. |
 
 ## ABI compatibility
 
