@@ -111,6 +111,7 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 
 // masking target per scalefactor band: 0 marks a band inaudible
 #define SILENCE_RMS            0.4f     // per-sample RMS gate for silence
+#define DITHER_RMS             40.0f    // frames this quiet are LSB dither, not music
 #define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
 #define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
 #define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
@@ -211,7 +212,19 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     int sfb;
 
     // whole group below the silence gate: force every band to a zero target
-    if (group_total < (SILENCE_RMS * SILENCE_RMS) * (float)(gsize * total_len))
+    int silent = group_total < (SILENCE_RMS * SILENCE_RMS) * (float)(gsize * total_len);
+    if (!silent)
+    {
+        /* Dithered "silence" sits above the gate and would be coded at full
+         * relative SNR, at hundreds of kbps. Average over the bands that carry
+         * energy: an empty top of the band (HE core) must not dilute a loud frame. */
+        int live_len = 0;
+        for (sfb = 0; sfb < ci->sfbn; sfb++)
+            if (be[sfb].sum > 0.0f)
+                live_len += ci->sfb_offset[sfb + 1] - ci->sfb_offset[sfb];
+        silent = group_total < (DITHER_RMS * DITHER_RMS) * (float)(gsize * live_len);
+    }
+    if (silent)
     {
         for (sfb = 0; sfb < ci->sfbn; sfb++)
         {
