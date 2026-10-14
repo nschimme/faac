@@ -69,7 +69,7 @@ typedef struct faacEncConfiguration
     unsigned int inputFormat;
     int shortctl;
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
-    unsigned int rateControl;        /* enum rate_control_mode; AUTO resolves on apply */
+    unsigned int rateControl;        /* enum rate_control_mode; AUTO resolved by facade */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;

@@ -115,11 +115,10 @@ typedef struct faacEncStruct {
     CoderInfo coderInfo[MAX_CHANNELS];
 } faacEncStruct;
 
-/* Configuration worker behind faac_encoder_open(): validates the config,
- * resolves AUTO/HE-AAC, and (re)initializes the encoder. Returns 1 on success,
- * 0 for an invalid configuration, -1 when an allocation failed. */
-int faacEncApplyConfig(faacEncStruct* hEncoder,
-                       faacEncConfigurationPtr config);
+/* One-time configuration worker behind faac_encoder_open(): resolves the
+ * profile and initializes a fresh, facade-validated handle. Returns 1 on
+ * success, 0 for an unsupported core rate, -1 on allocation failure. */
+int faacEncApplyConfig(faacEncStruct* hEncoder);
 
 /* Samples/channel per full frame: HE-AAC's core runs dual-rate at Fs/2, so it
  * needs two FRAME_LENs of input to emit one frame at the full rate; LC needs one. */

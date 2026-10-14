@@ -166,8 +166,12 @@ static void print_help_items(const help_t *h, int l, int opt_col, int term_width
 
         if (l && h[cnt].longhelp)
         {
-            int long_indent = 8;
+            int long_indent = h[cnt].opt ? opt_col : 4;
+            if (h[cnt].opt && term_width - long_indent < 40)
+                long_indent = 8;
             print_wrapped_text(h[cnt].longhelp, 0, long_indent, term_width);
+            if (h[cnt + 1].shorthelp)
+                putchar('\n');
         }
     }
     printf("\n");

@@ -290,11 +290,8 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
 
 int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
 {
-    if (!sCtx) return 0;
-    if (!sCtx->sbrInfo)
-        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
-    else
-        SbrUpdate(sCtx->sbrInfo, bitrate);
+    /* ApplyConfig reaches this once, after creating the context. */
+    sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
     return sCtx->sbrInfo != NULL;
 }
 
@@ -341,16 +338,6 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
         /* Dual-rate decimation: produces the halved-rate core signal. */
         Resample(rs, 2 * FRAME_LEN);
-    }
-}
-
-void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfoPtr)
-{
-    if (sCtx && sCtx->fullSampleRate > 0) {
-        *sampleRate    = sCtx->fullSampleRate;
-        *sampleRateIdx = sCtx->fullSampleRateIdx;
-        *srInfoPtr     = &srInfo[*sampleRateIdx];
-        sCtx->fullSampleRate = 0;
     }
 }
 

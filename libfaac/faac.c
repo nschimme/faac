@@ -251,8 +251,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     if (!h)
         return FAAC_ERR_NO_MEMORY;
 
-    /* Translate params onto the handle's own configuration and run it through
-     * the shared core validation/derivation in faacEncApplyConfig. */
+    /* Install validated parameters before the core's one-time initialization. */
     cfg = &h->config;
     cfg->mpegVersion   = (unsigned int)p->mpeg_version;
     cfg->aacObjectType = (unsigned int)p->object_type;  /* LOW / HE_V1 / AUTO */
@@ -267,7 +266,10 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->shortctl      = (int)p->short_control;
     cfg->usePns        = p->use_pns ? 1 : 0;
     cfg->maxBitRate    = p->max_bit_rate;
-    cfg->rateControl   = (unsigned int)p->rate_control;
+    /* AUTO depends only on whether the caller supplied a bitrate. The core's
+     * HE-AAC clamp preserves that distinction. */
+    cfg->rateControl   = p->rate_control == FAAC_RC_AUTO
+        ? (p->bit_rate ? RATE_ABR : RATE_VBR) : (unsigned int)p->rate_control;
     if (p->channel_map) {
         uint32_t i;
         for (i = 0; i < p->num_channels; i++)
@@ -275,7 +277,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     }
     /* else: faacEncOpen already installed the identity map */
 
-    applied = faacEncApplyConfig(h, cfg);
+    applied = faacEncApplyConfig(h);
     if (applied != 1) {
         faacEncClose((faacEncHandle)h);
         return (applied < 0) ? FAAC_ERR_NO_MEMORY : FAAC_ERR_INVALID_ARGUMENT;
