@@ -166,7 +166,7 @@ static void ApplyRateModeUI(HWND hWnd, int mode)
 
     if (mode == RATEMODE_VBR)
     {
-        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quantizer\nquality");
+        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quality");
         snprintf(text, sizeof(text), "%d", DEFAULT_QUANT_QUALITY);
     }
     else
@@ -316,7 +316,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     opts.object_type = (enum faac_object_type)GetComboData(hWnd, IDC_OBJECTTYPE, FAAC_OBJ_AUTO);
 
     {
-        LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
+        LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_GETCURSEL, 0, 0);
         opts.joint_mode = (mode == CB_ERR) ? FAAC_STEREO_AUTO : (enum faac_stereo_mode)mode;
     }
 
@@ -553,11 +553,11 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"None");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"M/S");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"IS");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Mixed");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_SETCURSEL, 3, 0);
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"L/R");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"M/S");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"IS");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_SETCURSEL, 3, 0);
 
         {
             HWND hSC = GetDlgItem(hWnd, IDC_SHORTCTL);
@@ -606,9 +606,9 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             AddTip(hWnd, IDC_SHORTCTL,
                 "Normal switches block length automatically; No Short/No Long\n"
                 "force one block type throughout the encode.");
-            AddTip(hWnd, IDC_JOINTMODE,
-                "None: independent channels. M/S and IS: fixed stereo coding.\n"
-                "Mixed: chooses dynamically per band (default).");
+            AddTip(hWnd, IDC_STEREOMODE,
+                "L/R: independent channels. M/S and IS: fixed stereo coding.\n"
+                "Auto: chooses dynamically per band (default).");
         }
 
         DragAcceptFiles(hWnd, TRUE);
