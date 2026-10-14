@@ -591,8 +591,18 @@ Double and legacy fixed-point PCM modes are not exposed; select a documented
 
 Review any channel reordering inherited from FAAD2: the new surround output
 starts with FL, FR, FC, and `channel_mask` uses WAVE speaker bits rather than
-the legacy channel-position constants. Unknown PCE surround layouts report
-mask 0.
+the legacy channel-position constants. FAAC signals eight channels with
+`channelConfiguration` 0 plus a PCE: front C/front pair, side pair, back pair
+and LFE, compatible with fdkaac and unambiguous for Apple, FDK, FFmpeg and
+faad. ADTS repeats the in-band PCE every 32 frames starting at frame 0;
+MP4/RAW carry it only in the ASC. Configuration 7 streams are still accepted
+as common side/back 7.1. Both use WAVE order FL FR FC LFE BL BR SL SR and mask `0x63F`.
+A PCE with front SCE/CPE, one side CPE and one back CPE maps those pairs to
+SL/SR and BL/BR; with two back CPEs and no side CPE, the first back pair is
+SL/SR and the second BL/BR (the FDK rear-surround convention). Element tags
+select the channels in both ASC and in-band PCEs. Other PCE surround layouts
+retain element order and report mask 0. RAW ASC PCE channel counts size the
+output buffer before the first frame; ADTS discovery uses the build capacity.
 
 Stream info describes emitted PCM; re-query on `FAAD_FRAME_FORMAT_CHANGED`.
 

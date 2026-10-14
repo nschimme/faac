@@ -84,32 +84,45 @@ static faad_status decode_section_data(BitReader *bs, ICSInfo *ics)
 
 faad_status decode_pce(BitReader *bs, struct faad_decoder *dec)
 {
-    (void)dec;
-    bits_skip(bs, 4); /* element_instance_tag */
-    bits_skip(bs, 2); /* object_type */
-    bits_skip(bs, 4); /* sampling_frequency_index */
-    uint32_t num_front = bits_get(bs, 4);
-    uint32_t num_side = bits_get(bs, 4);
-    uint32_t num_back = bits_get(bs, 4);
-    uint32_t num_lfe = bits_get(bs, 2);
-    uint32_t num_assoc_data = bits_get(bs, 3);
-    uint32_t num_valid_cc = bits_get(bs, 4);
-
-    if (bits_get(bs, 1)) bits_skip(bs, 4); /* mono_mixdown */
-    if (bits_get(bs, 1)) bits_skip(bs, 4); /* stereo_mixdown */
-    if (bits_get(bs, 1)) bits_skip(bs, 3); /* matrix_mixdown */
-
-    for (uint32_t i = 0; i < num_front; i++) bits_skip(bs, 5);
-    for (uint32_t i = 0; i < num_side; i++) bits_skip(bs, 5);
-    for (uint32_t i = 0; i < num_back; i++) bits_skip(bs, 5);
-    for (uint32_t i = 0; i < num_lfe; i++) bits_skip(bs, 4);
-    for (uint32_t i = 0; i < num_assoc_data; i++) bits_skip(bs, 4);
-    for (uint32_t i = 0; i < num_valid_cc; i++) bits_skip(bs, 5);
-
+    if (bs->len * 8 - bits_get_consumed(bs) < 34)
+        return FAAD_ERR_DECODE_FAILED;
+    AscPce pce = {0};
+    bits_skip(bs, 10);
+    uint32_t front = bits_get(bs, 4), side = bits_get(bs, 4);
+    uint32_t back = bits_get(bs, 4), lfe = bits_get(bs, 2);
+    uint32_t assoc = bits_get(bs, 3), cc = bits_get(bs, 4);
+    if (bits_get(bs, 1)) bits_skip(bs, 4);
+    if (bits_get(bs, 1)) bits_skip(bs, 4);
+    if (bits_get(bs, 1)) bits_skip(bs, 3);
+    uint32_t elements = front + side + back;
+    if (bs->len * 8 - bits_get_consumed(bs) < elements * 5 + lfe * 4 + assoc * 4 + cc * 5)
+        return FAAD_ERR_DECODE_FAILED;
+    uint32_t channels = lfe;
+    bool pairs = true;
+    for (uint32_t i = 0; i < elements; i++) {
+        uint32_t pair = bits_get(bs, 1);
+        uint8_t tag = (uint8_t)bits_get(bs, 4);
+        channels += 1 + pair;
+        if (i < 4) pce.tags[i] = tag;
+        pairs = pairs && pair == (i != 0);
+    }
+    for (uint32_t i = 0; i < lfe; i++) {
+        uint8_t tag = (uint8_t)bits_get(bs, 4);
+        if (i == 0) pce.tags[4] = tag;
+    }
+    bits_skip(bs, assoc * 4 + cc * 5);
     bits_byte_align(bs);
-    uint32_t comment_bytes = bits_get(bs, 8);
-    for (uint32_t i = 0; i < comment_bytes; i++) bits_skip(bs, 8);
-
+    if (bs->len * 8 - bits_get_consumed(bs) < 8)
+        return FAAD_ERR_DECODE_FAILED;
+    uint32_t comments = bits_get(bs, 8) * 8;
+    if (bs->len * 8 - bits_get_consumed(bs) < comments)
+        return FAAD_ERR_DECODE_FAILED;
+    bits_skip(bs, comments);
+    if (channels > MAX_CHANNELS)
+        return FAAD_ERR_UNSUPPORTED;
+    pce.channels = (uint8_t)channels;
+    pce.wave71 = asc_pce_wave71(&pce, front, side, back, lfe, pairs);
+    if (!dec->asc.num_channels) dec->asc.pce = pce;
     return FAAD_OK;
 }
 

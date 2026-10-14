@@ -53,8 +53,7 @@ static faad_status validate_asc(const uint8_t *buf, uint32_t len, bool *frame_le
     if (asc_br_get(&br, 1)) asc_skip_core_coder_delay(&br);
     bool extension = asc_br_get(&br, 1) != 0;
     if (!channels) {
-        /* Skip and validate the ASC's PCE; its layout remains unresolved in
-         * this decoder until packet syntax supplies the channel elements. */
+        /* Decoder validation also checks the PCE profile and sampling index. */
         asc_br_get(&br, 4); /* element_instance_tag */
         uint32_t profile = asc_br_get(&br, 2), sr = asc_br_get(&br, 4);
         uint32_t front = asc_br_get(&br, 4), side = asc_br_get(&br, 4);
@@ -96,11 +95,14 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
     faad_status status = validate_asc(bs->buffer, bs->len, &frame_length);
     if (status != FAAD_OK) return status;
     asc_codec_parse(bs->buffer, bs->len, &info);
+    /* Per-channel state is sized for MAX_CHANNELS. */
+    if (info.pce.channels > MAX_CHANNELS) return FAAD_ERR_UNSUPPORTED;
 
     memset(asc, 0, sizeof(*asc));
     asc->object_type = (enum faad_object_type)info.object_type;
     asc->sample_rate = info.sample_rate;
     asc->num_channels = info.channel_config;
+    asc->pce = info.pce;
     asc->is_sbr = info.sbr_present;
     asc->sbr_sample_rate = info.sbr_sample_rate;
     asc->is_ps = info.ps_present;
