@@ -80,7 +80,6 @@ typedef struct {
 
     bool use_tns;
     bool use_pns;
-    int8_t use_lfe; /* -1 for auto (ch >= 6), 0 = false, 1 = true */
 
     uint16_t quant_quality;
     uint32_t bit_rate; /* total bitrate in bps (whole stream) */
