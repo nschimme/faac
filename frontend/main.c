@@ -312,7 +312,7 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
 
     fprintf(stderr, "Object type: %s (MPEG-%d)%s%s%s\n",
             (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity",
-            (info->mpeg_version == FAAC_MPEG4) ? 4 : 2,
+            (info->stream_format == FAAC_STREAM_ADTS_MPEG2) ? 2 : 4,
             opts->use_tns ? " + TNS" : "",
             jm_str,
             info->use_pns ? " + PNS" : "");
@@ -327,6 +327,7 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
         switch (info->stream_format)
         {
         case FAAC_STREAM_RAW: fmt_str = "Headerless AAC (RAW)"; break;
+        case FAAC_STREAM_ADTS_MPEG2:
         case FAAC_STREAM_ADTS: fmt_str = "Transport Stream (ADTS)"; break;
         default: break;
         }
@@ -629,8 +630,8 @@ int main(int argc, char *argv[])
         case MPEGVERS_FLAG:
             switch (atoi(optarg))
             {
-            case 2: opts.mpeg_version = FAAC_MPEG2; break;
-            case 4: opts.mpeg_version = FAAC_MPEG4; break;
+            case 2: opts.mpeg_version = 2; break;
+            case 4: opts.mpeg_version = 4; break;
             default: dieMessage = "Unrecognised MPEG version!\n"; break;
             }
             break;
@@ -756,7 +757,7 @@ int main(int argc, char *argv[])
 
     if (opts.container_mp4)
     {
-        opts.mpeg_version = FAAC_MPEG4;
+        opts.mpeg_version = 4;
     }
 
     bool has_metadata = opts.metadata.artist || opts.metadata.artist_sort ||
