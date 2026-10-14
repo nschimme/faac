@@ -8,6 +8,9 @@ Unreleased
 	  FAAC_OBJ_LC, and faac_params.output_format to stream_format
 	* Replace LFE selection and custom channel maps with AAC/WAVE channel
 	  layouts; derive LFE automatically for six or eight channels
+	* Rename 24-in-32 PCM formats to FAAC_INPUT_24IN32 and
+	  FAAD_OUTPUT_24IN32; normalize float input to +-1.0 and use
+	  FAAD_ERR_NO_MEMORY for decoder allocation failures
 
 2.2 (Sep 29, 2026)
 

@@ -409,7 +409,7 @@ static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
 #undef COPY_CONFIG_FIELD
     return (resolved->stream_format == FAAD_STREAM_RAW || resolved->stream_format == FAAD_STREAM_ADTS)
         && (resolved->output_format == FAAD_OUTPUT_16BIT || resolved->output_format == FAAD_OUTPUT_24BIT
-            || resolved->output_format == FAAD_OUTPUT_32BIT || resolved->output_format == FAAD_OUTPUT_FLOAT)
+            || resolved->output_format == FAAD_OUTPUT_24IN32 || resolved->output_format == FAAD_OUTPUT_FLOAT)
         && (resolved->downmix_mode == FAAD_DOWNMIX_NONE || resolved->downmix_mode == FAAD_DOWNMIX_STEREO
             || resolved->downmix_mode == FAAD_DOWNMIX_MONO) ? FAAD_OK : FAAD_ERR_INVALID_ARGUMENT;
 }
@@ -523,7 +523,7 @@ static faad_status alloc_optional(faad_decoder *dec, void **ptr, size_t size)
 {
     if (*ptr) return FAAD_OK;
     *ptr = AllocMemory(size);
-    if (!*ptr) return FAAD_ERR_INSUFFICIENT_MEM;
+    if (!*ptr) return FAAD_ERR_NO_MEMORY;
     memset(*ptr, 0, size);
     dec->allocated_bytes += size;
     if (size > dec->largest_allocation) dec->largest_allocation = size;
@@ -536,7 +536,7 @@ faad_status faad_ensure_sbr(faad_decoder *dec)
         || alloc_optional(dec, (void **)&dec->sbr_el, sizeof(SBRElement[MAX_CHANNELS])) != FAAD_OK
         || alloc_optional(dec, (void **)&dec->sbr_scratch.y,
                           sizeof(float[SBR_MAX_BANDS][SBR_BUF_SLOTS][2])) != FAAD_OK)
-        return FAAD_ERR_INSUFFICIENT_MEM;
+        return FAAD_ERR_NO_MEMORY;
     dec->sbr_scratch.x_low = dec->sbr_scratch.y;
     return FAAD_OK;
 }
@@ -551,7 +551,7 @@ faad_status faad_ensure_ps(faad_decoder *dec)
 
 #define ALLOC_PART(field, size) do { \
     dec->field = AllocMemory(size); \
-    if (!dec->field) { free_split_state(dec); return FAAD_ERR_INSUFFICIENT_MEM; } \
+    if (!dec->field) { free_split_state(dec); return FAAD_ERR_NO_MEMORY; } \
     memset(dec->field, 0, size); \
     dec->allocated_bytes += (size); \
     if ((size) > dec->largest_allocation) dec->largest_allocation = (size); \
@@ -570,7 +570,7 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
         return FAAD_ERR_INVALID_ARGUMENT;
     faad_init_global_tables();
     faad_decoder *dec = AllocMemory(sizeof(*dec));
-    if (!dec) return FAAD_ERR_INSUFFICIENT_MEM;
+    if (!dec) return FAAD_ERR_NO_MEMORY;
     memset(dec, 0, sizeof(*dec));
     dec->allocated_bytes = sizeof(*dec);
     dec->largest_allocation = sizeof(*dec);
@@ -587,10 +587,10 @@ FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
     faad_status st = init_decoder(dec, &resolved, asc_buf, asc_len, out_dec);
     if (st != FAAD_OK) { free_split_state(dec); return st; }
 #ifndef FAAD_DISABLE_SBR
-    if (dec->asc.is_sbr && faad_ensure_sbr(dec) != FAAD_OK) st = FAAD_ERR_INSUFFICIENT_MEM;
+    if (dec->asc.is_sbr && faad_ensure_sbr(dec) != FAAD_OK) st = FAAD_ERR_NO_MEMORY;
 #ifndef FAAD_DISABLE_PS
     if (st == FAAD_OK && dec->asc.is_ps && faad_ensure_ps(dec) != FAAD_OK)
-        st = FAAD_ERR_INSUFFICIENT_MEM;
+        st = FAAD_ERR_NO_MEMORY;
 #endif
 #endif
     if (st != FAAD_OK) { *out_dec = NULL; free_split_state(dec); }
@@ -1045,7 +1045,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                         faad_status sbr_st = sbr_decode_extension(dec, &fill, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
                         bits_skip(&bs, bits_get_consumed(&fill) - 4);
 #ifndef FAAD_DISABLE_SBR
-                        if (sbr_st == FAAD_ERR_INSUFFICIENT_MEM) return sbr_st;
+                        if (sbr_st == FAAD_ERR_NO_MEMORY) return sbr_st;
                         if (sbr_st != FAAD_OK) {
                             /* The core is intact: play it band-limited rather than
                              * conceal it, and keep the half-read payload out of
@@ -1270,7 +1270,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         for (uint32_t i = 0; i < frame_samples; i++)
             for (uint32_t c = 0; c < num_chs; c++, out_u8 += 3)
                 write_pcm24(out_u8, pcm_to_s24(src[c][i]), WORDS_BIGENDIAN);
-    } else if (dec->config.output_format == FAAD_OUTPUT_32BIT) {
+    } else if (dec->config.output_format == FAAD_OUTPUT_24IN32) {
         int32_t * restrict out_int32 = (int32_t *)out_pcm;
         for (uint32_t i = 0; i < frame_samples; i++)
             for (uint32_t c = 0; c < num_chs; c++)
@@ -1353,7 +1353,7 @@ FAADAPI const char *faad_strerror(faad_status status)
         case FAAD_OK:                   return "Success";
         case FAAD_ERR_INVALID_ARGUMENT: return "Invalid argument";
         case FAAD_ERR_UNSUPPORTED:      return "Unsupported configuration";
-        case FAAD_ERR_INSUFFICIENT_MEM: return "Insufficient memory allocated";
+        case FAAD_ERR_NO_MEMORY:        return "Insufficient memory allocated";
         case FAAD_ERR_OUTPUT_TOO_SMALL: return "Output buffer too small";
         case FAAD_ERR_NEED_MORE_DATA:   return "Need more input data";
         case FAAD_ERR_DECODE_FAILED:    return "Decoding failed";

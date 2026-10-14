@@ -27,8 +27,7 @@
 #include "charset.h"
 #include "endian.h"
 
-#define PCM_16BIT_FLOAT_SCALE 32768.0f
-#define PCM_32BIT_FLOAT_SCALE 65536.0f
+#define PCM_32BIT_FLOAT_SCALE 2147483648.0f
 #define INPUT_IO_BUFSIZE 65536
 
 
@@ -469,7 +468,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               memcpy(&bits, bufi + 4 * i, 4);
               bits = sndf->bigendian ? be32toh(bits) : le32toh(bits);
               memcpy(&value, &bits, 4);
-              buf[i] = value * PCM_16BIT_FLOAT_SCALE;
+              buf[i] = value;
           }
       }
       else
@@ -485,7 +484,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
           {
               uint8_t *in = (uint8_t*)bufi;
               for (size_t i = 0; i < cnt; i++)
-                  buf[i] = ((float)in[i] - 128.0f) * 256.0f;
+                  buf[i] = ((float)in[i] - 128.0f) / 128.0f;
           }
           break;
       case 2:
@@ -493,7 +492,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               const int16_t *in = (const int16_t *)bufi;
               bool be = sndf->bigendian;
               for (size_t i = 0; i < cnt; i++)
-                  buf[i] = (float)read_pcm16(&in[i], be);
+                  buf[i] = (float)read_pcm16(&in[i], be) / 32768.0f;
           }
           break;
       case 3:
@@ -501,7 +500,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               const uint8_t *in = (const uint8_t *)bufi;
               bool be = sndf->bigendian;
               for (size_t i = 0; i < cnt; i++)
-                  buf[i] = (float)read_pcm24(&in[3*i], be) / 256.0f;
+                  buf[i] = (float)read_pcm24(&in[3*i], be) / 8388608.0f;
           }
           break;
       case 4:
