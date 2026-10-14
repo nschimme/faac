@@ -9,6 +9,11 @@
 
 common_inc = include_directories('.')
 
+codec_lc_dep = declare_dependency(
+    include_directories: common_inc,
+    sources: files('fft.c', 'sfb_tables.c'),
+)
+
 codec_dep = declare_dependency(
     include_directories: common_inc,
     sources: files(

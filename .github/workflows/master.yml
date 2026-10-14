@@ -27,6 +27,13 @@ jobs:
               shell: bash,
             }
           - {
+              name: Linux GCC (LC-only encoder),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dencoder-sbr=false,
+            }
+          - {
               name: Linux GCC (SBR Decimation),
               os: ubuntu-latest,
               compiler: gcc,
@@ -144,6 +151,22 @@ jobs:
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
+
+      - name: Smoke-test LC-only encoder
+        if: matrix.config.name == 'Linux GCC (LC-only encoder)'
+        run: |
+          meson test -C build --print-errorlogs
+          python3 - <<'PYTHON'
+          import wave
+          with wave.open("lc-smoke.wav", "wb") as w:
+              w.setparams((2, 2, 48000, 0, "NONE", "NONE"))
+              w.writeframes(bytes(8192))
+          PYTHON
+          build/frontend/faac --object-type lc -o lc-smoke.aac lc-smoke.wav
+          if build/frontend/faac --object-type he-aac-v1 -o he-smoke.aac lc-smoke.wav 2>he-smoke.err; then
+            exit 1
+          fi
+          grep -i unsupported he-smoke.err
 
       - name: Build (MSVC)
         if: matrix.config.compiler == 'cl'

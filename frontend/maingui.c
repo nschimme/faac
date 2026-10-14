@@ -543,8 +543,11 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_AUTO);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Low Complexity");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LC);
-            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+            faac_library_info info = { .struct_size = sizeof(info) };
+            if (faac_get_library_info(&info) == FAAC_OK && (info.flags & FAAC_LIB_SBR)) {
+                idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
+                SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+            }
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 

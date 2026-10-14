@@ -89,6 +89,9 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out)
     info.copyright      = vcopy;
     info.max_channels   = (uint32_t)MAX_CHANNELS;
     info.sbr_decimation = (uint32_t)FAAC_SBR_DECIMATION;
+#ifndef FAAC_DISABLE_SBR
+    info.flags          = FAAC_LIB_SBR;
+#endif
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_library_info; report the byte count actually set. */
@@ -144,7 +147,11 @@ static uint64_t resolved_bit_rate(const faac_params *p)
 static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_channel)
 {
     switch (p->object_type) {
-        case FAAC_OBJ_AUTO: case FAAC_OBJ_LC: case FAAC_OBJ_HE_AAC_V1:
+        case FAAC_OBJ_HE_AAC_V1:
+#ifdef FAAC_DISABLE_SBR
+            return FAAC_ERR_UNSUPPORTED;
+#endif
+        case FAAC_OBJ_AUTO: case FAAC_OBJ_LC:
             break;
         case FAAC_OBJ_HE_AAC_V2:
             return FAAC_ERR_UNSUPPORTED;   /* parametric stereo not implemented */

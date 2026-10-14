@@ -279,8 +279,8 @@ typedef struct faac_encoder_info {
 
 /*
  * Library-global facts, independent of any encoder instance: the compiled
- * channel ceiling, the version/copyright strings, and the SBR analysis density.
- * These reflect build-time options (max-channels, sbr-decimation) that the
+ * channel ceiling, the version/copyright strings, SBR analysis density and flags.
+ * These reflect build-time options (max-channels, sbr-decimation, encoder-sbr) that the
  * header alone cannot report, so they are queried at runtime. Set
  * out->struct_size to sizeof(faac_library_info) before the call; the struct
  * grows only by appending fields, so a newer library stays compatible with an
@@ -291,6 +291,11 @@ typedef struct faac_encoder_info {
  * never in its tail padding: struct_size cannot distinguish a new field there
  * from padding in the older layout.
  */
+enum faac_library_flag {
+    FAAC_LIB_SBR = 1u << 0,         /* HE-AAC v1 (SBR) is compiled in */
+    FAAC_LIB_FLAG_MAX = 0x7fffffff
+};
+
 typedef struct faac_library_info {
     uint32_t                struct_size;    /* set by caller to sizeof(faac_library_info) */
 
@@ -300,6 +305,7 @@ typedef struct faac_library_info {
     uint32_t                max_channels;   /* highest channels this build accepts */
     uint32_t                sbr_decimation; /* HE-AAC SBR analysis density: every Nth slot
                                              * is analysed (1 = full quality). Build-time. */
+    uint32_t                flags;          /* FAAC_LIB_* */
 } faac_library_info;
 
 FAACAPI faac_status faac_get_library_info(faac_library_info *out);

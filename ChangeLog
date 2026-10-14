@@ -1,6 +1,8 @@
 Unreleased
 
 	[ Nils Schimmelmann ]
+	* Add -Dencoder-sbr=false for an LC-only libfaac; faac_library_info.flags
+	  reports FAAC_LIB_SBR
 	* Use flags for encoder tools, decoder capabilities and stream discovery;
 	  reorder encoder library info and expose FAAC_VERSION_STRING
 	* Use explicit ABR/VBR/CBR modes and whole-stream bitrate; rename
