@@ -72,6 +72,13 @@
 #define TREBLE_SLOPE_BITRATE  56000
 #define TREBLE_SLOPE_RICH     3.0f
 
+/* Strength of the quantizer's flatness factor (see quantize.c), VBR only: with a
+ * rate to hit the rate loop already redistributes bits across frames. Below
+ * this output rate the factor loses: narrow-band material has too little flat
+ * treble to save bits on. Both are measured, not derived. */
+#define FLATNESS_STRENGTH     0.15f
+#define FLATNESS_MIN_RATE     24000
+
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
 #endif
@@ -315,6 +322,15 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
      * de-emphasis in Hz as 44.1 kHz. */
     if (hEncoder->sampleRate > 48000)
         hEncoder->aacquantCfg.treble_slope *= ((float)hEncoder->sampleRate / 44100.0f);
+
+    {
+        /* The factor measures flatness up to the VBR bandwidth ceiling, in
+         * long-window lines, so its calibration holds at every sample rate. */
+        unsigned long outputRate = hEncoder->sampleRate * (hEncoder->config.aacObjectType == HE_V1 ? 2 : 1);
+        unsigned long lines = (unsigned long)BANDWIDTH_CEILING * 2 * FRAME_LEN / hEncoder->sampleRate;
+        hEncoder->aacquantCfg.flat_exp = (hEncoder->config.bitRate || outputRate < FLATNESS_MIN_RATE) ? 0.0f : FLATNESS_STRENGTH;
+        hEncoder->aacquantCfg.flat_lines = (int)(lines > FRAME_LEN ? FRAME_LEN : lines);
+    }
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
