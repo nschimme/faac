@@ -62,7 +62,7 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
 #define PARAMS_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_params, rate_control) + sizeof(enum faac_rate_control)))
 
-/* Same pattern as PARAMS_BASELINE_SIZE above. */
+/* Query baselines end at their last field so appended fields remain optional. */
 #define LIBRARY_INFO_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_library_info, sbr_decimation) + sizeof(uint32_t)))
 #define ENCODER_INFO_BASELINE_SIZE \
@@ -86,9 +86,9 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out)
     faacEncGetVersion(&vid, &vcopy);
 
     memset(&info, 0, sizeof(info));
-    info.max_channels   = (uint32_t)MAX_CHANNELS;
     info.version        = vid;
     info.copyright      = vcopy;
+    info.max_channels   = (uint32_t)MAX_CHANNELS;
     info.sbr_decimation = (uint32_t)FAAC_SBR_DECIMATION;
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
@@ -113,8 +113,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.mpeg_version  = FAAC_MPEG4;
     tmp.object_type   = FAAC_OBJ_LC;
     tmp.stereo_mode   = FAAC_STEREO_AUTO;
-    tmp.use_tns       = true;
-    tmp.use_pns       = true;
+    tmp.flags         = FAAC_FLAG_TNS | FAAC_FLAG_PNS;
     tmp.bit_rate      = 0;
     tmp.bandwidth     = 0;              /* derive from bit_rate */
     tmp.quality       = 0;
@@ -220,8 +219,7 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         if (p->peak_bit_rate < bit_rate)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
-    /* reserved padding must be zero so future fields can claim it safely */
-    if (p->reserved[0])
+    if (p->flags & ~(FAAC_FLAG_TNS | FAAC_FLAG_PNS))
         return FAAC_ERR_INVALID_ARGUMENT;
     return FAAC_OK;
 }
@@ -260,14 +258,14 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->aacObjectType = (unsigned int)p->object_type;  /* LOW / HE_V1 / AUTO */
     cfg->jointmode     = (unsigned int)p->stereo_mode;
     cfg->useLfe        = (p->channels == 6 || p->channels == 8);
-    cfg->useTns        = p->use_tns ? 1 : 0;
+    cfg->useTns        = (p->flags & FAAC_FLAG_TNS) ? 1 : 0;
     cfg->bitRate       = (unsigned long)bit_rate_per_channel;
     cfg->bandWidth     = p->bandwidth;
     cfg->quantqual     = p->rate_control == FAAC_RC_VBR ? p->quality : 0;
     cfg->outputFormat  = (unsigned int)p->stream_format;
     cfg->inputFormat   = (unsigned int)p->input_format;
     cfg->shortctl      = (int)p->short_control;
-    cfg->usePns        = p->use_pns ? 1 : 0;
+    cfg->usePns        = (p->flags & FAAC_FLAG_PNS) ? 1 : 0;
     cfg->maxBitRate    = p->peak_bit_rate;
     switch (p->rate_control) {
     case FAAC_RC_ABR: cfg->rateControl = RATE_ABR; break;

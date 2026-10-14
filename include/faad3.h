@@ -49,7 +49,6 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #define FAAD_VERSION_MAJOR 3
 #define FAAD_VERSION_MINOR 0
@@ -96,13 +95,19 @@ typedef enum faad_status {
     FAAD_STATUS_MAX           = 0x7fffffff
 } faad_status;
 
+enum faad_library_flag {
+    FAAD_LIB_SBR = 1u << 0,
+    FAAD_LIB_PS = 1u << 1,
+    FAAD_LIB_FLAG_MAX = 0x7fffffff
+};
+
 /*
  * Library-global facts, independent of any decoder instance. These reflect
  * build-time options (max-channels, decoder-sbr, decoder-ps) that the header
  * alone cannot report, so they are queried at runtime. Set out->struct_size to
  * sizeof(faad_library_info) before the call; the struct grows only by
- * appending fields. version/copyright are static and library-owned; do not
- * free them.
+ * appending fields. struct_size reports bytes populated. version/copyright
+ * are static and library-owned; do not free them.
  */
 typedef struct faad_library_info {
     uint32_t                struct_size;    /* set by caller to sizeof(faad_library_info) */
@@ -111,9 +116,7 @@ typedef struct faad_library_info {
     const char             *copyright;      /* library copyright string (library-owned) */
 
     uint32_t                max_channels;   /* highest channel count this build decodes */
-    bool                    sbr_supported;  /* SBR compiled in                          */
-    bool                    ps_supported;   /* Parametric Stereo compiled in            */
-    uint8_t                 reserved[2];    /* reserved for future use; currently zero */
+    uint32_t                flags;          /* FAAD_LIB_* */
 } faad_library_info;
 
 FAADAPI faad_status faad_get_library_info(faad_library_info *out);
@@ -168,6 +171,11 @@ typedef struct faad_config {
     uint8_t                 reserved[1];     /* reserved for future use; currently zero */
 } faad_config;
 
+enum faad_stream_flag {
+    FAAD_STREAM_FORMAT_KNOWN = 1u << 0,
+    FAAD_STREAM_FLAG_MAX = 0x7fffffff
+};
+
 /*
  * Describes the most recently emitted PCM; before any PCM, the ASC/ADTS snapshot. Set
  * struct_size to sizeof(faad_stream_info) before faad_decoder_get_info(); it is
@@ -188,8 +196,7 @@ typedef struct faad_stream_info {
     uint32_t                frame_samples;    /* 1024, or 2048 with upsampled SBR output */
     uint32_t                max_output_bytes; /* Lifetime PCM capacity, including implicit SBR/PS */
     uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
-    bool                    format_known;     /* Usable rate/channel snapshot; later frames may change it */
-    uint8_t                 reserved[3];      /* reserved for future use; currently zero */
+    uint32_t                flags;            /* FAAD_STREAM_* */
     uint8_t                 prog_ref_level;  /* quarter-dB below full scale */
     bool                    prog_ref_level_present;
     uint8_t                 reserved_drc[2]; /* reserved for future use; currently zero */
@@ -233,7 +240,8 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
 
 /*
  * Query current stream metadata. Safe immediately after open. Before ADTS
- * discovery, format_known is false and format fields are zero/FAAD_OBJ_NULL.
+ * discovery, FAAD_STREAM_FORMAT_KNOWN is clear in flags and format fields
+ * are zero/FAAD_OBJ_NULL.
  * ASC may supply a usable snapshot, but implicit SBR/PS can change it later;
  * frame metadata is authoritative for emitted PCM. Set
  * out_info->struct_size to sizeof(faad_stream_info); smaller baseline layouts

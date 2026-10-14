@@ -570,8 +570,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.mpeg_version = opts->mpeg_version;
     params.object_type = opts->object_type;
     params.stereo_mode = opts->joint_mode;
-    params.use_tns = opts->use_tns;
-    params.use_pns = opts->use_pns;
+    params.flags = (opts->use_tns ? FAAC_FLAG_TNS : 0)
+                 | (opts->use_pns ? FAAC_FLAG_PNS : 0);
     params.short_control = opts->shortctl;
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
@@ -693,7 +693,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder_get_info(hEncoder, &info);
 
     /* MPEG-2 AAC has no PNS. */
-    bool use_pns = params.use_pns && info.mpeg_version != FAAC_MPEG2;
+    bool use_pns = (params.flags & FAAC_FLAG_PNS) && info.mpeg_version != FAAC_MPEG2;
 
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;

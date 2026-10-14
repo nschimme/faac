@@ -49,18 +49,15 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
-/*
- * Tracks the libfaac SONAME, not the project release version. Lets callers
- * tell this faac_* API (SONAME >= 1) apart from the removed legacy faacEnc*
- * one (SONAME 0):
- *
- *   #if defined(FAAC_VERSION_MAJOR) && (FAAC_VERSION_MAJOR >= 1)
- */
+/* Tracks the libfaac SONAME. */
 #define FAAC_VERSION_MAJOR 3
 #define FAAC_VERSION_MINOR 0
 #define FAAC_VERSION_PATCH 0
+#define FAAC_STR_(x) #x
+#define FAAC_STR(x) FAAC_STR_(x)
+#define FAAC_VERSION_STRING \
+    FAAC_STR(FAAC_VERSION_MAJOR) "." FAAC_STR(FAAC_VERSION_MINOR) "." FAAC_STR(FAAC_VERSION_PATCH)
 #define FAAC_VERSION_HEX \
     ((FAAC_VERSION_MAJOR << 16) | (FAAC_VERSION_MINOR << 8) | FAAC_VERSION_PATCH)
 
@@ -181,6 +178,13 @@ enum faac_channel_layout {
     FAAC_LAYOUT_MAX = 0x7fffffff
 };
 
+/* Unknown flag bits cause FAAC_ERR_INVALID_ARGUMENT. */
+enum faac_flag {
+    FAAC_FLAG_TNS = 1u << 0,
+    FAAC_FLAG_PNS = 1u << 1,
+    FAAC_FLAG_MAX = 0x7fffffff
+};
+
 /*
  * Encoder parameters, supplied once to faac_encoder_open().
  *
@@ -207,9 +211,7 @@ typedef struct faac_params {
     enum faac_object_type   object_type;
     enum faac_stereo_mode   stereo_mode;
 
-    bool                    use_tns;       /* temporal noise shaping                   */
-    bool                    use_pns;       /* perceptual noise substitution            */
-    uint8_t                 reserved[1];   /* reserved for future use; currently zero              */
+    uint32_t                flags;         /* FAAC_FLAG_*; unknown bits are rejected */
 
     uint32_t                bit_rate;      /* whole-stream bits/sec; 0 = default in ABR/CBR, must be 0 in VBR */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = from bit_rate, the curve's top in VBR (full band above 48 kHz at default quality or higher) */
@@ -285,8 +287,8 @@ typedef struct faac_encoder_info {
  * header alone cannot report, so they are queried at runtime. Set
  * out->struct_size to sizeof(faac_library_info) before the call; the struct
  * grows only by appending fields, so a newer library stays compatible with an
- * older caller's smaller struct. version/copyright are static and library-owned;
- * do not free them.
+ * older caller's smaller struct. struct_size reports bytes populated.
+ * version/copyright are static and library-owned; do not free them.
  *
  * Maintainers: appended fields must start at or after the previous sizeof(struct),
  * never in its tail padding: struct_size cannot distinguish a new field there
@@ -295,11 +297,10 @@ typedef struct faac_encoder_info {
 typedef struct faac_library_info {
     uint32_t                struct_size;    /* set by caller to sizeof(faac_library_info) */
 
-    uint32_t                max_channels;   /* highest channels this build accepts */
-
     const char             *version;        /* library version string   (library-owned) */
     const char             *copyright;      /* library copyright string (library-owned) */
 
+    uint32_t                max_channels;   /* highest channels this build accepts */
     uint32_t                sbr_decimation; /* HE-AAC SBR analysis density: every Nth slot
                                              * is analysed (1 = full quality). Build-time. */
 } faac_library_info;
@@ -312,13 +313,6 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out);
  * faac_params has grown since the caller was built. Returns
  * FAAC_ERR_INVALID_ARGUMENT if p is NULL or caller_size is smaller than
  * faac_params's minimum layout, through rate_control.
- *
- * caller_size was added in SONAME 2; code that must build against both:
- *   #if FAAC_VERSION_MAJOR >= 2
- *       faac_params_init(&params, sizeof(params));
- *   #else
- *       faac_params_init(&params);
- *   #endif
  */
 FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size);
 
