@@ -648,11 +648,8 @@ against ABI 2. To compile source against either header:
 ```
 
 `FAAC_VERSION_MAJOR` identifies the library ABI, not the project release.
-Version 3.0 uses SONAME 3. In `faac_params`, rename `num_channels` to
-`channels` and replace `use_lfe`, `channel_map` and `channel_map_count` with
-`channel_layout`. LFE is automatic for six or eight channels; custom channel
-permutations must be applied before encoding. Rebuild against the new header;
-ABI 2 parameter layouts are incompatible.
+Version 3.0 uses SONAME 3; see the ABI 2 to ABI 3 table below. Rebuild against
+the new header: ABI 2 parameter layouts are incompatible.
 An ABI 1 binary must not load ABI 2 as a drop-in replacement. Do not cast
 legacy configuration or handle types to the new public types; migrate the
 calls and rebuild.
@@ -661,10 +658,22 @@ calls and rebuild.
 
 | ABI 2 | ABI 3 / caller action |
 |---|---|
+| `faac_params.num_channels` | `channels`. |
+| `use_lfe`, `channel_map`, `channel_map_count` | `channel_layout`: `FAAC_LAYOUT_AAC` or `FAAC_LAYOUT_WAV`. LFE is automatic for six or eight channels; other permutations must be applied before encoding. |
+| `rate_control` with an implicit AUTO | Explicit `FAAC_RC_ABR` (default), `FAAC_RC_VBR` or `FAAC_RC_CBR`. VBR needs `bit_rate = 0`; ABR and CBR need `quality = 0`. |
+| per-channel `bit_rate` | Whole-stream bits/sec; multiply an old value by `channels`. `faac_encoder_info.bit_rate` is whole-stream too. |
+| `quant_quality` | `quality` (VBR only). |
+| `max_bit_rate`, `FAAC_MAX_BIT_RATE` | `peak_bit_rate`, `FAAC_MAX_PEAK_BIT_RATE`. |
+| `joint_mode`, `FAAC_JOINT_*` | `stereo_mode`, `FAAC_STEREO_LR`, `_MS`, `_IS`, `_AUTO` (was MIXED). |
+| `FAAC_OBJ_LOW` | `FAAC_OBJ_LC`. |
+| `output_format` | `stream_format`. |
+| `mpeg_version` | `FAAC_STREAM_ADTS_MPEG2`; raw MPEG-2 is no longer expressible. `faac_encoder_info.stream_format` reports the resolved format. |
 | `use_tns`, `use_pns`, `reserved` | Set `flags` with `FAAC_FLAG_TNS` and `FAAC_FLAG_PNS`; both are enabled by default, and unknown bits are rejected. |
 | `faac_library_info` field order | `struct_size`, `version`, `copyright`, `max_channels`, `sbr_decimation`, `flags`; query writes back the populated size. |
 | `FAAC_INPUT_32BIT` | `FAAC_INPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
 | `FAAC_INPUT_FLOAT` on the signed-16-bit scale | Pass unity-full-scale floats (±1.0); remove the multiplication by 32768 for normalized input. |
+| `faac_encoder_asc()` allocating on first call | The ASC is built at open and also in `faac_encoder_info.asc`/`asc_size`; the getters take a const handle. |
+| `FAAC_ERR_NO_MEMORY` from `faac_encoder_asc()` | No longer returned there. |
 
 ## ABI compatibility
 
