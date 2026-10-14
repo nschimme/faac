@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 
 #include "frame.h"
 #include "coder.h"
@@ -25,6 +26,7 @@
 #include "bitstream.h"
 #include "filtbank.h"
 #include "quantize.h"
+#include "huff2.h"
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
@@ -78,6 +80,12 @@
  * treble to save bits on. Both are measured, not derived. */
 #define FLATNESS_STRENGTH     0.15f
 #define FLATNESS_MIN_RATE     24000
+/* A coded step finer than this much 16-bit LSB noise resolves only what the
+ * source's own quantization put there, so near-silence, dither and fade tails
+ * stop costing the bits of music at the same relative level. A white LSB of
+ * noise reads sqrt(FRAME_LEN) per MDCT line. */
+#define VBR_STEP_FLOOR        2.0f
+#define LSB_COEF_RMS          32.0f
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -330,6 +338,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         unsigned long lines = (unsigned long)BANDWIDTH_CEILING * 2 * FRAME_LEN / hEncoder->sampleRate;
         hEncoder->aacquantCfg.flat_exp = (hEncoder->config.bitRate || outputRate < FLATNESS_MIN_RATE) ? 0.0f : FLATNESS_STRENGTH;
         hEncoder->aacquantCfg.flat_lines = (int)(lines > FRAME_LEN ? FRAME_LEN : lines);
+        hEncoder->aacquantCfg.sf_cap = hEncoder->config.bitRate ? INT_MAX
+            : (int)lrintf(log10f(1.0f / (VBR_STEP_FLOOR * LSB_COEF_RMS)) * SF_STEP_AMPL);
     }
 
     if (hEncoder->config.aacObjectType == HE_V1) {
