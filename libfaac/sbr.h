@@ -53,7 +53,7 @@ struct BitStream;
 #define SBR_ANALYSIS_DELAY   (6 * SBR_QMF_BANDS_64)
 #define SBR_QMF_HIST_LEN     (SBR_QMF_OVL_LEN_64 + SBR_ANALYSIS_DELAY)
 #define SBR_MAX_BANDS        64
-#define SBR_MAX_ENVELOPES     2
+#define SBR_MAX_ENVELOPES     4
 #define SBR_HEADER_PERIOD    30
 
 /* Envelope time-slot resolution the decoder uses for an AAC-LC core frame
@@ -89,6 +89,7 @@ struct BitStream;
  * follows the signal through the frame; below it the bits buy more in the
  * core. */
 #define SBR_TWO_ENV_BITRATE_BPS         17000u
+#define SBR_FOUR_ENV_BITRATE_BPS        36000u
 /* Master table density, bands per octave 12/10/8 for bs_freq_scale 1/2/3:
  * the coarsest table wins from 12 kbps/ch up, but below that it costs
  * speech-like clips more than it saves. */
