@@ -156,8 +156,8 @@ enum faac_input_format {
     FAAC_INPUT_NULL  = 0,            /* invalid / unset                          */
     FAAC_INPUT_16BIT,                /* native-endian int16                      */
     FAAC_INPUT_24BIT,                /* native-endian int24 in 24 bits           */
-    FAAC_INPUT_32BIT,                /* native-endian int24 in 32 bits           */
-    FAAC_INPUT_FLOAT,                /* 32-bit float, 16-bit scale (+-32768)     */
+    FAAC_INPUT_24IN32,               /* 24 significant bits in a 32-bit word     */
+    FAAC_INPUT_FLOAT,                /* 32-bit float, unity full scale (+-1.0)    */
     FAAC_INPUT_MAX = 0x7fffffff
 };
 

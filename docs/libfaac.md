@@ -22,6 +22,7 @@
 
 - [Porting from the legacy faacEnc* API](#porting-from-the-legacy-faacenc-api)
 - [Porting from libfaac ABI 1](#porting-from-libfaac-abi-1)
+- [Porting from libfaac ABI 2 to ABI 3](#porting-from-libfaac-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 
 ## Scope
@@ -309,13 +310,13 @@ clamped to the available range. Read effective values with `get_info()`.
 |---|---|---|
 | `FAAC_INPUT_16BIT` | Native-endian signed `int16_t`, full scale | `int16_t` |
 | `FAAC_INPUT_24BIT` | Native-endian packed signed three-byte samples, full scale | Any |
-| `FAAC_INPUT_32BIT` | Native-endian `int32_t` containing sign-extended 24-bit values, not full-scale 32-bit PCM | `int32_t` |
-| `FAAC_INPUT_FLOAT` | 32-bit float on the signed-16-bit scale (approximately −32768 to +32767) | `float` |
+| `FAAC_INPUT_24IN32` | 24 significant bits in a native-endian 32-bit word, ALSA S24_LE style | `int32_t` |
+| `FAAC_INPUT_FLOAT` | 32-bit float, unity full scale (±1.0) | `float` |
 
-All formats are interleaved. Convert normalized float PCM by multiplying by
-32768; convert full-scale 32-bit PCM to 24-bit scale before passing it.
-In particular, FAAD's float and 32-bit outputs require conversion for FAAC.
-NaN, infinity and float magnitudes at least 8388608 are replaced with silence;
+All formats are interleaved. Pass normalized floats directly; FAAD float
+output can be fed back directly, as can its 24-in-32 output. Convert full-scale
+32-bit PCM to 24-bit scale before passing it.
+NaN, infinity and float magnitudes at least 256 are replaced with silence;
 this is not a clipping or normalization service.
 
 ### Channel ordering and ownership
@@ -646,6 +647,13 @@ ABI 2 parameter layouts are incompatible.
 An ABI 1 binary must not load ABI 2 as a drop-in replacement. Do not cast
 legacy configuration or handle types to the new public types; migrate the
 calls and rebuild.
+
+## Porting from libfaac ABI 2 to ABI 3
+
+| ABI 2 | ABI 3 / caller action |
+|---|---|
+| `FAAC_INPUT_32BIT` | `FAAC_INPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
+| `FAAC_INPUT_FLOAT` on the signed-16-bit scale | Pass unity-full-scale floats (±1.0); remove the multiplication by 32768 for normalized input. |
 
 ## ABI compatibility
 

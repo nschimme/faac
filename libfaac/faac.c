@@ -54,7 +54,7 @@ _Static_assert((int)FAAC_STEREO_LR == JOINT_NONE && (int)FAAC_STEREO_AUTO == JOI
 _Static_assert((int)FAAC_SHORTCTL_NORMAL == SHORTCTL_NORMAL && (int)FAAC_SHORTCTL_NOLONG == SHORTCTL_NOLONG, "shortctl drift");
 _Static_assert((int)FAAC_STREAM_RAW == RAW_STREAM && (int)FAAC_STREAM_ADTS == ADTS_STREAM, "stream format drift");
 _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == INPUT_16BIT
-            && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_32BIT == INPUT_32BIT
+            && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_24IN32 == INPUT_32BIT
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 
 /* The minimum parameter layout ends at rate_control so appended fields do
@@ -175,7 +175,7 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
     switch (p->input_format) {
-        case FAAC_INPUT_16BIT: case FAAC_INPUT_24BIT: case FAAC_INPUT_32BIT: case FAAC_INPUT_FLOAT:
+        case FAAC_INPUT_16BIT: case FAAC_INPUT_24BIT: case FAAC_INPUT_24IN32: case FAAC_INPUT_FLOAT:
             break;
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
