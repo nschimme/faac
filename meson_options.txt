@@ -36,3 +36,8 @@ option('stats',
     description: 'Enable optional end-of-encode statistics banner',
     type: 'boolean',
     value: false)
+
+option('encoder-sbr',
+    description: 'Enable HE-AAC v1 (SBR) encoder support',
+    type: 'boolean',
+    value: true)

@@ -24,6 +24,7 @@ typedef enum SbrFrameClass {
     SBR_FRAME_CLASS_VARVAR = 3
 } SbrFrameClass;
 
+#include <stddef.h>
 #include "coder.h"
 #include "channels.h"
 #include "fft.h"
@@ -114,9 +115,10 @@ struct SignalAnalysis;
 
 typedef struct SBRContext SBRContext;
 
+#ifndef FAAC_DISABLE_SBR
 SBRContext *SbrContextInit(int channels);
 void SbrContextEnd(SBRContext *sbrCtx);
-int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize);
+unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx);
 unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx);
 int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate);
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS]);
@@ -126,6 +128,81 @@ void SbrContextResolveRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned
 
 /* The EXT_SBR_DATA fill element following one SCE/CPE; none after an LFE. */
 int SbrContextGetBits(SBRContext *sCtx, struct BitStream *bs, const AACElement *elem, int aacObjectType);
+
+#else
+/* LC-only builds keep the frame/channel call sites unconditional without
+ * linking SBR analysis, bitstream or resampler code. */
+static inline SBRContext *SbrContextInit(int channels)
+{
+    (void)channels;
+    return NULL;
+}
+
+static inline void SbrContextEnd(SBRContext *sbrCtx)
+{
+    (void)sbrCtx;
+}
+
+static inline unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx)
+{
+    (void)sCtx;
+    return 0;
+}
+
+static inline unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
+{
+    (void)sbrCtx;
+    return 0;
+}
+
+static inline int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
+{
+    (void)sCtx;
+    (void)channels;
+    (void)bitrate;
+    return 0;
+}
+
+static inline void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
+{
+    (void)sCtx;
+    (void)numChannels;
+    (void)isLfe;
+    (void)realPerCh;
+    (void)flushTick;
+    (void)inputFifo;
+    (void)heHalfRate;
+}
+
+static inline int SbrContextIsPresent(SBRContext *sCtx)
+{
+    (void)sCtx;
+    return 0;
+}
+
+static inline unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
+{
+    (void)sCtx;
+    return defaultRate;
+}
+
+static inline void SbrContextResolveRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo)
+{
+    (void)sCtx;
+    (void)sampleRate;
+    (void)sampleRateIdx;
+    (void)srInfo;
+}
+
+static inline int SbrContextGetBits(SBRContext *sCtx, struct BitStream *bs, const AACElement *elem, int aacObjectType)
+{
+    (void)sCtx;
+    (void)bs;
+    (void)elem;
+    (void)aacObjectType;
+    return 0;
+}
+#endif
 
 #ifdef __cplusplus
 }

@@ -75,8 +75,7 @@ typedef struct faacEncConfiguration
 typedef void *faacEncHandle;
 
 int  faacEncGetVersion(char **id, char **copyright);
-int  faacEncGetDecoderSpecificInfo(faacEncHandle hEncoder, unsigned char **ppBuffer,
-                                   unsigned long *pSizeOfDecoderSpecificInfo);
+int  faacEncGetDecoderSpecificInfo(faacEncHandle hEncoder, unsigned char *buf);
 faacEncHandle faacEncOpen(unsigned long sampleRate, unsigned int numChannels,
                           unsigned long *inputSamples, unsigned long *maxOutputBytes);
 int  faacEncEncode(faacEncHandle hEncoder, int32_t *inputBuffer, unsigned int samplesInput,

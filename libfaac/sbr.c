@@ -240,43 +240,9 @@ void SbrContextEnd(SBRContext *sbrCtx)
     FreeMemory(sbrCtx);
 }
 
-int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize)
+unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx)
 {
-    /* Explicit-hierarchy ASC: AAC-LC core wrapped with an SBR extension
-     * (sync 0x2b7, type 5) carrying the full output rate. The core rate is
-     * Fs/2 (dual-rate SBR); the extension declares the full output rate.
-     *
-     * A mono core also carries the PS sync extension with psPresentFlag = 0:
-     * without it a decoder may assume parametric stereo is implied and return
-     * two channels. */
-    const int signalPS = (channels == 1);
-    const unsigned long size = signalPS ? 7 : 5;
-
-    unsigned char *buf = (unsigned char *)AllocMemory(size);
-    if (buf == NULL) return -3;
-
-    BitStream bs;
-    InitBitStream(&bs, buf, (uint32_t)size); /* zeroes the buffer, so the trailing pad bits need no write */
-
-    BitAccumulator a;
-    AccumBegin(&a, &bs);
-    AccumPutBits(&a, LOW,       5); /* core object type */
-    AccumPutBits(&a, coreSRIdx, 4); /* core rate (Fs/2, dual-rate) */
-    AccumPutBits(&a, GetChannelConfig(channels), 4);
-    AccumPutBits(&a, 0,         3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
-    AccumPutBits(&a, 0x2b7,    11); /* syncExtensionType */
-    AccumPutBits(&a, HE_V1,     5); /* extObjectType = SBR */
-    AccumPutBits(&a, 1,         1); /* sbrPresentFlag */
-    AccumPutBits(&a, sbrCtx->fullSampleRateIdx, 4); /* SBR output rate (2*core) */
-    if (signalPS) {
-        AccumPutBits(&a, 0x548, 11); /* syncExtensionType = PS */
-        AccumPutBits(&a, 0,      1); /* psPresentFlag */
-    }
-    AccumEnd(&a);
-
-    *ppBuffer = buf;
-    *pSize = size;
-    return 0;
+    return sCtx->fullSampleRateIdx;
 }
 
 unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)

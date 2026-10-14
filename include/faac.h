@@ -279,7 +279,8 @@ typedef struct faac_library_info {
     const char             *copyright;      /* library copyright string (library-owned) */
 
     uint32_t                sbr_decimation; /* HE-AAC SBR analysis density: every Nth slot
-                                             * is analysed (1 = full quality). Build-time. */
+                                             * is analysed (1 = full quality); 0 means HE-AAC
+                                             * is unavailable in this build. Build-time. */
 } faac_library_info;
 
 FAACAPI faac_status faac_get_library_info(faac_library_info *out);

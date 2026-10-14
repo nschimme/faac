@@ -96,11 +96,10 @@ typedef struct faacEncStruct {
     unsigned int  inputFifoFill;     /* samples per channel currently buffered */
     unsigned int  inputFifoCap;      /* per-channel capacity in samples */
 
-    /* faac_* API: AudioSpecificConfig cached on first request and owned by the
-     * handle (freed at close), so faac_encoder_asc() can hand back a pointer
-     * the caller never frees. NULL until first built. */
-    unsigned char *ascCache;
-    unsigned long  ascCacheLen;
+    /* Built once after configuration at open. Inline storage keeps the ASC
+     * pointer stable until close without a separate allocation. */
+    uint8_t asc[8];
+    uint32_t ascLen;
 
     /* HE-AAC / SBR state */
     struct SBRContext *sbrContext;   /* SBR analysis state and bitstream data */

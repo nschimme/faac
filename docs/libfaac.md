@@ -72,12 +72,22 @@ force archive selection. For a custom prefix, set `PKG_CONFIG_PATH` and the
 platform's shared-library runtime search path. Remove old FAAC include and
 library paths when migrating.
 
+### Encoder build options
+
+`-Dencoder-sbr=false` builds an LC-only libfaac, omitting SBR and resampling
+code and tables. The default is true. Explicit `FAAC_OBJ_HE_AAC_V1` requests
+return `FAAC_ERR_UNSUPPORTED` in an LC-only build; `FAAC_OBJ_AUTO` always
+resolves to LC. Query `faac_library_info.sbr_decimation`: 0 means HE-AAC is
+unavailable in this build; values >= 1 give the SBR analysis density.
+The command-line encoder rejects explicit HE-AAC requests with an error;
+the Windows GUI offers HE-AAC only when it is available.
+
 ## Supported streams
 
 | Feature | Support and requirements |
 |---|---|
 | AAC-LC | Supported by every encoder build; 1024 samples/channel per frame |
-| HE-AAC v1 | Dual-rate SBR; input rate at least 32000 Hz; 2048 samples/channel per frame |
+| HE-AAC v1 | Requires `sbr_decimation != 0`; dual-rate SBR; input rate at least 32000 Hz; 2048 samples/channel per frame |
 | HE-AAC v2, MAIN, SSR, LTP, LD, ELD, USAC | Unsupported |
 | ADTS | Library supplies each frame's header |
 | RAW AAC | One access unit per emitted frame; MPEG-4 ASC available separately |
@@ -87,7 +97,8 @@ library paths when migrating.
 | PCM | Interleaved native-endian signed integer or float; see below |
 
 Query `faac_get_library_info()` for `max_channels`, version/copyright and
-`sbr_decimation` (build-time SBR analysis density; 1 is full density).
+`sbr_decimation` (0 for LC-only builds; otherwise build-time SBR analysis
+density, with 1 for full density).
 `max-channels` defaults to 8; `sbr-decimation` defaults to 1.
 Use standard AAC sample rates (8000, 11025, 12000, 16000, 22050, 24000,
 32000, 44100, 48000, 64000, 88200 or 96000 Hz). Validation accepts
@@ -347,9 +358,10 @@ over where encoder memory lives. The allocator need not clear the memory it retu
 ### Memory budget and embedded targets
 
 The encoder instance is heap-allocated at `faac_encoder_open()` and does not
-allocate again while encoding or flushing. The first successful
-`faac_encoder_asc()` call additionally caches 2 bytes for LC, 5 bytes for stereo
-HE-AAC, or 7 bytes for mono HE-AAC. Closing the handle releases all of it.
+allocate again while encoding or flushing. AudioSpecificConfig is built at open
+in an 8-byte array inside the handle: 2 bytes for LC, 5 bytes for multichannel
+HE-AAC, or 7 bytes for mono HE-AAC. `faac_encoder_asc()` returns that storage
+without allocating. Closing the handle releases all of it.
 
 The following are indicative measurements from an arm64 build at 48000 Hz
 with default build options, not storage requirements guaranteed across builds:
@@ -525,8 +537,10 @@ shim — callers must move to `faac_*`. The changes are mechanical:
   removed `name`/`copyright` write-only config fields are gone along
   with it.
 - **Decoder-specific info.** `faacEncGetDecoderSpecificInfo()` is
-  replaced by `faac_encoder_asc()`. The legacy call allocated a caller-freed buffer; the new buffer is
-  library-owned and valid until close. Remove the old `free()` call.
+  replaced by `faac_encoder_asc()`. The legacy call allocated a caller-freed
+  buffer; the new call returns bytes built at open in the handle, without
+  allocating. The buffer is library-owned and valid until close. Remove the
+  old `free()` call.
 - **Encoding loop.** `faacEncEncode()` becomes
   `faac_encoder_encode()` with the byte count returned via an
   out-parameter (`bytes_written`) instead of the return value; the return

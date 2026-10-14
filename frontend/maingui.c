@@ -537,13 +537,17 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
         {
             HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
+            faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
             LRESULT idx;
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_AUTO);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Low Complexity");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LOW);
-            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+            if (faac_get_library_info(&libinfo) == FAAC_OK && libinfo.sbr_decimation != 0)
+            {
+                idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
+                SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+            }
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 

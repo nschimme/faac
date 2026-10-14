@@ -137,35 +137,40 @@ int faacEncGetVersion( char **faac_id_string,
 }
 
 
-int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuffer,unsigned long* pSizeOfDecoderSpecificInfo)
+/* The configuration is fixed at open, so LC and HE share one non-allocating
+ * writer. The longest ASC is mono HE: 16 core + 21 SBR + 12 PS bits. */
+_Static_assert(sizeof(((faacEncStruct *)0)->asc) * 8 >= 16 + 21 + 12,
+               "ASC buffer must hold the mono HE extensions");
+
+int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 {
-    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
+    faacEncStruct *hEncoder = (faacEncStruct *)hpEncoder;
+    BitStream bs;
 
-    if((hEncoder == NULL) || (ppBuffer == NULL) || (pSizeOfDecoderSpecificInfo == NULL)) {
+    if (hEncoder == NULL || buf == NULL)
         return -1;
-    }
-
-    if(hEncoder->config.mpegVersion == MPEG2){
+    if (hEncoder->config.mpegVersion == MPEG2)
         return -2; /* not supported */
-    }
 
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrContext) {
-        return SbrContextGetASC(hEncoder->sbrContext, hEncoder->sampleRateIdx, hEncoder->numChannels, ppBuffer, pSizeOfDecoderSpecificInfo);
+    int he = hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrContext;
+    InitBitStream(&bs, buf, sizeof(hEncoder->asc));
+    PutBit(&bs, he ? LOW : hEncoder->config.aacObjectType, 5);
+    PutBit(&bs, hEncoder->sampleRateIdx, 4);
+    PutBit(&bs, GetChannelConfig((int)hEncoder->numChannels), 4);
+    PutBit(&bs, 0, 3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
+    if (he) {
+        /* Explicit-hierarchy extension: AAC-LC at Fs/2, SBR at full Fs. */
+        PutBit(&bs, 0x2b7, 11);
+        PutBit(&bs, HE_V1, 5);
+        PutBit(&bs, 1, 1);
+        PutBit(&bs, SbrContextGetFullRateIdx(hEncoder->sbrContext), 4);
+        /* Explicit PS absence prevents decoders expanding mono to stereo. */
+        if (hEncoder->numChannels == 1) {
+            PutBit(&bs, 0x548, 11);
+            PutBit(&bs, 0, 1);
+        }
     }
-
-    *pSizeOfDecoderSpecificInfo = 2;
-    *ppBuffer = (unsigned char *)AllocMemory(2);
-
-    if(*ppBuffer != NULL){
-        BitStream bs;
-        InitBitStream(&bs, *ppBuffer, 2); /* zeroes the buffer, so the 3 trailing pad bits need no write */
-        PutBit(&bs, hEncoder->config.aacObjectType, 5);
-        PutBit(&bs, hEncoder->sampleRateIdx,        4);
-        PutBit(&bs, GetChannelConfig((int)hEncoder->numChannels), 4);
-        return 0;
-    } else {
-        return -3;
-    }
+    return (int)((bs.currentBit + 7) / 8);
 }
 
 
@@ -183,6 +188,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
      * LC, since SBR is MPEG-4 only and AUTO must not overrule the version
      * the caller named. */
     if (hEncoder->config.aacObjectType == AUTO) {
+#ifdef FAAC_DISABLE_SBR
+        config->aacObjectType = LOW;
+#else
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
@@ -203,6 +211,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         hEncoder->config.aacObjectType =
             (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE &&
              hEncoder->config.mpegVersion != MPEG2) ? HE_V1 : LOW;
+#endif
     }
 
     if (hEncoder->config.aacObjectType == HE_V1
@@ -609,8 +618,6 @@ int faacEncClose(faacEncHandle hpEncoder)
         if (hEncoder->peakSnap[channel])
             FreeMemory(hEncoder->peakSnap[channel]);
     }
-
-    if (hEncoder->ascCache) FreeMemory(hEncoder->ascCache);
 
     if (hEncoder->sbrContext) {
         SbrContextEnd(hEncoder->sbrContext);

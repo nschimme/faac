@@ -847,6 +847,13 @@ int main(int argc, char *argv[])
 
     opts.output_filename = aacFileName;
 
+    if (opts.object_type == FAAC_OBJ_HE_AAC_V1 && libinfo.sbr_decimation == 0)
+    {
+        fprintf(stderr, "HE-AAC v1 is not available in this LC-only libfaac build.\n");
+        ret = 1;
+        goto cleanup;
+    }
+
     encode_callbacks_t cbs = {
         .progress_cb = cli_progress_callback,
         .session_start_cb = cli_session_start_callback,

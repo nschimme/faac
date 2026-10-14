@@ -144,6 +144,30 @@ jobs:
           }
           if (-not (Get-ChildItem 'temp/bin/*faac*.dll')) { throw 'FAAC DLL is missing from the package' }
 
+      - name: Build and smoke-test LC-only encoder
+        if: matrix.config.name == 'Linux GCC'
+        env:
+          CC: ${{ matrix.config.compiler }}
+        run: |
+          meson setup build-lc -Dencoder-sbr=false -Dwerror=true
+          meson compile -C build-lc
+          python3 - <<'PYINPUT'
+          import wave
+          with wave.open('lc-input.wav', 'wb') as w:
+              w.setnchannels(2)
+              w.setsampwidth(2)
+              w.setframerate(48000)
+              w.writeframes(bytes(48000 * 2 * 2))
+          PYINPUT
+          build-lc/frontend/faac --object-type lc -b 24 -o lc.aac lc-input.wav
+          build-lc/frontend/faac --object-type auto -b 24 -o auto.aac lc-input.wav
+          cmp lc.aac auto.aac
+          if build-lc/frontend/faac --object-type he-aac-v1 -o he.aac lc-input.wav 2>he.err; then
+            echo "LC-only encoder unexpectedly accepted HE-AAC" >&2
+            exit 1
+          fi
+          grep -F 'HE-AAC v1 is not available in this LC-only libfaac build.' he.err
+
       - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v7
         if: runner.os == 'Windows'
