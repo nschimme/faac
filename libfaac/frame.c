@@ -189,6 +189,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
      * LC, since SBR is MPEG-4 only and AUTO must not overrule the version
      * the caller named. */
     if (hEncoder->config.aacObjectType == AUTO) {
+#ifdef FAAC_DISABLE_SBR
+        hEncoder->config.aacObjectType = LOW;
+#else
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
@@ -203,6 +206,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         hEncoder->config.aacObjectType =
             (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE &&
              hEncoder->config.mpegVersion != MPEG2) ? HE_V1 : LOW;
+#endif
     }
 
     if (hEncoder->config.aacObjectType == HE_V1
