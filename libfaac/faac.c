@@ -184,14 +184,14 @@ static faac_status validate_params(const faac_params *p)
      * it. */
     if (p->sample_rate < FAAC_MIN_SAMPLE_RATE || p->sample_rate > FAAC_MAX_SAMPLE_RATE)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (GetChannelConfig((int)p->num_channels) == 0)
+    if (GetChannelConfig((int)p->channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->channel_map) {
         uint32_t i;
-        if (p->channel_map_count < p->num_channels)
+        if (p->channel_map_count < p->channels)
             return FAAC_ERR_INVALID_ARGUMENT;
-        for (i = 0; i < p->num_channels; i++)
-            if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->num_channels)
+        for (i = 0; i < p->channels; i++)
+            if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->channels)
                 return FAAC_ERR_INVALID_ARGUMENT;
     }
     /* bit_rate is per channel, as is the bound. Only a ceiling: it is the
@@ -218,7 +218,7 @@ static faac_status validate_params(const faac_params *p)
          * end up larger the tighter the cap gets. Reject it rather than emit a
          * stream that quietly busts the ceiling it was asked to respect.
          * bit_rate is per channel and max_bit_rate is not, so scale to compare. */
-        if (p->bit_rate && p->max_bit_rate < (uint64_t)p->bit_rate * p->num_channels)
+        if (p->bit_rate && p->max_bit_rate < (uint64_t)p->bit_rate * p->channels)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
     /* reserved padding must be zero so future fields can claim it safely */
@@ -249,7 +249,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     if (st != FAAC_OK)
         return st;
 
-    h = (faacEncStruct *)faacEncOpen(p->sample_rate, p->num_channels,
+    h = (faacEncStruct *)faacEncOpen(p->sample_rate, p->channels,
                                      &inSamples, &maxOut);
     if (!h)
         return FAAC_ERR_NO_MEMORY;
@@ -275,7 +275,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
         ? (p->bit_rate ? RATE_ABR : RATE_VBR) : (unsigned int)p->rate_control;
     if (p->channel_map) {
         uint32_t i;
-        for (i = 0; i < p->num_channels; i++)
+        for (i = 0; i < p->channels; i++)
             cfg->channel_map[i] = p->channel_map[i];
     }
     /* else: faacEncOpen already installed the identity map */
