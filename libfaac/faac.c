@@ -44,6 +44,7 @@ _Static_assert((int)FAAC_RC_AUTO == RATE_AUTO && (int)FAAC_RC_VBR == RATE_VBR
 _Static_assert(sizeof(enum faac_joint_mode)    == 4, "faac_joint_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_shortctl_mode) == 4, "faac_shortctl_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_stream_format) == 4, "faac_stream_format must be 32-bit");
+_Static_assert(sizeof(enum faac_channel_layout) == 4, "faac_channel_layout must be 32-bit");
 _Static_assert(sizeof(enum faac_input_format)  == 4, "faac_input_format must be 32-bit");
 
 /* The modern enums mirror the legacy numeric values one-for-one, so parameter
@@ -59,10 +60,8 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
             && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_32BIT == INPUT_32BIT
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 
-/* Baseline layout as shipped in SONAME 2. Frozen by the append-only rule:
- * fields cannot move, so this offset never moves. Not sizeof(), which
- * grows with every appended field and would reject older callers' binaries.
- * A literal would be wrong too: the layout depends on pointer width. */
+/* The minimum parameter layout ends at rate_control so appended fields do
+ * not raise the minimum caller size. */
 #define PARAMS_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_params, rate_control) + sizeof(enum faac_rate_control)))
 
@@ -117,7 +116,6 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.mpeg_version  = FAAC_MPEG4;
     tmp.object_type   = FAAC_OBJ_LOW;
     tmp.joint_mode    = FAAC_JOINT_MIXED;
-    tmp.use_lfe       = false;
     tmp.use_tns       = true;
     tmp.use_pns       = true;
     tmp.bit_rate      = 64000;          /* per channel; 0 would defer to quant_quality */
@@ -186,14 +184,8 @@ static faac_status validate_params(const faac_params *p)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (GetChannelConfig((int)p->channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (p->channel_map) {
-        uint32_t i;
-        if (p->channel_map_count < p->channels)
-            return FAAC_ERR_INVALID_ARGUMENT;
-        for (i = 0; i < p->channels; i++)
-            if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->channels)
-                return FAAC_ERR_INVALID_ARGUMENT;
-    }
+    if (p->channel_layout != FAAC_LAYOUT_AAC && p->channel_layout != FAAC_LAYOUT_WAV)
+        return FAAC_ERR_INVALID_ARGUMENT;
     /* bit_rate is per channel, as is the bound. Only a ceiling: it is the
      * ISO/IEC 14496-3 per-frame limit and therefore real, whereas the format
      * sets no minimum and the encoder's own floor already ends the descent. */
@@ -259,7 +251,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->mpegVersion   = (unsigned int)p->mpeg_version;
     cfg->aacObjectType = (unsigned int)p->object_type;  /* LOW / HE_V1 / AUTO */
     cfg->jointmode     = (unsigned int)p->joint_mode;
-    cfg->useLfe        = p->use_lfe ? 1 : 0;
+    cfg->useLfe        = (p->channels == 6 || p->channels == 8);
     cfg->useTns        = p->use_tns ? 1 : 0;
     cfg->bitRate       = p->bit_rate;
     cfg->bandWidth     = p->bandwidth;
@@ -273,12 +265,20 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
      * HE-AAC clamp preserves that distinction. */
     cfg->rateControl   = p->rate_control == FAAC_RC_AUTO
         ? (p->bit_rate ? RATE_ABR : RATE_VBR) : (unsigned int)p->rate_control;
-    if (p->channel_map) {
-        uint32_t i;
-        for (i = 0; i < p->channels; i++)
-            cfg->channel_map[i] = p->channel_map[i];
+    /* WAVE order must become AAC element order. */
+    if (p->channel_layout == FAAC_LAYOUT_WAV && p->channels >= 3) {
+        static const uint8_t wav_to_aac[6][8] = {
+            {2, 0, 1},
+            {2, 0, 1, 3},
+            {2, 0, 1, 3, 4},
+            {2, 0, 1, 4, 5, 3},
+            {0},
+            {2, 0, 1, 6, 7, 4, 5, 3}
+        };
+        for (uint32_t i = 0; i < p->channels; ++i)
+            cfg->channel_map[i] = wav_to_aac[p->channels - 3][i];
     }
-    /* else: faacEncOpen already installed the identity map */
+    /* AAC input retains the identity map installed by faacEncOpen. */
 
     applied = faacEncApplyConfig(h);
     if (applied != 1) {

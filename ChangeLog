@@ -2,6 +2,8 @@ Unreleased
 
 	[ Nils Schimmelmann ]
 	* Rename faac_params.num_channels to channels
+	* Replace LFE selection and custom channel maps with AAC/WAVE channel
+	  layouts; derive LFE automatically for six or eight channels
 
 2.2 (Sep 29, 2026)
 

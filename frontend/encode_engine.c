@@ -57,7 +57,6 @@ void init_encode_options(encode_options_t *opts)
     opts->shortctl = FAAC_SHORTCTL_NORMAL;
     opts->use_tns = true;
     opts->use_pns = true;
-    opts->use_lfe = -1;
     opts->quant_quality = 0;
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->rate_auto = true;
@@ -573,7 +572,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.joint_mode = opts->joint_mode;
     params.use_tns = opts->use_tns;
     params.use_pns = opts->use_pns;
-    params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
@@ -648,18 +646,14 @@ int run_encoding_session_ext(const encode_options_t *opts,
         }
     }
 
-    /* Hand integer PCM to the encoder as it is: one conversion pass instead of
-       two, and nothing for it to sanitise. The encoder applies the channel map. */
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
-    bool native = wav_native_ok(infile) && !resample_active;
-    params.input_format = resample_active ? FAAC_INPUT_FLOAT :
-                          (!native ? FAAC_INPUT_FLOAT :
-                           infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT);
-    if (native && chanmap)
-    {
-        params.channel_map = chanmap;
-        params.channel_map_count = num_channels;
-    }
+    bool standard_layout = num_channels < 3 ||
+        (opts->center_channel == 3 && opts->lfe_channel == 4);
+    params.channel_layout = standard_layout ? FAAC_LAYOUT_WAV : FAAC_LAYOUT_AAC;
+    /* Custom channel positions need the frontend's float permutation. */
+    bool native = standard_layout && wav_native_ok(infile) && !resample_active;
+    params.input_format = !native ? FAAC_INPUT_FLOAT :
+                          infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;
 
     size_t resample_in_cap = 0;
     size_t resample_out_cap = 0;
@@ -820,7 +814,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     bool resampler_eof = false;
 
 #define read_pcm() (native ? wav_read_native(infile, pcmbuf, samples_per_frame) \
-                           : wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap))
+                           : wav_read_float32(infile, pcmbuf, samples_per_frame, standard_layout ? NULL : chanmap))
 
     for (;;)
     {
@@ -845,7 +839,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
                     int raw_read = 0;
                     if (should_read)
                     {
-                        raw_read = (int)wav_read_float32(infile, resample_in_buf, samples_per_frame, chanmap);
+                        raw_read = (int)wav_read_float32(infile, resample_in_buf, samples_per_frame, standard_layout ? NULL : chanmap);
                         const char *read_error = wav_read_error(infile, (size_t)raw_read);
                         if (read_error) FAIL("%s: %s\n", read_error, opts->input_filename);
                     }

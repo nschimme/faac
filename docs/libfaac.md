@@ -113,8 +113,8 @@ half-configured state, and every derived quantity (frame size, output-buffer
 bound, effective sample rate, resolved object type) is known and queryable the
 instant open returns. Every fallible call returns a `faac_status` code;
 fixed-width integer types and width-pinned enums keep the ABI identical across
-64-bit platforms (LP64 and LLP64), regardless of -fshort-enums. 32-bit targets
-have their own layout because of pointer fields.
+64-bit platforms (LP64 and LLP64), regardless of -fshort-enums. `faac_params`
+is pointer-free; other structs follow target pointer alignment.
 See [ABI compatibility](#abi-compatibility).
 
 ### Calling sequence
@@ -289,9 +289,9 @@ cleanup:
 ### Defaults and PCM input
 
 `faac_params_init()` defaults to MPEG-4 AAC-LC, mixed joint stereo, TNS and
-PNS enabled, LFE disabled, ADTS, signed 16-bit input, normal block switching,
-64000 bits/sec/channel, automatic rate control, no user peak cap and automatic
-bandwidth/quality. Only sample rate and channel count must be supplied.
+PNS enabled, automatic LFE for six or eight channels, AAC input order, ADTS,
+signed 16-bit input, normal block switching, 64000 bits/sec/channel, automatic
+rate control, no user peak cap and automatic bandwidth/quality. Only sample rate and channel count must be supplied.
 `FAAC_OBJ_AUTO` is an explicit choice, not the initialization default.
 
 For VBR, clear the default bitrate:
@@ -320,25 +320,41 @@ this is not a clipping or normalization service.
 
 ### Channel ordering and ownership
 
-Mono and stereo use mono and L/R order. Multichannel input follows AAC element
-order, with the center first, channel pairs next and the final unpaired channel
-last. For conventional 5.1 use C, L, R, Ls, Rs, LFE and set `use_lfe = true`.
-For source order L, R, C, LFE, Ls, Rs:
+`channel_layout` defaults to `FAAC_LAYOUT_AAC`: mono or L/R for stereo,
+then AAC element order for multichannel PCM. For 5.1 this is C, L, R, Ls, Rs,
+LFE. The last channel is LFE only for six or eight channels; four-channel
+input ends with a plain back-centre SCE. For eight channels, AAC order is
+C, front L/R, side L/R, back L/R, LFE.
+
+The supported standard layouts are:
+
+| Channels | Layout | WAVE order | WAVE mask |
+|---|---|---|---|
+| 1 | mono | FC | `0x004` |
+| 2 | stereo | FL FR | `0x003` |
+| 3 | 3.0 | FL FR FC | `0x007` |
+| 4 | 4.0 | FL FR FC BC | `0x107` |
+| 5 | 5.0 | FL FR FC BL BR | `0x037` |
+| 6 | 5.1 | FL FR FC LFE BL BR | `0x03f` |
+| 8 | 7.1 | FL FR FC LFE BL BR SL SR | `0x63f` |
+
+Four channels are always coded and labelled as 4.0, including quad
+(FL FR BL BR) and 3.1 (FL FR FC LFE) input. Seven channels and more than eight
+are rejected with `FAAC_ERR_INVALID_ARGUMENT`. Eight-channel pairs are coded
+front, side, back using AAC channel configuration 7, read as 7.1 by FFmpeg and
+libfaad. ISO defines that configuration as 7.1 wide, so Core Audio labels the
+pairs differently.
+
+Select `FAAC_LAYOUT_WAV` for WAVE interleave. The library derives the
+permutation; arbitrary channel maps are not accepted. For 5.1 input ordered
+L, R, C, LFE, Ls, Rs:
 
 ```c
-int32_t map[6] = { 2, 0, 1, 4, 5, 3 };
-p.channel_map = map;
-p.channel_map_count = 6;
-p.use_lfe = true;
+p.channels = 6;
+p.channel_layout = FAAC_LAYOUT_WAV;
 ```
 
-`channel_map[destination_channel]` selects the source PCM channel; entries must
-be in `0..channels-1`, with at least `channels` entries supplied.
-NULL selects identity order. Use a permutation to reorder channels; the map
-does not mix or downmix audio. For the conventional six- and eight-channel layouts, LFE selection applies
-to the trailing unpaired channel; it does not locate an LFE within the source layout automatically.
-
-Open copies parameters and the map; their storage may be released after open.
+Open copies the parameters; their storage may be released after open.
 Input and output buffers remain caller-owned; PCM is copied into internal
 storage during encode. ASC remains library-owned until close; copy it if the
 muxer needs it longer. Version/copyright and error strings are static and must
@@ -572,8 +588,8 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     `allowMidside` was a compatibility alias sharing storage with
     `jointmode` in a union; it has no separate replacement, use
     `joint_mode` directly.
-  - `useLfe` → `use_lfe`; `useTns` → `use_tns`
-    (now `bool`).
+  - `useLfe` → automatic LFE for six or eight channels; no switch.
+    `useTns` → `use_tns` (now `bool`).
   - `shortctl` → `short_control` (`FAAC_SHORTCTL_*`).
   - `bitRate` → `bit_rate`; `bandWidth` →
     `bandwidth`; `quantqual` → `quant_quality`.
@@ -581,9 +597,8 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     encoder, leaving the caller an on/off switch.
   - `outputFormat` → `output_format` (`FAAC_STREAM_*`);
     `inputFormat` → `input_format` (`FAAC_INPUT_*`).
-  - `channel_map[64]` → `channel_map` plus an explicit
-    `channel_map_count` (the old fixed-size array was implicitly sized by
-    `numChannels`).
+  - `channel_map[64]` → `channel_layout` (`FAAC_LAYOUT_AAC` or
+    `FAAC_LAYOUT_WAV`). Apply custom permutations before encoding.
   - `version`, `name`, and `copyright` were unused or
     library-populated informational fields in the legacy config struct; their
     closest analogs are `faac_params.struct_size` (for `version`-style
@@ -614,8 +629,11 @@ against ABI 2. To compile source against either header:
 ```
 
 `FAAC_VERSION_MAJOR` identifies the library ABI, not the project release.
-Version 3.0 moved FAAC, FAAD and FAAM to one project version and SONAME 3 without changing
-the `faac_*` API, so code written for ABI 2 builds and runs unchanged.
+Version 3.0 uses SONAME 3. In `faac_params`, rename `num_channels` to
+`channels` and replace `use_lfe`, `channel_map` and `channel_map_count` with
+`channel_layout`. LFE is automatic for six or eight channels; custom channel
+permutations must be applied before encoding. Rebuild against the new header;
+ABI 2 parameter layouts are incompatible.
 An ABI 1 binary must not load ABI 2 as a drop-in replacement. Do not cast
 legacy configuration or handle types to the new public types; migrate the
 calls and rebuild.
