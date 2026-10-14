@@ -181,9 +181,14 @@ enum faad_stream_flag {
  * struct_size to sizeof(faad_stream_info) before faad_decoder_get_info(); it is
  * updated to the bytes populated.
  *
- * Configured output order: mono FC; stereo FL FR; surround FL FR FC, then BC
- * (4), BL BR (5), LFE BL BR (6), or LFE BL BR SL SR (8). PCE surround element
- * order has no fixed WAVE layout and reports mask 0.
+ * Configured output order (WAVE order, so it can be fed straight back to the
+ * encoder as FAAC_LAYOUT_WAV): mono FC; stereo FL FR; surround FL FR FC, then BC
+ * (4), BL BR (5), LFE BL BR (6), or LFE BL BR SL SR (8). Eight channels from
+ * channelConfiguration 0 with an equivalent PCE are reported in WAVE order
+ * with side and back pairs. FAAC signals front C/front pair, side pair,
+ * back pair and LFE, unambiguously for Apple, FDK, FFmpeg and faad.
+ * Configuration 7 streams are also accepted as common side/back 7.1.
+ * Other PCE surround layouts retain element order and report mask 0.
  */
 typedef struct faad_stream_info {
     uint32_t                struct_size;      /* set by caller to sizeof(faad_stream_info) */
@@ -247,7 +252,7 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
  * out_info->struct_size to sizeof(faad_stream_info); smaller baseline layouts
  * are rejected, larger layouts are accepted and only known bytes are written.
  * max_output_bytes is valid even before the first frame and across flushes;
- * ADTS/PCE use the build's channel capacity, fixed RAW layouts use their count
+ * ADTS uses the build's channel capacity; RAW layouts (including ASC PCEs) use their count
  * (at least two with PS support), and downmix reduces that bound.
  */
 FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_info *out_info);
