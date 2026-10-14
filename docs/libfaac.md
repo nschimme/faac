@@ -89,10 +89,10 @@ otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8), `FAAC_SBR_DECIMATION`
 | AAC-LC | Supported by every encoder build; 1024 samples/channel per frame |
 | HE-AAC v1 | Dual-rate SBR; input rate at least 32000 Hz; 2048 samples/channel per frame |
 | HE-AAC v2, MAIN, SSR, LTP, LD, ELD, USAC | Unsupported |
-| ADTS | Library supplies each frame's header |
+| ADTS | Library supplies each frame's header; `FAAC_STREAM_ADTS` writes MPEG-4 headers, `FAAC_STREAM_ADTS_MPEG2` MPEG-2 headers |
 | RAW AAC | One access unit per emitted frame; MPEG-4 ASC available separately |
 | MP4/M4A | Mux outside the library using RAW access units and ASC |
-| MPEG-2 | AAC-LC; no ASC; explicit HE-AAC resolves to MPEG-4 |
+| MPEG-2 | `FAAC_STREAM_ADTS_MPEG2` only (no RAW form); AAC-LC; no ASC; HE-AAC resolves to `FAAC_STREAM_ADTS` |
 | Channels | 1–6 or 8, within the compiled `max-channels` ceiling; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float; see below |
 
@@ -588,8 +588,10 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     MPEG-4 AOT registry, rather than the old MAIN/LOW/SSR/LTP enum — MAIN,
     SSR, and LTP are retired,
     unimplemented object types).
-  - `mpegVersion` → `mpeg_version` (`FAAC_MPEG4` /
-    `FAAC_MPEG2`).
+  - `mpegVersion` → the stream format: `FAAC_STREAM_ADTS_MPEG2` selects
+    MPEG-2; MPEG-4 is the default for `FAAC_STREAM_ADTS` and
+    `FAAC_STREAM_RAW`. MPEG-2 RAW has no ID bit and is no longer a
+    separate setting.
   - `jointmode` → `stereo_mode` (`FAAC_STEREO_*`).
     `allowMidside` was a compatibility alias sharing storage with
     `jointmode` in a union; it has no separate replacement, use
@@ -604,7 +606,7 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     `FAAC_RC_CBR`); select the mode explicitly.
   - `pnslevel` → `flags & FAAC_FLAG_PNS`: the level is now chosen by the
     encoder, leaving the caller an on/off switch.
-  - `outputFormat` → `stream_format` (`FAAC_STREAM_*`);
+  - `outputFormat` and `mpegVersion` → `stream_format` (`FAAC_STREAM_*`);
     `inputFormat` → `input_format` (`FAAC_INPUT_*`).
   - `channel_map[64]` → `channel_layout` (`FAAC_LAYOUT_AAC` or
     `FAAC_LAYOUT_WAV`). Apply custom permutations before encoding.

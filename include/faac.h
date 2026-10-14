@@ -111,12 +111,6 @@ enum faac_object_type {
     FAAC_OBJ_MAX       = 0x7fffffff
 };
 
-enum faac_mpeg_version {
-    FAAC_MPEG4 = 0,
-    FAAC_MPEG2 = 1,
-    FAAC_MPEG_MAX = 0x7fffffff
-};
-
 enum faac_stereo_mode {
     FAAC_STEREO_LR  = 0,            /* independent (L/R) stereo         */
     FAAC_STEREO_MS,                  /* mid/side                          */
@@ -134,7 +128,8 @@ enum faac_shortctl_mode {
 
 enum faac_stream_format {
     FAAC_STREAM_RAW  = 0,            /* raw AAC frames (needs out-of-band ASC) */
-    FAAC_STREAM_ADTS = 1,            /* self-framing ADTS                       */
+    FAAC_STREAM_ADTS = 1,            /* self-framing MPEG-4 ADTS                */
+    FAAC_STREAM_ADTS_MPEG2 = 2,      /* self-framing MPEG-2 ADTS; HE-AAC resolves to MPEG-4 */
     FAAC_STREAM_MAX  = 0x7fffffff
 };
 
@@ -203,7 +198,6 @@ typedef struct faac_params {
     uint32_t                sample_rate;   /* input/output sample rate in Hz (required)      */
     uint32_t                channels;      /* channel count, 1..max_channels (required)       */
 
-    enum faac_mpeg_version  mpeg_version;
     enum faac_object_type   object_type;
     enum faac_stereo_mode   stereo_mode;
 
@@ -259,7 +253,7 @@ typedef struct faac_encoder_info {
     uint32_t                max_output_bytes; /* upper bound on one encode() call's output          */
     uint32_t                sample_rate;      /* nominal full output rate in Hz (HE: extended rate) */
     enum faac_object_type   object_type;      /* concrete type in effect (AUTO resolved)            */
-    enum faac_mpeg_version  mpeg_version;     /* version in effect (HE-AAC forces MPEG-4)           */
+    enum faac_stream_format stream_format;    /* resolved format (HE-AAC forces MPEG-4)              */
 
     uint32_t                bit_rate;         /* resolved whole-stream bits/sec (0 in VBR) */
     uint32_t                bandwidth;        /* resolved cutoff in Hz                               */

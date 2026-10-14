@@ -49,7 +49,7 @@ void init_encode_options(encode_options_t *opts)
     memset(opts, 0, sizeof(*opts));
     opts->container_mp4 = true;
     opts->stream_format = FAAC_STREAM_ADTS;
-    opts->mpeg_version = FAAC_MPEG4;
+    opts->mpeg_version = 4;
     opts->object_type = FAAC_OBJ_AUTO;
     opts->joint_mode = FAAC_STEREO_AUTO;
     opts->stream_format = FAAC_STREAM_ADTS;
@@ -523,7 +523,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_params_init(&params, sizeof(params));
     params.sample_rate = sample_rate;
     params.channels = num_channels;
-    params.mpeg_version = opts->mpeg_version;
     params.object_type = opts->object_type;
     params.stereo_mode = opts->joint_mode;
     params.flags = (opts->use_tns ? FAAC_FLAG_TNS : 0)
@@ -563,6 +562,18 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.bandwidth = opts->bandwidth;
     params.stream_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
+    if (!opts->container_mp4 && opts->mpeg_version == 2) {
+        if (params.stream_format == FAAC_STREAM_ADTS)
+            params.stream_format = FAAC_STREAM_ADTS_MPEG2;
+        else {
+            /* RAW has no MPEG ID; preserve MPEG-2's LC selection and PNS gate. */
+            if (params.object_type == FAAC_OBJ_AUTO)
+                params.object_type = FAAC_OBJ_LC;
+            if (params.object_type != FAAC_OBJ_HE_AAC_V1)
+                params.flags &= ~FAAC_FLAG_PNS;
+        }
+    }
+
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
     bool standard_layout = num_channels < 3 ||
         (opts->center_channel == 3 && opts->lfe_channel == 4);
@@ -583,7 +594,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder_get_info(hEncoder, &info);
 
     /* MPEG-2 AAC has no PNS. */
-    bool use_pns = (params.flags & FAAC_FLAG_PNS) && info.mpeg_version != FAAC_MPEG2;
+    bool use_pns = (params.flags & FAAC_FLAG_PNS) && info.stream_format != FAAC_STREAM_ADTS_MPEG2;
 
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;
@@ -678,8 +689,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .frame_size = frame_size,
 
             .container_mp4 = opts->container_mp4,
-            .stream_format = opts->stream_format,
-            .mpeg_version = info.mpeg_version,
+            .stream_format = info.stream_format,
             .object_type = info.object_type,
             .use_pns = use_pns,
             .bandwidth = info.bandwidth,
