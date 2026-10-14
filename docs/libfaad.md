@@ -83,8 +83,8 @@ to the include path. Define `FAAD_BUILDING` when building a Windows DLL.
 | Feature | Option (default) | Runtime detection | When absent |
 |---|---|---|---|
 | AAC-LC | Always built | No capability field; supported by every decoder build | No build switch. |
-| HE-AAC v1 (SBR) | `decoder-sbr` (true) | `faad_library_info.sbr_supported` | SBR output is unavailable. |
-| HE-AAC v2 (SBR + PS) | `decoder-sbr` and `decoder-ps` (both true); requires at least two compiled channels | `faad_library_info.sbr_supported`, `ps_supported` and `max_channels` | PS stereo output is unavailable. |
+| HE-AAC v1 (SBR) | `decoder-sbr` (true) | `faad_library_info.flags & FAAD_LIB_SBR` | SBR output is unavailable. |
+| HE-AAC v2 (SBR + PS) | `decoder-sbr` and `decoder-ps` (both true); requires at least two compiled channels | `faad_library_info.flags & (FAAD_LIB_SBR \| FAAD_LIB_PS)` and `max_channels` | PS stereo output is unavailable. |
 | ADTS | Always built | No capability field; select `FAAD_STREAM_ADTS` | Pass headers and payload; one raw data block per ADTS frame. |
 | RAW AAC | Always built | No capability field; select `FAAD_STREAM_RAW` | Supply valid ASC at open; pass one complete access unit per call. |
 | MP4/M4A | External demuxer | No container capability field | libfaad does not parse containers. Use [libfaam](libfaam.md) to supply track ASC and RAW access units; see [Reading MP4 for the FAAD decoder](libfaam.md#reading-mp4-for-the-faad-decoder). |
@@ -95,6 +95,8 @@ to the include path. Define `FAAD_BUILDING` when building a Windows DLL.
 
 Query `faad_get_library_info()` for the loaded library's channel ceiling and
 SBR/PS capabilities; set `faad_library_info.struct_size` before calling.
+The query writes back the number of bytes populated. The field order is `struct_size`, `version`,
+`copyright`, `max_channels`, `flags`.
 Header constants alone do not identify build options.
 HE-AAC may signal extensions implicitly during decoding, so use frame flags
 and stream info even when the initial snapshot describes AAC-LC.
@@ -421,8 +423,9 @@ Channel order is documented in the header; `channel_mask` uses WAVE speaker
 bits and is zero for unknown surround layouts.
 
 `faad_stream_info` describes the most recently emitted PCM; before any PCM,
-it describes the ASC/ADTS snapshot. Before ADTS discovery, `format_known` is
-false and format fields are zero/`FAAD_OBJ_NULL`; capacity is already valid.
+it describes the ASC/ADTS snapshot. Before ADTS discovery,
+`FAAD_STREAM_FORMAT_KNOWN` is clear in `flags` and format fields are
+zero/`FAAD_OBJ_NULL`; capacity is already valid.
 ASC may provide a usable snapshot, but implicit SBR/PS can change it later.
 Set `struct_size` once to `sizeof(info)`. The library writes back the populated
 size, which remains valid for later queries.
@@ -505,7 +508,7 @@ no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
   Opening consumes no input bytes: pass the first ADTS frame, including its
   header, to `faad_decode_frame()`. There is no initialization return value to
   skip in the input. Rate and channel count may remain unknown until decoding;
-  check `faad_stream_info.format_known`; re-query on `FAAD_FRAME_FORMAT_CHANGED`.
+  check `faad_stream_info.flags & FAAD_STREAM_FORMAT_KNOWN`; re-query on `FAAD_FRAME_FORMAT_CHANGED`.
 - **RAW initialization.** For `NeAACDecInit2()`, select `FAAD_STREAM_RAW`
   and pass the demuxer's valid, nonempty AudioSpecificConfig to
   `faad_decoder_open()`. Configuration and ASC are consumed during open and
@@ -541,7 +544,7 @@ no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
 - **Version and capabilities.** Replace `NeAACDecGetVersion()` and
   `NeAACDecGetCapabilities()` with `faad_get_library_info()`. It reports
   library-owned version/copyright strings, the compiled channel ceiling, and
-  SBR/PS support as fields rather than a capability bitmask. Use
+  SBR/PS support in `flags` (`FAAD_LIB_SBR` / `FAAD_LIB_PS`). Use
   `FAAD_VERSION_STRING` / `FAAD_VERSION_HEX` for compile-time header version
   checks instead of `FAAD2_VERSION`.
 - **Struct growth and integer widths.** Always initialize configuration with
@@ -604,6 +607,10 @@ handle that in their container/parser layer.
 |---|---|
 | `FAAD_OUTPUT_32BIT` | `FAAD_OUTPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
 | `FAAD_ERR_INSUFFICIENT_MEM` | `FAAD_ERR_NO_MEMORY`; allocation failure or supplied state block too small. |
+| `faad_library_info.sbr_supported` | Test `flags & FAAD_LIB_SBR`. |
+| `faad_library_info.ps_supported` | Test `flags & FAAD_LIB_PS`. |
+| `faad_stream_info.format_known` | Test `flags & FAAD_STREAM_FORMAT_KNOWN`; clear before ADTS discovery, set once the format is known. |
+| Library/stream info `reserved` | Removed; query functions write back the populated `struct_size`. |
 
 ## ABI compatibility
 

@@ -22,10 +22,10 @@
 #include "atomic.h"
 #include "endian.h"
 
-/* Frozen initial layouts: never replace these with a growing sizeof(). */
+/* Baselines end at the last field so appended fields remain optional. */
 #define CONFIG_BASELINE_SIZE ((uint32_t)(offsetof(faad_config, downmix_mode) + sizeof(enum faad_downmix_mode)))
-#define LIBRARY_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_library_info, reserved) + sizeof(((faad_library_info *)0)->reserved)))
-#define STREAM_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_stream_info, reserved) + sizeof(((faad_stream_info *)0)->reserved)))
+#define LIBRARY_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_library_info, flags) + sizeof(uint32_t)))
+#define STREAM_INFO_BASELINE_SIZE ((uint32_t)(offsetof(faad_stream_info, flags) + sizeof(uint32_t)))
 
 /* Append-only fields must not increase the alignment an older caller supplies. */
 _Static_assert(_Alignof(faad_config) == _Alignof(uint32_t), "config ABI alignment");
@@ -205,14 +205,10 @@ FAADAPI faad_status faad_get_library_info(faad_library_info *out)
         " Copyright (C) 2026, Nils Schimmelmann\n";
     info.max_channels = MAX_CHANNELS;
 #ifndef FAAD_DISABLE_SBR
-    info.sbr_supported = true;
-#else
-    info.sbr_supported = false;
+    info.flags |= FAAD_LIB_SBR;
 #endif
 #ifndef FAAD_DISABLE_PS
-    info.ps_supported = true;
-#else
-    info.ps_supported = false;
+    info.flags |= FAAD_LIB_PS;
 #endif
 
     memcpy(out, &info, info.struct_size);
@@ -535,8 +531,8 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
     memset(&info, 0, sizeof(info));
     info.struct_size = bounded_size(out_info->struct_size, sizeof(info));
     info.max_output_bytes = dec->max_output_bytes;
-    info.format_known = dec->format_known;
-    if (!info.format_known) {
+    if (dec->format_known) info.flags |= FAAD_STREAM_FORMAT_KNOWN;
+    if (!(info.flags & FAAD_STREAM_FORMAT_KNOWN)) {
         memcpy(out_info, &info, info.struct_size);
         return FAAD_OK;
     }

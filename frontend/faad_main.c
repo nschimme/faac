@@ -639,7 +639,7 @@ static void print_usage(int mode)
     faad_library_info info;
     info.struct_size = sizeof(info);
     if (faad_get_library_info(&info) != FAAD_OK) {
-        info.version = "3.0.0";
+        info.version = FAAD_VERSION_STRING;
     }
 
     char version_buf[128];
@@ -983,7 +983,8 @@ int main(int argc, char **argv)
         faad_stream_info sinfo = { .struct_size = sizeof(faad_stream_info) };
         uint32_t sr = 44100;
         uint32_t fl = 1024;
-        if (faad_decoder_get_info(dec, &sinfo) == FAAD_OK) {
+        if (faad_decoder_get_info(dec, &sinfo) == FAAD_OK
+            && (sinfo.flags & FAAD_STREAM_FORMAT_KNOWN)) {
             if (sinfo.sample_rate > 0) sr = sinfo.sample_rate;
             if (sinfo.object_type == FAAD_OBJ_HE_AAC_V1 || sinfo.object_type == FAAD_OBJ_HE_AAC_V2) {
                 fl = 2048;
