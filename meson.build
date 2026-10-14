@@ -1,5 +1,5 @@
 project('faac', 'c',
-    version: '2.2.0',
+    version: '3.0.0',
     default_options: [
         'default_library=both',
         'buildtype=release',
@@ -24,7 +24,6 @@ endforeach
 
 config_h.set10('WORDS_BIGENDIAN', host_machine.endian() == 'big')
 
-
 libm = cc.find_library('m', required: false)
 
 cpu_family = target_machine.cpu_family()
@@ -34,12 +33,13 @@ config_h.set('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and config_h.get('HA
 config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 
 config_h.set('FAAC_STATS', get_option('stats'))
+config_h.set('FAAD_STATS', get_option('stats'))
 
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
 
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
-    c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']
+    c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL']
 endif
 
 configure_file(
@@ -54,10 +54,18 @@ else
     add_project_arguments('-include', meson.current_build_dir() / 'config.h', language: 'c')
 endif
 
-
 subdir('docs')
 subdir('include')
-subdir('libfaac')
+subdir('common')
+
+if get_option('encoder')
+    subdir('libfaac')
+endif
+subdir('libfaam')
+
+if get_option('decoder')
+    subdir('libfaad')
+endif
 
 if get_option('frontend')
     subdir('frontend')

@@ -26,7 +26,6 @@
 #include <io.h>
 #include <windows.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #elif defined(HAVE_ICONV)
 #include <langinfo.h>
 #include <iconv.h>
@@ -166,6 +165,34 @@ char *trim_quotes_and_spaces(char *s)
     }
 
     return s;
+}
+
+const char *parse_tag_arg(char *arg, char **name, char **value)
+{
+    char *eq = strchr(arg, '=');
+    char *comma = strchr(arg, ',');
+    char *sep;
+
+    if (eq && comma)
+        sep = (eq < comma) ? eq : comma;
+    else
+        sep = eq ? eq : comma;
+    if (!sep)
+        return "Missing tag value.\n";
+
+    *sep++ = '\0';
+    *name = trim_quotes_and_spaces(arg);
+    *value = trim_quotes_and_spaces(sep);
+    if (**name == '\0')
+        return "Tag name cannot be empty.\n";
+    if (**value == '\0')
+        return "Tag value cannot be empty.\n";
+    return NULL;
+}
+
+bool parse_index_arg(const char *arg, uint16_t *n, uint16_t *total)
+{
+    return sscanf(arg, "%hu/%hu", n, total) >= 1;
 }
 
 bool parse_genre(const char *arg, uint16_t *genre_id, const char **genre_name)
@@ -312,52 +339,6 @@ wchar_t *win32_utf8_to_utf16(const char *utf8_str)
     return wstr;
 }
 
-FILE *win32_fopen_utf8(const char *utf8_path, const char *mode)
-{
-    if (!utf8_path || !mode)
-        return NULL;
-
-    wchar_t *wpath = win32_utf8_to_utf16(utf8_path);
-    if (!wpath)
-        return NULL;
-
-    wchar_t *wmode = win32_utf8_to_utf16(mode);
-    if (!wmode)
-    {
-        free(wpath);
-        return NULL;
-    }
-
-    FILE *f = _wfopen(wpath, wmode);
-    free(wpath);
-    free(wmode);
-    return f;
-}
-
-int win32_access_utf8(const char *utf8_path, int amode)
-{
-    wchar_t *wpath = win32_utf8_to_utf16(utf8_path);
-    if (!wpath)
-        return -1;
-
-    int ret = _waccess(wpath, amode);
-    free(wpath);
-    return ret;
-}
-
-int win32_mtime_utf8(const char *utf8_path, time_t *mtime)
-{
-    wchar_t *wpath = win32_utf8_to_utf16(utf8_path);
-    if (!wpath)
-        return -1;
-
-    struct _stat64 st;
-    int ret = _wstat64(wpath, &st);
-    free(wpath);
-    if (ret == 0)
-        *mtime = (time_t)st.st_mtime;
-    return ret;
-}
 #else /* POSIX */
 #ifdef HAVE_ICONV
 /* Mirrors the Windows path (assume the current code page, convert to UTF-8)
@@ -431,14 +412,6 @@ char *utf8_ensure(const char *str)
 
     fprintf(stderr, "warning: tag value is not valid UTF-8, writing as-is\n");
     return strdup(str);
-}
-
-FILE *cli_fopen(const char *path, const char *mode) {
-#ifdef _WIN32
-    return win32_fopen_utf8(path, mode);
-#else
-    return fopen(path, mode);
-#endif
 }
 
 const char *cli_version_string(char *buf, size_t buf_size, const char *version) {

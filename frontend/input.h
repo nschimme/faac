@@ -33,6 +33,8 @@ typedef struct
   uint8_t samplebytes;
   uint32_t samplerate;
   int64_t samples;
+  uint64_t data_remaining;
+  bool bounded_data;
   bool bigendian;
   bool isfloat;
 } pcmfile_t;

@@ -31,6 +31,7 @@
 #include "sbr.h"
 #include "ratecontrol.h"
 #include "atomic.h"
+#include "endian.h"
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
@@ -62,9 +63,8 @@
  * hearing. VBR, having no rate, codes at the top. */
 #define BANDWIDTH_CEILING     18750
 
-/* Float PCM is in 16-bit sample units; 2^23 is the most 32-bit input can reach
- * after its scaling, so anything beyond it is not audio. */
-#define FLOAT_INPUT_LIMIT     8388608.0f
+/* Reject non-audio magnitudes before scaling into the encoder. */
+#define FLOAT_INPUT_LIMIT     256.0f
 
 /* From this rate (bps per channel) the quantizer's treble de-emphasis is
  * steepened by TREBLE_SLOPE_RICH; below it the steeper slope starves the
@@ -138,9 +138,12 @@ int faacEncGetVersion( char **faac_id_string,
 
 
 /* The configuration is fixed at open, so LC and HE share one non-allocating
- * writer. The longest ASC is mono HE: 16 core + 21 SBR + 12 PS bits. */
-_Static_assert(sizeof(((faacEncStruct *)0)->asc) * 8 >= 16 + 21 + 12,
-               "ASC buffer must hold the mono HE extensions");
+ * writer. The longest ASC is an eight-channel HE one: the PCE form of the
+ * core followed by the SBR extension. */
+_Static_assert(sizeof(((faacEncStruct *)0)->asc) >= PCE_HE_ASC_BYTES,
+               "ASC buffer must hold the PCE and SBR extensions");
+_Static_assert(sizeof(((faacEncStruct *)0)->pce) >= PCE_ADTS_BYTES,
+               "PCE buffer must hold the in-band element");
 
 int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 {
@@ -149,6 +152,12 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 
     if (hEncoder == NULL || buf == NULL)
         return -1;
+    if (HasPCE((int)hEncoder->numChannels)) {
+        /* The raw block starts byte aligned, so this image is reusable. */
+        InitBitStream(&bs, hEncoder->pce, sizeof(hEncoder->pce));
+        PutBit(&bs, ID_PCE, LEN_SE_ID);
+        WritePCE(&bs, hEncoder->sampleRateIdx);
+    }
     if (hEncoder->config.mpegVersion == MPEG2)
         return -2; /* not supported */
 
@@ -156,8 +165,9 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
     InitBitStream(&bs, buf, sizeof(hEncoder->asc));
     PutBit(&bs, he ? LOW : hEncoder->config.aacObjectType, 5);
     PutBit(&bs, hEncoder->sampleRateIdx, 4);
-    PutBit(&bs, GetChannelConfig((int)hEncoder->numChannels), 4);
+    PutBit(&bs, SignalledChannelConfig((int)hEncoder->numChannels), 4);
     PutBit(&bs, 0, 3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
+    if (HasPCE((int)hEncoder->numChannels)) WritePCE(&bs, hEncoder->sampleRateIdx);
     if (he) {
         /* Explicit-hierarchy extension: AAC-LC at Fs/2, SBR at full Fs. */
         PutBit(&bs, 0x2b7, 11);
@@ -188,6 +198,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
      * LC, since SBR is MPEG-4 only and AUTO must not overrule the version
      * the caller named. */
     if (hEncoder->config.aacObjectType == AUTO) {
+#ifdef FAAC_DISABLE_SBR
+        hEncoder->config.aacObjectType = LOW;
+#else
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
@@ -208,6 +221,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         hEncoder->config.aacObjectType =
             (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE &&
              hEncoder->config.mpegVersion != MPEG2) ? HE_V1 : LOW;
+#endif
     }
 
     if (hEncoder->config.aacObjectType == HE_V1
@@ -495,11 +509,10 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++) {
                     const uint8_t *src = src_base + (i * numChannels + hEncoder->config.channel_map[channel]) * 3;
 #if WORDS_BIGENDIAN
-                    int32_t s = ((int32_t)src[0] << 16) | ((int32_t)src[1] << 8) | (int32_t)src[2];
+                    int32_t s = read_pcm24(src, true);
 #else
-                    int32_t s = (int32_t)src[0] | ((int32_t)src[1] << 8) | ((int32_t)src[2] << 16);
+                    int32_t s = read_pcm24(src, false);
 #endif
-                    if (s & 0x800000) s |= (int32_t)0xff000000;
                     dst[i] = (1.0f / 256.0f) * (float)s;
                 }
                 break;
@@ -518,6 +531,8 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++)
                     if (!(fabsf(dst[i]) < FLOAT_INPUT_LIMIT))
                         dst[i] = 0.0f;
+                    else
+                        dst[i] *= 32768.0f;
                 break;
             }
             default: return -1;
@@ -915,7 +930,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
     float baseQuality = hEncoder->aacquantCfg.quality;
     int sfbnSnap[MAX_CHANNELS];
     int attempt;
-    /* Every cap below is on the raw_data_block; the ADTS header is transport. */
+    /* The raw_data_block includes periodic PCE bytes, so caps and reservoir
+     * accounting charge them along with audio; only the ADTS header is excluded. */
     int hdrBytes = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE : 0;
     int payloadBits = 0;
 #ifdef FAAC_STATS

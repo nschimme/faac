@@ -27,11 +27,32 @@ jobs:
               shell: bash,
             }
           - {
+              name: Linux GCC (LC-only encoder),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dencoder-sbr=false,
+            }
+          - {
               name: Linux GCC (SBR Decimation),
               os: ubuntu-latest,
               compiler: gcc,
               shell: bash,
               options: -Dsbr-decimation=4,
+            }
+          - {
+              name: Linux GCC (lean muxer),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dmuxer-video=false -Dmuxer-fragmented=false,
+            }
+          - {
+              name: Linux GCC (libfaam only),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dencoder=false,
             }
           - {
               name: Linux GCC (32-bit),
@@ -113,10 +134,10 @@ jobs:
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
 
-          for exe in ../temp/bin/faac.exe ../temp/bin/faacgui.exe; do
+          for exe in ../temp/bin/faac.exe ../temp/bin/faacgui.exe ../temp/bin/faad.exe ../temp/bin/faam.exe; do
             test -f "$exe"
-            if objdump -p "$exe" | grep -iE 'DLL Name:.*faac.*\.dll'; then
-              echo "Unexpected FAAC DLL dependency in $exe" >&2
+            if objdump -p "$exe" | grep -iE 'DLL Name:.*fa(ac|ad|am).*\.dll'; then
+              echo "Unexpected FAAC/FAAD/FAAM DLL dependency in $exe" >&2
               exit 1
             fi
           done
@@ -131,16 +152,32 @@ jobs:
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
 
+      - name: Smoke-test LC-only encoder
+        if: matrix.config.name == 'Linux GCC (LC-only encoder)'
+        run: |
+          meson test -C build --print-errorlogs
+          python3 - <<'PYTHON'
+          import wave
+          with wave.open("lc-smoke.wav", "wb") as w:
+              w.setparams((2, 2, 48000, 0, "NONE", "NONE"))
+              w.writeframes(bytes(8192))
+          PYTHON
+          build/frontend/faac --object-type lc -o lc-smoke.aac lc-smoke.wav
+          if build/frontend/faac --object-type he-aac-v1 -o he-smoke.aac lc-smoke.wav 2>he-smoke.err; then
+            exit 1
+          fi
+          grep -i unsupported he-smoke.err
+
       - name: Build (MSVC)
         if: matrix.config.compiler == 'cl'
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
 
-          foreach ($exe in @('faac.exe', 'faacgui.exe')) {
+          foreach ($exe in @('faac.exe', 'faacgui.exe', 'faad.exe', 'faam.exe')) {
             $imports = dumpbin /DEPENDENTS "temp/bin/$exe"
             if ($LASTEXITCODE -ne 0) { throw "Cannot inspect $exe imports" }
-            if ($imports -match 'faac.*\.dll') { throw "$exe imports the FAAC DLL" }
+            if ($imports -match 'fa(ac|ad|am).*\.dll') { throw "$exe imports a FAAC/FAAD/FAAM DLL" }
           }
           if (-not (Get-ChildItem 'temp/bin/*faac*.dll')) { throw 'FAAC DLL is missing from the package' }
 

@@ -42,6 +42,7 @@
 #include <faac.h>
 #include "output.h"
 #include "charset.h"
+#include "cli_io.h"
 #include "encode_engine.h"
 #include "help.h"
 
@@ -49,8 +50,6 @@
 # undef stderr
 # define stderr stdout
 #endif
-
-#define MAX_COVER_ART_SIZE ((size_t)32 * 1024 * 1024)
 
 enum flags
 {
@@ -87,6 +86,7 @@ enum flags
     OPT_COMPILATION,
     OPT_IGNORE_LENGTH,
     OPT_NO_ENCODER_INFO,
+    OPT_FASTSTART,
     LANG_FLAG
 };
 
@@ -147,7 +147,7 @@ static const help_t help_io[] = {
      "Input channel config, default is 3,4 (Center third, LFE fourth)",
      "Input multichannel configuration (default: 3,4 which means Center is third and LFE is fourth like in 5.1 WAV, so you only have to specify a different position of these two mono channels in your multichannel input files if they haven't been reordered already)."},
     {"--ignorelength",
-     "Ignore wav length from header (useful with files over 4 GB)",
+     "Ignore the WAV data length in the header and read to EOF (for an incorrect length; not required for RF64)",
      NULL},
     {"--overwrite",
      "Overwrite existing output file",
@@ -189,7 +189,7 @@ static const help_t help_mp4[] = {
      "Set year", NULL},
     {"--cover-art <filename>",
      "Read cover art from <filename>",
-     "Supported image formats are GIF, JPEG, and PNG."},
+     "Supported image formats are GIF, JPEG, PNG, and BMP."},
     {"--comment <string>",
      "Set comment", NULL},
     {"--lang <code3>",
@@ -198,6 +198,9 @@ static const help_t help_mp4[] = {
      "Set creation/modification time (auto, now, or timestamp)", NULL},
     {"--no-encoder-info",
      "Do not write the encoder tag (FAAC version and settings) to the MP4", NULL},
+    {"--faststart",
+     "Write the index before the audio so the file plays while it downloads",
+     "The file is rewritten when encoding ends, so this takes a little longer and needs a seekable, readable output."},
     {NULL, NULL, NULL}
 };
 
@@ -213,7 +216,7 @@ static const help_t help_advanced[] = {
     {"--joint 2",
      "Use Intensity Stereo coding.", NULL},
     {"--joint 3",
-     "Use Mixed Mode (dynamic M/S and IS) coding (default).", NULL},
+     "Use adaptive M/S and IS coding (default).", NULL},
     {"--mpeg-vers X",
      "Force AAC MPEG version, X can be 2 or 4", NULL},
     {"--object-type X",
@@ -323,15 +326,15 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
     const char *jm_str = "";
     switch (opts->joint_mode)
     {
-    case FAAC_JOINT_MS: jm_str = " + M/S"; break;
-    case FAAC_JOINT_IS: jm_str = " + IS"; break;
-    case FAAC_JOINT_MIXED: jm_str = " + Mixed"; break;
+    case FAAC_STEREO_MS: jm_str = " + M/S"; break;
+    case FAAC_STEREO_IS: jm_str = " + IS"; break;
+    case FAAC_STEREO_AUTO: jm_str = " + Mixed"; break;
     default: break;
     }
 
     fprintf(stderr, "Object type: %s (MPEG-%d)%s%s%s\n",
             (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity",
-            (info->mpeg_version == FAAC_MPEG4) ? 4 : 2,
+            (info->stream_format == FAAC_STREAM_ADTS_MPEG2) ? 2 : 4,
             opts->use_tns ? " + TNS" : "",
             jm_str,
             info->use_pns ? " + PNS" : "");
@@ -346,6 +349,7 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
         switch (info->stream_format)
         {
         case FAAC_STREAM_RAW: fmt_str = "Headerless AAC (RAW)"; break;
+        case FAAC_STREAM_ADTS_MPEG2:
         case FAAC_STREAM_ADTS: fmt_str = "Transport Stream (ADTS)"; break;
         default: break;
         }
@@ -383,8 +387,8 @@ static void cli_summary_callback(const encode_summary_t *summary, void *user_dat
                 summary->avg_bitrate, summary->max_frame_size);
     }
 
-    long input_size = get_file_size(opts->input_filename);
-    long output_size = get_file_size(opts->output_filename);
+    int64_t input_size = get_file_size(opts->input_filename);
+    int64_t output_size = get_file_size(opts->output_filename);
     if (input_size > 0 && output_size > 0)
     {
         fprintf(stderr, " File Size           : Input = %.2f MB | Output = %.2f MB | Ratio = %.1f:1\n",
@@ -519,6 +523,7 @@ int main(int argc, char *argv[])
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {"cbr", 0, 0, CBR_FLAG},
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
+            {"faststart", 0, 0, OPT_FASTSTART},
             {0, 0, 0, 0}
         };
 
@@ -537,6 +542,7 @@ int main(int argc, char *argv[])
         case OPT_COMPILATION: opts.metadata.compilation = true; break;
         case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;
         case OPT_NO_ENCODER_INFO: opts.encoder_info = false; break;
+        case OPT_FASTSTART: opts.faststart = true; break;
         case 'L':
             if (libinfo.copyright)
                 fprintf(stderr, "%s", libinfo.copyright);
@@ -626,11 +632,11 @@ int main(int argc, char *argv[])
             opts.metadata.album_sort = trim_quotes_and_spaces(optarg);
             break;
         case TRACK_FLAG:
-            if (sscanf(optarg, "%hu/%hu", &opts.metadata.track, &opts.metadata.ntracks) < 1)
+            if (!parse_index_arg(optarg, &opts.metadata.track, &opts.metadata.ntracks))
                 dieMessage = "Wrong track number.\n";
             break;
         case DISC_FLAG:
-            if (sscanf(optarg, "%hu/%hu", &opts.metadata.disc, &opts.metadata.ndiscs) < 1)
+            if (!parse_index_arg(optarg, &opts.metadata.disc, &opts.metadata.ndiscs))
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
@@ -646,14 +652,14 @@ int main(int argc, char *argv[])
         case MPEGVERS_FLAG:
             switch (atoi(optarg))
             {
-            case 2: opts.mpeg_version = FAAC_MPEG2; break;
-            case 4: opts.mpeg_version = FAAC_MPEG4; break;
+            case 2: opts.mpeg_version = 2; break;
+            case 4: opts.mpeg_version = 4; break;
             default: dieMessage = "Unrecognised MPEG version!\n"; break;
             }
             break;
         case OBJTYPE_FLAG:
             if (!strcmp(optarg, "lc"))
-                opts.object_type = FAAC_OBJ_LOW;
+                opts.object_type = FAAC_OBJ_LC;
             else if (!strcmp(optarg, "he-aac-v1"))
                 opts.object_type = FAAC_OBJ_HE_AAC_V1;
             else if (!strcmp(optarg, "auto"))
@@ -665,37 +671,16 @@ int main(int argc, char *argv[])
             opts.shortctl = (enum faac_shortctl_mode)atoi(optarg);
             break;
         case OPT_JOINT:
-            opts.joint_mode = (enum faac_joint_mode)atoi(optarg);
+            opts.joint_mode = (enum faac_stereo_mode)atoi(optarg);
             break;
         case TAG_FLAG:
             {
-                char *tagname = optarg;
-                char *eq = strchr(optarg, '=');
-                char *comma = strchr(optarg, ',');
+                char *tagname = NULL;
                 char *tagval = NULL;
+                const char *tag_err = parse_tag_arg(optarg, &tagname, &tagval);
 
-                if (eq && comma)
-                    tagval = (eq < comma) ? eq : comma;
-                else if (eq)
-                    tagval = eq;
-                else
-                    tagval = comma;
-
-                if (!tagval)
-                {
-                    dieMessage = "Missing tag value.\n";
-                }
-                else
-                {
-                    *tagval++ = '\0';
-                    tagname = trim_quotes_and_spaces(tagname);
-                    tagval = trim_quotes_and_spaces(tagval);
-
-                    if (*tagname == '\0')
-                        dieMessage = "Tag name cannot be empty.\n";
-                    else if (*tagval == '\0')
-                        dieMessage = "Tag value cannot be empty.\n";
-                }
+                if (tag_err)
+                    dieMessage = tag_err;
                 if (!dieMessage)
                 {
                     if (!add_custom_tag_to_options(&opts, tagname, tagval))
@@ -706,49 +691,19 @@ int main(int argc, char *argv[])
             break;
         case COVER_ART_FLAG:
             {
-                FILE *f = cli_fopen(optarg, "rb");
-                if (f)
-                {
-                    fseek(f, 0, SEEK_END);
-                    long sz = ftell(f);
-                    fseek(f, 0, SEEK_SET);
-                    clearerr(f);
+                uint8_t *art = NULL;
+                uint64_t art_size = 0;
+                const char *art_err = load_cover_art(optarg, &art, &art_size);
 
-                    if (sz <= 0 || (size_t)sz > MAX_COVER_ART_SIZE)
-                    {
-                        dieMessage = "Invalid cover art file size!\n";
-                    }
-                    else
-                    {
-                        opts.art_size = (uint64_t)sz;
-                        opts.art_data = malloc((size_t)opts.art_size);
-                        if (opts.art_data)
-                        {
-                            if (fread((void *)opts.art_data, 1, (size_t)opts.art_size, f) != (size_t)opts.art_size)
-                            {
-                                dieMessage = "Error reading cover art file!\n";
-                                free((void *)opts.art_data);
-                                opts.art_data = NULL;
-                                opts.art_size = 0;
-                            }
-                            else if (opts.art_size < 12 || !check_image_header((const char *)opts.art_data))
-                            {
-                                dieMessage = "Unsupported cover image file format!\n";
-                                free((void *)opts.art_data);
-                                opts.art_data = NULL;
-                                opts.art_size = 0;
-                            }
-                        }
-                        else
-                        {
-                            dieMessage = "Out of memory reading cover art file!\n";
-                        }
-                    }
-                    fclose(f);
+                if (art_err)
+                {
+                    dieMessage = art_err;
                 }
                 else
                 {
-                    dieMessage = "Error opening cover art file!\n";
+                    free((void *)opts.art_data);
+                    opts.art_data = art;
+                    opts.art_size = art_size;
                 }
             }
             break;
@@ -818,7 +773,7 @@ int main(int argc, char *argv[])
 
     if (opts.container_mp4)
     {
-        opts.mpeg_version = FAAC_MPEG4;
+        opts.mpeg_version = 4;
     }
 
     bool has_metadata = opts.metadata.artist || opts.metadata.artist_sort ||
@@ -837,6 +792,20 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Metadata requires MP4 output!\n");
         ret = 1;
         goto cleanup;
+    }
+
+    /* Refuse before encoding: the time is only applied once the MP4 is finalised. */
+    if (opts.container_mp4)
+    {
+        char time_msg[512];
+        uint32_t creation_time;
+        if (!resolve_creation_time(opts.creation_time_str, opts.input_filename,
+                                   &creation_time, time_msg, sizeof(time_msg)))
+        {
+            fprintf(stderr, "Error: %s", time_msg);
+            ret = 1;
+            goto cleanup;
+        }
     }
 
     if (opts.verbose > 0 && libinfo.version)

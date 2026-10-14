@@ -13,11 +13,12 @@
  * Lesser General Public License for more details.
  */
 
-#ifndef ENDIAN_H
-#define ENDIAN_H
+#ifndef FAAC_COMMON_ENDIAN_H
+#define FAAC_COMMON_ENDIAN_H
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -106,14 +107,65 @@ static inline int32_t read_pcm24(const uint8_t *src, bool bigendian) {
     return bigendian ? read_pcm24_be(src) : read_pcm24_le(src);
 }
 
+static inline void write_pcm24_le(uint8_t *dst, int32_t v) {
+    dst[0] = (uint8_t)v;
+    dst[1] = (uint8_t)(v >> 8);
+    dst[2] = (uint8_t)(v >> 16);
+}
+
+static inline void write_pcm24_be(uint8_t *dst, int32_t v) {
+    dst[0] = (uint8_t)(v >> 16);
+    dst[1] = (uint8_t)(v >> 8);
+    dst[2] = (uint8_t)v;
+}
+
+static inline void write_pcm24(uint8_t *dst, int32_t v, bool bigendian) {
+    if (bigendian) write_pcm24_be(dst, v);
+    else write_pcm24_le(dst, v);
+}
+
 static inline int32_t read_pcm32_le(const int32_t *src) { return (int32_t)le32toh(*src); }
 static inline int32_t read_pcm32_be(const int32_t *src) { return (int32_t)be32toh(*src); }
 static inline int32_t read_pcm32(const int32_t *src, bool bigendian) {
     return bigendian ? read_pcm32_be(src) : read_pcm32_le(src);
 }
 
+/* Endian utilities */
+static inline uint16_t read_u16_be(const uint8_t *b) {
+    uint16_t val;
+    memcpy(&val, b, sizeof(val));
+    return be16toh(val);
+}
+
+static inline uint32_t read_u32_be(const uint8_t *b) {
+    uint32_t val;
+    memcpy(&val, b, sizeof(val));
+    return be32toh(val);
+}
+
+static inline uint64_t read_u64_be(const uint8_t *b) {
+    uint64_t val;
+    memcpy(&val, b, sizeof(val));
+    return be64toh(val);
+}
+
+static inline void write_u16_be(uint8_t *b, uint16_t val) {
+    val = htobe16(val);
+    memcpy(b, &val, sizeof(val));
+}
+
+static inline void write_u32_be(uint8_t *b, uint32_t val) {
+    val = htobe32(val);
+    memcpy(b, &val, sizeof(val));
+}
+
+static inline void write_u64_be(uint8_t *b, uint64_t val) {
+    val = htobe64(val);
+    memcpy(b, &val, sizeof(val));
+}
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ENDIAN_H */
+#endif /* FAAC_COMMON_ENDIAN_H */
