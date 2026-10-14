@@ -1,6 +1,8 @@
 Unreleased
 
 	[ Nils Schimmelmann ]
+	* Use flags for encoder tools, decoder capabilities and stream discovery;
+	  reorder encoder library info and expose FAAC_VERSION_STRING
 	* Use explicit ABR/VBR/CBR modes and whole-stream bitrate; rename
 	  quant_quality to quality (VBR only) and max_bit_rate to peak_bit_rate
 	* Rename faac_params.num_channels to channels

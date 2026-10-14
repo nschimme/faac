@@ -595,14 +595,14 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     `jointmode` in a union; it has no separate replacement, use
     `stereo_mode` directly.
   - `useLfe` → automatic LFE for six or eight channels; no switch.
-    `useTns` → `use_tns` (now `bool`).
+    `useTns` → `flags & FAAC_FLAG_TNS`.
   - `shortctl` → `short_control` (`FAAC_SHORTCTL_*`).
   - `bitRate` → `bit_rate` (multiply the per-channel rate by `channels`);
     `bandWidth` → `bandwidth`; `quantqual` → `quality` (VBR only).
   - `maxBitRate` → `peak_bit_rate` (whole-stream bits/sec).
   - `rateControl` → `rate_control` (`FAAC_RC_ABR`, `FAAC_RC_VBR`, or
     `FAAC_RC_CBR`); select the mode explicitly.
-  - `pnslevel` → `use_pns`: the level is now chosen by the
+  - `pnslevel` → `flags & FAAC_FLAG_PNS`: the level is now chosen by the
     encoder, leaving the caller an on/off switch.
   - `outputFormat` → `stream_format` (`FAAC_STREAM_*`);
     `inputFormat` → `input_format` (`FAAC_INPUT_*`).
@@ -651,6 +651,8 @@ calls and rebuild.
 
 | ABI 2 | ABI 3 / caller action |
 |---|---|
+| `use_tns`, `use_pns`, `reserved` | Set `flags` with `FAAC_FLAG_TNS` and `FAAC_FLAG_PNS`; both are enabled by default, and unknown bits are rejected. |
+| `faac_library_info` field order | `struct_size`, `version`, `copyright`, `max_channels`, `sbr_decimation`; query writes back the populated size. |
 | `FAAC_INPUT_32BIT` | `FAAC_INPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
 | `FAAC_INPUT_FLOAT` on the signed-16-bit scale | Pass unity-full-scale floats (±1.0); remove the multiplication by 32768 for normalized input. |
 
