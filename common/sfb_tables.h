@@ -24,7 +24,13 @@
 extern const uint16_t * const sfb_offsets_1024[12];
 extern const uint8_t num_sfbs_1024[12];
 
+extern const uint16_t * const sfb_offsets_960[12];
+extern const uint8_t num_sfbs_960[12];
+
 extern const uint16_t * const sfb_offsets_128[12];
 extern const uint8_t num_sfbs_128[12];
+
+extern const uint16_t * const sfb_offsets_120[12];
+extern const uint8_t num_sfbs_120[12];
 
 #endif /* SFB_TABLES_H */

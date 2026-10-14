@@ -49,15 +49,17 @@ void apply_ms_stereo(CPEInfo *cpe, float * restrict spec_l, float * restrict spe
             g_faadStats.msBands += 2;
 #endif
 
+            int short_len = (ics->frame_len_long == 960) ? 120 : 128;
+            int long_len = (ics->frame_len_long == 960) ? 960 : 1024;
             int start_k = ics->sfb_offsets[sfb];
             int end_k = ics->sfb_offsets[sfb + 1];
-            if (start_k >= FRAME_LEN_LONG) continue;
-            if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
+            if (start_k >= long_len) continue;
+            if (end_k > long_len) end_k = long_len;
             int len = end_k - start_k;
 
             for (int w = 0; w < ics->window_group_length[g]; w++) {
-                int win_offset_k = (window_offset + w) * 128 + start_k;
-                if (win_offset_k < 0 || win_offset_k + len > FRAME_LEN_LONG) continue;
+                int win_offset_k = (window_offset + w) * short_len + start_k;
+                if (win_offset_k < 0 || win_offset_k + len > long_len) continue;
                 float * restrict l_ptr = spec_l + win_offset_k;
                 float * restrict r_ptr = spec_r + win_offset_k;
 
@@ -99,16 +101,18 @@ void apply_is_stereo(CPEInfo *cpe, float * restrict spec_l, float * restrict spe
                     if (cpe->ms_mask_present == 2 || (cpe->ms_mask_present == 1 && cpe->ms_used[g][sfb]))
                         scale = -scale;
 
+                    int short_len = (ics_r->frame_len_long == 960) ? 120 : 128;
+                    int long_len = (ics_r->frame_len_long == 960) ? 960 : 1024;
                     int start_k = ics_r->sfb_offsets[sfb];
                     int end_k = ics_r->sfb_offsets[sfb + 1];
-                    if (start_k >= FRAME_LEN_LONG) continue;
-                    if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
+                    if (start_k >= long_len) continue;
+                    if (end_k > long_len) end_k = long_len;
                     int len = end_k - start_k;
 
                     for (int w = 0; w < ics_r->window_group_length[g]; w++) {
                         int win_idx = window_offset + w;
-                        const float * restrict l_ptr = spec_l + win_idx * 128 + start_k;
-                        float * restrict r_ptr = spec_r + win_idx * 128 + start_k;
+                        const float * restrict l_ptr = spec_l + win_idx * short_len + start_k;
+                        float * restrict r_ptr = spec_r + win_idx * short_len + start_k;
 
                         for (int k = 0; k < len; k++) {
                             r_ptr[k] = l_ptr[k] * scale;

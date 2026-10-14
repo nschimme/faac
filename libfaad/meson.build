@@ -72,3 +72,13 @@ pkgconfig.generate(
     version: '3.0.0',
     filebase: 'faad3'
 )
+
+test_dab = executable(
+    'test_dab_dec',
+    'test_dab_dec.c',
+    include_directories : ['..', '../include', common_inc],
+    c_args : faad_c_args,
+    link_with : libfaad,
+    dependencies : [libm, codec_dep],
+)
+test('test_dab_dec', test_dab)

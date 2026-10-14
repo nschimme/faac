@@ -40,15 +40,16 @@ void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
         ics->num_sfbs = 0;      /* faad_decoder_open() rejects such rates */
         return;
     }
+    bool is_960 = (ics->frame_len_long == 960);
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
-        ics->num_sfbs = num_sfbs_128[sr_idx];
-        const uint16_t *offsets = sfb_offsets_128[sr_idx];
+        ics->num_sfbs = is_960 ? num_sfbs_120[sr_idx] : num_sfbs_128[sr_idx];
+        const uint16_t *offsets = is_960 ? sfb_offsets_120[sr_idx] : sfb_offsets_128[sr_idx];
         for (int i = 0; i <= ics->num_sfbs && i < 68; i++) {
             ics->sfb_offsets[i] = offsets[i];
         }
     } else {
-        ics->num_sfbs = num_sfbs_1024[sr_idx];
-        const uint16_t *offsets = sfb_offsets_1024[sr_idx];
+        ics->num_sfbs = is_960 ? num_sfbs_960[sr_idx] : num_sfbs_1024[sr_idx];
+        const uint16_t *offsets = is_960 ? sfb_offsets_960[sr_idx] : sfb_offsets_1024[sr_idx];
         for (int i = 0; i <= ics->num_sfbs && i < 68; i++) {
             ics->sfb_offsets[i] = offsets[i];
         }
@@ -532,6 +533,9 @@ faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec)
     int max_sfb = ics->max_sfb < ics->num_sfbs ? ics->max_sfb : ics->num_sfbs;
     if (max_sfb > MAX_SFB) max_sfb = MAX_SFB;
 
+    int short_len = (ics->frame_len_long == 960) ? 120 : 128;
+    int long_len = (ics->frame_len_long == 960) ? 960 : 1024;
+
     for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
         int win_group_len = ics->window_group_length[g];
         for (int sfb = 0; sfb < max_sfb; sfb++) {
@@ -543,11 +547,11 @@ faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec)
 
                 int start_k = sfb_offsets[sfb];
                 int end_k = sfb_offsets[sfb + 1];
-                if (start_k >= FRAME_LEN_LONG) continue;
-                if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
+                if (start_k >= long_len) continue;
+                if (end_k > long_len) end_k = long_len;
 
                 for (int w = 0; w < win_group_len; w++) {
-                    float * restrict ptr = spec + (window_offset + w) * 128 + start_k;
+                    float * restrict ptr = spec + (window_offset + w) * short_len + start_k;
                     int k = start_k;
                     if (cb <= 4) {
                         while (k < end_k) {

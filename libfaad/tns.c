@@ -64,8 +64,9 @@ void apply_tns(ICSInfo *ics, float *spec)
     int tns_max_bands = tns_max_bands_for(ics->sample_rate_index, is_short);
     int max_order = is_short ? 7 : 12;
 
+    int short_len = (ics->frame_len_long == 960) ? 120 : 128;
     for (int w = 0; w < ics->num_windows; w++) {
-        float *window_spec = spec + w * 128;
+        float *window_spec = spec + w * short_len;
         int limit = ics->max_sfb < tns_max_bands ? ics->max_sfb : tns_max_bands;
         int bottom = ics->num_sfbs;
 
