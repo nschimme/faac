@@ -6,6 +6,8 @@ Unreleased
 	* Use explicit ABR/VBR/CBR modes and whole-stream bitrate; rename
 	  quant_quality to quality (VBR only) and max_bit_rate to peak_bit_rate
 	* Rename faac_params.num_channels to channels
+	* Decode eight-channel streams signalled by a program config element in
+	  WAVE order and clear every channel's spectrum in such ADTS frames
 	* Signal eight-channel streams with a program config element (fdkaac
 	  compatible) in the AudioSpecificConfig and in every 32nd ADTS frame
 	* Add the AudioSpecificConfig to faac_encoder_info, take a const handle
