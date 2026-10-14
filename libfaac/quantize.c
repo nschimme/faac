@@ -339,7 +339,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
-                                   const BandEnergy * __restrict be, int gnum, int pnslevel, int sf_cap,
+                                   const BandEnergy * __restrict be, int gnum, int pnslevel,
                                    int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
 {
     int gsize = ci->groups.len[gnum];
@@ -412,8 +412,6 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         float log10_w_sf = (width < 128) ? log10_width_sf_lut[width] : log10f((float)width) * SF_STEP_ENRG;
         int sfac = lrintf(log10f(target[sb]) * sfstep - sf_enrg_avg + log10_w_sf);
-        if (sfac > sf_cap)
-            sfac = sf_cap;
         if (SF_OFFSET - sfac < SF_MIN)
         {
             ci->book[band] = HCB_ZERO;
@@ -535,7 +533,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL * flatness_factor(coder, i, be, aacquantCfg->flat_exp, aacquantCfg->flat_lines),
                                aacquantCfg->treble_slope, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, aacquantCfg->sf_cap, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);

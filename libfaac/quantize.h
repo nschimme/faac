@@ -28,7 +28,6 @@ typedef struct
     float treble_slope;
     float flat_exp;     /* strength of the flatness factor; 0 switches it off */
     int flat_lines;     /* long-window lines the flatness measure covers */
-    int sf_cap;         /* finest scalefactor a band may ask for; INT_MAX leaves it uncapped */
 } AACQuantCfg;
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054f minimizes average
