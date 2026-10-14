@@ -224,9 +224,31 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
     return bits;
 }
 
+/* Two back CPEs match fdkaac's rear-surround convention: the first carries
+ * sides, the second rears. Configuration 7 would instead declare 7.1 wide. */
+int WritePCE(BitStream *bs, int sampleRateIdx)
+{
+    static const uint8_t fields[][2] = {
+        {0, 4}, {1, 2},
+        {2, 4}, {0, 4}, {2, 4}, {1, 2}, {0, 3}, {0, 4},
+        {0, 1}, {0, 1}, {0, 1},
+        {0, 1}, {0, 4}, {1, 1}, {0, 4},
+        {1, 1}, {1, 4}, {1, 1}, {2, 4}, {0, 4}
+    };
+    uint32_t start = bs->currentBit;
+    for (unsigned int i = 0; i < sizeof(fields) / sizeof(fields[0]); i++) {
+        if (i == 2) PutBit(bs, sampleRateIdx, 4);
+        PutBit(bs, fields[i][0], fields[i][1]);
+    }
+    int pad = (8 - ((start + PCE_BODY_BITS) & 7)) & 7;
+    PutBit(bs, 0, pad);
+    PutBit(bs, 0, 8);
+    return PCE_BODY_BITS + pad + 8;
+}
+
 static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs)
 {
-    int channelConfig = GetChannelConfig((int)hEncoder->numChannels);
+    int channelConfig = SignalledChannelConfig((int)hEncoder->numChannels);
     PutBit(bs, 0xFFF,                        LEN_ADTS_SYNC);
     PutBit(bs, hEncoder->config.mpegVersion, LEN_ADTS_ID);
     PutBit(bs, 0,                            LEN_ADTS_LAYER);
@@ -269,6 +291,13 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
 {
     int bits = 0;
     if (hEncoder->config.outputFormat == 1) bits += WriteADTSHeader(hEncoder, bs);
+    /* Repeat after priming so a joining ADTS decoder can recover the layout. */
+    if (hEncoder->config.outputFormat == 1 && HasPCE((int)hEncoder->numChannels)
+        && ((hEncoder->frameNum - LOOKAHEAD_DEPTH - 1) & (PCE_REPEAT_FRAMES - 1)) == 0) {
+        for (unsigned int i = 0; i < sizeof(hEncoder->pce); i++)
+            PutBit(bs, hEncoder->pce[i], 8);
+        bits += sizeof(hEncoder->pce) * 8;
+    }
     /* SBR follows each SCE/CPE in a fill element; rate control charges only
      * the core, so its total is kept aside. */
     int sbrBits = 0;
@@ -311,7 +340,7 @@ static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int f
 {
     if (hEncoder->config.outputFormat == 1 && bs->data) {
         int fullness = 0x7FF;
-        int channelConfig = GetChannelConfig((int)hEncoder->numChannels);
+        int channelConfig = SignalledChannelConfig((int)hEncoder->numChannels);
         if (hEncoder->rc.resMean)
             fullness = RateControlReservoirAfter(&hEncoder->rc, (frameBytes - ADTS_HEADER_SIZE) * 8) >> 5;
         bs->data[0] = 0xFF;

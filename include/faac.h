@@ -161,9 +161,9 @@ enum faac_input_format {
  * 7.1: FL FR FC LFE BL BR SL SR (0x63f).
  * Four channels are always 4.0; quad and 3.1 input is coded as 4.0.
  * Seven channels and more than eight are rejected.
- * Eight-channel pairs are coded front, side, back using AAC configuration 7,
- * read as 7.1 by FFmpeg and libfaad. ISO defines it as 7.1 wide, so Core Audio
- * labels the pairs differently. */
+ * Eight channels carry a program config element (PCE) that lists the pairs as
+ * front, side, back, so Apple, FDK, FFmpeg and libfaad read the same 7.1; AAC
+ * channel configuration 7 would declare 7.1 wide. */
 enum faac_channel_layout {
     /* AAC element order: FC, front L/R, then BC (4 ch), back L/R (5/6 ch),
      * or side L/R then back L/R (8 ch), with LFE last (6/8 ch). */
@@ -271,9 +271,10 @@ typedef struct faac_encoder_info {
 
     /* AudioSpecificConfig for raw streams and containers, valid as soon as
      * open() returns; copy the bytes if they are needed after this struct.
-     * MPEG-2 has none (asc_size is 0). */
+     * Up to 14 bytes: the eight-channel PCE and the HE-AAC extension add to
+     * the 2 to 7 bytes of the other layouts. MPEG-2 has none (asc_size is 0). */
     uint32_t                asc_size;
-    uint8_t                 asc[8];
+    uint8_t                 asc[14];
 } faac_encoder_info;
 
 /*

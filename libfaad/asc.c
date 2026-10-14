@@ -100,7 +100,7 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
     memset(asc, 0, sizeof(*asc));
     asc->object_type = (enum faad_object_type)info.object_type;
     asc->sample_rate = info.sample_rate;
-    asc->num_channels = info.num_channels;
+    asc->num_channels = info.channel_config;
     asc->is_sbr = info.sbr_present;
     asc->sbr_sample_rate = info.sbr_sample_rate;
     asc->is_ps = info.ps_present;
