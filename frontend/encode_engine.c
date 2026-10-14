@@ -56,7 +56,6 @@ void init_encode_options(encode_options_t *opts)
     opts->shortctl = FAAC_SHORTCTL_NORMAL;
     opts->use_tns = true;
     opts->use_pns = true;
-    opts->use_lfe = -1;
     opts->quant_quality = 0;
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
@@ -529,7 +528,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.joint_mode = opts->joint_mode;
     params.use_tns = opts->use_tns;
     params.use_pns = opts->use_pns;
-    params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
@@ -563,17 +561,14 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.bandwidth = opts->bandwidth;
     params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
-    /* Hand integer PCM to the encoder as it is: one conversion pass instead of
-       two, and nothing for it to sanitise. The encoder applies the channel map. */
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
-    bool native = wav_native_ok(infile);
+    bool standard_layout = num_channels < 3 ||
+        (opts->center_channel == 3 && opts->lfe_channel == 4);
+    params.channel_layout = standard_layout ? FAAC_LAYOUT_WAV : FAAC_LAYOUT_AAC;
+    /* Custom channel positions need the frontend's float permutation. */
+    bool native = standard_layout && wav_native_ok(infile);
     params.input_format = !native ? FAAC_INPUT_FLOAT :
                           infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;
-    if (native && chanmap)
-    {
-        params.channel_map = chanmap;
-        params.channel_map_count = num_channels;
-    }
 
     {
         faac_status st = faac_encoder_open(&params, &hEncoder);
@@ -709,7 +704,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     bool input_eof = false;
 
 #define read_pcm() (native ? wav_read_native(infile, pcmbuf, samples_per_frame) \
-                           : wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap))
+                           : wav_read_float32(infile, pcmbuf, samples_per_frame, standard_layout ? NULL : chanmap))
 
     for (;;)
     {

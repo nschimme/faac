@@ -30,7 +30,7 @@
  *     to a human-readable string.
  *   - Fixed-width integer types and width-pinned enums keep the ABI identical
  *     across 64-bit platforms (LP64 and LLP64), regardless of -fshort-enums.
- *     32-bit targets have their own layout because of pointer fields.
+ *     faac_params is pointer-free; other structs follow target pointer alignment.
  *   - faac_params grows only additively: new releases append named fields and
  *     grow sizeof(faac_params); callers MUST zero-initialize via
  *     faac_params_init() so struct_size lets the library reconcile versions.
@@ -162,6 +162,26 @@ enum faac_input_format {
     FAAC_INPUT_MAX = 0x7fffffff
 };
 
+/* Supported layouts and WAVE speaker masks (FL/FR = front L/R,
+ * FC = centre, BL/BR = back L/R, BC = back-centre, SL/SR = side L/R):
+ * mono: FC (0x004); stereo: FL FR (0x003); 3.0: FL FR FC (0x007);
+ * 4.0: FL FR FC BC (0x107); 5.0: FL FR FC BL BR (0x037);
+ * 5.1: FL FR FC LFE BL BR (0x03f);
+ * 7.1: FL FR FC LFE BL BR SL SR (0x63f).
+ * Four channels are always 4.0; quad and 3.1 input is coded as 4.0.
+ * Seven channels and more than eight are rejected.
+ * Eight-channel pairs are coded front, side, back using AAC configuration 7,
+ * read as 7.1 by FFmpeg and libfaad. ISO defines it as 7.1 wide, so Core Audio
+ * labels the pairs differently. */
+enum faac_channel_layout {
+    /* AAC element order: FC, front L/R, then BC (4 ch), back L/R (5/6 ch),
+     * or side L/R then back L/R (8 ch), with LFE last (6/8 ch). */
+    FAAC_LAYOUT_AAC = 0,
+    /* WAVE order above; the library reorders to AAC element order. */
+    FAAC_LAYOUT_WAV = 1,
+    FAAC_LAYOUT_MAX = 0x7fffffff
+};
+
 /*
  * Encoder parameters, supplied once to faac_encoder_open().
  *
@@ -184,7 +204,6 @@ typedef struct faac_params {
     enum faac_object_type   object_type;
     enum faac_joint_mode    joint_mode;
 
-    bool                    use_lfe;       /* treat the last channel as LFE (>= 6 ch) */
     bool                    use_tns;       /* temporal noise shaping                   */
     bool                    use_pns;       /* perceptual noise substitution            */
     uint8_t                 reserved[1];   /* explicit pad; must remain 0              */
@@ -198,9 +217,7 @@ typedef struct faac_params {
     enum faac_input_format  input_format;
     enum faac_shortctl_mode short_control;
 
-    const int32_t          *channel_map;   /* optional reorder table, channels entries;
-                                            * NULL = identity. Caller-owned; copied by open(). */
-    uint32_t                channel_map_count; /* entries in channel_map (0 if NULL) */
+    enum faac_channel_layout channel_layout; /* input channel order */
 
     /* Ceiling on any single frame, for packet-oriented transports that cannot
      * fragment one -- a frame that overruns the link MTU is dropped, not split.
@@ -294,7 +311,7 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out);
  * sizeof(faac_params)), so a caller stays safe even if the loaded library's
  * faac_params has grown since the caller was built. Returns
  * FAAC_ERR_INVALID_ARGUMENT if p is NULL or caller_size is smaller than
- * faac_params's SONAME-2 baseline layout, through rate_control.
+ * faac_params's minimum layout, through rate_control.
  *
  * caller_size was added in SONAME 2; code that must build against both:
  *   #if FAAC_VERSION_MAJOR >= 2
