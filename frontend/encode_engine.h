@@ -74,7 +74,7 @@ typedef struct {
 
     enum faac_mpeg_version mpeg_version;
     enum faac_object_type object_type;
-    enum faac_joint_mode joint_mode;
+    enum faac_stereo_mode joint_mode;
     enum faac_stream_format stream_format;
     enum faac_shortctl_mode shortctl;
 
