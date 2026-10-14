@@ -268,6 +268,12 @@ typedef struct faac_encoder_info {
     uint32_t                encoder_delay;
 
     enum faac_rate_control  rate_control;     /* resolved mode          */
+
+    /* AudioSpecificConfig for raw streams and containers, valid as soon as
+     * open() returns; copy the bytes if they are needed after this struct.
+     * MPEG-2 has none (asc_size is 0). */
+    uint32_t                asc_size;
+    uint8_t                 asc[8];
 } faac_encoder_info;
 
 /*
@@ -331,7 +337,7 @@ FAACAPI faac_status faac_encoder_close(faac_encoder **enc);
  * Use these values to size the input/output buffers and to report the effective
  * configuration back to the user.
  */
-FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *out);
+FAACAPI faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out);
 
 /*
  * Return the AudioSpecificConfig (a.k.a. decoder-specific info) for this
@@ -339,7 +345,7 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
  * encoder is closed; do NOT free it. Returns FAAC_ERR_UNSUPPORTED for
  * configurations that have no ASC (e.g. MPEG-2).
  */
-FAACAPI faac_status faac_encoder_asc(faac_encoder *enc,
+FAACAPI faac_status faac_encoder_asc(const faac_encoder *enc,
                                      const uint8_t **buf, uint32_t *len);
 
 /*
@@ -348,7 +354,7 @@ FAACAPI faac_status faac_encoder_asc(faac_encoder *enc,
  * input_format; it may be any count from 0 to frame_samples*channels. The
  * library buffers internally and emits at most one frame per call, writing up
  * to out_cap bytes to `out` and the byte count to *bytes_written (which may be
- * 0 while priming, accumulating, or flushing). Pass in_samples == 0 to flush at
+ * 0 while priming, accumulating, or draining). Pass in_samples == 0 to drain at
  * end of stream; keep calling until *bytes_written is 0.
  */
 FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,

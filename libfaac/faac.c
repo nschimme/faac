@@ -50,6 +50,8 @@ _Static_assert((int)FAAC_OBJ_AUTO == AUTO && (int)FAAC_OBJ_LC == LOW
 _Static_assert((int)FAAC_STEREO_LR == JOINT_NONE && (int)FAAC_STEREO_AUTO == JOINT_MIXED, "stereo mode drift");
 _Static_assert((int)FAAC_SHORTCTL_NORMAL == SHORTCTL_NORMAL && (int)FAAC_SHORTCTL_NOLONG == SHORTCTL_NOLONG, "shortctl drift");
 _Static_assert((int)FAAC_STREAM_RAW == RAW_STREAM && (int)FAAC_STREAM_ADTS == ADTS_STREAM, "stream format drift");
+_Static_assert(sizeof(((faac_encoder_info *)0)->asc) >= sizeof(((faacEncStruct *)0)->asc),
+               "info.asc must hold the handle's ASC");
 _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == INPUT_16BIT
             && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_24IN32 == INPUT_32BIT
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
@@ -317,10 +319,10 @@ static uint32_t faacEncoderDelay(const faacEncStruct *h)
     return FRAME_LEN;
 }
 
-FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *out)
+FAACAPI faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out)
 {
     faac_encoder_info info;
-    faacEncStruct *h;
+    const faacEncStruct *h;
     uint32_t caller_size, n;
 
     if (!enc || !out)
@@ -328,7 +330,7 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
     caller_size = out->struct_size;
     if (caller_size < ENCODER_INFO_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
-    h = unwrap(enc);
+    h = (const faacEncStruct *)enc;
 
     memset(&info, 0, sizeof(info));
     info.frame_samples    = faacFrameSamples(h);
@@ -344,6 +346,8 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
         h->config.mpegVersion == MPEG2 ? FAAC_STREAM_ADTS_MPEG2 : FAAC_STREAM_ADTS;
     info.peak_bit_rate     = (uint32_t)h->config.maxBitRate;
     info.encoder_delay    = faacEncoderDelay(h);
+    info.asc_size         = h->ascLen;
+    memcpy(info.asc, h->asc, h->ascLen);
     switch (h->config.rateControl) {
     case RATE_ABR: info.rate_control = FAAC_RC_ABR; break;
     case RATE_VBR: info.rate_control = FAAC_RC_VBR; break;
@@ -359,14 +363,14 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_encoder_asc(faac_encoder *enc,
+FAACAPI faac_status faac_encoder_asc(const faac_encoder *enc,
                                      const uint8_t **buf, uint32_t *len)
 {
-    faacEncStruct *h;
+    const faacEncStruct *h;
 
     if (!enc || !buf || !len)
         return FAAC_ERR_INVALID_ARGUMENT;
-    h = unwrap(enc);
+    h = (const faacEncStruct *)enc;
 
     if (h->config.mpegVersion == MPEG2) {
         *buf = NULL;
