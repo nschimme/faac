@@ -46,12 +46,11 @@ static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
         PutBit(bs, fd->tEnv[0], 2);
         PutBit(bs, num_env - 1, 2);
         for (int i = 0; i < num_env - 1; i++) PutBit(bs, (fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2);
-        /* ceil(log2(num_env + 1)) bits, which is num_env up to 2 envelopes. */
-        _Static_assert(SBR_MAX_ENVELOPES <= 2, "bs_pointer width needs a log2 beyond 2 envelopes");
-        PutBit(bs, fd->bsPointer, num_env);
+        /* bs_pointer takes ceil(log2(num_env + 2)) bits: 2, as VARFIX frames always carry two envelopes. */
+        PutBit(bs, fd->bsPointer, 2);
         for (int i = 0; i < num_env; i++) PutBit(bs, sbr->bs_freq_res, 1);
     } else {
-        PutBit(bs, num_env > 1, 2);
+        PutBit(bs, num_env >> 1, 2); /* log2 of 1, 2 or 4 */
         PutBit(bs, sbr->bs_freq_res, 1);
     }
 }
