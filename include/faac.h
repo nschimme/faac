@@ -178,7 +178,7 @@ typedef struct faac_params {
     uint32_t                struct_size;   /* set by faac_params_init() */
 
     uint32_t                sample_rate;   /* input/output sample rate in Hz (required)      */
-    uint32_t                num_channels;  /* channel count, 1..max_channels (required)       */
+    uint32_t                channels;      /* channel count, 1..max_channels (required)       */
 
     enum faac_mpeg_version  mpeg_version;
     enum faac_object_type   object_type;
@@ -198,19 +198,19 @@ typedef struct faac_params {
     enum faac_input_format  input_format;
     enum faac_shortctl_mode short_control;
 
-    const int32_t          *channel_map;   /* optional reorder table, num_channels entries;
+    const int32_t          *channel_map;   /* optional reorder table, channels entries;
                                             * NULL = identity. Caller-owned; copied by open(). */
     uint32_t                channel_map_count; /* entries in channel_map (0 if NULL) */
 
     /* Ceiling on any single frame, for packet-oriented transports that cannot
      * fragment one -- a frame that overruns the link MTU is dropped, not split.
      * Unlike bit_rate this is a WHOLE-STREAM rate, so it stays independent of
-     * num_channels and follows from the payload a packet can carry or standard
+     * channels and follows from the payload a packet can carry or standard
      * ISO/IEC 14496-3 limits (6144 bits/channel per frame):
      *
      *     max_bit_rate = payload_bytes * 8 * sample_rate / 1024
      *
-     * Must be >= bit_rate * num_channels (a peak below the average is
+     * Must be >= bit_rate * channels (a peak below the average is
      * unsatisfiable) and <= FAAC_MAX_BIT_RATE; open() rejects anything else.
      * More headroom means fewer retries.
      *
@@ -278,7 +278,7 @@ typedef struct faac_encoder_info {
 typedef struct faac_library_info {
     uint32_t                struct_size;    /* set by caller to sizeof(faac_library_info) */
 
-    uint32_t                max_channels;   /* highest num_channels this build accepts */
+    uint32_t                max_channels;   /* highest channels this build accepts */
 
     const char             *version;        /* library version string   (library-owned) */
     const char             *copyright;      /* library copyright string (library-owned) */
@@ -343,8 +343,8 @@ FAACAPI faac_status faac_encoder_asc(faac_encoder *enc,
 
 /*
  * Encode. `in` points to `in_samples` interleaved PCM samples (total across all
- * channels, i.e. samples-per-channel * num_channels), formatted per
- * input_format; it may be any count from 0 to frame_samples*num_channels. The
+ * channels, i.e. samples-per-channel * channels), formatted per
+ * input_format; it may be any count from 0 to frame_samples*channels. The
  * library buffers internally and emits at most one frame per call, writing up
  * to out_cap bytes to `out` and the byte count to *bytes_written (which may be
  * 0 while priming, accumulating, or flushing). Pass in_samples == 0 to flush at

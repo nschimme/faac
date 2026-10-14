@@ -523,7 +523,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_params params;
     faac_params_init(&params, sizeof(params));
     params.sample_rate = sample_rate;
-    params.num_channels = num_channels;
+    params.channels = num_channels;
     params.mpeg_version = opts->mpeg_version;
     params.object_type = opts->object_type;
     params.joint_mode = opts->joint_mode;

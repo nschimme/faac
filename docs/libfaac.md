@@ -124,10 +124,10 @@ See [ABI compatibility](#abi-compatibility).
   compatible as it grows in future releases; the size argument keeps a newer
   library from writing past an older caller's struct.
 - Set the fields you care about (at minimum `sample_rate` and
-  `num_channels`), then call `faac_encoder_open()`.
+  `channels`), then call `faac_encoder_open()`.
 - Fill a `faac_encoder_info` with `faac_encoder_get_info()` (set its
   `struct_size` first) and size your buffers from it: input PCM holds
-  `info.frame_samples` × `num_channels` samples; the output buffer
+  `info.frame_samples` × `channels` samples; the output buffer
   must be at least `info.max_output_bytes`. The same struct also reports the
   resolved sample rate, object type, and rate-control settings. If you write a
   raw stream, fetch the AudioSpecificConfig with `faac_encoder_asc()`
@@ -135,7 +135,7 @@ See [ABI compatibility](#abi-compatibility).
 - Call `faac_encoder_encode()` for each block of input; it emits at most
   one frame per call and reports the byte count via an out-parameter.
   `in_samples` counts samples across all channels, not bytes or samples/channel.
-  Supply at most `info.frame_samples * num_channels`, in whole channel groups.
+  Supply at most `info.frame_samples * channels`, in whole channel groups.
   Smaller blocks accumulate internally; zero output during normal input means
   accumulation or priming, not end of stream.
 - Pass `in_samples` == 0 to flush; keep calling until
@@ -224,14 +224,14 @@ int main(void)
     st = faac_params_init(&p, sizeof(p));
     if (st < 0) goto api_error;
     p.sample_rate = 48000;
-    p.num_channels = 2;
+    p.channels = 2;
     p.bit_rate = 64000; /* per channel */
     st = faac_encoder_open(&p, &enc);
     if (st < 0) goto api_error;
     st = faac_encoder_get_info(enc, &info);
     if (st < 0) goto api_error;
 
-    uint32_t capacity = info.frame_samples * p.num_channels;
+    uint32_t capacity = info.frame_samples * p.channels;
     size_t input_bytes = (size_t)capacity * sizeof(*pcm);
     pcm = malloc(input_bytes);
     out = malloc(info.max_output_bytes);
@@ -249,7 +249,7 @@ int main(void)
             }
         }
         if (used == 0) break;
-        if (used % (sizeof(*pcm) * p.num_channels)) {
+        if (used % (sizeof(*pcm) * p.channels)) {
             fputs("incomplete PCM channel group\n", stderr);
             goto cleanup;
         }
@@ -332,7 +332,7 @@ p.use_lfe = true;
 ```
 
 `channel_map[destination_channel]` selects the source PCM channel; entries must
-be in `0..num_channels-1`, with at least `num_channels` entries supplied.
+be in `0..channels-1`, with at least `channels` entries supplied.
 NULL selects identity order. Use a permutation to reorder channels; the map
 does not mix or downmix audio. For the conventional six- and eight-channel layouts, LFE selection applies
 to the trailing unpaired channel; it does not locate an LFE within the source layout automatically.
@@ -490,7 +490,7 @@ ceiling on any single frame; 0, the default, means none beyond the encoder's
 own ISO/IEC 14496-3 peak ceiling of 6144 bits per channel per frame, enforced
 unconditionally to guarantee decoder compatibility across portable devices.
 Unlike `bit_rate` it is a whole-stream rate, so it stays independent of
-`num_channels` and follows directly from the payload one packet can carry:
+`channels` and follows directly from the payload one packet can carry:
 
 ```text
     max_bit_rate = payload_bytes * 8 * info.sample_rate / info.frame_samples
@@ -501,7 +501,7 @@ first (1024 for LC, 2048 for HE-AAC). The cap budgets the AAC payload; reserve
 seven more bytes for ADTS and any transport headers when deriving an MTU budget.
 The output allocation still needs `info.max_output_bytes`, regardless of cap.
 
-It must be at least `bit_rate` × `num_channels` — a peak
+It must be at least `bit_rate` × `channels` — a peak
 below the average is unsatisfiable — and at most
 `FAAC_MAX_BIT_RATE`; `faac_encoder_open()` returns
 `FAAC_ERR_INVALID_ARGUMENT` otherwise. More headroom means fewer retries.
@@ -534,7 +534,7 @@ shim — callers must move to `faac_*`. The changes are mechanical:
 - **Buffer sizing.** Where you previously read `inputSamples` and
   `maxOutputBytes` from `faacEncOpen()`, call
   `faac_encoder_get_info()` after `faac_encoder_open()` and use
-  `info.frame_samples` × `num_channels` and
+  `info.frame_samples` × `channels` and
   `info.max_output_bytes` instead.
 - **Version info.** `faacEncGetVersion()` is replaced by
   `faac_get_library_info()`, which also reports `max_channels`; the
@@ -560,6 +560,7 @@ shim — callers must move to `faac_*`. The changes are mechanical:
 - **Configuration field renames.** `faacEncConfiguration` fields map
   onto `faac_params` fields as follows:
 
+  - `numChannels` (passed to `faacEncOpen()`) → `channels`.
   - `aacObjectType` → `object_type` (now uses
     `FAAC_OBJ_*` constants, numbered per the MPEG-4 AOT registry, rather
     than the old MAIN/LOW/SSR/LTP enum — MAIN, SSR, and LTP are retired,
