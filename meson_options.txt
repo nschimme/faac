@@ -56,6 +56,11 @@ option('muxer-fragmented',
     type: 'boolean',
     value: true)
 
+option('encoder-sbr',
+    description: 'Enable HE-AAC v1 (SBR) support in libfaac',
+    type: 'boolean',
+    value: true)
+
 # Encoder tuning
 option('encoder-ps',
     description: 'Enable Parametric Stereo (HE-AAC v2) encoding',

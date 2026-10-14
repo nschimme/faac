@@ -98,7 +98,10 @@ otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8), `FAAC_SBR_DECIMATION`
 | PCM | Interleaved native-endian signed integer or float; see below |
 
 Query `faac_get_library_info()` for `max_channels`, version/copyright and
-`sbr_decimation` (build-time SBR analysis density; 1 is full density).
+`sbr_decimation` (build-time SBR analysis density; 1 is full density) and
+`flags`. `FAAC_LIB_SBR` is clear in an LC-only build (`-Dencoder-sbr=false`),
+where `FAAC_OBJ_HE_AAC_V1` returns `FAAC_ERR_UNSUPPORTED` and
+`FAAC_OBJ_AUTO` resolves to LC.
 `max-channels` defaults to 8; `sbr-decimation` defaults to 1.
 Use standard AAC sample rates (8000, 11025, 12000, 16000, 22050, 24000,
 32000, 44100, 48000, 64000, 88200 or 96000 Hz). Validation accepts
@@ -660,7 +663,7 @@ calls and rebuild.
 | ABI 2 | ABI 3 / caller action |
 |---|---|
 | `use_tns`, `use_pns`, `reserved` | Set `flags` with `FAAC_FLAG_TNS` and `FAAC_FLAG_PNS`; both are enabled by default, and unknown bits are rejected. |
-| `faac_library_info` field order | `struct_size`, `version`, `copyright`, `max_channels`, `sbr_decimation`; query writes back the populated size. |
+| `faac_library_info` field order | `struct_size`, `version`, `copyright`, `max_channels`, `sbr_decimation`, `flags`; query writes back the populated size. |
 | `FAAC_INPUT_32BIT` | `FAAC_INPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
 | `FAAC_INPUT_FLOAT` on the signed-16-bit scale | Pass unity-full-scale floats (±1.0); remove the multiplication by 32768 for normalized input. |
 
