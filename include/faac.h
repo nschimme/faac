@@ -145,10 +145,9 @@ enum faac_stream_format {
  * bits/ch ceiling. CBR: a bit reservoir bounds every frame to the decoder
  * buffer, stuffs frames that would overflow it, and declares the fill. */
 enum faac_rate_control {
-    FAAC_RC_AUTO = 0,                /* bit_rate set: ABR; otherwise VBR         */
-    FAAC_RC_VBR,                     /* quant_quality drives; bit_rate must be 0 */
-    FAAC_RC_ABR,                     /* average bit_rate; requires bit_rate      */
-    FAAC_RC_CBR,                     /* bit reservoir; requires bit_rate         */
+    FAAC_RC_ABR = 0,                 /* average whole-stream bit_rate            */
+    FAAC_RC_VBR,                     /* quality drives; bit_rate must be 0        */
+    FAAC_RC_CBR,                     /* bit reservoir; whole-stream bit_rate      */
     FAAC_RC_MAX  = 0x7fffffff
 };
 
@@ -212,10 +211,9 @@ typedef struct faac_params {
     bool                    use_pns;       /* perceptual noise substitution            */
     uint8_t                 reserved[1];   /* reserved for future use; currently zero              */
 
-    uint32_t                bit_rate;      /* target bits/sec PER CHANNEL; 0 = use quant_quality */
+    uint32_t                bit_rate;      /* whole-stream bits/sec; 0 = default in ABR/CBR, must be 0 in VBR */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = from bit_rate, the curve's top in VBR (full band above 48 kHz at default quality or higher) */
-    uint32_t                quant_quality; /* quantizer quality 1..5000; 0 = derive from bit_rate.
-                                            * With bit_rate it only seeds the rate loop.          */
+    uint32_t                quality;       /* VBR quality 1..5000; 0 = default; must be 0 in ABR/CBR */
 
     enum faac_stream_format output_format;
     enum faac_input_format  input_format;
@@ -225,29 +223,27 @@ typedef struct faac_params {
 
     /* Ceiling on any single frame, for packet-oriented transports that cannot
      * fragment one -- a frame that overruns the link MTU is dropped, not split.
-     * Unlike bit_rate this is a WHOLE-STREAM rate, so it stays independent of
+     * Like bit_rate this is a WHOLE-STREAM rate, so it stays independent of
      * channels and follows from the payload a packet can carry or standard
      * ISO/IEC 14496-3 limits (6144 bits/channel per frame):
      *
-     *     max_bit_rate = payload_bytes * 8 * sample_rate / 1024
+     *     peak_bit_rate = payload_bytes * 8 * sample_rate / 1024
      *
-     * Must be >= bit_rate * channels (a peak below the average is
-     * unsatisfiable) and <= FAAC_MAX_BIT_RATE; open() rejects anything else.
+     * In ABR/CBR must be >= the resolved whole-stream bit_rate and
+     * <= FAAC_MAX_PEAK_BIT_RATE: a peak below the average is unsatisfiable.
      * More headroom means fewer retries.
      *
      * Best-effort: enforced by backing off quality over bounded retries, which
      * cannot beat the irreducible per-frame cost of side info and scalefactors.
-     * Measured on transient-heavy stereo, the cap holds for every frame at and
-     * above ~64 kbit/s; below that the floor starts to show (~48 kbit/s
-     * overshoots on a few percent of frames). */
-    uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
+     * Check the emitted byte count when the transport requires a strict cap. */
+    uint32_t                peak_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
-    enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
+    enum faac_rate_control  rate_control;  /* see enum; zero selects ABR */
 } faac_params;
 
-/* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
+/* Upper bound on faac_params.peak_bit_rate: far above any real stream rate, and
  * low enough that converting it to a per-frame bit budget cannot overflow. */
-#define FAAC_MAX_BIT_RATE ((uint32_t)100000000)
+#define FAAC_MAX_PEAK_BIT_RATE ((uint32_t)100000000)
 
 /*
  * Resolved encoder properties, filled by faac_encoder_get_info(). All values are
@@ -267,10 +263,10 @@ typedef struct faac_encoder_info {
     enum faac_object_type   object_type;      /* concrete type in effect (AUTO resolved)            */
     enum faac_mpeg_version  mpeg_version;     /* version in effect (HE-AAC forces MPEG-4)           */
 
-    uint32_t                bit_rate;         /* resolved bits/sec per channel (0 if quality-driven) */
+    uint32_t                bit_rate;         /* resolved whole-stream bits/sec (0 in VBR) */
     uint32_t                bandwidth;        /* resolved cutoff in Hz                               */
-    uint32_t                quant_quality;    /* resolved quantizer quality                          */
-    uint32_t                max_bit_rate;     /* resolved peak cap, 0 if unlimited                   */
+    uint32_t                quality;          /* resolved quantizer quality                          */
+    uint32_t                peak_bit_rate;     /* resolved peak cap, 0 if unlimited                   */
 
     /* Priming delay in samples/channel at the output rate, as gapless tags
      * (iTunSMPB) declare it. An MP4 edit list counts in the track timescale,
@@ -279,7 +275,7 @@ typedef struct faac_encoder_info {
      * SBR decoder delay, which decoders add themselves. */
     uint32_t                encoder_delay;
 
-    enum faac_rate_control  rate_control;     /* resolved mode (AUTO becomes VBR or ABR)          */
+    enum faac_rate_control  rate_control;     /* resolved mode          */
 } faac_encoder_info;
 
 /*

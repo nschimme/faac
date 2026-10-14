@@ -190,7 +190,7 @@ const char *faac_strerror(faac_status status);
 The `object_type` field of `faac_params` uses MPEG-4 Audio Object Type
 numbers: `FAAC_OBJ_LOW` (2) is AAC-LC and `FAAC_OBJ_HE_AAC_V1` (5) is
 HE-AAC v1 (AAC-LC core + SBR). `FAAC_OBJ_AUTO` (0) lets the library choose
-LC or HE-AAC from the bitrate, or from `quant_quality` when there is none. `FAAC_OBJ_HE_AAC_V2` (29) is defined but not
+LC or HE-AAC from the bitrate, or from `quality` when there is none. `FAAC_OBJ_HE_AAC_V2` (29) is defined but not
 implemented; requesting it returns `FAAC_ERR_UNSUPPORTED`.
 
 For an HE-AAC encoder the SBR core runs at half the input rate and codes a
@@ -226,7 +226,7 @@ int main(void)
     if (st < 0) goto api_error;
     p.sample_rate = 48000;
     p.channels = 2;
-    p.bit_rate = 64000; /* per channel */
+    p.bit_rate = 128000; /* whole-stream bits/sec */
     st = faac_encoder_open(&p, &enc);
     if (st < 0) goto api_error;
     st = faac_encoder_get_info(enc, &info);
@@ -290,19 +290,19 @@ cleanup:
 
 `faac_params_init()` defaults to MPEG-4 AAC-LC, mixed joint stereo, TNS and
 PNS enabled, automatic LFE for six or eight channels, AAC input order, ADTS,
-signed 16-bit input, normal block switching, 64000 bits/sec/channel, automatic
-rate control, no user peak cap and automatic bandwidth/quality. Only sample rate and channel count must be supplied.
+signed 16-bit input, normal block switching, ABR rate control, `bit_rate` 0
+(64000 bits/sec/channel), `quality` 0, no user peak cap and automatic bandwidth.
+Only sample rate and channel count must be supplied.
 `FAAC_OBJ_AUTO` is an explicit choice, not the initialization default.
 
-For VBR, clear the default bitrate:
+For VBR, set `rate_control = FAAC_RC_VBR`:
 
 ```c
-p.bit_rate = 0;
 p.rate_control = FAAC_RC_VBR;
-p.quant_quality = 100; /* higher means higher quality; 0 selects the default */
+p.quality = 100; /* higher means higher quality; 0 selects the default */
 ```
 
-Quality is clamped by the core to 1–5000; bandwidth is resolved and
+VBR quality must be 1–5000, or 0 for the library default; bandwidth is resolved and
 clamped to the available range. Read effective values with `get_info()`.
 
 | Input format | Representation | Storage alignment |
@@ -471,10 +471,13 @@ these values; ADTS alone does not preserve gapless metadata. See
 
 ### Rate control modes
 
-`faac_params.rate_control` selects how a rate is held. `FAAC_RC_AUTO`,
-the default, keeps the legacy meaning of the two rate fields: a `bit_rate`
-is ABR, none is VBR. `FAAC_RC_ABR` holds `bit_rate` as an average:
-frames are bounded only by the ISO/IEC 14496-3 ceiling of 6144 bits per channel,
+`faac_params.rate_control` explicitly selects the mode. `FAAC_RC_ABR`,
+the default (and zero), holds `bit_rate` as an average. In ABR and CBR,
+`bit_rate` is whole-stream bits/sec; 0 selects 64000 bits/sec per channel.
+The library divides the whole-stream target by the channel count using integer
+division. `faac_encoder_info.bit_rate` reports the resolved per-channel rate
+multiplied by the channel count, so six channels at 128000 report 127998.
+In ABR, frames are bounded only by the ISO/IEC 14496-3 ceiling of 6144 bits per channel,
 a transient may take several times the mean, and silence stays small.
 `FAAC_RC_CBR` holds it as a constant-rate stream: a bit reservoir models the
 decoder's input buffer, every frame fits `mean + fill`, a frame that would
@@ -484,17 +487,18 @@ VBR write the 0x7FF sentinel); MP4 output declares `bufferSizeDB` = 768
 bytes per channel and `maxBitrate` == `avgBitrate`. CBR is for
 constant-rate channels and matched-bitrate comparisons; on a file or a packet
 network its stuffing is bytes for nothing, and a transient may take only what
-the buffer holds. `FAAC_RC_VBR` or `FAAC_RC_ABR`/`FAAC_RC_CBR`
-with, respectively, a `bit_rate` set or unset is rejected by
-`faac_encoder_open()` with `FAAC_ERR_INVALID_ARGUMENT`.
+the buffer holds. `FAAC_RC_VBR` requires `bit_rate = 0` and uses `quality`
+(1–5000, or 0 for the library default). ABR and CBR require `quality = 0`. In all modes,
+`faac_encoder_info.quality` reports the resolved/seeded starting quality,
+including ABR and CBR.
+Conflicting fields are rejected by `faac_encoder_open()` with
+`FAAC_ERR_INVALID_ARGUMENT`.
 `faac_encoder_info.rate_control` reports the resolved mode.
 
 In ABR and CBR the cutoff follows `bit_rate`; in VBR it is the top of
 that curve, 18750 Hz, except that input above 48 kHz at the default quality
 (100) or higher keeps the full band (half the sample rate). A non-zero
-`bandwidth` overrides either. A non-zero `quant_quality` given
-together with a `bit_rate` is not rejected: it is the rate loop's starting
-quality, and the loop moves on from it. `faac_encoder_info.bandwidth`
+`bandwidth` overrides either. `faac_encoder_info.bandwidth`
 reports the cutoff in use.
 
 ### Capping the peak frame size
@@ -502,15 +506,15 @@ reports the cutoff in use.
 Packet-oriented transports often cannot fragment a frame: one that overruns the
 link MTU is dropped, not split. `bit_rate` cannot prevent that, being an
 average individual frames are free to exceed — a transient easily produces
-a frame several times the mean. `faac_params.max_bit_rate` puts a hard
+a frame several times the mean. `faac_params.peak_bit_rate` puts a hard
 ceiling on any single frame; 0, the default, means none beyond the encoder's
 own ISO/IEC 14496-3 peak ceiling of 6144 bits per channel per frame, enforced
 unconditionally to guarantee decoder compatibility across portable devices.
-Unlike `bit_rate` it is a whole-stream rate, so it stays independent of
-`channels` and follows directly from the payload one packet can carry:
+Both `bit_rate` and `peak_bit_rate` are whole-stream bits/sec. The peak stays
+independent of `channels` and follows directly from the payload one packet can carry:
 
 ```text
-    max_bit_rate = payload_bytes * 8 * info.sample_rate / info.frame_samples
+    peak_bit_rate = payload_bytes * 8 * info.sample_rate / info.frame_samples
 ```
 
 Use 64-bit arithmetic, round down, and query the resolved frame size/rate
@@ -518,9 +522,10 @@ first (1024 for LC, 2048 for HE-AAC). The cap budgets the AAC payload; reserve
 seven more bytes for ADTS and any transport headers when deriving an MTU budget.
 The output allocation still needs `info.max_output_bytes`, regardless of cap.
 
-It must be at least `bit_rate` × `channels` — a peak
+In ABR and CBR it must be at least the requested whole-stream `bit_rate`
+(or 64000 × `channels` when `bit_rate` is 0) — a peak
 below the average is unsatisfiable — and at most
-`FAAC_MAX_BIT_RATE`; `faac_encoder_open()` returns
+`FAAC_MAX_PEAK_BIT_RATE`; `faac_encoder_open()` returns
 `FAAC_ERR_INVALID_ARGUMENT` otherwise. More headroom means fewer retries.
 
 It is a ceiling, not a second average: frames that already fit are untouched, so
@@ -591,8 +596,11 @@ shim — callers must move to `faac_*`. The changes are mechanical:
   - `useLfe` → automatic LFE for six or eight channels; no switch.
     `useTns` → `use_tns` (now `bool`).
   - `shortctl` → `short_control` (`FAAC_SHORTCTL_*`).
-  - `bitRate` → `bit_rate`; `bandWidth` →
-    `bandwidth`; `quantqual` → `quant_quality`.
+  - `bitRate` → `bit_rate` (multiply the per-channel rate by `channels`);
+    `bandWidth` → `bandwidth`; `quantqual` → `quality` (VBR only).
+  - `maxBitRate` → `peak_bit_rate` (whole-stream bits/sec).
+  - `rateControl` → `rate_control` (`FAAC_RC_ABR`, `FAAC_RC_VBR`, or
+    `FAAC_RC_CBR`); select the mode explicitly.
   - `pnslevel` → `use_pns`: the level is now chosen by the
     encoder, leaving the caller an on/off switch.
   - `outputFormat` → `output_format` (`FAAC_STREAM_*`);
