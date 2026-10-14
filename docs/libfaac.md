@@ -342,10 +342,13 @@ The supported standard layouts are:
 
 Four channels are always coded and labelled as 4.0, including quad
 (FL FR BL BR) and 3.1 (FL FR FC LFE) input. Seven channels and more than eight
-are rejected with `FAAC_ERR_INVALID_ARGUMENT`. Eight-channel pairs are coded
-front, side, back using AAC channel configuration 7, read as 7.1 by FFmpeg and
-libfaad. ISO defines that configuration as 7.1 wide, so Core Audio labels the
-pairs differently.
+are rejected with `FAAC_ERR_INVALID_ARGUMENT`. Eight-channel streams are
+signalled with channelConfiguration 0 and a program config element that lists
+the pairs as front, side, back, so Apple, FDK, FFmpeg and libfaad all read the
+same 7.1. AAC channel configuration 7 is not used because ISO/IEC 14496-3
+defines it as 7.1 wide. ADTS streams carry the PCE in the first frame and
+repeat it every 32 frames so a decoder that joins late learns the layout;
+RAW streams carry it in the AudioSpecificConfig only.
 
 Select `FAAC_LAYOUT_WAV` for WAVE interleave. The library derives the
 permutation; arbitrary channel maps are not accepted. For 5.1 input ordered
@@ -377,8 +380,9 @@ over where encoder memory lives. The allocator need not clear the memory it retu
 
 The encoder instance is heap-allocated at `faac_encoder_open()` and does not
 allocate again while encoding or draining. AudioSpecificConfig is built at open
-in an 8-byte array inside the handle: 2 bytes for LC, 5 bytes for multichannel
-HE-AAC, or 7 bytes for mono HE-AAC. `faac_encoder_info.asc` copies it and
+in a 14-byte array inside the handle: 2 bytes for LC, 5 bytes for multichannel
+HE-AAC, 7 bytes for mono HE-AAC, and up to 14 bytes for eight channels, whose
+PCE is part of it. `faac_encoder_info.asc` copies it and
 `faac_encoder_asc()` returns that storage without allocating. Closing the handle releases all of it.
 
 The following are indicative measurements from an arm64 build at 48000 Hz
