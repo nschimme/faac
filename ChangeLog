@@ -6,6 +6,9 @@ Unreleased
 	* Use explicit ABR/VBR/CBR modes and whole-stream bitrate; rename
 	  quant_quality to quality (VBR only) and max_bit_rate to peak_bit_rate
 	* Rename faac_params.num_channels to channels
+	* Add the AudioSpecificConfig to faac_encoder_info, take a const handle
+	  in faac_encoder_get_info and faac_encoder_asc, and call the end-of-stream
+	  flush a drain
 	* Replace faac_params.mpeg_version with FAAC_STREAM_ADTS_MPEG2 and
 	  report the resolved stream_format in faac_encoder_info
 	* Rename joint_mode to stereo_mode (FAAC_STEREO_*), FAAC_OBJ_LOW to

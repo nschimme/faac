@@ -131,15 +131,16 @@ See [ABI compatibility](#abi-compatibility).
   `info.frame_samples` × `channels` samples; the output buffer
   must be at least `info.max_output_bytes`. The same struct also reports the
   resolved sample rate, object type, and rate-control settings. If you write a
-  raw stream, fetch the AudioSpecificConfig with `faac_encoder_asc()`
-  (library-owned — do **not** free it).
+  raw stream, take the AudioSpecificConfig from `info.asc` / `info.asc_size`
+  (valid right after open; copy it if you need it longer) or from
+  `faac_encoder_asc()` (library-owned — do **not** free it).
 - Call `faac_encoder_encode()` for each block of input; it emits at most
   one frame per call and reports the byte count via an out-parameter.
   `in_samples` counts samples across all channels, not bytes or samples/channel.
   Supply at most `info.frame_samples * channels`, in whole channel groups.
   Smaller blocks accumulate internally; zero output during normal input means
   accumulation or priming, not end of stream.
-- Pass `in_samples` == 0 to flush; keep calling until
+- Pass `in_samples` == 0 to drain; keep calling until
   `bytes_written` is 0.
 - Call `faac_encoder_close()`, passing the address of your handle; it is
   set to NULL on success.
@@ -155,13 +156,13 @@ object type this build does not implement, or a request with no ASC),
 `FAAC_ERR_OUTPUT_TOO_SMALL`, and `FAAC_ERR_INPUT_OVERFLOW`.
 
 Always provide a non-NULL output buffer with at least `info.max_output_bytes`,
-including while flushing. `bytes_written` must also be non-NULL; input may be
+including while draining. `bytes_written` must also be non-NULL; input may be
 NULL only when `in_samples` is zero. Argument, capacity and per-call sample-limit
 checks happen before consuming input, so correct those errors and retry the
 same block. `FAAC_ERR_INTERNAL` may occur after state has advanced; do not
 assume replay is safe. Close and reopen to start a new stream.
-Flush is an end-of-stream drain, not a reset or seek operation. Submit the final
-partial block first, then flush until zero output; close does not drain audio.
+Draining is an end-of-stream operation, not a reset or seek. Submit the final
+partial block first, then drain until zero output; close does not drain audio.
 
 ### Function reference
 
@@ -174,10 +175,10 @@ faac_status faac_encoder_open(const faac_params *p, faac_encoder **out);
 faac_status faac_encoder_close(faac_encoder **enc);   /* sets *enc = NULL */
 
 /* resolved properties, valid after open; set out.struct_size first */
-faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *out);
+faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out);
 
 /* AudioSpecificConfig: library-owned, valid until close, do NOT free */
-faac_status faac_encoder_asc(faac_encoder *enc, const uint8_t **buf, uint32_t *len);
+faac_status faac_encoder_asc(const faac_encoder *enc, const uint8_t **buf, uint32_t *len);
 
 faac_status faac_encoder_encode(faac_encoder *enc,
                                 const void *in, uint32_t in_samples,
@@ -374,10 +375,10 @@ over where encoder memory lives. The allocator need not clear the memory it retu
 ### Memory budget and embedded targets
 
 The encoder instance is heap-allocated at `faac_encoder_open()` and does not
-allocate again while encoding or flushing. AudioSpecificConfig is built at open
+allocate again while encoding or draining. AudioSpecificConfig is built at open
 in an 8-byte array inside the handle: 2 bytes for LC, 5 bytes for multichannel
-HE-AAC, or 7 bytes for mono HE-AAC. `faac_encoder_asc()` returns that storage
-without allocating. Closing the handle releases all of it.
+HE-AAC, or 7 bytes for mono HE-AAC. `faac_encoder_info.asc` copies it and
+`faac_encoder_asc()` returns that storage without allocating. Closing the handle releases all of it.
 
 The following are indicative measurements from an arm64 build at 48000 Hz
 with default build options, not storage requirements guaranteed across builds:
@@ -413,7 +414,7 @@ committing to it.
 #### Running without a heap
 
 A fixed-pool override can avoid the system heap. Allocations occur during open
-and the first successful ASC request; encoding and flushing allocate nothing.
+only; encoding and draining allocate nothing.
 A bump allocator must also reserve space for allocations freed during open,
 because it cannot reuse them.
 
@@ -570,8 +571,8 @@ shim — callers must move to `faac_*`. The changes are mechanical:
 - **Encoding loop.** `faacEncEncode()` becomes
   `faac_encoder_encode()` with the byte count returned via an
   out-parameter (`bytes_written`) instead of the return value; the return
-  value is now a `faac_status`. Flush and end-of-stream detection are
-  unchanged: pass `in_samples` == 0 to flush, and keep calling until
+  value is now a `faac_status`. Draining and end-of-stream detection are
+  unchanged: pass `in_samples` == 0 to drain, and keep calling until
   `bytes_written` is 0.
 - **Close.** `faacEncClose(hEncoder)` becomes
   `faac_encoder_close(&enc)` — pass the address of your handle,
