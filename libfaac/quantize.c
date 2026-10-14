@@ -535,8 +535,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL * flatness_factor(coder, i, be, aacquantCfg->flat_exp, aacquantCfg->flat_lines),
                                aacquantCfg->treble_slope, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel,
-                               coder->block_type == ONLY_SHORT_WINDOW ? aacquantCfg->sf_cap_short : aacquantCfg->sf_cap, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, aacquantCfg->sf_cap, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);
