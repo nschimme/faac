@@ -152,7 +152,7 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     g_faadStats.icsCount++;
 #endif
 
-    ics->frame_len_long = dec->asc.frame_length_flag ? 960 : 1024;
+    ics->frame_len_long = FRAME_IS_960(dec) ? 960 : 1024;
     ics->global_gain = bits_get(bs, 8);
 
     if (!common_window) {
