@@ -1,6 +1,6 @@
 /*
  * FAAD - Freeware Advanced Audio Decoder
- * Unit test for DAB+ 960-sample frame size and ADIF decoding
+ * Unit test for DAB+ 960-sample frame size
  */
 
 #include <stdio.h>
@@ -43,34 +43,7 @@ int main(void)
     faad_decoder_close(&dec);
     assert(dec == NULL);
 
-    /* Test 2: ADIF header parsing */
-    uint8_t adif_buf[17] = {
-        0x41, 0x44, 0x49, 0x46, 0x00, 0x3E, 0x80, 0x00,
-        0x10, 0x00, 0x00, 0xA0, 0x80, 0x00, 0x04, 0x00, 0x00
-    };
-    cfg.stream_format = FAAD_STREAM_ADIF;
-    st = faad_decoder_open(&cfg, NULL, 0, &dec);
-    assert(st == FAAD_OK);
-
-    info.struct_size = sizeof(info);
-    faad_decoder_get_info(dec, &info);
-
-    uint32_t consumed = 0, written = 0, flags = 0;
-    uint8_t pcm_out[65536];
-    st = faad_decode_frame(dec, adif_buf, sizeof(adif_buf), &consumed, pcm_out, sizeof(pcm_out), &written, &flags);
-    assert(st == FAAD_OK);
-
-    info.struct_size = sizeof(info);
-    st = faad_decoder_get_info(dec, &info);
-    assert(st == FAAD_OK);
-    assert(info.format_known);
-    assert(info.sample_rate == 44100);
-    assert(info.channels == 2);
-    printf("ADIF info parsed: format_known: %d, rate: %u, channels: %u\n", info.format_known, info.sample_rate, info.channels);
-
-    faad_decoder_close(&dec);
-
-    printf("DAB+ / ADIF unit tests passed successfully!\n");
+    printf("DAB+ unit tests passed successfully!\n");
 #else
     printf("DAB+ support disabled via FAAD_DISABLE_DAB.\n");
 #endif

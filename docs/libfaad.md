@@ -564,7 +564,8 @@ no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
 
 Stream framing is now explicit in `faad_config.stream_format`. Use
 `FAAD_STREAM_RAW` or `FAAD_STREAM_ADTS`; do not copy the legacy `header_type`
-numbers (`ADTS` was 2, whereas `FAAD_STREAM_ADTS` is 1). ADIF, LATM and DRM
+numbers (`ADTS` was 2, whereas `FAAD_STREAM_ADTS` is 1).
+ADIF is unsupported. LATM and DRM
 initialization (`NeAACDecInitDRM()`) have no corresponding entry points.
 
 The public object types are AAC-LC, HE-AAC v1 and HE-AAC v2

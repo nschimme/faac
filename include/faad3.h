@@ -126,7 +126,7 @@ enum faad_object_type {
 enum faad_stream_format {
     FAAD_STREAM_RAW  = 0,            /* raw AAC access units (needs out-of-band ASC) */
     FAAD_STREAM_ADTS = 1,            /* self-framing ADTS                             */
-    FAAD_STREAM_ADIF = 2,            /* self-framing ADIF                             */
+    /* 2 is reserved (formerly ADIF). */
     FAAD_STREAM_MAX  = 0x7fffffff
 };
 
