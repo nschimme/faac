@@ -1,5 +1,17 @@
 # Next experiments toward Apple and FDK parity
 
+Update 2026-10-15: the completed reference matrix at encoder `367cf8dc`
+locates the main remaining target at **48 kHz stereo HE 40–64 kbps**;
+48 kHz LC 128–192 kbps against Apple is secondary. Follow the
+[focused experiment proposals](reference-gaps-367cf8dc/SUGGESTED_EXPERIMENTS.md)
+and their comparability/provenance limits before implementing anything.
+The [Apple reference package](../../ref/apple-s11-367cf8dc/README.md) supplies
+the existing 49-clip HE40/48/56/64 and LC96/128/160/192 streams for Linux
+cloud analysis. Those references are not a held-out set. New held-out
+candidate-versus-FAAC checks can run without new Apple encodes; a held-out
+claim against Apple needs corresponding Apple references. The research
+sequence below is retained as rationale, not a report of additional runs.
+
 This is a proposed research sequence, not measured evidence or a new quality
 claim. Read Stage S10 in `../../LADDER_RESULT.md`, the Stage S11 ledger, and
 the recorded limitations before running it. The old long-block plan is

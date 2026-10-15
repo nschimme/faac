@@ -1,6 +1,6 @@
 {
   "schema": "faac-pr70-ci-evidence-v1",
-  "retrieved_at_utc": "2026-10-15T00:30:15Z",
+  "retrieved_at_utc": "2026-10-15T00:56:50Z",
   "pull_request": 70,
   "head_commit": "c50b66aab79f754fc17e2550159a861d26403b65",
   "build_run": {
@@ -177,9 +177,23 @@
     "benchmark_suite_commit_window_query": "api/faac-benchmark-commits-through-footprint.json has zero commits after this master head through footprint-job completion; actual checkout SHA is not directly exposed by the job metadata, so this is a bounded inference."
   },
   "artifact_status": {
-    "api_total_count": 2,
-    "checked_at_utc": "2026-10-15T00:30:15Z",
+    "api_total_count": 4,
+    "checked_at_utc": "2026-10-15T00:56:50Z",
     "artifacts": [
+      {
+        "id": 11939797125,
+        "name": "benchmark-report-full",
+        "size_in_bytes": 1705,
+        "digest": "sha256:ff08f6e95d9e7899a78b6adfbe1f65c8f4816ccfe4676d9ed99ef3a62ab723ef",
+        "expired": false
+      },
+      {
+        "id": 11939487718,
+        "name": "results-amd64-abr",
+        "size_in_bytes": 1221534,
+        "digest": "sha256:1eb746d20b247a01be2cc3375fbeb01b1d80c9f43b39694522c0dcac2db65d77",
+        "expired": false
+      },
       {
         "id": 11937824673,
         "name": "results-arm64-vbr",
@@ -195,41 +209,52 @@
         "expired": false
       }
     ],
-    "downloads": "Both completed artifacts were downloaded through authenticated gh CLI to /private/tmp; only Markdown and JSON reports were copied into this evidence package. No audio, AAC, binaries, or credentials were copied."
+    "downloads": "Full report, ABR, CBR and VBR text/JSON artifacts were fetched; this package contains only Markdown/JSON/log text, no media, build products or credentials."
   },
   "job_logs": {
-    "status": "authenticated VBR log archived",
+    "status": "authenticated VBR and ABR logs archived",
     "public_unauthenticated_attempt": {
       "endpoint": "GET /repos/nschimme/faac/actions/jobs/116175562869/logs",
       "http_status": 403,
       "response": "Must have admin rights to Repository."
     },
-    "authenticated_retrieval": "Root-provided cleaned log from authenticated GitHub CLI retrieval; archived as logs/arm64-vbr-job.log. Secret-pattern scan found no exposed credentials.",
-    "note": "The unauthenticated 403 does not describe authenticated access. The VBR job log is complete; no raw VBR log or credentials were copied."
+    "authenticated_retrieval": "VBR log provided cleaned by root; ABR log captured with `gh run view --log --job 116175562819`.",
+    "files": {
+      "vbr": "logs/arm64-vbr-job.log",
+      "abr": "logs/amd64-abr-job.log"
+    },
+    "credential_scan": "No exposed token/key/unmasked Authorization pattern found in archived logs."
   },
   "benchmark_run_latest": {
     "id": 38659018069,
     "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+    "status": "completed",
+    "conclusion": "failure",
+    "updated_at": "2026-10-15T00:56:50Z",
     "jobs": {
       "Benchmark amd64 (abr)": {
         "id": 116175562819,
-        "status": "in_progress",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-10-15T00:56:04Z"
       },
       "Benchmark arm64 (cbr)": {
         "id": 116175562874,
         "status": "completed",
-        "conclusion": "success"
+        "conclusion": "success",
+        "completed_at": "2026-10-15T00:29:29Z"
       },
       "Benchmark arm64 (vbr)": {
         "id": 116175562888,
         "status": "completed",
-        "conclusion": "failure"
+        "conclusion": "failure",
+        "completed_at": "2026-10-15T00:29:12Z"
       },
       "Footprint": {
         "id": 116175563102,
         "status": "completed",
-        "conclusion": "success"
+        "conclusion": "success",
+        "completed_at": "2026-10-15T00:16:38Z"
       }
     },
     "url": "https://github.com/nschimme/faac/actions/runs/38659018069"
@@ -336,5 +361,6 @@
         "bss": 20520
       }
     }
-  }
+  },
+  "terminal_record": "terminal-results.json"
 }

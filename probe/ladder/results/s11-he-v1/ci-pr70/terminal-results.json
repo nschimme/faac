@@ -1,0 +1,147 @@
+{
+  "schema": "faac-pr70-ci-terminal-v1",
+  "workflow_run": {
+    "id": 38659018069,
+    "url": "https://github.com/nschimme/faac/actions/runs/38659018069",
+    "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+    "status": "completed",
+    "conclusion": "failure",
+    "updated_at": "2026-10-15T00:56:50Z",
+    "baseline_sha": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+    "benchmark_suite_commit": "bdce18f7123f51c31795afe9fb4571c18f507a77"
+  },
+  "jobs": {
+    "Benchmark amd64 (abr)": {
+      "id": 116175562819,
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-15T00:56:04Z"
+    },
+    "Benchmark arm64 (cbr)": {
+      "id": 116175562874,
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-15T00:29:29Z"
+    },
+    "Benchmark arm64 (vbr)": {
+      "id": 116175562888,
+      "status": "completed",
+      "conclusion": "failure",
+      "completed_at": "2026-10-15T00:29:12Z"
+    },
+    "Footprint": {
+      "id": 116175563102,
+      "status": "completed",
+      "conclusion": "success",
+      "completed_at": "2026-10-15T00:16:38Z"
+    }
+  },
+  "artifact_metadata": {
+    "benchmark-report-full": {
+      "id": 11939797125,
+      "size_bytes": 1705,
+      "digest": "sha256:ff08f6e95d9e7899a78b6adfbe1f65c8f4816ccfe4676d9ed99ef3a62ab723ef",
+      "archived_at": "artifacts/consolidated/report.md"
+    },
+    "results-amd64-abr": {
+      "id": 11939487718,
+      "size_bytes": 1221534,
+      "digest": "sha256:1eb746d20b247a01be2cc3375fbeb01b1d80c9f43b39694522c0dcac2db65d77",
+      "archived_at": "artifacts/abr/"
+    },
+    "results-arm64-cbr": {
+      "id": 11937788387,
+      "digest": "sha256:f4339e62e35415542937834385883bc7d31dc471a5b588a1fd4f33186534e65b",
+      "archived_at": "artifacts/cbr/"
+    },
+    "results-arm64-vbr": {
+      "id": 11937824673,
+      "digest": "sha256:05adb51216b4355458bc7ca80e68eefbaa57d9fb2d9f206060bc7007499559e2",
+      "archived_at": "artifacts/vbr/"
+    }
+  },
+  "abr": {
+    "mean_mos_delta": 0.001,
+    "mos_report_gate": "warning: 4 clips listed past −0.05 MOS; ABR job itself completed success and report marks the MOS pillar pass",
+    "reported_48k_he_aac_v1_bd_rate_percent": -0.108,
+    "throughput_delta_percent": -0.0,
+    "footprint_delta_bytes": -48,
+    "listed_mos_regressions": [
+      {
+        "case_key": "32k_stereo_16k_clapton_44k.16b48k.wav",
+        "baseline_mos": 2.9521970748901367,
+        "candidate_mos": 2.885615348815918,
+        "delta_mos": -0.06658172607421875,
+        "target_kbps": 16,
+        "actual_candidate_kbps": 16.7224,
+        "baseline_reported_md5": "bc67f25a701f79b5c61122af8a2b25b9",
+        "candidate_reported_md5": "f8e47f121ad24ab4c901c1d8ba03e153"
+      },
+      {
+        "case_key": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+        "baseline_mos": 2.5563745498657227,
+        "candidate_mos": 2.4898200035095215,
+        "delta_mos": -0.06655454635620117,
+        "target_kbps": 16,
+        "actual_candidate_kbps": 16.3112,
+        "baseline_reported_md5": "acb6f14c2cfb01e498ad2e0e1f153b4f",
+        "candidate_reported_md5": "2e8955c060c41289f864755f30eb030c"
+      },
+      {
+        "case_key": "48k_stereo_24k_clapton_44k.16b48k.wav",
+        "baseline_mos": 3.5328445434570312,
+        "candidate_mos": 3.4361581802368164,
+        "delta_mos": -0.09668636322021484,
+        "target_kbps": 24,
+        "actual_candidate_kbps": 23.9128,
+        "baseline_reported_md5": "6a76b04800846e67e940998a98f333f8",
+        "candidate_reported_md5": "fb062ef48581cc40cc4c46ea7b1a16d7"
+      },
+      {
+        "case_key": "48k_stereo_24k_bas.wav",
+        "baseline_mos": 2.7695865631103516,
+        "candidate_mos": 2.716029167175293,
+        "delta_mos": -0.053557395935058594,
+        "target_kbps": 24,
+        "actual_candidate_kbps": 23.788,
+        "baseline_reported_md5": "27b9ab23e04994fcb6d1bd0bc36357db",
+        "candidate_reported_md5": "3be878e2547814747c7e3a0fa7d1dbfc"
+      }
+    ],
+    "gate_source": "artifacts/abr/report_abr.md"
+  },
+  "vbr": {
+    "job_conclusion": "failure",
+    "mos_delta": 0.002,
+    "he_48k_bd_rate_percent": -0.167,
+    "throughput_delta_percent": 0.0,
+    "gapless_gate": "failed: three 48k_stereo_16k streams, baseline and candidate lag identical at -964/-391/-89 samples; frame_error 0, elst and itunsmpb true",
+    "paired_evidence": "vbr-gapless-paired-cases.json",
+    "limitation": "Report-level lag match does not prove decoded PCM alignment or establish the underlying cause."
+  },
+  "cbr": {
+    "job_conclusion": "success",
+    "report_warnings": "3 MOS regressions are listed in the artifact report; successful job conclusion is retained separately from warning-level metric rows."
+  },
+  "footprint": {
+    "job_conclusion": "success",
+    "native_bytes_before": 76040,
+    "native_bytes_after": 75992,
+    "delta_bytes": -48,
+    "delta_percent": -0.06,
+    "measure": "text+rodata+data; GitHub ubuntu-24.04 benchmark workflow"
+  },
+  "overall_disposition": "Terminal CI verdict recorded; workflow run failed. The build workflow passed, but PR70 is not all-green or merge-ready on this evidence. The independent PR remains a draft pending root review.",
+  "logs": {
+    "abr_job_id": 116175562819,
+    "retrieval": "authenticated gh run view --log --job 116175562819",
+    "archived": "logs/amd64-abr-job.log",
+    "escape_bytes_in_archived_log": 0,
+    "credential_patterns_found": false
+  },
+  "limitations": [
+    "No source/codec changes made in this CI evidence task.",
+    "The consolidated report and ABR JSON/Markdown contain no AAC or decoded PCM.",
+    "No timing or footprint measurements were rerun; only the completed workflow annotation is recorded."
+  ]
+}

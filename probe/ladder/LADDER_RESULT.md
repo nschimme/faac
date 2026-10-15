@@ -1992,7 +1992,7 @@ The production patch is a one-file source change, `libfaac/sbr_analysis.c` (one 
 - Separate 16 kHz LC-tail diagnostic: 24 mono/stereo × 20/48 kb/s cases returned expected source lengths and old/new FDK PCM matched. This does not establish gapless behavior for every mode or decoder. No Meson tests were defined in the production-validation checkout.
 - Adaptive selection's structural cost is not a measured speed result: the probe performs a second QMF pass and exact dry bit scoring and uses about 8 KiB/channel of persistent slotBandE storage. Fixed8 avoids that additional selector cost.
 
-The implementation was published as independent [PR #70](https://github.com/nschimme/faac/pull/70), based on upstream/master with the fixed8 patch only. Build workflow run `38659018090` succeeded; benchmark workflow run `38659018069` remained active at the last status snapshot. The benchmark result is the only outstanding validation gate; no complete CI pass or merge-readiness claim is made.
+The implementation was published as independent [PR #70](https://github.com/nschimme/faac/pull/70), based on upstream/master with the fixed8 patch only. Build workflow run `38659018090` succeeded; benchmark workflow run `38659018069` is terminal with overall conclusion `failure`. Its final per-job and report disposition is recorded below and in the linked `ci-pr70/` package. The benchmark workflow is not green, and no merge-readiness claim is made.
 
 ### PR #70 CI follow-up snapshot (2026-10-15 UTC)
 
@@ -2007,9 +2007,10 @@ ARM64 CBR passed. ARM64 VBR passed MOS, BD-rate, throughput, footprint and
 haze gates but its report failed the absolute gapless gate. The three
 reported HE-v1/q1 cases have identical baseline/candidate lag estimates:
 Can't Wait -964, Shinsho pool -391, girl -89 samples; all have zero decoded
-frame error and both gapless tags. Their encoded file hashes differ. This
-establishes that the reported nonconformance predates the candidate; it does
-not establish actual PCM alignment or the cause of those lag estimates.
+frame error and both gapless tags. Paired artifact reports show the same lag
+estimates in baseline and candidate; this is report-level equality only and does
+not establish decoded PCM alignment, baseline sample-exactness, or the cause of
+those lag estimates.
 The artifact contains reports/JSON, not AAC or decoded media. The original
 failure is retained verbatim, without weakening the gate or declaring CI
 fully green. The executed benchmark action was `bdce18f7123f51c31795afe9fb4571c18f507a77`.
@@ -2017,9 +2018,26 @@ fully green. The executed benchmark action was `bdce18f7123f51c31795afe9fb4571c1
 VBR's measured mean MOS delta was +0.002 over 1,341 clips, with no MOS-gate
 regressions; HE48 BD-rate was -0.167%. These CI scenarios and metric decoder
 differ from the local four-rate FDK study; do not mix their numerical deltas.
-amd64 ABR remains running in the same benchmark run `38659018069`; its
-terminal verdict is still pending.
+The terminal snapshot for run `38659018069` is `completed/failure`; the final
+consolidated artifact is titled “Gapless Regression Detected.” The amd64 ABR job
+completed successfully and reported mean MOS Δ +0.001, HE-AAC v1 48 kHz BD-rate
+−0.108%, throughput −0.0%, and footprint −0.06%. It also lists four warning-level
+MOS rows below −0.05: clapton 48k/24k (−0.0967), clapton 32k/16k (−0.0666),
+“Can't Wait Until Tonight” 48k/16k (−0.0666), and bas 48k/24k (−0.0536).
+The arm64 CBR job completed successfully, with three MOS warning rows in its
+report. The arm64 VBR job failed as described above. Footprint succeeded at
+76,040→75,992 bytes (−48 B for `.text + .rodata + .data`). These job outcomes
+and report-level warning rows are kept distinct; the overall workflow is not
+green and this audit makes no merge-readiness claim. The complete terminal
+snapshot, artifact/report hashes, and authenticated ABR log are in
+[`ci-pr70/`](results/s11-he-v1/ci-pr70/).
 
 ### Reproduction and source-version notes
 
-Use the package's relative family paths and run manifests rather than the original cache absolute paths. Run configs record exact input hashes, encoder/source commits, profile, bitrate, decoder hashes, benchmark helper hashes, environment and command. Raw per-clip JSON keeps actual payload rate, MOS/BD-rate inputs, controls, and strict decoder result fields. For quality reproduction, retrieve the original `faac-benchmark` audio assets and verify their recorded hashes; the S11 package intentionally has no audio. The historical scripts are preserved, but many contain machine-specific absolute paths and require portability work before execution. Keep the fixed8 source patch isolated from the adaptive mode1 probe patch. Do not copy code from GPL encoders or any reference encoder; all archived changes are FAAC-side probes.
+Use the package's relative family paths and run manifests rather than the original cache absolute paths. Run configs record exact input hashes, encoder/source commits, profile, bitrate, decoder hashes, benchmark helper hashes, environment and command. Raw per-clip JSON keeps actual payload rate, MOS/BD-rate inputs, controls, and strict decoder result fields. For quality reproduction, retrieve the original `faac-benchmark` audio assets and verify their recorded hashes; the S11 raw metadata archive intentionally has no audio; the separate Apple reference package below supplies existing AAC streams. The historical scripts are preserved, but many contain machine-specific absolute paths and require portability work before execution. Keep the fixed8 source patch isolated from the adaptive mode1 probe patch. Do not copy code from GPL encoders or any reference encoder; all archived changes are FAAC-side probes.
+
+### 48 kHz reference gaps and portable follow-up (2026-10-15)
+
+The [focused comparison and proposed experiments](results/s11-he-v1/reference-gaps-367cf8dc/SUGGESTED_EXPERIMENTS.md) preserve both supplied numeric matrices and a portable derivation. At HE 40/48/56/64 kb/s, historical FAAC `367cf8dc` needs +6.933% BD-rate versus FDK (47 valid curves; 95% CI [3.119%, 11.181%]) and +5.443% versus Apple (45 curves; [1.098%, 9.907%]). This encoder predates PR #70. These measured gaps prioritize matched 48 kHz HE diagnostics; LC 128–192 kb/s is secondary. Suggested experiments are not new completed results.
+
+Cloud agents can use [392 Apple reference streams](ref/apple-s11-367cf8dc/README.md): 49 clips at HE 40/48/56/64 and LC 96/128/160/192 kb/s, all verified 48 kHz stereo. Stream and source-WAV hashes are recorded; source WAVs must be fetched separately. Existing references can be decoded on Linux. New Apple clips/settings require Mac-generated references; the packaged corpus is not a held-out set. Capture hashes freeze the current media, not the unrecorded historical scoring bytes.

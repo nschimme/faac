@@ -1,0 +1,107 @@
+{
+  "analysis_sources": {
+    "original_script": "analysis/analyze.py",
+    "portable_script": "analysis/derive_focused_bd.py",
+    "script_note": "The original was copied unchanged from /private/tmp/faac-reference-gap-analysis/analyze.py; its hard-coded source checkout path and post-write print failure on null CI are documented in README.md."
+  },
+  "benchmark_source": {
+    "analysis_helpers": {
+      "compare_results.py": {
+        "bytes": 93530,
+        "sha256": "53b9175b4610e504aee1e291483295e1a7fc713ef2b0d7a559b71be8b9c3e2f3"
+      },
+      "scripts/bd_rate.py": {
+        "bytes": 15591,
+        "sha256": "2b8d8277aedea4e031998927358e054f0be0148c2fb8e7e47fdaf59e0245d9c3"
+      }
+    },
+    "checkout": "/Users/nschimme/gitprojects/faac-benchmark",
+    "dirty_paths": [
+      "codec_bench/decoders.py",
+      "utils.py"
+    ],
+    "git_head": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+    "source_provenance_note": "No helper or decoder executable hash is tied to the historical matrix rows; these helper hashes identify the locally used current files only.",
+    "untracked_path": [
+      "output/"
+    ]
+  },
+  "faac_source": {
+    "checkout": "/Users/nschimme/gitprojects/faac",
+    "git_commit": "367cf8dc5e76085b02668d3b212fe6576001ee07",
+    "source_provenance_note": "The matrix label matches this commit; matrix does not carry an encoder executable hash.",
+    "tool_label": "FAAC 3.0.0 (367cf8dc)"
+  },
+  "files": [
+    {
+      "bytes": 4066,
+      "path": "README.md",
+      "sha256": "42954b6067bd3e506df08d698ebcd31619530d075c512c7191b0bd6f5f926613"
+    },
+    {
+      "bytes": 5407,
+      "path": "SUGGESTED_EXPERIMENTS.md",
+      "sha256": "fd295fb93bbb78b843e6c167dab5f6ed3a295f888a9534072f0a192e6f1320a6"
+    },
+    {
+      "bytes": 13329,
+      "path": "analysis/RAW-REFERENCE-AUDIT.md",
+      "sha256": "0764f63194917b9c731596c176f2cf15c9efff470f96baa07f6f09ff65c47fd2"
+    },
+    {
+      "bytes": 3791,
+      "path": "analysis/analyze.py",
+      "sha256": "33def5f86aa98b1a7ebfb5ae956a8d19a14436765b7533e7b403cda3b44dea9e"
+    },
+    {
+      "bytes": 154351,
+      "path": "analysis/apple48-stream-validation.json",
+      "sha256": "55da0163a82b229c9f037da19a3cf1b09d0d71b8045cd45bc937802160abcdf3"
+    },
+    {
+      "bytes": 4366,
+      "path": "analysis/derive_focused_bd.py",
+      "sha256": "52179c727f31e22a77f292693e105ccb3d89dede615e7f6298da18c0e2dd176d"
+    },
+    {
+      "bytes": 310327,
+      "path": "analysis/equal-rate-gaps.json",
+      "sha256": "ca90318fd5cd778c50165e67236328fd5ee8e240aa55ea85d3f8dd8d4f1ba405"
+    },
+    {
+      "bytes": 231893,
+      "path": "analysis/faac-fdk48-stream-validation.json",
+      "sha256": "97f48779efdb377d9c5166bdeb695b2d55dfbd449a8a59dfb4637bc67c193276"
+    },
+    {
+      "bytes": 5990499,
+      "path": "raw/comparison_results.json.decoders.json.gz",
+      "sha256": "041a7596aba4467c750f0cf21ffaba373aba542475c7ec043a67484b2d19f469"
+    },
+    {
+      "bytes": 4605711,
+      "path": "raw/comparison_results.json.gz",
+      "sha256": "006768014a4c0f819db42582e67627e77d90869435f5a90e34134a6eb06fe9fe"
+    }
+  ],
+  "purpose": "Immutable metadata snapshot and focused analysis of an existing raw reference benchmark; no new encode/decode/scoring runs.",
+  "raw_inputs": {
+    "comparison_results.json": {
+      "compressed_bytes": 4605711,
+      "compressed_path": "raw/comparison_results.json.gz",
+      "compressed_sha256": "006768014a4c0f819db42582e67627e77d90869435f5a90e34134a6eb06fe9fe",
+      "original_bytes": 22245787,
+      "original_sha256": "18524a20abfa82d83ea766807f743e97949d6e4a69e50765ca78ddd0f1602451",
+      "source_checkout_relative_path": "comparison_results.json"
+    },
+    "comparison_results.json.decoders.json": {
+      "compressed_bytes": 5990499,
+      "compressed_path": "raw/comparison_results.json.decoders.json.gz",
+      "compressed_sha256": "041a7596aba4467c750f0cf21ffaba373aba542475c7ec043a67484b2d19f469",
+      "original_bytes": 94364369,
+      "original_sha256": "bb47060c3245a3da61eae132940ea4e43dfb96bfe78c31979b9c8d0c5dca3d87",
+      "source_checkout_relative_path": "comparison_results.json.decoders.json"
+    }
+  },
+  "schema_version": 1
+}
