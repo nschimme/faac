@@ -932,11 +932,9 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
-    bool is_adif = input_fill >= 4 && !memcmp(inbuf, "ADIF", 4);
-
     faad_config cfg;
     faad_config_init(&cfg, sizeof(cfg));
-    cfg.stream_format = is_mp4 ? FAAD_STREAM_RAW : (is_adif ? FAAD_STREAM_ADIF : FAAD_STREAM_ADTS);
+    cfg.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
     cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : bit_depth == 32 ? FAAD_OUTPUT_32BIT : bit_depth == 24 ? FAAD_OUTPUT_24BIT : FAAD_OUTPUT_16BIT;
     cfg.downmix_mode = downmix;
 
@@ -1125,7 +1123,7 @@ int main(int argc, char **argv)
         printf("{\n");
         printf("  \"file\": ");
         json_str(infile);
-        printf(",\n  \"container\": \"%s\",\n", is_mp4 ? "MP4 / M4A" : (is_adif ? "ADIF Bitstream" : "ADTS Bitstream"));
+        printf(",\n  \"container\": \"%s\",\n", is_mp4 ? "MP4 / M4A" : "ADTS Bitstream");
         if (is_mp4) printf("  \"major_brand\": \"%s\",\n", brand);
         printf("  \"duration_seconds\": %.2f,\n", duration_sec);
         printf("  \"audio\": {\n");
@@ -1147,7 +1145,7 @@ int main(int argc, char **argv)
         printf("%s}\n}\n", track.num_tags ? "\n  " : "");
     } else if (info_only) {
         printf("File:        %s\n", infile);
-        printf("Container:   %s%s%s\n", is_mp4 ? "MP4 / M4A (Major Brand: " : (is_adif ? "ADIF Bitstream" : "ADTS Bitstream"), is_mp4 ? brand : "", is_mp4 ? ")" : "");
+        printf("Container:   %s%s%s\n", is_mp4 ? "MP4 / M4A (Major Brand: " : "ADTS Bitstream", is_mp4 ? brand : "", is_mp4 ? ")" : "");
         printf("Duration:    %02d:%02d:%02d.%02d (%.2f seconds)\n\n",
                (int)duration_sec / 3600, ((int)duration_sec % 3600) / 60, (int)duration_sec % 60, (int)(duration_sec * 100) % 100, duration_sec);
         if (is_mp4 && track.num_tracks > 1) {

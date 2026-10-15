@@ -243,7 +243,7 @@ static uint32_t output_sample_bytes(enum faad_output_format f)
 static uint32_t output_capacity(const faad_decoder *dec)
 {
     uint32_t channels = MAX_CHANNELS;
-    if ((dec->config.stream_format == FAAD_STREAM_RAW || dec->config.stream_format == FAAD_STREAM_ADIF) && dec->asc_parsed && dec->asc.num_channels)
+    if (dec->config.stream_format == FAAD_STREAM_RAW && dec->asc_parsed && dec->asc.num_channels)
         channels = config_channels(dec->asc.num_channels);
 #ifndef FAAD_DISABLE_PS
     if (channels < 2) channels = 2;
@@ -278,7 +278,7 @@ static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
     COPY_CONFIG_FIELD(output_format);
     COPY_CONFIG_FIELD(downmix_mode);
 #undef COPY_CONFIG_FIELD
-    return (resolved->stream_format == FAAD_STREAM_RAW || resolved->stream_format == FAAD_STREAM_ADTS || resolved->stream_format == FAAD_STREAM_ADIF)
+    return (resolved->stream_format == FAAD_STREAM_RAW || resolved->stream_format == FAAD_STREAM_ADTS)
         && (resolved->output_format == FAAD_OUTPUT_16BIT || resolved->output_format == FAAD_OUTPUT_24BIT
             || resolved->output_format == FAAD_OUTPUT_32BIT || resolved->output_format == FAAD_OUTPUT_FLOAT)
         && (resolved->downmix_mode == FAAD_DOWNMIX_NONE || resolved->downmix_mode == FAAD_DOWNMIX_STEREO
@@ -705,30 +705,6 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     BitReader bs;
     bits_init(&bs, in_buf, in_bytes);
     uint32_t adts_frame_len = in_bytes;
-
-#ifndef FAAD_DISABLE_DAB
-    if (dec->config.stream_format == FAAD_STREAM_ADIF && !dec->asc_parsed) {
-        AudioSpecificConfig asc;
-        faad_status st = adif_decode_header(&bs, &asc);
-        if (st != FAAD_OK) return st;
-        dec->asc = asc;
-        dec->core_channels = config_channels(asc.num_channels);
-        dec->core_sample_rate = asc.sample_rate ? asc.sample_rate : 44100;
-        dec->num_channels = dec->core_channels;
-        dec->sample_rate = asc.is_sbr ? asc.sbr_sample_rate : dec->core_sample_rate;
-        dec->asc_parsed = true;
-        dec->format_known = true;
-        uint32_t header_consumed = (bits_get_consumed(&bs) + 7) / 8;
-        if (header_consumed >= in_bytes) {
-            *bytes_consumed = header_consumed;
-            return FAAD_OK;
-        }
-        in_buf += header_consumed;
-        in_bytes -= header_consumed;
-        bits_init(&bs, in_buf, in_bytes);
-        adts_frame_len = in_bytes;
-    }
-#endif
 
     if (dec->config.stream_format == FAAD_STREAM_ADTS) {
         /* Validate framing without touching the instance. Preserve a split

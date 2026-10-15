@@ -31,7 +31,7 @@ option('decoder-ps',
     value: true)
 
 option('decoder-dab',
-    description: 'Enable DAB+ (960/120 frame length and ADIF) support in libfaad',
+    description: 'Enable DAB+ (960/120 frame length) support in libfaad',
     type: 'boolean',
     value: true)
 
