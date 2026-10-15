@@ -1,0 +1,1925 @@
+{
+  "rows": {
+    "21-classic.441.16b48k.wav|32": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 31.866198915196314,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "bed24e7f71faa033db52bedbb8adb9807ba336607bb083ab0e1552f22535ae7b",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "02a04bb5fd1de4668d224723c67ef1e964da562270a8afd8aed5a1e6d2d07833",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "97586474f82d31ddb98ae9261699012e709f6474d7e911117028d00e784029e6",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 31.866198915196314,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "bed24e7f71faa033db52bedbb8adb9807ba336607bb083ab0e1552f22535ae7b",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "02a04bb5fd1de4668d224723c67ef1e964da562270a8afd8aed5a1e6d2d07833",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "97586474f82d31ddb98ae9261699012e709f6474d7e911117028d00e784029e6",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 31.866198915196314,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "f1b2b51dccd38ca3465d53191e30c902753cddfa6a5002bc35dbd89e041fd202",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "468622557c0d050b287cbad4c5c030d3a3b28f41bd500789d5146855cabe47eb",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "bd751c89321b629235561dc0eeac963aa28332d76aeb12d2bbbd9a9483d507ad",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 32,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 31.866198915196314,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "f1b2b51dccd38ca3465d53191e30c902753cddfa6a5002bc35dbd89e041fd202",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "8d64e9230036ee411f1ea5757b94b4ded96fa4cffecd96b5d484d8edd1f17d84",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "bd751c89321b629235561dc0eeac963aa28332d76aeb12d2bbbd9a9483d507ad",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 32,
+        "variant": "unset"
+      }
+    },
+    "21-classic.441.16b48k.wav|48": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 47.82870975676061,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "d8730ba66b442c3764778684e57bb3bea0872bd993cac6eb5fa4f3025f64cdcc",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "0040e5da102fc44fa881c70aa6d53ad15c231e3081a9cea86d728003bf88d3bc",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "239c8cd0c98d336f943ec3f74476dc5c35b5e9c3eace612c5db4596941efa3ba",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 47.82870975676061,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "d8730ba66b442c3764778684e57bb3bea0872bd993cac6eb5fa4f3025f64cdcc",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "0040e5da102fc44fa881c70aa6d53ad15c231e3081a9cea86d728003bf88d3bc",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "239c8cd0c98d336f943ec3f74476dc5c35b5e9c3eace612c5db4596941efa3ba",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 47.83119522582817,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "ab0a1bb1a2c14d78d070fb47946dc7330713d258c0be3e6e8adda56c709077cf",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "cdae772b3acb7b52ee4b6a251ab7132e0abb8642075f14ecc64dfa6cdab7f969",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "ce40501891ff25d2047e4afe3e897b410acbf0b52a10afd6fbebb5e7556917e1",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 48,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 47.83119522582817,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "ab0a1bb1a2c14d78d070fb47946dc7330713d258c0be3e6e8adda56c709077cf",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "cae76f741107c884248a6a0ca51826d9269e26a3fa9a9548e3964859e4c9d4f7",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "ce40501891ff25d2047e4afe3e897b410acbf0b52a10afd6fbebb5e7556917e1",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 48,
+        "variant": "unset"
+      }
+    },
+    "21-classic.441.16b48k.wav|64": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 63.71831350567645,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "6e5f5f0b8d2b21ec7c387d6ae020010324b18ca63cf576df6b1c2dd07a0c9804",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "efe1c4b0c9f30d2321309a8b6e2309e227e53d0fa1f5ee47582f9317ecf938d4",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "6c08e8fa8396b9742bdf121af5ff8ad6403a1e742e9acd1c06b3d1c057a1aa04",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 63.71831350567645,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "6e5f5f0b8d2b21ec7c387d6ae020010324b18ca63cf576df6b1c2dd07a0c9804",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "efe1c4b0c9f30d2321309a8b6e2309e227e53d0fa1f5ee47582f9317ecf938d4",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "6c08e8fa8396b9742bdf121af5ff8ad6403a1e742e9acd1c06b3d1c057a1aa04",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 63.717485015987265,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "e6a18c49610d45d7a42ef96c486cc265b3c689760cc6a6c157e2009c2d743ba7",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "c7596665aca5423e407c3a94140d79b96adf0e29e8a974b761ad84b347ff1826",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "2b95ade24645cd845849f957e799b00eaecda3ed8c03c5e722a803758ada4f80",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 64,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 63.717485015987265,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "e6a18c49610d45d7a42ef96c486cc265b3c689760cc6a6c157e2009c2d743ba7",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "a3317218c68e3db66c9a2a0dec54dfaaed59e962a24a13a7ead3405d618e4d9c",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "2b95ade24645cd845849f957e799b00eaecda3ed8c03c5e722a803758ada4f80",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 64,
+        "variant": "unset"
+      }
+    },
+    "21-classic.441.16b48k.wav|96": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 95.519061735427,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "60ca21f54adf33f7d4247bca7c0b26cd14a426bf592b31e1f03e1da8cfda34ec",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "a889ae95cdb2a89bf4347bb4bbe139804d8996561fa2adeb74beddad84051b42",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "ad3c393ec469a093a61cdaa72e647bdde10932e0af7ebe3394af4e4a83a3ab0a",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 95.519061735427,
+          "clip": "21-classic.441.16b48k.wav",
+          "decoded_sha256": "60ca21f54adf33f7d4247bca7c0b26cd14a426bf592b31e1f03e1da8cfda34ec",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/21-classic.441.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/21-classic.441.16b48k.m4a",
+          "encoded_sha256": "a889ae95cdb2a89bf4347bb4bbe139804d8996561fa2adeb74beddad84051b42",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/21-classic.441.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "ad3c393ec469a093a61cdaa72e647bdde10932e0af7ebe3394af4e4a83a3ab0a",
+          "profile": "HE-AAC",
+          "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 95.52071871480538,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "cd22184a5977d69d47eb04eb870075fd81b43ae8faa7d96328d04edb2c5cf692",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "86e4725fae13f9a6f2ed34a69b98f3cbb5d1ca8b587d86db813ff0587184f66f",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "9b2ad561b59ef5e9b878e0b17a66b17871fda2336809a348f49a66079c5c0869",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 96,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 95.52071871480538,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "21-classic.441.16b48k.wav",
+        "decoded_sha256": "cd22184a5977d69d47eb04eb870075fd81b43ae8faa7d96328d04edb2c5cf692",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/21-classic.441.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/21-classic.441.16b48k.m4a",
+        "encoded_sha256": "c1be38f824ac19fc54857ca4791452a02aa1165d9a6d60979b67c2487a590fe5",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/21-classic.441.16b48k.pcm48.wav",
+        "payload_sha256": "9b2ad561b59ef5e9b878e0b17a66b17871fda2336809a348f49a66079c5c0869",
+        "profile": "HE-AAC",
+        "source_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+        "target_kbps": 96,
+        "variant": "unset"
+      }
+    },
+    "fms.wav|32": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 31.9528,
+          "clip": "fms.wav",
+          "decoded_sha256": "b67ef415915f71cb6741426a0344ebe316c56e3bb523248d2c0ac9319537e5a0",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/fms.m4a",
+          "encoded_sha256": "78ef4fbdbb4f8fc60b93fd85a1db23d0a4f3fc4b478881eb7c5fdde7d21b5c8c",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "fec6ea10694281ff05d2662dc3248c17dcbcf7345ef72f3d432c884376b40a2c",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 31.950400000000002,
+          "clip": "fms.wav",
+          "decoded_sha256": "69255999c946ca2941d75f65513b3abbb4d1882fe1c8139a56fd48f93f811653",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/fms.m4a",
+          "encoded_sha256": "ba83ebe6ea476814110050a84a8bc156d4e652883af0ea41c7183b0efbbb181b",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "d79727b9f48ec86b30dc63e565584e38c31ea1507a837c9ff9bf9c0988136830",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 31.953599999999998,
+        "clip": "fms.wav",
+        "decoded_sha256": "f6d914dee7d0a38f5cedfa07c3767c2f63448a0ac18babe63d05451485a454ea",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/fms.m4a",
+        "encoded_sha256": "7dd6f63409564888149f8a3959c4ae9244b02d8cce8a8be7f85b4cd0b329cff2",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/fms.pcm48.wav",
+        "payload_sha256": "f1e9ee5510628b6ef64d58a4864c0c4eeb0e77a8e18e09f49f740297c9ed6136",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 32,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 31.953599999999998,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "fms.wav",
+        "decoded_sha256": "f6d914dee7d0a38f5cedfa07c3767c2f63448a0ac18babe63d05451485a454ea",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/fms.m4a",
+        "encoded_sha256": "84e70af558557df645bdc59023c6de717d7c29e39748b5c0d5c88bd0fd13579b",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/fms.pcm48.wav",
+        "payload_sha256": "f1e9ee5510628b6ef64d58a4864c0c4eeb0e77a8e18e09f49f740297c9ed6136",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 32,
+        "variant": "unset"
+      }
+    },
+    "fms.wav|48": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 48.104800000000004,
+          "clip": "fms.wav",
+          "decoded_sha256": "5015731e34323e7d29dfac84e0456b63f6905b9d7c9ad70e5f6204d6393f52c2",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/fms.m4a",
+          "encoded_sha256": "5777d1cd8728e7add98933253a23d1fe875c5c2f75dc7eeb6ac89fa01522f433",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "32b807e52ca19a31657088a6d94eefea844954fbde47d3e9921aeb9b913027fb",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 48.105599999999995,
+          "clip": "fms.wav",
+          "decoded_sha256": "510ed0aabdc9e1b3891787cfb47d9b6a561deb912e43af597eb239c200df9ce0",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/fms.m4a",
+          "encoded_sha256": "7227b206cbb7b5e367fc94f30952ad5eb1b91b8f815c6b5740f443b161e3c67f",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "567ed95ae27eecc010ae65a6f457c72fcfa37ed0dacac872f1271a537f144e50",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 48.1104,
+        "clip": "fms.wav",
+        "decoded_sha256": "35fdae8f4ee837e8c15da0bf6a174a356c61f80c7543e087fecd397f4c90954d",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/fms.m4a",
+        "encoded_sha256": "30b0d7aa123fc0201581740fbc1df2bbf454cdc30f23149279e9b380b719bf28",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/fms.pcm48.wav",
+        "payload_sha256": "7f6652f885a0df64991fdf288caefc427d37afad40545a1a56e43539f213de59",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 48,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 48.1104,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "fms.wav",
+        "decoded_sha256": "35fdae8f4ee837e8c15da0bf6a174a356c61f80c7543e087fecd397f4c90954d",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/fms.m4a",
+        "encoded_sha256": "82be2cf8a77bf990af2a9744f1f96dc0654a39b85d07156bd2c8d0f54694b32f",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/fms.pcm48.wav",
+        "payload_sha256": "7f6652f885a0df64991fdf288caefc427d37afad40545a1a56e43539f213de59",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 48,
+        "variant": "unset"
+      }
+    },
+    "fms.wav|64": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 63.8144,
+          "clip": "fms.wav",
+          "decoded_sha256": "71c461cf94b0a98d85ec580230607b39b3cd112358d0e76f019d46309707c4b9",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/fms.m4a",
+          "encoded_sha256": "5fea303c59ae3217718fe9f51af182801ec64f8f52a56bb96e8a465277da7f54",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "d85f2e3b78bf1fa6b0746dc99a13a8aff9740249f03269474174d0c455a96624",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 63.8144,
+          "clip": "fms.wav",
+          "decoded_sha256": "c14ed86007d080ff1b8b313221b5a0129a4232edbdee250ce66935da481a2998",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/fms.m4a",
+          "encoded_sha256": "c6e7f8ba840df70676d79ef9d96d552358d3deb9c910784f7984c38b495669ce",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "add1ef2b206b3948eac0f0585b33980105f701c7acbee1a4bef601cfed1108b3",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 63.820800000000006,
+        "clip": "fms.wav",
+        "decoded_sha256": "4a2027139ca4b30381db4935802d7bbc0b01696f0728fbfb4fb8144df0925c8d",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/fms.m4a",
+        "encoded_sha256": "1428df6b40eb41ee9ac4e4c19759d9b2748c1837165a5b36f68af164eefbb7b9",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/fms.pcm48.wav",
+        "payload_sha256": "ecda36d82f611653b5fb6b2c235c69bb4e00cb83b12353a1d06cf7793db55a95",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 64,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 63.820800000000006,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "fms.wav",
+        "decoded_sha256": "4a2027139ca4b30381db4935802d7bbc0b01696f0728fbfb4fb8144df0925c8d",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/fms.m4a",
+        "encoded_sha256": "8c94b9852eb4f3c9b67a3696377dc0ae91e9a8d7bf7016836ee0993359109a8e",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/fms.pcm48.wav",
+        "payload_sha256": "ecda36d82f611653b5fb6b2c235c69bb4e00cb83b12353a1d06cf7793db55a95",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 64,
+        "variant": "unset"
+      }
+    },
+    "fms.wav|96": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 95.67360000000001,
+          "clip": "fms.wav",
+          "decoded_sha256": "3eb581a3c7ea9d7686b2c0ed414688a1a3aa67f291d4c04e6c94574bcd33881a",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/fms.m4a",
+          "encoded_sha256": "e7dcf9f73840b08076ebbee3a0c9bc1323dd5dd7e9b847cd3e37beb2b5045be0",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "bc8a494d6fa333cb31ae3f547ce4c741aee843d3a77ae4dd314e70af9cee0d8c",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 95.67360000000001,
+          "clip": "fms.wav",
+          "decoded_sha256": "a86fdeb86080ac91b789f600293e6325e688057a66a770ab05c284c5e6c41a87",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/fms.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/fms.m4a",
+          "encoded_sha256": "e7baedbab8f38d99a18a58a1f09ddfc7621e1c27dedb822b708895cb3d1da5c7",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/fms.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "04cf7d4023643b0768e896593d4aace71789fad394c4f7d3369c87ddee1bb57c",
+          "profile": "HE-AAC",
+          "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 95.68,
+        "clip": "fms.wav",
+        "decoded_sha256": "4ff182dd452a61bc1b2ca676ca289fd20faf829ebf6a14943afd63fc9ba30c89",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/fms.m4a",
+        "encoded_sha256": "5b0701269fc31bf02047890687a6e06a975e6cf96ce8d4e2976469c6b5f47a63",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/fms.pcm48.wav",
+        "payload_sha256": "d29c5b19173d10007c78aaa434c3c6881f796c223fc2e6d21ed080cd4bf77b21",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 96,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 95.68,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "fms.wav",
+        "decoded_sha256": "4ff182dd452a61bc1b2ca676ca289fd20faf829ebf6a14943afd63fc9ba30c89",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/fms.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/fms.m4a",
+        "encoded_sha256": "25d8ed414da828f0665becc858420a227e574af66b57efca97a2e1f5458a6715",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/fms.pcm48.wav",
+        "payload_sha256": "d29c5b19173d10007c78aaa434c3c6881f796c223fc2e6d21ed080cd4bf77b21",
+        "profile": "HE-AAC",
+        "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+        "target_kbps": 96,
+        "variant": "unset"
+      }
+    },
+    "sandman.16b48k.wav|32": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 31.8472,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "90c8bb617ee3faf1fa64f42f9d6749858a4030f76aa9eb46260e970baf4f48a5",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/sandman.16b48k.m4a",
+          "encoded_sha256": "4aa94b09637e343bea05b9dba5ea460113d599d19540e236edcd0ea58e6d7992",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "1034f1ba012b3b82381b54bc4aa049dda2e463fe40fab06a1dad0b15a2869f8a",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 31.846400000000003,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "e4cb6273611a5f896e01142764447f9356b9e9359b3989d43524530b7b04f6f0",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/sandman.16b48k.m4a",
+          "encoded_sha256": "5cf0531817b345144c6a0e5817832292e5d6f17ceab8d526452545862d2dc90a",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "2d06a4c5eb7ff6a50dba80c02b2450ceccc9b297dc52b3f21d24ec064eeebf97",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 31.8472,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "990a80c992d12634ed8130c5d7a8c7671222989912381e8d0acae8d3e2ed4568",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/sandman.16b48k.m4a",
+        "encoded_sha256": "22d3834582d706aba3b9decdf2b83bcb3b0602853662dcbd620cb99ba911b4f7",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "2f13fc453dd8e1bd56cdb1f509944e204e63df0d9052a66439ff6c92040049f1",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 32,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 31.8472,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "990a80c992d12634ed8130c5d7a8c7671222989912381e8d0acae8d3e2ed4568",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/sandman.16b48k.m4a",
+        "encoded_sha256": "edd65581799914990562085e8f6d3eda661e6cf90e2fca8c9efcb0947c1b3e42",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "2f13fc453dd8e1bd56cdb1f509944e204e63df0d9052a66439ff6c92040049f1",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 32,
+        "variant": "unset"
+      }
+    },
+    "sandman.16b48k.wav|48": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 47.7872,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "6a45a831d2b0e8e18dce8ff7ef6d4246295e7f6140872395817f3a46eafcc246",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/sandman.16b48k.m4a",
+          "encoded_sha256": "0ef9aaf033fd530497572db5083eb8cc4d2af234b5dfd8ed4c51162763028cbf",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "1a45de0e82c6a8a3e11f2958e0ea48b8f525dd160fbe28063ca2b1706796af48",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 47.7864,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "732cb32c56103cea386cb3946ca25c65dafcb449828a8b1a27808b9b5c186b6d",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/sandman.16b48k.m4a",
+          "encoded_sha256": "0b44b0f311984cfcaac555cd60a2b6e1b29b91555ba682413c908e887504cd44",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "115f273a09a1b050f6b4bb35bf075694cdb3ae9edafbffa744d4153f17772e10",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 47.783199999999994,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "5a8124f45a83845d9d001c345477f5f0db4f1607819bc61196161cc8fab2c0fe",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/sandman.16b48k.m4a",
+        "encoded_sha256": "eb2c67fbef1d5d02a6933b4e4c9fc07062f78469680bdb0b2ffa8561138ace1e",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "8ed5a9f20de677e444c3cdbe8f54de903b9d71f986f6cdfe025a8fd850e1d748",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 48,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 47.783199999999994,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "5a8124f45a83845d9d001c345477f5f0db4f1607819bc61196161cc8fab2c0fe",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/sandman.16b48k.m4a",
+        "encoded_sha256": "838482c867bfeaf4a1ec9cabc12ba6b848e28aeac8bebe3333918839b95f5b7b",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "8ed5a9f20de677e444c3cdbe8f54de903b9d71f986f6cdfe025a8fd850e1d748",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 48,
+        "variant": "unset"
+      }
+    },
+    "sandman.16b48k.wav|64": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 63.5504,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "ec86843f843d1e4a13465c39fb34302b67320916b2281b1cb40e2cdc5fe98f80",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/sandman.16b48k.m4a",
+          "encoded_sha256": "9fd2112ee54d99d08a557ec2aa139758c0563f32a1c47573f19861c1ca354844",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "ee929ad1fec4c636d9e0782fcc88af1519152bc309552c4229d2e535e718d496",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 63.552,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "c7445f369c221935a1da2c2381cdf2b84bb5dbb85decfb86995432ca702a7a72",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/sandman.16b48k.m4a",
+          "encoded_sha256": "700a2e182a73c18acec224540bf02b3f276fa9d9a2d892d0f492d4d71abefe51",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "48ce8f1120711f44acab3a6527dbd8c507b176891718f3da80faad19eddb0bf6",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 63.5496,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "2423c7db29bdda686b66a4a552d15f64a3dd99efffe3c21d42d7a430a1be5a03",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/sandman.16b48k.m4a",
+        "encoded_sha256": "1af30cc86eb27abb0fb1b4caefcdd0a886a417a3aa124a97d2b55aab7404f6b3",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "ce2b62a169167a6de592370fbadaa23212c9775cbfcf0972477b6cd40ae04473",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 64,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 63.5496,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "2423c7db29bdda686b66a4a552d15f64a3dd99efffe3c21d42d7a430a1be5a03",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/sandman.16b48k.m4a",
+        "encoded_sha256": "d7e6dc97c650db997908dcc5e0eccae8f4850b135dcf2e8d56da50d793f2a6dc",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "ce2b62a169167a6de592370fbadaa23212c9775cbfcf0972477b6cd40ae04473",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 64,
+        "variant": "unset"
+      }
+    },
+    "sandman.16b48k.wav|96": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 95.29360000000001,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "b2cbea2e3e3d1672f1535c3fe9516b9803066cf4cbcf772a16d65435794e919f",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/sandman.16b48k.m4a",
+          "encoded_sha256": "4bf18ddf37055e41b39ee58c5bfcfea2cce487ae317af971eb813465d0795ec8",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "f7772374d2c5a8412f1bc78d6e0333b59b062843058dfa11a87ee560decaa950",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 95.29360000000001,
+          "clip": "sandman.16b48k.wav",
+          "decoded_sha256": "999a615a021e22865a57cbbadcc5f4931b5503185bd3db9dec1bbd2e104c2be8",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/sandman.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/sandman.16b48k.m4a",
+          "encoded_sha256": "f0c014fcdd5374e1dbd7fa90bb182de6a27bc607d88fc2fbd03d88d4410fdc00",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/sandman.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "aa73aa15e7f882f55347571c9ef5033bff5286ef0fc484a0d4756fa8560aa47c",
+          "profile": "HE-AAC",
+          "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 95.29039999999999,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "47c3d63013a246bdfe405ec74ac3706d0ac89f3413e72d024598c7af4a2832ee",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/sandman.16b48k.m4a",
+        "encoded_sha256": "13963f2e686f3b48fdd780bc60c772118ca1bc35279184d0c6f0ccd69f6b6092",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "2ec5645f2e93edee1aac8b0ec7c15f23f3560e3521addc0394075606e9ad2ed4",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 96,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 95.29039999999999,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "sandman.16b48k.wav",
+        "decoded_sha256": "47c3d63013a246bdfe405ec74ac3706d0ac89f3413e72d024598c7af4a2832ee",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/sandman.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/sandman.16b48k.m4a",
+        "encoded_sha256": "53f23d42f2472064487f22c8a7496ab56d6137bb424470dec5685c6133e222b3",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/sandman.16b48k.pcm48.wav",
+        "payload_sha256": "2ec5645f2e93edee1aac8b0ec7c15f23f3560e3521addc0394075606e9ad2ed4",
+        "profile": "HE-AAC",
+        "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+        "target_kbps": 96,
+        "variant": "unset"
+      }
+    },
+    "velvet.16b48k.wav|32": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 33.5136,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "fda6cbd1d469e2aeb9fda7546a7249f37cad15f59e8ee4f809cc865bb70ebeba",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/velvet.16b48k.m4a",
+          "encoded_sha256": "df43bd99bc7a5d7440131b86ab3028035eb3ff84b63b711cad4b6afb1dd9527f",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/32/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "8ceb786a7356de0a73db0bda1913500bd28ab7bb96e43df4574d280e8eba075b",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 33.5136,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "fda6cbd1d469e2aeb9fda7546a7249f37cad15f59e8ee4f809cc865bb70ebeba",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "32",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/velvet.16b48k.m4a",
+          "encoded_sha256": "df43bd99bc7a5d7440131b86ab3028035eb3ff84b63b711cad4b6afb1dd9527f",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/32/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "8ceb786a7356de0a73db0bda1913500bd28ab7bb96e43df4574d280e8eba075b",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 32,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 33.522400000000005,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "503ca82fac0f1768647411931164e9f8f8ebf8b2499dcf51f67d3902d7ed343d",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/velvet.16b48k.m4a",
+        "encoded_sha256": "097ee990098307785303177a1d40c868ea75057598b9230b5fe62728606d3283",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/32/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "6ec22e30db40ea76f9f850a6ddbda2bb63893b8bb99be5ff636b92d2744cf371",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 32,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 33.522400000000005,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "503ca82fac0f1768647411931164e9f8f8ebf8b2499dcf51f67d3902d7ed343d",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "32",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/velvet.16b48k.m4a",
+        "encoded_sha256": "3e5d6109626b0b04703a5f1193f57ab047ff5fce5a98dca2bacbf6f70f3ee86f",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/32/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "6ec22e30db40ea76f9f850a6ddbda2bb63893b8bb99be5ff636b92d2744cf371",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 32,
+        "variant": "unset"
+      }
+    },
+    "velvet.16b48k.wav|48": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 49.828,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "ab069452cb689efffbacf19551f690222474eec0e8b229b4f7fb6f97f9e232d4",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/velvet.16b48k.m4a",
+          "encoded_sha256": "1f1d8a6113e7dbd13e46265746a86788ad1d4a1d5bd11b9d1ee684b7e5e826f0",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/48/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "6c88a50dad8a263bdcf0aeda7147697d7b70bfd6968ab3dcb7589f9b27adcf82",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 49.828,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "ab069452cb689efffbacf19551f690222474eec0e8b229b4f7fb6f97f9e232d4",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "48",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/velvet.16b48k.m4a",
+          "encoded_sha256": "1f1d8a6113e7dbd13e46265746a86788ad1d4a1d5bd11b9d1ee684b7e5e826f0",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/48/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "6c88a50dad8a263bdcf0aeda7147697d7b70bfd6968ab3dcb7589f9b27adcf82",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 48,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 49.843199999999996,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "5cf91f05610c1182f20b78d5da1a2890df8ebf1850511a100ea477f8aab6630e",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/velvet.16b48k.m4a",
+        "encoded_sha256": "0d123f4a9778cf9e2d894c033dcd24f795bbd053caec33bacd1afd9220b443d1",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/48/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "d0c638f516ec50cfdab10e15e46ef672b4ba47ee626e9542ecff5b4639942926",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 48,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 49.843199999999996,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "5cf91f05610c1182f20b78d5da1a2890df8ebf1850511a100ea477f8aab6630e",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "48",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/velvet.16b48k.m4a",
+        "encoded_sha256": "5efaf1378d7fd7ea97ba63fc40358b8419d508d7297a3221a0c9839e8ec758c5",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/48/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "d0c638f516ec50cfdab10e15e46ef672b4ba47ee626e9542ecff5b4639942926",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 48,
+        "variant": "unset"
+      }
+    },
+    "velvet.16b48k.wav|64": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 64.9232,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "bc4e4ed7bdd0c51dc94c3e7a9fc11239d7611962387bcf047157748e4d078821",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/velvet.16b48k.m4a",
+          "encoded_sha256": "30f31837e9baf170622bf76e2c625dc1f41c1a8dcbc50f7896f8149f74e75481",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/64/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "410b96d09a88f972096fd10ce18df42034fe83a8f0e29d9ac341c51f533e5462",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 64.9232,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "bc4e4ed7bdd0c51dc94c3e7a9fc11239d7611962387bcf047157748e4d078821",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/velvet.16b48k.m4a",
+          "encoded_sha256": "30f31837e9baf170622bf76e2c625dc1f41c1a8dcbc50f7896f8149f74e75481",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/64/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "410b96d09a88f972096fd10ce18df42034fe83a8f0e29d9ac341c51f533e5462",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 64,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 64.90480000000001,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "fd7e706c464888200cd386c235b7a6ae2272b525df3808f42912187297c19644",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/velvet.16b48k.m4a",
+        "encoded_sha256": "574ab6836f1a4c65e0a5330b2b47970e0149e6ebb2758e2e1a14c08757fe4f2c",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/64/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "af19b3d74d038e5f0e5a457a5a86b1e59e1583082da9110cfac6f3f6e58bfe57",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 64,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 64.90480000000001,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "fd7e706c464888200cd386c235b7a6ae2272b525df3808f42912187297c19644",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "64",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/velvet.16b48k.m4a",
+        "encoded_sha256": "d3d94ae8d042de4fc19fc87ad349d5b9499d701a0c964577f81bb2f7de054b23",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/64/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "af19b3d74d038e5f0e5a457a5a86b1e59e1583082da9110cfac6f3f6e58bfe57",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 64,
+        "variant": "unset"
+      }
+    },
+    "velvet.16b48k.wav|96": {
+      "adaptive": {
+        "0.001": {
+          "actual_payload_kbps": 95.2608,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "b53eda0ead4713dce295558acb4f055c9f2fb3cc147474be84b89875036dd470",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/velvet.16b48k.m4a",
+          "encoded_sha256": "3cfc7f61e8822cf4dea558d5ec6d7a846b0be3734e126896acd24a9cce9dc235",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.001",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.001/96/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "4be51e30e24dff4375327ec75972f660d8dc5dd58c0cfa390a39ff31b5b0297a",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.001"
+        },
+        "0.003": {
+          "actual_payload_kbps": 95.2608,
+          "clip": "velvet.16b48k.wav",
+          "decoded_sha256": "b53eda0ead4713dce295558acb4f055c9f2fb3cc147474be84b89875036dd470",
+          "encode_command": [
+            "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+            "-b",
+            "96",
+            "--overwrite",
+            "-o",
+            "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/velvet.16b48k.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+          ],
+          "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/velvet.16b48k.m4a",
+          "encoded_sha256": "3cfc7f61e8822cf4dea558d5ec6d7a846b0be3734e126896acd24a9cce9dc235",
+          "environment": {
+            "FAAC_SBR_BORDER_LAMBDA": "0.003",
+            "FAAC_SBR_BORDER_MODE": "1"
+          },
+          "faad_strict_pass": true,
+          "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/lambda-0.003/96/velvet.16b48k.pcm48.wav",
+          "ffmpeg_strict_pass": true,
+          "payload_sha256": "4be51e30e24dff4375327ec75972f660d8dc5dd58c0cfa390a39ff31b5b0297a",
+          "profile": "HE-AAC",
+          "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+          "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+          "target_kbps": 96,
+          "variant": "lambda-0.003"
+        }
+      },
+      "baseline": {
+        "actual_payload_kbps": 95.2656,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "9fc63c492cfb5ae082dad0328d606c0efe958c469b38bfb7cf8d45ca6e0a820c",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/velvet.16b48k.m4a",
+        "encoded_sha256": "818a0316e361a45912a38495a2b169829c7296d8d6ebdfab74c920609168dd62",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/baseline/96/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "2145f9fcf663c88e7b10d14b59f8613bd02b560f2311e3c3b0ffee794971a672",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 96,
+        "variant": "baseline"
+      },
+      "unset": {
+        "actual_payload_kbps": 95.2656,
+        "baseline_packet_match": true,
+        "baseline_pcm_match": true,
+        "clip": "velvet.16b48k.wav",
+        "decoded_sha256": "9fc63c492cfb5ae082dad0328d606c0efe958c469b38bfb7cf8d45ca6e0a820c",
+        "encode_command": [
+          "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+          "-b",
+          "96",
+          "--overwrite",
+          "-o",
+          "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/velvet.16b48k.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ],
+        "encoded_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/velvet.16b48k.m4a",
+        "encoded_sha256": "738ab5b280068cbcaf25a5ec473cb630f1c437c49c38af2cbcc98fb5906571e6",
+        "environment": {},
+        "fdk_path": "/private/tmp/faac-upstream098-adaptive-border/probe-results/unset/96/velvet.16b48k.pcm48.wav",
+        "payload_sha256": "2145f9fcf663c88e7b10d14b59f8613bd02b560f2311e3c3b0ffee794971a672",
+        "profile": "HE-AAC",
+        "source_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+        "source_wav": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+        "target_kbps": 96,
+        "variant": "unset"
+      }
+    }
+  },
+  "schema": 1
+}

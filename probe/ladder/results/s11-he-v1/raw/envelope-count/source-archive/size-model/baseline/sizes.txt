@@ -1,0 +1,8 @@
+SbrEnvData=512
+SbrFrameData=8
+SBRChannel=4376
+SBRInfo=2508
+SBRContext=80
+SignalAnalysisChannel=520
+SignalAnalysis=32
+SBR_MAX_ENVELOPES=2

@@ -1,0 +1,337 @@
+{
+  "baseline": "baseline_original",
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "decoder_counts": {
+    "faad_fail": 0,
+    "faad_pass": 224,
+    "ffmpeg_fail": 0,
+    "ffmpeg_pass": 224,
+    "streams": 224
+  },
+  "phase": "gate",
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "stack_reference": "stack_reference",
+  "variants": {
+    "ad0005_base": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.931172564702426,
+        "lo": -1.6995668642209139
+      },
+      "mean_bd_rate_percent": -0.4711890317867562,
+      "median_bd_rate_percent": -0.6451727958417808,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -2.062172423165609,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6785954042967335,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4677618877021459,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6117501873868281,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "baseline_original",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "ad0005_stack": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.9746645157846012,
+        "lo": -1.2460679027739507
+      },
+      "mean_bd_rate_percent": -0.4085389280792495,
+      "median_bd_rate_percent": -1.0390595597489782,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -1.2647259117858578,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2274098937620437,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.7086893189668162,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8507092257359128,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "stack_reference",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "ad001_base": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.8663476749262544,
+        "lo": -1.7494220023177298
+      },
+      "mean_bd_rate_percent": -0.42866526287878015,
+      "median_bd_rate_percent": -0.40292146124486505,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -2.2901468303593076,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6785954042967335,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.381328701333917,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.12724751819299662,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "baseline_original",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "ad001_stack": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.39183566865250985,
+        "lo": -1.5851685433362461
+      },
+      "mean_bd_rate_percent": -1.0802425587972313,
+      "median_bd_rate_percent": -1.2637234644029383,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -1.704421426527647,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2274098937620437,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.08910187985540219,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3000370350438328,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "stack_reference",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "ad003_base": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.36953828017499135,
+        "lo": -1.774825640750638
+      },
+      "mean_bd_rate_percent": -1.0721819604628147,
+      "median_bd_rate_percent": -1.1739828034381838,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -1.8657825662531824,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.6838687152480936,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.07497966872170858,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6640968916282741,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "baseline_original",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "ad003_stack": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.00987932365369426,
+        "lo": -1.7403296553871432
+      },
+      "mean_bd_rate_percent": -0.9377779884389897,
+      "median_bd_rate_percent": -1.0828836335835201,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -2.053978755009178,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.799382356521039,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.46863406842025945,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3663849106460013,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "stack_reference",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "all_base": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 1.2609635535430068,
+        "lo": -1.8353172572861898
+      },
+      "mean_bd_rate_percent": -0.3286540053186765,
+      "median_bd_rate_percent": -0.41160831221284666,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.5904457111766681,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.3694993719652446,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.878099975116232,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2327709132490252,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "baseline_original",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "all_stack": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.04108047284288041,
+        "lo": -1.3277398374498317
+      },
+      "mean_bd_rate_percent": -0.6844101551463561,
+      "median_bd_rate_percent": -0.6351858633294627,
+      "packet_identity_ties": 0,
+      "pcm_identity_ties": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.0357281841530388,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.43154070977346,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.04643276153272202,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2239389651262034,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "stack_reference",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "tier_base": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.10391479995738584,
+        "lo": -0.37610659233225374
+      },
+      "mean_bd_rate_percent": -0.2679842886287642,
+      "median_bd_rate_percent": -0.3320400082469588,
+      "packet_identity_ties": 12,
+      "pcm_identity_ties": 12,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.3018981815540056,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.36218183493991196,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0178257882965438,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3900313497245955,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "baseline_original",
+      "rows": 16,
+      "skipped_clips": []
+    },
+    "tier_stack": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.19935040098227608,
+        "lo": -0.35638501215550233
+      },
+      "mean_bd_rate_percent": -0.2791489641270656,
+      "median_bd_rate_percent": -0.28171147924341833,
+      "packet_identity_ties": 12,
+      "pcm_identity_ties": 12,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.2585322672638668,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.30489069122296986,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.16417030423537815,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3890025937860475,
+          "clip": "fms.wav"
+        }
+      ],
+      "reference": "stack_reference",
+      "rows": 16,
+      "skipped_clips": []
+    }
+  }
+}

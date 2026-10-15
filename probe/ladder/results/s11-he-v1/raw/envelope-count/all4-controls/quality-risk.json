@@ -1,0 +1,745 @@
+{
+  "comparisons": {
+    "all_base_vs_baseline_original": {
+      "per_rate": {
+        "32": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.26271605491638184,
+              "payload_kbps_delta": 0.04944980651475106
+            },
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.17685246467590332,
+              "payload_kbps_delta": 0.12399999999999878
+            },
+            {
+              "clip": "SinceAlways.16b48k.wav",
+              "mos_delta": 0.11132669448852539,
+              "payload_kbps_delta": 0.08479999999999777
+            },
+            {
+              "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
+              "mos_delta": 0.0943903923034668,
+              "payload_kbps_delta": 0.07679999999999865
+            },
+            {
+              "clip": "clapton_44k.16b48k.wav",
+              "mos_delta": 0.08085870742797852,
+              "payload_kbps_delta": 0.047999999999998266
+            }
+          ],
+          "mean_mos_delta": 0.01942078921259666,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.037780328672759385,
+            "lo": 0.0029494762420654297,
+            "losses": 16,
+            "mean": 0.01942078921259666,
+            "n": 49,
+            "wins": 26
+          },
+          "mean_payload_kbps_delta": 0.06592298513392982,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "bas.wav",
+              "mos_delta": -0.139190673828125,
+              "payload_kbps_delta": 0.05439999999999756
+            },
+            {
+              "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+              "mos_delta": -0.07297801971435547,
+              "payload_kbps_delta": 0.0367999999999995
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.06306052207946777,
+              "payload_kbps_delta": 0.019999999999999574
+            },
+            {
+              "clip": "4-Sound-English-male.441.16b48k.wav",
+              "mos_delta": -0.046315908432006836,
+              "payload_kbps_delta": 0.055825416348412205
+            },
+            {
+              "clip": "bonhemian_rhapsody.16b48k.wav",
+              "mos_delta": -0.030670881271362305,
+              "payload_kbps_delta": 0.05519999999999925
+            },
+            {
+              "clip": "Greatest_Love_of_All_2min57.16b48k.wav",
+              "mos_delta": -0.024976730346679688,
+              "payload_kbps_delta": 0.06639999999999802
+            },
+            {
+              "clip": "qrt.wav",
+              "mos_delta": -0.02051377296447754,
+              "payload_kbps_delta": 0.031200000000001893
+            },
+            {
+              "clip": "Robots_old.16b48k.wav",
+              "mos_delta": -0.017784595489501953,
+              "payload_kbps_delta": 0.08799999999999741
+            },
+            {
+              "clip": "trumpet.16b48k.wav",
+              "mos_delta": -0.016976356506347656,
+              "payload_kbps_delta": 0.05999999999999517
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.014745712280273438,
+              "payload_kbps_delta": 0.022400000000001086
+            }
+          ]
+        },
+        "48": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "bah.wav",
+              "mos_delta": 0.0725092887878418,
+              "payload_kbps_delta": 0.055688370130781095
+            },
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.06307411193847656,
+              "payload_kbps_delta": 0.0864000000000047
+            },
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.0630350112915039,
+              "payload_kbps_delta": 0.024724903257379083
+            },
+            {
+              "clip": "take_your_finger_frin_my_head.16b48k.wav",
+              "mos_delta": 0.05430006980895996,
+              "payload_kbps_delta": 0.06559999999999633
+            },
+            {
+              "clip": "Coral.16b48k.wav",
+              "mos_delta": 0.05414390563964844,
+              "payload_kbps_delta": 0.03359999999999985
+            }
+          ],
+          "mean_mos_delta": 0.014305372627414003,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.020717226729101063,
+            "lo": 0.00753199324315908,
+            "losses": 8,
+            "mean": 0.014305372627414003,
+            "n": 49,
+            "wins": 35
+          },
+          "mean_payload_kbps_delta": 0.06202143965433807,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "Greatest_Love_of_All_2min57.16b48k.wav",
+              "mos_delta": -0.043196678161621094,
+              "payload_kbps_delta": 0.05919999999999703
+            },
+            {
+              "clip": "hrp.wav",
+              "mos_delta": -0.02742481231689453,
+              "payload_kbps_delta": 0.06004648484977082
+            },
+            {
+              "clip": "Waiting.16b48k.wav",
+              "mos_delta": -0.026716232299804688,
+              "payload_kbps_delta": 0.07279999999999376
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.026160240173339844,
+              "payload_kbps_delta": 0.08533443798625484
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.008753776550292969,
+              "payload_kbps_delta": 0.0303999999999931
+            },
+            {
+              "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+              "mos_delta": -0.008451223373413086,
+              "payload_kbps_delta": 0.09759999999999991
+            },
+            {
+              "clip": "SlavesOfFear.16b48k.wav",
+              "mos_delta": -0.007382869720458984,
+              "payload_kbps_delta": 0.07600000000000051
+            },
+            {
+              "clip": "Only Time.16b48k.wav",
+              "mos_delta": -0.006031036376953125,
+              "payload_kbps_delta": 0.05360000000000298
+            },
+            {
+              "clip": "Jupiter, the Bringer of Jolity.16b48k.wav",
+              "mos_delta": -0.0027151107788085938,
+              "payload_kbps_delta": 0.06160000000000565
+            },
+            {
+              "clip": "35_SQAM_glockenspiel_cut.16b48k.wav",
+              "mos_delta": -0.0012478828430175781,
+              "payload_kbps_delta": 0.055999999999997385
+            }
+          ]
+        },
+        "64": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.0905756950378418,
+              "payload_kbps_delta": 0.08720000000000283
+            },
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.06403398513793945,
+              "payload_kbps_delta": 0.05439478716623114
+            },
+            {
+              "clip": "clapton_44k.16b48k.wav",
+              "mos_delta": 0.05981254577636719,
+              "payload_kbps_delta": 0.03999999999999915
+            },
+            {
+              "clip": "take_your_finger_frin_my_head.16b48k.wav",
+              "mos_delta": 0.05724382400512695,
+              "payload_kbps_delta": 0.06239999999999668
+            },
+            {
+              "clip": "liberate.16b48k.wav",
+              "mos_delta": 0.041678428649902344,
+              "payload_kbps_delta": 0.1789442588301
+            }
+          ],
+          "mean_mos_delta": 0.017831422844711616,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.023358422882702887,
+            "lo": 0.012499225382902185,
+            "losses": 5,
+            "mean": 0.017831422844711616,
+            "n": 49,
+            "wins": 41
+          },
+          "mean_payload_kbps_delta": 0.057754141703323464,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "lob.wav",
+              "mos_delta": -0.02982616424560547,
+              "payload_kbps_delta": 0.036095844336671234
+            },
+            {
+              "clip": "Robots_old.16b48k.wav",
+              "mos_delta": -0.02125072479248047,
+              "payload_kbps_delta": 0.07440000000000424
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.00644683837890625,
+              "payload_kbps_delta": 0.07207860295926594
+            },
+            {
+              "clip": "Only Time.16b48k.wav",
+              "mos_delta": -0.006248950958251953,
+              "payload_kbps_delta": 0.054400000000001114
+            },
+            {
+              "clip": "bas.wav",
+              "mos_delta": -0.006160259246826172,
+              "payload_kbps_delta": 0.04639999999999844
+            },
+            {
+              "clip": "Shinsho_pool_3min45_4min4.16b48k.wav",
+              "mos_delta": 0.002388477325439453,
+              "payload_kbps_delta": 0.04159999999999542
+            },
+            {
+              "clip": "bonhemian_rhapsody.16b48k.wav",
+              "mos_delta": 0.003387928009033203,
+              "payload_kbps_delta": 0.05359999999999587
+            },
+            {
+              "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+              "mos_delta": 0.0047473907470703125,
+              "payload_kbps_delta": 0.026605504587152495
+            },
+            {
+              "clip": "trumpet.16b48k.wav",
+              "mos_delta": 0.0051555633544921875,
+              "payload_kbps_delta": 0.04079999999999018
+            },
+            {
+              "clip": "Coral.16b48k.wav",
+              "mos_delta": 0.006061077117919922,
+              "payload_kbps_delta": 0.03359999999999985
+            }
+          ]
+        },
+        "96": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.1156454086303711,
+              "payload_kbps_delta": 0.09040000000000248
+            },
+            {
+              "clip": "clapton_44k.16b48k.wav",
+              "mos_delta": 0.060021400451660156,
+              "payload_kbps_delta": 0.03839999999998156
+            },
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.058301448822021484,
+              "payload_kbps_delta": 0.04532898930520446
+            },
+            {
+              "clip": "liberate.16b48k.wav",
+              "mos_delta": 0.05439138412475586,
+              "payload_kbps_delta": 0.17734654223337998
+            },
+            {
+              "clip": "SinceAlways.16b48k.wav",
+              "mos_delta": 0.043804168701171875,
+              "payload_kbps_delta": 0.05359999999998877
+            }
+          ],
+          "mean_mos_delta": 0.021066879739566724,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.026846029320541694,
+            "lo": 0.01625078551623286,
+            "losses": 0,
+            "mean": 0.021066879739566724,
+            "n": 49,
+            "wins": 45
+          },
+          "mean_payload_kbps_delta": 0.05493334360628187,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0010838508605957031,
+              "payload_kbps_delta": 0.06462219575657002
+            },
+            {
+              "clip": "Only Time.16b48k.wav",
+              "mos_delta": 0.001110076904296875,
+              "payload_kbps_delta": 0.06879999999999598
+            },
+            {
+              "clip": "Shinsho_pool_3min45_4min4.16b48k.wav",
+              "mos_delta": 0.0020389556884765625,
+              "payload_kbps_delta": 0.021600000000006503
+            },
+            {
+              "clip": "15-Good-evening.441.16b48k.wav",
+              "mos_delta": 0.002483367919921875,
+              "payload_kbps_delta": 0.0840552780196333
+            },
+            {
+              "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+              "mos_delta": 0.005644798278808594,
+              "payload_kbps_delta": 0.016513761467876975
+            },
+            {
+              "clip": "Coral.16b48k.wav",
+              "mos_delta": 0.009181022644042969,
+              "payload_kbps_delta": 0.03520000000001744
+            },
+            {
+              "clip": "With Love (Outro).16b48k.wav",
+              "mos_delta": 0.009641170501708984,
+              "payload_kbps_delta": 0.05920000000001835
+            },
+            {
+              "clip": "bonhemian_rhapsody.16b48k.wav",
+              "mos_delta": 0.009949684143066406,
+              "payload_kbps_delta": 0.047200000000017894
+            },
+            {
+              "clip": "Robots_old.16b48k.wav",
+              "mos_delta": 0.010602474212646484,
+              "payload_kbps_delta": 0.05680000000000973
+            },
+            {
+              "clip": "qrt.wav",
+              "mos_delta": 0.010624885559082031,
+              "payload_kbps_delta": 0.03359999999999275
+            }
+          ]
+        }
+      },
+      "rows": 196
+    },
+    "all_stack_vs_stack_reference": {
+      "per_rate": {
+        "32": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.24489378929138184,
+              "payload_kbps_delta": 0.04944980651475106
+            },
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.16791009902954102,
+              "payload_kbps_delta": 0.12399999999999878
+            },
+            {
+              "clip": "SinceAlways.16b48k.wav",
+              "mos_delta": 0.09352564811706543,
+              "payload_kbps_delta": 0.08479999999999777
+            },
+            {
+              "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
+              "mos_delta": 0.08632731437683105,
+              "payload_kbps_delta": 0.07679999999999865
+            },
+            {
+              "clip": "25-This-is-the-end.441.16b48k.wav",
+              "mos_delta": 0.0794985294342041,
+              "payload_kbps_delta": 0.029615582659822337
+            }
+          ],
+          "mean_mos_delta": 0.015963121336333607,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.033469852136105906,
+            "lo": -2.260110816177057e-05,
+            "losses": 17,
+            "mean": 0.015963121336333607,
+            "n": 49,
+            "wins": 23
+          },
+          "mean_payload_kbps_delta": 0.06592298513392982,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "bas.wav",
+              "mos_delta": -0.14093756675720215,
+              "payload_kbps_delta": 0.05439999999999756
+            },
+            {
+              "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+              "mos_delta": -0.07729053497314453,
+              "payload_kbps_delta": 0.0367999999999995
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.07079195976257324,
+              "payload_kbps_delta": 0.019999999999999574
+            },
+            {
+              "clip": "4-Sound-English-male.441.16b48k.wav",
+              "mos_delta": -0.0397794246673584,
+              "payload_kbps_delta": 0.055825416348412205
+            },
+            {
+              "clip": "bonhemian_rhapsody.16b48k.wav",
+              "mos_delta": -0.03132748603820801,
+              "payload_kbps_delta": 0.05519999999999925
+            },
+            {
+              "clip": "Greatest_Love_of_All_2min57.16b48k.wav",
+              "mos_delta": -0.026264667510986328,
+              "payload_kbps_delta": 0.06639999999999802
+            },
+            {
+              "clip": "qrt.wav",
+              "mos_delta": -0.020777225494384766,
+              "payload_kbps_delta": 0.031200000000001893
+            },
+            {
+              "clip": "trumpet.16b48k.wav",
+              "mos_delta": -0.01695871353149414,
+              "payload_kbps_delta": 0.05999999999999517
+            },
+            {
+              "clip": "Robots_old.16b48k.wav",
+              "mos_delta": -0.01558065414428711,
+              "payload_kbps_delta": 0.08799999999999741
+            },
+            {
+              "clip": "lob.wav",
+              "mos_delta": -0.013464927673339844,
+              "payload_kbps_delta": 0.05188777623396135
+            }
+          ]
+        },
+        "48": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.09161663055419922,
+              "payload_kbps_delta": 0.08559999999999945
+            },
+            {
+              "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
+              "mos_delta": 0.07011842727661133,
+              "payload_kbps_delta": 0.061599999999998545
+            },
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.06813955307006836,
+              "payload_kbps_delta": 0.021428249489723328
+            },
+            {
+              "clip": "clapton_44k.16b48k.wav",
+              "mos_delta": 0.058757781982421875,
+              "payload_kbps_delta": 0.044000000000004036
+            },
+            {
+              "clip": "bah.wav",
+              "mos_delta": 0.052211761474609375,
+              "payload_kbps_delta": 0.051469554211784896
+            }
+          ],
+          "mean_mos_delta": 0.013682623298800722,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.02024798003994689,
+            "lo": 0.006981367967566665,
+            "losses": 3,
+            "mean": 0.013682623298800722,
+            "n": 49,
+            "wins": 31
+          },
+          "mean_payload_kbps_delta": 0.06015200945969183,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "Greatest_Love_of_All_2min57.16b48k.wav",
+              "mos_delta": -0.046683311462402344,
+              "payload_kbps_delta": 0.05919999999999703
+            },
+            {
+              "clip": "Waiting.16b48k.wav",
+              "mos_delta": -0.034627437591552734,
+              "payload_kbps_delta": 0.07519999999999527
+            },
+            {
+              "clip": "qrt.wav",
+              "mos_delta": -0.01023554801940918,
+              "payload_kbps_delta": 0.03279999999999461
+            },
+            {
+              "clip": "Severance__1.31-1.51_.16b48k.wav",
+              "mos_delta": -0.004489421844482422,
+              "payload_kbps_delta": 0.03359999999999985
+            },
+            {
+              "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+              "mos_delta": -0.004466056823730469,
+              "payload_kbps_delta": 0.023853211009182473
+            },
+            {
+              "clip": "Only Time.16b48k.wav",
+              "mos_delta": -0.0034809112548828125,
+              "payload_kbps_delta": 0.055999999999997385
+            },
+            {
+              "clip": "Robots_old.16b48k.wav",
+              "mos_delta": -0.0017518997192382812,
+              "payload_kbps_delta": 0.060000000000002274
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0013651847839355469,
+              "payload_kbps_delta": 0.08450594829706404
+            },
+            {
+              "clip": "15-Good-evening.441.16b48k.wav",
+              "mos_delta": -0.0011057853698730469,
+              "payload_kbps_delta": 0.07471580268412481
+            },
+            {
+              "clip": "Jupiter, the Bringer of Jolity.16b48k.wav",
+              "mos_delta": -0.0010194778442382812,
+              "payload_kbps_delta": 0.06319999999999482
+            }
+          ]
+        },
+        "64": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.09771156311035156,
+              "payload_kbps_delta": 0.08159999999999457
+            },
+            {
+              "clip": "clapton_44k.16b48k.wav",
+              "mos_delta": 0.057987213134765625,
+              "payload_kbps_delta": 0.03839999999999577
+            },
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.05175018310546875,
+              "payload_kbps_delta": 0.05357062372431187
+            },
+            {
+              "clip": "take_your_finger_frin_my_head.16b48k.wav",
+              "mos_delta": 0.04565620422363281,
+              "payload_kbps_delta": 0.05760000000000787
+            },
+            {
+              "clip": "liberate.16b48k.wav",
+              "mos_delta": 0.032314300537109375,
+              "payload_kbps_delta": 0.1773465422333942
+            }
+          ],
+          "mean_mos_delta": 0.016326806983169243,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.021453983929692482,
+            "lo": 0.011473480536013233,
+            "losses": 4,
+            "mean": 0.016326806983169243,
+            "n": 49,
+            "wins": 39
+          },
+          "mean_payload_kbps_delta": 0.058701531274809676,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "Robots_old.16b48k.wav",
+              "mos_delta": -0.0244903564453125,
+              "payload_kbps_delta": 0.08319999999999794
+            },
+            {
+              "clip": "Only Time.16b48k.wav",
+              "mos_delta": -0.010555744171142578,
+              "payload_kbps_delta": 0.05600000000000449
+            },
+            {
+              "clip": "bas.wav",
+              "mos_delta": -0.009638309478759766,
+              "payload_kbps_delta": 0.04639999999999844
+            },
+            {
+              "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+              "mos_delta": -0.005725383758544922,
+              "payload_kbps_delta": 0.026605504587152495
+            },
+            {
+              "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+              "mos_delta": -0.0028028488159179688,
+              "payload_kbps_delta": 0.04640000000000555
+            },
+            {
+              "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+              "mos_delta": 0.0008192062377929688,
+              "payload_kbps_delta": 0.06799999999999784
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.002140522003173828,
+              "payload_kbps_delta": 0.07207860295926594
+            },
+            {
+              "clip": "Coral.16b48k.wav",
+              "mos_delta": 0.0027914047241210938,
+              "payload_kbps_delta": 0.038400000000002876
+            },
+            {
+              "clip": "cst.wav",
+              "mos_delta": 0.00327301025390625,
+              "payload_kbps_delta": 0.04049118569004406
+            },
+            {
+              "clip": "girl.16b48k.wav",
+              "mos_delta": 0.004633903503417969,
+              "payload_kbps_delta": 0.038400000000002876
+            }
+          ]
+        },
+        "96": {
+          "best_5_mos_deltas": [
+            {
+              "clip": "mof.wav",
+              "mos_delta": 0.11234378814697266,
+              "payload_kbps_delta": 0.09040000000000248
+            },
+            {
+              "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+              "mos_delta": 0.06370735168457031,
+              "payload_kbps_delta": 0.04697731618900036
+            },
+            {
+              "clip": "clapton_44k.16b48k.wav",
+              "mos_delta": 0.05999565124511719,
+              "payload_kbps_delta": 0.03839999999998156
+            },
+            {
+              "clip": "liberate.16b48k.wav",
+              "mos_delta": 0.056673526763916016,
+              "payload_kbps_delta": 0.16296709286311284
+            },
+            {
+              "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
+              "mos_delta": 0.04042673110961914,
+              "payload_kbps_delta": 0.06960000000000832
+            }
+          ],
+          "mean_mos_delta": 0.02114903196996572,
+          "mean_mos_delta_clip_bootstrap_95_ci": {
+            "hi": 0.02678734915597098,
+            "lo": 0.01625773371482382,
+            "losses": 0,
+            "mean": 0.02114903196996572,
+            "n": 49,
+            "wins": 46
+          },
+          "mean_payload_kbps_delta": 0.055258950316239085,
+          "worst_10_mos_deltas": [
+            {
+              "clip": "Only Time.16b48k.wav",
+              "mos_delta": 0.0023941993713378906,
+              "payload_kbps_delta": 0.07360000000001321
+            },
+            {
+              "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+              "mos_delta": 0.0025014877319335938,
+              "payload_kbps_delta": 0.06960000000000832
+            },
+            {
+              "clip": "Shinsho_pool_3min45_4min4.16b48k.wav",
+              "mos_delta": 0.0028772354125976562,
+              "payload_kbps_delta": 0.028000000000005798
+            },
+            {
+              "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+              "mos_delta": 0.006766319274902344,
+              "payload_kbps_delta": 0.01834862385322822
+            },
+            {
+              "clip": "Coral.16b48k.wav",
+              "mos_delta": 0.006984710693359375,
+              "payload_kbps_delta": 0.03280000000000882
+            },
+            {
+              "clip": "15-Good-evening.441.16b48k.wav",
+              "mos_delta": 0.007290840148925781,
+              "payload_kbps_delta": 0.08405527801964752
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.007825851440429688,
+              "payload_kbps_delta": 0.06213672668901893
+            },
+            {
+              "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+              "mos_delta": 0.008368492126464844,
+              "payload_kbps_delta": 0.03679999999998529
+            },
+            {
+              "clip": "girl.16b48k.wav",
+              "mos_delta": 0.008617401123046875,
+              "payload_kbps_delta": 0.04959999999999809
+            },
+            {
+              "clip": "glk.wav",
+              "mos_delta": 0.009276390075683594,
+              "payload_kbps_delta": 0.05279999999999063
+            }
+          ]
+        }
+      },
+      "rows": 196
+    }
+  },
+  "metric": "Per-clip Zimtohrli audio MOS and AAC payload bitrate deltas; clip-bootstrap 95% CI for mean MOS delta",
+  "schema": 1,
+  "source_results": ".cache/he-v1-feature-study/envelope-count/full-active-lambda/envcount-results.json"
+}

@@ -1,0 +1,19 @@
+{
+  "all_exact": true,
+  "controls": {
+    "tier17_base": {
+      "exact_matches": 196,
+      "packet_identity_matches": 196,
+      "pcm_identity_matches": 196,
+      "rows": 196
+    },
+    "tier17_stack": {
+      "exact_matches": 196,
+      "packet_identity_matches": 196,
+      "pcm_identity_matches": 196,
+      "rows": 196
+    }
+  },
+  "rows": 392,
+  "schema": 1
+}

@@ -1,0 +1,268 @@
+{
+  "actual_bitrate": "ffprobe audio packet bytes * 8 / source WAV duration",
+  "baseline_binary": "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "/private/tmp/faac-he-v1-adaptive/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+  },
+  "candidate_binary": "/private/tmp/faac-he-v1-adaptive/build-probe/frontend/faac",
+  "clip_sha256": {
+    "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+    "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+    "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+    "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+  },
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "created_utc": "2026-10-14T04:29:43.385734+00:00",
+  "decoder": "FDK AAC strict; no fallback",
+  "feature_environment": {
+    "adaptive12": {
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "12",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "adaptive18": {
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "adaptive18_high_offset": {
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-6"
+    },
+    "adaptive18_low_offset": {
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-10"
+    },
+    "adaptive_wide": {
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "30",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "0",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "static18": {
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+    },
+    "static24": {
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+    }
+  },
+  "immutable_run_config": {
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "/private/tmp/faac-he-v1-adaptive/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+    },
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "feature_environment": {
+      "adaptive12": {
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "12",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "adaptive18": {
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "adaptive18_high_offset": {
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-6"
+      },
+      "adaptive18_low_offset": {
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-10"
+      },
+      "adaptive_wide": {
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "30",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "0",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "static18": {
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+      },
+      "static24": {
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+      }
+    },
+    "libraries": {
+      "/private/tmp/faac-he-v1-adaptive/build-probe/libfaac/libfaac.2.dylib": "72016c33f8a282c5bae05bceed6a4ef69ae0b4e3319504ec9fe240329ba864dc",
+      "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+    },
+    "linked_libraries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": [
+        {
+          "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+          "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+          "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-adaptive/build-probe/frontend/faac": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ]
+    },
+    "prior_measurement_results": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json",
+    "prior_measurement_results_sha256": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585",
+    "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "source_diff_sha256": "76e427d364b3420dab8186b711957a32dc0df41dfb4557974dc3a791ccd016f5",
+    "source_tree_sha256": "9dfa28633d7622459a26ac65e97006f663d76c563ef3cce4f8da93a3b7540f54",
+    "variants": [
+      "static18",
+      "static24",
+      "adaptive_wide",
+      "adaptive12",
+      "adaptive18",
+      "adaptive18_low_offset",
+      "adaptive18_high_offset"
+    ]
+  },
+  "libraries": {
+    "/private/tmp/faac-he-v1-adaptive/build-probe/libfaac/libfaac.2.dylib": "72016c33f8a282c5bae05bceed6a4ef69ae0b4e3319504ec9fe240329ba864dc",
+    "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+  },
+  "linked_libraries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": [
+      {
+        "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+        "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+        "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-adaptive/build-probe/frontend/faac": [
+      {
+        "path": "@rpath/libfaac.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+      },
+      {
+        "path": "/usr/lib/libiconv.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+      {
+        "path": "@rpath/libfaac.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+      },
+      {
+        "path": "/usr/lib/libiconv.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ]
+  },
+  "metric": "Zimtohrli via phase2_mos.score_wav_pair audio mode at 48 kHz",
+  "prior_measurement_results": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json",
+  "prior_measurement_results_sha256": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585",
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "source_diff_sha256": "76e427d364b3420dab8186b711957a32dc0df41dfb4557974dc3a791ccd016f5",
+  "source_tree_sha256": "9dfa28633d7622459a26ac65e97006f663d76c563ef3cce4f8da93a3b7540f54",
+  "variants": [
+    "static18",
+    "static24",
+    "adaptive_wide",
+    "adaptive12",
+    "adaptive18",
+    "adaptive18_low_offset",
+    "adaptive18_high_offset"
+  ],
+  "workers": 4
+}

@@ -1,0 +1,519 @@
+{
+  "actual_bitrate": "sum(ffprobe audio packet size) * 8 / input WAV duration",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "benchmark_root": "/Users/nschimme/gitprojects/faac-benchmark",
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": {
+      "linked_libraries": [
+        {
+          "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+          "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+          "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "size_bytes": 35864
+    },
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": {
+      "linked_libraries": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+      "size_bytes": 120936
+    },
+    "/private/tmp/faac-he-v1-probes/build-probe/frontend/faac": {
+      "linked_libraries": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "size_bytes": 120936
+    },
+    "baseline_libfaac": {
+      "path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+      "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+      "size_bytes": 135168
+    },
+    "probe_libfaac": {
+      "path": "/private/tmp/faac-he-v1-probes/build-probe/libfaac/libfaac.2.dylib",
+      "sha256": "bd772a280c01896a794e6ec72b8f2b6c359bc1525913a07286c3ec75e08e3117",
+      "size_bytes": 135312
+    }
+  },
+  "clip_sha256": {
+    "12-German-male-speech.441.16b48k.wav": "7a95d753f73fea76324cf65ecabf7db6b602c71d7aa8b6605a272c3ede28add6",
+    "15-Good-evening.441.16b48k.wav": "ae6f28ea8877edb576ce2c91381d07290ad5edb475be8d57cd7049fd7e654c85",
+    "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+    "24-Greensleeves-Korean-male-speech.441.16b48k.wav": "3b9cf4371c251d8aede6da0083979a18c8724c89453227cbebf6d1a5b4a9bedc",
+    "25-This-is-the-end.441.16b48k.wav": "3658312e71788fc5f65f6baba42e758cd3f19369f6fd39c0dda61129a49ea507",
+    "27-last-song-drums-and-trampets.441.16b48k.wav": "330bb3dc58da9c5a701cc14d97bf2ddb1a930a1d8b57311aba7ef9f1fd17d44e",
+    "35_SQAM_glockenspiel_cut.16b48k.wav": "e1eb107c23fe366c7a3153c089b4d66e3ccb2987f9d53290b5bb7f90aa8f4411",
+    "4-Sound-English-male.441.16b48k.wav": "4d3f8767e6b6b4af95fb3acb11a8663e05549534294431bef181094611a1a943",
+    "9-Have-big-expensive-car.441.16b48k.wav": "9e14a37851818302b9be964c0381df4e51a4cf6067441c38077350d512b67939",
+    "Asleep__4.11-4.31_.16b48k.wav": "e01a8400337664e351335da3794e95e6810816fa4f30d80fc4b43435cb5478b6",
+    "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": "fe931f397a9249f245aa6f9f5c056df6feb8e921e7fcbb887bce5c4943ed4c84",
+    "Changes.16b48k.wav": "14f8f4fb34a2b64f181b1a80d93ecfff417bb5680eeb6e01aeb9b2b5dc7b2bd4",
+    "Coral.16b48k.wav": "30b81903cd6325da9a576b9eb48cd5090138e33a7e9bb111125f439758457161",
+    "ExitMusic.16b48k.wav": "8836a5a06d50834916b278b88e4f44a5e0257d101671d902567b5dc9f7829f34",
+    "Girl_In_The_Fire__Sample_.16b48k.wav": "73ade72e7969fd70056808711553407e14890415383a16045cacc9616a1a6b67",
+    "Greatest_Love_of_All_2min57.16b48k.wav": "e01c435d3308642f60b5ae7f126c00be36eb2fbfeb947274dbf394e458c7e10a",
+    "Hey Tonight.16b48k.wav": "ec736a43c40f98b64073c98fb24206a34fd38cd1ddd38bac4badbaaaf286ff86",
+    "Hotel California.16b48k.wav": "e729c334641c6d11588fa7cd9302c5db93c351ab13ada5f884a6e5e8cbc56083",
+    "Jupiter, the Bringer of Jolity.16b48k.wav": "91815464d4e0c846663471a43fb49f5e1be10958c7bd155b92c6162e49a7d82e",
+    "Last_Of_The_Mohicanz__Sample_.16b48k.wav": "050e6bc7e0288ca3ffe2d1ac116a961cd1c84e9600d3d385f98e686be8482deb",
+    "NewYorkCity.16b48k.wav": "75e6a00bbb6936f3dca669e3095b45de8a3b7ec363e71c0514ac73199d7e8fb5",
+    "Only Time.16b48k.wav": "9c6b328633b08453755c9448b6569bdac949563b84f7eb6206d106482e785ce7",
+    "Robots_old.16b48k.wav": "8e25e517759945df061bdc2cc1ba7a113b4c32c9729d73b27cde929d222e15f3",
+    "Severance__1.31-1.51_.16b48k.wav": "9bd9627723033dfa402cd267a2e0ef226655a5508baa86d92f139b808b3cad76",
+    "Shinsho_pool_3min45_4min4.16b48k.wav": "cac2233f0ed08fb9ddfc42ff0bc6538971fd2ab067b075237adc556ba2a416be",
+    "SinceAlways.16b48k.wav": "897016560a9382db722c0f3adf0539f4daa8d7a05c27bf6e2dc4e1c84e05f9f9",
+    "SlavesOfFear.16b48k.wav": "a45bac38ac6e4cb5c4215caf0cc9eff97e27c9a97ac63f6e62ccc30909a9ceae",
+    "The Chastising of Renegade.16b48k.wav": "2f001fac18149104052fe7b7d650f563305678c59c408a7440e5aeda00b271aa",
+    "Through The Fire And Flames.16b48k.wav": "0a32b6a4a0af94152abba2fe4440abc701762f8fbc15b33163b09b618c84eab6",
+    "TrosYGareg.16b48k.wav": "a30465b08cb5d0a51a3a0b7f860fe693ccb33a178eadf2e6a8af934b96d23f9b",
+    "Waiting.16b48k.wav": "ede4285aa86a7fbeae943ab3446e68bf0ba1e91435b2f9c7e26d74b420c872cf",
+    "With Love (Outro).16b48k.wav": "f3fbf8d970f4a63e85599fabe0e131da841ae5f309dd87b9ce0ae7fa614f4d62",
+    "bah.wav": "91b619bc579302f502a7941a8b27d2061b11724a2e59dd87b91be131d7fb017a",
+    "bas.wav": "5f416d33c09e50d42818c9e948ef1ca90888ad04523c4c75728ca02fe74d6d2a",
+    "bonhemian_rhapsody.16b48k.wav": "126fc4ddb43b396cf1a7d665048793c2c1a76830128c61bb0b65703705837388",
+    "clapton_44k.16b48k.wav": "1eb6c8c654fd4550eb49b93050303cf265c29a76de641bd7c75eab3878ed8e9b",
+    "cst.wav": "79834793f3230dcc676779aa8522b1e8e8bd5a5da56c5a44f8ff51401fd46fd6",
+    "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+    "girl.16b48k.wav": "2f0912248abcd7ecb3be65918d7b3067116f090b99bfb169ebbf204316781930",
+    "glk.wav": "5117504878848fcc5a9120d11746a2b1f34729f8295ddc4b59f918407f02a53e",
+    "hrp.wav": "90ae0967eb507a4f425777f3500ef72bf2aa950ceaf6b956bcc0191ffc9a6d5f",
+    "liberate.16b48k.wav": "5c740fc8be1b77d7a1cc9ed4eea565505fc1d1fd1a58d02be8a6a3ae17ca1fa0",
+    "lob.wav": "3cacfc044bf356a735c5e60fe4a17916fa4622f72e11dd5e6fd948835488643c",
+    "mof.wav": "acdd423143fc2e6e48b8c78b54e20e9f67403932d90669915da3dacb9859749c",
+    "qrt.wav": "6bc3311ce3e1fc2a8fdc32f9156fa6f54115771d97fda238b88ebacc8adc031b",
+    "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+    "take_your_finger_frin_my_head.16b48k.wav": "35785b162e33ed64f45287eba47cb727614411d911d5d08d9bc74b8516a7657e",
+    "trumpet.16b48k.wav": "265baa7ba90e71969ec8c227476f5f25ed35f2f154fa503aad5f6feccdfb05d2",
+    "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+  },
+  "clips": [
+    "12-German-male-speech.441.16b48k.wav",
+    "15-Good-evening.441.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+    "25-This-is-the-end.441.16b48k.wav",
+    "27-last-song-drums-and-trampets.441.16b48k.wav",
+    "35_SQAM_glockenspiel_cut.16b48k.wav",
+    "4-Sound-English-male.441.16b48k.wav",
+    "9-Have-big-expensive-car.441.16b48k.wav",
+    "Asleep__4.11-4.31_.16b48k.wav",
+    "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+    "Changes.16b48k.wav",
+    "Coral.16b48k.wav",
+    "ExitMusic.16b48k.wav",
+    "Girl_In_The_Fire__Sample_.16b48k.wav",
+    "Greatest_Love_of_All_2min57.16b48k.wav",
+    "Hey Tonight.16b48k.wav",
+    "Hotel California.16b48k.wav",
+    "Jupiter, the Bringer of Jolity.16b48k.wav",
+    "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+    "NewYorkCity.16b48k.wav",
+    "Only Time.16b48k.wav",
+    "Robots_old.16b48k.wav",
+    "Severance__1.31-1.51_.16b48k.wav",
+    "Shinsho_pool_3min45_4min4.16b48k.wav",
+    "SinceAlways.16b48k.wav",
+    "SlavesOfFear.16b48k.wav",
+    "The Chastising of Renegade.16b48k.wav",
+    "Through The Fire And Flames.16b48k.wav",
+    "TrosYGareg.16b48k.wav",
+    "Waiting.16b48k.wav",
+    "With Love (Outro).16b48k.wav",
+    "bah.wav",
+    "bas.wav",
+    "bonhemian_rhapsody.16b48k.wav",
+    "clapton_44k.16b48k.wav",
+    "cst.wav",
+    "fms.wav",
+    "girl.16b48k.wav",
+    "glk.wav",
+    "hrp.wav",
+    "liberate.16b48k.wav",
+    "lob.wav",
+    "mof.wav",
+    "qrt.wav",
+    "sandman.16b48k.wav",
+    "take_your_finger_frin_my_head.16b48k.wav",
+    "trumpet.16b48k.wav",
+    "velvet.16b48k.wav"
+  ],
+  "controls": [
+    "baseline_default",
+    "candidate_default",
+    "defaults_explicit"
+  ],
+  "created_utc": "2026-10-14T03:54:24.889347+00:00",
+  "decoder": "FDK AAC via codec_bench.decoders.FDKDecoder; strict command failure",
+  "feature_env": {
+    "defaults_explicit": {
+      "FAAC_SBR_PROBE_INTERPOL": "1",
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "2",
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "2",
+      "FAAC_SBR_PROBE_SMOOTH": "1"
+    },
+    "harmonic_60": {
+      "FAAC_SBR_PROBE_HARMONIC": "60"
+    },
+    "harmonic_75": {
+      "FAAC_SBR_PROBE_HARMONIC": "75"
+    },
+    "harmonic_90": {
+      "FAAC_SBR_PROBE_HARMONIC": "90"
+    },
+    "interpol_0": {
+      "FAAC_SBR_PROBE_INTERPOL": "0"
+    },
+    "invf_0": {
+      "FAAC_SBR_PROBE_INVF": "0"
+    },
+    "invf_1": {
+      "FAAC_SBR_PROBE_INVF": "1"
+    },
+    "invf_2": {
+      "FAAC_SBR_PROBE_INVF": "2"
+    },
+    "limiter_bands_0": {
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "0"
+    },
+    "limiter_bands_1": {
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "1"
+    },
+    "limiter_bands_3": {
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "3"
+    },
+    "limiter_gain_0": {
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "0"
+    },
+    "limiter_gain_1": {
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "1"
+    },
+    "limiter_gain_3": {
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "3"
+    },
+    "noise_15": {
+      "FAAC_SBR_PROBE_NOISE": "15"
+    },
+    "noise_18": {
+      "FAAC_SBR_PROBE_NOISE": "18"
+    },
+    "noise_6": {
+      "FAAC_SBR_PROBE_NOISE": "6"
+    },
+    "noise_9": {
+      "FAAC_SBR_PROBE_NOISE": "9"
+    },
+    "smooth_0": {
+      "FAAC_SBR_PROBE_SMOOTH": "0"
+    }
+  },
+  "immutable_run_config": {
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": {
+        "linked_libraries": [
+          {
+            "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+            "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+            "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+        "size_bytes": 35864
+      },
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": {
+        "linked_libraries": [
+          {
+            "path": "@rpath/libfaac.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+          },
+          {
+            "path": "/usr/lib/libiconv.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+        "size_bytes": 120936
+      },
+      "/private/tmp/faac-he-v1-probes/build-probe/frontend/faac": {
+        "linked_libraries": [
+          {
+            "path": "@rpath/libfaac.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+          },
+          {
+            "path": "/usr/lib/libiconv.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+        "size_bytes": 120936
+      },
+      "baseline_libfaac": {
+        "path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+        "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+        "size_bytes": 135168
+      },
+      "probe_libfaac": {
+        "path": "/private/tmp/faac-he-v1-probes/build-probe/libfaac/libfaac.2.dylib",
+        "sha256": "bd772a280c01896a794e6ec72b8f2b6c359bc1525913a07286c3ec75e08e3117",
+        "size_bytes": 135312
+      }
+    },
+    "clip_sha256": {
+      "12-German-male-speech.441.16b48k.wav": "7a95d753f73fea76324cf65ecabf7db6b602c71d7aa8b6605a272c3ede28add6",
+      "15-Good-evening.441.16b48k.wav": "ae6f28ea8877edb576ce2c91381d07290ad5edb475be8d57cd7049fd7e654c85",
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "24-Greensleeves-Korean-male-speech.441.16b48k.wav": "3b9cf4371c251d8aede6da0083979a18c8724c89453227cbebf6d1a5b4a9bedc",
+      "25-This-is-the-end.441.16b48k.wav": "3658312e71788fc5f65f6baba42e758cd3f19369f6fd39c0dda61129a49ea507",
+      "27-last-song-drums-and-trampets.441.16b48k.wav": "330bb3dc58da9c5a701cc14d97bf2ddb1a930a1d8b57311aba7ef9f1fd17d44e",
+      "35_SQAM_glockenspiel_cut.16b48k.wav": "e1eb107c23fe366c7a3153c089b4d66e3ccb2987f9d53290b5bb7f90aa8f4411",
+      "4-Sound-English-male.441.16b48k.wav": "4d3f8767e6b6b4af95fb3acb11a8663e05549534294431bef181094611a1a943",
+      "9-Have-big-expensive-car.441.16b48k.wav": "9e14a37851818302b9be964c0381df4e51a4cf6067441c38077350d512b67939",
+      "Asleep__4.11-4.31_.16b48k.wav": "e01a8400337664e351335da3794e95e6810816fa4f30d80fc4b43435cb5478b6",
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": "fe931f397a9249f245aa6f9f5c056df6feb8e921e7fcbb887bce5c4943ed4c84",
+      "Changes.16b48k.wav": "14f8f4fb34a2b64f181b1a80d93ecfff417bb5680eeb6e01aeb9b2b5dc7b2bd4",
+      "Coral.16b48k.wav": "30b81903cd6325da9a576b9eb48cd5090138e33a7e9bb111125f439758457161",
+      "ExitMusic.16b48k.wav": "8836a5a06d50834916b278b88e4f44a5e0257d101671d902567b5dc9f7829f34",
+      "Girl_In_The_Fire__Sample_.16b48k.wav": "73ade72e7969fd70056808711553407e14890415383a16045cacc9616a1a6b67",
+      "Greatest_Love_of_All_2min57.16b48k.wav": "e01c435d3308642f60b5ae7f126c00be36eb2fbfeb947274dbf394e458c7e10a",
+      "Hey Tonight.16b48k.wav": "ec736a43c40f98b64073c98fb24206a34fd38cd1ddd38bac4badbaaaf286ff86",
+      "Hotel California.16b48k.wav": "e729c334641c6d11588fa7cd9302c5db93c351ab13ada5f884a6e5e8cbc56083",
+      "Jupiter, the Bringer of Jolity.16b48k.wav": "91815464d4e0c846663471a43fb49f5e1be10958c7bd155b92c6162e49a7d82e",
+      "Last_Of_The_Mohicanz__Sample_.16b48k.wav": "050e6bc7e0288ca3ffe2d1ac116a961cd1c84e9600d3d385f98e686be8482deb",
+      "NewYorkCity.16b48k.wav": "75e6a00bbb6936f3dca669e3095b45de8a3b7ec363e71c0514ac73199d7e8fb5",
+      "Only Time.16b48k.wav": "9c6b328633b08453755c9448b6569bdac949563b84f7eb6206d106482e785ce7",
+      "Robots_old.16b48k.wav": "8e25e517759945df061bdc2cc1ba7a113b4c32c9729d73b27cde929d222e15f3",
+      "Severance__1.31-1.51_.16b48k.wav": "9bd9627723033dfa402cd267a2e0ef226655a5508baa86d92f139b808b3cad76",
+      "Shinsho_pool_3min45_4min4.16b48k.wav": "cac2233f0ed08fb9ddfc42ff0bc6538971fd2ab067b075237adc556ba2a416be",
+      "SinceAlways.16b48k.wav": "897016560a9382db722c0f3adf0539f4daa8d7a05c27bf6e2dc4e1c84e05f9f9",
+      "SlavesOfFear.16b48k.wav": "a45bac38ac6e4cb5c4215caf0cc9eff97e27c9a97ac63f6e62ccc30909a9ceae",
+      "The Chastising of Renegade.16b48k.wav": "2f001fac18149104052fe7b7d650f563305678c59c408a7440e5aeda00b271aa",
+      "Through The Fire And Flames.16b48k.wav": "0a32b6a4a0af94152abba2fe4440abc701762f8fbc15b33163b09b618c84eab6",
+      "TrosYGareg.16b48k.wav": "a30465b08cb5d0a51a3a0b7f860fe693ccb33a178eadf2e6a8af934b96d23f9b",
+      "Waiting.16b48k.wav": "ede4285aa86a7fbeae943ab3446e68bf0ba1e91435b2f9c7e26d74b420c872cf",
+      "With Love (Outro).16b48k.wav": "f3fbf8d970f4a63e85599fabe0e131da841ae5f309dd87b9ce0ae7fa614f4d62",
+      "bah.wav": "91b619bc579302f502a7941a8b27d2061b11724a2e59dd87b91be131d7fb017a",
+      "bas.wav": "5f416d33c09e50d42818c9e948ef1ca90888ad04523c4c75728ca02fe74d6d2a",
+      "bonhemian_rhapsody.16b48k.wav": "126fc4ddb43b396cf1a7d665048793c2c1a76830128c61bb0b65703705837388",
+      "clapton_44k.16b48k.wav": "1eb6c8c654fd4550eb49b93050303cf265c29a76de641bd7c75eab3878ed8e9b",
+      "cst.wav": "79834793f3230dcc676779aa8522b1e8e8bd5a5da56c5a44f8ff51401fd46fd6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "girl.16b48k.wav": "2f0912248abcd7ecb3be65918d7b3067116f090b99bfb169ebbf204316781930",
+      "glk.wav": "5117504878848fcc5a9120d11746a2b1f34729f8295ddc4b59f918407f02a53e",
+      "hrp.wav": "90ae0967eb507a4f425777f3500ef72bf2aa950ceaf6b956bcc0191ffc9a6d5f",
+      "liberate.16b48k.wav": "5c740fc8be1b77d7a1cc9ed4eea565505fc1d1fd1a58d02be8a6a3ae17ca1fa0",
+      "lob.wav": "3cacfc044bf356a735c5e60fe4a17916fa4622f72e11dd5e6fd948835488643c",
+      "mof.wav": "acdd423143fc2e6e48b8c78b54e20e9f67403932d90669915da3dacb9859749c",
+      "qrt.wav": "6bc3311ce3e1fc2a8fdc32f9156fa6f54115771d97fda238b88ebacc8adc031b",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "take_your_finger_frin_my_head.16b48k.wav": "35785b162e33ed64f45287eba47cb727614411d911d5d08d9bc74b8516a7657e",
+      "trumpet.16b48k.wav": "265baa7ba90e71969ec8c227476f5f25ed35f2f154fa503aad5f6feccdfb05d2",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "12-German-male-speech.441.16b48k.wav",
+      "15-Good-evening.441.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+      "25-This-is-the-end.441.16b48k.wav",
+      "27-last-song-drums-and-trampets.441.16b48k.wav",
+      "35_SQAM_glockenspiel_cut.16b48k.wav",
+      "4-Sound-English-male.441.16b48k.wav",
+      "9-Have-big-expensive-car.441.16b48k.wav",
+      "Asleep__4.11-4.31_.16b48k.wav",
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+      "Changes.16b48k.wav",
+      "Coral.16b48k.wav",
+      "ExitMusic.16b48k.wav",
+      "Girl_In_The_Fire__Sample_.16b48k.wav",
+      "Greatest_Love_of_All_2min57.16b48k.wav",
+      "Hey Tonight.16b48k.wav",
+      "Hotel California.16b48k.wav",
+      "Jupiter, the Bringer of Jolity.16b48k.wav",
+      "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+      "NewYorkCity.16b48k.wav",
+      "Only Time.16b48k.wav",
+      "Robots_old.16b48k.wav",
+      "Severance__1.31-1.51_.16b48k.wav",
+      "Shinsho_pool_3min45_4min4.16b48k.wav",
+      "SinceAlways.16b48k.wav",
+      "SlavesOfFear.16b48k.wav",
+      "The Chastising of Renegade.16b48k.wav",
+      "Through The Fire And Flames.16b48k.wav",
+      "TrosYGareg.16b48k.wav",
+      "Waiting.16b48k.wav",
+      "With Love (Outro).16b48k.wav",
+      "bah.wav",
+      "bas.wav",
+      "bonhemian_rhapsody.16b48k.wav",
+      "clapton_44k.16b48k.wav",
+      "cst.wav",
+      "fms.wav",
+      "girl.16b48k.wav",
+      "glk.wav",
+      "hrp.wav",
+      "liberate.16b48k.wav",
+      "lob.wav",
+      "mof.wav",
+      "qrt.wav",
+      "sandman.16b48k.wav",
+      "take_your_finger_frin_my_head.16b48k.wav",
+      "trumpet.16b48k.wav",
+      "velvet.16b48k.wav"
+    ],
+    "feature_env": {
+      "defaults_explicit": {
+        "FAAC_SBR_PROBE_INTERPOL": "1",
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "2",
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "2",
+        "FAAC_SBR_PROBE_SMOOTH": "1"
+      },
+      "harmonic_60": {
+        "FAAC_SBR_PROBE_HARMONIC": "60"
+      },
+      "harmonic_75": {
+        "FAAC_SBR_PROBE_HARMONIC": "75"
+      },
+      "harmonic_90": {
+        "FAAC_SBR_PROBE_HARMONIC": "90"
+      },
+      "interpol_0": {
+        "FAAC_SBR_PROBE_INTERPOL": "0"
+      },
+      "invf_0": {
+        "FAAC_SBR_PROBE_INVF": "0"
+      },
+      "invf_1": {
+        "FAAC_SBR_PROBE_INVF": "1"
+      },
+      "invf_2": {
+        "FAAC_SBR_PROBE_INVF": "2"
+      },
+      "limiter_bands_0": {
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "0"
+      },
+      "limiter_bands_1": {
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "1"
+      },
+      "limiter_bands_3": {
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "3"
+      },
+      "limiter_gain_0": {
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "0"
+      },
+      "limiter_gain_1": {
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "1"
+      },
+      "limiter_gain_3": {
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "3"
+      },
+      "noise_15": {
+        "FAAC_SBR_PROBE_NOISE": "15"
+      },
+      "noise_18": {
+        "FAAC_SBR_PROBE_NOISE": "18"
+      },
+      "noise_6": {
+        "FAAC_SBR_PROBE_NOISE": "6"
+      },
+      "noise_9": {
+        "FAAC_SBR_PROBE_NOISE": "9"
+      },
+      "smooth_0": {
+        "FAAC_SBR_PROBE_SMOOTH": "0"
+      }
+    },
+    "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "source_diff_sha256": "0478d4aa6c5e9175088188fc19e55a7023ce55b54bc1d1713257a32d9938ac2e",
+    "source_tree_sha256": "246fbac60bce079ae274a518562c6fd16c9243a9814f2a3755db006ca436e6dc",
+    "variants": [
+      "noise_18",
+      "invf_0",
+      "invf_1",
+      "limiter_gain_3"
+    ]
+  },
+  "jobs": 4,
+  "metric": "phase2_mos.score_wav_pair(mode_str='audio', sample_rate=48000) / Zimtohrli",
+  "output_dir": "/private/tmp/faac-he-v1-probes/probe/results-all",
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "probe_root": "/private/tmp/faac-he-v1-probes",
+  "profile": "HE-AAC v1; forced by FAACEncoder(profile='he') command",
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "source_diff_sha256": "0478d4aa6c5e9175088188fc19e55a7023ce55b54bc1d1713257a32d9938ac2e",
+  "source_tree_sha256": "246fbac60bce079ae274a518562c6fd16c9243a9814f2a3755db006ca436e6dc",
+  "variants": [
+    "noise_18",
+    "invf_0",
+    "invf_1",
+    "limiter_gain_3"
+  ]
+}

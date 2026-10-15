@@ -1,0 +1,302 @@
+{
+  "actual_bitrate": "sum(ffprobe audio packet size) * 8 / input WAV duration",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "benchmark_root": "/Users/nschimme/gitprojects/faac-benchmark",
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": {
+      "linked_libraries": [
+        {
+          "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+          "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+          "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "size_bytes": 35864
+    },
+    "/private/tmp/faac-he-v1-harmonic/build-probe/frontend/faac": {
+      "linked_libraries": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "size_bytes": 120936
+    },
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": {
+      "linked_libraries": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+      "size_bytes": 120936
+    },
+    "baseline_libfaac": {
+      "path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+      "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+      "size_bytes": 135168
+    },
+    "harmonic_libfaac": {
+      "path": "/private/tmp/faac-he-v1-harmonic/build-probe/libfaac/libfaac.2.dylib",
+      "sha256": "3f82cf7a82d333eda32ed3ae6fe9dec3440d7463ef65b7d5aba1f708316a5216",
+      "size_bytes": 152272
+    }
+  },
+  "clip_sha256": {
+    "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+    "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+    "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+    "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+  },
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "controls": [
+    "baseline_default",
+    "candidate_default"
+  ],
+  "created_utc": "2026-10-14T05:25:20.805635+00:00",
+  "decoder": "FDK AAC via codec_bench.decoders.FDKDecoder; strict command failure",
+  "feature_env": {
+    "missing_max_energy": {
+      "FAAC_SBR_HARMONIC_MAX_ENERGY": "1",
+      "FAAC_SBR_MISSING_RATIO": "4",
+      "FAAC_SBR_MISSING_TONE": "30"
+    },
+    "missing_midpoint": {
+      "FAAC_SBR_HARMONIC_MIDPOINT_ONLY": "1",
+      "FAAC_SBR_MISSING_RATIO": "4",
+      "FAAC_SBR_MISSING_TONE": "30"
+    },
+    "missing_t100_r10": {
+      "FAAC_SBR_MISSING_RATIO": "10",
+      "FAAC_SBR_MISSING_TONE": "100"
+    },
+    "missing_t100_r4": {
+      "FAAC_SBR_MISSING_RATIO": "4",
+      "FAAC_SBR_MISSING_TONE": "100"
+    },
+    "missing_t10_r10": {
+      "FAAC_SBR_MISSING_RATIO": "10",
+      "FAAC_SBR_MISSING_TONE": "10"
+    },
+    "missing_t10_r4": {
+      "FAAC_SBR_MISSING_RATIO": "4",
+      "FAAC_SBR_MISSING_TONE": "10"
+    },
+    "missing_t30_r10": {
+      "FAAC_SBR_MISSING_RATIO": "10",
+      "FAAC_SBR_MISSING_TONE": "30"
+    },
+    "missing_t30_r4": {
+      "FAAC_SBR_MISSING_RATIO": "4",
+      "FAAC_SBR_MISSING_TONE": "30"
+    },
+    "static24": {
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+    }
+  },
+  "immutable_run_config": {
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": {
+        "linked_libraries": [
+          {
+            "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+            "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+            "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+        "size_bytes": 35864
+      },
+      "/private/tmp/faac-he-v1-harmonic/build-probe/frontend/faac": {
+        "linked_libraries": [
+          {
+            "path": "@rpath/libfaac.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+          },
+          {
+            "path": "/usr/lib/libiconv.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+        "size_bytes": 120936
+      },
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": {
+        "linked_libraries": [
+          {
+            "path": "@rpath/libfaac.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+          },
+          {
+            "path": "/usr/lib/libiconv.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+        "size_bytes": 120936
+      },
+      "baseline_libfaac": {
+        "path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+        "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+        "size_bytes": 135168
+      },
+      "harmonic_libfaac": {
+        "path": "/private/tmp/faac-he-v1-harmonic/build-probe/libfaac/libfaac.2.dylib",
+        "sha256": "3f82cf7a82d333eda32ed3ae6fe9dec3440d7463ef65b7d5aba1f708316a5216",
+        "size_bytes": 152272
+      }
+    },
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "feature_env": {
+      "missing_max_energy": {
+        "FAAC_SBR_HARMONIC_MAX_ENERGY": "1",
+        "FAAC_SBR_MISSING_RATIO": "4",
+        "FAAC_SBR_MISSING_TONE": "30"
+      },
+      "missing_midpoint": {
+        "FAAC_SBR_HARMONIC_MIDPOINT_ONLY": "1",
+        "FAAC_SBR_MISSING_RATIO": "4",
+        "FAAC_SBR_MISSING_TONE": "30"
+      },
+      "missing_t100_r10": {
+        "FAAC_SBR_MISSING_RATIO": "10",
+        "FAAC_SBR_MISSING_TONE": "100"
+      },
+      "missing_t100_r4": {
+        "FAAC_SBR_MISSING_RATIO": "4",
+        "FAAC_SBR_MISSING_TONE": "100"
+      },
+      "missing_t10_r10": {
+        "FAAC_SBR_MISSING_RATIO": "10",
+        "FAAC_SBR_MISSING_TONE": "10"
+      },
+      "missing_t10_r4": {
+        "FAAC_SBR_MISSING_RATIO": "4",
+        "FAAC_SBR_MISSING_TONE": "10"
+      },
+      "missing_t30_r10": {
+        "FAAC_SBR_MISSING_RATIO": "10",
+        "FAAC_SBR_MISSING_TONE": "30"
+      },
+      "missing_t30_r4": {
+        "FAAC_SBR_MISSING_RATIO": "4",
+        "FAAC_SBR_MISSING_TONE": "30"
+      },
+      "static24": {
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+      }
+    },
+    "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "source_diff_sha256": "0b376cebccbdd63294f08eafe0f79bd8b9727d7c461391ce09bfd8b622509ad8",
+    "source_tree_sha256": "9a95dd2ce9d738e25e6632535afd3aceb3e03fd1e5dfb2020795e6d7e1120919",
+    "variants": [
+      "static24",
+      "missing_t10_r4",
+      "missing_t10_r10",
+      "missing_t30_r4",
+      "missing_t30_r10",
+      "missing_t100_r4",
+      "missing_t100_r10",
+      "missing_max_energy",
+      "missing_midpoint"
+    ]
+  },
+  "jobs": 4,
+  "metric": "phase2_mos.score_wav_pair(mode_str='audio', sample_rate=48000) / Zimtohrli",
+  "output_dir": "/private/tmp/faac-he-v1-harmonic/probe/results-gate",
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "probe_root": "/private/tmp/faac-he-v1-harmonic",
+  "profile": "HE-AAC v1; forced by FAACEncoder(profile='he') command",
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "source_diff_sha256": "0b376cebccbdd63294f08eafe0f79bd8b9727d7c461391ce09bfd8b622509ad8",
+  "source_tree_sha256": "9a95dd2ce9d738e25e6632535afd3aceb3e03fd1e5dfb2020795e6d7e1120919",
+  "variants": [
+    "static24",
+    "missing_t10_r4",
+    "missing_t10_r10",
+    "missing_t30_r4",
+    "missing_t30_r10",
+    "missing_t100_r4",
+    "missing_t100_r10",
+    "missing_max_energy",
+    "missing_midpoint"
+  ]
+}

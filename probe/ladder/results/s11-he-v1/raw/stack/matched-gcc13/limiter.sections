@@ -1,0 +1,32 @@
+/tmp/faac-build/libfaac/libfaac.so.2.0.0  :
+section                size    addr
+.note.gnu.property       32     680
+.note.gnu.build-id       36     712
+.gnu.hash               108     752
+.dynsym                 888     864
+.dynstr                 499    1752
+.gnu.version             74    2252
+.gnu.version_r          128    2328
+.rela.dyn               480    2456
+.rela.plt               552    2936
+.init                    27    4096
+.plt                    384    4128
+.plt.got                 16    4512
+.plt.sec                368    4528
+.text                 65280    4896
+.fini                    13   70176
+.rodata                9864   73728
+.eh_frame_hdr           244   83592
+.eh_frame              1488   83840
+.init_array               8   89456
+.fini_array               8   89464
+.data.rel.ro             96   89472
+.dynamic                480   89568
+.got                     40   90048
+.got.plt                208   90088
+.data                  1184   90304
+.bss                  20552   91488
+.comment                 45       0
+Total                103102
+
+

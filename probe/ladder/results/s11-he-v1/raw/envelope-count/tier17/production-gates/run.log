@@ -1,0 +1,142 @@
+completed lc_base_reference|sandman.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|sandman.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|sandman.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|sandman.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|velvet.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|velvet.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|velvet.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|velvet.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|21-classic.441.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|21-classic.441.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|21-classic.441.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|21-classic.441.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|fms.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|fms.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|fms.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_base_reference|fms.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|sandman.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|sandman.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|sandman.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|sandman.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|velvet.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|velvet.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|velvet.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|velvet.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|21-classic.441.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|21-classic.441.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|21-classic.441.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|21-classic.441.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|fms.wav|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|fms.wav|48: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|fms.wav|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_stack_reference|fms.wav|96: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed lc_tier17_base|sandman.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|sandman.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|sandman.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|sandman.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|velvet.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|velvet.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|velvet.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|velvet.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|21-classic.441.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|21-classic.441.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|21-classic.441.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|21-classic.441.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|fms.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|fms.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|fms.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_base|fms.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|sandman.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|sandman.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|sandman.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|sandman.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|velvet.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|velvet.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|velvet.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|velvet.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|21-classic.441.16b48k.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|21-classic.441.16b48k.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|21-classic.441.16b48k.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|21-classic.441.16b48k.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|fms.wav|32: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|fms.wav|48: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|fms.wav|64: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed lc_tier17_stack|fms.wav|96: FDK/FAAD/FFmpeg pass; LC match=True/True
+completed he_tier17_base|silence_mono|17: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|silence_mono|16: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|silence_stereo|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|silence_mono|18: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|silence_stereo|34: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|silence_stereo|36: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|tone_mono|17: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|tone_mono|16: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|tone_mono|18: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|tone_stereo|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|tone_stereo|34: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|tone_stereo|36: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|partial_mono|17: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|partial_mono|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|partial_stereo|34: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_base|partial_stereo|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|silence_mono|16: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|silence_mono|18: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|silence_mono|17: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|silence_stereo|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|silence_stereo|34: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|silence_stereo|36: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|tone_mono|16: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|tone_mono|17: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|tone_mono|18: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|tone_stereo|34: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|tone_stereo|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|tone_stereo|36: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|partial_mono|17: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|partial_mono|32: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|partial_stereo|34: FDK/FAAD/FFmpeg pass; LC match=None/None
+completed he_tier17_stack|partial_stereo|64: FDK/FAAD/FFmpeg pass; LC match=None/None
+{
+  "he": {
+    "faad_pass": 32,
+    "fdk_pass": 32,
+    "ffmpeg_pass": 32,
+    "rates_and_boundary_cases": {
+      "partial_mono": [
+        17,
+        32
+      ],
+      "partial_stereo": [
+        34,
+        64
+      ],
+      "silence_mono": [
+        16,
+        17,
+        18
+      ],
+      "silence_stereo": [
+        32,
+        34,
+        36
+      ],
+      "tone_mono": [
+        16,
+        17,
+        18
+      ],
+      "tone_stereo": [
+        32,
+        34,
+        36
+      ]
+    },
+    "rows": 32
+  },
+  "lc": {
+    "base_packet_matches": 16,
+    "base_pcm_matches": 16,
+    "rows": 64,
+    "stack_packet_matches": 16,
+    "stack_pcm_matches": 16
+  },
+  "schema": 1
+}

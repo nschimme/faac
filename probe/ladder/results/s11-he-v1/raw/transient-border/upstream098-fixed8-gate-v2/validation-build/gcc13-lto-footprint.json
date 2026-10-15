@@ -1,0 +1,50 @@
+{
+  "schema": "faac-upstream098-fixed8-gcc13-lto-footprint-v1",
+  "source_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "candidate_patch_sha256": "fa7443329cf5c97f434161212ab0d5381f629c86740cea3443e1325c11f5dd60",
+  "environment": {
+    "container": "faac-gcc13:latest",
+    "image_id": "sha256:5b57ea918f81ba4868d1438f76c7a5023fad1215818d43a9282a6429e389febe",
+    "gcc": "13.3.0",
+    "architecture": "linux/amd64 via arm64 emulation",
+    "buildtype": "release",
+    "lto": true,
+    "max_channels": 8,
+    "sbr_decimation": 1,
+    "stats": false
+  },
+  "measurement": "GNU size -A on linked libfaac.so.3.0.0; section sums reported by size",
+  "baseline": {
+    "text_bytes": 65056,
+    "rodata_bytes": 9832,
+    "data_bytes": 1184,
+    "bss_bytes": 20552,
+    "size_total_bytes": 102934,
+    "gnu_size_text_data_bytes": 76072,
+    "binary_sha256": "117570191781e032cef6da4f3f25da6ca757ff1eec1b5b351fa94b90e5cb0375",
+    "file_bytes": 98104
+  },
+  "fixed8": {
+    "text_bytes": 64992,
+    "rodata_bytes": 9880,
+    "data_bytes": 1184,
+    "bss_bytes": 20552,
+    "size_total_bytes": 102918,
+    "gnu_size_text_data_bytes": 76056,
+    "binary_sha256": "e6afc536e8fea84ab14f3dd76c11a5984fdc22d7fe65d9ab935110ef7a68e261",
+    "file_bytes": 98104
+  },
+  "delta_bytes": {
+    "text": -64,
+    "rodata": 48,
+    "data": 0,
+    "bss": 0,
+    "size_total": -16,
+    "gnu_size_text_data": -16
+  },
+  "limitations": "Footprint only; amd64 build was emulated on arm64 and is not a timing measurement. Raw build/size transcript and both linked artifacts are retained beside this manifest.",
+  "source_file_sha256": {
+    "baseline_libfaac_sbr_analysis.c": "e130f2a8e00e5b616ee387e4aafccab558596c02ec641e0e757556338fd8bd29",
+    "fixed8_libfaac_sbr_analysis.c": "febe0e3f8e183c33fe63ccec1f2f3cef0acc41e0cd665911c6dd54e20bd57672"
+  }
+}

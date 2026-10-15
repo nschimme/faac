@@ -1,0 +1,26 @@
+FAAC HE-v1 extra checks
+{"faad3_strict_fail": 0, "faad3_strict_pass": 16, "ffmpeg_strict_fail": 0, "ffmpeg_strict_pass": 16, "he_encode_fail": 0, "he_streams": 16, "lc_packet_comparisons": 8, "lc_packet_identity_fail": 0, "lc_packet_identity_pass": 8, "strict_fdk_fail": 0, "strict_fdk_pass": 16}
+LC limiter 21-classic.441.16b48k.wav: PASS
+LC limiter fms.wav: PASS
+LC limiter sandman.16b48k.wav: PASS
+LC limiter velvet.16b48k.wav: PASS
+LC noise 21-classic.441.16b48k.wav: PASS
+LC noise fms.wav: PASS
+LC noise sandman.16b48k.wav: PASS
+LC noise velvet.16b48k.wav: PASS
+HE limiter 32 kbps 21-classic.441.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE limiter 32 kbps fms.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE limiter 32 kbps sandman.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE limiter 32 kbps velvet.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE limiter 64 kbps 21-classic.441.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE limiter 64 kbps fms.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE limiter 64 kbps sandman.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE limiter 64 kbps velvet.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 32 kbps 21-classic.441.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 32 kbps fms.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 32 kbps sandman.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 32 kbps velvet.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 64 kbps 21-classic.441.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 64 kbps fms.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 64 kbps sandman.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS
+HE noise 64 kbps velvet.16b48k.wav: strict_fdk=PASS, faad3_strict=PASS, ffmpeg_strict=PASS

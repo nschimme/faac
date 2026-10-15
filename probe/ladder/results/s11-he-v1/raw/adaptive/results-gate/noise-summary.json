@@ -1,0 +1,508 @@
+{
+  "baseline": "baseline_original",
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "variants": {
+    "adaptive12": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.7740983258920475,
+        "lo": -0.9882742870614969
+      },
+      "mean_bd_rate_percent": -0.10708798058472468,
+      "median_bd_rate_percent": -0.35596192966437235,
+      "mos_reuse_identity_matches": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.9600675001742109,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.0164810739487828,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.3000530109386288,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.24814364084546625,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_rate_delta_percent": 0.00133864826626362,
+          "mean_baseline_mos": 3.8264076709747314,
+          "mean_mos_delta": -0.0003421306610107422,
+          "mean_variant_mos": 3.8260655403137207,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0112074613571167,
+            "lo": -0.018890023231506348
+          }
+        },
+        "48": {
+          "mean_actual_rate_delta_percent": -0.0004192810125980273,
+          "mean_baseline_mos": 4.179685950279236,
+          "mean_mos_delta": -0.0014820694923400879,
+          "mean_variant_mos": 4.178203880786896,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011730313301086426,
+            "lo": -0.016933858394622803
+          }
+        },
+        "64": {
+          "mean_actual_rate_delta_percent": -0.002158125916695841,
+          "mean_baseline_mos": 4.430860996246338,
+          "mean_mos_delta": 0.0037070512771606445,
+          "mean_variant_mos": 4.4345680475234985,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.00716710090637207,
+            "lo": 0.00024700164794921875
+          }
+        },
+        "96": {
+          "mean_actual_rate_delta_percent": 0.00506329766160607,
+          "mean_baseline_mos": 4.671677350997925,
+          "mean_mos_delta": 0.005018472671508789,
+          "mean_variant_mos": 4.676695823669434,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.009099245071411133,
+            "lo": 0.0001277923583984375
+          }
+        }
+      },
+      "skipped_clips": []
+    },
+    "adaptive18": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.23792861040732305,
+        "lo": -1.2356530697156338
+      },
+      "mean_bd_rate_percent": -0.7284307126186884,
+      "median_bd_rate_percent": -0.7104949657717075,
+      "mos_reuse_identity_matches": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.9479936354153007,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4898719942448069,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002860924686531874,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4729962961281142,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_rate_delta_percent": 0.0006279986937585136,
+          "mean_baseline_mos": 3.8264076709747314,
+          "mean_mos_delta": 0.008112967014312744,
+          "mean_variant_mos": 3.834520637989044,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.015583157539367676,
+            "lo": 0.0006427764892578125
+          }
+        },
+        "48": {
+          "mean_actual_rate_delta_percent": 0.0004186833246766497,
+          "mean_baseline_mos": 4.179685950279236,
+          "mean_mos_delta": 0.004632294178009033,
+          "mean_variant_mos": 4.184318244457245,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007657825946807861,
+            "lo": 0.0016753673553466797
+          }
+        },
+        "64": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.430860996246338,
+          "mean_mos_delta": 0.005756497383117676,
+          "mean_variant_mos": 4.436617493629456,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.01223456859588623,
+            "lo": 0.0011701583862304688
+          }
+        },
+        "96": {
+          "mean_actual_rate_delta_percent": 0.00020990764063588685,
+          "mean_baseline_mos": 4.671677350997925,
+          "mean_mos_delta": 0.0074187517166137695,
+          "mean_variant_mos": 4.679096102714539,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012425780296325684,
+            "lo": 0.002183198928833008
+          }
+        }
+      },
+      "skipped_clips": []
+    },
+    "adaptive18_high_offset": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.21312965989593313,
+        "lo": -1.2356530697156338
+      },
+      "mean_bd_rate_percent": -0.7024162701458975,
+      "median_bd_rate_percent": -0.6584660808261256,
+      "mos_reuse_identity_matches": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.8439358655241369,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4898719942448069,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002860924686531874,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4729962961281142,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 3.8264076709747314,
+          "mean_mos_delta": 0.005957067012786865,
+          "mean_variant_mos": 3.8323647379875183,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011271357536315918,
+            "lo": 0.0006427764892578125
+          }
+        },
+        "48": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.179685950279236,
+          "mean_mos_delta": 0.004178941249847412,
+          "mean_variant_mos": 4.183864891529083,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007657825946807861,
+            "lo": 0.0012395381927490234
+          }
+        },
+        "64": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.430860996246338,
+          "mean_mos_delta": 0.006581664085388184,
+          "mean_variant_mos": 4.437442660331726,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012576699256896973,
+            "lo": 0.0016531944274902344
+          }
+        },
+        "96": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.671677350997925,
+          "mean_mos_delta": 0.007411599159240723,
+          "mean_variant_mos": 4.6790889501571655,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012404322624206543,
+            "lo": 0.002183198928833008
+          }
+        }
+      },
+      "skipped_clips": []
+    },
+    "adaptive18_low_offset": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.21578299436645076,
+        "lo": -0.9012714194107541
+      },
+      "mean_bd_rate_percent": -0.5696000149090386,
+      "median_bd_rate_percent": -0.6637727497671608,
+      "mos_reuse_identity_matches": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.9479936354153007,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8545492034062074,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002860924686531874,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4729962961281142,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_rate_delta_percent": 0.0012246146878336361,
+          "mean_baseline_mos": 3.8264076709747314,
+          "mean_mos_delta": 0.007054924964904785,
+          "mean_variant_mos": 3.8334625959396362,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.014144420623779297,
+            "lo": 0.0006427764892578125
+          }
+        },
+        "48": {
+          "mean_actual_rate_delta_percent": -0.0027971126652287515,
+          "mean_baseline_mos": 4.179685950279236,
+          "mean_mos_delta": 0.004048705101013184,
+          "mean_variant_mos": 4.183734655380249,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0064220428466796875,
+            "lo": 0.0016753673553466797
+          }
+        },
+        "64": {
+          "mean_actual_rate_delta_percent": -0.003395397076252915,
+          "mean_baseline_mos": 4.430860996246338,
+          "mean_mos_delta": 0.0034363269805908203,
+          "mean_variant_mos": 4.434297323226929,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005274057388305664,
+            "lo": 0.0011701583862304688
+          }
+        },
+        "96": {
+          "mean_actual_rate_delta_percent": 0.0035728347323793486,
+          "mean_baseline_mos": 4.671677350997925,
+          "mean_mos_delta": 0.006540417671203613,
+          "mean_variant_mos": 4.678217768669128,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012425780296325684,
+            "lo": 0.0013048648834228516
+          }
+        }
+      },
+      "skipped_clips": []
+    },
+    "adaptive_wide": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.7740983258920475,
+        "lo": -0.9882742870614969
+      },
+      "mean_bd_rate_percent": -0.10708798058472468,
+      "median_bd_rate_percent": -0.35596192966437235,
+      "mos_reuse_identity_matches": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.9600675001742109,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.0164810739487828,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.3000530109386288,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.24814364084546625,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_rate_delta_percent": 0.00133864826626362,
+          "mean_baseline_mos": 3.8264076709747314,
+          "mean_mos_delta": -0.0003421306610107422,
+          "mean_variant_mos": 3.8260655403137207,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0112074613571167,
+            "lo": -0.018890023231506348
+          }
+        },
+        "48": {
+          "mean_actual_rate_delta_percent": -0.0004192810125980273,
+          "mean_baseline_mos": 4.179685950279236,
+          "mean_mos_delta": -0.0014820694923400879,
+          "mean_variant_mos": 4.178203880786896,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011730313301086426,
+            "lo": -0.016933858394622803
+          }
+        },
+        "64": {
+          "mean_actual_rate_delta_percent": -0.002158125916695841,
+          "mean_baseline_mos": 4.430860996246338,
+          "mean_mos_delta": 0.0037070512771606445,
+          "mean_variant_mos": 4.4345680475234985,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.00716710090637207,
+            "lo": 0.00024700164794921875
+          }
+        },
+        "96": {
+          "mean_actual_rate_delta_percent": 0.00506329766160607,
+          "mean_baseline_mos": 4.671677350997925,
+          "mean_mos_delta": 0.005018472671508789,
+          "mean_variant_mos": 4.676695823669434,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.009099245071411133,
+            "lo": 0.0001277923583984375
+          }
+        }
+      },
+      "skipped_clips": []
+    },
+    "static18": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.21312965989593313,
+        "lo": -1.2356530697156338
+      },
+      "mean_bd_rate_percent": -0.7024162701458975,
+      "median_bd_rate_percent": -0.6584660808261256,
+      "mos_reuse_identity_matches": 16,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.8439358655241369,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4898719942448069,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002860924686531874,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4729962961281142,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 3.8264076709747314,
+          "mean_mos_delta": 0.005957067012786865,
+          "mean_variant_mos": 3.8323647379875183,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011271357536315918,
+            "lo": 0.0006427764892578125
+          }
+        },
+        "48": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.179685950279236,
+          "mean_mos_delta": 0.004178941249847412,
+          "mean_variant_mos": 4.183864891529083,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007657825946807861,
+            "lo": 0.0012395381927490234
+          }
+        },
+        "64": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.430860996246338,
+          "mean_mos_delta": 0.006581664085388184,
+          "mean_variant_mos": 4.437442660331726,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012576699256896973,
+            "lo": 0.0016531944274902344
+          }
+        },
+        "96": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.671677350997925,
+          "mean_mos_delta": 0.007411599159240723,
+          "mean_variant_mos": 4.6790889501571655,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012404322624206543,
+            "lo": 0.002183198928833008
+          }
+        }
+      },
+      "skipped_clips": []
+    },
+    "static24": {
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.22135287624271138,
+        "lo": -1.2708155367589429
+      },
+      "mean_bd_rate_percent": -0.7206377902665428,
+      "median_bd_rate_percent": -0.6697449577979742,
+      "mos_reuse_identity_matches": 0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.8555769836487759,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.5331164050295332,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.009944840440689884,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.48391293194717244,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 3.8264076709747314,
+          "mean_mos_delta": 0.006041526794433594,
+          "mean_variant_mos": 3.832449197769165,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011508584022521973,
+            "lo": 0.0005744695663452148
+          }
+        },
+        "48": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.179685950279236,
+          "mean_mos_delta": 0.004277288913726807,
+          "mean_variant_mos": 4.183963239192963,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007759392261505127,
+            "lo": 0.001309037208557129
+          }
+        },
+        "64": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.430860996246338,
+          "mean_mos_delta": 0.00684201717376709,
+          "mean_variant_mos": 4.437703013420105,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.013254284858703613,
+            "lo": 0.0017244815826416016
+          }
+        },
+        "96": {
+          "mean_actual_rate_delta_percent": 0.0,
+          "mean_baseline_mos": 4.671677350997925,
+          "mean_mos_delta": 0.007473111152648926,
+          "mean_variant_mos": 4.679150462150574,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012537360191345215,
+            "lo": 0.0022187232971191406
+          }
+        }
+      },
+      "skipped_clips": []
+    }
+  }
+}

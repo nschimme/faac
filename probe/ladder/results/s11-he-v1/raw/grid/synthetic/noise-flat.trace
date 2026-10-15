@@ -1,0 +1,109 @@
+Freeware Advanced Audio Coder
+FAAC 2.2.0 (99ce2b09-dirty)
+
+Initial quantization quality: 400
+Average bitrate: 32 kbps/channel
+Bandwidth: 12000 Hz
+Object type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS
+Container format: MPEG-4 File Format (MP4)
+Encoding /private/tmp/faac-he-v1-grid/probe/synthetic/noise.wav to /private/tmp/faac-he-v1-grid/probe/synthetic/noise-flat.m4a
+         frame         | bitrate | elapsed/estim | play/CPU | ETA
+SBR grid class=0 envs=2 borders=0,8,16 freq=1,1
+
+      0/95      (  0%) |    0.0  |    0.0/0.0    |  402.52x | 0.0 SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=1,1
+SBR grid class=0 envs=2 borders=0,8,16 freq=1,1
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=1,1
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=1,1
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+
+     91/95      ( 95%) |   68.2  |    0.0/0.0    |  534.47x | 0.0 SBR grid class=0 envs=2 borders=0,8,16 freq=0,0
+SBR grid class=0 envs=2 borders=0,8,16 freq=1,1
+
+     96/95      (101%) |   70.5  |    0.0/0.0    |  524.45x | 0.0 

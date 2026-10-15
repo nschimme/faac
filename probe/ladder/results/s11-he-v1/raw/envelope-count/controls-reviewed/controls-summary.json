@@ -1,0 +1,135 @@
+{
+  "all_exact": true,
+  "controls": [
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "sandman.16b48k.wav",
+      "rate": 32,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "sandman.16b48k.wav",
+      "rate": 48,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "sandman.16b48k.wav",
+      "rate": 64,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "sandman.16b48k.wav",
+      "rate": 96,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "velvet.16b48k.wav",
+      "rate": 32,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "velvet.16b48k.wav",
+      "rate": 48,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "velvet.16b48k.wav",
+      "rate": 64,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "velvet.16b48k.wav",
+      "rate": 96,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "21-classic.441.16b48k.wav",
+      "rate": 32,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "21-classic.441.16b48k.wav",
+      "rate": 48,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "21-classic.441.16b48k.wav",
+      "rate": 64,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "21-classic.441.16b48k.wav",
+      "rate": 96,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "fms.wav",
+      "rate": 32,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "fms.wav",
+      "rate": 48,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "fms.wav",
+      "rate": 64,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    },
+    {
+      "baseline_packet_match": true,
+      "baseline_pcm_match": true,
+      "clip": "fms.wav",
+      "rate": 96,
+      "stack_packet_match": true,
+      "stack_pcm_match": true
+    }
+  ],
+  "schema": 1,
+  "scoring_performed": false
+}

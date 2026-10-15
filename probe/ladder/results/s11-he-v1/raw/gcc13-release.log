@@ -1,0 +1,460 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+The Meson build system
+Version: 1.3.2
+Source dir: /work/base
+Build dir: /tmp/build-base
+Build type: native build
+Project name: faac
+Project version: 2.2.0
+C compiler for the host machine: gcc-13 (gcc 13.3.0 "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0")
+C linker for the host machine: gcc-13 ld.bfd 2.42
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Has header "getopt.h" : YES 
+Has header "immintrin.h" : YES 
+Library m found: YES
+Configuring config.h using configuration
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Library iconv found: NO
+Has header "iconv.h" : YES 
+Checking for function "iconv_open" with dependency -liconv: YES 
+Library shell32 found: NO
+Build targets in project: 6
+
+faac 2.2.0
+
+  User defined options
+    buildtype      : release
+    default_library: both
+    b_lto          : true
+
+Found ninja-1.11.1 at /usr/bin/ninja
+ninja: Entering directory `/tmp/build-base'
+[1/56] Compiling C object libfaac/libfaac.a.p/bitstream.c.o
+[2/56] Compiling C object libfaac/libfaac.a.p/blockswitch.c.o
+[3/56] Compiling C object libfaac/libfaac.a.p/channels.c.o
+[4/56] Compiling C object libfaac/libquantize_sse.a.p/quantize_sse.c.o
+[5/56] Compiling C object libfaac/libfaac.a.p/cpu_compute.c.o
+[6/56] Linking static target libfaac/libquantize_sse.a
+[7/56] Compiling C object libfaac/libfaac.a.p/faac.c.o
+[8/56] Compiling C object libfaac/libfaac.a.p/fft.c.o
+[9/56] Compiling C object libfaac/libfaac.a.p/filtbank.c.o
+[10/56] Compiling C object libfaac/libfaac.a.p/huffdata.c.o
+[11/56] Compiling C object libfaac/libfaac.a.p/frame.c.o
+[12/56] Compiling C object libfaac/libfaac.a.p/ratecontrol.c.o
+[13/56] Compiling C object libfaac/libfaac.a.p/huff2.c.o
+[14/56] Compiling C object libfaac/libfaac.a.p/quantize.c.o
+[15/56] Compiling C object libfaac/libfaac.a.p/sbr_tables.c.o
+[16/56] Compiling C object libfaac/libfaac.a.p/sbr.c.o
+[17/56] Compiling C object libfaac/libfaac.a.p/sbr_bitstream.c.o
+[18/56] Compiling C object libfaac/libfaac.a.p/sbr_analysis.c.o
+[19/56] Compiling C object libfaac/libfaac.a.p/resample.c.o
+[20/56] Compiling C object libfaac/libfaac.so.2.0.0.p/bitstream.c.o
+[21/56] Compiling C object libfaac/libfaac.a.p/util.c.o
+[22/56] Compiling C object libfaac/libfaac.a.p/stereo.c.o
+[23/56] Compiling C object libfaac/libfaac.so.2.0.0.p/cpu_compute.c.o
+[24/56] Compiling C object libfaac/libfaac.a.p/tns.c.o
+[25/56] Compiling C object libfaac/libfaac.so.2.0.0.p/blockswitch.c.o
+[26/56] Compiling C object libfaac/libfaac.so.2.0.0.p/channels.c.o
+[27/56] Linking static target libfaac/libfaac.a
+[28/56] Compiling C object libfaac/libfaac.so.2.0.0.p/faac.c.o
+[29/56] Compiling C object libfaac/libfaac.so.2.0.0.p/filtbank.c.o
+[30/56] Compiling C object libfaac/libfaac.so.2.0.0.p/fft.c.o
+[31/56] Compiling C object libfaac/libfaac.so.2.0.0.p/frame.c.o
+[32/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huffdata.c.o
+[33/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huff2.c.o
+[34/56] Compiling C object libfaac/libfaac.so.2.0.0.p/ratecontrol.c.o
+[35/56] Compiling C object libfaac/libfaac.so.2.0.0.p/quantize.c.o
+[36/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr.c.o
+[37/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_tables.c.o
+[38/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_bitstream.c.o
+[39/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_analysis.c.o
+[40/56] Compiling C object libfaac/libfaac.so.2.0.0.p/resample.c.o
+[41/56] Compiling C object libfaac/libfaac.so.2.0.0.p/stereo.c.o
+[42/56] Compiling C object libfaac/libfaac.so.2.0.0.p/util.c.o
+[43/56] Generating frontend/git_version.h with a custom command
+[44/56] Compiling C object libfaac/libfaac.so.2.0.0.p/tns.c.o
+[45/56] Compiling C object frontend/faac.p/main.c.o
+[46/56] Compiling C object frontend/libfrontend.a.p/input.c.o
+[47/56] Compiling C object frontend/libfrontend.a.p/mp4write.c.o
+[48/56] Compiling C object frontend/libfrontend.a.p/charset.c.o
+[49/56] Compiling C object frontend/libfrontend.a.p/output.c.o
+[50/56] Compiling C object frontend/libfrontend.a.p/encode_engine.c.o
+[51/56] Compiling C object frontend/libfrontend.a.p/progress.c.o
+[52/56] Compiling C object frontend/libfrontend.a.p/help.c.o
+[53/56] Linking static target frontend/libfrontend.a
+[54/56] Linking target libfaac/libfaac.so.2.0.0
+[55/56] Generating symbol file libfaac/libfaac.so.2.0.0.p/libfaac.so.2.0.0.symbols
+[56/56] Linking target frontend/faac
+/work/artifacts/release-base/libfaac.so.2.0.0  :
+section                size    addr
+.note.gnu.property       32     680
+.note.gnu.build-id       36     712
+.gnu.hash               108     752
+.dynsym                 888     864
+.dynstr                 499    1752
+.gnu.version             74    2252
+.gnu.version_r          128    2328
+.rela.dyn               480    2456
+.rela.plt               552    2936
+.init                    27    4096
+.plt                    384    4128
+.plt.got                 16    4512
+.plt.sec                368    4528
+.text                 65136    4896
+.fini                    13   70032
+.rodata                9864   73728
+.eh_frame_hdr           244   83592
+.eh_frame              1488   83840
+.init_array               8   89456
+.fini_array               8   89464
+.data.rel.ro             96   89472
+.dynamic                480   89568
+.got                     40   90048
+.got.plt                208   90088
+.data                  1184   90304
+.bss                  20552   91488
+.comment                 45       0
+Total                102958
+
+
+/work/artifacts/release-base/faac  :
+section               size    addr
+.interp                 28     792
+.note.gnu.property      48     824
+.note.gnu.build-id      36     872
+.note.ABI-tag           32     908
+.gnu.hash               36     944
+.dynsym               1872     984
+.dynstr                950    2856
+.gnu.version           156    3806
+.gnu.version_r         160    3968
+.rela.dyn             7992    4128
+.rela.plt             1608   12120
+.init                   27   16384
+.plt                  1088   16416
+.plt.got                16   17504
+.plt.sec              1072   17520
+.text                44790   18592
+.fini                   13   63384
+.rodata              12584   65536
+.eh_frame_hdr          316   78120
+.eh_frame             2340   78440
+.init_array              8   82096
+.fini_array              8   82104
+.data.rel.ro          2728   82112
+.dynamic               528   84840
+.got                   640   85368
+.data                 1568   86016
+.bss                   400   87584
+.comment                45       0
+Total                81089
+
+
+The Meson build system
+Version: 1.3.2
+Source dir: /work/noise
+Build dir: /tmp/build-noise
+Build type: native build
+Project name: faac
+Project version: 2.2.0
+C compiler for the host machine: gcc-13 (gcc 13.3.0 "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0")
+C linker for the host machine: gcc-13 ld.bfd 2.42
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Has header "getopt.h" : YES 
+Has header "immintrin.h" : YES 
+Library m found: YES
+Configuring config.h using configuration
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Library iconv found: NO
+Has header "iconv.h" : YES 
+Checking for function "iconv_open" with dependency -liconv: YES 
+Library shell32 found: NO
+Build targets in project: 6
+
+faac 2.2.0
+
+  User defined options
+    buildtype      : release
+    default_library: both
+    b_lto          : true
+
+Found ninja-1.11.1 at /usr/bin/ninja
+ninja: Entering directory `/tmp/build-noise'
+[1/56] Compiling C object libfaac/libfaac.a.p/bitstream.c.o
+[2/56] Compiling C object libfaac/libfaac.a.p/blockswitch.c.o
+[3/56] Compiling C object libfaac/libfaac.a.p/channels.c.o
+[4/56] Compiling C object libfaac/libquantize_sse.a.p/quantize_sse.c.o
+[5/56] Compiling C object libfaac/libfaac.a.p/cpu_compute.c.o
+[6/56] Linking static target libfaac/libquantize_sse.a
+[7/56] Compiling C object libfaac/libfaac.a.p/faac.c.o
+[8/56] Compiling C object libfaac/libfaac.a.p/filtbank.c.o
+[9/56] Compiling C object libfaac/libfaac.a.p/fft.c.o
+[10/56] Compiling C object libfaac/libfaac.a.p/huffdata.c.o
+[11/56] Compiling C object libfaac/libfaac.a.p/frame.c.o
+[12/56] Compiling C object libfaac/libfaac.a.p/ratecontrol.c.o
+[13/56] Compiling C object libfaac/libfaac.a.p/huff2.c.o
+[14/56] Compiling C object libfaac/libfaac.a.p/sbr_tables.c.o
+[15/56] Compiling C object libfaac/libfaac.a.p/quantize.c.o
+[16/56] Compiling C object libfaac/libfaac.a.p/sbr.c.o
+[17/56] Compiling C object libfaac/libfaac.a.p/sbr_bitstream.c.o
+[18/56] Compiling C object libfaac/libfaac.a.p/resample.c.o
+[19/56] Compiling C object libfaac/libfaac.a.p/sbr_analysis.c.o
+[20/56] Compiling C object libfaac/libfaac.so.2.0.0.p/bitstream.c.o
+[21/56] Compiling C object libfaac/libfaac.a.p/util.c.o
+[22/56] Compiling C object libfaac/libfaac.a.p/stereo.c.o
+[23/56] Compiling C object libfaac/libfaac.a.p/tns.c.o
+[24/56] Compiling C object libfaac/libfaac.so.2.0.0.p/blockswitch.c.o
+[25/56] Compiling C object libfaac/libfaac.so.2.0.0.p/cpu_compute.c.o
+[26/56] Compiling C object libfaac/libfaac.so.2.0.0.p/channels.c.o
+[27/56] Linking static target libfaac/libfaac.a
+[28/56] Compiling C object libfaac/libfaac.so.2.0.0.p/faac.c.o
+[29/56] Compiling C object libfaac/libfaac.so.2.0.0.p/fft.c.o
+[30/56] Compiling C object libfaac/libfaac.so.2.0.0.p/filtbank.c.o
+[31/56] Compiling C object libfaac/libfaac.so.2.0.0.p/frame.c.o
+[32/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huffdata.c.o
+[33/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huff2.c.o
+[34/56] Compiling C object libfaac/libfaac.so.2.0.0.p/ratecontrol.c.o
+[35/56] Compiling C object libfaac/libfaac.so.2.0.0.p/quantize.c.o
+[36/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_tables.c.o
+[37/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr.c.o
+[38/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_bitstream.c.o
+[39/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_analysis.c.o
+[40/56] Compiling C object libfaac/libfaac.so.2.0.0.p/resample.c.o
+[41/56] Compiling C object libfaac/libfaac.so.2.0.0.p/stereo.c.o
+[42/56] Compiling C object libfaac/libfaac.so.2.0.0.p/util.c.o
+[43/56] Generating frontend/git_version.h with a custom command
+[44/56] Compiling C object libfaac/libfaac.so.2.0.0.p/tns.c.o
+[45/56] Compiling C object frontend/faac.p/main.c.o
+[46/56] Compiling C object frontend/libfrontend.a.p/input.c.o
+[47/56] Compiling C object frontend/libfrontend.a.p/mp4write.c.o
+[48/56] Compiling C object frontend/libfrontend.a.p/charset.c.o
+[49/56] Compiling C object frontend/libfrontend.a.p/output.c.o
+[50/56] Compiling C object frontend/libfrontend.a.p/encode_engine.c.o
+[51/56] Compiling C object frontend/libfrontend.a.p/progress.c.o
+[52/56] Compiling C object frontend/libfrontend.a.p/help.c.o
+[53/56] Linking static target frontend/libfrontend.a
+[54/56] Linking target libfaac/libfaac.so.2.0.0
+[55/56] Generating symbol file libfaac/libfaac.so.2.0.0.p/libfaac.so.2.0.0.symbols
+[56/56] Linking target frontend/faac
+/work/artifacts/release-noise/libfaac.so.2.0.0  :
+section                size    addr
+.note.gnu.property       32     680
+.note.gnu.build-id       36     712
+.gnu.hash               108     752
+.dynsym                 888     864
+.dynstr                 499    1752
+.gnu.version             74    2252
+.gnu.version_r          128    2328
+.rela.dyn               480    2456
+.rela.plt               552    2936
+.init                    27    4096
+.plt                    384    4128
+.plt.got                 16    4512
+.plt.sec                368    4528
+.text                 65136    4896
+.fini                    13   70032
+.rodata                9864   73728
+.eh_frame_hdr           244   83592
+.eh_frame              1488   83840
+.init_array               8   89456
+.fini_array               8   89464
+.data.rel.ro             96   89472
+.dynamic                480   89568
+.got                     40   90048
+.got.plt                208   90088
+.data                  1184   90304
+.bss                  20552   91488
+.comment                 45       0
+Total                102958
+
+
+/work/artifacts/release-noise/faac  :
+section               size    addr
+.interp                 28     792
+.note.gnu.property      48     824
+.note.gnu.build-id      36     872
+.note.ABI-tag           32     908
+.gnu.hash               36     944
+.dynsym               1872     984
+.dynstr                950    2856
+.gnu.version           156    3806
+.gnu.version_r         160    3968
+.rela.dyn             7992    4128
+.rela.plt             1608   12120
+.init                   27   16384
+.plt                  1088   16416
+.plt.got                16   17504
+.plt.sec              1072   17520
+.text                44790   18592
+.fini                   13   63384
+.rodata              12584   65536
+.eh_frame_hdr          316   78120
+.eh_frame             2340   78440
+.init_array              8   82096
+.fini_array              8   82104
+.data.rel.ro          2728   82112
+.dynamic               528   84840
+.got                   640   85368
+.data                 1568   86016
+.bss                   400   87584
+.comment                45       0
+Total                81089
+
+
+The Meson build system
+Version: 1.3.2
+Source dir: /work/limiter
+Build dir: /tmp/build-limiter
+Build type: native build
+Project name: faac
+Project version: 2.2.0
+C compiler for the host machine: gcc-13 (gcc 13.3.0 "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0")
+C linker for the host machine: gcc-13 ld.bfd 2.42
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Has header "getopt.h" : YES 
+Has header "immintrin.h" : YES 
+Library m found: YES
+Configuring config.h using configuration
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Library iconv found: NO
+Has header "iconv.h" : YES 
+Checking for function "iconv_open" with dependency -liconv: YES 
+Library shell32 found: NO
+Build targets in project: 6
+
+faac 2.2.0
+
+  User defined options
+    buildtype      : release
+    default_library: both
+    b_lto          : true
+
+Found ninja-1.11.1 at /usr/bin/ninja
+ninja: Entering directory `/tmp/build-limiter'
+[1/56] Compiling C object libfaac/libfaac.a.p/bitstream.c.o
+[2/56] Compiling C object libfaac/libfaac.a.p/blockswitch.c.o
+[3/56] Compiling C object libfaac/libfaac.a.p/channels.c.o
+[4/56] Compiling C object libfaac/libquantize_sse.a.p/quantize_sse.c.o
+[5/56] Linking static target libfaac/libquantize_sse.a
+[6/56] Compiling C object libfaac/libfaac.a.p/cpu_compute.c.o
+[7/56] Compiling C object libfaac/libfaac.a.p/faac.c.o
+[8/56] Compiling C object libfaac/libfaac.a.p/fft.c.o
+[9/56] Compiling C object libfaac/libfaac.a.p/filtbank.c.o
+[10/56] Compiling C object libfaac/libfaac.a.p/huffdata.c.o
+[11/56] Compiling C object libfaac/libfaac.a.p/frame.c.o
+[12/56] Compiling C object libfaac/libfaac.a.p/huff2.c.o
+[13/56] Compiling C object libfaac/libfaac.a.p/ratecontrol.c.o
+[14/56] Compiling C object libfaac/libfaac.a.p/quantize.c.o
+[15/56] Compiling C object libfaac/libfaac.a.p/sbr_tables.c.o
+[16/56] Compiling C object libfaac/libfaac.a.p/sbr.c.o
+[17/56] Compiling C object libfaac/libfaac.a.p/sbr_bitstream.c.o
+[18/56] Compiling C object libfaac/libfaac.a.p/sbr_analysis.c.o
+[19/56] Compiling C object libfaac/libfaac.a.p/resample.c.o
+[20/56] Compiling C object libfaac/libfaac.a.p/util.c.o
+[21/56] Compiling C object libfaac/libfaac.so.2.0.0.p/bitstream.c.o
+[22/56] Compiling C object libfaac/libfaac.a.p/stereo.c.o
+[23/56] Compiling C object libfaac/libfaac.so.2.0.0.p/cpu_compute.c.o
+[24/56] Compiling C object libfaac/libfaac.so.2.0.0.p/blockswitch.c.o
+[25/56] Compiling C object libfaac/libfaac.a.p/tns.c.o
+[26/56] Compiling C object libfaac/libfaac.so.2.0.0.p/channels.c.o
+[27/56] Linking static target libfaac/libfaac.a
+[28/56] Compiling C object libfaac/libfaac.so.2.0.0.p/faac.c.o
+[29/56] Compiling C object libfaac/libfaac.so.2.0.0.p/fft.c.o
+[30/56] Compiling C object libfaac/libfaac.so.2.0.0.p/filtbank.c.o
+[31/56] Compiling C object libfaac/libfaac.so.2.0.0.p/frame.c.o
+[32/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huffdata.c.o
+[33/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huff2.c.o
+[34/56] Compiling C object libfaac/libfaac.so.2.0.0.p/quantize.c.o
+[35/56] Compiling C object libfaac/libfaac.so.2.0.0.p/ratecontrol.c.o
+[36/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr.c.o
+[37/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_tables.c.o
+[38/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_bitstream.c.o
+[39/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_analysis.c.o
+[40/56] Compiling C object libfaac/libfaac.so.2.0.0.p/resample.c.o
+[41/56] Compiling C object libfaac/libfaac.so.2.0.0.p/stereo.c.o
+[42/56] Compiling C object libfaac/libfaac.so.2.0.0.p/util.c.o
+[43/56] Compiling C object libfaac/libfaac.so.2.0.0.p/tns.c.o
+[44/56] Generating frontend/git_version.h with a custom command
+[45/56] Compiling C object frontend/faac.p/main.c.o
+[46/56] Compiling C object frontend/libfrontend.a.p/input.c.o
+[47/56] Compiling C object frontend/libfrontend.a.p/mp4write.c.o
+[48/56] Compiling C object frontend/libfrontend.a.p/charset.c.o
+[49/56] Compiling C object frontend/libfrontend.a.p/output.c.o
+[50/56] Compiling C object frontend/libfrontend.a.p/encode_engine.c.o
+[51/56] Compiling C object frontend/libfrontend.a.p/progress.c.o
+[52/56] Compiling C object frontend/libfrontend.a.p/help.c.o
+[53/56] Linking static target frontend/libfrontend.a
+[54/56] Linking target libfaac/libfaac.so.2.0.0
+[55/56] Generating symbol file libfaac/libfaac.so.2.0.0.p/libfaac.so.2.0.0.symbols
+[56/56] Linking target frontend/faac
+/work/artifacts/release-limiter/libfaac.so.2.0.0  :
+section                size    addr
+.note.gnu.property       32     680
+.note.gnu.build-id       36     712
+.gnu.hash               108     752
+.dynsym                 888     864
+.dynstr                 499    1752
+.gnu.version             74    2252
+.gnu.version_r          128    2328
+.rela.dyn               480    2456
+.rela.plt               552    2936
+.init                    27    4096
+.plt                    384    4128
+.plt.got                 16    4512
+.plt.sec                368    4528
+.text                 65280    4896
+.fini                    13   70176
+.rodata                9896   73728
+.eh_frame_hdr           244   83624
+.eh_frame              1488   83872
+.init_array               8   89456
+.fini_array               8   89464
+.data.rel.ro             96   89472
+.dynamic                480   89568
+.got                     40   90048
+.got.plt                208   90088
+.data                  1184   90304
+.bss                  20552   91488
+.comment                 45       0
+Total                103134
+
+
+/work/artifacts/release-limiter/faac  :
+section               size    addr
+.interp                 28     792
+.note.gnu.property      48     824
+.note.gnu.build-id      36     872
+.note.ABI-tag           32     908
+.gnu.hash               36     944
+.dynsym               1872     984
+.dynstr                950    2856
+.gnu.version           156    3806
+.gnu.version_r         160    3968
+.rela.dyn             7992    4128
+.rela.plt             1608   12120
+.init                   27   16384
+.plt                  1088   16416
+.plt.got                16   17504
+.plt.sec              1072   17520
+.text                44790   18592
+.fini                   13   63384
+.rodata              12584   65536
+.eh_frame_hdr          316   78120
+.eh_frame             2340   78440
+.init_array              8   82096
+.fini_array              8   82104
+.data.rel.ro          2728   82112
+.dynamic               528   84840
+.got                   640   85368
+.data                 1568   86016
+.bss                   400   87584
+.comment                45       0
+Total                81089
+
+

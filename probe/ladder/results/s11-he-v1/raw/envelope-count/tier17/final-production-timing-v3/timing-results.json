@@ -1,0 +1,2057 @@
+{
+  "complete": true,
+  "config_sha256": "05f24ef0fa3b45b95954f96b4ff36ca8032c837d38392a5e31b05ea544c01dc3",
+  "schema": 1,
+  "summary": {
+    "interpretation": "Measurement only. Native ARM64 results do not establish amd64 performance or a speed win. Candidate output is packet+strict-FDK-PCM identical to the post-hoc hybrid rows (retained stack at 32 kbps; all_stack at 48/64/96). This policy was derived after inspecting full-corpus data and has no held-out claim.",
+    "overall": {
+      "mean_duration_delta_bootstrap_95_ci_percent": {
+        "hi": 7.3896855766030445,
+        "lo": 0.9836816853951313,
+        "losses": 8,
+        "mean": 3.679801362653522,
+        "n": 40,
+        "wins": 32
+      },
+      "mean_duration_delta_percent": 3.679801362653522,
+      "mean_peak_rss_delta_percent": 0.7996835383020556,
+      "median_duration_delta_percent": 1.0628363307847444,
+      "median_peak_rss_delta_percent": 0.6756756756756799,
+      "pairs": 40
+    },
+    "per_clip": {
+      "fms.wav": {
+        "mean_duration_delta_bootstrap_95_ci_percent": {
+          "hi": 10.02654257197828,
+          "lo": 0.8140854311904471,
+          "losses": 4,
+          "mean": 4.338782198241912,
+          "n": 20,
+          "wins": 16
+        },
+        "mean_duration_delta_percent": 4.338782198241912,
+        "mean_peak_rss_delta_percent": 0.7152209306006996,
+        "median_duration_delta_percent": 0.9777640924839348,
+        "median_peak_rss_delta_percent": 0.677973892259609,
+        "pairs": 20
+      },
+      "sandman.16b48k.wav": {
+        "mean_duration_delta_bootstrap_95_ci_percent": {
+          "hi": 7.655663764765788,
+          "lo": 0.30543820192711735,
+          "losses": 4,
+          "mean": 3.0208205270651325,
+          "n": 20,
+          "wins": 16
+        },
+        "mean_duration_delta_percent": 3.0208205270651325,
+        "mean_peak_rss_delta_percent": 0.8841461460034117,
+        "median_duration_delta_percent": 1.1276983250556927,
+        "median_peak_rss_delta_percent": 0.6756756756756799,
+        "pairs": 20
+      }
+    }
+  },
+  "timing_rows": [
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.7347383429124221,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3605442176870763,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-wqd95ngb/sandman.16b48k.wav.1.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11356696,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-7q0inm35/sandman.16b48k.wav.1.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11440138,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 1
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -2.217991056628499,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3513513513513598,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-wec3qzqq/sandman.16b48k.wav.2.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11797117,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-1xp08clx/sandman.16b48k.wav.2.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11535458,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 2
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 2.5738435699352857,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6711409395973256,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-m3igo766/sandman.16b48k.wav.3.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11025029,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-1vp8249h/sandman.16b48k.wav.3.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11308796,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 3
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 44.28125171065591,
+      "candidate_vs_baseline_peak_rss_delta_percent": -0.6711409395973145,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-_b8nhhn4/sandman.16b48k.wav.4.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11216458,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-4q3f48qk/sandman.16b48k.wav.4.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.16183246,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 4
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.6038387875685123,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.0,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-9hz64yo2/sandman.16b48k.wav.5.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11149562,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-bswermfn/sandman.16b48k.wav.5.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11328383,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 5
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.3485310004425877,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6756756756756799,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-8zqo7qcu/sandman.16b48k.wav.6.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11299629,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-h38vbgrh/sandman.16b48k.wav.6.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11452008,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 6
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.7136100410015445,
+      "candidate_vs_baseline_peak_rss_delta_percent": 2.0547945205479534,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-illfcp1i/sandman.16b48k.wav.7.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11220554,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2336,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-_0vw28zn/sandman.16b48k.wav.7.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11300625,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 7
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -0.57121272660976,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6756756756756799,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-km830jm2/sandman.16b48k.wav.8.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11450025,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-gb1taxun/sandman.16b48k.wav.8.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11384621,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 8
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.304640240496191,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.0,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-be_t9a2s/sandman.16b48k.wav.9.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11164917,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-zpesc6ei/sandman.16b48k.wav.9.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11310579,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 9
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.6921342873033263,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3605442176870763,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-zd8q1xqb/sandman.16b48k.wav.10.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11145983,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-mcbb_har/sandman.16b48k.wav.10.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11334588,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 10
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.698446515412222,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6756756756756799,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-n2pci0xn/sandman.16b48k.wav.11.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11078771,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-bccrd9_5/sandman.16b48k.wav.11.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11266938,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 11
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 5.499980247278757,
+      "candidate_vs_baseline_peak_rss_delta_percent": -0.666666666666671,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-2nhxwjgy/sandman.16b48k.wav.12.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11061767,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-e3n020id/sandman.16b48k.wav.12.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11670162,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 12
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -1.9335043892754533,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3513513513513598,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-qbyzx9vh/sandman.16b48k.wav.13.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11452004,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-e991lnih/sandman.16b48k.wav.13.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11230579,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 13
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.1183923805147877,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3605442176870763,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-kcm1piir/sandman.16b48k.wav.14.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11195087,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-y6_zxquu/sandman.16b48k.wav.14.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11320292,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 14
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.6516379768938494,
+      "candidate_vs_baseline_peak_rss_delta_percent": 2.7397260273972712,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-8cqttjax/sandman.16b48k.wav.15.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11122837,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2336,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-osd399fg/sandman.16b48k.wav.15.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11306546,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 15
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.6966075955559203,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6711409395973256,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-7uc7g0pe/sandman.16b48k.wav.16.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11120608,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-gnk0xj85/sandman.16b48k.wav.16.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11198075,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 16
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.012650937214586655,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3698630136986356,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-43df51yy/sandman.16b48k.wav.17.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11097992,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2336,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-y53ejivw/sandman.16b48k.wav.17.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11099396,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 17
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -1.1412084745323625,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3513513513513598,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-1kmkwb6k/sandman.16b48k.wav.18.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11423592,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-ckd4ht7t/sandman.16b48k.wav.18.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11293225,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 18
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.2130192855662294,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6756756756756799,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-x1si7ogu/sandman.16b48k.wav.19.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11139367,
+          "execution_order_index": 0,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-8ov9qt3h/sandman.16b48k.wav.19.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11163096,
+          "execution_order_index": 1,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 19
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.1370042695965976,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6756756756756799,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-shhifhv_/sandman.16b48k.wav.20.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11190987,
+          "execution_order_index": 1,
+          "output_sha256": "a7803471231db0d954223dfa4e4cb8b40d59c388b016390988a4226508b75fb1",
+          "output_size_bytes": 962432,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-1qlid0zl/sandman.16b48k.wav.20.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/sandman.16b48k.wav"
+          ],
+          "duration_seconds": 0.11318229,
+          "execution_order_index": 0,
+          "output_sha256": "83ac97bbd51ae5846bc11d77b37b59739e0be2bb1a8f1a72d7c6703169e24121",
+          "output_size_bytes": 962478,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 20
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -0.5715468014620195,
+      "candidate_vs_baseline_peak_rss_delta_percent": -0.6711409395973145,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-9o5hpsqe/fms.wav.1.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11618996,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-fmk9snnl/fms.wav.1.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11552588,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 1
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -2.3428666364087136,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6756756756756799,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-q2ufn3b6/fms.wav.2.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11719233,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-ug3sl_pc/fms.wav.2.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11444667,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 2
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.7465066365423656,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6711409395973256,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-0i300db0/fms.wav.3.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11376858,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-y5mwneoi/fms.wav.3.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11461787,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 3
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.2989337042188289,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3605442176870763,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-308gqk4h/fms.wav.4.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11593875,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-7lnwvqvd/fms.wav.4.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11628533,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 4
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 47.608116339916194,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6711409395973256,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-j34_04th/fms.wav.5.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11230333,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-8pz2326g/fms.wav.5.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.16576883,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 5
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.5971948440580919,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6756756756756799,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-fniy7q5e/fms.wav.6.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11492837,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-602g0za1/fms.wav.6.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.116764,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 6
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 19.13580940454922,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6802721088435382,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-2ox3gphj/fms.wav.7.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11748612,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-ekrkrin3/fms.wav.7.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.13996804,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 7
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 2.1620235051870162,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6802721088435382,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-r59innab/fms.wav.8.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.114613,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-d7wvpk5g/fms.wav.8.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11709096,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 8
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 2.777291917667868,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6802721088435382,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-_3on8o5o/fms.wav.9.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11348717,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-0amllz6a/fms.wav.9.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11663904,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 9
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -0.05130702882650828,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.0,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-64iezyah/fms.wav.10.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11419488,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-6qwzzjcc/fms.wav.10.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11413629,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 10
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.007280281054701,
+      "candidate_vs_baseline_peak_rss_delta_percent": 1.3513513513513598,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-26vkxkis/fms.wav.11.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11417279,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-e5f29vn2/fms.wav.11.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11532283,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 11
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.8651733101977532,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6802721088435382,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-ivj87kpy/fms.wav.12.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11323396,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-03aocsj5/fms.wav.12.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11421363,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 12
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.1996088464313761,
+      "candidate_vs_baseline_peak_rss_delta_percent": -0.666666666666671,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-pc0osuuu/fms.wav.13.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11482958,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-p0mq570w/fms.wav.13.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11505879,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 13
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.3989042686036957,
+      "candidate_vs_baseline_peak_rss_delta_percent": 2.0408163265306145,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-a6errbvm/fms.wav.14.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.113714,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-qev6_cky/fms.wav.14.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11530475,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 14
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 3.68064309882401,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.0,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-j16khcmr/fms.wav.15.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11322179,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-1kstdnsj/fms.wav.15.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11738908,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 15
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 3.586983321824855,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.0,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-j_u_q5fu/fms.wav.16.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11550904,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-g9naqt5c/fms.wav.16.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11965233,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 16
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -1.1901285078078527,
+      "candidate_vs_baseline_peak_rss_delta_percent": 2.0547945205479534,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-svswserk/fms.wav.17.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11645129,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2336,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-naabsunu/fms.wav.17.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11506537,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2384,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 17
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 4.831959407668784,
+      "candidate_vs_baseline_peak_rss_delta_percent": 2.7397260273972712,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-e7ueo99v/fms.wav.18.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11342438,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2336,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-wynh6yw0/fms.wav.18.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.118905,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2400,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 18
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.086816148685398,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.0,
+      "clip": "fms.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-unjlllzt/fms.wav.19.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11341208,
+          "execution_order_index": 0,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-kmgxnqog/fms.wav.19.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11351054,
+          "execution_order_index": 1,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 19
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.9482479039131686,
+      "candidate_vs_baseline_peak_rss_delta_percent": 0.6802721088435382,
+      "clip": "fms.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "measurements": {
+        "baseline": {
+          "command": [
+            "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-baseline-xnn3_lo0/fms.wav.20.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11414842,
+          "execution_order_index": 1,
+          "output_sha256": "12b52a911216f797a5b5a97b55f2b55719eeaaa0e632f9e7b60e0d43754f42a9",
+          "output_size_bytes": 962766,
+          "peak_rss_kb": 2352,
+          "profile": "HE-AAC"
+        },
+        "candidate": {
+          "command": [
+            "/private/tmp/faac-he-v1-envelope-production/build-tier17/frontend/faac",
+            "-b",
+            "64",
+            "--overwrite",
+            "-o",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/serial-candidate-jg8frqyp/fms.wav.20.m4a",
+            "--object-type",
+            "he-aac-v1",
+            "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/tier17/final-production-timing-v3/inputs/fms.wav"
+          ],
+          "duration_seconds": 0.11523083,
+          "execution_order_index": 0,
+          "output_sha256": "4c9b7b2cb3e6428c2964ee7f1809254b73b8d9cf16deeef880fb052b6678e66e",
+          "output_size_bytes": 962829,
+          "peak_rss_kb": 2368,
+          "profile": "HE-AAC"
+        }
+      },
+      "pair": 20
+    }
+  ]
+}

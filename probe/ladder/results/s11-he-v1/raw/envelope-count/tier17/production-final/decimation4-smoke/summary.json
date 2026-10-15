@@ -1,0 +1,41 @@
+{
+  "all_fdk_faad_ffmpeg_pass": true,
+  "all_profiles_he_aac": true,
+  "rows": [
+    {
+      "channels": 1,
+      "faad_pass": true,
+      "fdk_pcm_sha256": "be5b175ffb117d0ad72d3bfbebbe9ec004b95241022d863be1b095375205bd1b",
+      "ffmpeg_pass": true,
+      "fixture": "silence_mono.wav",
+      "payload_sha256": "931897c9f66643a261a58e7d6dbd03daa8ab9c1612b28a2e00966126123bda2f",
+      "profile": "HE-AAC",
+      "rate_kbps": 17,
+      "variant": "clean_stack"
+    },
+    {
+      "channels": 2,
+      "faad_pass": true,
+      "fdk_pcm_sha256": "224e3e8e0ff313bb958c7b15927078affcb762777ae09d925e0f714f98092687",
+      "ffmpeg_pass": true,
+      "fixture": "tone_stereo.wav",
+      "payload_sha256": "278de25d7ac109e894c57b2ccf69f53a0ce13357bfb5e689dc8051e13d4f07ad",
+      "profile": "HE-AAC",
+      "rate_kbps": 64,
+      "variant": "clean_stack"
+    },
+    {
+      "channels": 2,
+      "faad_pass": true,
+      "fdk_pcm_sha256": "ef9a96fcd4163034e92f148e63d0c21cfddafe0fc851a26192dece2229b47e28",
+      "ffmpeg_pass": true,
+      "fixture": "partial_stereo.wav",
+      "payload_sha256": "7f7b4f6b43b30c04825e41b0437c0c8834e35ff571417d4b904017f2fb6e5129",
+      "profile": "HE-AAC",
+      "rate_kbps": 34,
+      "variant": "clean_stack"
+    }
+  ],
+  "sbr_decimation": 4,
+  "schema": 1
+}

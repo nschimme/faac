@@ -1,5 +1,10 @@
 # Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-30, updated after Stage S9)
 
+## Current handoff after Stage S11 (2026-10-14)
+
+Start with [`LADDER_RESULT.md` → Stage S11](LADDER_RESULT.md#stage-s11--bounded-he-v1-feature-study-and-merged-baseline-closure-2026-10-14)
+and the [portable S11 evidence package](results/s11-he-v1/README.md). Stage S10's long-block/allocation experiments are closed; do not revive its rejected arms. The fixed8 current-baseline candidate is published in PR #70; build CI passed and benchmark CI is still running. The current research sequence, prerequisites and stop rules are in [S11 next steps](results/s11-he-v1/NEXT_STEPS.md); those plans are proposals, not measured quality claims. Prior S9 and earlier sections below are historical context and must not override the S11 status.
+
 You are picking up a research programme on the FAAC AAC encoder (`nschimme/faac`).
 The goal is to reach the perceptual quality (MOS) of Apple's AAC encoder, the
 primary reference, and fdk-aac, the secondary one, without giving up FAAC's small

@@ -1,0 +1,29 @@
+{
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "fdk_decoder_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+  "ffmpeg_sha256": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a",
+  "helper_hashes": {
+    "bd_rate.py": "2b8d8277aedea4e031998927358e054f0be0148c2fb8e7e47fdaf59e0245d9c3",
+    "compare_results.py": "53b9175b4610e504aee1e291483295e1a7fc713ef2b0d7a559b71be8b9c3e2f3",
+    "phase2_mos.py": "374ecb752727f85323aeb2f2e6694ebbe7c0f0f33a48c8e947e799501d11278b"
+  },
+  "new_encodes_or_decodes": false,
+  "reference_policy": {
+    "32": "stack_reference",
+    "48/64/96": "all_stack"
+  },
+  "result_hashes": {
+    "scores": "e4e51c5d7e79e06576093da5505ec246c497a8995284fa5bf62869a0e22f65cd",
+    "summary": "0e66b074c3ead4dea8ddedea8d9e662f9e7012243d8e73a55d60d30d04793b90"
+  },
+  "schema": 1,
+  "scorer_sha256": "bb1d6be2166277d25f07a547e69e3e6d16da6d35d1a8e361fecb003d6de10afe",
+  "source_validation": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/validation.json",
+    "sha256": "4ccd9bd8e6161929f7371ffa64b014e554dc2f97719e11796becc75b9de70ab1"
+  },
+  "validation_summary": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/summary.json",
+    "sha256": "31b554b7d9a1d6b7a1ad7c55e5d7d1e5ed72d8effa3a17eae7233ac00f5080ad"
+  }
+}

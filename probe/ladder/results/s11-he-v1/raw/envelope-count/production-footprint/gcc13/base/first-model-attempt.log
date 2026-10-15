@@ -1,0 +1,9 @@
+In file included from /work/source/libfaac/sbr_internal.h:19,
+                 from /work/results/production_size_model.c:2:
+/work/source/libfaac/sbr.h:122:130: error: 'MAX_CHANNELS' undeclared here (not in a function)
+  122 | void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS]);
+      |                                                                                                                                  ^~~~~~~~~~~~
+In file included from /work/source/libfaac/sbr_internal.h:21:
+/work/source/libfaac/resample.h:34:21: error: 'MAX_CHANNELS' undeclared here (not in a function)
+   34 |     float *fullRate[MAX_CHANNELS];                    /* borrowed input FIFO */
+      |                     ^~~~~~~~~~~~

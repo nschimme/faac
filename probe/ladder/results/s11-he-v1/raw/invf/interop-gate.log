@@ -1,0 +1,2 @@
+wrote /private/tmp/faac-he-v1-invf/probe/results-gate/interop-results.json
+{"faad_fail": 0, "faad_pass": 240, "ffmpeg_fail": 0, "ffmpeg_pass": 240, "streams": 240}

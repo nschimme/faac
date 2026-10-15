@@ -1,0 +1,197 @@
+{
+  "compiler": "GCC 13.3.0, x86_64 Linux (linux/amd64 Docker image under Apple Silicon emulation)",
+  "configuration": "Meson release, default_library=both, b_lto=true; same /work/source and /tmp/faac-build paths, separate Docker runs",
+  "docker_image": "faac-gcc13:latest sha256:5b57ea918f81ba4868d1438f76c7a5023fad1215818d43a9282a6429e389febe",
+  "metric": ".text + .rodata + .data ROM; .bss and production SBR allocations excluding resampler reported separately",
+  "schema": 1,
+  "stream_equivalence": {
+    "tier17_base": "196/196 ordered AAC packet identity and strict FDK PCM hash matches tier17 hybrid base",
+    "tier17_stack": "196/196 ordered AAC packet identity and strict FDK PCM hash matches tier17 hybrid stack"
+  },
+  "tier17_delta": {
+    "base": {
+      "allocation_bytes_by_channels": {
+        "1": 3616,
+        "2": 6176,
+        "4": 11296,
+        "8": 21536
+      },
+      "rom_bytes": 200
+    },
+    "stack": {
+      "allocation_bytes_by_channels": {
+        "1": 3616,
+        "2": 6176,
+        "4": 11296,
+        "8": 21536
+      },
+      "rom_bytes": 200
+    }
+  },
+  "variants": {
+    "base": {
+      "build_log": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/production-footprint/gcc13/tier17/base/build.log",
+      "library_sha256": "a5750ca531aa6b089216d29a9ca6605b43baabfa3ee7a742a65319a28b41a104",
+      "production_sizes_excluding_resampler": {
+        "SBR_FRAME_FIFO": 4,
+        "SBR_MAX_ENVELOPES": 2,
+        "channels_1_sbr_context_alloc": 2160,
+        "channels_1_sbr_info_alloc": 6884,
+        "channels_1_signal_analysis_alloc": 552,
+        "channels_1_total_excluding_resampler": 9596,
+        "channels_2_sbr_context_alloc": 4208,
+        "channels_2_sbr_info_alloc": 11260,
+        "channels_2_signal_analysis_alloc": 1072,
+        "channels_2_total_excluding_resampler": 16540,
+        "channels_4_sbr_context_alloc": 8304,
+        "channels_4_sbr_info_alloc": 20012,
+        "channels_4_signal_analysis_alloc": 2112,
+        "channels_4_total_excluding_resampler": 30428,
+        "channels_8_sbr_context_alloc": 16496,
+        "channels_8_sbr_info_alloc": 37516,
+        "channels_8_signal_analysis_alloc": 4192,
+        "channels_8_total_excluding_resampler": 58204,
+        "sizeof_SBRChannel": 4376,
+        "sizeof_SBRContext": 80,
+        "sizeof_SBRInfo": 2508,
+        "sizeof_SbrEnvData": 512,
+        "sizeof_SbrFrameData": 8,
+        "sizeof_SignalAnalysis": 32,
+        "sizeof_SignalAnalysisChannel": 520
+      },
+      "rom_text_rodata_data_bytes": 76216,
+      "sections_bytes": {
+        ".bss": 20552,
+        ".data": 1184,
+        ".rodata": 9896,
+        ".text": 65136
+      },
+      "source_head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "source_patch_sha256": null,
+      "source_tree_sha256": "39fc9b621be9091151c41f4e18b3dfe8a1473dd671dded23d65f0477a336e832"
+    },
+    "stack": {
+      "build_log": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/production-footprint/gcc13/tier17/stack/build.log",
+      "library_sha256": "21700f768145ffd8ec0cec8ff1e370741e309d580dad28791ed9313a56ac450a",
+      "production_sizes_excluding_resampler": {
+        "SBR_FRAME_FIFO": 4,
+        "SBR_MAX_ENVELOPES": 2,
+        "channels_1_sbr_context_alloc": 2160,
+        "channels_1_sbr_info_alloc": 6884,
+        "channels_1_signal_analysis_alloc": 552,
+        "channels_1_total_excluding_resampler": 9596,
+        "channels_2_sbr_context_alloc": 4208,
+        "channels_2_sbr_info_alloc": 11260,
+        "channels_2_signal_analysis_alloc": 1072,
+        "channels_2_total_excluding_resampler": 16540,
+        "channels_4_sbr_context_alloc": 8304,
+        "channels_4_sbr_info_alloc": 20012,
+        "channels_4_signal_analysis_alloc": 2112,
+        "channels_4_total_excluding_resampler": 30428,
+        "channels_8_sbr_context_alloc": 16496,
+        "channels_8_sbr_info_alloc": 37516,
+        "channels_8_signal_analysis_alloc": 4192,
+        "channels_8_total_excluding_resampler": 58204,
+        "sizeof_SBRChannel": 4376,
+        "sizeof_SBRContext": 80,
+        "sizeof_SBRInfo": 2508,
+        "sizeof_SbrEnvData": 512,
+        "sizeof_SbrFrameData": 8,
+        "sizeof_SignalAnalysis": 32,
+        "sizeof_SignalAnalysisChannel": 520
+      },
+      "rom_text_rodata_data_bytes": 76360,
+      "sections_bytes": {
+        ".bss": 20552,
+        ".data": 1184,
+        ".rodata": 9896,
+        ".text": 65280
+      },
+      "source_head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+      "source_patch_sha256": null,
+      "source_tree_sha256": "346edd0b5b99d7ea60d1d51d61dc79b03e92f402adfc2654efbf6811a42f6eb0"
+    },
+    "tier17_base": {
+      "build_log": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/production-footprint/gcc13/tier17/tier17-base/build.log",
+      "library_sha256": "8180e1408be49fe3f68a218f0400db4ec60c8f961511bc73320d4d914aeef869",
+      "production_sizes_excluding_resampler": {
+        "SBR_FRAME_FIFO": 4,
+        "SBR_MAX_ENVELOPES": 4,
+        "channels_1_sbr_context_alloc": 4224,
+        "channels_1_sbr_info_alloc": 7908,
+        "channels_1_signal_analysis_alloc": 1080,
+        "channels_1_total_excluding_resampler": 13212,
+        "channels_2_sbr_context_alloc": 8320,
+        "channels_2_sbr_info_alloc": 12284,
+        "channels_2_signal_analysis_alloc": 2112,
+        "channels_2_total_excluding_resampler": 22716,
+        "channels_4_sbr_context_alloc": 16512,
+        "channels_4_sbr_info_alloc": 21036,
+        "channels_4_signal_analysis_alloc": 4176,
+        "channels_4_total_excluding_resampler": 41724,
+        "channels_8_sbr_context_alloc": 32896,
+        "channels_8_sbr_info_alloc": 38540,
+        "channels_8_signal_analysis_alloc": 8304,
+        "channels_8_total_excluding_resampler": 79740,
+        "sizeof_SBRChannel": 4376,
+        "sizeof_SBRContext": 80,
+        "sizeof_SBRInfo": 3532,
+        "sizeof_SbrEnvData": 1024,
+        "sizeof_SbrFrameData": 12,
+        "sizeof_SignalAnalysis": 48,
+        "sizeof_SignalAnalysisChannel": 1032
+      },
+      "rom_text_rodata_data_bytes": 76416,
+      "sections_bytes": {
+        ".bss": 20552,
+        ".data": 1184,
+        ".rodata": 9904,
+        ".text": 65328
+      },
+      "source_head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "source_patch_sha256": "61c1f2042346ebc676812623fcffa6f097439082e462a8b619d4fbcbd5581398",
+      "source_tree_sha256": "84aa37b2129f63cc26bfec3830f2079daed8ddcc08fc1516a9ee67bfd7e4b764"
+    },
+    "tier17_stack": {
+      "build_log": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/production-footprint/gcc13/tier17/tier17-stack/build.log",
+      "library_sha256": "54c80e44097991f217e9bb0d029056f5c97af412bedfa72f98af76320e5e0be3",
+      "production_sizes_excluding_resampler": {
+        "SBR_FRAME_FIFO": 4,
+        "SBR_MAX_ENVELOPES": 4,
+        "channels_1_sbr_context_alloc": 4224,
+        "channels_1_sbr_info_alloc": 7908,
+        "channels_1_signal_analysis_alloc": 1080,
+        "channels_1_total_excluding_resampler": 13212,
+        "channels_2_sbr_context_alloc": 8320,
+        "channels_2_sbr_info_alloc": 12284,
+        "channels_2_signal_analysis_alloc": 2112,
+        "channels_2_total_excluding_resampler": 22716,
+        "channels_4_sbr_context_alloc": 16512,
+        "channels_4_sbr_info_alloc": 21036,
+        "channels_4_signal_analysis_alloc": 4176,
+        "channels_4_total_excluding_resampler": 41724,
+        "channels_8_sbr_context_alloc": 32896,
+        "channels_8_sbr_info_alloc": 38540,
+        "channels_8_signal_analysis_alloc": 8304,
+        "channels_8_total_excluding_resampler": 79740,
+        "sizeof_SBRChannel": 4376,
+        "sizeof_SBRContext": 80,
+        "sizeof_SBRInfo": 3532,
+        "sizeof_SbrEnvData": 1024,
+        "sizeof_SbrFrameData": 12,
+        "sizeof_SignalAnalysis": 48,
+        "sizeof_SignalAnalysisChannel": 1032
+      },
+      "rom_text_rodata_data_bytes": 76560,
+      "sections_bytes": {
+        ".bss": 20552,
+        ".data": 1184,
+        ".rodata": 9904,
+        ".text": 65472
+      },
+      "source_head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+      "source_patch_sha256": "d3807c5337e8f4a58992c3ba5e75f835f3f7a07d2565c703bbe48c779e1d9ce4",
+      "source_tree_sha256": "0f7e2104ed5c8a5593908651d1bce21308af388c8057077ebca3ba5b6050cad9"
+    }
+  }
+}

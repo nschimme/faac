@@ -1,0 +1,45 @@
+{
+  "compiler": "GCC 13.3.0",
+  "target": "x86_64 Linux",
+  "config": {
+    "buildtype": "release",
+    "b_lto": true,
+    "default_library": "both"
+  },
+  "metric": "ROM=.text+.rodata+.data; .bss separate",
+  "timing_measured": false,
+  "variants": {
+    "base": {
+      "sections": {
+        ".text": 65136,
+        ".rodata": 9864,
+        ".data": 1184,
+        ".bss": 20552
+      },
+      "rom_bytes": 76184,
+      "artifact_sha256": "4d3fb586fc61994a2347e1b46429eb8030d3d7938dc2ed506cb1a42a754a192e"
+    },
+    "noise": {
+      "sections": {
+        ".text": 65136,
+        ".rodata": 9864,
+        ".data": 1184,
+        ".bss": 20552
+      },
+      "rom_bytes": 76184,
+      "artifact_sha256": "436fd3fade63a1264dd3c6f016b0078fbce765aa77d014967846a46822a843f8",
+      "rom_delta_bytes": 0
+    },
+    "limiter": {
+      "sections": {
+        ".text": 65280,
+        ".rodata": 9896,
+        ".data": 1184,
+        ".bss": 20552
+      },
+      "rom_bytes": 76360,
+      "artifact_sha256": "f05d5bbea47724adb8740a1f76e3d428a973a5bef1e1107ad93c9aba2f240981",
+      "rom_delta_bytes": 176
+    }
+  }
+}

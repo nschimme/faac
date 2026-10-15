@@ -1,0 +1,282 @@
+{
+  "created_utc": "2026-10-14T17:49:50.949912+00:00",
+  "immutable_run_config": {
+    "baseline_binary_sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+    "baseline_library_sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+    "baseline_rows_sha256": "933d06f168a51456d68016b4a95ccfbe08729cafb7a2a6163b219bc888250142",
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "faad_sha256": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+    "fdk_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "ffmpeg_sha256": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a",
+    "matrix": {
+      "expected_rows": 160,
+      "feature_conditions": [
+        "fixed2_base",
+        "fixed4_base",
+        "fixed6_base",
+        "fixed8_base",
+        "fixed2_stack",
+        "fixed4_stack",
+        "fixed6_stack",
+        "fixed8_stack"
+      ],
+      "reference_conditions": [
+        "baseline_ref",
+        "stack_ref"
+      ]
+    },
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "runner_sha256": "b59f965405d362e4fd90df43e1f7c881dfda9f7c618aa39444f8008f37c95112",
+    "scoring": "strict FDK before Zimtohrli; actual AAC packet payload bitrate; PCHIP BD-rate and four-clip bootstrap; strict FAAD3 and FFmpeg after scoring; no inherited FAAC_SBR_* environment flags",
+    "stack_binary_sha256": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87",
+    "stack_library_sha256": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+    "stack_rows_sha256": "87a61b6147480dfc1f4cf96d8c64d03c51e57c35070366f50b5bae5440ce2530",
+    "variants": {
+      "fixed2_base": {
+        "binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+        "library_sha256": "62105ee0adf7b6fbe6034d2ab80db99102fbe67dde938cfd858969498297f66a",
+        "variant_manifest": {
+          "base": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 2,
+          "frontend_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "62105ee0adf7b6fbe6034d2ab80db99102fbe67dde938cfd858969498297f66a",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "base",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "15352d85d906e8225a9b475f5f8a6c390d86403ba27c21c0e0ae126fb7c9339c",
+          "source_sha256": "564ba87ee9a3753f72c73033d230c81a0c9cc74347ab93e1773de94a438e96ae",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "c0327cf82137e5fd414c39aa5918f0a451dbaf5d6cd78c101a02afb732c77e17"
+      },
+      "fixed2_stack": {
+        "binary_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+        "library_sha256": "9e66a00852fbef864565f99ee0e27c951864db75eefff964e3ddd1b563cb621e",
+        "variant_manifest": {
+          "base": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 2,
+          "frontend_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "9e66a00852fbef864565f99ee0e27c951864db75eefff964e3ddd1b563cb621e",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "stack",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "15352d85d906e8225a9b475f5f8a6c390d86403ba27c21c0e0ae126fb7c9339c",
+          "source_sha256": "564ba87ee9a3753f72c73033d230c81a0c9cc74347ab93e1773de94a438e96ae",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "fdd351dc1e4c6267c20113f0f97703503086445a68e163b8021988a3307ec60e"
+      },
+      "fixed4_base": {
+        "binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+        "library_sha256": "f32bd613a1ca23b90652dc694ceb20442c1df354cdea82da67c33f60a27e5c90",
+        "variant_manifest": {
+          "base": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 4,
+          "frontend_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "f32bd613a1ca23b90652dc694ceb20442c1df354cdea82da67c33f60a27e5c90",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "base",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "0df3cc0c13cea62c6d8b55bd08c7892a7ab47db748ad7316b09a9b3299162294",
+          "source_sha256": "66213d4959b18c2315f57c359a33c8a3fdeaf67fbded478461b7560ac5e7de2e",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "3193e87ee9649ed114c61c78018006fb14c3a45ab72a9252e39eebc061d1e36a"
+      },
+      "fixed4_stack": {
+        "binary_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+        "library_sha256": "5c60f9d76fe2cda5f4ec23d1aed78185dc486f621fb778dd8feb182af10a7f61",
+        "variant_manifest": {
+          "base": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 4,
+          "frontend_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "5c60f9d76fe2cda5f4ec23d1aed78185dc486f621fb778dd8feb182af10a7f61",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "stack",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "0df3cc0c13cea62c6d8b55bd08c7892a7ab47db748ad7316b09a9b3299162294",
+          "source_sha256": "66213d4959b18c2315f57c359a33c8a3fdeaf67fbded478461b7560ac5e7de2e",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "d1ba212d76d464f62cd6be0d6bf4d23307d9242832c5e1ff755b9c4102087a5e"
+      },
+      "fixed6_base": {
+        "binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+        "library_sha256": "e5ec360268599dd8c8267c95245b709872895a274e7ffedff236bdad41bc17ee",
+        "variant_manifest": {
+          "base": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 6,
+          "frontend_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "e5ec360268599dd8c8267c95245b709872895a274e7ffedff236bdad41bc17ee",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "base",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "1c5e293399086ef90a40c673847d70879ff5fb721ba4d40e1a3fe7204210d371",
+          "source_sha256": "1453e013425ae0c1d325cd84ac23160c85432d4ab7cfe734292288a691bd520f",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "4eae927380f2b91177e5cf968658e4062456820ee959d0b7bc81935951b57455"
+      },
+      "fixed6_stack": {
+        "binary_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+        "library_sha256": "ed32149957487c56b63ad1e6bab23ec806ecdb82add0a9b4debe1420c30c6d00",
+        "variant_manifest": {
+          "base": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 6,
+          "frontend_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "ed32149957487c56b63ad1e6bab23ec806ecdb82add0a9b4debe1420c30c6d00",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "stack",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "1c5e293399086ef90a40c673847d70879ff5fb721ba4d40e1a3fe7204210d371",
+          "source_sha256": "1453e013425ae0c1d325cd84ac23160c85432d4ab7cfe734292288a691bd520f",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "ffca13d24fd675b1770cd59658b02436b962c7ddece88c6bb6dfbae5290bde7a"
+      },
+      "fixed8_base": {
+        "binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+        "library_sha256": "7ed2fe9f2a068eb63ad78be61a25212fc836c7302a9bb804021f46baaf5b5c46",
+        "variant_manifest": {
+          "base": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 8,
+          "frontend_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "7ed2fe9f2a068eb63ad78be61a25212fc836c7302a9bb804021f46baaf5b5c46",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "base",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "5b29d1d34bee553db61136b57571093c4c7d7363c0f12a8058350fb3d777961a",
+          "source_sha256": "fcc0b722fc73715751f95ab991de9c52f234fcf85ff0dfdcd3d7ebccad7545d7",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "b9be11351a3d40cf65bf3a6a5223abb423873d345a0b8ba0ac8a5fde52aa0eb6"
+      },
+      "fixed8_stack": {
+        "binary_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+        "library_sha256": "5f6c0ab95f74056da6a1bbeb309129f8b8f1a442da87cdec71e4f158095ccf24",
+        "variant_manifest": {
+          "base": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+          "build": "Meson release; sbr-decimation=1; max-channels=8; CCACHE_DISABLE=1",
+          "compiler": "Apple clang 21.0.0 arm64",
+          "diff_check": "pass",
+          "edited_file": "libfaac/sbr_analysis.c",
+          "fixed_split_qmf_slots": 8,
+          "frontend_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+          "git_status_at_freeze": [
+            "M libfaac/sbr_analysis.c",
+            "?? probe/"
+          ],
+          "libfaac_dylib_sha256": "5f6c0ab95f74056da6a1bbeb309129f8b8f1a442da87cdec71e4f158095ccf24",
+          "meson_compile_command": "meson compile -C build-border -j 2",
+          "meson_compile_exit_code": 0,
+          "meson_setup_command": "CCACHE_DISABLE=1 meson setup build-border --buildtype=release -Dsbr-decimation=1 -Dmax-channels=8",
+          "meson_setup_exit_code": 0,
+          "parent": "stack",
+          "scope": "Transient VARFIX interior split only; stationary FIXFIX, transient detection threshold, header/noise/stack behavior unchanged.",
+          "source_patch_sha256": "5b29d1d34bee553db61136b57571093c4c7d7363c0f12a8058350fb3d777961a",
+          "source_sha256": "fcc0b722fc73715751f95ab991de9c52f234fcf85ff0dfdcd3d7ebccad7545d7",
+          "validation_artifact": "/private/tmp/faac-border-fixed-controls-validation.json"
+        },
+        "variant_manifest_sha256": "3ee13fed12ec321ce2106f61d2825b0d19ddab2df034cc130a978da993fa3265"
+      }
+    }
+  },
+  "output_dir": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/fixed-split-gate-v1",
+  "schema": 1,
+  "scoring_enabled": true,
+  "workers": 2
+}

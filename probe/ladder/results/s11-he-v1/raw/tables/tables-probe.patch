@@ -1,0 +1,88 @@
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index 0970628a..610cdb58 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -17,6 +17,7 @@
+ #include <string.h>
+ #include <math.h>
+ #include <assert.h>
++#include <errno.h>
+ 
+ #include "sbr.h"
+ #include "sbr_tables.h"
+@@ -140,6 +141,19 @@ static int build_freq_table(SBRInfo *sbr)
+     return n_master;
+ }
+ 
++static int probe_setting(const char *name, int *value)
++{
++    const char *text = getenv(name);
++    char *end;
++    long parsed;
++    if (!text || !*text) return 1;
++    errno = 0;
++    parsed = strtol(text, &end, 10);
++    if (errno || end == text || *end || parsed < 0 || parsed > 100000) return 0;
++    *value = (int)parsed;
++    return 1;
++}
++
+ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+ {
+     size_t size = sizeof(SBRInfo) + channels * sizeof(SBRChannel);
+@@ -149,6 +163,13 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+     sbr->sbrPresent = 1;
+     sbr->numChannels = channels;
+     sbr->sampleRate = sampleRate;
++    if (!probe_setting("FAAC_SBR_FREQ_SCALE", &sbr->probeFreqScale) ||
++        !probe_setting("FAAC_SBR_STOP_TARGET_HZ", &sbr->probeStopTargetHz) ||
++        (sbr->probeFreqScale && (sbr->probeFreqScale < 1 || sbr->probeFreqScale > 3)) ||
++        (sbr->probeStopTargetHz && sbr->probeStopTargetHz != 16000 && sbr->probeStopTargetHz != 18000)) {
++        FreeMemory(sbr);
++        return NULL;
++    }
+ 
+     /* Pre-calculate twiddle factors for the FFT-based QMF analysis.
+      * These coefficients rotate the subband indices into the odd-frequency
+@@ -160,6 +181,10 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+         sbr->oddSin[m] = (float)sin(M_PI_DOUBLE * (2 * m + 1) / 128.0);
+     }
+     SbrUpdate(sbr, bitRate);
++    if (sbr->numBands <= 0) {
++        FreeMemory(sbr);
++        return NULL;
++    }
+     return sbr;
+ }
+ 
+@@ -177,6 +202,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
+     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
+      * what they save, rate control hands to the core. */
+     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
++    if (sbr->probeFreqScale) sbr->bs_freq_scale = sbr->probeFreqScale;
+     sbr->bs_alter_scale = 0; /* only warps a two-region table; see build_freq_table */
+     sbr->bs_freq_res = 1; /* HIGH resolution */
+     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
+@@ -185,7 +211,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
+     /* Where the reconstruction stops. Aim at hearing rather than k2's ceiling:
+      * bands above the target cost the same envelope bits as the ones below, so
+      * there's no reason to stop short of what's audible. */
+-    sbr->bs_stop_freq = pick_stop_freq(sampleRate, sbr->kx, SBR_STOP_FREQ_TARGET_HZ);
++    sbr->bs_stop_freq = pick_stop_freq(sampleRate, sbr->kx,
++        sbr->probeStopTargetHz ? sbr->probeStopTargetHz : SBR_STOP_FREQ_TARGET_HZ);
+     sbr->k2 = compute_k2(sampleRate, sbr->bs_stop_freq);
+ 
+     build_freq_table(sbr);
+diff --git a/libfaac/sbr_internal.h b/libfaac/sbr_internal.h
+index 6aed45fb..ba093d7b 100644
+--- a/libfaac/sbr_internal.h
++++ b/libfaac/sbr_internal.h
+@@ -69,6 +69,8 @@ struct SBRInfo {
+     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
+     int numChannels;
+     int sampleRate;        /* full output rate; the dual-rate core runs at sampleRate/2 */
++    int probeFreqScale;    /* 0 keeps the bitrate-selected default; otherwise 1..3 */
++    int probeStopTargetHz; /* 0 keeps the default; otherwise 16000 or 18000 */
+ 
+     /* --- frequency band configuration (set at init, constant per stream) --- */
+     int kx;

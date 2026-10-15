@@ -1,0 +1,220 @@
+pass base_fixed8|12-German-male-speech.441.16b48k.wav|48 packet=992f291a5de4b4724d9b007a7731dc70ffdf6c9996130a63868a3506b219fbd4 faad=True ffmpeg=True
+pass base_fixed8|12-German-male-speech.441.16b48k.wav|32 packet=c626c46f28208f4882a5f8ea0e503185cd9cca640005b591f7d82370f1b45138 faad=True ffmpeg=True
+pass base_fixed8|12-German-male-speech.441.16b48k.wav|64 packet=c4b258208f88ef3aa8aa0ab71486a3ef01d2e8297d8d26b268e8b26579fef0b8 faad=True ffmpeg=True
+pass base_fixed8|12-German-male-speech.441.16b48k.wav|96 packet=34a5c873675ed89ac775a018f87bdc36a6ca271569d72451307241c3b52decd8 faad=True ffmpeg=True
+pass base_fixed8|15-Good-evening.441.16b48k.wav|32 packet=becf25bbad4f8e9cb74f0a81f23fb9b6519df2534ae6cc286bd3bbd4245c1e54 faad=True ffmpeg=True
+pass base_fixed8|15-Good-evening.441.16b48k.wav|48 packet=be47bf589bcadadf7a615fd83f72172ba134d22b169d39686a739fd650c890fc faad=True ffmpeg=True
+pass base_fixed8|15-Good-evening.441.16b48k.wav|64 packet=f07edfa448fe7cd119405a5def747bc7212780aceb21c1c0dd6f5aff8f219d83 faad=True ffmpeg=True
+pass base_fixed8|15-Good-evening.441.16b48k.wav|96 packet=11cf0a093772eb1215ded292e8f404c6da4f0f212583d2fc95939790a6033e2d faad=True ffmpeg=True
+pass base_fixed8|21-classic.441.16b48k.wav|32 packet=48e9ba7dad327c09be6e3a16e414f0359da963e7bf2e7c1bf2fc8e2c038d3c2e faad=True ffmpeg=True
+pass base_fixed8|21-classic.441.16b48k.wav|48 packet=8a6d99581a601cb23545264f9f4e30d22beabe7d5046ed268b98ed66f9548766 faad=True ffmpeg=True
+pass base_fixed8|21-classic.441.16b48k.wav|64 packet=2a4d9ebe697e3afe924bfb0bb66415144139b6eae26ef876956f67310904f69d faad=True ffmpeg=True
+pass base_fixed8|21-classic.441.16b48k.wav|96 packet=bd83db69f61c3fabc54def8be304317a48042203af656d5527e71be22d732a9f faad=True ffmpeg=True
+pass base_fixed8|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32 packet=ef44e851f29f4c003737593add5c4e2f92de1007f3db5b02a289dee2a818aeeb faad=True ffmpeg=True
+pass base_fixed8|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64 packet=3fc82250e94cf8f88c30d41e42360320442e078cc5f1a2d1cb19dd0d95fa4ff8 faad=True ffmpeg=True
+pass base_fixed8|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48 packet=add3c379f38635dee3e602128467f78288509122e76ccbfa65c0ffe74dea1454 faad=True ffmpeg=True
+pass base_fixed8|25-This-is-the-end.441.16b48k.wav|32 packet=f6f0b5e9c9e8a6b1b2abf61a13d617135465eca92a16c57b8704b3c7330269ee faad=True ffmpeg=True
+pass base_fixed8|25-This-is-the-end.441.16b48k.wav|48 packet=d01c5db07c372150eb778d03810e8976e58534634ec05cc15dec11f0ca99574b faad=True ffmpeg=True
+pass base_fixed8|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96 packet=0a5d5ebf564f1b132b9ad3d15a644f1862e79f0fe02e82f0585493f08307e4ff faad=True ffmpeg=True
+pass base_fixed8|25-This-is-the-end.441.16b48k.wav|64 packet=eee3b231df16765cc341a771e83f7761e21b1d42db6d1473681b4bb25b46a166 faad=True ffmpeg=True
+pass base_fixed8|27-last-song-drums-and-trampets.441.16b48k.wav|32 packet=feed2d7c29de93783e71363ff423157cccc196ee62380e1a89a8b824350e050d faad=True ffmpeg=True
+pass base_fixed8|25-This-is-the-end.441.16b48k.wav|96 packet=75913fea68e090d120ae185888cfe23cc734d495802d5a2737ea62e16b981b2b faad=True ffmpeg=True
+pass base_fixed8|27-last-song-drums-and-trampets.441.16b48k.wav|48 packet=36268c72ce842634659bda636e1d0deee641bf7bc30f83bbde2842455d5dc188 faad=True ffmpeg=True
+pass base_fixed8|27-last-song-drums-and-trampets.441.16b48k.wav|64 packet=d89c3d5b3dcfd86f8322138e0b4b338994161888b6c521e4e13db3d68ec1e615 faad=True ffmpeg=True
+pass base_fixed8|27-last-song-drums-and-trampets.441.16b48k.wav|96 packet=25f6f27f59e05b13902284d8d078161d698bd2fcb119a036a02f0d15b14b85c2 faad=True ffmpeg=True
+pass base_fixed8|35_SQAM_glockenspiel_cut.16b48k.wav|32 packet=915475130ed2a1219f5621d99f8bb7dba59d84f16f71f0e79e22e61254eacd53 faad=True ffmpeg=True
+pass base_fixed8|35_SQAM_glockenspiel_cut.16b48k.wav|48 packet=702c1cc07be811fa3d490d88b38f793f0c9ffd3acd6a20eef5e4fbe3953ec4ed faad=True ffmpeg=True
+pass base_fixed8|35_SQAM_glockenspiel_cut.16b48k.wav|64 packet=8fbdadc1bfd1e6d2344000b76a388bbbd4e947fcc6fe095936b5e55677c4d8bd faad=True ffmpeg=True
+pass base_fixed8|4-Sound-English-male.441.16b48k.wav|32 packet=01ac5414ea80e996a7969a280858039006af211b5c9c4605adbf4e72589f3555 faad=True ffmpeg=True
+pass base_fixed8|4-Sound-English-male.441.16b48k.wav|48 packet=1243d78cfd410d2647f0bf04a99f96206b47a65382b0c3465eb72209774f5a0f faad=True ffmpeg=True
+pass base_fixed8|35_SQAM_glockenspiel_cut.16b48k.wav|96 packet=c636a8466093f351bbf39fe9d8b5f268089b81125f17752c05763b5052f45981 faad=True ffmpeg=True
+pass base_fixed8|4-Sound-English-male.441.16b48k.wav|64 packet=dd5009ff52a39ab1d5418c8a9b40a48d01628362f0403d72d30a1e107a783d5b faad=True ffmpeg=True
+pass base_fixed8|9-Have-big-expensive-car.441.16b48k.wav|32 packet=8e0bb9ccc48e5259df46007742bc1d8082f6fb92526e7b5be770b7bc0e0cd140 faad=True ffmpeg=True
+pass base_fixed8|4-Sound-English-male.441.16b48k.wav|96 packet=189d6f89a845503837c67d6f38ea6c8baa024a05aa528ae77840b40ca69f32d0 faad=True ffmpeg=True
+pass base_fixed8|9-Have-big-expensive-car.441.16b48k.wav|48 packet=e559f853c885fdb6500e48d0fcedb3ef9756813e31c804b3aeea3a83febba431 faad=True ffmpeg=True
+pass base_fixed8|9-Have-big-expensive-car.441.16b48k.wav|64 packet=51763a8c30ee1cc7ccca698341d467ff53dd4430156c39b6ef4536f453df912f faad=True ffmpeg=True
+pass base_fixed8|9-Have-big-expensive-car.441.16b48k.wav|96 packet=0f967f40f9eb0437387deb371597380d8d2675d9ce8f01cbff018e4047dcd359 faad=True ffmpeg=True
+pass base_fixed8|Asleep__4.11-4.31_.16b48k.wav|48 packet=fa4d49bb80c1402577154ae2824caafca7214ef4dccaf6d4dcd90f8aa696c323 faad=True ffmpeg=True
+pass base_fixed8|Asleep__4.11-4.31_.16b48k.wav|32 packet=dc3f06a506e9c93dbdcfcba1fd2e525545cf1278e354eb3ddd215fc3ab5868f4 faad=True ffmpeg=True
+pass base_fixed8|Asleep__4.11-4.31_.16b48k.wav|64 packet=86005baf22a856f0c46a7e617269b4eca76284d0df9b5e759b2571165e8b62e1 faad=True ffmpeg=True
+pass base_fixed8|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32 packet=39b438c5c348f726290184d3d67e08a2cdba55b41db0ce2b97ce44b9172e1236 faad=True ffmpeg=True
+pass base_fixed8|Asleep__4.11-4.31_.16b48k.wav|96 packet=1d9e207bf6e7b3e5295b92831ff607a2b97e8e228e5bb21673fe180cf944eb98 faad=True ffmpeg=True
+pass base_fixed8|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48 packet=dc6225a6e349721511dd69fa2aea4e019579f2df761099775102b37e5d2c09b5 faad=True ffmpeg=True
+pass base_fixed8|Changes.16b48k.wav|32 packet=c37f636e93c5fb9e2be960532f12ed2bb5c23ab2eb7ddef9fd7b4b1b76ba6253 faad=True ffmpeg=True
+pass base_fixed8|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64 packet=e879e2faf279bbf4b579beea02825d40665e7778bc73dd52dc57e91c868ba673 faad=True ffmpeg=True
+pass base_fixed8|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96 packet=a16d7f52ce251ca7a4e29ab5ce12e2e6d77a315b31de5594c79cd535137b2221 faad=True ffmpeg=True
+pass base_fixed8|Changes.16b48k.wav|64 packet=105177ab8f9ed0d8fc6832fccbe4051e6a0a38b7be52444ba5fc645080cc9a6b faad=True ffmpeg=True
+pass base_fixed8|Changes.16b48k.wav|48 packet=7b321be023f9ce0d13bab58539f9c453f30dd77d0058baf5459a1e763bd8f627 faad=True ffmpeg=True
+pass base_fixed8|Changes.16b48k.wav|96 packet=d36e30fae4b0f4f2911797568037f480aa098fe5aeb0d1c037dbb286d8b01ec3 faad=True ffmpeg=True
+pass base_fixed8|Coral.16b48k.wav|32 packet=c1f15c085b580df62b177de8e64fa7acd5e3f5fab46f7b331e1e7fa95e4aef0c faad=True ffmpeg=True
+pass base_fixed8|Coral.16b48k.wav|48 packet=25aa1980d8f08dfb901ab1872a3ea18514de10c5a09ad2c4f3b40a1c3f4a1c4c faad=True ffmpeg=True
+pass base_fixed8|Coral.16b48k.wav|64 packet=d53a67bf74ed25f6ada2b6b6dbd83951c286c10b6de042888aff7266610ac25c faad=True ffmpeg=True
+pass base_fixed8|ExitMusic.16b48k.wav|32 packet=0fc6cfbd98904dac35835362fd50cf41c9341cca02107bab75e05ef98a5edde8 faad=True ffmpeg=True
+pass base_fixed8|ExitMusic.16b48k.wav|48 packet=1d636faac275730a8eb45e967c6759dda0459fee10e3385a446d6b312e10b7e6 faad=True ffmpeg=True
+pass base_fixed8|Coral.16b48k.wav|96 packet=7187ef7c189f155061587a68675eef9a6944456f1c3bcb0799553269d1045a68 faad=True ffmpeg=True
+pass base_fixed8|Girl_In_The_Fire__Sample_.16b48k.wav|32 packet=195d0538c03e9403846ec68711421ac9834ec4bc802a3795a325d999b316867d faad=True ffmpeg=True
+pass base_fixed8|ExitMusic.16b48k.wav|64 packet=ca704909bdbd7d02b1030b4dddd5a5c499b47b9e2c04be960ebafd9811b911b1 faad=True ffmpeg=True
+pass base_fixed8|ExitMusic.16b48k.wav|96 packet=755c49288651e833897e32998e557afb658b37aab87d093c99841141d1ba7876 faad=True ffmpeg=True
+pass base_fixed8|Girl_In_The_Fire__Sample_.16b48k.wav|48 packet=58b848f7671c4d8d5dcae367a65e65089eeb70a9623100e4b554211a05cd90af faad=True ffmpeg=True
+pass base_fixed8|Girl_In_The_Fire__Sample_.16b48k.wav|64 packet=8bbe3d90b5c57962b4d01789a45137ef653e07e026bf6380528d8320b0cf0f65 faad=True ffmpeg=True
+pass base_fixed8|Girl_In_The_Fire__Sample_.16b48k.wav|96 packet=cb32a6ee095bdec7f52d8706de4dfd7179d4891a6030d29bd6a05afddadce829 faad=True ffmpeg=True
+pass base_fixed8|Greatest_Love_of_All_2min57.16b48k.wav|32 packet=93d07965e8ac2dfcb13f9c648627559802feccd61d2ff226d0d560185911257a faad=True ffmpeg=True
+pass base_fixed8|Greatest_Love_of_All_2min57.16b48k.wav|64 packet=e6c69a834914319dda16509d4f8f32ca5764b5393950262c6f8eeacb683d27bd faad=True ffmpeg=True
+pass base_fixed8|Greatest_Love_of_All_2min57.16b48k.wav|48 packet=9740f53f8afa1f1a922c91dd380a1228c877c1e853f4889da67a1a123ff911c8 faad=True ffmpeg=True
+pass base_fixed8|Hey Tonight.16b48k.wav|32 packet=ca1e5b30dbe0ff6b50d09860c87f634dc63d86547e6b68faaccdae80de3286de faad=True ffmpeg=True
+pass base_fixed8|Greatest_Love_of_All_2min57.16b48k.wav|96 packet=9e757d34f57ec4d5908563d9c831e46ec7b2ec991f4aeb7e102503a598950a31 faad=True ffmpeg=True
+pass base_fixed8|Hey Tonight.16b48k.wav|48 packet=e9f1f7425886ce6f4aa44052cf80c426c29103d0fce0f0191074160b535e287b faad=True ffmpeg=True
+pass base_fixed8|Hey Tonight.16b48k.wav|64 packet=abc172044ae323ae6bbbfb6b07a2b5ea377c033b87dd9f8b605948aa88b67737 faad=True ffmpeg=True
+pass base_fixed8|Hey Tonight.16b48k.wav|96 packet=bebc748c970a228cdda69a432a2bdaddd1f171b7b5541c6f373ab8f25c198e92 faad=True ffmpeg=True
+pass base_fixed8|Hotel California.16b48k.wav|32 packet=4c0ceccf8f2ebba6ecad14b9a88abb8848c5a4a20ad487e3a5d7c69a7ac37099 faad=True ffmpeg=True
+pass base_fixed8|Hotel California.16b48k.wav|48 packet=536771c5e4a2b39339178146eb1f5a6137d978f49e5ba49c649b80442b0cad0b faad=True ffmpeg=True
+pass base_fixed8|Hotel California.16b48k.wav|64 packet=f5785dc12e4d5b0e4d022b8fb1c3d53223494470ee04da816be587a14753b25a faad=True ffmpeg=True
+pass base_fixed8|Hotel California.16b48k.wav|96 packet=47e6ae616e2af7e1da7926b6cd8abbaeb688af17857f31a287026df142bd3234 faad=True ffmpeg=True
+pass base_fixed8|Jupiter, the Bringer of Jolity.16b48k.wav|32 packet=59ac604ab8c54c99ab587698f075955c77aa711511bc699d3e24cfd990d22bb0 faad=True ffmpeg=True
+pass base_fixed8|Jupiter, the Bringer of Jolity.16b48k.wav|64 packet=f76983019469faa84cf41b1a3436b724ea980380f92fbc87ec52f781f6228f95 faad=True ffmpeg=True
+pass base_fixed8|Jupiter, the Bringer of Jolity.16b48k.wav|48 packet=1365e824fce82f00071ace72211a70699609848edbc5dbe36a14b957a3cab609 faad=True ffmpeg=True
+pass base_fixed8|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48 packet=e2976e6433aa2a119f5de0e3de455e9bee54b8286baa00a02bd1d9725e12e3b4 faad=True ffmpeg=True
+pass base_fixed8|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32 packet=f0c0891e7cbf17ed9ee218e14b360f1ce2b09561dab1c66f0ad441638a22b574 faad=True ffmpeg=True
+pass base_fixed8|Jupiter, the Bringer of Jolity.16b48k.wav|96 packet=61584a9ac5c31b63f300761d60e940a1f04f7d22b1d82952f8d1500a9617ca0f faad=True ffmpeg=True
+pass base_fixed8|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64 packet=76d0e3bea916f8f29ba5843c20e34907f11097a385b0fe04845615177c578d6f faad=True ffmpeg=True
+pass base_fixed8|NewYorkCity.16b48k.wav|32 packet=6d9a20d389818636011ae9119bc3a6aa90eff9874c1ebe6ef984425fa925b27a faad=True ffmpeg=True
+pass base_fixed8|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96 packet=ec2bfa9249a6540aa1863b319c702a5c1459743c669d84175978138bff7a891a faad=True ffmpeg=True
+pass base_fixed8|NewYorkCity.16b48k.wav|64 packet=7a63ceb1e22e9af33d819ab2d6edd36d327867df90cefd43f9b3e055c55143a9 faad=True ffmpeg=True
+pass base_fixed8|NewYorkCity.16b48k.wav|48 packet=89b8e4f93258f621a3619d21234783670029f8bf0b38a09217f639ece84cc221 faad=True ffmpeg=True
+pass base_fixed8|NewYorkCity.16b48k.wav|96 packet=ffa703923f011039d5324c7f37d394d1dff201067cc03467fb0bfa34b77f68bd faad=True ffmpeg=True
+pass base_fixed8|Only Time.16b48k.wav|32 packet=a8935b17cb95a8f61acf304a55fac7345ba696b27ed379734b7e703b9651fb81 faad=True ffmpeg=True
+pass base_fixed8|Only Time.16b48k.wav|64 packet=d55891d51058294717ef2013cf68c58e00c889e1c57b8fcf18b4c93b20135b06 faad=True ffmpeg=True
+pass base_fixed8|Only Time.16b48k.wav|48 packet=bf2c8e7d3f09c63b53900cd25fb4c93d5aa8fcb6001a642273f44fa83f861cfb faad=True ffmpeg=True
+pass base_fixed8|Robots_old.16b48k.wav|32 packet=2765494ce7fccb60d9b6de43ae1b3bfb4337a035c3d4934ca4bbfa5933e7ab51 faad=True ffmpeg=True
+pass base_fixed8|Only Time.16b48k.wav|96 packet=a1877a2d2a845173ebc8584afdf363fc6560d7ea7aff67d0ca46f2c76a4a86b3 faad=True ffmpeg=True
+pass base_fixed8|Robots_old.16b48k.wav|48 packet=4c139588608aede4d7cdc21b291759e29ff5fd3e17fd5ac363f4929f685f5e5f faad=True ffmpeg=True
+pass base_fixed8|Severance__1.31-1.51_.16b48k.wav|32 packet=8949575195416d4945f59ae8102fc70650a883a8313c9891d3f1c8d13b83c668 faad=True ffmpeg=True
+pass base_fixed8|Robots_old.16b48k.wav|64 packet=57429abd58707225c9f6c8d4da858d23c1cc53aeb9decf91c3739e21147893b2 faad=True ffmpeg=True
+pass base_fixed8|Robots_old.16b48k.wav|96 packet=5274ffc212cf61fbd3f10f45fff0fea35a1f586e9f4553c8ed833eb0dc683d6c faad=True ffmpeg=True
+pass base_fixed8|Severance__1.31-1.51_.16b48k.wav|64 packet=ec6cccd2a6562932ea08d3fffacda68133a67c12a344100f11d3221bfaca821d faad=True ffmpeg=True
+pass base_fixed8|Severance__1.31-1.51_.16b48k.wav|48 packet=8d860e5355ea1580d7b0ce19324238a7791aba81d573c538d64a26e16e394a09 faad=True ffmpeg=True
+pass base_fixed8|Severance__1.31-1.51_.16b48k.wav|96 packet=979d6c114cb7cf5b94ad79beb2d75abbd390fc5451c55cb58110e70832b6e462 faad=True ffmpeg=True
+pass base_fixed8|Shinsho_pool_3min45_4min4.16b48k.wav|32 packet=35ef5e682f918bb81e52eeeaa75c824bff8b0bbe9e3fab4e0f0696700e6bf103 faad=True ffmpeg=True
+pass base_fixed8|Shinsho_pool_3min45_4min4.16b48k.wav|64 packet=0fa9ca7b980ce023a83b6961afb849a25d8d1ea0021cd3fe4db4cd64dfb68d9d faad=True ffmpeg=True
+pass base_fixed8|Shinsho_pool_3min45_4min4.16b48k.wav|48 packet=b2fb12aecd67bea3f1a79b73a2a565c6a1123689858fe6c7569d01d8ce85781e faad=True ffmpeg=True
+pass base_fixed8|SinceAlways.16b48k.wav|32 packet=315dc994c66862c7bff89c0b465c6a40faba637f32af32913029390db2446766 faad=True ffmpeg=True
+pass base_fixed8|Shinsho_pool_3min45_4min4.16b48k.wav|96 packet=10d381c7481498d945bf088be3407657fd168ecb940ab6f3545f6d3c374cf4a4 faad=True ffmpeg=True
+pass base_fixed8|SinceAlways.16b48k.wav|48 packet=fe26933131958052c9deaea2620d4ff2a46edbdb5cec1bcbb79577c6541ae3cf faad=True ffmpeg=True
+pass base_fixed8|SinceAlways.16b48k.wav|64 packet=5ebb341c30d25cfe1a7425f273bd001f421ddbc986ab33130f7edcfca49d52f0 faad=True ffmpeg=True
+pass base_fixed8|SlavesOfFear.16b48k.wav|32 packet=e26afe6f04301a9267bde7094054d0d2789a9b7f408da3122ee30af450ec741a faad=True ffmpeg=True
+pass base_fixed8|SinceAlways.16b48k.wav|96 packet=e4802f363539e80fb2cf37192bf132ca259883fa9d936c57df5c15169764844e faad=True ffmpeg=True
+pass base_fixed8|SlavesOfFear.16b48k.wav|48 packet=b64d557bf7655142d362b8a246383bae1fc263203b1e5c84da275aee06c4f55b faad=True ffmpeg=True
+pass base_fixed8|SlavesOfFear.16b48k.wav|96 packet=6932b877ebd4f0010ca71e685db33a2826fe638aac75ac24af96c7529ccf304c faad=True ffmpeg=True
+pass base_fixed8|SlavesOfFear.16b48k.wav|64 packet=d53fccc8d35c3929c10f5bfb6e7a771ee36551a1fe94c1153d30e3d3ea1366ce faad=True ffmpeg=True
+pass base_fixed8|The Chastising of Renegade.16b48k.wav|48 packet=572cddee8eb95adea39f3be08ddd591020bdb93cb9f9f13c81973a5744d046e5 faad=True ffmpeg=True
+pass base_fixed8|The Chastising of Renegade.16b48k.wav|32 packet=cf0372aaca67cfe0bd001f9cb52a7798f8c9532af0b2afeaaf8bcefef5efb5a3 faad=True ffmpeg=True
+pass base_fixed8|The Chastising of Renegade.16b48k.wav|64 packet=2778998cdd3fbd555c5ce70f77376a18d908038186c1036aeb20bb8610799496 faad=True ffmpeg=True
+pass base_fixed8|The Chastising of Renegade.16b48k.wav|96 packet=af97d0ebb1c9aa70f4b3fcaea8c5bd277ac455c909122d576217bcad35a34cd8 faad=True ffmpeg=True
+pass base_fixed8|Through The Fire And Flames.16b48k.wav|48 packet=5d483315c07803ac3e94b30cf501768ecf6d2a1cb045344361c6bd8a351c0f02 faad=True ffmpeg=True
+pass base_fixed8|Through The Fire And Flames.16b48k.wav|32 packet=2f432e29d7c3011443e79ff360abf142e0c83c2a47fcda9e42db9b263111a872 faad=True ffmpeg=True
+pass base_fixed8|TrosYGareg.16b48k.wav|32 packet=3819f84aaff1865d63b0acad73852b675efc3f74eecbe16f7c90ec76538e2ac1 faad=True ffmpeg=True
+pass base_fixed8|Through The Fire And Flames.16b48k.wav|96 packet=2cf6d6788c34df08692f7d932a0457ab4f20b320b3d2812acb6074eb1d5e3a2c faad=True ffmpeg=True
+pass base_fixed8|Through The Fire And Flames.16b48k.wav|64 packet=5a37c855b1bb93b1fc5d3d97081e14853854e3eedaed9ea28475e5001a18003c faad=True ffmpeg=True
+pass base_fixed8|TrosYGareg.16b48k.wav|48 packet=7c284c0cfbffc4ecd92e26720062ac5d9358c82c8faa3c7e3063e4f7623e074c faad=True ffmpeg=True
+pass base_fixed8|TrosYGareg.16b48k.wav|64 packet=f85435eeae59210571019b64722905880d67e76167b8765075217fd4a250e983 faad=True ffmpeg=True
+pass base_fixed8|TrosYGareg.16b48k.wav|96 packet=fe05025f22fdee86443427272d33dba1a3e5ad315761114b5ce80e0af5b0b798 faad=True ffmpeg=True
+pass base_fixed8|Waiting.16b48k.wav|48 packet=9c4c1efa0cf8fe7f9c35abcf74fb2cc02e3cf070b14a0a64f159c464a2bb2fba faad=True ffmpeg=True
+pass base_fixed8|Waiting.16b48k.wav|32 packet=8e7ac3eae309db498928bbae875c4df8cdeaf21053306dba83072d8e492d7d12 faad=True ffmpeg=True
+pass base_fixed8|Waiting.16b48k.wav|64 packet=afc00430dea4e832618ba487fcab49795dca2327a17856675cd237bf41c01205 faad=True ffmpeg=True
+pass base_fixed8|With Love (Outro).16b48k.wav|32 packet=0b2eaeb7916bf98e9e360a716526dcefb66f945ef20cc6aa6a8ad1c5f365fcd7 faad=True ffmpeg=True
+pass base_fixed8|Waiting.16b48k.wav|96 packet=4bc6ac827a212f839c20313e1032c278b3e006d1a930be0b5ba54a75887463fa faad=True ffmpeg=True
+pass base_fixed8|With Love (Outro).16b48k.wav|48 packet=52843777d38fdf936abbfe6af22768f165a899bdfaac7512c1ba0b28ed4c92b7 faad=True ffmpeg=True
+pass base_fixed8|bah.wav|32 packet=36cf3010a3c010c0a1a6a21f3cd7d5e050d93f7edba7bb4b202ee325d2c83da3 faad=True ffmpeg=True
+pass base_fixed8|With Love (Outro).16b48k.wav|64 packet=e6d561ff8f4440bde3bfc9c4dfb0cbda3f7add3049acfb9636c602d3951be447 faad=True ffmpeg=True
+pass base_fixed8|With Love (Outro).16b48k.wav|96 packet=f6cb5a21b161d96a73bc5e47515bc544c1a38e4ab69e6c142f3ff3c7391e73b0 faad=True ffmpeg=True
+pass base_fixed8|bah.wav|64 packet=eb033ce8dacfb808502196cef8d1a1d0688ee89ae7e02f9727c64a5f8e3732d1 faad=True ffmpeg=True
+pass base_fixed8|bah.wav|48 packet=47c5e1818444ed29bd1fee81a0d1f25e776f68895c4cc9297f419922478139cd faad=True ffmpeg=True
+pass base_fixed8|bah.wav|96 packet=3c56f90dd2d4b3384fb1e0303796d8e71da6b14e04417e3b007206d86c73debb faad=True ffmpeg=True
+pass base_fixed8|bas.wav|32 packet=f071852ad95300a840abf66c98f8f6dc2cedb3ca5e9c284c530a3833033690ef faad=True ffmpeg=True
+pass base_fixed8|bas.wav|48 packet=e7eb1c343108781b40cc26ff98877c6eba418532bdc7adaded288c6ee9b5bdbe faad=True ffmpeg=True
+pass base_fixed8|bas.wav|64 packet=5ef5cfc40bd2e070d91a8f2936d3425f12bf95e95397f0b5df7141e01329c91a faad=True ffmpeg=True
+pass base_fixed8|bonhemian_rhapsody.16b48k.wav|32 packet=04add618bc4580d1b46a4fcbf0d5217d773752e76f4881c17fe0f00412d2390e faad=True ffmpeg=True
+pass base_fixed8|bas.wav|96 packet=5cd7c66b68543103af6300cb26fbf660c394b57a4865917882f1e73c88456b7e faad=True ffmpeg=True
+pass base_fixed8|bonhemian_rhapsody.16b48k.wav|48 packet=2f92c59e7db879222e9b74038dc25a482ac08991d5047afe67e8a60d78fe9dce faad=True ffmpeg=True
+pass base_fixed8|bonhemian_rhapsody.16b48k.wav|64 packet=693e6b4c99a099762829edccb09ed7cf4c9b256e33ae0b6809a5129e4d6bc58e faad=True ffmpeg=True
+pass base_fixed8|clapton_44k.16b48k.wav|32 packet=d0fe192824b72dac2b37676751e3bea91260602cc8cf5645c67efd7671887a89 faad=True ffmpeg=True
+pass base_fixed8|bonhemian_rhapsody.16b48k.wav|96 packet=483197da31e599fff237c47b45a4259b2a04074bac61b4136cdab40a4170e727 faad=True ffmpeg=True
+pass base_fixed8|clapton_44k.16b48k.wav|48 packet=7458e04ffedf63b1c5c075118ca15dee96607107edbdec49c1e54077e6f6b68f faad=True ffmpeg=True
+pass base_fixed8|clapton_44k.16b48k.wav|64 packet=d0a901928c2d635eb17de67ead3069e4d461b84b585bf4cf260cce633ac8bd8f faad=True ffmpeg=True
+pass base_fixed8|clapton_44k.16b48k.wav|96 packet=171a018911b3323e5ea53136e87d627afe971592a62eb3064b9e343be6558443 faad=True ffmpeg=True
+pass base_fixed8|cst.wav|32 packet=23f7844d53521f1b6c7175704cad503e7349d7bb4ff2d75638eb2a32e5b356da faad=True ffmpeg=True
+pass base_fixed8|cst.wav|48 packet=192e4f7e32ce47a60455bea7e9f8d810176184a9f6d3b7f37200a2b2a473ee45 faad=True ffmpeg=True
+pass base_fixed8|cst.wav|64 packet=a444bc2a6420231ac00eccf2764a10df52da163572b488e52faeea1e63eecf5e faad=True ffmpeg=True
+pass base_fixed8|cst.wav|96 packet=6af9fa990c7f14e7409e42346c07f5672b9223f89ead9394af740bb0d221d6ca faad=True ffmpeg=True
+pass base_fixed8|fms.wav|48 packet=8ee7e350e365f479910fdd7018d6fdabeb6b8aec01b97d139e389d6e8f308342 faad=True ffmpeg=True
+pass base_fixed8|fms.wav|32 packet=87f793393c0b85de0a701b32165d30d6ae17ae183f9a2a6eee64fb2b719ed4e4 faad=True ffmpeg=True
+pass base_fixed8|fms.wav|64 packet=60424787fba1288113caa83de1292c9453752451aee6e506b490bb5133ffb768 faad=True ffmpeg=True
+pass base_fixed8|girl.16b48k.wav|32 packet=40630bcbe1335f51c3061fda1985d5cf959e8e9cf5f0bb2e2c245367205b2260 faad=True ffmpeg=True
+pass base_fixed8|fms.wav|96 packet=46a8c87ad5194401213e043e06cdf1a0c5380e285e3945dfc4e3e6b2123fc079 faad=True ffmpeg=True
+pass base_fixed8|girl.16b48k.wav|48 packet=60d9ed7107daacfc9b16a480ad1b4947229b893e4bf362042df896d1be869a2d faad=True ffmpeg=True
+pass base_fixed8|girl.16b48k.wav|64 packet=c805c7aa5f0fa1eaa9f9c065f8ee1e0ee86efdcdbd711749facd362a4bee7c7f faad=True ffmpeg=True
+pass base_fixed8|girl.16b48k.wav|96 packet=7808091deb585fe307a92ffc82acb0d022d3d9f9c6dec60dca1e1f385151bd9b faad=True ffmpeg=True
+pass base_fixed8|glk.wav|32 packet=934d3ee196f3b5a98cd77c9d838106acc0b12c2514a35c6f4bd80d46e1ab480a faad=True ffmpeg=True
+pass base_fixed8|glk.wav|48 packet=b46ca53a006fb7094cde9831479b36160898a939849a3a0a63678df848c36de5 faad=True ffmpeg=True
+pass base_fixed8|glk.wav|64 packet=543662913630b5a3568996831c025d149ca247e061bfb0e0e8d6f4205d2c1bc3 faad=True ffmpeg=True
+pass base_fixed8|hrp.wav|48 packet=3fdf961bd1b925f738f683a7fa54915bd1cfb7cbcbda659ddef200cfe587324e faad=True ffmpeg=True
+pass base_fixed8|hrp.wav|32 packet=5344e297dc08540a170830de5d27e7e8798813ce85a60df1e796ec4467446805 faad=True ffmpeg=True
+pass base_fixed8|glk.wav|96 packet=e21020602f1b8a821e71a1f85bc059c80dc2b3edaabaf9e63a748006b7bf53b9 faad=True ffmpeg=True
+pass base_fixed8|liberate.16b48k.wav|32 packet=32c0a396237016237e4aed4e823d8af39030d1d9a1d1391b688dbc0b4933d630 faad=True ffmpeg=True
+pass base_fixed8|hrp.wav|64 packet=74087d87bf72b6fe08f4954c5f25895c78c9f28acd830d5e4c81fa84f993f2f0 faad=True ffmpeg=True
+pass base_fixed8|hrp.wav|96 packet=ad1f9b83a36409bfbd7f5c51d4ecf2bfb7dd94d44517114493174ac6ae8cdf6e faad=True ffmpeg=True
+pass base_fixed8|liberate.16b48k.wav|48 packet=95859f51b655b79b3e4c4267633675fce846b94aa7607db13db53c0b742f1e6b faad=True ffmpeg=True
+pass base_fixed8|liberate.16b48k.wav|96 packet=4f2e856a0311a766e6a721b5c70be7910a906dbbc2bcae664d225a35ee86622b faad=True ffmpeg=True
+pass base_fixed8|liberate.16b48k.wav|64 packet=31a83ddc5af507f7fe824232430a7e0e0c1cdb4eab9e3248c6da11f8fa7633bd faad=True ffmpeg=True
+pass base_fixed8|lob.wav|32 packet=03f72dcf4c2ad4b6212068112aac1edb05129be52bcb783fbb94eb6e8fbe0098 faad=True ffmpeg=True
+pass base_fixed8|lob.wav|64 packet=611de8c6b4eb8d0d702a094c768884703e35b5616d765ce025ad94cd5798c1cb faad=True ffmpeg=True
+pass base_fixed8|lob.wav|48 packet=eecc337dd030a7a5f06cecf6d6d559ae310cad20bd9a6a767dcc61fe7b8ae8a4 faad=True ffmpeg=True
+pass base_fixed8|lob.wav|96 packet=5378ac94d0660e511153ee05f2522cef8515c42e25dd933c9116875bc824d10d faad=True ffmpeg=True
+pass base_fixed8|mof.wav|32 packet=3c032677ff6c0f73b097f8e461302d4174ac26cbdd279da40c82f70c4dd3e130 faad=True ffmpeg=True
+pass base_fixed8|mof.wav|48 packet=aa8a6e5e23fae691e693ab90b7e42d8a4fa1f2e1ea5e37f2bb13648afd99480b faad=True ffmpeg=True
+pass base_fixed8|mof.wav|64 packet=f94c7269a8bc0a57c5a85330cc9849f12df8ecd5a9ddafe97a8a786d18fac45b faad=True ffmpeg=True
+pass base_fixed8|mof.wav|96 packet=f37080e7d3ec2b7b2350855a5a22cdc47f6b0e27eda846632d571d01e57dc26f faad=True ffmpeg=True
+pass base_fixed8|qrt.wav|32 packet=dc010bdc43b0cde09e95759bdf82558b0ee0b38e6f2c2e27d752d4aa3448830d faad=True ffmpeg=True
+pass base_fixed8|qrt.wav|48 packet=f8841630639a97832948ca7470680d3f55611d6e0a8eafd7ae8045a7dad9b3a6 faad=True ffmpeg=True
+pass base_fixed8|qrt.wav|96 packet=06cae634117008b6a23c9aded84cd4a08abeb48f417465480bd43b05d16e2189 faad=True ffmpeg=True
+pass base_fixed8|qrt.wav|64 packet=44dfee542b93051030560e5c5589e19f3815cb646e0197f4b3cdb0a2a139934f faad=True ffmpeg=True
+pass base_fixed8|sandman.16b48k.wav|32 packet=e6c52eed0d67feb940963270c8f7ffe0920ea12ca7d62421bb3de76c7c6f70e5 faad=True ffmpeg=True
+pass base_fixed8|sandman.16b48k.wav|64 packet=ca192a7df4bb5313b005e807ffba5daf90e52061cb8fda29d580109b12977008 faad=True ffmpeg=True
+pass base_fixed8|sandman.16b48k.wav|48 packet=7999ad093f9169b6c9a3ac20ee97a8fd11d1d299948b5389f1144e83353e4d33 faad=True ffmpeg=True
+pass base_fixed8|sandman.16b48k.wav|96 packet=e23579d4c352496fd03e99b772cb6d33fde5e3abe0f4f93fed54009ca9548f9a faad=True ffmpeg=True
+pass base_fixed8|take_your_finger_frin_my_head.16b48k.wav|48 packet=07f1901837c7c6d81d393a416deda73832136bbb1f06a416e97ae7d7294c491c faad=True ffmpeg=True
+pass base_fixed8|take_your_finger_frin_my_head.16b48k.wav|32 packet=9d6506b4d102869abc37848339951c3ac213141e5f74f782b120269cb6b4ccc7 faad=True ffmpeg=True
+pass base_fixed8|take_your_finger_frin_my_head.16b48k.wav|64 packet=85aab5dbcfa355b46f13bb90572c0b7083f265056bd9927c986301d6bc00775a faad=True ffmpeg=True
+pass base_fixed8|take_your_finger_frin_my_head.16b48k.wav|96 packet=a26f07e6725e9cfe63eb53b93c2e10f5556700f50beb4d3c8024e442fcc37135 faad=True ffmpeg=True
+pass base_fixed8|trumpet.16b48k.wav|32 packet=3bce059ce57357818cf0d65b31b7260582edebced13c87cbca42d5d91acce83b faad=True ffmpeg=True
+pass base_fixed8|trumpet.16b48k.wav|48 packet=c29aa6561b30903bf1128936671c16deb96fdf3f3582244b30e4775195651d86 faad=True ffmpeg=True
+pass base_fixed8|trumpet.16b48k.wav|64 packet=7c5e9101abcedf7c02336df268c61a7ef216e3e043f027d93ad7f6e784267226 faad=True ffmpeg=True
+pass base_fixed8|trumpet.16b48k.wav|96 packet=a3a0b5f0e2dc6e449bab22cb087f95dff0d7857120f1e33a935301914d352ade faad=True ffmpeg=True
+pass base_fixed8|velvet.16b48k.wav|32 packet=4e152ee5cb2a985e7a8dfd70362dadf90115d6581beb2c8a38a91de3d4c97078 faad=True ffmpeg=True
+pass base_fixed8|velvet.16b48k.wav|48 packet=578bad64a4bfece03c19861dde857f5e6f0ee9e29e092efbe9b25977c44b82bf faad=True ffmpeg=True
+pass base_fixed8|velvet.16b48k.wav|64 packet=3334c762daf59846dcc84746fb0f1d64266c115aadd58294d22525374e57bc8b faad=True ffmpeg=True
+pass base_fixed8|velvet.16b48k.wav|96 packet=4f0ed8a7c14ebde5e2afa12aa3cc3e546425ad5595d3bfef9ac2673369212e42 faad=True ffmpeg=True
+measured_candidate combo_fixed8|sandman.16b48k.wav|32 packet=1692739f0a68e301f2f8c95acf3d70256ce432b4811b08e565ab21adc376731e faad=True ffmpeg=True
+measured_candidate combo_fixed8|sandman.16b48k.wav|48 packet=2b1cf83f9887f2f45e6fd480f73ddc53e0378d1283d1ec830d6078d243ed1532 faad=True ffmpeg=True
+measured_candidate combo_fixed8|sandman.16b48k.wav|64 packet=4f1bf6ff72994d7117c580b18912afd9f20ae127c8fb5bdf6bd0a74170691101 faad=True ffmpeg=True
+measured_candidate combo_fixed8|velvet.16b48k.wav|32 packet=b48e57e9da534ea29dfe8c4e11cc9ecd9027a771312da5029447cf93decd4176 faad=True ffmpeg=True
+measured_candidate combo_fixed8|sandman.16b48k.wav|96 packet=0d3969045fb072ae134de7d701c14727ddbf60d158a2e9b2cb37961f3a2dd2b0 faad=True ffmpeg=True
+measured_candidate combo_fixed8|velvet.16b48k.wav|48 packet=39c4b09566fa9e2fbcd58d4148523e2e674ffa1049e7f8133e535a37170cd9c1 faad=True ffmpeg=True
+measured_candidate combo_fixed8|velvet.16b48k.wav|96 packet=62ae7905361babdc4ff4ed389375a992b27876364e97885bfa66e2102aa1700b faad=True ffmpeg=True
+measured_candidate combo_fixed8|velvet.16b48k.wav|64 packet=a2e45ab9e59e2c843732ab314a10cf03c70c41993f4541d15f8ce14cb9a885fd faad=True ffmpeg=True
+measured_candidate combo_fixed8|21-classic.441.16b48k.wav|32 packet=e6506554e72e5ec3476d3a9d31733d5e93af4f052baaa49f6fe337f4c0935d50 faad=True ffmpeg=True
+measured_candidate combo_fixed8|21-classic.441.16b48k.wav|48 packet=43b7de7eb45db438f6eedb997140e7bbf0ca2c4ae6cddbf2b06c4b3f0b64ca71 faad=True ffmpeg=True
+measured_candidate combo_fixed8|21-classic.441.16b48k.wav|64 packet=17ab93a666cde88e1a2541eddb88736d3610c974626a3f8caccdfae2f7e3f3e5 faad=True ffmpeg=True
+measured_candidate combo_fixed8|21-classic.441.16b48k.wav|96 packet=39338448391683c2d53a442b0be50efb4034346aac7c4a06948f9150c017a80c faad=True ffmpeg=True
+measured_candidate combo_fixed8|fms.wav|32 packet=9133d4dba534ee080e6e7639a386032b1aba916e728eac085a1b752a96b4375c faad=True ffmpeg=True
+measured_candidate combo_fixed8|fms.wav|48 packet=8c0d1d69a85887b200de6607c9d9a6d62cc488977c914e9a5e7a323f37235719 faad=True ffmpeg=True
+measured_candidate combo_fixed8|fms.wav|64 packet=97195540eb77d336aefb414a9a41a4f9e2498a1dca7befab9009aa547a08c442 faad=True ffmpeg=True
+measured_candidate combo_fixed8|fms.wav|96 packet=e2a596ff9faadad0e0ff555a3952f846742337fb28a60270a3758689dc2d4b26 faad=True ffmpeg=True
+{
+  "base_fixed8_rows": 196,
+  "base_fixed8_exact": 196,
+  "combo_fixed8_gate_rows": 16,
+  "faad_pass": 212,
+  "ffmpeg_pass": 212,
+  "errors": []
+}

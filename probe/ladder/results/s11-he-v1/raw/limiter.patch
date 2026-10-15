@@ -1,0 +1,40 @@
+diff --git a/libfaac/sbr_bitstream.c b/libfaac/sbr_bitstream.c
+index 6b81d837..4c9db7ab 100644
+--- a/libfaac/sbr_bitstream.c
++++ b/libfaac/sbr_bitstream.c
+@@ -27,15 +27,26 @@
+ 
+ static void put_header(const SBRInfo *sbr, BitStream *bs)
+ {
+-    /* sbr_header(), with extra_1 present and extra_2 absent (21 bits). */
+-    uint32_t header = SBR_AMP_RES;
+-    header = (header << 4) | sbr->bs_start_freq;
+-    header = (header << 4) | sbr->bs_stop_freq;
+-    header = (header << 3) | sbr->bs_xover_band;
+-    header = (header << 4) | 2; /* reserved=0, extra_1=1, extra_2=0 */
+-    header = (header << 2) | sbr->bs_freq_scale;
+-    header = (header << 1) | sbr->bs_alter_scale;
+-    PutBit(bs, header << 2, 21); /* noise_bands=0 */
++    int extra2 = sbr->numEnvFixFix > 1;
++
++    /* Keep low-rate headers minimal to preserve core allocation. */
++    PutBit(bs, SBR_AMP_RES, 1);
++    PutBit(bs, sbr->bs_start_freq, 4);
++    PutBit(bs, sbr->bs_stop_freq, 4);
++    PutBit(bs, sbr->bs_xover_band, 3);
++    PutBit(bs, 0, 2); /* bs_reserved */
++    PutBit(bs, 1, 1); /* bs_header_extra_1 */
++    PutBit(bs, extra2, 1); /* bs_header_extra_2 */
++    PutBit(bs, sbr->bs_freq_scale, 2);
++    PutBit(bs, sbr->bs_alter_scale, 1);
++    PutBit(bs, 0, 2); /* bs_noise_bands */
++    if (extra2) {
++        PutBit(bs, 2, 2); /* bs_limiter_bands */
++        /* A gain limit can suppress the requested high-band envelope. */
++        PutBit(bs, 3, 2); /* bs_limiter_gains */
++        PutBit(bs, 1, 1); /* bs_interpol_freq */
++        PutBit(bs, 1, 1); /* bs_smoothing_mode */
++    }
+ }
+ 
+ static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)

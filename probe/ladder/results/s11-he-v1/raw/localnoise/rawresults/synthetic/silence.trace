@@ -1,0 +1,587 @@
+Freeware Advanced Audio Coder
+FAAC 2.2.0 (99ce2b09-dirty)
+
+Initial quantization quality: 400
+Average bitrate: 32 kbps/channel
+Bandwidth: 12000 Hz
+Object type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS
+Container format: Transport Stream (ADTS)
+Encoding control/synthetic/silence.wav to control/synthetic/silence.aac
+         frame         | bitrate | elapsed/estim | play/CPU | ETA
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+      0/48      (  0%) |    0.0  |    0.0/0.0    |  490.42x | 0.0 SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+     44/48      ( 91%) |    4.6  |    0.0/0.0    |  494.93x | 0.0 SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=0 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=0 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=0 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR invf ch=1 band=1 Torig=0 Tsource=0 mode=1
+SBR noise ch=1 env=0 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0 Tsource=0 rawQ=0.25 smoothedQ=0.25 finalLevel=18
+     49/48      (102%) |    5.1  |    0.0/0.0    |  473.15x | 0.0 

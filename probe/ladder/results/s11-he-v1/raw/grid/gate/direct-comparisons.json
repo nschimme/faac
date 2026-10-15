@@ -1,0 +1,747 @@
+{
+  "clips": 4,
+  "comparisons": {
+    "both_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 1.810395607889781,
+        "lo": -0.1690998826875123,
+        "losses": 1,
+        "mean": 0.9315957126251384,
+        "n": 4,
+        "wins": 3
+      },
+      "mean_bd_rate_percent": 0.9315957126251384,
+      "median_bd_rate_percent": 1.1622744489772296,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 2.1256731510419735,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7238391984958792,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.8294308332168709,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4951180647375883,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.02216653576515848,
+          "mean_candidate_mos": 3.7923746705055237,
+          "mean_mos_delta": -0.034033000469207764,
+          "mean_reference_mos": 3.8264076709747314,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.006786465644836426,
+            "lo": -0.08029741048812866,
+            "losses": 3,
+            "mean": -0.034033000469207764,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.0014720390073857947,
+          "mean_candidate_mos": 4.173033952713013,
+          "mean_mos_delta": -0.0066519975662231445,
+          "mean_reference_mos": 4.179685950279236,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007559061050415039,
+            "lo": -0.018335461616516113,
+            "losses": 3,
+            "mean": -0.0066519975662231445,
+            "n": 4,
+            "wins": 1
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.0005104239170328206,
+          "mean_candidate_mos": 4.429028868675232,
+          "mean_mos_delta": -0.001832127571105957,
+          "mean_reference_mos": 4.430860996246338,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.002461671829223633,
+            "lo": -0.00818336009979248,
+            "losses": 1,
+            "mean": -0.001832127571105957,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.0027587109156207434,
+          "mean_candidate_mos": 4.669056177139282,
+          "mean_mos_delta": -0.002621173858642578,
+          "mean_reference_mos": 4.671677350997925,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0031518936157226562,
+            "lo": -0.007977485656738281,
+            "losses": 1,
+            "mean": -0.002621173858642578,
+            "n": 4,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    },
+    "center_vs_baseline_original": {
+      "aac_packet_identity_ties": 4,
+      "decoded_pcm_identity_ties": 4,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.38213579669964526,
+        "lo": 0.0007197538466896525,
+        "losses": 0,
+        "mean": 0.19142777527316746,
+        "n": 4,
+        "wins": 2
+      },
+      "mean_bd_rate_percent": 0.19142777527316746,
+      "median_bd_rate_percent": 0.13337049548212132,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.26530148327086334,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4989701101284272,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.001439507693379305,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.012584041610222418,
+          "mean_candidate_mos": 3.792693257331848,
+          "mean_mos_delta": -0.0337144136428833,
+          "mean_reference_mos": 3.8264076709747314,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0007443428039550781,
+            "lo": -0.07349860668182373,
+            "losses": 2,
+            "mean": -0.0337144136428833,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.0063158483204317495,
+          "mean_candidate_mos": 4.184040307998657,
+          "mean_mos_delta": 0.004354357719421387,
+          "mean_reference_mos": 4.179685950279236,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012526631355285645,
+            "lo": -0.0034208297729492188,
+            "losses": 1,
+            "mean": 0.004354357719421387,
+            "n": 4,
+            "wins": 2
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.005679044401615818,
+          "mean_candidate_mos": 4.430323600769043,
+          "mean_mos_delta": -0.0005373954772949219,
+          "mean_reference_mos": 4.430860996246338,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0037099123001098633,
+            "lo": -0.0040580034255981445,
+            "losses": 1,
+            "mean": -0.0005373954772949219,
+            "n": 4,
+            "wins": 1
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.004460835761924131,
+          "mean_candidate_mos": 4.673365592956543,
+          "mean_mos_delta": 0.001688241958618164,
+          "mean_reference_mos": 4.671677350997925,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005262136459350586,
+            "lo": -0.0004925727844238281,
+            "losses": 0,
+            "mean": 0.001688241958618164,
+            "n": 4,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    },
+    "combined_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 1.8039739823555112,
+        "lo": -0.17231069545464717,
+        "losses": 1,
+        "mean": 0.9283848998580035,
+        "n": 4,
+        "wins": 3
+      },
+      "mean_bd_rate_percent": 0.9283848998580035,
+      "median_bd_rate_percent": 1.15585282344296,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 2.1256731510419735,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7238391984958792,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.8294308332168709,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.482274813669049,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.02154062819918756,
+          "mean_candidate_mos": 3.792901039123535,
+          "mean_mos_delta": -0.03350663185119629,
+          "mean_reference_mos": 3.8264076709747314,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.006260097026824951,
+            "lo": -0.08029741048812866,
+            "losses": 3,
+            "mean": -0.03350663185119629,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.0023038335208697136,
+          "mean_candidate_mos": 4.173260807991028,
+          "mean_mos_delta": -0.006425142288208008,
+          "mean_reference_mos": 4.179685950279236,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007559061050415039,
+            "lo": -0.017654895782470703,
+            "losses": 3,
+            "mean": -0.006425142288208008,
+            "n": 4,
+            "wins": 1
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.00011653533061317667,
+          "mean_candidate_mos": 4.428621292114258,
+          "mean_mos_delta": -0.002239704132080078,
+          "mean_reference_mos": 4.430860996246338,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.002461671829223633,
+            "lo": -0.00818336009979248,
+            "losses": 1,
+            "mean": -0.002239704132080078,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.002131568177934917,
+          "mean_candidate_mos": 4.669036865234375,
+          "mean_mos_delta": -0.0026404857635498047,
+          "mean_reference_mos": 4.671677350997925,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0031325817108154297,
+            "lo": -0.007977485656738281,
+            "losses": 1,
+            "mean": -0.0026404857635498047,
+            "n": 4,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    },
+    "combined_vs_both": {
+      "aac_packet_identity_ties": 12,
+      "decoded_pcm_identity_ties": 12,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.0,
+        "lo": -0.012798584545328784,
+        "losses": 1,
+        "mean": -0.004266194848442928,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -0.004266194848442928,
+      "median_bd_rate_percent": 0.0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.017064779393771712,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.0006259389083634881,
+          "mean_candidate_mos": 3.792901039123535,
+          "mean_mos_delta": 0.0005263686180114746,
+          "mean_reference_mos": 3.7923746705055237,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0015791058540344238,
+            "lo": 0.0,
+            "losses": 0,
+            "mean": 0.0005263686180114746,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.0008319052293537244,
+          "mean_candidate_mos": 4.173260807991028,
+          "mean_mos_delta": 0.00022685527801513672,
+          "mean_reference_mos": 4.173033952713013,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0006805658340454102,
+            "lo": 0.0,
+            "losses": 0,
+            "mean": 0.00022685527801513672,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0006269985579010484,
+          "mean_candidate_mos": 4.428621292114258,
+          "mean_mos_delta": -0.0004075765609741211,
+          "mean_reference_mos": 4.429028868675232,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0,
+            "lo": -0.0012227296829223633,
+            "losses": 0,
+            "mean": -0.0004075765609741211,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.0006271532260737622,
+          "mean_candidate_mos": 4.669036865234375,
+          "mean_mos_delta": -1.9311904907226562e-05,
+          "mean_reference_mos": 4.669056177139282,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0,
+            "lo": -5.793571472167969e-05,
+            "losses": 0,
+            "mean": -1.9311904907226562e-05,
+            "n": 4,
+            "wins": 0
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    },
+    "flat20_vs_baseline_original": {
+      "aac_packet_identity_ties": 7,
+      "decoded_pcm_identity_ties": 7,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.3625287231056068,
+        "lo": -0.027424236233128396,
+        "losses": 2,
+        "mean": 0.11071667594909629,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": 0.11071667594909629,
+      "median_bd_rate_percent": -0.0029544590251895375,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.03656564831083786,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.005908918050379075,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4853412701576021,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.003755445395822732,
+          "mean_candidate_mos": 3.8175817728042603,
+          "mean_mos_delta": -0.008825898170471191,
+          "mean_reference_mos": 3.8264076709747314,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0001609325408935547,
+            "lo": -0.026313185691833496,
+            "losses": 1,
+            "mean": -0.008825898170471191,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.002498169608391998,
+          "mean_candidate_mos": 4.180339694023132,
+          "mean_mos_delta": 0.0006537437438964844,
+          "mean_reference_mos": 4.179685950279236,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.002121448516845703,
+            "lo": -0.00016021728515625,
+            "losses": 0,
+            "mean": 0.0006537437438964844,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.0006256685908284654,
+          "mean_candidate_mos": 4.430776476860046,
+          "mean_mos_delta": -8.45193862915039e-05,
+          "mean_reference_mos": 4.430860996246338,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0023142099380493164,
+            "lo": -0.002567768096923828,
+            "losses": 0,
+            "mean": -8.45193862915039e-05,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.000418955219866346,
+          "mean_candidate_mos": 4.671676397323608,
+          "mean_mos_delta": -9.5367431640625e-07,
+          "mean_reference_mos": 4.671677350997925,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0008726119995117188,
+            "lo": -0.0008754730224609375,
+            "losses": 0,
+            "mean": -9.5367431640625e-07,
+            "n": 4,
+            "wins": 0
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    },
+    "late_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 2.0526418167468585,
+        "lo": -0.7841996719924749,
+        "losses": 2,
+        "mean": 0.6342210723771918,
+        "n": 4,
+        "wins": 2
+      },
+      "mean_bd_rate_percent": 0.6342210723771918,
+      "median_bd_rate_percent": 0.5563953396190646,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 2.2686537557597086,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7238391984958792,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8445601454890705,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.8366298777340084,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.012070421195020664,
+          "mean_candidate_mos": 3.818229615688324,
+          "mean_mos_delta": -0.00817805528640747,
+          "mean_reference_mos": 3.8264076709747314,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.008413374423980713,
+            "lo": -0.025105953216552734,
+            "losses": 2,
+            "mean": -0.00817805528640747,
+            "n": 4,
+            "wins": 1
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.007330819484976936,
+          "mean_candidate_mos": 4.174174427986145,
+          "mean_mos_delta": -0.00551152229309082,
+          "mean_reference_mos": 4.179685950279236,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011250019073486328,
+            "lo": -0.02227306365966797,
+            "losses": 2,
+            "mean": -0.00551152229309082,
+            "n": 4,
+            "wins": 2
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.006828316259410716,
+          "mean_candidate_mos": 4.426905035972595,
+          "mean_mos_delta": -0.003955960273742676,
+          "mean_reference_mos": 4.430860996246338,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0026848316192626953,
+            "lo": -0.011538982391357422,
+            "losses": 2,
+            "mean": -0.003955960273742676,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.0003952314372557275,
+          "mean_candidate_mos": 4.667243242263794,
+          "mean_mos_delta": -0.004434108734130859,
+          "mean_reference_mos": 4.671677350997925,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0029126405715942383,
+            "lo": -0.011985182762145996,
+            "losses": 2,
+            "mean": -0.004434108734130859,
+            "n": 4,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    },
+    "short15_vs_baseline_original": {
+      "aac_packet_identity_ties": 12,
+      "decoded_pcm_identity_ties": 12,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.0,
+        "lo": -0.00010852204100353369,
+        "losses": 0,
+        "mean": -3.617401366784456e-05,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -3.617401366784456e-05,
+      "median_bd_rate_percent": 0.0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.00014469605467137825,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 3.8264074325561523,
+          "mean_mos_delta": -2.384185791015625e-07,
+          "mean_reference_mos": 3.8264076709747314,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0,
+            "lo": -7.152557373046875e-07,
+            "losses": 0,
+            "mean": -2.384185791015625e-07,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.1796876192092896,
+          "mean_mos_delta": 1.6689300537109375e-06,
+          "mean_reference_mos": 4.179685950279236,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 5.0067901611328125e-06,
+            "lo": 0.0,
+            "losses": 0,
+            "mean": 1.6689300537109375e-06,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.430860996246338,
+          "mean_mos_delta": 0.0,
+          "mean_reference_mos": 4.430860996246338,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0,
+            "lo": 0.0,
+            "losses": 0,
+            "mean": 0.0,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.671675443649292,
+          "mean_mos_delta": -1.9073486328125e-06,
+          "mean_reference_mos": 4.671677350997925,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0,
+            "lo": -5.7220458984375e-06,
+            "losses": 0,
+            "mean": -1.9073486328125e-06,
+            "n": 4,
+            "wins": 0
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    },
+    "short20_vs_baseline_original": {
+      "aac_packet_identity_ties": 8,
+      "decoded_pcm_identity_ties": 8,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.5949910168518924,
+        "lo": -0.3196317881433597,
+        "losses": 1,
+        "mean": 0.0917864095695109,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": 0.0917864095695109,
+      "median_bd_rate_percent": 0.0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.4261757175244796,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7933213558025232,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.0006259075659681423,
+          "mean_candidate_mos": 3.8191146850585938,
+          "mean_mos_delta": -0.007292985916137695,
+          "mean_reference_mos": 3.8264076709747314,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0016377568244934082,
+            "lo": -0.023516714572906494,
+            "losses": 1,
+            "mean": -0.007292985916137695,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.004158972567419594,
+          "mean_candidate_mos": 4.179641127586365,
+          "mean_mos_delta": -4.482269287109375e-05,
+          "mean_reference_mos": 4.179685950279236,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005958080291748047,
+            "lo": -0.006092548370361328,
+            "losses": 1,
+            "mean": -4.482269287109375e-05,
+            "n": 4,
+            "wins": 1
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.0006269592476487729,
+          "mean_candidate_mos": 4.431586861610413,
+          "mean_mos_delta": 0.000725865364074707,
+          "mean_reference_mos": 4.430860996246338,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.002360701560974121,
+            "lo": -0.00018310546875,
+            "losses": 0,
+            "mean": 0.000725865364074707,
+            "n": 4,
+            "wins": 0
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.0008370503783244887,
+          "mean_candidate_mos": 4.6717445850372314,
+          "mean_mos_delta": 6.723403930664062e-05,
+          "mean_reference_mos": 4.671677350997925,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0002503395080566406,
+            "lo": -4.863739013671875e-05,
+            "losses": 0,
+            "mean": 6.723403930664062e-05,
+            "n": 4,
+            "wins": 0
+          }
+        }
+      },
+      "rows": 16,
+      "valid_clips": 4
+    }
+  },
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ]
+}

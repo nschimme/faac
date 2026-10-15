@@ -1,0 +1,1570 @@
+completed baseline_original|12-German-male-speech.441.16b48k.wav|64: MOS=4.54803, payload=63.663 kbps, source=identity:baseline_default|12-German-male-speech.441.16b48k.wav|64
+completed baseline_original|12-German-male-speech.441.16b48k.wav|32: MOS=3.95022, payload=31.887 kbps, source=identity:baseline_default|12-German-male-speech.441.16b48k.wav|32
+completed baseline_original|12-German-male-speech.441.16b48k.wav|48: MOS=4.25236, payload=47.879 kbps, source=identity:baseline_default|12-German-male-speech.441.16b48k.wav|48
+completed baseline_original|12-German-male-speech.441.16b48k.wav|96: MOS=4.84450, payload=95.567 kbps, source=identity:baseline_default|12-German-male-speech.441.16b48k.wav|96
+completed candidate_default|12-German-male-speech.441.16b48k.wav|64: MOS=4.54803, payload=63.663 kbps, source=pcm_identity
+completed candidate_default|12-German-male-speech.441.16b48k.wav|32: MOS=3.95022, payload=31.887 kbps, source=pcm_identity
+completed candidate_default|12-German-male-speech.441.16b48k.wav|48: MOS=4.25236, payload=47.879 kbps, source=pcm_identity
+completed candidate_default|12-German-male-speech.441.16b48k.wav|96: MOS=4.84450, payload=95.567 kbps, source=pcm_identity
+completed baseline_original|15-Good-evening.441.16b48k.wav|32: MOS=3.70592, payload=32.104 kbps, source=identity:baseline_default|15-Good-evening.441.16b48k.wav|32
+completed baseline_original|15-Good-evening.441.16b48k.wav|48: MOS=4.09145, payload=48.327 kbps, source=identity:baseline_default|15-Good-evening.441.16b48k.wav|48
+completed baseline_original|15-Good-evening.441.16b48k.wav|64: MOS=4.32776, payload=64.014 kbps, source=identity:baseline_default|15-Good-evening.441.16b48k.wav|64
+completed baseline_original|15-Good-evening.441.16b48k.wav|96: MOS=4.59424, payload=95.573 kbps, source=identity:baseline_default|15-Good-evening.441.16b48k.wav|96
+completed candidate_default|15-Good-evening.441.16b48k.wav|48: MOS=4.09145, payload=48.327 kbps, source=pcm_identity
+completed candidate_default|15-Good-evening.441.16b48k.wav|32: MOS=3.70592, payload=32.104 kbps, source=pcm_identity
+completed candidate_default|15-Good-evening.441.16b48k.wav|64: MOS=4.32776, payload=64.014 kbps, source=pcm_identity
+completed candidate_default|15-Good-evening.441.16b48k.wav|96: MOS=4.59424, payload=95.573 kbps, source=pcm_identity
+completed baseline_original|21-classic.441.16b48k.wav|32: MOS=3.97509, payload=31.866 kbps, source=identity:baseline_default|21-classic.441.16b48k.wav|32
+completed baseline_original|21-classic.441.16b48k.wav|48: MOS=4.33249, payload=47.757 kbps, source=identity:baseline_default|21-classic.441.16b48k.wav|48
+completed baseline_original|21-classic.441.16b48k.wav|64: MOS=4.54411, payload=63.658 kbps, source=identity:baseline_default|21-classic.441.16b48k.wav|64
+completed baseline_original|21-classic.441.16b48k.wav|96: MOS=4.75059, payload=95.468 kbps, source=identity:baseline_default|21-classic.441.16b48k.wav|96
+completed candidate_default|21-classic.441.16b48k.wav|32: MOS=3.97509, payload=31.866 kbps, source=pcm_identity
+completed candidate_default|21-classic.441.16b48k.wav|48: MOS=4.33249, payload=47.757 kbps, source=pcm_identity
+completed candidate_default|21-classic.441.16b48k.wav|64: MOS=4.54411, payload=63.658 kbps, source=pcm_identity
+completed candidate_default|21-classic.441.16b48k.wav|96: MOS=4.75059, payload=95.468 kbps, source=pcm_identity
+completed baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.04471, payload=47.958 kbps, source=identity:baseline_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48
+completed baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.75782, payload=31.875 kbps, source=identity:baseline_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32
+completed baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.35873, payload=64.044 kbps, source=identity:baseline_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64
+completed baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79214, payload=95.773 kbps, source=identity:baseline_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96
+completed candidate_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.75782, payload=31.875 kbps, source=pcm_identity
+completed candidate_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.04471, payload=47.958 kbps, source=pcm_identity
+completed candidate_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.35873, payload=64.044 kbps, source=pcm_identity
+completed candidate_default|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79214, payload=95.773 kbps, source=pcm_identity
+completed baseline_original|25-This-is-the-end.441.16b48k.wav|32: MOS=3.78830, payload=32.294 kbps, source=identity:baseline_default|25-This-is-the-end.441.16b48k.wav|32
+completed baseline_original|25-This-is-the-end.441.16b48k.wav|48: MOS=4.23642, payload=48.730 kbps, source=identity:baseline_default|25-This-is-the-end.441.16b48k.wav|48
+completed baseline_original|25-This-is-the-end.441.16b48k.wav|64: MOS=4.48965, payload=64.442 kbps, source=identity:baseline_default|25-This-is-the-end.441.16b48k.wav|64
+completed baseline_original|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70067, payload=95.828 kbps, source=identity:baseline_default|25-This-is-the-end.441.16b48k.wav|96
+completed candidate_default|25-This-is-the-end.441.16b48k.wav|32: MOS=3.78830, payload=32.294 kbps, source=pcm_identity
+completed candidate_default|25-This-is-the-end.441.16b48k.wav|48: MOS=4.23642, payload=48.730 kbps, source=pcm_identity
+completed candidate_default|25-This-is-the-end.441.16b48k.wav|64: MOS=4.48965, payload=64.442 kbps, source=pcm_identity
+completed candidate_default|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70067, payload=95.828 kbps, source=pcm_identity
+completed baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.04495, payload=32.613 kbps, source=identity:baseline_default|27-last-song-drums-and-trampets.441.16b48k.wav|32
+completed baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.35293, payload=48.907 kbps, source=identity:baseline_default|27-last-song-drums-and-trampets.441.16b48k.wav|48
+completed baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.53206, payload=64.397 kbps, source=identity:baseline_default|27-last-song-drums-and-trampets.441.16b48k.wav|64
+completed baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.74009, payload=95.962 kbps, source=identity:baseline_default|27-last-song-drums-and-trampets.441.16b48k.wav|96
+completed candidate_default|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.04495, payload=32.613 kbps, source=pcm_identity
+completed candidate_default|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.35293, payload=48.907 kbps, source=pcm_identity
+completed candidate_default|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.53206, payload=64.397 kbps, source=pcm_identity
+completed candidate_default|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.74009, payload=95.962 kbps, source=pcm_identity
+completed baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.14954, payload=32.064 kbps, source=identity:baseline_default|35_SQAM_glockenspiel_cut.16b48k.wav|32
+completed baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.56851, payload=48.114 kbps, source=identity:baseline_default|35_SQAM_glockenspiel_cut.16b48k.wav|48
+completed baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.65673, payload=63.786 kbps, source=identity:baseline_default|35_SQAM_glockenspiel_cut.16b48k.wav|64
+completed baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.75296, payload=95.262 kbps, source=identity:baseline_default|35_SQAM_glockenspiel_cut.16b48k.wav|96
+completed candidate_default|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.14954, payload=32.064 kbps, source=pcm_identity
+completed candidate_default|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.56851, payload=48.114 kbps, source=pcm_identity
+completed candidate_default|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.65673, payload=63.786 kbps, source=pcm_identity
+completed candidate_default|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.75296, payload=95.262 kbps, source=pcm_identity
+completed baseline_original|4-Sound-English-male.441.16b48k.wav|32: MOS=3.84958, payload=32.191 kbps, source=identity:baseline_default|4-Sound-English-male.441.16b48k.wav|32
+completed baseline_original|4-Sound-English-male.441.16b48k.wav|48: MOS=4.34179, payload=47.992 kbps, source=identity:baseline_default|4-Sound-English-male.441.16b48k.wav|48
+completed baseline_original|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68916, payload=63.836 kbps, source=identity:baseline_default|4-Sound-English-male.441.16b48k.wav|64
+completed baseline_original|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83793, payload=95.553 kbps, source=identity:baseline_default|4-Sound-English-male.441.16b48k.wav|96
+completed candidate_default|4-Sound-English-male.441.16b48k.wav|32: MOS=3.84958, payload=32.191 kbps, source=pcm_identity
+completed candidate_default|4-Sound-English-male.441.16b48k.wav|48: MOS=4.34179, payload=47.992 kbps, source=pcm_identity
+completed candidate_default|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68916, payload=63.836 kbps, source=pcm_identity
+completed candidate_default|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83793, payload=95.553 kbps, source=pcm_identity
+completed baseline_original|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.60199, payload=31.968 kbps, source=identity:baseline_default|9-Have-big-expensive-car.441.16b48k.wav|32
+completed baseline_original|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.16602, payload=48.340 kbps, source=identity:baseline_default|9-Have-big-expensive-car.441.16b48k.wav|48
+completed baseline_original|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.38206, payload=64.020 kbps, source=identity:baseline_default|9-Have-big-expensive-car.441.16b48k.wav|64
+completed baseline_original|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.61330, payload=95.427 kbps, source=identity:baseline_default|9-Have-big-expensive-car.441.16b48k.wav|96
+completed candidate_default|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.60199, payload=31.968 kbps, source=pcm_identity
+completed candidate_default|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.16602, payload=48.340 kbps, source=pcm_identity
+completed candidate_default|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.38206, payload=64.020 kbps, source=pcm_identity
+completed candidate_default|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.61330, payload=95.427 kbps, source=pcm_identity
+completed baseline_original|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.70927, payload=31.792 kbps, source=identity:baseline_default|Asleep__4.11-4.31_.16b48k.wav|32
+completed baseline_original|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19532, payload=47.742 kbps, source=identity:baseline_default|Asleep__4.11-4.31_.16b48k.wav|48
+completed baseline_original|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45490, payload=63.671 kbps, source=identity:baseline_default|Asleep__4.11-4.31_.16b48k.wav|64
+completed baseline_original|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66245, payload=95.459 kbps, source=identity:baseline_default|Asleep__4.11-4.31_.16b48k.wav|96
+completed candidate_default|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.70927, payload=31.792 kbps, source=pcm_identity
+completed candidate_default|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19532, payload=47.742 kbps, source=pcm_identity
+completed candidate_default|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45490, payload=63.671 kbps, source=pcm_identity
+completed candidate_default|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66245, payload=95.459 kbps, source=pcm_identity
+completed baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.68155, payload=31.757 kbps, source=identity:baseline_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32
+completed baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.94385, payload=47.985 kbps, source=identity:baseline_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48
+completed baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.11437, payload=63.628 kbps, source=identity:baseline_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64
+completed baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.51976, payload=95.183 kbps, source=identity:baseline_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96
+completed candidate_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.68155, payload=31.757 kbps, source=pcm_identity
+completed candidate_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.94385, payload=47.985 kbps, source=pcm_identity
+completed candidate_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.11437, payload=63.628 kbps, source=pcm_identity
+completed candidate_default|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.51976, payload=95.183 kbps, source=pcm_identity
+completed baseline_original|Changes.16b48k.wav|32: MOS=3.48458, payload=31.866 kbps, source=identity:baseline_default|Changes.16b48k.wav|32
+completed baseline_original|Changes.16b48k.wav|48: MOS=3.87103, payload=47.867 kbps, source=identity:baseline_default|Changes.16b48k.wav|48
+completed baseline_original|Changes.16b48k.wav|64: MOS=4.21191, payload=63.704 kbps, source=identity:baseline_default|Changes.16b48k.wav|64
+completed baseline_original|Changes.16b48k.wav|96: MOS=4.57691, payload=95.458 kbps, source=identity:baseline_default|Changes.16b48k.wav|96
+completed candidate_default|Changes.16b48k.wav|32: MOS=3.48458, payload=31.866 kbps, source=pcm_identity
+completed candidate_default|Changes.16b48k.wav|48: MOS=3.87103, payload=47.867 kbps, source=pcm_identity
+completed candidate_default|Changes.16b48k.wav|64: MOS=4.21191, payload=63.704 kbps, source=pcm_identity
+completed candidate_default|Changes.16b48k.wav|96: MOS=4.57691, payload=95.458 kbps, source=pcm_identity
+completed baseline_original|Coral.16b48k.wav|32: MOS=3.79080, payload=31.851 kbps, source=identity:baseline_default|Coral.16b48k.wav|32
+completed baseline_original|Coral.16b48k.wav|48: MOS=4.14346, payload=47.970 kbps, source=identity:baseline_default|Coral.16b48k.wav|48
+completed baseline_original|Coral.16b48k.wav|64: MOS=4.42577, payload=63.697 kbps, source=identity:baseline_default|Coral.16b48k.wav|64
+completed baseline_original|Coral.16b48k.wav|96: MOS=4.71182, payload=95.350 kbps, source=identity:baseline_default|Coral.16b48k.wav|96
+completed candidate_default|Coral.16b48k.wav|32: MOS=3.79080, payload=31.851 kbps, source=pcm_identity
+completed candidate_default|Coral.16b48k.wav|48: MOS=4.14346, payload=47.970 kbps, source=pcm_identity
+completed candidate_default|Coral.16b48k.wav|64: MOS=4.42577, payload=63.697 kbps, source=pcm_identity
+completed candidate_default|Coral.16b48k.wav|96: MOS=4.71182, payload=95.350 kbps, source=pcm_identity
+completed baseline_original|ExitMusic.16b48k.wav|32: MOS=3.90054, payload=31.952 kbps, source=identity:baseline_default|ExitMusic.16b48k.wav|32
+completed baseline_original|ExitMusic.16b48k.wav|48: MOS=4.26525, payload=47.808 kbps, source=identity:baseline_default|ExitMusic.16b48k.wav|48
+completed baseline_original|ExitMusic.16b48k.wav|64: MOS=4.57863, payload=63.568 kbps, source=identity:baseline_default|ExitMusic.16b48k.wav|64
+completed baseline_original|ExitMusic.16b48k.wav|96: MOS=4.77488, payload=95.318 kbps, source=identity:baseline_default|ExitMusic.16b48k.wav|96
+completed candidate_default|ExitMusic.16b48k.wav|32: MOS=3.90054, payload=31.952 kbps, source=pcm_identity
+completed candidate_default|ExitMusic.16b48k.wav|48: MOS=4.26525, payload=47.808 kbps, source=pcm_identity
+completed candidate_default|ExitMusic.16b48k.wav|64: MOS=4.57863, payload=63.568 kbps, source=pcm_identity
+completed candidate_default|ExitMusic.16b48k.wav|96: MOS=4.77488, payload=95.318 kbps, source=pcm_identity
+completed baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.42856, payload=31.812 kbps, source=identity:baseline_default|Girl_In_The_Fire__Sample_.16b48k.wav|32
+completed baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.77601, payload=47.862 kbps, source=identity:baseline_default|Girl_In_The_Fire__Sample_.16b48k.wav|48
+completed baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.09674, payload=63.717 kbps, source=identity:baseline_default|Girl_In_The_Fire__Sample_.16b48k.wav|64
+completed baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.55886, payload=95.663 kbps, source=identity:baseline_default|Girl_In_The_Fire__Sample_.16b48k.wav|96
+completed candidate_default|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.42856, payload=31.812 kbps, source=pcm_identity
+completed candidate_default|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.77601, payload=47.862 kbps, source=pcm_identity
+completed candidate_default|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.09674, payload=63.717 kbps, source=pcm_identity
+completed candidate_default|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.55886, payload=95.663 kbps, source=pcm_identity
+completed baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.70411, payload=31.755 kbps, source=identity:baseline_default|Greatest_Love_of_All_2min57.16b48k.wav|32
+completed baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18352, payload=47.761 kbps, source=identity:baseline_default|Greatest_Love_of_All_2min57.16b48k.wav|48
+completed baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.41136, payload=63.678 kbps, source=identity:baseline_default|Greatest_Love_of_All_2min57.16b48k.wav|64
+completed baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70673, payload=95.333 kbps, source=identity:baseline_default|Greatest_Love_of_All_2min57.16b48k.wav|96
+completed candidate_default|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.70411, payload=31.755 kbps, source=pcm_identity
+completed candidate_default|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18352, payload=47.761 kbps, source=pcm_identity
+completed candidate_default|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.41136, payload=63.678 kbps, source=pcm_identity
+completed candidate_default|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70673, payload=95.333 kbps, source=pcm_identity
+completed baseline_original|Hey Tonight.16b48k.wav|32: MOS=4.25589, payload=31.898 kbps, source=identity:baseline_default|Hey Tonight.16b48k.wav|32
+completed baseline_original|Hey Tonight.16b48k.wav|48: MOS=4.42743, payload=48.181 kbps, source=identity:baseline_default|Hey Tonight.16b48k.wav|48
+completed baseline_original|Hey Tonight.16b48k.wav|64: MOS=4.56491, payload=63.935 kbps, source=identity:baseline_default|Hey Tonight.16b48k.wav|64
+completed baseline_original|Hey Tonight.16b48k.wav|96: MOS=4.72411, payload=95.328 kbps, source=identity:baseline_default|Hey Tonight.16b48k.wav|96
+completed candidate_default|Hey Tonight.16b48k.wav|32: MOS=4.25589, payload=31.898 kbps, source=pcm_identity
+completed candidate_default|Hey Tonight.16b48k.wav|48: MOS=4.42743, payload=48.181 kbps, source=pcm_identity
+completed candidate_default|Hey Tonight.16b48k.wav|64: MOS=4.56491, payload=63.935 kbps, source=pcm_identity
+completed candidate_default|Hey Tonight.16b48k.wav|96: MOS=4.72411, payload=95.328 kbps, source=pcm_identity
+completed baseline_original|Hotel California.16b48k.wav|32: MOS=3.88607, payload=32.269 kbps, source=identity:baseline_default|Hotel California.16b48k.wav|32
+completed baseline_original|Hotel California.16b48k.wav|48: MOS=4.24358, payload=48.631 kbps, source=identity:baseline_default|Hotel California.16b48k.wav|48
+completed baseline_original|Hotel California.16b48k.wav|64: MOS=4.43987, payload=64.442 kbps, source=identity:baseline_default|Hotel California.16b48k.wav|64
+completed baseline_original|Hotel California.16b48k.wav|96: MOS=4.65641, payload=95.672 kbps, source=identity:baseline_default|Hotel California.16b48k.wav|96
+completed candidate_default|Hotel California.16b48k.wav|32: MOS=3.88607, payload=32.269 kbps, source=pcm_identity
+completed candidate_default|Hotel California.16b48k.wav|48: MOS=4.24358, payload=48.631 kbps, source=pcm_identity
+completed candidate_default|Hotel California.16b48k.wav|64: MOS=4.43987, payload=64.442 kbps, source=pcm_identity
+completed candidate_default|Hotel California.16b48k.wav|96: MOS=4.65641, payload=95.672 kbps, source=pcm_identity
+completed baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.80571, payload=31.914 kbps, source=identity:baseline_default|Jupiter, the Bringer of Jolity.16b48k.wav|32
+completed baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.21253, payload=48.031 kbps, source=identity:baseline_default|Jupiter, the Bringer of Jolity.16b48k.wav|48
+completed baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.40824, payload=63.724 kbps, source=identity:baseline_default|Jupiter, the Bringer of Jolity.16b48k.wav|64
+completed baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.65186, payload=95.530 kbps, source=identity:baseline_default|Jupiter, the Bringer of Jolity.16b48k.wav|96
+completed candidate_default|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.80571, payload=31.914 kbps, source=pcm_identity
+completed candidate_default|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.21253, payload=48.031 kbps, source=pcm_identity
+completed candidate_default|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.40824, payload=63.724 kbps, source=pcm_identity
+completed candidate_default|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.65186, payload=95.530 kbps, source=pcm_identity
+completed baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.12070, payload=34.026 kbps, source=identity:baseline_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32
+completed baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.35409, payload=49.522 kbps, source=identity:baseline_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48
+completed baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.54007, payload=64.758 kbps, source=identity:baseline_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64
+completed baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.72941, payload=95.978 kbps, source=identity:baseline_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96
+completed candidate_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.12070, payload=34.026 kbps, source=pcm_identity
+completed candidate_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.35409, payload=49.522 kbps, source=pcm_identity
+completed candidate_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.54007, payload=64.758 kbps, source=pcm_identity
+completed candidate_default|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.72941, payload=95.978 kbps, source=pcm_identity
+completed baseline_original|NewYorkCity.16b48k.wav|32: MOS=4.02656, payload=32.203 kbps, source=identity:baseline_default|NewYorkCity.16b48k.wav|32
+completed baseline_original|NewYorkCity.16b48k.wav|48: MOS=4.36119, payload=48.480 kbps, source=identity:baseline_default|NewYorkCity.16b48k.wav|48
+completed baseline_original|NewYorkCity.16b48k.wav|64: MOS=4.52045, payload=64.242 kbps, source=identity:baseline_default|NewYorkCity.16b48k.wav|64
+completed baseline_original|NewYorkCity.16b48k.wav|96: MOS=4.69713, payload=95.454 kbps, source=identity:baseline_default|NewYorkCity.16b48k.wav|96
+completed candidate_default|NewYorkCity.16b48k.wav|32: MOS=4.02656, payload=32.203 kbps, source=pcm_identity
+completed candidate_default|NewYorkCity.16b48k.wav|48: MOS=4.36119, payload=48.480 kbps, source=pcm_identity
+completed candidate_default|NewYorkCity.16b48k.wav|64: MOS=4.52045, payload=64.242 kbps, source=pcm_identity
+completed candidate_default|NewYorkCity.16b48k.wav|96: MOS=4.69713, payload=95.454 kbps, source=pcm_identity
+completed baseline_original|Only Time.16b48k.wav|32: MOS=3.87540, payload=31.729 kbps, source=identity:baseline_default|Only Time.16b48k.wav|32
+completed baseline_original|Only Time.16b48k.wav|48: MOS=4.25850, payload=47.647 kbps, source=identity:baseline_default|Only Time.16b48k.wav|48
+completed baseline_original|Only Time.16b48k.wav|64: MOS=4.48471, payload=63.516 kbps, source=identity:baseline_default|Only Time.16b48k.wav|64
+completed baseline_original|Only Time.16b48k.wav|96: MOS=4.72286, payload=95.330 kbps, source=identity:baseline_default|Only Time.16b48k.wav|96
+completed candidate_default|Only Time.16b48k.wav|32: MOS=3.87540, payload=31.729 kbps, source=pcm_identity
+completed candidate_default|Only Time.16b48k.wav|48: MOS=4.25850, payload=47.647 kbps, source=pcm_identity
+completed candidate_default|Only Time.16b48k.wav|64: MOS=4.48471, payload=63.516 kbps, source=pcm_identity
+completed candidate_default|Only Time.16b48k.wav|96: MOS=4.72286, payload=95.330 kbps, source=pcm_identity
+completed baseline_original|Robots_old.16b48k.wav|32: MOS=4.23240, payload=31.755 kbps, source=identity:baseline_default|Robots_old.16b48k.wav|32
+completed baseline_original|Robots_old.16b48k.wav|48: MOS=4.44022, payload=47.592 kbps, source=identity:baseline_default|Robots_old.16b48k.wav|48
+completed candidate_default|Robots_old.16b48k.wav|32: MOS=4.23240, payload=31.755 kbps, source=pcm_identity
+completed baseline_original|Robots_old.16b48k.wav|64: MOS=4.57323, payload=63.366 kbps, source=identity:baseline_default|Robots_old.16b48k.wav|64
+completed baseline_original|Robots_old.16b48k.wav|96: MOS=4.71659, payload=95.073 kbps, source=identity:baseline_default|Robots_old.16b48k.wav|96
+completed candidate_default|Robots_old.16b48k.wav|48: MOS=4.44022, payload=47.592 kbps, source=pcm_identity
+completed candidate_default|Robots_old.16b48k.wav|64: MOS=4.57323, payload=63.366 kbps, source=pcm_identity
+completed baseline_original|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.20064, payload=31.816 kbps, source=identity:baseline_default|Severance__1.31-1.51_.16b48k.wav|32
+completed candidate_default|Robots_old.16b48k.wav|96: MOS=4.71659, payload=95.073 kbps, source=pcm_identity
+completed baseline_original|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.75365, payload=47.811 kbps, source=identity:baseline_default|Severance__1.31-1.51_.16b48k.wav|48
+completed baseline_original|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.26846, payload=63.698 kbps, source=identity:baseline_default|Severance__1.31-1.51_.16b48k.wav|64
+completed candidate_default|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.20064, payload=31.816 kbps, source=pcm_identity
+completed baseline_original|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.59595, payload=95.557 kbps, source=identity:baseline_default|Severance__1.31-1.51_.16b48k.wav|96
+completed candidate_default|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.26846, payload=63.698 kbps, source=pcm_identity
+completed baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.17719, payload=31.797 kbps, source=identity:baseline_default|Shinsho_pool_3min45_4min4.16b48k.wav|32
+completed candidate_default|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.59595, payload=95.557 kbps, source=pcm_identity
+completed candidate_default|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.17719, payload=31.797 kbps, source=pcm_identity
+completed candidate_default|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.75365, payload=47.811 kbps, source=pcm_identity
+completed baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68028, payload=63.538 kbps, source=identity:baseline_default|Shinsho_pool_3min45_4min4.16b48k.wav|64
+completed baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.45350, payload=47.655 kbps, source=identity:baseline_default|Shinsho_pool_3min45_4min4.16b48k.wav|48
+completed candidate_default|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68028, payload=63.538 kbps, source=pcm_identity
+completed baseline_original|SinceAlways.16b48k.wav|32: MOS=3.94037, payload=31.813 kbps, source=identity:baseline_default|SinceAlways.16b48k.wav|32
+completed baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.80980, payload=95.359 kbps, source=identity:baseline_default|Shinsho_pool_3min45_4min4.16b48k.wav|96
+completed candidate_default|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.45350, payload=47.655 kbps, source=pcm_identity
+completed baseline_original|SinceAlways.16b48k.wav|48: MOS=4.24885, payload=48.174 kbps, source=identity:baseline_default|SinceAlways.16b48k.wav|48
+completed candidate_default|SinceAlways.16b48k.wav|32: MOS=3.94037, payload=31.813 kbps, source=pcm_identity
+completed candidate_default|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.80980, payload=95.359 kbps, source=pcm_identity
+completed baseline_original|SinceAlways.16b48k.wav|64: MOS=4.48247, payload=63.824 kbps, source=identity:baseline_default|SinceAlways.16b48k.wav|64
+completed candidate_default|SinceAlways.16b48k.wav|48: MOS=4.24885, payload=48.174 kbps, source=pcm_identity
+completed baseline_original|SinceAlways.16b48k.wav|96: MOS=4.72461, payload=95.498 kbps, source=identity:baseline_default|SinceAlways.16b48k.wav|96
+completed baseline_original|SlavesOfFear.16b48k.wav|32: MOS=4.00347, payload=32.241 kbps, source=identity:baseline_default|SlavesOfFear.16b48k.wav|32
+completed candidate_default|SinceAlways.16b48k.wav|64: MOS=4.48247, payload=63.824 kbps, source=pcm_identity
+completed baseline_original|SlavesOfFear.16b48k.wav|48: MOS=4.37201, payload=48.570 kbps, source=identity:baseline_default|SlavesOfFear.16b48k.wav|48
+completed candidate_default|SinceAlways.16b48k.wav|96: MOS=4.72461, payload=95.498 kbps, source=pcm_identity
+completed candidate_default|SlavesOfFear.16b48k.wav|32: MOS=4.00347, payload=32.241 kbps, source=pcm_identity
+completed baseline_original|SlavesOfFear.16b48k.wav|64: MOS=4.52376, payload=64.262 kbps, source=identity:baseline_default|SlavesOfFear.16b48k.wav|64
+completed candidate_default|SlavesOfFear.16b48k.wav|48: MOS=4.37201, payload=48.570 kbps, source=pcm_identity
+completed baseline_original|SlavesOfFear.16b48k.wav|96: MOS=4.68077, payload=95.597 kbps, source=identity:baseline_default|SlavesOfFear.16b48k.wav|96
+completed candidate_default|SlavesOfFear.16b48k.wav|64: MOS=4.52376, payload=64.262 kbps, source=pcm_identity
+completed baseline_original|The Chastising of Renegade.16b48k.wav|32: MOS=3.70778, payload=32.327 kbps, source=identity:baseline_default|The Chastising of Renegade.16b48k.wav|32
+completed baseline_original|The Chastising of Renegade.16b48k.wav|48: MOS=4.09652, payload=48.815 kbps, source=identity:baseline_default|The Chastising of Renegade.16b48k.wav|48
+completed candidate_default|SlavesOfFear.16b48k.wav|96: MOS=4.68077, payload=95.597 kbps, source=pcm_identity
+completed candidate_default|The Chastising of Renegade.16b48k.wav|32: MOS=3.70778, payload=32.327 kbps, source=pcm_identity
+completed baseline_original|The Chastising of Renegade.16b48k.wav|64: MOS=4.35060, payload=64.614 kbps, source=identity:baseline_default|The Chastising of Renegade.16b48k.wav|64
+completed candidate_default|The Chastising of Renegade.16b48k.wav|48: MOS=4.09652, payload=48.815 kbps, source=pcm_identity
+completed baseline_original|Through The Fire And Flames.16b48k.wav|32: MOS=4.05184, payload=32.240 kbps, source=identity:baseline_default|Through The Fire And Flames.16b48k.wav|32
+completed candidate_default|The Chastising of Renegade.16b48k.wav|64: MOS=4.35060, payload=64.614 kbps, source=pcm_identity
+completed baseline_original|The Chastising of Renegade.16b48k.wav|96: MOS=4.60113, payload=95.900 kbps, source=identity:baseline_default|The Chastising of Renegade.16b48k.wav|96
+completed baseline_original|Through The Fire And Flames.16b48k.wav|48: MOS=4.39792, payload=48.374 kbps, source=identity:baseline_default|Through The Fire And Flames.16b48k.wav|48
+completed candidate_default|Through The Fire And Flames.16b48k.wav|32: MOS=4.05184, payload=32.240 kbps, source=pcm_identity
+completed candidate_default|The Chastising of Renegade.16b48k.wav|96: MOS=4.60113, payload=95.900 kbps, source=pcm_identity
+completed baseline_original|Through The Fire And Flames.16b48k.wav|64: MOS=4.54835, payload=64.005 kbps, source=identity:baseline_default|Through The Fire And Flames.16b48k.wav|64
+completed candidate_default|Through The Fire And Flames.16b48k.wav|48: MOS=4.39792, payload=48.374 kbps, source=pcm_identity
+completed baseline_original|Through The Fire And Flames.16b48k.wav|96: MOS=4.68646, payload=95.409 kbps, source=identity:baseline_default|Through The Fire And Flames.16b48k.wav|96
+completed candidate_default|Through The Fire And Flames.16b48k.wav|64: MOS=4.54835, payload=64.005 kbps, source=pcm_identity
+completed baseline_original|TrosYGareg.16b48k.wav|32: MOS=3.90119, payload=31.802 kbps, source=identity:baseline_default|TrosYGareg.16b48k.wav|32
+completed baseline_original|TrosYGareg.16b48k.wav|48: MOS=4.28313, payload=47.711 kbps, source=identity:baseline_default|TrosYGareg.16b48k.wav|48
+completed candidate_default|Through The Fire And Flames.16b48k.wav|96: MOS=4.68646, payload=95.409 kbps, source=pcm_identity
+completed candidate_default|TrosYGareg.16b48k.wav|32: MOS=3.90119, payload=31.802 kbps, source=pcm_identity
+completed baseline_original|TrosYGareg.16b48k.wav|64: MOS=4.49660, payload=63.605 kbps, source=identity:baseline_default|TrosYGareg.16b48k.wav|64
+completed candidate_default|TrosYGareg.16b48k.wav|48: MOS=4.28313, payload=47.711 kbps, source=pcm_identity
+completed baseline_original|TrosYGareg.16b48k.wav|96: MOS=4.78137, payload=95.326 kbps, source=identity:baseline_default|TrosYGareg.16b48k.wav|96
+completed baseline_original|Waiting.16b48k.wav|32: MOS=3.71556, payload=31.907 kbps, source=identity:baseline_default|Waiting.16b48k.wav|32
+completed candidate_default|TrosYGareg.16b48k.wav|64: MOS=4.49660, payload=63.605 kbps, source=pcm_identity
+completed baseline_original|Waiting.16b48k.wav|48: MOS=3.98369, payload=48.261 kbps, source=identity:baseline_default|Waiting.16b48k.wav|48
+completed candidate_default|TrosYGareg.16b48k.wav|96: MOS=4.78137, payload=95.326 kbps, source=pcm_identity
+completed candidate_default|Waiting.16b48k.wav|32: MOS=3.71556, payload=31.907 kbps, source=pcm_identity
+completed baseline_original|Waiting.16b48k.wav|64: MOS=4.26187, payload=64.095 kbps, source=identity:baseline_default|Waiting.16b48k.wav|64
+completed candidate_default|Waiting.16b48k.wav|48: MOS=3.98369, payload=48.261 kbps, source=pcm_identity
+completed baseline_original|Waiting.16b48k.wav|96: MOS=4.54897, payload=95.889 kbps, source=identity:baseline_default|Waiting.16b48k.wav|96
+completed baseline_original|With Love (Outro).16b48k.wav|32: MOS=4.11414, payload=31.836 kbps, source=identity:baseline_default|With Love (Outro).16b48k.wav|32
+completed candidate_default|Waiting.16b48k.wav|64: MOS=4.26187, payload=64.095 kbps, source=pcm_identity
+completed baseline_original|With Love (Outro).16b48k.wav|48: MOS=4.47419, payload=48.064 kbps, source=identity:baseline_default|With Love (Outro).16b48k.wav|48
+completed candidate_default|Waiting.16b48k.wav|96: MOS=4.54897, payload=95.889 kbps, source=pcm_identity
+completed candidate_default|With Love (Outro).16b48k.wav|32: MOS=4.11414, payload=31.836 kbps, source=pcm_identity
+completed baseline_original|With Love (Outro).16b48k.wav|64: MOS=4.60854, payload=63.765 kbps, source=identity:baseline_default|With Love (Outro).16b48k.wav|64
+completed candidate_default|With Love (Outro).16b48k.wav|48: MOS=4.47419, payload=48.064 kbps, source=pcm_identity
+completed baseline_original|With Love (Outro).16b48k.wav|96: MOS=4.78086, payload=95.474 kbps, source=identity:baseline_default|With Love (Outro).16b48k.wav|96
+completed baseline_original|bah.wav|32: MOS=3.62778, payload=31.850 kbps, source=identity:baseline_default|bah.wav|32
+completed candidate_default|With Love (Outro).16b48k.wav|64: MOS=4.60854, payload=63.765 kbps, source=pcm_identity
+completed baseline_original|bah.wav|48: MOS=4.03983, payload=47.813 kbps, source=identity:baseline_default|bah.wav|48
+completed candidate_default|With Love (Outro).16b48k.wav|96: MOS=4.78086, payload=95.474 kbps, source=pcm_identity
+completed candidate_default|bah.wav|32: MOS=3.62778, payload=31.850 kbps, source=pcm_identity
+completed baseline_original|bah.wav|64: MOS=4.32823, payload=63.717 kbps, source=identity:baseline_default|bah.wav|64
+completed candidate_default|bah.wav|48: MOS=4.03983, payload=47.813 kbps, source=pcm_identity
+completed baseline_original|bah.wav|96: MOS=4.64432, payload=95.662 kbps, source=identity:baseline_default|bah.wav|96
+completed baseline_original|bas.wav|32: MOS=3.50962, payload=31.771 kbps, source=identity:baseline_default|bas.wav|32
+completed candidate_default|bah.wav|64: MOS=4.32823, payload=63.717 kbps, source=pcm_identity
+completed baseline_original|bas.wav|48: MOS=3.93354, payload=47.650 kbps, source=identity:baseline_default|bas.wav|48
+completed candidate_default|bah.wav|96: MOS=4.64432, payload=95.662 kbps, source=pcm_identity
+completed candidate_default|bas.wav|32: MOS=3.50962, payload=31.771 kbps, source=pcm_identity
+completed baseline_original|bas.wav|64: MOS=4.26937, payload=63.574 kbps, source=identity:baseline_default|bas.wav|64
+completed candidate_default|bas.wav|48: MOS=3.93354, payload=47.650 kbps, source=pcm_identity
+completed baseline_original|bas.wav|96: MOS=4.64156, payload=95.478 kbps, source=identity:baseline_default|bas.wav|96
+completed baseline_original|bonhemian_rhapsody.16b48k.wav|32: MOS=3.68822, payload=31.781 kbps, source=identity:baseline_default|bonhemian_rhapsody.16b48k.wav|32
+completed candidate_default|bas.wav|64: MOS=4.26937, payload=63.574 kbps, source=pcm_identity
+completed baseline_original|bonhemian_rhapsody.16b48k.wav|48: MOS=4.08552, payload=47.775 kbps, source=identity:baseline_default|bonhemian_rhapsody.16b48k.wav|48
+completed candidate_default|bas.wav|96: MOS=4.64156, payload=95.478 kbps, source=pcm_identity
+completed candidate_default|bonhemian_rhapsody.16b48k.wav|32: MOS=3.68822, payload=31.781 kbps, source=pcm_identity
+completed baseline_original|bonhemian_rhapsody.16b48k.wav|64: MOS=4.37849, payload=63.629 kbps, source=identity:baseline_default|bonhemian_rhapsody.16b48k.wav|64
+completed candidate_default|bonhemian_rhapsody.16b48k.wav|48: MOS=4.08552, payload=47.775 kbps, source=pcm_identity
+completed baseline_original|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67316, payload=95.442 kbps, source=identity:baseline_default|bonhemian_rhapsody.16b48k.wav|96
+completed baseline_original|clapton_44k.16b48k.wav|32: MOS=3.76916, payload=31.950 kbps, source=identity:baseline_default|clapton_44k.16b48k.wav|32
+completed candidate_default|bonhemian_rhapsody.16b48k.wav|64: MOS=4.37849, payload=63.629 kbps, source=pcm_identity
+completed baseline_original|clapton_44k.16b48k.wav|48: MOS=4.15491, payload=48.118 kbps, source=identity:baseline_default|clapton_44k.16b48k.wav|48
+completed candidate_default|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67316, payload=95.442 kbps, source=pcm_identity
+completed candidate_default|clapton_44k.16b48k.wav|32: MOS=3.76916, payload=31.950 kbps, source=pcm_identity
+completed baseline_original|clapton_44k.16b48k.wav|64: MOS=4.35760, payload=63.872 kbps, source=identity:baseline_default|clapton_44k.16b48k.wav|64
+completed candidate_default|clapton_44k.16b48k.wav|48: MOS=4.15491, payload=48.118 kbps, source=pcm_identity
+completed baseline_original|cst.wav|32: MOS=3.58973, payload=32.219 kbps, source=identity:baseline_default|cst.wav|32
+completed baseline_original|clapton_44k.16b48k.wav|96: MOS=4.56654, payload=95.296 kbps, source=identity:baseline_default|clapton_44k.16b48k.wav|96
+completed candidate_default|clapton_44k.16b48k.wav|64: MOS=4.35760, payload=63.872 kbps, source=pcm_identity
+completed baseline_original|cst.wav|48: MOS=4.00265, payload=48.310 kbps, source=identity:baseline_default|cst.wav|48
+completed candidate_default|cst.wav|32: MOS=3.58973, payload=32.219 kbps, source=pcm_identity
+completed candidate_default|clapton_44k.16b48k.wav|96: MOS=4.56654, payload=95.296 kbps, source=pcm_identity
+completed baseline_original|cst.wav|64: MOS=4.31915, payload=63.923 kbps, source=identity:baseline_default|cst.wav|64
+completed candidate_default|cst.wav|48: MOS=4.00265, payload=48.310 kbps, source=pcm_identity
+completed baseline_original|cst.wav|96: MOS=4.64765, payload=96.044 kbps, source=identity:baseline_default|cst.wav|96
+completed baseline_original|fms.wav|32: MOS=3.95283, payload=31.954 kbps, source=identity:baseline_default|fms.wav|32
+completed candidate_default|cst.wav|64: MOS=4.31915, payload=63.923 kbps, source=pcm_identity
+completed baseline_original|fms.wav|48: MOS=4.31091, payload=48.089 kbps, source=identity:baseline_default|fms.wav|48
+completed candidate_default|cst.wav|96: MOS=4.64765, payload=96.044 kbps, source=pcm_identity
+completed candidate_default|fms.wav|32: MOS=3.95283, payload=31.954 kbps, source=pcm_identity
+completed baseline_original|fms.wav|64: MOS=4.56808, payload=63.800 kbps, source=identity:baseline_default|fms.wav|64
+completed candidate_default|fms.wav|48: MOS=4.31091, payload=48.089 kbps, source=pcm_identity
+completed baseline_original|fms.wav|96: MOS=4.80569, payload=95.672 kbps, source=identity:baseline_default|fms.wav|96
+completed baseline_original|girl.16b48k.wav|32: MOS=4.36478, payload=32.142 kbps, source=identity:baseline_default|girl.16b48k.wav|32
+completed candidate_default|fms.wav|64: MOS=4.56808, payload=63.800 kbps, source=pcm_identity
+completed baseline_original|girl.16b48k.wav|48: MOS=4.58124, payload=48.117 kbps, source=identity:baseline_default|girl.16b48k.wav|48
+completed candidate_default|fms.wav|96: MOS=4.80569, payload=95.672 kbps, source=pcm_identity
+completed candidate_default|girl.16b48k.wav|32: MOS=4.36478, payload=32.142 kbps, source=pcm_identity
+completed baseline_original|girl.16b48k.wav|64: MOS=4.68663, payload=63.953 kbps, source=identity:baseline_default|girl.16b48k.wav|64
+completed candidate_default|girl.16b48k.wav|48: MOS=4.58124, payload=48.117 kbps, source=pcm_identity
+completed baseline_original|girl.16b48k.wav|96: MOS=4.76993, payload=95.550 kbps, source=identity:baseline_default|girl.16b48k.wav|96
+completed baseline_original|glk.wav|32: MOS=4.65393, payload=31.881 kbps, source=identity:baseline_default|glk.wav|32
+completed candidate_default|girl.16b48k.wav|64: MOS=4.68663, payload=63.953 kbps, source=pcm_identity
+completed baseline_original|glk.wav|48: MOS=4.84690, payload=47.921 kbps, source=identity:baseline_default|glk.wav|48
+completed candidate_default|girl.16b48k.wav|96: MOS=4.76993, payload=95.550 kbps, source=pcm_identity
+completed candidate_default|glk.wav|32: MOS=4.65393, payload=31.881 kbps, source=pcm_identity
+completed baseline_original|glk.wav|64: MOS=4.87477, payload=63.638 kbps, source=identity:baseline_default|glk.wav|64
+completed candidate_default|glk.wav|48: MOS=4.84690, payload=47.921 kbps, source=pcm_identity
+completed baseline_original|glk.wav|96: MOS=4.88620, payload=95.369 kbps, source=identity:baseline_default|glk.wav|96
+completed baseline_original|hrp.wav|32: MOS=4.06069, payload=32.583 kbps, source=identity:baseline_default|hrp.wav|32
+completed candidate_default|glk.wav|64: MOS=4.87477, payload=63.638 kbps, source=pcm_identity
+completed baseline_original|hrp.wav|48: MOS=4.49278, payload=48.716 kbps, source=identity:baseline_default|hrp.wav|48
+completed candidate_default|glk.wav|96: MOS=4.88620, payload=95.369 kbps, source=pcm_identity
+completed candidate_default|hrp.wav|32: MOS=4.06069, payload=32.583 kbps, source=pcm_identity
+completed baseline_original|hrp.wav|64: MOS=4.66754, payload=64.467 kbps, source=identity:baseline_default|hrp.wav|64
+completed candidate_default|hrp.wav|48: MOS=4.49278, payload=48.716 kbps, source=pcm_identity
+completed baseline_original|hrp.wav|96: MOS=4.83552, payload=95.887 kbps, source=identity:baseline_default|hrp.wav|96
+completed baseline_original|liberate.16b48k.wav|32: MOS=3.90176, payload=32.514 kbps, source=identity:baseline_default|liberate.16b48k.wav|32
+completed candidate_default|hrp.wav|64: MOS=4.66754, payload=64.467 kbps, source=pcm_identity
+completed baseline_original|liberate.16b48k.wav|48: MOS=4.25730, payload=49.317 kbps, source=identity:baseline_default|liberate.16b48k.wav|48
+completed candidate_default|hrp.wav|96: MOS=4.83552, payload=95.887 kbps, source=pcm_identity
+completed candidate_default|liberate.16b48k.wav|32: MOS=3.90176, payload=32.514 kbps, source=pcm_identity
+completed baseline_original|liberate.16b48k.wav|64: MOS=4.39883, payload=65.115 kbps, source=identity:baseline_default|liberate.16b48k.wav|64
+completed candidate_default|liberate.16b48k.wav|48: MOS=4.25730, payload=49.317 kbps, source=pcm_identity
+completed baseline_original|liberate.16b48k.wav|96: MOS=4.57414, payload=96.125 kbps, source=identity:baseline_default|liberate.16b48k.wav|96
+completed baseline_original|lob.wav|32: MOS=3.92941, payload=33.253 kbps, source=identity:baseline_default|lob.wav|32
+completed candidate_default|liberate.16b48k.wav|64: MOS=4.39883, payload=65.115 kbps, source=pcm_identity
+completed baseline_original|lob.wav|48: MOS=4.25240, payload=50.253 kbps, source=identity:baseline_default|lob.wav|48
+completed candidate_default|liberate.16b48k.wav|96: MOS=4.57414, payload=96.125 kbps, source=pcm_identity
+completed candidate_default|lob.wav|32: MOS=3.92941, payload=33.253 kbps, source=pcm_identity
+completed baseline_original|lob.wav|64: MOS=4.48205, payload=65.897 kbps, source=identity:baseline_default|lob.wav|64
+completed candidate_default|lob.wav|48: MOS=4.25240, payload=50.253 kbps, source=pcm_identity
+completed baseline_original|lob.wav|96: MOS=4.67305, payload=96.713 kbps, source=identity:baseline_default|lob.wav|96
+completed baseline_original|mof.wav|32: MOS=3.17356, payload=31.805 kbps, source=identity:baseline_default|mof.wav|32
+completed candidate_default|lob.wav|64: MOS=4.48205, payload=65.897 kbps, source=pcm_identity
+completed baseline_original|mof.wav|48: MOS=3.78111, payload=47.562 kbps, source=identity:baseline_default|mof.wav|48
+completed candidate_default|lob.wav|96: MOS=4.67305, payload=96.713 kbps, source=pcm_identity
+completed candidate_default|mof.wav|32: MOS=3.17356, payload=31.805 kbps, source=pcm_identity
+completed baseline_original|mof.wav|64: MOS=4.17954, payload=63.358 kbps, source=identity:baseline_default|mof.wav|64
+completed candidate_default|mof.wav|48: MOS=3.78111, payload=47.562 kbps, source=pcm_identity
+completed baseline_original|mof.wav|96: MOS=4.41093, payload=95.177 kbps, source=identity:baseline_default|mof.wav|96
+completed baseline_original|qrt.wav|32: MOS=3.54026, payload=31.749 kbps, source=identity:baseline_default|qrt.wav|32
+completed candidate_default|mof.wav|64: MOS=4.17954, payload=63.358 kbps, source=pcm_identity
+completed baseline_original|qrt.wav|48: MOS=3.91721, payload=47.673 kbps, source=identity:baseline_default|qrt.wav|48
+completed candidate_default|mof.wav|96: MOS=4.41093, payload=95.177 kbps, source=pcm_identity
+completed candidate_default|qrt.wav|32: MOS=3.54026, payload=31.749 kbps, source=pcm_identity
+completed baseline_original|qrt.wav|64: MOS=4.18434, payload=63.621 kbps, source=identity:baseline_default|qrt.wav|64
+completed candidate_default|qrt.wav|48: MOS=3.91721, payload=47.673 kbps, source=pcm_identity
+completed baseline_original|qrt.wav|96: MOS=4.53271, payload=95.486 kbps, source=identity:baseline_default|qrt.wav|96
+completed baseline_original|sandman.16b48k.wav|32: MOS=3.75568, payload=31.847 kbps, source=identity:baseline_default|sandman.16b48k.wav|32
+completed candidate_default|qrt.wav|64: MOS=4.18434, payload=63.621 kbps, source=pcm_identity
+completed baseline_original|sandman.16b48k.wav|48: MOS=4.19009, payload=47.769 kbps, source=identity:baseline_default|sandman.16b48k.wav|48
+completed candidate_default|qrt.wav|96: MOS=4.53271, payload=95.486 kbps, source=pcm_identity
+completed candidate_default|sandman.16b48k.wav|32: MOS=3.75568, payload=31.847 kbps, source=pcm_identity
+completed baseline_original|sandman.16b48k.wav|64: MOS=4.44396, payload=63.538 kbps, source=identity:baseline_default|sandman.16b48k.wav|64
+completed candidate_default|sandman.16b48k.wav|48: MOS=4.19009, payload=47.769 kbps, source=pcm_identity
+completed baseline_original|sandman.16b48k.wav|96: MOS=4.68024, payload=95.280 kbps, source=identity:baseline_default|sandman.16b48k.wav|96
+completed baseline_original|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.52942, payload=31.987 kbps, source=identity:baseline_default|take_your_finger_frin_my_head.16b48k.wav|32
+completed candidate_default|sandman.16b48k.wav|64: MOS=4.44396, payload=63.538 kbps, source=pcm_identity
+completed baseline_original|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.98211, payload=48.181 kbps, source=identity:baseline_default|take_your_finger_frin_my_head.16b48k.wav|48
+completed candidate_default|sandman.16b48k.wav|96: MOS=4.68024, payload=95.280 kbps, source=pcm_identity
+completed candidate_default|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.52942, payload=31.987 kbps, source=pcm_identity
+completed baseline_original|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.19794, payload=64.066 kbps, source=identity:baseline_default|take_your_finger_frin_my_head.16b48k.wav|64
+completed candidate_default|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.98211, payload=48.181 kbps, source=pcm_identity
+completed baseline_original|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54226, payload=95.521 kbps, source=identity:baseline_default|take_your_finger_frin_my_head.16b48k.wav|96
+completed baseline_original|trumpet.16b48k.wav|32: MOS=4.08011, payload=33.015 kbps, source=identity:baseline_default|trumpet.16b48k.wav|32
+completed candidate_default|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.19794, payload=64.066 kbps, source=pcm_identity
+completed baseline_original|trumpet.16b48k.wav|48: MOS=4.26864, payload=49.718 kbps, source=identity:baseline_default|trumpet.16b48k.wav|48
+completed candidate_default|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54226, payload=95.521 kbps, source=pcm_identity
+completed candidate_default|trumpet.16b48k.wav|32: MOS=4.08011, payload=33.015 kbps, source=pcm_identity
+completed baseline_original|trumpet.16b48k.wav|64: MOS=4.52705, payload=65.702 kbps, source=identity:baseline_default|trumpet.16b48k.wav|64
+completed candidate_default|trumpet.16b48k.wav|48: MOS=4.26864, payload=49.718 kbps, source=pcm_identity
+completed baseline_original|trumpet.16b48k.wav|96: MOS=4.74655, payload=96.687 kbps, source=identity:baseline_default|trumpet.16b48k.wav|96
+completed baseline_original|velvet.16b48k.wav|32: MOS=3.62203, payload=33.522 kbps, source=identity:baseline_default|velvet.16b48k.wav|32
+completed candidate_default|trumpet.16b48k.wav|64: MOS=4.52705, payload=65.702 kbps, source=pcm_identity
+completed baseline_original|velvet.16b48k.wav|48: MOS=3.88525, payload=49.754 kbps, source=identity:baseline_default|velvet.16b48k.wav|48
+completed candidate_default|trumpet.16b48k.wav|96: MOS=4.74655, payload=96.687 kbps, source=pcm_identity
+completed candidate_default|velvet.16b48k.wav|32: MOS=3.62203, payload=33.522 kbps, source=pcm_identity
+completed baseline_original|velvet.16b48k.wav|64: MOS=4.16730, payload=64.794 kbps, source=identity:baseline_default|velvet.16b48k.wav|64
+completed candidate_default|velvet.16b48k.wav|48: MOS=3.88525, payload=49.754 kbps, source=pcm_identity
+completed baseline_original|velvet.16b48k.wav|96: MOS=4.45018, payload=95.155 kbps, source=identity:baseline_default|velvet.16b48k.wav|96
+completed candidate_default|velvet.16b48k.wav|64: MOS=4.16730, payload=64.794 kbps, source=pcm_identity
+completed candidate_default|velvet.16b48k.wav|96: MOS=4.45018, payload=95.155 kbps, source=pcm_identity
+completed oneband_static24|12-German-male-speech.441.16b48k.wav|32: MOS=3.95377, payload=31.887 kbps, source=identity:static24|12-German-male-speech.441.16b48k.wav|32
+completed oneband_static18|12-German-male-speech.441.16b48k.wav|32: MOS=3.95333, payload=31.887 kbps, source=identity:noise_18|12-German-male-speech.441.16b48k.wav|32
+completed local2_static18|12-German-male-speech.441.16b48k.wav|32: MOS=3.95641, payload=31.878 kbps, source=scored
+completed local2_static24|12-German-male-speech.441.16b48k.wav|32: MOS=3.95582, payload=31.878 kbps, source=scored
+completed local2_joint18|12-German-male-speech.441.16b48k.wav|32: MOS=3.95846, payload=31.887 kbps, source=scored
+completed local2_adaptive18|12-German-male-speech.441.16b48k.wav|32: MOS=3.95641, payload=31.878 kbps, source=scored
+completed oneband_static24|12-German-male-speech.441.16b48k.wav|48: MOS=4.26274, payload=47.879 kbps, source=identity:static24|12-German-male-speech.441.16b48k.wav|48
+completed oneband_static18|12-German-male-speech.441.16b48k.wav|48: MOS=4.26012, payload=47.879 kbps, source=identity:noise_18|12-German-male-speech.441.16b48k.wav|48
+completed local2_static18|12-German-male-speech.441.16b48k.wav|48: MOS=4.24211, payload=47.881 kbps, source=scored
+completed local2_static24|12-German-male-speech.441.16b48k.wav|48: MOS=4.24110, payload=47.881 kbps, source=scored
+completed local2_adaptive18|12-German-male-speech.441.16b48k.wav|48: MOS=4.24211, payload=47.881 kbps, source=scored
+completed local2_joint18|12-German-male-speech.441.16b48k.wav|48: MOS=4.24694, payload=47.889 kbps, source=scored
+completed oneband_static18|12-German-male-speech.441.16b48k.wav|64: MOS=4.55248, payload=63.663 kbps, source=identity:noise_18|12-German-male-speech.441.16b48k.wav|64
+completed oneband_static24|12-German-male-speech.441.16b48k.wav|64: MOS=4.55236, payload=63.663 kbps, source=identity:static24|12-German-male-speech.441.16b48k.wav|64
+completed local2_static24|12-German-male-speech.441.16b48k.wav|64: MOS=4.55482, payload=63.664 kbps, source=scored
+completed local2_static18|12-German-male-speech.441.16b48k.wav|64: MOS=4.55500, payload=63.664 kbps, source=scored
+completed oneband_static18|12-German-male-speech.441.16b48k.wav|96: MOS=4.85280, payload=95.567 kbps, source=identity:noise_18|12-German-male-speech.441.16b48k.wav|96
+completed local2_adaptive18|12-German-male-speech.441.16b48k.wav|64: MOS=4.55500, payload=63.664 kbps, source=scored
+completed oneband_static24|12-German-male-speech.441.16b48k.wav|96: MOS=4.85276, payload=95.567 kbps, source=identity:static24|12-German-male-speech.441.16b48k.wav|96
+completed local2_joint18|12-German-male-speech.441.16b48k.wav|64: MOS=4.55264, payload=63.670 kbps, source=scored
+completed local2_adaptive18|12-German-male-speech.441.16b48k.wav|96: MOS=4.85265, payload=95.560 kbps, source=scored
+completed local2_static18|12-German-male-speech.441.16b48k.wav|96: MOS=4.85265, payload=95.560 kbps, source=scored
+completed local2_static24|12-German-male-speech.441.16b48k.wav|96: MOS=4.85261, payload=95.560 kbps, source=scored
+completed local2_joint18|12-German-male-speech.441.16b48k.wav|96: MOS=4.85250, payload=95.570 kbps, source=scored
+completed oneband_static18|15-Good-evening.441.16b48k.wav|32: MOS=3.70587, payload=32.104 kbps, source=identity:noise_18|15-Good-evening.441.16b48k.wav|32
+completed oneband_static24|15-Good-evening.441.16b48k.wav|32: MOS=3.70583, payload=32.104 kbps, source=identity:static24|15-Good-evening.441.16b48k.wav|32
+completed local2_static18|15-Good-evening.441.16b48k.wav|32: MOS=3.70295, payload=32.102 kbps, source=scored
+completed local2_static24|15-Good-evening.441.16b48k.wav|32: MOS=3.70292, payload=32.102 kbps, source=scored
+completed oneband_static18|15-Good-evening.441.16b48k.wav|48: MOS=4.09107, payload=48.327 kbps, source=identity:noise_18|15-Good-evening.441.16b48k.wav|48
+completed oneband_static24|15-Good-evening.441.16b48k.wav|48: MOS=4.09105, payload=48.327 kbps, source=identity:static24|15-Good-evening.441.16b48k.wav|48
+completed local2_adaptive18|15-Good-evening.441.16b48k.wav|32: MOS=3.70295, payload=32.102 kbps, source=scored
+completed local2_joint18|15-Good-evening.441.16b48k.wav|32: MOS=3.69924, payload=32.104 kbps, source=scored
+completed local2_adaptive18|15-Good-evening.441.16b48k.wav|48: MOS=4.08516, payload=48.326 kbps, source=scored
+completed local2_static24|15-Good-evening.441.16b48k.wav|48: MOS=4.08519, payload=48.326 kbps, source=scored
+completed local2_static18|15-Good-evening.441.16b48k.wav|48: MOS=4.08516, payload=48.326 kbps, source=scored
+completed local2_joint18|15-Good-evening.441.16b48k.wav|48: MOS=4.08401, payload=48.327 kbps, source=scored
+completed oneband_static18|15-Good-evening.441.16b48k.wav|64: MOS=4.32822, payload=64.014 kbps, source=identity:noise_18|15-Good-evening.441.16b48k.wav|64
+completed oneband_static24|15-Good-evening.441.16b48k.wav|64: MOS=4.32830, payload=64.014 kbps, source=identity:static24|15-Good-evening.441.16b48k.wav|64
+completed local2_static24|15-Good-evening.441.16b48k.wav|64: MOS=4.33081, payload=64.017 kbps, source=scored
+completed local2_static18|15-Good-evening.441.16b48k.wav|64: MOS=4.33082, payload=64.017 kbps, source=scored
+completed oneband_static18|15-Good-evening.441.16b48k.wav|96: MOS=4.59585, payload=95.573 kbps, source=identity:noise_18|15-Good-evening.441.16b48k.wav|96
+completed local2_joint18|15-Good-evening.441.16b48k.wav|64: MOS=4.33111, payload=64.018 kbps, source=scored
+completed oneband_static24|15-Good-evening.441.16b48k.wav|96: MOS=4.59593, payload=95.573 kbps, source=identity:static24|15-Good-evening.441.16b48k.wav|96
+completed local2_adaptive18|15-Good-evening.441.16b48k.wav|64: MOS=4.33082, payload=64.017 kbps, source=scored
+completed local2_static18|15-Good-evening.441.16b48k.wav|96: MOS=4.58323, payload=95.570 kbps, source=scored
+completed local2_static24|15-Good-evening.441.16b48k.wav|96: MOS=4.58327, payload=95.570 kbps, source=scored
+completed local2_adaptive18|15-Good-evening.441.16b48k.wav|96: MOS=4.58323, payload=95.570 kbps, source=scored
+completed local2_joint18|15-Good-evening.441.16b48k.wav|96: MOS=4.58005, payload=95.571 kbps, source=scored
+completed oneband_static18|21-classic.441.16b48k.wav|32: MOS=3.97480, payload=31.866 kbps, source=identity:noise_18|21-classic.441.16b48k.wav|32
+completed oneband_static24|21-classic.441.16b48k.wav|32: MOS=3.97469, payload=31.866 kbps, source=identity:static24|21-classic.441.16b48k.wav|32
+completed local2_static24|21-classic.441.16b48k.wav|32: MOS=3.96206, payload=31.865 kbps, source=scored
+completed local2_static18|21-classic.441.16b48k.wav|32: MOS=3.96202, payload=31.865 kbps, source=scored
+completed local2_adaptive18|21-classic.441.16b48k.wav|32: MOS=3.96202, payload=31.865 kbps, source=scored
+completed oneband_static18|21-classic.441.16b48k.wav|48: MOS=4.33275, payload=47.757 kbps, source=identity:noise_18|21-classic.441.16b48k.wav|48
+completed local2_joint18|21-classic.441.16b48k.wav|32: MOS=3.95934, payload=31.896 kbps, source=scored
+completed oneband_static24|21-classic.441.16b48k.wav|48: MOS=4.33283, payload=47.757 kbps, source=identity:static24|21-classic.441.16b48k.wav|48
+completed local2_static24|21-classic.441.16b48k.wav|48: MOS=4.31931, payload=47.760 kbps, source=scored
+completed local2_static18|21-classic.441.16b48k.wav|48: MOS=4.31876, payload=47.760 kbps, source=scored
+completed local2_adaptive18|21-classic.441.16b48k.wav|48: MOS=4.31876, payload=47.760 kbps, source=scored
+completed local2_joint18|21-classic.441.16b48k.wav|48: MOS=4.33279, payload=47.783 kbps, source=scored
+completed oneband_static18|21-classic.441.16b48k.wav|64: MOS=4.54415, payload=63.658 kbps, source=identity:noise_18|21-classic.441.16b48k.wav|64
+completed oneband_static24|21-classic.441.16b48k.wav|64: MOS=4.54423, payload=63.658 kbps, source=identity:static24|21-classic.441.16b48k.wav|64
+completed local2_static24|21-classic.441.16b48k.wav|64: MOS=4.54098, payload=63.655 kbps, source=scored
+completed local2_static18|21-classic.441.16b48k.wav|64: MOS=4.54084, payload=63.655 kbps, source=scored
+completed local2_adaptive18|21-classic.441.16b48k.wav|64: MOS=4.54084, payload=63.655 kbps, source=scored
+completed oneband_static18|21-classic.441.16b48k.wav|96: MOS=4.75021, payload=95.468 kbps, source=identity:noise_18|21-classic.441.16b48k.wav|96
+completed oneband_static24|21-classic.441.16b48k.wav|96: MOS=4.75027, payload=95.468 kbps, source=identity:static24|21-classic.441.16b48k.wav|96
+completed local2_joint18|21-classic.441.16b48k.wav|64: MOS=4.55213, payload=63.679 kbps, source=scored
+completed local2_static24|21-classic.441.16b48k.wav|96: MOS=4.74614, payload=95.469 kbps, source=scored
+completed local2_static18|21-classic.441.16b48k.wav|96: MOS=4.74609, payload=95.469 kbps, source=scored
+completed local2_joint18|21-classic.441.16b48k.wav|96: MOS=4.75125, payload=95.488 kbps, source=scored
+completed local2_adaptive18|21-classic.441.16b48k.wav|96: MOS=4.74609, payload=95.469 kbps, source=scored
+completed oneband_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.75818, payload=31.875 kbps, source=identity:noise_18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32
+completed oneband_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.75852, payload=31.875 kbps, source=identity:static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32
+completed local2_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.76256, payload=31.877 kbps, source=scored
+completed local2_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.76248, payload=31.877 kbps, source=scored
+completed local2_joint18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.75743, payload=31.882 kbps, source=scored
+completed local2_adaptive18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.76256, payload=31.877 kbps, source=scored
+completed oneband_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.04471, payload=47.958 kbps, source=identity:noise_18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48
+completed oneband_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.04463, payload=47.958 kbps, source=identity:static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48
+completed local2_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.05445, payload=47.953 kbps, source=scored
+completed local2_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.05438, payload=47.953 kbps, source=scored
+completed local2_adaptive18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.05445, payload=47.953 kbps, source=scored
+completed local2_joint18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.05287, payload=47.954 kbps, source=scored
+completed oneband_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.35987, payload=64.044 kbps, source=identity:noise_18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64
+completed oneband_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.35988, payload=64.044 kbps, source=identity:static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64
+completed local2_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.34561, payload=64.040 kbps, source=scored
+completed local2_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.34551, payload=64.040 kbps, source=scored
+completed local2_adaptive18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.34561, payload=64.040 kbps, source=scored
+completed local2_joint18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.35069, payload=64.041 kbps, source=scored
+completed oneband_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79380, payload=95.773 kbps, source=identity:noise_18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96
+completed oneband_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79379, payload=95.773 kbps, source=identity:static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96
+completed local2_static24|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79205, payload=95.769 kbps, source=scored
+completed local2_static18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79202, payload=95.769 kbps, source=scored
+completed local2_adaptive18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79202, payload=95.769 kbps, source=scored
+completed local2_joint18|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.79208, payload=95.765 kbps, source=scored
+completed oneband_static18|25-This-is-the-end.441.16b48k.wav|32: MOS=3.79003, payload=32.294 kbps, source=identity:noise_18|25-This-is-the-end.441.16b48k.wav|32
+completed oneband_static24|25-This-is-the-end.441.16b48k.wav|32: MOS=3.78998, payload=32.294 kbps, source=identity:static24|25-This-is-the-end.441.16b48k.wav|32
+completed local2_static18|25-This-is-the-end.441.16b48k.wav|32: MOS=3.77525, payload=32.290 kbps, source=scored
+completed local2_static24|25-This-is-the-end.441.16b48k.wav|32: MOS=3.77522, payload=32.290 kbps, source=scored
+completed local2_adaptive18|25-This-is-the-end.441.16b48k.wav|32: MOS=3.77525, payload=32.290 kbps, source=scored
+completed oneband_static18|25-This-is-the-end.441.16b48k.wav|48: MOS=4.23788, payload=48.730 kbps, source=identity:noise_18|25-This-is-the-end.441.16b48k.wav|48
+completed local2_joint18|25-This-is-the-end.441.16b48k.wav|32: MOS=3.78049, payload=32.299 kbps, source=scored
+completed oneband_static24|25-This-is-the-end.441.16b48k.wav|48: MOS=4.23788, payload=48.730 kbps, source=identity:static24|25-This-is-the-end.441.16b48k.wav|48
+completed local2_static18|25-This-is-the-end.441.16b48k.wav|48: MOS=4.22986, payload=48.745 kbps, source=scored
+completed local2_static24|25-This-is-the-end.441.16b48k.wav|48: MOS=4.22988, payload=48.745 kbps, source=scored
+completed local2_adaptive18|25-This-is-the-end.441.16b48k.wav|48: MOS=4.22986, payload=48.745 kbps, source=scored
+completed local2_joint18|25-This-is-the-end.441.16b48k.wav|48: MOS=4.23700, payload=48.747 kbps, source=scored
+completed oneband_static18|25-This-is-the-end.441.16b48k.wav|64: MOS=4.49214, payload=64.442 kbps, source=identity:noise_18|25-This-is-the-end.441.16b48k.wav|64
+completed oneband_static24|25-This-is-the-end.441.16b48k.wav|64: MOS=4.49219, payload=64.442 kbps, source=identity:static24|25-This-is-the-end.441.16b48k.wav|64
+completed local2_static18|25-This-is-the-end.441.16b48k.wav|64: MOS=4.50120, payload=64.444 kbps, source=scored
+completed local2_static24|25-This-is-the-end.441.16b48k.wav|64: MOS=4.50121, payload=64.444 kbps, source=scored
+completed local2_adaptive18|25-This-is-the-end.441.16b48k.wav|64: MOS=4.50120, payload=64.444 kbps, source=scored
+completed oneband_static18|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70364, payload=95.828 kbps, source=identity:noise_18|25-This-is-the-end.441.16b48k.wav|96
+completed oneband_static24|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70373, payload=95.828 kbps, source=identity:static24|25-This-is-the-end.441.16b48k.wav|96
+completed local2_joint18|25-This-is-the-end.441.16b48k.wav|64: MOS=4.49823, payload=64.449 kbps, source=scored
+completed local2_static18|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70140, payload=95.827 kbps, source=scored
+completed local2_static24|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70140, payload=95.827 kbps, source=scored
+completed local2_adaptive18|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70140, payload=95.827 kbps, source=scored
+completed local2_joint18|25-This-is-the-end.441.16b48k.wav|96: MOS=4.70257, payload=95.830 kbps, source=scored
+completed oneband_static18|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.05367, payload=32.613 kbps, source=identity:noise_18|27-last-song-drums-and-trampets.441.16b48k.wav|32
+completed oneband_static24|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.05156, payload=32.613 kbps, source=identity:static24|27-last-song-drums-and-trampets.441.16b48k.wav|32
+completed local2_static18|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.07022, payload=32.594 kbps, source=scored
+completed local2_static24|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.07001, payload=32.594 kbps, source=scored
+completed local2_adaptive18|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.07022, payload=32.594 kbps, source=scored
+completed oneband_static18|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.37035, payload=48.907 kbps, source=identity:noise_18|27-last-song-drums-and-trampets.441.16b48k.wav|48
+completed local2_joint18|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.07158, payload=32.612 kbps, source=scored
+completed oneband_static24|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.37059, payload=48.907 kbps, source=identity:static24|27-last-song-drums-and-trampets.441.16b48k.wav|48
+completed local2_static18|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.36389, payload=49.025 kbps, source=scored
+completed local2_static24|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.36500, payload=49.025 kbps, source=scored
+completed local2_joint18|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.36348, payload=49.025 kbps, source=scored
+completed local2_adaptive18|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.36389, payload=49.025 kbps, source=scored
+completed oneband_static18|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.54713, payload=64.397 kbps, source=identity:noise_18|27-last-song-drums-and-trampets.441.16b48k.wav|64
+completed oneband_static24|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.54707, payload=64.397 kbps, source=identity:static24|27-last-song-drums-and-trampets.441.16b48k.wav|64
+completed local2_static24|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.54749, payload=64.390 kbps, source=scored
+completed local2_static18|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.54730, payload=64.390 kbps, source=scored
+completed local2_adaptive18|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.54730, payload=64.390 kbps, source=scored
+completed oneband_static24|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.75544, payload=95.962 kbps, source=identity:static24|27-last-song-drums-and-trampets.441.16b48k.wav|96
+completed oneband_static18|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.75492, payload=95.962 kbps, source=identity:noise_18|27-last-song-drums-and-trampets.441.16b48k.wav|96
+completed local2_joint18|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.54631, payload=64.386 kbps, source=scored
+completed local2_static18|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.75437, payload=95.960 kbps, source=scored
+completed local2_static24|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.75460, payload=95.960 kbps, source=scored
+completed local2_joint18|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.75538, payload=95.962 kbps, source=scored
+completed local2_adaptive18|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.75437, payload=95.960 kbps, source=scored
+completed oneband_static24|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.16399, payload=32.064 kbps, source=identity:static24|35_SQAM_glockenspiel_cut.16b48k.wav|32
+completed oneband_static18|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.16462, payload=32.064 kbps, source=identity:noise_18|35_SQAM_glockenspiel_cut.16b48k.wav|32
+completed local2_static18|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.15843, payload=32.051 kbps, source=scored
+completed local2_static24|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.15709, payload=32.051 kbps, source=scored
+completed local2_adaptive18|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.18580, payload=32.050 kbps, source=scored
+completed local2_joint18|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.15718, payload=32.057 kbps, source=scored
+completed oneband_static18|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.56357, payload=48.114 kbps, source=identity:noise_18|35_SQAM_glockenspiel_cut.16b48k.wav|48
+completed oneband_static24|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.56433, payload=48.114 kbps, source=identity:static24|35_SQAM_glockenspiel_cut.16b48k.wav|48
+completed local2_static18|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.55546, payload=48.110 kbps, source=scored
+completed local2_static24|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.55599, payload=48.110 kbps, source=scored
+completed local2_adaptive18|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.55559, payload=48.103 kbps, source=scored
+completed local2_joint18|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.52685, payload=48.124 kbps, source=scored
+completed oneband_static18|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.65830, payload=63.786 kbps, source=identity:noise_18|35_SQAM_glockenspiel_cut.16b48k.wav|64
+completed oneband_static24|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.65864, payload=63.786 kbps, source=identity:static24|35_SQAM_glockenspiel_cut.16b48k.wav|64
+completed local2_static24|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.65318, payload=63.783 kbps, source=scored
+completed local2_static18|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.65238, payload=63.783 kbps, source=scored
+completed local2_adaptive18|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.65513, payload=63.786 kbps, source=scored
+completed local2_joint18|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.62379, payload=63.794 kbps, source=scored
+completed oneband_static18|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.75275, payload=95.262 kbps, source=identity:noise_18|35_SQAM_glockenspiel_cut.16b48k.wav|96
+completed oneband_static24|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.75311, payload=95.262 kbps, source=identity:static24|35_SQAM_glockenspiel_cut.16b48k.wav|96
+completed local2_static18|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.75740, payload=95.259 kbps, source=scored
+completed local2_adaptive18|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.75189, payload=95.262 kbps, source=scored
+completed local2_joint18|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.70594, payload=95.282 kbps, source=scored
+completed local2_static24|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.75716, payload=95.259 kbps, source=scored
+completed oneband_static18|4-Sound-English-male.441.16b48k.wav|32: MOS=3.84898, payload=32.191 kbps, source=identity:noise_18|4-Sound-English-male.441.16b48k.wav|32
+completed oneband_static24|4-Sound-English-male.441.16b48k.wav|32: MOS=3.84897, payload=32.191 kbps, source=identity:static24|4-Sound-English-male.441.16b48k.wav|32
+completed local2_static18|4-Sound-English-male.441.16b48k.wav|32: MOS=3.84465, payload=32.196 kbps, source=scored
+completed local2_static24|4-Sound-English-male.441.16b48k.wav|32: MOS=3.84467, payload=32.196 kbps, source=scored
+completed local2_adaptive18|4-Sound-English-male.441.16b48k.wav|32: MOS=3.84465, payload=32.196 kbps, source=scored
+completed oneband_static18|4-Sound-English-male.441.16b48k.wav|48: MOS=4.34161, payload=47.992 kbps, source=identity:noise_18|4-Sound-English-male.441.16b48k.wav|48
+completed local2_joint18|4-Sound-English-male.441.16b48k.wav|32: MOS=3.82119, payload=32.228 kbps, source=scored
+completed oneband_static24|4-Sound-English-male.441.16b48k.wav|48: MOS=4.34164, payload=47.992 kbps, source=identity:static24|4-Sound-English-male.441.16b48k.wav|48
+completed local2_static18|4-Sound-English-male.441.16b48k.wav|48: MOS=4.35120, payload=47.991 kbps, source=scored
+completed local2_static24|4-Sound-English-male.441.16b48k.wav|48: MOS=4.35123, payload=47.991 kbps, source=scored
+completed local2_adaptive18|4-Sound-English-male.441.16b48k.wav|48: MOS=4.35120, payload=47.991 kbps, source=scored
+completed local2_joint18|4-Sound-English-male.441.16b48k.wav|48: MOS=4.34342, payload=48.013 kbps, source=scored
+completed oneband_static18|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68691, payload=63.836 kbps, source=identity:noise_18|4-Sound-English-male.441.16b48k.wav|64
+completed oneband_static24|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68686, payload=63.836 kbps, source=identity:static24|4-Sound-English-male.441.16b48k.wav|64
+completed local2_static18|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68939, payload=63.836 kbps, source=scored
+completed local2_static24|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68928, payload=63.836 kbps, source=scored
+completed local2_adaptive18|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68939, payload=63.836 kbps, source=scored
+completed local2_joint18|4-Sound-English-male.441.16b48k.wav|64: MOS=4.68801, payload=63.861 kbps, source=scored
+completed oneband_static24|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83562, payload=95.553 kbps, source=identity:static24|4-Sound-English-male.441.16b48k.wav|96
+completed oneband_static18|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83563, payload=95.553 kbps, source=identity:noise_18|4-Sound-English-male.441.16b48k.wav|96
+completed local2_static18|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83518, payload=95.547 kbps, source=scored
+completed local2_static24|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83521, payload=95.547 kbps, source=scored
+completed local2_joint18|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83404, payload=95.570 kbps, source=scored
+completed local2_adaptive18|4-Sound-English-male.441.16b48k.wav|96: MOS=4.83518, payload=95.547 kbps, source=scored
+completed oneband_static18|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.61992, payload=31.968 kbps, source=identity:noise_18|9-Have-big-expensive-car.441.16b48k.wav|32
+completed oneband_static24|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.61904, payload=31.968 kbps, source=identity:static24|9-Have-big-expensive-car.441.16b48k.wav|32
+completed local2_static18|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.60891, payload=31.970 kbps, source=scored
+completed local2_static24|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.60871, payload=31.970 kbps, source=scored
+completed local2_joint18|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.58668, payload=31.992 kbps, source=scored
+completed local2_adaptive18|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.60891, payload=31.970 kbps, source=scored
+completed oneband_static18|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.16777, payload=48.340 kbps, source=identity:noise_18|9-Have-big-expensive-car.441.16b48k.wav|48
+completed oneband_static24|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.16867, payload=48.340 kbps, source=identity:static24|9-Have-big-expensive-car.441.16b48k.wav|48
+completed local2_static18|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.13219, payload=48.331 kbps, source=scored
+completed local2_static24|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.13241, payload=48.331 kbps, source=scored
+completed local2_adaptive18|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.13173, payload=48.331 kbps, source=scored
+completed local2_joint18|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.12918, payload=48.380 kbps, source=scored
+completed oneband_static18|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.38579, payload=64.020 kbps, source=identity:noise_18|9-Have-big-expensive-car.441.16b48k.wav|64
+completed oneband_static24|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.38484, payload=64.020 kbps, source=identity:static24|9-Have-big-expensive-car.441.16b48k.wav|64
+completed local2_static18|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.38089, payload=64.027 kbps, source=scored
+completed local2_static24|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.38082, payload=64.027 kbps, source=scored
+completed local2_adaptive18|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.37374, payload=64.027 kbps, source=scored
+completed local2_joint18|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.34119, payload=64.074 kbps, source=scored
+completed oneband_static18|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.61979, payload=95.427 kbps, source=identity:noise_18|9-Have-big-expensive-car.441.16b48k.wav|96
+completed oneband_static24|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.61972, payload=95.427 kbps, source=identity:static24|9-Have-big-expensive-car.441.16b48k.wav|96
+completed local2_static18|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.61427, payload=95.422 kbps, source=scored
+completed local2_static24|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.61415, payload=95.422 kbps, source=scored
+completed local2_adaptive18|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.61154, payload=95.422 kbps, source=scored
+completed local2_joint18|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.57552, payload=95.461 kbps, source=scored
+completed oneband_static18|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.71137, payload=31.792 kbps, source=identity:noise_18|Asleep__4.11-4.31_.16b48k.wav|32
+completed oneband_static24|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.71249, payload=31.792 kbps, source=identity:static24|Asleep__4.11-4.31_.16b48k.wav|32
+completed local2_static18|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.70873, payload=31.787 kbps, source=scored
+completed local2_static24|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.70874, payload=31.787 kbps, source=scored
+completed local2_joint18|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.71603, payload=31.786 kbps, source=scored
+completed oneband_static18|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19535, payload=47.742 kbps, source=identity:noise_18|Asleep__4.11-4.31_.16b48k.wav|48
+completed local2_adaptive18|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.70873, payload=31.787 kbps, source=scored
+completed oneband_static24|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19533, payload=47.742 kbps, source=identity:static24|Asleep__4.11-4.31_.16b48k.wav|48
+completed local2_adaptive18|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19655, payload=47.741 kbps, source=scored
+completed local2_static18|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19655, payload=47.741 kbps, source=scored
+completed local2_static24|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19652, payload=47.741 kbps, source=scored
+completed local2_joint18|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.19825, payload=47.740 kbps, source=scored
+completed oneband_static18|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45460, payload=63.671 kbps, source=identity:noise_18|Asleep__4.11-4.31_.16b48k.wav|64
+completed oneband_static24|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45456, payload=63.671 kbps, source=identity:static24|Asleep__4.11-4.31_.16b48k.wav|64
+completed local2_static18|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45158, payload=63.662 kbps, source=scored
+completed local2_static24|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45155, payload=63.662 kbps, source=scored
+completed local2_joint18|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45216, payload=63.661 kbps, source=scored
+completed oneband_static18|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66226, payload=95.459 kbps, source=identity:noise_18|Asleep__4.11-4.31_.16b48k.wav|96
+completed local2_adaptive18|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.45158, payload=63.662 kbps, source=scored
+completed oneband_static24|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66227, payload=95.459 kbps, source=identity:static24|Asleep__4.11-4.31_.16b48k.wav|96
+completed local2_adaptive18|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66023, payload=95.454 kbps, source=scored
+completed local2_static18|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66023, payload=95.454 kbps, source=scored
+completed local2_static24|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66025, payload=95.454 kbps, source=scored
+completed local2_joint18|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.66726, payload=95.451 kbps, source=scored
+completed oneband_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.68600, payload=31.757 kbps, source=identity:noise_18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32
+completed oneband_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.68597, payload=31.757 kbps, source=identity:static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32
+completed local2_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.66997, payload=31.739 kbps, source=scored
+completed local2_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.67062, payload=31.739 kbps, source=scored
+completed oneband_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.94450, payload=47.985 kbps, source=identity:noise_18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48
+completed local2_joint18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.66120, payload=31.750 kbps, source=scored
+completed local2_adaptive18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.66997, payload=31.739 kbps, source=scored
+completed oneband_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.94472, payload=47.985 kbps, source=identity:static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48
+completed local2_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.93024, payload=48.013 kbps, source=scored
+completed local2_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.92996, payload=48.013 kbps, source=scored
+completed local2_adaptive18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.93024, payload=48.013 kbps, source=scored
+completed local2_joint18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.94725, payload=48.025 kbps, source=scored
+completed oneband_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.11497, payload=63.628 kbps, source=identity:noise_18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64
+completed oneband_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.11666, payload=63.628 kbps, source=identity:static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64
+completed local2_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.12564, payload=63.618 kbps, source=scored
+completed local2_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.12568, payload=63.618 kbps, source=scored
+completed local2_adaptive18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.12568, payload=63.618 kbps, source=scored
+completed oneband_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.51822, payload=95.183 kbps, source=identity:noise_18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96
+completed oneband_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.51822, payload=95.183 kbps, source=identity:static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96
+completed local2_joint18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.13116, payload=63.633 kbps, source=scored
+completed local2_static18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.51796, payload=95.186 kbps, source=scored
+completed local2_static24|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.51796, payload=95.186 kbps, source=scored
+completed local2_joint18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.52401, payload=95.190 kbps, source=scored
+completed local2_adaptive18|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.51796, payload=95.186 kbps, source=scored
+completed oneband_static18|Changes.16b48k.wav|32: MOS=3.48551, payload=31.866 kbps, source=identity:noise_18|Changes.16b48k.wav|32
+completed oneband_static24|Changes.16b48k.wav|32: MOS=3.48585, payload=31.866 kbps, source=identity:static24|Changes.16b48k.wav|32
+completed local2_static18|Changes.16b48k.wav|32: MOS=3.49593, payload=31.862 kbps, source=scored
+completed local2_static24|Changes.16b48k.wav|32: MOS=3.49598, payload=31.862 kbps, source=scored
+completed local2_adaptive18|Changes.16b48k.wav|32: MOS=3.49593, payload=31.862 kbps, source=scored
+completed local2_joint18|Changes.16b48k.wav|32: MOS=3.49991, payload=31.861 kbps, source=scored
+completed oneband_static18|Changes.16b48k.wav|48: MOS=3.87553, payload=47.867 kbps, source=identity:noise_18|Changes.16b48k.wav|48
+completed oneband_static24|Changes.16b48k.wav|48: MOS=3.87545, payload=47.867 kbps, source=identity:static24|Changes.16b48k.wav|48
+completed local2_static18|Changes.16b48k.wav|48: MOS=3.87416, payload=47.858 kbps, source=scored
+completed local2_static24|Changes.16b48k.wav|48: MOS=3.87415, payload=47.858 kbps, source=scored
+completed local2_adaptive18|Changes.16b48k.wav|48: MOS=3.87416, payload=47.858 kbps, source=scored
+completed local2_joint18|Changes.16b48k.wav|48: MOS=3.87489, payload=47.865 kbps, source=scored
+completed oneband_static18|Changes.16b48k.wav|64: MOS=4.21374, payload=63.704 kbps, source=identity:noise_18|Changes.16b48k.wav|64
+completed oneband_static24|Changes.16b48k.wav|64: MOS=4.21430, payload=63.704 kbps, source=identity:static24|Changes.16b48k.wav|64
+completed local2_static24|Changes.16b48k.wav|64: MOS=4.21622, payload=63.698 kbps, source=scored
+completed local2_static18|Changes.16b48k.wav|64: MOS=4.21618, payload=63.698 kbps, source=scored
+completed local2_adaptive18|Changes.16b48k.wav|64: MOS=4.21618, payload=63.698 kbps, source=scored
+completed local2_joint18|Changes.16b48k.wav|64: MOS=4.21890, payload=63.702 kbps, source=scored
+completed oneband_static24|Changes.16b48k.wav|96: MOS=4.58164, payload=95.458 kbps, source=identity:static24|Changes.16b48k.wav|96
+completed oneband_static18|Changes.16b48k.wav|96: MOS=4.58153, payload=95.458 kbps, source=identity:noise_18|Changes.16b48k.wav|96
+completed local2_static18|Changes.16b48k.wav|96: MOS=4.58303, payload=95.451 kbps, source=scored
+completed local2_static24|Changes.16b48k.wav|96: MOS=4.58315, payload=95.451 kbps, source=scored
+completed local2_joint18|Changes.16b48k.wav|96: MOS=4.58345, payload=95.461 kbps, source=scored
+completed local2_adaptive18|Changes.16b48k.wav|96: MOS=4.58303, payload=95.451 kbps, source=scored
+completed oneband_static18|Coral.16b48k.wav|32: MOS=3.79066, payload=31.851 kbps, source=identity:noise_18|Coral.16b48k.wav|32
+completed oneband_static24|Coral.16b48k.wav|32: MOS=3.79069, payload=31.851 kbps, source=identity:static24|Coral.16b48k.wav|32
+completed local2_static18|Coral.16b48k.wav|32: MOS=3.77797, payload=31.854 kbps, source=scored
+completed local2_static24|Coral.16b48k.wav|32: MOS=3.77796, payload=31.854 kbps, source=scored
+completed local2_adaptive18|Coral.16b48k.wav|32: MOS=3.77797, payload=31.854 kbps, source=scored
+completed local2_joint18|Coral.16b48k.wav|32: MOS=3.77213, payload=31.860 kbps, source=scored
+completed oneband_static18|Coral.16b48k.wav|48: MOS=4.14454, payload=47.970 kbps, source=identity:noise_18|Coral.16b48k.wav|48
+completed oneband_static24|Coral.16b48k.wav|48: MOS=4.14512, payload=47.970 kbps, source=identity:static24|Coral.16b48k.wav|48
+completed local2_static24|Coral.16b48k.wav|48: MOS=4.12405, payload=47.973 kbps, source=scored
+completed local2_static18|Coral.16b48k.wav|48: MOS=4.12481, payload=47.973 kbps, source=scored
+completed local2_adaptive18|Coral.16b48k.wav|48: MOS=4.12481, payload=47.973 kbps, source=scored
+completed local2_joint18|Coral.16b48k.wav|48: MOS=4.12846, payload=47.981 kbps, source=scored
+completed oneband_static18|Coral.16b48k.wav|64: MOS=4.42447, payload=63.697 kbps, source=identity:noise_18|Coral.16b48k.wav|64
+completed oneband_static24|Coral.16b48k.wav|64: MOS=4.42450, payload=63.697 kbps, source=identity:static24|Coral.16b48k.wav|64
+completed local2_static24|Coral.16b48k.wav|64: MOS=4.41365, payload=63.700 kbps, source=scored
+completed local2_static18|Coral.16b48k.wav|64: MOS=4.41362, payload=63.700 kbps, source=scored
+completed local2_adaptive18|Coral.16b48k.wav|64: MOS=4.41362, payload=63.700 kbps, source=scored
+completed local2_joint18|Coral.16b48k.wav|64: MOS=4.41424, payload=63.704 kbps, source=scored
+completed oneband_static18|Coral.16b48k.wav|96: MOS=4.71159, payload=95.350 kbps, source=identity:noise_18|Coral.16b48k.wav|96
+completed oneband_static24|Coral.16b48k.wav|96: MOS=4.71157, payload=95.350 kbps, source=identity:static24|Coral.16b48k.wav|96
+completed local2_static18|Coral.16b48k.wav|96: MOS=4.71166, payload=95.354 kbps, source=scored
+completed local2_static24|Coral.16b48k.wav|96: MOS=4.71163, payload=95.354 kbps, source=scored
+completed local2_adaptive18|Coral.16b48k.wav|96: MOS=4.71166, payload=95.354 kbps, source=scored
+completed local2_joint18|Coral.16b48k.wav|96: MOS=4.71374, payload=95.357 kbps, source=scored
+completed oneband_static18|ExitMusic.16b48k.wav|32: MOS=3.90053, payload=31.952 kbps, source=identity:noise_18|ExitMusic.16b48k.wav|32
+completed oneband_static24|ExitMusic.16b48k.wav|32: MOS=3.90032, payload=31.952 kbps, source=identity:static24|ExitMusic.16b48k.wav|32
+completed local2_static18|ExitMusic.16b48k.wav|32: MOS=3.89676, payload=31.940 kbps, source=scored
+completed local2_static24|ExitMusic.16b48k.wav|32: MOS=3.89700, payload=31.940 kbps, source=scored
+completed local2_adaptive18|ExitMusic.16b48k.wav|32: MOS=3.89676, payload=31.940 kbps, source=scored
+completed local2_joint18|ExitMusic.16b48k.wav|32: MOS=3.89567, payload=31.941 kbps, source=scored
+completed oneband_static18|ExitMusic.16b48k.wav|48: MOS=4.26373, payload=47.808 kbps, source=identity:noise_18|ExitMusic.16b48k.wav|48
+completed oneband_static24|ExitMusic.16b48k.wav|48: MOS=4.26375, payload=47.808 kbps, source=identity:static24|ExitMusic.16b48k.wav|48
+completed local2_static18|ExitMusic.16b48k.wav|48: MOS=4.25632, payload=47.793 kbps, source=scored
+completed local2_static24|ExitMusic.16b48k.wav|48: MOS=4.25628, payload=47.793 kbps, source=scored
+completed local2_adaptive18|ExitMusic.16b48k.wav|48: MOS=4.25632, payload=47.793 kbps, source=scored
+completed local2_joint18|ExitMusic.16b48k.wav|48: MOS=4.26245, payload=47.793 kbps, source=scored
+completed oneband_static18|ExitMusic.16b48k.wav|64: MOS=4.57646, payload=63.568 kbps, source=identity:noise_18|ExitMusic.16b48k.wav|64
+completed oneband_static24|ExitMusic.16b48k.wav|64: MOS=4.57642, payload=63.568 kbps, source=identity:static24|ExitMusic.16b48k.wav|64
+completed local2_static18|ExitMusic.16b48k.wav|64: MOS=4.57903, payload=63.567 kbps, source=scored
+completed local2_static24|ExitMusic.16b48k.wav|64: MOS=4.57898, payload=63.567 kbps, source=scored
+completed oneband_static18|ExitMusic.16b48k.wav|96: MOS=4.77426, payload=95.318 kbps, source=identity:noise_18|ExitMusic.16b48k.wav|96
+completed local2_adaptive18|ExitMusic.16b48k.wav|64: MOS=4.57903, payload=63.567 kbps, source=scored
+completed local2_joint18|ExitMusic.16b48k.wav|64: MOS=4.57561, payload=63.568 kbps, source=scored
+completed oneband_static24|ExitMusic.16b48k.wav|96: MOS=4.77425, payload=95.318 kbps, source=identity:static24|ExitMusic.16b48k.wav|96
+completed local2_static18|ExitMusic.16b48k.wav|96: MOS=4.77437, payload=95.316 kbps, source=scored
+completed local2_static24|ExitMusic.16b48k.wav|96: MOS=4.77436, payload=95.316 kbps, source=scored
+completed local2_adaptive18|ExitMusic.16b48k.wav|96: MOS=4.77437, payload=95.316 kbps, source=scored
+completed local2_joint18|ExitMusic.16b48k.wav|96: MOS=4.77362, payload=95.318 kbps, source=scored
+completed oneband_static24|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.44013, payload=31.812 kbps, source=identity:static24|Girl_In_The_Fire__Sample_.16b48k.wav|32
+completed oneband_static18|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.44031, payload=31.812 kbps, source=identity:noise_18|Girl_In_The_Fire__Sample_.16b48k.wav|32
+completed local2_static18|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.41520, payload=31.808 kbps, source=scored
+completed local2_static24|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.41527, payload=31.808 kbps, source=scored
+completed local2_adaptive18|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.41520, payload=31.808 kbps, source=scored
+completed local2_joint18|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.39861, payload=31.819 kbps, source=scored
+completed oneband_static18|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.77473, payload=47.862 kbps, source=identity:noise_18|Girl_In_The_Fire__Sample_.16b48k.wav|48
+completed oneband_static24|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.77491, payload=47.862 kbps, source=identity:static24|Girl_In_The_Fire__Sample_.16b48k.wav|48
+completed local2_static18|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.76108, payload=47.857 kbps, source=scored
+completed local2_static24|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.76096, payload=47.857 kbps, source=scored
+completed local2_joint18|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.75884, payload=47.890 kbps, source=scored
+completed local2_adaptive18|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.75796, payload=47.856 kbps, source=scored
+completed oneband_static18|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.09515, payload=63.717 kbps, source=identity:noise_18|Girl_In_The_Fire__Sample_.16b48k.wav|64
+completed oneband_static24|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.09515, payload=63.717 kbps, source=identity:static24|Girl_In_The_Fire__Sample_.16b48k.wav|64
+completed local2_static24|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.08495, payload=63.714 kbps, source=scored
+completed local2_static18|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.08526, payload=63.714 kbps, source=scored
+completed local2_adaptive18|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.09132, payload=63.714 kbps, source=scored
+completed local2_joint18|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.08573, payload=63.746 kbps, source=scored
+completed oneband_static24|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.56460, payload=95.663 kbps, source=identity:static24|Girl_In_The_Fire__Sample_.16b48k.wav|96
+completed oneband_static18|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.56444, payload=95.663 kbps, source=identity:noise_18|Girl_In_The_Fire__Sample_.16b48k.wav|96
+completed local2_static24|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.56129, payload=95.660 kbps, source=scored
+completed local2_static18|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.56110, payload=95.660 kbps, source=scored
+completed oneband_static18|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.70553, payload=31.755 kbps, source=identity:noise_18|Greatest_Love_of_All_2min57.16b48k.wav|32
+completed oneband_static24|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.70567, payload=31.755 kbps, source=identity:static24|Greatest_Love_of_All_2min57.16b48k.wav|32
+completed local2_adaptive18|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.55968, payload=95.660 kbps, source=scored
+completed local2_joint18|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.56663, payload=95.690 kbps, source=scored
+completed local2_static18|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.69724, payload=31.750 kbps, source=scored
+completed local2_static24|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.69724, payload=31.750 kbps, source=scored
+completed local2_joint18|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.69740, payload=31.759 kbps, source=scored
+completed local2_adaptive18|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.69724, payload=31.750 kbps, source=scored
+completed oneband_static18|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18384, payload=47.761 kbps, source=identity:noise_18|Greatest_Love_of_All_2min57.16b48k.wav|48
+completed oneband_static24|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18390, payload=47.761 kbps, source=identity:static24|Greatest_Love_of_All_2min57.16b48k.wav|48
+completed local2_static18|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18249, payload=47.759 kbps, source=scored
+completed local2_joint18|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18715, payload=47.782 kbps, source=scored
+completed local2_adaptive18|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18249, payload=47.759 kbps, source=scored
+completed local2_static24|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.18307, payload=47.759 kbps, source=scored
+completed oneband_static18|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.41107, payload=63.678 kbps, source=identity:noise_18|Greatest_Love_of_All_2min57.16b48k.wav|64
+completed oneband_static24|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.41102, payload=63.678 kbps, source=identity:static24|Greatest_Love_of_All_2min57.16b48k.wav|64
+completed local2_static24|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.41576, payload=63.672 kbps, source=scored
+completed local2_static18|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.41499, payload=63.672 kbps, source=scored
+completed local2_adaptive18|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.41499, payload=63.672 kbps, source=scored
+completed oneband_static18|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70436, payload=95.333 kbps, source=identity:noise_18|Greatest_Love_of_All_2min57.16b48k.wav|96
+completed oneband_static24|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70427, payload=95.333 kbps, source=identity:static24|Greatest_Love_of_All_2min57.16b48k.wav|96
+completed local2_joint18|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.42094, payload=63.701 kbps, source=scored
+completed local2_static18|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70458, payload=95.332 kbps, source=scored
+completed local2_adaptive18|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70458, payload=95.332 kbps, source=scored
+completed local2_static24|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70441, payload=95.332 kbps, source=scored
+completed local2_joint18|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.70590, payload=95.354 kbps, source=scored
+completed oneband_static18|Hey Tonight.16b48k.wav|32: MOS=4.25585, payload=31.898 kbps, source=identity:noise_18|Hey Tonight.16b48k.wav|32
+completed oneband_static24|Hey Tonight.16b48k.wav|32: MOS=4.25581, payload=31.898 kbps, source=identity:static24|Hey Tonight.16b48k.wav|32
+completed local2_static18|Hey Tonight.16b48k.wav|32: MOS=4.24950, payload=31.900 kbps, source=scored
+completed local2_static24|Hey Tonight.16b48k.wav|32: MOS=4.24949, payload=31.900 kbps, source=scored
+completed local2_adaptive18|Hey Tonight.16b48k.wav|32: MOS=4.24950, payload=31.900 kbps, source=scored
+completed oneband_static18|Hey Tonight.16b48k.wav|48: MOS=4.42737, payload=48.181 kbps, source=identity:noise_18|Hey Tonight.16b48k.wav|48
+completed oneband_static24|Hey Tonight.16b48k.wav|48: MOS=4.42735, payload=48.181 kbps, source=identity:static24|Hey Tonight.16b48k.wav|48
+completed local2_joint18|Hey Tonight.16b48k.wav|32: MOS=4.25575, payload=31.898 kbps, source=scored
+completed local2_static18|Hey Tonight.16b48k.wav|48: MOS=4.42063, payload=48.187 kbps, source=scored
+completed local2_static24|Hey Tonight.16b48k.wav|48: MOS=4.42063, payload=48.187 kbps, source=scored
+completed local2_adaptive18|Hey Tonight.16b48k.wav|48: MOS=4.42063, payload=48.187 kbps, source=scored
+completed local2_joint18|Hey Tonight.16b48k.wav|48: MOS=4.41891, payload=48.187 kbps, source=scored
+completed oneband_static18|Hey Tonight.16b48k.wav|64: MOS=4.56450, payload=63.935 kbps, source=identity:noise_18|Hey Tonight.16b48k.wav|64
+completed oneband_static24|Hey Tonight.16b48k.wav|64: MOS=4.56444, payload=63.935 kbps, source=identity:static24|Hey Tonight.16b48k.wav|64
+completed local2_static18|Hey Tonight.16b48k.wav|64: MOS=4.55745, payload=63.939 kbps, source=scored
+completed local2_static24|Hey Tonight.16b48k.wav|64: MOS=4.55740, payload=63.939 kbps, source=scored
+completed oneband_static18|Hey Tonight.16b48k.wav|96: MOS=4.72400, payload=95.328 kbps, source=identity:noise_18|Hey Tonight.16b48k.wav|96
+completed oneband_static24|Hey Tonight.16b48k.wav|96: MOS=4.72401, payload=95.328 kbps, source=identity:static24|Hey Tonight.16b48k.wav|96
+completed local2_adaptive18|Hey Tonight.16b48k.wav|64: MOS=4.55745, payload=63.939 kbps, source=scored
+completed local2_joint18|Hey Tonight.16b48k.wav|64: MOS=4.56328, payload=63.940 kbps, source=scored
+completed local2_static18|Hey Tonight.16b48k.wav|96: MOS=4.72560, payload=95.330 kbps, source=scored
+completed local2_static24|Hey Tonight.16b48k.wav|96: MOS=4.72559, payload=95.330 kbps, source=scored
+completed local2_adaptive18|Hey Tonight.16b48k.wav|96: MOS=4.72560, payload=95.330 kbps, source=scored
+completed local2_joint18|Hey Tonight.16b48k.wav|96: MOS=4.72673, payload=95.333 kbps, source=scored
+completed oneband_static18|Hotel California.16b48k.wav|32: MOS=3.88571, payload=32.269 kbps, source=identity:noise_18|Hotel California.16b48k.wav|32
+completed oneband_static24|Hotel California.16b48k.wav|32: MOS=3.88573, payload=32.269 kbps, source=identity:static24|Hotel California.16b48k.wav|32
+completed local2_static18|Hotel California.16b48k.wav|32: MOS=3.88327, payload=32.269 kbps, source=scored
+completed local2_static24|Hotel California.16b48k.wav|32: MOS=3.88332, payload=32.269 kbps, source=scored
+completed local2_joint18|Hotel California.16b48k.wav|32: MOS=3.87675, payload=32.293 kbps, source=scored
+completed local2_adaptive18|Hotel California.16b48k.wav|32: MOS=3.88327, payload=32.269 kbps, source=scored
+completed oneband_static18|Hotel California.16b48k.wav|48: MOS=4.24477, payload=48.631 kbps, source=identity:noise_18|Hotel California.16b48k.wav|48
+completed oneband_static24|Hotel California.16b48k.wav|48: MOS=4.24475, payload=48.631 kbps, source=identity:static24|Hotel California.16b48k.wav|48
+completed local2_static18|Hotel California.16b48k.wav|48: MOS=4.24229, payload=48.636 kbps, source=scored
+completed local2_adaptive18|Hotel California.16b48k.wav|48: MOS=4.24229, payload=48.636 kbps, source=scored
+completed local2_static24|Hotel California.16b48k.wav|48: MOS=4.24228, payload=48.636 kbps, source=scored
+completed local2_joint18|Hotel California.16b48k.wav|48: MOS=4.24409, payload=48.654 kbps, source=scored
+completed oneband_static18|Hotel California.16b48k.wav|64: MOS=4.44063, payload=64.442 kbps, source=identity:noise_18|Hotel California.16b48k.wav|64
+completed oneband_static24|Hotel California.16b48k.wav|64: MOS=4.44065, payload=64.442 kbps, source=identity:static24|Hotel California.16b48k.wav|64
+completed local2_static24|Hotel California.16b48k.wav|64: MOS=4.44294, payload=64.444 kbps, source=scored
+completed local2_static18|Hotel California.16b48k.wav|64: MOS=4.44194, payload=64.444 kbps, source=scored
+completed local2_joint18|Hotel California.16b48k.wav|64: MOS=4.44796, payload=64.465 kbps, source=scored
+completed local2_adaptive18|Hotel California.16b48k.wav|64: MOS=4.44194, payload=64.444 kbps, source=scored
+completed oneband_static18|Hotel California.16b48k.wav|96: MOS=4.66024, payload=95.672 kbps, source=identity:noise_18|Hotel California.16b48k.wav|96
+completed oneband_static24|Hotel California.16b48k.wav|96: MOS=4.66025, payload=95.672 kbps, source=identity:static24|Hotel California.16b48k.wav|96
+completed local2_static18|Hotel California.16b48k.wav|96: MOS=4.65790, payload=95.674 kbps, source=scored
+completed local2_static24|Hotel California.16b48k.wav|96: MOS=4.65790, payload=95.674 kbps, source=scored
+completed local2_adaptive18|Hotel California.16b48k.wav|96: MOS=4.65790, payload=95.674 kbps, source=scored
+completed local2_joint18|Hotel California.16b48k.wav|96: MOS=4.65972, payload=95.688 kbps, source=scored
+completed oneband_static18|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.80633, payload=31.914 kbps, source=identity:noise_18|Jupiter, the Bringer of Jolity.16b48k.wav|32
+completed oneband_static24|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.80615, payload=31.914 kbps, source=identity:static24|Jupiter, the Bringer of Jolity.16b48k.wav|32
+completed local2_static18|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.82761, payload=31.915 kbps, source=scored
+completed local2_static24|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.82753, payload=31.915 kbps, source=scored
+completed local2_adaptive18|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.82761, payload=31.915 kbps, source=scored
+completed oneband_static18|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.21253, payload=48.031 kbps, source=identity:noise_18|Jupiter, the Bringer of Jolity.16b48k.wav|48
+completed local2_joint18|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.81801, payload=31.926 kbps, source=scored
+completed oneband_static24|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.21315, payload=48.031 kbps, source=identity:static24|Jupiter, the Bringer of Jolity.16b48k.wav|48
+completed local2_static18|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.19586, payload=48.034 kbps, source=scored
+completed local2_static24|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.19586, payload=48.034 kbps, source=scored
+completed local2_joint18|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.21455, payload=48.061 kbps, source=scored
+completed local2_adaptive18|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.19586, payload=48.034 kbps, source=scored
+completed oneband_static18|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.40806, payload=63.724 kbps, source=identity:noise_18|Jupiter, the Bringer of Jolity.16b48k.wav|64
+completed oneband_static24|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.40803, payload=63.724 kbps, source=identity:static24|Jupiter, the Bringer of Jolity.16b48k.wav|64
+completed local2_static18|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.41565, payload=63.728 kbps, source=scored
+completed local2_static24|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.41565, payload=63.728 kbps, source=scored
+completed local2_joint18|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.40851, payload=63.761 kbps, source=scored
+completed local2_adaptive18|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.41565, payload=63.728 kbps, source=scored
+completed oneband_static18|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.65174, payload=95.530 kbps, source=identity:noise_18|Jupiter, the Bringer of Jolity.16b48k.wav|96
+completed oneband_static24|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.65171, payload=95.530 kbps, source=identity:static24|Jupiter, the Bringer of Jolity.16b48k.wav|96
+completed local2_static18|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.65066, payload=95.529 kbps, source=scored
+completed local2_static24|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.65062, payload=95.529 kbps, source=scored
+completed local2_joint18|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.66497, payload=95.553 kbps, source=scored
+completed local2_adaptive18|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.65066, payload=95.529 kbps, source=scored
+completed oneband_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.16134, payload=34.026 kbps, source=identity:noise_18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32
+completed oneband_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.16253, payload=34.026 kbps, source=identity:static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32
+completed local2_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.14464, payload=33.997 kbps, source=scored
+completed local2_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.14625, payload=33.997 kbps, source=scored
+completed local2_adaptive18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.15208, payload=33.993 kbps, source=scored
+completed local2_joint18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.14037, payload=34.021 kbps, source=scored
+completed oneband_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.38176, payload=49.522 kbps, source=identity:noise_18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48
+completed oneband_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.38227, payload=49.522 kbps, source=identity:static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48
+completed local2_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.38410, payload=49.522 kbps, source=scored
+completed local2_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.38556, payload=49.522 kbps, source=scored
+completed local2_adaptive18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.38638, payload=49.512 kbps, source=scored
+completed local2_joint18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.38363, payload=49.660 kbps, source=scored
+completed oneband_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.56839, payload=64.758 kbps, source=identity:noise_18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64
+completed oneband_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.56916, payload=64.758 kbps, source=identity:static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64
+completed local2_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.56782, payload=64.750 kbps, source=scored
+completed local2_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.56938, payload=64.750 kbps, source=scored
+completed local2_adaptive18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.56857, payload=64.780 kbps, source=scored
+completed oneband_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.75889, payload=95.978 kbps, source=identity:noise_18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96
+completed local2_joint18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.56979, payload=64.762 kbps, source=scored
+completed oneband_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.76042, payload=95.978 kbps, source=identity:static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96
+completed local2_static18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.75984, payload=95.978 kbps, source=scored
+completed local2_static24|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.76135, payload=95.978 kbps, source=scored
+completed local2_adaptive18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.75974, payload=95.974 kbps, source=scored
+completed oneband_static18|NewYorkCity.16b48k.wav|32: MOS=4.02756, payload=32.203 kbps, source=identity:noise_18|NewYorkCity.16b48k.wav|32
+completed local2_joint18|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.76284, payload=95.982 kbps, source=scored
+completed oneband_static24|NewYorkCity.16b48k.wav|32: MOS=4.02758, payload=32.203 kbps, source=identity:static24|NewYorkCity.16b48k.wav|32
+completed local2_static24|NewYorkCity.16b48k.wav|32: MOS=4.02456, payload=32.204 kbps, source=scored
+completed local2_static18|NewYorkCity.16b48k.wav|32: MOS=4.02486, payload=32.204 kbps, source=scored
+completed local2_adaptive18|NewYorkCity.16b48k.wav|32: MOS=4.00653, payload=32.204 kbps, source=scored
+completed local2_joint18|NewYorkCity.16b48k.wav|32: MOS=4.01735, payload=32.230 kbps, source=scored
+completed oneband_static18|NewYorkCity.16b48k.wav|48: MOS=4.36098, payload=48.480 kbps, source=identity:noise_18|NewYorkCity.16b48k.wav|48
+completed oneband_static24|NewYorkCity.16b48k.wav|48: MOS=4.36095, payload=48.480 kbps, source=identity:static24|NewYorkCity.16b48k.wav|48
+completed local2_static18|NewYorkCity.16b48k.wav|48: MOS=4.35208, payload=48.485 kbps, source=scored
+completed local2_static24|NewYorkCity.16b48k.wav|48: MOS=4.35205, payload=48.485 kbps, source=scored
+completed oneband_static18|NewYorkCity.16b48k.wav|64: MOS=4.52072, payload=64.242 kbps, source=identity:noise_18|NewYorkCity.16b48k.wav|64
+completed oneband_static24|NewYorkCity.16b48k.wav|64: MOS=4.52077, payload=64.242 kbps, source=identity:static24|NewYorkCity.16b48k.wav|64
+completed local2_adaptive18|NewYorkCity.16b48k.wav|48: MOS=4.35746, payload=48.486 kbps, source=scored
+completed local2_joint18|NewYorkCity.16b48k.wav|48: MOS=4.35642, payload=48.521 kbps, source=scored
+completed local2_static24|NewYorkCity.16b48k.wav|64: MOS=4.52571, payload=64.242 kbps, source=scored
+completed local2_joint18|NewYorkCity.16b48k.wav|64: MOS=4.52590, payload=64.275 kbps, source=scored
+completed local2_static18|NewYorkCity.16b48k.wav|64: MOS=4.52565, payload=64.242 kbps, source=scored
+completed local2_adaptive18|NewYorkCity.16b48k.wav|64: MOS=4.52212, payload=64.244 kbps, source=scored
+completed oneband_static18|NewYorkCity.16b48k.wav|96: MOS=4.69760, payload=95.454 kbps, source=identity:noise_18|NewYorkCity.16b48k.wav|96
+completed oneband_static24|NewYorkCity.16b48k.wav|96: MOS=4.69767, payload=95.454 kbps, source=identity:static24|NewYorkCity.16b48k.wav|96
+completed local2_static18|NewYorkCity.16b48k.wav|96: MOS=4.69651, payload=95.444 kbps, source=scored
+completed local2_static24|NewYorkCity.16b48k.wav|96: MOS=4.69658, payload=95.444 kbps, source=scored
+completed local2_adaptive18|NewYorkCity.16b48k.wav|96: MOS=4.69499, payload=95.444 kbps, source=scored
+completed local2_joint18|NewYorkCity.16b48k.wav|96: MOS=4.69287, payload=95.477 kbps, source=scored
+completed oneband_static18|Only Time.16b48k.wav|32: MOS=3.87512, payload=31.729 kbps, source=identity:noise_18|Only Time.16b48k.wav|32
+completed oneband_static24|Only Time.16b48k.wav|32: MOS=3.87482, payload=31.729 kbps, source=identity:static24|Only Time.16b48k.wav|32
+completed local2_static18|Only Time.16b48k.wav|32: MOS=3.88937, payload=31.724 kbps, source=scored
+completed local2_static24|Only Time.16b48k.wav|32: MOS=3.88932, payload=31.724 kbps, source=scored
+completed local2_adaptive18|Only Time.16b48k.wav|32: MOS=3.88937, payload=31.724 kbps, source=scored
+completed oneband_static18|Only Time.16b48k.wav|48: MOS=4.25809, payload=47.647 kbps, source=identity:noise_18|Only Time.16b48k.wav|48
+completed local2_joint18|Only Time.16b48k.wav|32: MOS=3.89374, payload=31.726 kbps, source=scored
+completed oneband_static24|Only Time.16b48k.wav|48: MOS=4.25806, payload=47.647 kbps, source=identity:static24|Only Time.16b48k.wav|48
+completed local2_static24|Only Time.16b48k.wav|48: MOS=4.25384, payload=47.641 kbps, source=scored
+completed local2_static18|Only Time.16b48k.wav|48: MOS=4.25384, payload=47.641 kbps, source=scored
+completed local2_adaptive18|Only Time.16b48k.wav|48: MOS=4.25384, payload=47.641 kbps, source=scored
+completed local2_joint18|Only Time.16b48k.wav|48: MOS=4.25948, payload=47.664 kbps, source=scored
+completed oneband_static18|Only Time.16b48k.wav|64: MOS=4.48474, payload=63.516 kbps, source=identity:noise_18|Only Time.16b48k.wav|64
+completed oneband_static24|Only Time.16b48k.wav|64: MOS=4.48466, payload=63.516 kbps, source=identity:static24|Only Time.16b48k.wav|64
+completed local2_static18|Only Time.16b48k.wav|64: MOS=4.48414, payload=63.516 kbps, source=scored
+completed local2_static24|Only Time.16b48k.wav|64: MOS=4.48412, payload=63.516 kbps, source=scored
+completed local2_joint18|Only Time.16b48k.wav|64: MOS=4.48110, payload=63.535 kbps, source=scored
+completed local2_adaptive18|Only Time.16b48k.wav|64: MOS=4.48414, payload=63.516 kbps, source=scored
+completed oneband_static18|Only Time.16b48k.wav|96: MOS=4.72264, payload=95.330 kbps, source=identity:noise_18|Only Time.16b48k.wav|96
+completed oneband_static24|Only Time.16b48k.wav|96: MOS=4.72262, payload=95.330 kbps, source=identity:static24|Only Time.16b48k.wav|96
+completed local2_static18|Only Time.16b48k.wav|96: MOS=4.71912, payload=95.320 kbps, source=scored
+completed local2_adaptive18|Only Time.16b48k.wav|96: MOS=4.71912, payload=95.320 kbps, source=scored
+completed local2_static24|Only Time.16b48k.wav|96: MOS=4.71914, payload=95.320 kbps, source=scored
+completed local2_joint18|Only Time.16b48k.wav|96: MOS=4.71976, payload=95.343 kbps, source=scored
+completed oneband_static18|Robots_old.16b48k.wav|32: MOS=4.23265, payload=31.755 kbps, source=identity:noise_18|Robots_old.16b48k.wav|32
+completed oneband_static24|Robots_old.16b48k.wav|32: MOS=4.23298, payload=31.755 kbps, source=identity:static24|Robots_old.16b48k.wav|32
+completed local2_static18|Robots_old.16b48k.wav|32: MOS=4.22187, payload=31.743 kbps, source=scored
+completed local2_static24|Robots_old.16b48k.wav|32: MOS=4.22175, payload=31.743 kbps, source=scored
+completed local2_adaptive18|Robots_old.16b48k.wav|32: MOS=4.22187, payload=31.743 kbps, source=scored
+completed local2_joint18|Robots_old.16b48k.wav|32: MOS=4.21008, payload=31.743 kbps, source=scored
+completed oneband_static18|Robots_old.16b48k.wav|48: MOS=4.44058, payload=47.592 kbps, source=identity:noise_18|Robots_old.16b48k.wav|48
+completed oneband_static24|Robots_old.16b48k.wav|48: MOS=4.44070, payload=47.592 kbps, source=identity:static24|Robots_old.16b48k.wav|48
+completed local2_static18|Robots_old.16b48k.wav|48: MOS=4.43958, payload=47.593 kbps, source=scored
+completed local2_static24|Robots_old.16b48k.wav|48: MOS=4.43949, payload=47.593 kbps, source=scored
+completed local2_adaptive18|Robots_old.16b48k.wav|48: MOS=4.43958, payload=47.593 kbps, source=scored
+completed local2_joint18|Robots_old.16b48k.wav|48: MOS=4.44408, payload=47.593 kbps, source=scored
+completed oneband_static18|Robots_old.16b48k.wav|64: MOS=4.57471, payload=63.366 kbps, source=identity:noise_18|Robots_old.16b48k.wav|64
+completed oneband_static24|Robots_old.16b48k.wav|64: MOS=4.57470, payload=63.366 kbps, source=identity:static24|Robots_old.16b48k.wav|64
+completed local2_static18|Robots_old.16b48k.wav|64: MOS=4.57069, payload=63.366 kbps, source=scored
+completed local2_static24|Robots_old.16b48k.wav|64: MOS=4.57062, payload=63.366 kbps, source=scored
+completed local2_adaptive18|Robots_old.16b48k.wav|64: MOS=4.57069, payload=63.366 kbps, source=scored
+completed local2_joint18|Robots_old.16b48k.wav|64: MOS=4.57736, payload=63.370 kbps, source=scored
+completed oneband_static18|Robots_old.16b48k.wav|96: MOS=4.71664, payload=95.073 kbps, source=identity:noise_18|Robots_old.16b48k.wav|96
+completed oneband_static24|Robots_old.16b48k.wav|96: MOS=4.71676, payload=95.073 kbps, source=identity:static24|Robots_old.16b48k.wav|96
+completed local2_static18|Robots_old.16b48k.wav|96: MOS=4.71558, payload=95.062 kbps, source=scored
+completed local2_adaptive18|Robots_old.16b48k.wav|96: MOS=4.71558, payload=95.062 kbps, source=scored
+completed local2_static24|Robots_old.16b48k.wav|96: MOS=4.71554, payload=95.062 kbps, source=scored
+completed local2_joint18|Robots_old.16b48k.wav|96: MOS=4.71870, payload=95.064 kbps, source=scored
+completed oneband_static18|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.19862, payload=31.816 kbps, source=identity:noise_18|Severance__1.31-1.51_.16b48k.wav|32
+completed oneband_static24|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.19955, payload=31.816 kbps, source=identity:static24|Severance__1.31-1.51_.16b48k.wav|32
+completed local2_static18|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.17684, payload=31.808 kbps, source=scored
+completed local2_static24|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.17683, payload=31.808 kbps, source=scored
+completed local2_adaptive18|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.17471, payload=31.809 kbps, source=scored
+completed local2_joint18|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.19373, payload=31.818 kbps, source=scored
+completed oneband_static18|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.75240, payload=47.811 kbps, source=identity:noise_18|Severance__1.31-1.51_.16b48k.wav|48
+completed oneband_static24|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.75237, payload=47.811 kbps, source=identity:static24|Severance__1.31-1.51_.16b48k.wav|48
+completed local2_static18|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.75353, payload=47.806 kbps, source=scored
+completed local2_static24|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.75360, payload=47.806 kbps, source=scored
+completed local2_adaptive18|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.75332, payload=47.806 kbps, source=scored
+completed local2_joint18|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.73042, payload=47.818 kbps, source=scored
+completed oneband_static18|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.26713, payload=63.698 kbps, source=identity:noise_18|Severance__1.31-1.51_.16b48k.wav|64
+completed oneband_static24|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.26719, payload=63.698 kbps, source=identity:static24|Severance__1.31-1.51_.16b48k.wav|64
+completed local2_static24|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.27022, payload=63.695 kbps, source=scored
+completed local2_static18|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.27026, payload=63.695 kbps, source=scored
+completed local2_adaptive18|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.27050, payload=63.698 kbps, source=scored
+completed local2_joint18|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.24984, payload=63.708 kbps, source=scored
+completed oneband_static18|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.59504, payload=95.557 kbps, source=identity:noise_18|Severance__1.31-1.51_.16b48k.wav|96
+completed oneband_static24|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.59500, payload=95.557 kbps, source=identity:static24|Severance__1.31-1.51_.16b48k.wav|96
+completed local2_static18|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.59633, payload=95.555 kbps, source=scored
+completed local2_static24|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.59631, payload=95.555 kbps, source=scored
+completed local2_adaptive18|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.59620, payload=95.554 kbps, source=scored
+completed local2_joint18|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.54074, payload=95.566 kbps, source=scored
+completed oneband_static18|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.17688, payload=31.797 kbps, source=identity:noise_18|Shinsho_pool_3min45_4min4.16b48k.wav|32
+completed oneband_static24|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.17888, payload=31.797 kbps, source=identity:static24|Shinsho_pool_3min45_4min4.16b48k.wav|32
+completed local2_static24|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.17448, payload=31.790 kbps, source=scored
+completed local2_static18|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.17454, payload=31.790 kbps, source=scored
+completed local2_adaptive18|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.17454, payload=31.790 kbps, source=scored
+completed local2_joint18|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.18355, payload=31.799 kbps, source=scored
+completed oneband_static18|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.45405, payload=47.655 kbps, source=identity:noise_18|Shinsho_pool_3min45_4min4.16b48k.wav|48
+completed oneband_static24|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.45404, payload=47.655 kbps, source=identity:static24|Shinsho_pool_3min45_4min4.16b48k.wav|48
+completed local2_static18|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.47571, payload=47.652 kbps, source=scored
+completed oneband_static18|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68077, payload=63.538 kbps, source=identity:noise_18|Shinsho_pool_3min45_4min4.16b48k.wav|64
+completed local2_joint18|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.47292, payload=47.662 kbps, source=scored
+completed local2_static24|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.47586, payload=47.652 kbps, source=scored
+completed oneband_static24|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68082, payload=63.538 kbps, source=identity:static24|Shinsho_pool_3min45_4min4.16b48k.wav|64
+completed local2_adaptive18|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.47571, payload=47.652 kbps, source=scored
+completed local2_joint18|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68219, payload=63.562 kbps, source=scored
+completed local2_static18|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68079, payload=63.546 kbps, source=scored
+completed local2_static24|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68089, payload=63.546 kbps, source=scored
+completed local2_adaptive18|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.68079, payload=63.546 kbps, source=scored
+completed oneband_static24|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.81075, payload=95.359 kbps, source=identity:static24|Shinsho_pool_3min45_4min4.16b48k.wav|96
+completed oneband_static18|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.81046, payload=95.359 kbps, source=identity:noise_18|Shinsho_pool_3min45_4min4.16b48k.wav|96
+completed local2_static24|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.80822, payload=95.350 kbps, source=scored
+completed local2_static18|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.80828, payload=95.350 kbps, source=scored
+completed local2_adaptive18|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.80828, payload=95.350 kbps, source=scored
+completed oneband_static18|SinceAlways.16b48k.wav|32: MOS=3.95860, payload=31.813 kbps, source=identity:noise_18|SinceAlways.16b48k.wav|32
+completed oneband_static24|SinceAlways.16b48k.wav|32: MOS=3.95884, payload=31.813 kbps, source=identity:static24|SinceAlways.16b48k.wav|32
+completed local2_joint18|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.81152, payload=95.366 kbps, source=scored
+completed local2_static18|SinceAlways.16b48k.wav|32: MOS=3.96770, payload=31.808 kbps, source=scored
+completed local2_static24|SinceAlways.16b48k.wav|32: MOS=3.96803, payload=31.808 kbps, source=scored
+completed local2_adaptive18|SinceAlways.16b48k.wav|32: MOS=3.96770, payload=31.808 kbps, source=scored
+completed local2_joint18|SinceAlways.16b48k.wav|32: MOS=3.96799, payload=31.808 kbps, source=scored
+completed oneband_static24|SinceAlways.16b48k.wav|48: MOS=4.25531, payload=48.174 kbps, source=identity:static24|SinceAlways.16b48k.wav|48
+completed oneband_static18|SinceAlways.16b48k.wav|48: MOS=4.25540, payload=48.174 kbps, source=identity:noise_18|SinceAlways.16b48k.wav|48
+completed local2_static18|SinceAlways.16b48k.wav|48: MOS=4.24944, payload=48.176 kbps, source=scored
+completed local2_static24|SinceAlways.16b48k.wav|48: MOS=4.24939, payload=48.176 kbps, source=scored
+completed local2_adaptive18|SinceAlways.16b48k.wav|48: MOS=4.24944, payload=48.176 kbps, source=scored
+completed oneband_static18|SinceAlways.16b48k.wav|64: MOS=4.48880, payload=63.824 kbps, source=identity:noise_18|SinceAlways.16b48k.wav|64
+completed local2_joint18|SinceAlways.16b48k.wav|48: MOS=4.25537, payload=48.176 kbps, source=scored
+completed oneband_static24|SinceAlways.16b48k.wav|64: MOS=4.48861, payload=63.824 kbps, source=identity:static24|SinceAlways.16b48k.wav|64
+completed local2_static18|SinceAlways.16b48k.wav|64: MOS=4.48366, payload=63.824 kbps, source=scored
+completed local2_adaptive18|SinceAlways.16b48k.wav|64: MOS=4.48366, payload=63.824 kbps, source=scored
+completed local2_static24|SinceAlways.16b48k.wav|64: MOS=4.48358, payload=63.824 kbps, source=scored
+completed local2_joint18|SinceAlways.16b48k.wav|64: MOS=4.48785, payload=63.824 kbps, source=scored
+completed oneband_static18|SinceAlways.16b48k.wav|96: MOS=4.73662, payload=95.498 kbps, source=identity:noise_18|SinceAlways.16b48k.wav|96
+completed oneband_static24|SinceAlways.16b48k.wav|96: MOS=4.73679, payload=95.498 kbps, source=identity:static24|SinceAlways.16b48k.wav|96
+completed local2_static24|SinceAlways.16b48k.wav|96: MOS=4.73524, payload=95.498 kbps, source=scored
+completed local2_static18|SinceAlways.16b48k.wav|96: MOS=4.73509, payload=95.498 kbps, source=scored
+completed local2_adaptive18|SinceAlways.16b48k.wav|96: MOS=4.73509, payload=95.498 kbps, source=scored
+completed local2_joint18|SinceAlways.16b48k.wav|96: MOS=4.73812, payload=95.497 kbps, source=scored
+completed oneband_static18|SlavesOfFear.16b48k.wav|32: MOS=4.00242, payload=32.241 kbps, source=identity:noise_18|SlavesOfFear.16b48k.wav|32
+completed oneband_static24|SlavesOfFear.16b48k.wav|32: MOS=4.00244, payload=32.241 kbps, source=identity:static24|SlavesOfFear.16b48k.wav|32
+completed local2_static18|SlavesOfFear.16b48k.wav|32: MOS=4.04350, payload=32.238 kbps, source=scored
+completed local2_static24|SlavesOfFear.16b48k.wav|32: MOS=4.04356, payload=32.238 kbps, source=scored
+completed local2_joint18|SlavesOfFear.16b48k.wav|32: MOS=4.04342, payload=32.250 kbps, source=scored
+completed oneband_static18|SlavesOfFear.16b48k.wav|48: MOS=4.37220, payload=48.570 kbps, source=identity:noise_18|SlavesOfFear.16b48k.wav|48
+completed local2_adaptive18|SlavesOfFear.16b48k.wav|32: MOS=4.04350, payload=32.238 kbps, source=scored
+completed oneband_static24|SlavesOfFear.16b48k.wav|48: MOS=4.37221, payload=48.570 kbps, source=identity:static24|SlavesOfFear.16b48k.wav|48
+completed local2_static24|SlavesOfFear.16b48k.wav|48: MOS=4.35849, payload=48.571 kbps, source=scored
+completed local2_adaptive18|SlavesOfFear.16b48k.wav|48: MOS=4.35847, payload=48.571 kbps, source=scored
+completed local2_static18|SlavesOfFear.16b48k.wav|48: MOS=4.35847, payload=48.571 kbps, source=scored
+completed local2_joint18|SlavesOfFear.16b48k.wav|48: MOS=4.36080, payload=48.580 kbps, source=scored
+completed oneband_static18|SlavesOfFear.16b48k.wav|64: MOS=4.52404, payload=64.262 kbps, source=identity:noise_18|SlavesOfFear.16b48k.wav|64
+completed oneband_static24|SlavesOfFear.16b48k.wav|64: MOS=4.52407, payload=64.262 kbps, source=identity:static24|SlavesOfFear.16b48k.wav|64
+completed local2_static18|SlavesOfFear.16b48k.wav|64: MOS=4.52103, payload=64.266 kbps, source=scored
+completed local2_static24|SlavesOfFear.16b48k.wav|64: MOS=4.52105, payload=64.266 kbps, source=scored
+completed oneband_static18|SlavesOfFear.16b48k.wav|96: MOS=4.67945, payload=95.597 kbps, source=identity:noise_18|SlavesOfFear.16b48k.wav|96
+completed local2_adaptive18|SlavesOfFear.16b48k.wav|64: MOS=4.52103, payload=64.266 kbps, source=scored
+completed local2_joint18|SlavesOfFear.16b48k.wav|64: MOS=4.52217, payload=64.275 kbps, source=scored
+completed oneband_static24|SlavesOfFear.16b48k.wav|96: MOS=4.67944, payload=95.597 kbps, source=identity:static24|SlavesOfFear.16b48k.wav|96
+completed local2_static18|SlavesOfFear.16b48k.wav|96: MOS=4.68863, payload=95.580 kbps, source=scored
+completed local2_static24|SlavesOfFear.16b48k.wav|96: MOS=4.68862, payload=95.580 kbps, source=scored
+completed local2_adaptive18|SlavesOfFear.16b48k.wav|96: MOS=4.68863, payload=95.580 kbps, source=scored
+completed local2_joint18|SlavesOfFear.16b48k.wav|96: MOS=4.68874, payload=95.590 kbps, source=scored
+completed oneband_static18|The Chastising of Renegade.16b48k.wav|32: MOS=3.73592, payload=32.327 kbps, source=identity:noise_18|The Chastising of Renegade.16b48k.wav|32
+completed oneband_static24|The Chastising of Renegade.16b48k.wav|32: MOS=3.73704, payload=32.327 kbps, source=identity:static24|The Chastising of Renegade.16b48k.wav|32
+completed local2_static18|The Chastising of Renegade.16b48k.wav|32: MOS=3.73327, payload=32.328 kbps, source=scored
+completed local2_joint18|The Chastising of Renegade.16b48k.wav|32: MOS=3.72990, payload=32.331 kbps, source=scored
+completed local2_adaptive18|The Chastising of Renegade.16b48k.wav|32: MOS=3.73327, payload=32.328 kbps, source=scored
+completed local2_static24|The Chastising of Renegade.16b48k.wav|32: MOS=3.73380, payload=32.328 kbps, source=scored
+completed oneband_static18|The Chastising of Renegade.16b48k.wav|48: MOS=4.10555, payload=48.815 kbps, source=identity:noise_18|The Chastising of Renegade.16b48k.wav|48
+completed oneband_static24|The Chastising of Renegade.16b48k.wav|48: MOS=4.10507, payload=48.815 kbps, source=identity:static24|The Chastising of Renegade.16b48k.wav|48
+completed local2_static18|The Chastising of Renegade.16b48k.wav|48: MOS=4.10286, payload=48.822 kbps, source=scored
+completed local2_static24|The Chastising of Renegade.16b48k.wav|48: MOS=4.10261, payload=48.822 kbps, source=scored
+completed oneband_static18|The Chastising of Renegade.16b48k.wav|64: MOS=4.35952, payload=64.614 kbps, source=identity:noise_18|The Chastising of Renegade.16b48k.wav|64
+completed local2_joint18|The Chastising of Renegade.16b48k.wav|48: MOS=4.09795, payload=48.825 kbps, source=scored
+completed local2_adaptive18|The Chastising of Renegade.16b48k.wav|48: MOS=4.10286, payload=48.822 kbps, source=scored
+completed oneband_static24|The Chastising of Renegade.16b48k.wav|64: MOS=4.35841, payload=64.614 kbps, source=identity:static24|The Chastising of Renegade.16b48k.wav|64
+completed local2_static24|The Chastising of Renegade.16b48k.wav|64: MOS=4.35127, payload=64.619 kbps, source=scored
+completed local2_static18|The Chastising of Renegade.16b48k.wav|64: MOS=4.35105, payload=64.619 kbps, source=scored
+completed local2_adaptive18|The Chastising of Renegade.16b48k.wav|64: MOS=4.35105, payload=64.619 kbps, source=scored
+completed local2_joint18|The Chastising of Renegade.16b48k.wav|64: MOS=4.35988, payload=64.628 kbps, source=scored
+completed oneband_static18|The Chastising of Renegade.16b48k.wav|96: MOS=4.61475, payload=95.900 kbps, source=identity:noise_18|The Chastising of Renegade.16b48k.wav|96
+completed oneband_static24|The Chastising of Renegade.16b48k.wav|96: MOS=4.61559, payload=95.900 kbps, source=identity:static24|The Chastising of Renegade.16b48k.wav|96
+completed local2_static24|The Chastising of Renegade.16b48k.wav|96: MOS=4.61502, payload=95.901 kbps, source=scored
+completed local2_adaptive18|The Chastising of Renegade.16b48k.wav|96: MOS=4.61421, payload=95.901 kbps, source=scored
+completed local2_joint18|The Chastising of Renegade.16b48k.wav|96: MOS=4.61594, payload=95.901 kbps, source=scored
+completed local2_static18|The Chastising of Renegade.16b48k.wav|96: MOS=4.61421, payload=95.901 kbps, source=scored
+completed oneband_static18|Through The Fire And Flames.16b48k.wav|32: MOS=4.05149, payload=32.240 kbps, source=identity:noise_18|Through The Fire And Flames.16b48k.wav|32
+completed oneband_static24|Through The Fire And Flames.16b48k.wav|32: MOS=4.05145, payload=32.240 kbps, source=identity:static24|Through The Fire And Flames.16b48k.wav|32
+completed local2_static24|Through The Fire And Flames.16b48k.wav|32: MOS=4.04716, payload=32.242 kbps, source=scored
+completed local2_static18|Through The Fire And Flames.16b48k.wav|32: MOS=4.04718, payload=32.242 kbps, source=scored
+completed local2_joint18|Through The Fire And Flames.16b48k.wav|32: MOS=4.04732, payload=32.242 kbps, source=scored
+completed oneband_static18|Through The Fire And Flames.16b48k.wav|48: MOS=4.39810, payload=48.374 kbps, source=identity:noise_18|Through The Fire And Flames.16b48k.wav|48
+completed local2_adaptive18|Through The Fire And Flames.16b48k.wav|32: MOS=4.04718, payload=32.242 kbps, source=scored
+completed oneband_static24|Through The Fire And Flames.16b48k.wav|48: MOS=4.39811, payload=48.374 kbps, source=identity:static24|Through The Fire And Flames.16b48k.wav|48
+completed local2_static24|Through The Fire And Flames.16b48k.wav|48: MOS=4.39243, payload=48.378 kbps, source=scored
+completed local2_joint18|Through The Fire And Flames.16b48k.wav|48: MOS=4.39266, payload=48.378 kbps, source=scored
+completed local2_adaptive18|Through The Fire And Flames.16b48k.wav|48: MOS=4.39243, payload=48.378 kbps, source=scored
+completed local2_static18|Through The Fire And Flames.16b48k.wav|48: MOS=4.39243, payload=48.378 kbps, source=scored
+completed oneband_static18|Through The Fire And Flames.16b48k.wav|64: MOS=4.54825, payload=64.005 kbps, source=identity:noise_18|Through The Fire And Flames.16b48k.wav|64
+completed oneband_static24|Through The Fire And Flames.16b48k.wav|64: MOS=4.54822, payload=64.005 kbps, source=identity:static24|Through The Fire And Flames.16b48k.wav|64
+completed local2_static18|Through The Fire And Flames.16b48k.wav|64: MOS=4.54617, payload=64.009 kbps, source=scored
+completed local2_static24|Through The Fire And Flames.16b48k.wav|64: MOS=4.54613, payload=64.009 kbps, source=scored
+completed local2_adaptive18|Through The Fire And Flames.16b48k.wav|64: MOS=4.54617, payload=64.009 kbps, source=scored
+completed local2_joint18|Through The Fire And Flames.16b48k.wav|64: MOS=4.54650, payload=64.009 kbps, source=scored
+completed oneband_static18|Through The Fire And Flames.16b48k.wav|96: MOS=4.68638, payload=95.409 kbps, source=identity:noise_18|Through The Fire And Flames.16b48k.wav|96
+completed oneband_static24|Through The Fire And Flames.16b48k.wav|96: MOS=4.68633, payload=95.409 kbps, source=identity:static24|Through The Fire And Flames.16b48k.wav|96
+completed local2_static18|Through The Fire And Flames.16b48k.wav|96: MOS=4.68845, payload=95.408 kbps, source=scored
+completed local2_static24|Through The Fire And Flames.16b48k.wav|96: MOS=4.68840, payload=95.408 kbps, source=scored
+completed local2_adaptive18|Through The Fire And Flames.16b48k.wav|96: MOS=4.68845, payload=95.408 kbps, source=scored
+completed local2_joint18|Through The Fire And Flames.16b48k.wav|96: MOS=4.68865, payload=95.408 kbps, source=scored
+completed oneband_static18|TrosYGareg.16b48k.wav|32: MOS=3.90051, payload=31.802 kbps, source=identity:noise_18|TrosYGareg.16b48k.wav|32
+completed oneband_static24|TrosYGareg.16b48k.wav|32: MOS=3.90102, payload=31.802 kbps, source=identity:static24|TrosYGareg.16b48k.wav|32
+completed local2_static18|TrosYGareg.16b48k.wav|32: MOS=3.89487, payload=31.804 kbps, source=scored
+completed local2_static24|TrosYGareg.16b48k.wav|32: MOS=3.89486, payload=31.804 kbps, source=scored
+completed local2_joint18|TrosYGareg.16b48k.wav|32: MOS=3.88996, payload=31.839 kbps, source=scored
+completed local2_adaptive18|TrosYGareg.16b48k.wav|32: MOS=3.89487, payload=31.804 kbps, source=scored
+completed oneband_static18|TrosYGareg.16b48k.wav|48: MOS=4.28374, payload=47.711 kbps, source=identity:noise_18|TrosYGareg.16b48k.wav|48
+completed oneband_static24|TrosYGareg.16b48k.wav|48: MOS=4.28373, payload=47.711 kbps, source=identity:static24|TrosYGareg.16b48k.wav|48
+completed local2_static18|TrosYGareg.16b48k.wav|48: MOS=4.28740, payload=47.714 kbps, source=scored
+completed local2_static24|TrosYGareg.16b48k.wav|48: MOS=4.28737, payload=47.714 kbps, source=scored
+completed local2_joint18|TrosYGareg.16b48k.wav|48: MOS=4.28428, payload=47.762 kbps, source=scored
+completed local2_adaptive18|TrosYGareg.16b48k.wav|48: MOS=4.28684, payload=47.713 kbps, source=scored
+completed oneband_static24|TrosYGareg.16b48k.wav|64: MOS=4.49618, payload=63.605 kbps, source=identity:static24|TrosYGareg.16b48k.wav|64
+completed oneband_static18|TrosYGareg.16b48k.wav|64: MOS=4.49619, payload=63.605 kbps, source=identity:noise_18|TrosYGareg.16b48k.wav|64
+completed local2_static18|TrosYGareg.16b48k.wav|64: MOS=4.49674, payload=63.601 kbps, source=scored
+completed local2_static24|TrosYGareg.16b48k.wav|64: MOS=4.49672, payload=63.601 kbps, source=scored
+completed local2_adaptive18|TrosYGareg.16b48k.wav|64: MOS=4.48844, payload=63.601 kbps, source=scored
+completed local2_joint18|TrosYGareg.16b48k.wav|64: MOS=4.49489, payload=63.647 kbps, source=scored
+completed oneband_static18|TrosYGareg.16b48k.wav|96: MOS=4.78128, payload=95.326 kbps, source=identity:noise_18|TrosYGareg.16b48k.wav|96
+completed oneband_static24|TrosYGareg.16b48k.wav|96: MOS=4.78124, payload=95.326 kbps, source=identity:static24|TrosYGareg.16b48k.wav|96
+completed local2_static24|TrosYGareg.16b48k.wav|96: MOS=4.78046, payload=95.324 kbps, source=scored
+completed local2_static18|TrosYGareg.16b48k.wav|96: MOS=4.78052, payload=95.324 kbps, source=scored
+completed local2_adaptive18|TrosYGareg.16b48k.wav|96: MOS=4.78023, payload=95.325 kbps, source=scored
+completed local2_joint18|TrosYGareg.16b48k.wav|96: MOS=4.78490, payload=95.377 kbps, source=scored
+completed oneband_static18|Waiting.16b48k.wav|32: MOS=3.71826, payload=31.907 kbps, source=identity:noise_18|Waiting.16b48k.wav|32
+completed oneband_static24|Waiting.16b48k.wav|32: MOS=3.71837, payload=31.907 kbps, source=identity:static24|Waiting.16b48k.wav|32
+completed local2_static18|Waiting.16b48k.wav|32: MOS=3.71708, payload=31.912 kbps, source=scored
+completed local2_static24|Waiting.16b48k.wav|32: MOS=3.71706, payload=31.912 kbps, source=scored
+completed local2_adaptive18|Waiting.16b48k.wav|32: MOS=3.71708, payload=31.912 kbps, source=scored
+completed local2_joint18|Waiting.16b48k.wav|32: MOS=3.71717, payload=31.909 kbps, source=scored
+completed oneband_static18|Waiting.16b48k.wav|48: MOS=3.98658, payload=48.261 kbps, source=identity:noise_18|Waiting.16b48k.wav|48
+completed oneband_static24|Waiting.16b48k.wav|48: MOS=3.98662, payload=48.261 kbps, source=identity:static24|Waiting.16b48k.wav|48
+completed local2_static18|Waiting.16b48k.wav|48: MOS=3.97547, payload=48.273 kbps, source=scored
+completed local2_static24|Waiting.16b48k.wav|48: MOS=3.97541, payload=48.273 kbps, source=scored
+completed local2_adaptive18|Waiting.16b48k.wav|48: MOS=3.97547, payload=48.273 kbps, source=scored
+completed local2_joint18|Waiting.16b48k.wav|48: MOS=3.97670, payload=48.266 kbps, source=scored
+completed oneband_static18|Waiting.16b48k.wav|64: MOS=4.26234, payload=64.095 kbps, source=identity:noise_18|Waiting.16b48k.wav|64
+completed oneband_static24|Waiting.16b48k.wav|64: MOS=4.26241, payload=64.095 kbps, source=identity:static24|Waiting.16b48k.wav|64
+completed local2_static24|Waiting.16b48k.wav|64: MOS=4.26748, payload=64.096 kbps, source=scored
+completed local2_static18|Waiting.16b48k.wav|64: MOS=4.26680, payload=64.096 kbps, source=scored
+completed local2_adaptive18|Waiting.16b48k.wav|64: MOS=4.26680, payload=64.096 kbps, source=scored
+completed local2_joint18|Waiting.16b48k.wav|64: MOS=4.26035, payload=64.095 kbps, source=scored
+completed oneband_static18|Waiting.16b48k.wav|96: MOS=4.54868, payload=95.889 kbps, source=identity:noise_18|Waiting.16b48k.wav|96
+completed oneband_static24|Waiting.16b48k.wav|96: MOS=4.54867, payload=95.889 kbps, source=identity:static24|Waiting.16b48k.wav|96
+completed local2_static18|Waiting.16b48k.wav|96: MOS=4.54732, payload=95.890 kbps, source=scored
+completed local2_adaptive18|Waiting.16b48k.wav|96: MOS=4.54732, payload=95.890 kbps, source=scored
+completed local2_static24|Waiting.16b48k.wav|96: MOS=4.54729, payload=95.890 kbps, source=scored
+completed local2_joint18|Waiting.16b48k.wav|96: MOS=4.55134, payload=95.890 kbps, source=scored
+completed oneband_static18|With Love (Outro).16b48k.wav|32: MOS=4.11477, payload=31.836 kbps, source=identity:noise_18|With Love (Outro).16b48k.wav|32
+completed oneband_static24|With Love (Outro).16b48k.wav|32: MOS=4.11477, payload=31.836 kbps, source=identity:static24|With Love (Outro).16b48k.wav|32
+completed local2_static18|With Love (Outro).16b48k.wav|32: MOS=4.10871, payload=31.838 kbps, source=scored
+completed local2_static24|With Love (Outro).16b48k.wav|32: MOS=4.10866, payload=31.838 kbps, source=scored
+completed local2_adaptive18|With Love (Outro).16b48k.wav|32: MOS=4.10871, payload=31.838 kbps, source=scored
+completed local2_joint18|With Love (Outro).16b48k.wav|32: MOS=4.09010, payload=31.843 kbps, source=scored
+completed oneband_static18|With Love (Outro).16b48k.wav|48: MOS=4.47508, payload=48.064 kbps, source=identity:noise_18|With Love (Outro).16b48k.wav|48
+completed oneband_static24|With Love (Outro).16b48k.wav|48: MOS=4.47511, payload=48.064 kbps, source=identity:static24|With Love (Outro).16b48k.wav|48
+completed local2_static18|With Love (Outro).16b48k.wav|48: MOS=4.47275, payload=48.067 kbps, source=scored
+completed local2_static24|With Love (Outro).16b48k.wav|48: MOS=4.47275, payload=48.067 kbps, source=scored
+completed local2_joint18|With Love (Outro).16b48k.wav|48: MOS=4.47103, payload=48.081 kbps, source=scored
+completed local2_adaptive18|With Love (Outro).16b48k.wav|48: MOS=4.47275, payload=48.067 kbps, source=scored
+completed oneband_static18|With Love (Outro).16b48k.wav|64: MOS=4.60908, payload=63.765 kbps, source=identity:noise_18|With Love (Outro).16b48k.wav|64
+completed oneband_static24|With Love (Outro).16b48k.wav|64: MOS=4.60913, payload=63.765 kbps, source=identity:static24|With Love (Outro).16b48k.wav|64
+completed local2_static24|With Love (Outro).16b48k.wav|64: MOS=4.60996, payload=63.769 kbps, source=scored
+completed local2_static18|With Love (Outro).16b48k.wav|64: MOS=4.60998, payload=63.769 kbps, source=scored
+completed local2_adaptive18|With Love (Outro).16b48k.wav|64: MOS=4.60998, payload=63.769 kbps, source=scored
+completed local2_joint18|With Love (Outro).16b48k.wav|64: MOS=4.61350, payload=63.785 kbps, source=scored
+completed oneband_static18|With Love (Outro).16b48k.wav|96: MOS=4.78116, payload=95.474 kbps, source=identity:noise_18|With Love (Outro).16b48k.wav|96
+completed oneband_static24|With Love (Outro).16b48k.wav|96: MOS=4.78115, payload=95.474 kbps, source=identity:static24|With Love (Outro).16b48k.wav|96
+completed local2_static18|With Love (Outro).16b48k.wav|96: MOS=4.77743, payload=95.474 kbps, source=scored
+completed local2_static24|With Love (Outro).16b48k.wav|96: MOS=4.77742, payload=95.474 kbps, source=scored
+completed local2_adaptive18|With Love (Outro).16b48k.wav|96: MOS=4.77743, payload=95.474 kbps, source=scored
+completed oneband_static18|bah.wav|32: MOS=3.62805, payload=31.850 kbps, source=identity:noise_18|bah.wav|32
+completed local2_joint18|With Love (Outro).16b48k.wav|96: MOS=4.78299, payload=95.495 kbps, source=scored
+completed oneband_static24|bah.wav|32: MOS=3.62818, payload=31.850 kbps, source=identity:static24|bah.wav|32
+completed local2_static18|bah.wav|32: MOS=3.63263, payload=31.850 kbps, source=scored
+completed local2_static24|bah.wav|32: MOS=3.63264, payload=31.850 kbps, source=scored
+completed local2_adaptive18|bah.wav|32: MOS=3.63263, payload=31.850 kbps, source=scored
+completed local2_joint18|bah.wav|32: MOS=3.59846, payload=31.851 kbps, source=scored
+completed oneband_static18|bah.wav|48: MOS=4.03995, payload=47.813 kbps, source=identity:noise_18|bah.wav|48
+completed oneband_static24|bah.wav|48: MOS=4.04148, payload=47.813 kbps, source=identity:static24|bah.wav|48
+completed local2_static18|bah.wav|48: MOS=4.08377, payload=47.818 kbps, source=scored
+completed local2_static24|bah.wav|48: MOS=4.08410, payload=47.818 kbps, source=scored
+completed local2_adaptive18|bah.wav|48: MOS=4.08377, payload=47.818 kbps, source=scored
+completed local2_joint18|bah.wav|48: MOS=4.09920, payload=47.822 kbps, source=scored
+completed oneband_static18|bah.wav|64: MOS=4.32854, payload=63.717 kbps, source=identity:noise_18|bah.wav|64
+completed oneband_static24|bah.wav|64: MOS=4.32858, payload=63.717 kbps, source=identity:static24|bah.wav|64
+completed local2_static18|bah.wav|64: MOS=4.33780, payload=63.715 kbps, source=scored
+completed local2_static24|bah.wav|64: MOS=4.33781, payload=63.715 kbps, source=scored
+completed local2_joint18|bah.wav|64: MOS=4.33145, payload=63.715 kbps, source=scored
+completed local2_adaptive18|bah.wav|64: MOS=4.33780, payload=63.715 kbps, source=scored
+completed oneband_static24|bah.wav|96: MOS=4.64441, payload=95.662 kbps, source=identity:static24|bah.wav|96
+completed oneband_static18|bah.wav|96: MOS=4.64433, payload=95.662 kbps, source=identity:noise_18|bah.wav|96
+completed local2_static18|bah.wav|96: MOS=4.64725, payload=95.664 kbps, source=scored
+completed local2_static24|bah.wav|96: MOS=4.64719, payload=95.664 kbps, source=scored
+completed local2_adaptive18|bah.wav|96: MOS=4.64725, payload=95.664 kbps, source=scored
+completed local2_joint18|bah.wav|96: MOS=4.64727, payload=95.663 kbps, source=scored
+completed oneband_static18|bas.wav|32: MOS=3.50982, payload=31.771 kbps, source=identity:noise_18|bas.wav|32
+completed oneband_static24|bas.wav|32: MOS=3.50958, payload=31.771 kbps, source=identity:static24|bas.wav|32
+completed local2_static18|bas.wav|32: MOS=3.49890, payload=31.766 kbps, source=scored
+completed local2_static24|bas.wav|32: MOS=3.50021, payload=31.766 kbps, source=scored
+completed local2_adaptive18|bas.wav|32: MOS=3.49890, payload=31.766 kbps, source=scored
+completed local2_joint18|bas.wav|32: MOS=3.50115, payload=31.772 kbps, source=scored
+completed oneband_static18|bas.wav|48: MOS=3.93482, payload=47.650 kbps, source=identity:noise_18|bas.wav|48
+completed oneband_static24|bas.wav|48: MOS=3.93484, payload=47.650 kbps, source=identity:static24|bas.wav|48
+completed local2_static24|bas.wav|48: MOS=3.93646, payload=47.645 kbps, source=scored
+completed local2_static18|bas.wav|48: MOS=3.93661, payload=47.645 kbps, source=scored
+completed local2_adaptive18|bas.wav|48: MOS=3.93661, payload=47.645 kbps, source=scored
+completed local2_joint18|bas.wav|48: MOS=3.93736, payload=47.650 kbps, source=scored
+completed oneband_static18|bas.wav|64: MOS=4.26898, payload=63.574 kbps, source=identity:noise_18|bas.wav|64
+completed oneband_static24|bas.wav|64: MOS=4.26897, payload=63.574 kbps, source=identity:static24|bas.wav|64
+completed local2_static18|bas.wav|64: MOS=4.26054, payload=63.570 kbps, source=scored
+completed local2_adaptive18|bas.wav|64: MOS=4.26054, payload=63.570 kbps, source=scored
+completed local2_static24|bas.wav|64: MOS=4.26038, payload=63.570 kbps, source=scored
+completed local2_joint18|bas.wav|64: MOS=4.26088, payload=63.575 kbps, source=scored
+completed oneband_static18|bas.wav|96: MOS=4.64084, payload=95.478 kbps, source=identity:noise_18|bas.wav|96
+completed oneband_static24|bas.wav|96: MOS=4.64082, payload=95.478 kbps, source=identity:static24|bas.wav|96
+completed local2_static18|bas.wav|96: MOS=4.63872, payload=95.469 kbps, source=scored
+completed local2_adaptive18|bas.wav|96: MOS=4.63872, payload=95.469 kbps, source=scored
+completed local2_static24|bas.wav|96: MOS=4.63849, payload=95.469 kbps, source=scored
+completed oneband_static18|bonhemian_rhapsody.16b48k.wav|32: MOS=3.68910, payload=31.781 kbps, source=identity:noise_18|bonhemian_rhapsody.16b48k.wav|32
+completed local2_joint18|bas.wav|96: MOS=4.63944, payload=95.474 kbps, source=scored
+completed oneband_static24|bonhemian_rhapsody.16b48k.wav|32: MOS=3.68911, payload=31.781 kbps, source=identity:static24|bonhemian_rhapsody.16b48k.wav|32
+completed local2_static18|bonhemian_rhapsody.16b48k.wav|32: MOS=3.70266, payload=31.775 kbps, source=scored
+completed local2_static24|bonhemian_rhapsody.16b48k.wav|32: MOS=3.70269, payload=31.775 kbps, source=scored
+completed local2_adaptive18|bonhemian_rhapsody.16b48k.wav|32: MOS=3.70266, payload=31.775 kbps, source=scored
+completed oneband_static18|bonhemian_rhapsody.16b48k.wav|48: MOS=4.08524, payload=47.775 kbps, source=identity:noise_18|bonhemian_rhapsody.16b48k.wav|48
+completed oneband_static24|bonhemian_rhapsody.16b48k.wav|48: MOS=4.08671, payload=47.775 kbps, source=identity:static24|bonhemian_rhapsody.16b48k.wav|48
+completed local2_joint18|bonhemian_rhapsody.16b48k.wav|32: MOS=3.69565, payload=31.778 kbps, source=scored
+completed local2_static18|bonhemian_rhapsody.16b48k.wav|48: MOS=4.09038, payload=47.769 kbps, source=scored
+completed local2_static24|bonhemian_rhapsody.16b48k.wav|48: MOS=4.09033, payload=47.769 kbps, source=scored
+completed local2_joint18|bonhemian_rhapsody.16b48k.wav|48: MOS=4.09311, payload=47.774 kbps, source=scored
+completed local2_adaptive18|bonhemian_rhapsody.16b48k.wav|48: MOS=4.09038, payload=47.769 kbps, source=scored
+completed oneband_static18|bonhemian_rhapsody.16b48k.wav|64: MOS=4.37729, payload=63.629 kbps, source=identity:noise_18|bonhemian_rhapsody.16b48k.wav|64
+completed oneband_static24|bonhemian_rhapsody.16b48k.wav|64: MOS=4.37726, payload=63.629 kbps, source=identity:static24|bonhemian_rhapsody.16b48k.wav|64
+completed local2_static18|bonhemian_rhapsody.16b48k.wav|64: MOS=4.37392, payload=63.630 kbps, source=scored
+completed local2_static24|bonhemian_rhapsody.16b48k.wav|64: MOS=4.37484, payload=63.630 kbps, source=scored
+completed local2_adaptive18|bonhemian_rhapsody.16b48k.wav|64: MOS=4.37392, payload=63.630 kbps, source=scored
+completed local2_joint18|bonhemian_rhapsody.16b48k.wav|64: MOS=4.38032, payload=63.632 kbps, source=scored
+completed oneband_static18|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67335, payload=95.442 kbps, source=identity:noise_18|bonhemian_rhapsody.16b48k.wav|96
+completed oneband_static24|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67351, payload=95.442 kbps, source=identity:static24|bonhemian_rhapsody.16b48k.wav|96
+completed local2_static18|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67173, payload=95.435 kbps, source=scored
+completed local2_static24|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67177, payload=95.435 kbps, source=scored
+completed local2_adaptive18|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67173, payload=95.435 kbps, source=scored
+completed local2_joint18|bonhemian_rhapsody.16b48k.wav|96: MOS=4.67176, payload=95.443 kbps, source=scored
+completed oneband_static18|clapton_44k.16b48k.wav|32: MOS=3.77424, payload=31.950 kbps, source=identity:noise_18|clapton_44k.16b48k.wav|32
+completed oneband_static24|clapton_44k.16b48k.wav|32: MOS=3.77422, payload=31.950 kbps, source=identity:static24|clapton_44k.16b48k.wav|32
+completed local2_static18|clapton_44k.16b48k.wav|32: MOS=3.76077, payload=31.950 kbps, source=scored
+completed local2_static24|clapton_44k.16b48k.wav|32: MOS=3.76076, payload=31.950 kbps, source=scored
+completed local2_adaptive18|clapton_44k.16b48k.wav|32: MOS=3.76077, payload=31.950 kbps, source=scored
+completed local2_joint18|clapton_44k.16b48k.wav|32: MOS=3.77036, payload=31.950 kbps, source=scored
+completed oneband_static18|clapton_44k.16b48k.wav|48: MOS=4.15792, payload=48.118 kbps, source=identity:noise_18|clapton_44k.16b48k.wav|48
+completed oneband_static24|clapton_44k.16b48k.wav|48: MOS=4.15797, payload=48.118 kbps, source=identity:static24|clapton_44k.16b48k.wav|48
+completed local2_static18|clapton_44k.16b48k.wav|48: MOS=4.15325, payload=48.123 kbps, source=scored
+completed local2_static24|clapton_44k.16b48k.wav|48: MOS=4.15352, payload=48.123 kbps, source=scored
+completed local2_adaptive18|clapton_44k.16b48k.wav|48: MOS=4.15325, payload=48.123 kbps, source=scored
+completed local2_joint18|clapton_44k.16b48k.wav|48: MOS=4.16364, payload=48.126 kbps, source=scored
+completed oneband_static18|clapton_44k.16b48k.wav|64: MOS=4.36445, payload=63.872 kbps, source=identity:noise_18|clapton_44k.16b48k.wav|64
+completed oneband_static24|clapton_44k.16b48k.wav|64: MOS=4.36398, payload=63.872 kbps, source=identity:static24|clapton_44k.16b48k.wav|64
+completed local2_static24|clapton_44k.16b48k.wav|64: MOS=4.36410, payload=63.876 kbps, source=scored
+completed local2_static18|clapton_44k.16b48k.wav|64: MOS=4.36278, payload=63.876 kbps, source=scored
+completed local2_adaptive18|clapton_44k.16b48k.wav|64: MOS=4.36278, payload=63.876 kbps, source=scored
+completed local2_joint18|clapton_44k.16b48k.wav|64: MOS=4.37058, payload=63.879 kbps, source=scored
+completed oneband_static18|clapton_44k.16b48k.wav|96: MOS=4.56885, payload=95.296 kbps, source=identity:noise_18|clapton_44k.16b48k.wav|96
+completed oneband_static24|clapton_44k.16b48k.wav|96: MOS=4.56895, payload=95.296 kbps, source=identity:static24|clapton_44k.16b48k.wav|96
+completed local2_static18|clapton_44k.16b48k.wav|96: MOS=4.57071, payload=95.294 kbps, source=scored
+completed local2_static24|clapton_44k.16b48k.wav|96: MOS=4.57077, payload=95.294 kbps, source=scored
+completed local2_adaptive18|clapton_44k.16b48k.wav|96: MOS=4.57071, payload=95.294 kbps, source=scored
+completed oneband_static18|cst.wav|32: MOS=3.59610, payload=32.219 kbps, source=identity:noise_18|cst.wav|32
+completed local2_joint18|clapton_44k.16b48k.wav|96: MOS=4.57481, payload=95.294 kbps, source=scored
+completed oneband_static24|cst.wav|32: MOS=3.59580, payload=32.219 kbps, source=identity:static24|cst.wav|32
+completed local2_adaptive18|cst.wav|32: MOS=3.59540, payload=32.214 kbps, source=scored
+completed local2_static18|cst.wav|32: MOS=3.59540, payload=32.214 kbps, source=scored
+completed local2_static24|cst.wav|32: MOS=3.59545, payload=32.214 kbps, source=scored
+completed local2_joint18|cst.wav|32: MOS=3.61558, payload=32.214 kbps, source=scored
+completed oneband_static18|cst.wav|48: MOS=4.02663, payload=48.310 kbps, source=identity:noise_18|cst.wav|48
+completed oneband_static24|cst.wav|48: MOS=4.02723, payload=48.310 kbps, source=identity:static24|cst.wav|48
+completed local2_static18|cst.wav|48: MOS=4.02637, payload=48.308 kbps, source=scored
+completed local2_static24|cst.wav|48: MOS=4.02658, payload=48.308 kbps, source=scored
+completed oneband_static18|cst.wav|64: MOS=4.34213, payload=63.923 kbps, source=identity:noise_18|cst.wav|64
+completed local2_joint18|cst.wav|48: MOS=4.03172, payload=48.310 kbps, source=scored
+completed local2_adaptive18|cst.wav|48: MOS=4.02637, payload=48.308 kbps, source=scored
+completed oneband_static24|cst.wav|64: MOS=4.34003, payload=63.923 kbps, source=identity:static24|cst.wav|64
+completed local2_static18|cst.wav|64: MOS=4.34028, payload=63.921 kbps, source=scored
+completed local2_static24|cst.wav|64: MOS=4.34021, payload=63.921 kbps, source=scored
+completed local2_adaptive18|cst.wav|64: MOS=4.34028, payload=63.921 kbps, source=scored
+completed local2_joint18|cst.wav|64: MOS=4.34724, payload=63.926 kbps, source=scored
+completed oneband_static24|cst.wav|96: MOS=4.66654, payload=96.044 kbps, source=identity:static24|cst.wav|96
+completed oneband_static18|cst.wav|96: MOS=4.66639, payload=96.044 kbps, source=identity:noise_18|cst.wav|96
+completed local2_static18|cst.wav|96: MOS=4.66636, payload=96.041 kbps, source=scored
+completed local2_static24|cst.wav|96: MOS=4.66649, payload=96.041 kbps, source=scored
+completed oneband_static18|fms.wav|32: MOS=3.95441, payload=31.954 kbps, source=identity:noise_18|fms.wav|32
+completed local2_adaptive18|cst.wav|96: MOS=4.66636, payload=96.041 kbps, source=scored
+completed local2_joint18|cst.wav|96: MOS=4.66916, payload=96.043 kbps, source=scored
+completed oneband_static24|fms.wav|32: MOS=3.95438, payload=31.954 kbps, source=identity:static24|fms.wav|32
+completed local2_joint18|fms.wav|32: MOS=3.93786, payload=31.953 kbps, source=scored
+completed local2_static24|fms.wav|32: MOS=3.93663, payload=31.949 kbps, source=scored
+completed local2_static18|fms.wav|32: MOS=3.93709, payload=31.949 kbps, source=scored
+completed local2_adaptive18|fms.wav|32: MOS=3.93709, payload=31.949 kbps, source=scored
+completed oneband_static18|fms.wav|48: MOS=4.31400, payload=48.089 kbps, source=identity:noise_18|fms.wav|48
+completed oneband_static24|fms.wav|48: MOS=4.31421, payload=48.089 kbps, source=identity:static24|fms.wav|48
+completed local2_static18|fms.wav|48: MOS=4.30140, payload=48.073 kbps, source=scored
+completed local2_static24|fms.wav|48: MOS=4.30124, payload=48.073 kbps, source=scored
+completed local2_joint18|fms.wav|48: MOS=4.30340, payload=48.072 kbps, source=scored
+completed local2_adaptive18|fms.wav|48: MOS=4.30140, payload=48.073 kbps, source=scored
+completed oneband_static18|fms.wav|64: MOS=4.57263, payload=63.800 kbps, source=identity:noise_18|fms.wav|64
+completed oneband_static24|fms.wav|64: MOS=4.57263, payload=63.800 kbps, source=identity:static24|fms.wav|64
+completed local2_static18|fms.wav|64: MOS=4.57337, payload=63.797 kbps, source=scored
+completed local2_adaptive18|fms.wav|64: MOS=4.57337, payload=63.797 kbps, source=scored
+completed local2_static24|fms.wav|64: MOS=4.57341, payload=63.797 kbps, source=scored
+completed local2_joint18|fms.wav|64: MOS=4.57624, payload=63.801 kbps, source=scored
+completed oneband_static18|fms.wav|96: MOS=4.81112, payload=95.672 kbps, source=identity:noise_18|fms.wav|96
+completed oneband_static24|fms.wav|96: MOS=4.81118, payload=95.672 kbps, source=identity:static24|fms.wav|96
+completed local2_static18|fms.wav|96: MOS=4.81068, payload=95.670 kbps, source=scored
+completed local2_static24|fms.wav|96: MOS=4.81075, payload=95.670 kbps, source=scored
+completed local2_joint18|fms.wav|96: MOS=4.81078, payload=95.671 kbps, source=scored
+completed local2_adaptive18|fms.wav|96: MOS=4.81068, payload=95.670 kbps, source=scored
+completed oneband_static18|girl.16b48k.wav|32: MOS=4.38605, payload=32.142 kbps, source=identity:noise_18|girl.16b48k.wav|32
+completed oneband_static24|girl.16b48k.wav|32: MOS=4.38536, payload=32.142 kbps, source=identity:static24|girl.16b48k.wav|32
+completed local2_static18|girl.16b48k.wav|32: MOS=4.38023, payload=32.134 kbps, source=scored
+completed local2_static24|girl.16b48k.wav|32: MOS=4.37978, payload=32.134 kbps, source=scored
+completed local2_adaptive18|girl.16b48k.wav|32: MOS=4.38550, payload=32.141 kbps, source=scored
+completed local2_joint18|girl.16b48k.wav|32: MOS=4.40427, payload=32.146 kbps, source=scored
+completed oneband_static18|girl.16b48k.wav|48: MOS=4.60240, payload=48.117 kbps, source=identity:noise_18|girl.16b48k.wav|48
+completed oneband_static24|girl.16b48k.wav|48: MOS=4.60242, payload=48.117 kbps, source=identity:static24|girl.16b48k.wav|48
+completed local2_static18|girl.16b48k.wav|48: MOS=4.60068, payload=48.119 kbps, source=scored
+completed local2_static24|girl.16b48k.wav|48: MOS=4.60066, payload=48.119 kbps, source=scored
+completed local2_joint18|girl.16b48k.wav|48: MOS=4.61164, payload=48.114 kbps, source=scored
+completed local2_adaptive18|girl.16b48k.wav|48: MOS=4.59588, payload=48.118 kbps, source=scored
+completed oneband_static18|girl.16b48k.wav|64: MOS=4.71022, payload=63.953 kbps, source=identity:noise_18|girl.16b48k.wav|64
+completed oneband_static24|girl.16b48k.wav|64: MOS=4.71030, payload=63.953 kbps, source=identity:static24|girl.16b48k.wav|64
+completed local2_static18|girl.16b48k.wav|64: MOS=4.70210, payload=63.952 kbps, source=scored
+completed local2_static24|girl.16b48k.wav|64: MOS=4.70337, payload=63.952 kbps, source=scored
+completed local2_adaptive18|girl.16b48k.wav|64: MOS=4.70201, payload=63.949 kbps, source=scored
+completed local2_joint18|girl.16b48k.wav|64: MOS=4.72163, payload=63.958 kbps, source=scored
+completed oneband_static18|girl.16b48k.wav|96: MOS=4.79702, payload=95.550 kbps, source=identity:noise_18|girl.16b48k.wav|96
+completed oneband_static24|girl.16b48k.wav|96: MOS=4.79728, payload=95.550 kbps, source=identity:static24|girl.16b48k.wav|96
+completed local2_static24|girl.16b48k.wav|96: MOS=4.79644, payload=95.554 kbps, source=scored
+completed local2_static18|girl.16b48k.wav|96: MOS=4.79634, payload=95.554 kbps, source=scored
+completed local2_adaptive18|girl.16b48k.wav|96: MOS=4.79239, payload=95.554 kbps, source=scored
+completed local2_joint18|girl.16b48k.wav|96: MOS=4.81515, payload=95.554 kbps, source=scored
+completed oneband_static24|glk.wav|32: MOS=4.66946, payload=31.881 kbps, source=identity:static24|glk.wav|32
+completed oneband_static18|glk.wav|32: MOS=4.66806, payload=31.881 kbps, source=identity:noise_18|glk.wav|32
+completed local2_static18|glk.wav|32: MOS=4.66809, payload=31.865 kbps, source=scored
+completed local2_static24|glk.wav|32: MOS=4.66864, payload=31.865 kbps, source=scored
+completed local2_adaptive18|glk.wav|32: MOS=4.67505, payload=31.864 kbps, source=scored
+completed local2_joint18|glk.wav|32: MOS=4.65651, payload=31.871 kbps, source=scored
+completed oneband_static18|glk.wav|48: MOS=4.85735, payload=47.921 kbps, source=identity:noise_18|glk.wav|48
+completed oneband_static24|glk.wav|48: MOS=4.85801, payload=47.921 kbps, source=identity:static24|glk.wav|48
+completed local2_static18|glk.wav|48: MOS=4.85878, payload=47.918 kbps, source=scored
+completed local2_joint18|glk.wav|48: MOS=4.81525, payload=47.942 kbps, source=scored
+completed local2_static24|glk.wav|48: MOS=4.85931, payload=47.918 kbps, source=scored
+completed local2_adaptive18|glk.wav|48: MOS=4.86481, payload=47.918 kbps, source=scored
+completed oneband_static18|glk.wav|64: MOS=4.88479, payload=63.638 kbps, source=identity:noise_18|glk.wav|64
+completed oneband_static24|glk.wav|64: MOS=4.88482, payload=63.638 kbps, source=identity:static24|glk.wav|64
+completed local2_static18|glk.wav|64: MOS=4.88625, payload=63.637 kbps, source=scored
+completed local2_static24|glk.wav|64: MOS=4.88589, payload=63.637 kbps, source=scored
+completed local2_adaptive18|glk.wav|64: MOS=4.88537, payload=63.636 kbps, source=scored
+completed local2_joint18|glk.wav|64: MOS=4.84096, payload=63.654 kbps, source=scored
+completed oneband_static24|glk.wav|96: MOS=4.89683, payload=95.369 kbps, source=identity:static24|glk.wav|96
+completed oneband_static18|glk.wav|96: MOS=4.89641, payload=95.369 kbps, source=identity:noise_18|glk.wav|96
+completed local2_static18|glk.wav|96: MOS=4.89570, payload=95.370 kbps, source=scored
+completed local2_static24|glk.wav|96: MOS=4.89626, payload=95.370 kbps, source=scored
+completed local2_adaptive18|glk.wav|96: MOS=4.89592, payload=95.372 kbps, source=scored
+completed local2_joint18|glk.wav|96: MOS=4.85881, payload=95.385 kbps, source=scored
+completed oneband_static18|hrp.wav|32: MOS=4.06223, payload=32.583 kbps, source=identity:noise_18|hrp.wav|32
+completed oneband_static24|hrp.wav|32: MOS=4.06180, payload=32.583 kbps, source=identity:static24|hrp.wav|32
+completed local2_static24|hrp.wav|32: MOS=4.04677, payload=32.554 kbps, source=scored
+completed local2_static18|hrp.wav|32: MOS=4.04763, payload=32.554 kbps, source=scored
+completed local2_adaptive18|hrp.wav|32: MOS=4.05416, payload=32.583 kbps, source=scored
+completed oneband_static18|hrp.wav|48: MOS=4.49288, payload=48.716 kbps, source=identity:noise_18|hrp.wav|48
+completed oneband_static24|hrp.wav|48: MOS=4.49228, payload=48.716 kbps, source=identity:static24|hrp.wav|48
+completed local2_joint18|hrp.wav|32: MOS=4.03483, payload=32.577 kbps, source=scored
+completed local2_static18|hrp.wav|48: MOS=4.46575, payload=48.713 kbps, source=scored
+completed local2_static24|hrp.wav|48: MOS=4.46550, payload=48.713 kbps, source=scored
+completed local2_adaptive18|hrp.wav|48: MOS=4.47609, payload=48.717 kbps, source=scored
+completed local2_joint18|hrp.wav|48: MOS=4.47602, payload=48.710 kbps, source=scored
+completed oneband_static18|hrp.wav|64: MOS=4.67244, payload=64.467 kbps, source=identity:noise_18|hrp.wav|64
+completed oneband_static24|hrp.wav|64: MOS=4.67208, payload=64.467 kbps, source=identity:static24|hrp.wav|64
+completed local2_static18|hrp.wav|64: MOS=4.65894, payload=64.473 kbps, source=scored
+completed local2_static24|hrp.wav|64: MOS=4.65852, payload=64.473 kbps, source=scored
+completed local2_adaptive18|hrp.wav|64: MOS=4.66109, payload=64.473 kbps, source=scored
+completed oneband_static18|hrp.wav|96: MOS=4.83697, payload=95.887 kbps, source=identity:noise_18|hrp.wav|96
+completed local2_joint18|hrp.wav|64: MOS=4.66553, payload=64.471 kbps, source=scored
+completed oneband_static24|hrp.wav|96: MOS=4.83707, payload=95.887 kbps, source=identity:static24|hrp.wav|96
+completed local2_static24|hrp.wav|96: MOS=4.83657, payload=95.891 kbps, source=scored
+completed local2_static18|hrp.wav|96: MOS=4.83643, payload=95.891 kbps, source=scored
+completed local2_joint18|hrp.wav|96: MOS=4.83868, payload=95.889 kbps, source=scored
+completed local2_adaptive18|hrp.wav|96: MOS=4.83616, payload=95.892 kbps, source=scored
+completed oneband_static18|liberate.16b48k.wav|32: MOS=3.90533, payload=32.514 kbps, source=identity:noise_18|liberate.16b48k.wav|32
+completed oneband_static24|liberate.16b48k.wav|32: MOS=3.90540, payload=32.514 kbps, source=identity:static24|liberate.16b48k.wav|32
+completed local2_static24|liberate.16b48k.wav|32: MOS=3.90700, payload=32.522 kbps, source=scored
+completed local2_static18|liberate.16b48k.wav|32: MOS=3.90696, payload=32.522 kbps, source=scored
+completed local2_adaptive18|liberate.16b48k.wav|32: MOS=3.90696, payload=32.522 kbps, source=scored
+completed local2_joint18|liberate.16b48k.wav|32: MOS=3.90423, payload=32.522 kbps, source=scored
+completed oneband_static18|liberate.16b48k.wav|48: MOS=4.25855, payload=49.317 kbps, source=identity:noise_18|liberate.16b48k.wav|48
+completed oneband_static24|liberate.16b48k.wav|48: MOS=4.25862, payload=49.317 kbps, source=identity:static24|liberate.16b48k.wav|48
+completed local2_static18|liberate.16b48k.wav|48: MOS=4.24621, payload=49.334 kbps, source=scored
+completed local2_adaptive18|liberate.16b48k.wav|48: MOS=4.24621, payload=49.334 kbps, source=scored
+completed local2_static24|liberate.16b48k.wav|48: MOS=4.24622, payload=49.334 kbps, source=scored
+completed local2_joint18|liberate.16b48k.wav|48: MOS=4.24920, payload=49.331 kbps, source=scored
+completed oneband_static18|liberate.16b48k.wav|64: MOS=4.40232, payload=65.115 kbps, source=identity:noise_18|liberate.16b48k.wav|64
+completed oneband_static24|liberate.16b48k.wav|64: MOS=4.40241, payload=65.115 kbps, source=identity:static24|liberate.16b48k.wav|64
+completed local2_static24|liberate.16b48k.wav|64: MOS=4.39529, payload=65.126 kbps, source=scored
+completed local2_static18|liberate.16b48k.wav|64: MOS=4.39524, payload=65.126 kbps, source=scored
+completed local2_adaptive18|liberate.16b48k.wav|64: MOS=4.39524, payload=65.126 kbps, source=scored
+completed local2_joint18|liberate.16b48k.wav|64: MOS=4.39012, payload=65.126 kbps, source=scored
+completed oneband_static18|liberate.16b48k.wav|96: MOS=4.57507, payload=96.125 kbps, source=identity:noise_18|liberate.16b48k.wav|96
+completed oneband_static24|liberate.16b48k.wav|96: MOS=4.57509, payload=96.125 kbps, source=identity:static24|liberate.16b48k.wav|96
+completed local2_static18|liberate.16b48k.wav|96: MOS=4.57690, payload=96.115 kbps, source=scored
+completed local2_static24|liberate.16b48k.wav|96: MOS=4.57695, payload=96.115 kbps, source=scored
+completed local2_adaptive18|liberate.16b48k.wav|96: MOS=4.57690, payload=96.115 kbps, source=scored
+completed local2_joint18|liberate.16b48k.wav|96: MOS=4.57043, payload=96.119 kbps, source=scored
+completed oneband_static18|lob.wav|32: MOS=3.93280, payload=33.253 kbps, source=identity:noise_18|lob.wav|32
+completed oneband_static24|lob.wav|32: MOS=3.93280, payload=33.253 kbps, source=identity:static24|lob.wav|32
+completed local2_static18|lob.wav|32: MOS=3.92087, payload=33.254 kbps, source=scored
+completed local2_static24|lob.wav|32: MOS=3.92080, payload=33.254 kbps, source=scored
+completed local2_adaptive18|lob.wav|32: MOS=3.92087, payload=33.254 kbps, source=scored
+completed local2_joint18|lob.wav|32: MOS=3.92234, payload=33.252 kbps, source=scored
+completed oneband_static18|lob.wav|48: MOS=4.25333, payload=50.253 kbps, source=identity:noise_18|lob.wav|48
+completed oneband_static24|lob.wav|48: MOS=4.25326, payload=50.253 kbps, source=identity:static24|lob.wav|48
+completed local2_static18|lob.wav|48: MOS=4.24730, payload=50.275 kbps, source=scored
+completed local2_static24|lob.wav|48: MOS=4.24764, payload=50.275 kbps, source=scored
+completed local2_adaptive18|lob.wav|48: MOS=4.24730, payload=50.275 kbps, source=scored
+completed local2_joint18|lob.wav|48: MOS=4.24584, payload=50.270 kbps, source=scored
+completed oneband_static18|lob.wav|64: MOS=4.48459, payload=65.897 kbps, source=identity:noise_18|lob.wav|64
+completed oneband_static24|lob.wav|64: MOS=4.48421, payload=65.897 kbps, source=identity:static24|lob.wav|64
+completed local2_static24|lob.wav|64: MOS=4.48293, payload=65.908 kbps, source=scored
+completed local2_static18|lob.wav|64: MOS=4.48207, payload=65.908 kbps, source=scored
+completed local2_adaptive18|lob.wav|64: MOS=4.48207, payload=65.908 kbps, source=scored
+completed local2_joint18|lob.wav|64: MOS=4.48841, payload=65.908 kbps, source=scored
+completed oneband_static24|lob.wav|96: MOS=4.67333, payload=96.713 kbps, source=identity:static24|lob.wav|96
+completed oneband_static18|lob.wav|96: MOS=4.67331, payload=96.713 kbps, source=identity:noise_18|lob.wav|96
+completed local2_static18|lob.wav|96: MOS=4.67142, payload=96.743 kbps, source=scored
+completed local2_static24|lob.wav|96: MOS=4.67148, payload=96.743 kbps, source=scored
+completed local2_adaptive18|lob.wav|96: MOS=4.67142, payload=96.743 kbps, source=scored
+completed local2_joint18|lob.wav|96: MOS=4.67511, payload=96.728 kbps, source=scored
+completed oneband_static18|mof.wav|32: MOS=3.18854, payload=31.805 kbps, source=identity:noise_18|mof.wav|32
+completed oneband_static24|mof.wav|32: MOS=3.18930, payload=31.805 kbps, source=identity:static24|mof.wav|32
+completed local2_static18|mof.wav|32: MOS=3.17873, payload=31.804 kbps, source=scored
+completed local2_adaptive18|mof.wav|32: MOS=3.17873, payload=31.804 kbps, source=scored
+completed local2_static24|mof.wav|32: MOS=3.18007, payload=31.804 kbps, source=scored
+completed local2_joint18|mof.wav|32: MOS=3.17642, payload=31.819 kbps, source=scored
+completed oneband_static18|mof.wav|48: MOS=3.79052, payload=47.562 kbps, source=identity:noise_18|mof.wav|48
+completed oneband_static24|mof.wav|48: MOS=3.79070, payload=47.562 kbps, source=identity:static24|mof.wav|48
+completed local2_static18|mof.wav|48: MOS=3.78332, payload=47.559 kbps, source=scored
+completed local2_static24|mof.wav|48: MOS=3.78271, payload=47.559 kbps, source=scored
+completed local2_adaptive18|mof.wav|48: MOS=3.78332, payload=47.559 kbps, source=scored
+completed local2_joint18|mof.wav|48: MOS=3.79666, payload=47.599 kbps, source=scored
+completed oneband_static18|mof.wav|64: MOS=4.19211, payload=63.358 kbps, source=identity:noise_18|mof.wav|64
+completed oneband_static24|mof.wav|64: MOS=4.19041, payload=63.358 kbps, source=identity:static24|mof.wav|64
+completed local2_static18|mof.wav|64: MOS=4.18835, payload=63.365 kbps, source=scored
+completed local2_static24|mof.wav|64: MOS=4.18800, payload=63.365 kbps, source=scored
+completed local2_adaptive18|mof.wav|64: MOS=4.18835, payload=63.365 kbps, source=scored
+completed local2_joint18|mof.wav|64: MOS=4.19169, payload=63.390 kbps, source=scored
+completed oneband_static18|mof.wav|96: MOS=4.42634, payload=95.177 kbps, source=identity:noise_18|mof.wav|96
+completed oneband_static24|mof.wav|96: MOS=4.42411, payload=95.177 kbps, source=identity:static24|mof.wav|96
+completed local2_static18|mof.wav|96: MOS=4.42485, payload=95.179 kbps, source=scored
+completed local2_static24|mof.wav|96: MOS=4.42503, payload=95.179 kbps, source=scored
+completed local2_adaptive18|mof.wav|96: MOS=4.42485, payload=95.179 kbps, source=scored
+completed local2_joint18|mof.wav|96: MOS=4.42753, payload=95.204 kbps, source=scored
+completed oneband_static18|qrt.wav|32: MOS=3.54078, payload=31.749 kbps, source=identity:noise_18|qrt.wav|32
+completed oneband_static24|qrt.wav|32: MOS=3.54069, payload=31.749 kbps, source=identity:static24|qrt.wav|32
+completed local2_static18|qrt.wav|32: MOS=3.53115, payload=31.743 kbps, source=scored
+completed local2_static24|qrt.wav|32: MOS=3.53110, payload=31.743 kbps, source=scored
+completed local2_adaptive18|qrt.wav|32: MOS=3.53115, payload=31.743 kbps, source=scored
+completed local2_joint18|qrt.wav|32: MOS=3.54412, payload=31.744 kbps, source=scored
+completed oneband_static18|qrt.wav|48: MOS=3.91810, payload=47.673 kbps, source=identity:noise_18|qrt.wav|48
+completed oneband_static24|qrt.wav|48: MOS=3.91751, payload=47.673 kbps, source=identity:static24|qrt.wav|48
+completed local2_static18|qrt.wav|48: MOS=3.90805, payload=47.672 kbps, source=scored
+completed local2_static24|qrt.wav|48: MOS=3.90803, payload=47.672 kbps, source=scored
+completed local2_adaptive18|qrt.wav|48: MOS=3.90805, payload=47.672 kbps, source=scored
+completed local2_joint18|qrt.wav|48: MOS=3.91186, payload=47.687 kbps, source=scored
+completed oneband_static18|qrt.wav|64: MOS=4.18383, payload=63.621 kbps, source=identity:noise_18|qrt.wav|64
+completed oneband_static24|qrt.wav|64: MOS=4.18383, payload=63.621 kbps, source=identity:static24|qrt.wav|64
+completed local2_adaptive18|qrt.wav|64: MOS=4.19607, payload=63.618 kbps, source=scored
+completed local2_static18|qrt.wav|64: MOS=4.19607, payload=63.618 kbps, source=scored
+completed local2_static24|qrt.wav|64: MOS=4.19603, payload=63.618 kbps, source=scored
+completed local2_joint18|qrt.wav|64: MOS=4.19733, payload=63.632 kbps, source=scored
+completed oneband_static18|qrt.wav|96: MOS=4.53197, payload=95.486 kbps, source=identity:noise_18|qrt.wav|96
+completed oneband_static24|qrt.wav|96: MOS=4.53205, payload=95.486 kbps, source=identity:static24|qrt.wav|96
+completed local2_static18|qrt.wav|96: MOS=4.53057, payload=95.482 kbps, source=scored
+completed local2_static24|qrt.wav|96: MOS=4.53052, payload=95.482 kbps, source=scored
+completed local2_adaptive18|qrt.wav|96: MOS=4.53057, payload=95.482 kbps, source=scored
+completed local2_joint18|qrt.wav|96: MOS=4.53207, payload=95.499 kbps, source=scored
+completed oneband_static18|sandman.16b48k.wav|32: MOS=3.76539, payload=31.847 kbps, source=identity:noise_18|sandman.16b48k.wav|32
+completed oneband_static24|sandman.16b48k.wav|32: MOS=3.76571, payload=31.847 kbps, source=identity:static24|sandman.16b48k.wav|32
+completed local2_static18|sandman.16b48k.wav|32: MOS=3.66544, payload=31.846 kbps, source=scored
+completed local2_static24|sandman.16b48k.wav|32: MOS=3.66533, payload=31.846 kbps, source=scored
+completed local2_adaptive18|sandman.16b48k.wav|32: MOS=3.66544, payload=31.846 kbps, source=scored
+completed oneband_static18|sandman.16b48k.wav|48: MOS=4.19428, payload=47.769 kbps, source=identity:noise_18|sandman.16b48k.wav|48
+completed local2_joint18|sandman.16b48k.wav|32: MOS=3.76095, payload=31.846 kbps, source=scored
+completed oneband_static24|sandman.16b48k.wav|48: MOS=4.19432, payload=47.769 kbps, source=identity:static24|sandman.16b48k.wav|48
+completed local2_static18|sandman.16b48k.wav|48: MOS=4.19324, payload=47.767 kbps, source=scored
+completed local2_static24|sandman.16b48k.wav|48: MOS=4.19325, payload=47.767 kbps, source=scored
+completed local2_adaptive18|sandman.16b48k.wav|48: MOS=4.19325, payload=47.767 kbps, source=scored
+completed local2_joint18|sandman.16b48k.wav|48: MOS=4.19497, payload=47.767 kbps, source=scored
+completed oneband_static18|sandman.16b48k.wav|64: MOS=4.45044, payload=63.538 kbps, source=identity:noise_18|sandman.16b48k.wav|64
+completed oneband_static24|sandman.16b48k.wav|64: MOS=4.45050, payload=63.538 kbps, source=identity:static24|sandman.16b48k.wav|64
+completed local2_static24|sandman.16b48k.wav|64: MOS=4.43943, payload=63.536 kbps, source=scored
+completed local2_adaptive18|sandman.16b48k.wav|64: MOS=4.43936, payload=63.536 kbps, source=scored
+completed local2_static18|sandman.16b48k.wav|64: MOS=4.43936, payload=63.536 kbps, source=scored
+completed local2_joint18|sandman.16b48k.wav|64: MOS=4.45494, payload=63.537 kbps, source=scored
+completed oneband_static24|sandman.16b48k.wav|96: MOS=4.69513, payload=95.280 kbps, source=identity:static24|sandman.16b48k.wav|96
+completed oneband_static18|sandman.16b48k.wav|96: MOS=4.69497, payload=95.280 kbps, source=identity:noise_18|sandman.16b48k.wav|96
+completed local2_static18|sandman.16b48k.wav|96: MOS=4.69149, payload=95.275 kbps, source=scored
+completed local2_static24|sandman.16b48k.wav|96: MOS=4.69161, payload=95.275 kbps, source=scored
+completed local2_joint18|sandman.16b48k.wav|96: MOS=4.69295, payload=95.276 kbps, source=scored
+completed local2_adaptive18|sandman.16b48k.wav|96: MOS=4.69149, payload=95.275 kbps, source=scored
+completed oneband_static18|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.53192, payload=31.987 kbps, source=identity:noise_18|take_your_finger_frin_my_head.16b48k.wav|32
+completed oneband_static24|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.53247, payload=31.987 kbps, source=identity:static24|take_your_finger_frin_my_head.16b48k.wav|32
+completed local2_static18|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.51713, payload=31.987 kbps, source=scored
+completed local2_static24|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.51700, payload=31.987 kbps, source=scored
+completed local2_adaptive18|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.50835, payload=31.988 kbps, source=scored
+completed local2_joint18|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.51221, payload=32.006 kbps, source=scored
+completed oneband_static24|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.98222, payload=48.181 kbps, source=identity:static24|take_your_finger_frin_my_head.16b48k.wav|48
+completed oneband_static18|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.98203, payload=48.181 kbps, source=identity:noise_18|take_your_finger_frin_my_head.16b48k.wav|48
+completed local2_static18|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.99456, payload=48.184 kbps, source=scored
+completed local2_static24|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.99459, payload=48.184 kbps, source=scored
+completed oneband_static18|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.19636, payload=64.066 kbps, source=identity:noise_18|take_your_finger_frin_my_head.16b48k.wav|64
+completed local2_joint18|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.99361, payload=48.199 kbps, source=scored
+completed local2_adaptive18|take_your_finger_frin_my_head.16b48k.wav|48: MOS=4.00048, payload=48.182 kbps, source=scored
+completed oneband_static24|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.19642, payload=64.066 kbps, source=identity:static24|take_your_finger_frin_my_head.16b48k.wav|64
+completed local2_adaptive18|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.21281, payload=64.066 kbps, source=scored
+completed local2_static18|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.20547, payload=64.067 kbps, source=scored
+completed local2_static24|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.20672, payload=64.067 kbps, source=scored
+completed local2_joint18|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.20779, payload=64.077 kbps, source=scored
+completed oneband_static18|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54323, payload=95.521 kbps, source=identity:noise_18|take_your_finger_frin_my_head.16b48k.wav|96
+completed oneband_static24|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54326, payload=95.521 kbps, source=identity:static24|take_your_finger_frin_my_head.16b48k.wav|96
+completed local2_static18|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54690, payload=95.520 kbps, source=scored
+completed local2_joint18|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54650, payload=95.528 kbps, source=scored
+completed local2_adaptive18|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54344, payload=95.521 kbps, source=scored
+completed local2_static24|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.54692, payload=95.520 kbps, source=scored
+completed oneband_static18|trumpet.16b48k.wav|32: MOS=4.08082, payload=33.015 kbps, source=identity:noise_18|trumpet.16b48k.wav|32
+completed oneband_static24|trumpet.16b48k.wav|32: MOS=4.08075, payload=33.015 kbps, source=identity:static24|trumpet.16b48k.wav|32
+completed local2_static18|trumpet.16b48k.wav|32: MOS=4.07922, payload=33.012 kbps, source=scored
+completed local2_static24|trumpet.16b48k.wav|32: MOS=4.07926, payload=33.012 kbps, source=scored
+completed local2_adaptive18|trumpet.16b48k.wav|32: MOS=4.06965, payload=33.014 kbps, source=scored
+completed oneband_static18|trumpet.16b48k.wav|48: MOS=4.26910, payload=49.718 kbps, source=identity:noise_18|trumpet.16b48k.wav|48
+completed local2_joint18|trumpet.16b48k.wav|32: MOS=4.08177, payload=33.012 kbps, source=scored
+completed oneband_static24|trumpet.16b48k.wav|48: MOS=4.26956, payload=49.718 kbps, source=identity:static24|trumpet.16b48k.wav|48
+completed local2_static18|trumpet.16b48k.wav|48: MOS=4.27723, payload=49.720 kbps, source=scored
+completed local2_static24|trumpet.16b48k.wav|48: MOS=4.27644, payload=49.720 kbps, source=scored
+completed local2_adaptive18|trumpet.16b48k.wav|48: MOS=4.27612, payload=49.722 kbps, source=scored
+completed local2_joint18|trumpet.16b48k.wav|48: MOS=4.26096, payload=49.722 kbps, source=scored
+completed oneband_static18|trumpet.16b48k.wav|64: MOS=4.52777, payload=65.702 kbps, source=identity:noise_18|trumpet.16b48k.wav|64
+completed oneband_static24|trumpet.16b48k.wav|64: MOS=4.52778, payload=65.702 kbps, source=identity:static24|trumpet.16b48k.wav|64
+completed local2_static18|trumpet.16b48k.wav|64: MOS=4.52217, payload=65.694 kbps, source=scored
+completed local2_static24|trumpet.16b48k.wav|64: MOS=4.52176, payload=65.694 kbps, source=scored
+completed local2_adaptive18|trumpet.16b48k.wav|64: MOS=4.52092, payload=65.695 kbps, source=scored
+completed oneband_static18|trumpet.16b48k.wav|96: MOS=4.74662, payload=96.687 kbps, source=identity:noise_18|trumpet.16b48k.wav|96
+completed local2_joint18|trumpet.16b48k.wav|64: MOS=4.53325, payload=65.712 kbps, source=scored
+completed oneband_static24|trumpet.16b48k.wav|96: MOS=4.74659, payload=96.687 kbps, source=identity:static24|trumpet.16b48k.wav|96
+completed local2_static18|trumpet.16b48k.wav|96: MOS=4.74165, payload=96.691 kbps, source=scored
+completed local2_adaptive18|trumpet.16b48k.wav|96: MOS=4.74131, payload=96.691 kbps, source=scored
+completed local2_static24|trumpet.16b48k.wav|96: MOS=4.74155, payload=96.691 kbps, source=scored
+completed local2_joint18|trumpet.16b48k.wav|96: MOS=4.74309, payload=96.693 kbps, source=scored
+completed oneband_static18|velvet.16b48k.wav|32: MOS=3.63487, payload=33.522 kbps, source=identity:noise_18|velvet.16b48k.wav|32
+completed oneband_static24|velvet.16b48k.wav|32: MOS=3.63502, payload=33.522 kbps, source=identity:static24|velvet.16b48k.wav|32
+completed local2_static18|velvet.16b48k.wav|32: MOS=3.62661, payload=33.526 kbps, source=scored
+completed local2_static24|velvet.16b48k.wav|32: MOS=3.62666, payload=33.526 kbps, source=scored
+completed local2_joint18|velvet.16b48k.wav|32: MOS=3.63395, payload=33.522 kbps, source=scored
+completed local2_adaptive18|velvet.16b48k.wav|32: MOS=3.62661, payload=33.526 kbps, source=scored
+completed oneband_static18|velvet.16b48k.wav|48: MOS=3.89443, payload=49.754 kbps, source=identity:noise_18|velvet.16b48k.wav|48
+completed oneband_static24|velvet.16b48k.wav|48: MOS=3.89449, payload=49.754 kbps, source=identity:static24|velvet.16b48k.wav|48
+completed local2_static24|velvet.16b48k.wav|48: MOS=3.89578, payload=49.756 kbps, source=scored
+completed local2_static18|velvet.16b48k.wav|48: MOS=3.89570, payload=49.756 kbps, source=scored
+completed local2_adaptive18|velvet.16b48k.wav|48: MOS=3.89570, payload=49.756 kbps, source=scored
+completed local2_joint18|velvet.16b48k.wav|48: MOS=3.85509, payload=49.768 kbps, source=scored
+completed oneband_static18|velvet.16b48k.wav|64: MOS=4.18255, payload=64.794 kbps, source=identity:noise_18|velvet.16b48k.wav|64
+completed oneband_static24|velvet.16b48k.wav|64: MOS=4.18345, payload=64.794 kbps, source=identity:static24|velvet.16b48k.wav|64
+completed local2_static18|velvet.16b48k.wav|64: MOS=4.18162, payload=64.784 kbps, source=scored
+completed local2_static24|velvet.16b48k.wav|64: MOS=4.18173, payload=64.784 kbps, source=scored
+completed local2_adaptive18|velvet.16b48k.wav|64: MOS=4.18162, payload=64.784 kbps, source=scored
+completed local2_joint18|velvet.16b48k.wav|64: MOS=4.18296, payload=64.793 kbps, source=scored
+completed oneband_static18|velvet.16b48k.wav|96: MOS=4.46005, payload=95.155 kbps, source=identity:noise_18|velvet.16b48k.wav|96
+completed oneband_static24|velvet.16b48k.wav|96: MOS=4.46003, payload=95.155 kbps, source=identity:static24|velvet.16b48k.wav|96
+completed local2_static18|velvet.16b48k.wav|96: MOS=4.46136, payload=95.152 kbps, source=scored
+completed local2_static24|velvet.16b48k.wav|96: MOS=4.46145, payload=95.152 kbps, source=scored
+completed local2_adaptive18|velvet.16b48k.wav|96: MOS=4.46136, payload=95.152 kbps, source=scored
+completed local2_joint18|velvet.16b48k.wav|96: MOS=4.46167, payload=95.156 kbps, source=scored
+Saved rows: /private/tmp/faac-he-v1-localnoise/probe/results-all/localnoise-results.json
+Saved summary: /private/tmp/faac-he-v1-localnoise/probe/results-all/localnoise-summary.json

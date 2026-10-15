@@ -1,0 +1,65 @@
+{
+  "base_and_stack": [
+    {
+      "binary_path": "/private/tmp/faac-envcount-tier17-base/build-tier17/frontend/faac",
+      "binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "build_path": "/private/tmp/faac-envcount-tier17-base/build-tier17",
+      "changed_source_files": [
+        "libfaac/sbr.h",
+        "libfaac/sbr_analysis.c",
+        "libfaac/sbr_analysis.h",
+        "libfaac/sbr_bitstream.c"
+      ],
+      "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "libfaac_path": "/private/tmp/faac-envcount-tier17-base/build-tier17/libfaac/libfaac.2.dylib",
+      "libfaac_sha256": "cd0fca14b1bea1251ea3bf3460d811f845f5fc85cefa42f05655bb472111d565",
+      "meson_options": {
+        "frontend": true,
+        "frontend-static": false,
+        "max-channels": 8,
+        "sbr-decimation": 1,
+        "stats": false
+      },
+      "source_diff_sha256": "61c1f2042346ebc676812623fcffa6f097439082e462a8b619d4fbcbd5581398",
+      "source_patch_path": ".cache/he-v1-feature-study/envelope-count/all4-controls/base-tier17.patch",
+      "source_patch_sha256": "61c1f2042346ebc676812623fcffa6f097439082e462a8b619d4fbcbd5581398",
+      "source_path": "/private/tmp/faac-envcount-tier17-base",
+      "variant": "base"
+    },
+    {
+      "binary_path": "/private/tmp/faac-envcount-tier17-stack/build-tier17/frontend/faac",
+      "binary_sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d",
+      "build_path": "/private/tmp/faac-envcount-tier17-stack/build-tier17",
+      "changed_source_files": [
+        "libfaac/sbr.h",
+        "libfaac/sbr_analysis.c",
+        "libfaac/sbr_analysis.h",
+        "libfaac/sbr_bitstream.c"
+      ],
+      "head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+      "libfaac_path": "/private/tmp/faac-envcount-tier17-stack/build-tier17/libfaac/libfaac.2.dylib",
+      "libfaac_sha256": "2ecbcf7456809afad495ad05f5d5d7f91b0d17f6aa59d8eef08637e7be1f9662",
+      "meson_options": {
+        "frontend": true,
+        "frontend-static": false,
+        "max-channels": 8,
+        "sbr-decimation": 1,
+        "stats": false
+      },
+      "source_diff_sha256": "d3807c5337e8f4a58992c3ba5e75f835f3f7a07d2565c703bbe48c779e1d9ce4",
+      "source_patch_path": ".cache/he-v1-feature-study/envelope-count/all4-controls/stack-tier17.patch",
+      "source_patch_sha256": "d3807c5337e8f4a58992c3ba5e75f835f3f7a07d2565c703bbe48c779e1d9ce4",
+      "source_path": "/private/tmp/faac-envcount-tier17-stack",
+      "variant": "stack"
+    }
+  ],
+  "identity_result": "both variants matched the post-hoc hybrid reference in all 196 ordered AAC packet and strict FDK PCM pairs",
+  "identity_validation": ".cache/he-v1-feature-study/envelope-count/tier17/production-equivalence/equivalence-summary.json",
+  "policy": "steady FIXFIX envelope count is 4 when existing sbr->numEnvFixFix > 1, otherwise 1; VARFIX remains unchanged. Existing stream header and limiter gates are unchanged. Existing threshold is rate_per_ch >= 17000u.",
+  "quality_curve_method": "post-hoc only: reference rows at 32 kbps; all4 rows at 48/64/96 kbps; no held-out claim; MOS scores may be reused only after exact packet+PCM identity",
+  "schema": 1,
+  "source_patch_artifacts": [
+    ".cache/he-v1-feature-study/envelope-count/all4-controls/base-tier17.patch",
+    ".cache/he-v1-feature-study/envelope-count/all4-controls/stack-tier17.patch"
+  ]
+}

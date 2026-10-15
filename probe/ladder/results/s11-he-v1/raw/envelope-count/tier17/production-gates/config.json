@@ -1,0 +1,128 @@
+{
+  "baseline_source_head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "controls": {
+    "he_tier17_base": {
+      "binary": "/private/tmp/faac-envcount-tier17-base/build-tier17/frontend/faac",
+      "role": "HE strict-decode boundary",
+      "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+    },
+    "he_tier17_stack": {
+      "binary": "/private/tmp/faac-envcount-tier17-stack/build-tier17/frontend/faac",
+      "role": "HE strict-decode boundary",
+      "sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d"
+    },
+    "lc_base_reference": {
+      "binary": "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+      "expected_reference": null,
+      "role": "LC identity",
+      "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+    },
+    "lc_stack_reference": {
+      "binary": "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+      "expected_reference": null,
+      "role": "LC identity",
+      "sha256": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87"
+    },
+    "lc_tier17_base": {
+      "binary": "/private/tmp/faac-envcount-tier17-base/build-tier17/frontend/faac",
+      "expected_reference": "lc_base_reference",
+      "role": "LC identity",
+      "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+    },
+    "lc_tier17_stack": {
+      "binary": "/private/tmp/faac-envcount-tier17-stack/build-tier17/frontend/faac",
+      "expected_reference": "lc_stack_reference",
+      "role": "LC identity",
+      "sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d"
+    }
+  },
+  "created_utc": "2026-10-14T17:02:06.365164+00:00",
+  "he_cbr_cases": {
+    "partial_mono": [
+      17,
+      32
+    ],
+    "partial_stereo": [
+      34,
+      64
+    ],
+    "silence_mono": [
+      16,
+      17,
+      18
+    ],
+    "silence_stereo": [
+      32,
+      34,
+      36
+    ],
+    "tone_mono": [
+      16,
+      17,
+      18
+    ],
+    "tone_stereo": [
+      32,
+      34,
+      36
+    ]
+  },
+  "he_fixture_specs": {
+    "partial_mono": {
+      "channels": 1,
+      "frames": 11777,
+      "kind": "partial",
+      "sha256": "7c9265546b62f9eb0e8c56756bef0cf8089a5d9a21521022315a1d6a35f172ca"
+    },
+    "partial_stereo": {
+      "channels": 2,
+      "frames": 11777,
+      "kind": "partial",
+      "sha256": "603f774c72e0855f3ef663a41e7e22a69f45ce10775d0bf0dae119f8327abe79"
+    },
+    "silence_mono": {
+      "channels": 1,
+      "frames": 48000,
+      "kind": "silence",
+      "sha256": "0a8f76d89c709043814cb74f331a4578d17ff61256303bd0019a263d053f86e8"
+    },
+    "silence_stereo": {
+      "channels": 2,
+      "frames": 48000,
+      "kind": "silence",
+      "sha256": "ede1f6dd33abfce7bb3a45ba79b0ab5f8baae692709dd32214a41da9af55ab13"
+    },
+    "tone_mono": {
+      "channels": 1,
+      "frames": 96000,
+      "kind": "tone",
+      "sha256": "45ce13febec11d3b8d5ab326b0aefbca1dfc0cf5a9cb902eb673e7a90bea9a84"
+    },
+    "tone_stereo": {
+      "channels": 2,
+      "frames": 96000,
+      "kind": "tone",
+      "sha256": "3e03f5bb7e6abcea35a405b90418cbc2ae24022d0c87f09e92ecaebfdb3100e2"
+    }
+  },
+  "lc_clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "lc_rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "runner_sha256": "722e9c02f1d54b964746bc0221e612f07cbec0524c1b114797ac3dfb4cc3829d",
+  "scoring": "No MOS scoring; verify ordered AAC packet+FDK PCM identity for LC, and strict decodability for HE edge fixtures.",
+  "stack_source_head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+  "strict_decoders": [
+    "FDK AAC",
+    "FAAD3 --strict",
+    "FFmpeg"
+  ]
+}

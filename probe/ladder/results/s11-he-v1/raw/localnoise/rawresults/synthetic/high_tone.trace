@@ -1,0 +1,587 @@
+Freeware Advanced Audio Coder
+FAAC 2.2.0 (99ce2b09-dirty)
+
+Initial quantization quality: 400
+Average bitrate: 32 kbps/channel
+Bandwidth: 12000 Hz
+Object type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS
+Container format: Transport Stream (ADTS)
+Encoding control/synthetic/high_tone.wav to control/synthetic/high_tone.aac
+         frame         | bitrate | elapsed/estim | play/CPU | ETA
+SBR invf ch=0 band=0 Torig=83338.189 Tsource=1.007085 mode=0
+SBR noise ch=0 env=0 band=0 Torig=0.93191927 Tsource=0.90367875 rawQ=0.0041916184 smoothedQ=0.0041916184 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=166675.45 Tsource=1.1104913 rawQ=2.3436265e-08 smoothedQ=0.0025149804 finalLevel=18
+SBR invf ch=0 band=1 Torig=29554.718 Tsource=1.4745813 mode=0
+SBR noise ch=0 env=0 band=1 Torig=1.8909258 Tsource=0.90286822 rawQ=0.0020657871 smoothedQ=0.0020657871 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=59107.545 Tsource=2.0462945 rawQ=6.6087163e-08 smoothedQ=0.0012394987 finalLevel=18
+SBR invf ch=1 band=0 Torig=48.073718 Tsource=1.5677138 mode=0
+SBR noise ch=1 env=0 band=0 Torig=0.90915354 Tsource=0.90347089 rawQ=0.004296579 smoothedQ=0.0042965789 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=95.238283 Tsource=2.2319568 rawQ=4.1015544e-05 smoothedQ=0.0025943536 finalLevel=18
+SBR invf ch=1 band=1 Torig=10.764102 Tsource=2.9996155 mode=0
+SBR noise ch=1 env=0 band=1 Torig=0.90752401 Tsource=0.90484421 rawQ=0.0043042938 smoothedQ=0.0043042939 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=20.620681 Tsource=5.0943868 rawQ=0.00018943361 smoothedQ=0.0026583498 finalLevel=18
+      0/48      (  0%) |    0.0  |    0.0/0.0    |  371.01x | 0.0 SBR invf ch=0 band=0 Torig=321871.55 Tsource=129097.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=0.0010838746 finalLevel=18
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=0.00024555057 finalLevel=18
+SBR invf ch=0 band=1 Torig=270960.2 Tsource=187207.13 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=0.00053419484 finalLevel=18
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=0.00012103165 finalLevel=19
+SBR invf ch=1 band=0 Torig=46423.631 Tsource=226176.91 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=0.0011250296 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=0.00025993248 finalLevel=18
+SBR invf ch=1 band=1 Torig=120189.76 Tsource=178958.88 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=0.0011776842 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=0.00029004247 finalLevel=18
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=9.7265607e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=1.3180674e-08 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=2.4555045e-06 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=1.1117442e-05 finalLevel=22
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=438964.38 Tsource=187208.96 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=400928.91 Tsource=272699.44 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69528.045 Tsource=353410.18 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=175093.62 Tsource=278641.42 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=440045.73 Tsource=190434.76 mode=0
+SBR noise ch=0 env=0 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=437869.09 Tsource=184000.97 rawQ=8.9210453e-09 smoothedQ=8.8762787e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=396300.31 Tsource=276756.16 mode=0
+SBR noise ch=0 env=0 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=405568.46 Tsource=268646.38 rawQ=9.6315428e-09 smoothedQ=9.87358e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69546.299 Tsource=346345.33 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69451.22 Tsource=360494.9 rawQ=5.6244512e-08 smoothedQ=5.6164238e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=177692.73 Tsource=273540.84 mode=0
+SBR noise ch=1 env=0 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=172510.22 Tsource=283746.31 rawQ=2.2643586e-08 smoothedQ=2.2004571e-08 finalLevel=24
+     44/48      ( 91%) |   59.2  |    0.0/0.0    |  456.31x | 0.0 SBR invf ch=0 band=0 Torig=441135.45 Tsource=193649.88 mode=0
+SBR noise ch=0 env=0 band=0 Torig=437885.82 Tsource=183979.61 rawQ=8.9207044e-09 smoothedQ=8.8947053e-09 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=444390.64 Tsource=203313.02 rawQ=8.7901266e-09 smoothedQ=8.8608923e-09 finalLevel=24
+SBR invf ch=0 band=1 Torig=391665.13 Tsource=280810.69 mode=0
+SBR noise ch=0 env=0 band=1 Torig=405555.33 Tsource=268642 rawQ=9.6318548e-09 smoothedQ=9.7734314e-09 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=377770.57 Tsource=292977.91 rawQ=1.0340271e-08 smoothedQ=9.9566567e-09 finalLevel=24
+SBR invf ch=1 band=0 Torig=69599.695 Tsource=339268.56 mode=0
+SBR noise ch=1 env=0 band=0 Torig=69521.509 Tsource=360471.05 rawQ=5.6187647e-08 smoothedQ=5.6178074e-08 finalLevel=24
+SBR noise ch=1 env=1 band=0 Torig=69701.31 Tsource=318058.12 rawQ=5.6042706e-08 smoothedQ=5.6132554e-08 finalLevel=24
+SBR invf ch=1 band=1 Torig=180282.4 Tsource=268437.68 mode=0
+SBR noise ch=1 env=0 band=1 Torig=172491.37 Tsource=283741.13 rawQ=2.2646061e-08 smoothedQ=2.2270105e-08 finalLevel=24
+SBR noise ch=1 env=1 band=1 Torig=188067.16 Tsource=253132.5 rawQ=2.0770505e-08 smoothedQ=2.1785476e-08 finalLevel=24
+SBR invf ch=0 band=0 Torig=148378.42 Tsource=64559.059 mode=0
+SBR noise ch=0 env=0 band=0 Torig=3996.0964 Tsource=29.95761 rawQ=9.7751645e-07 smoothedQ=3.9631444e-07 finalLevel=24
+SBR noise ch=0 env=1 band=0 Torig=0.93769612 Tsource=0.90577337 rawQ=0.0041657952 smoothedQ=0.0016666541 finalLevel=18
+SBR invf ch=0 band=1 Torig=150171.22 Tsource=93608.539 mode=0
+SBR noise ch=0 env=0 band=1 Torig=58849.214 Tsource=14.773929 rawQ=6.6377267e-08 smoothedQ=3.257187e-08 finalLevel=24
+SBR noise ch=0 env=1 band=1 Torig=1.5104673 Tsource=0.90482616 rawQ=0.0025861202 smoothedQ=0.0010344734 finalLevel=18
+SBR invf ch=1 band=0 Torig=23206.79 Tsource=113091.43 mode=0
+SBR noise ch=1 env=0 band=0 Torig=8.058275 Tsource=8.7845655 rawQ=0.00048475015 smoothedQ=0.00019393373 finalLevel=18
+SBR noise ch=1 env=1 band=0 Torig=0.90556005 Tsource=0.90591459 rawQ=0.0043136289 smoothedQ=0.0018909701 finalLevel=18
+SBR invf ch=1 band=1 Torig=60094.395 Tsource=89482.536 mode=0
+SBR noise ch=1 env=0 band=1 Torig=3.0122007 Tsource=9.8899346 rawQ=0.0012968093 smoothedQ=0.00051873669 finalLevel=18
+SBR noise ch=1 env=1 band=1 Torig=0.90619306 Tsource=0.90546062 rawQ=0.0043106157 smoothedQ=0.0021670101 finalLevel=18
+     49/48      (102%) |   66.4  |    0.0/0.0    |  432.53x | 0.0 

@@ -1,0 +1,2247 @@
+{
+  "faad_pass": 320,
+  "ffmpeg_pass": 320,
+  "rows": [
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "baseline_ref|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "off_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "stack_ref|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0001_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f0_lam0003_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0001_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x1_f1_lam0003_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0001_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f0_lam0003_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0001_stack|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_base|velvet.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|21-classic.441.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|21-classic.441.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|21-classic.441.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|21-classic.441.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|fms.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|fms.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|fms.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|fms.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|sandman.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|sandman.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|sandman.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|sandman.16b48k.wav|96"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|velvet.16b48k.wav|32"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|velvet.16b48k.wav|48"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|velvet.16b48k.wav|64"
+    },
+    {
+      "faad_ok": true,
+      "faad_returncode": 0,
+      "ffmpeg_ok": true,
+      "ffmpeg_returncode": 0,
+      "key": "x2_f1_lam0003_stack|velvet.16b48k.wav|96"
+    }
+  ],
+  "streams": 320
+}

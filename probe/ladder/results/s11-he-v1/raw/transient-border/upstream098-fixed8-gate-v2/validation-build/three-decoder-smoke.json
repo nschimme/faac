@@ -1,0 +1,367 @@
+{
+  "schema": "faac-upstream098-fixed8-three-decoder-smoke-v1",
+  "source_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "faad2": {
+    "version": "2.11.4",
+    "sha256": "a400fa19a52cf4d15f1f33364ac3d117b9682a260bf144cee693214c010d59f5"
+  },
+  "ffmpeg": "ffmpeg version N-127192-gef52e1cc38 Copyright (c) 2000-2026 the FFmpeg developers",
+  "rows": [
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/silence-1ch-baseline-hev1.m4a",
+      "input_sha256": "4ac8c97d692ad3669ab1054f92e2623d7a3ae5b8a97c943cbdd244bdab241b38",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 1,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-1ch-baseline-hev1-faad.wav",
+          "wav_sha256": "85336fcbc2f9d694fa648de1eb40a07b99a3194e4a5ec92429d4a9199f7aa5f7",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-1ch-baseline-hev1-ffmpeg.wav",
+          "wav_sha256": "46a4fdcbfbf15a28332520565ff339cbd91e49343bd38a10c1f582e9cea533d9",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-1ch-baseline-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-1ch-baseline-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    },
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/silence-1ch-fixed8-hev1.m4a",
+      "input_sha256": "f61a2b570a388a66d01e939634a9cd1a785834f926c5c590b5a28ea439503fc5",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 1,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-1ch-fixed8-hev1-faad.wav",
+          "wav_sha256": "85336fcbc2f9d694fa648de1eb40a07b99a3194e4a5ec92429d4a9199f7aa5f7",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-1ch-fixed8-hev1-ffmpeg.wav",
+          "wav_sha256": "46a4fdcbfbf15a28332520565ff339cbd91e49343bd38a10c1f582e9cea533d9",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-1ch-fixed8-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-1ch-fixed8-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    },
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/silence-2ch-baseline-hev1.m4a",
+      "input_sha256": "bc6ec2fa22be5ead0bd2480b7eb6c0afa7c85eb7371114dc538dec85162fc7ac",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 2,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-2ch-baseline-hev1-faad.wav",
+          "wav_sha256": "296223d3282e23a22e46d8105de220cb57d64356b4b643d7bbb3b802c26e07c7",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-2ch-baseline-hev1-ffmpeg.wav",
+          "wav_sha256": "3b63ad16054c4d9abf6fe6ba66d0fef0898175d2447a6ab93f1f13e6b0730d2e",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-2ch-baseline-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-2ch-baseline-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    },
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/silence-2ch-fixed8-hev1.m4a",
+      "input_sha256": "d0e172d55c46eedb0e7ebb79d451e3962919e276e88c0990f447536ab6f1c794",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 2,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-2ch-fixed8-hev1-faad.wav",
+          "wav_sha256": "296223d3282e23a22e46d8105de220cb57d64356b4b643d7bbb3b802c26e07c7",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/silence-2ch-fixed8-hev1-ffmpeg.wav",
+          "wav_sha256": "3b63ad16054c4d9abf6fe6ba66d0fef0898175d2447a6ab93f1f13e6b0730d2e",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-2ch-fixed8-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/silence-2ch-fixed8-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    },
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/tone-1ch-baseline-hev1.m4a",
+      "input_sha256": "15885f00a32a38380b4b13272f35dcbf244507cb0fa55655e29e822f66856ef6",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 1,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-1ch-baseline-hev1-faad.wav",
+          "wav_sha256": "d4c5fdf46b502314551b76beb879b31fa16aa187d11503ed9a4cba548835b507",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-1ch-baseline-hev1-ffmpeg.wav",
+          "wav_sha256": "b0c9fa74ef0fdd4ff4d26d37a7dad51a4d51ee3d70d368593b497b7a16be7070",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-1ch-baseline-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-1ch-baseline-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    },
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/tone-1ch-fixed8-hev1.m4a",
+      "input_sha256": "4d6ed86379a1fe6d7f85fc5367bc568fcc34d44380a2706ce441f1fd421eb4c8",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 1,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-1ch-fixed8-hev1-faad.wav",
+          "wav_sha256": "5f3c7f906efda85eb119928db6495d17f9d7782e260df39091056a5c3f632e4d",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-1ch-fixed8-hev1-ffmpeg.wav",
+          "wav_sha256": "b0c9fa74ef0fdd4ff4d26d37a7dad51a4d51ee3d70d368593b497b7a16be7070",
+          "channels": 1,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-1ch-fixed8-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-1ch-fixed8-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    },
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/tone-2ch-baseline-hev1.m4a",
+      "input_sha256": "a9e2040ee568010f09349d4f5340a74f6c565f2ccb7a24532d72249b3043b11c",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 2,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-2ch-baseline-hev1-faad.wav",
+          "wav_sha256": "9a6fcb0e20c709d8f7f0fb2a0f6646580b002006714c8dac44851e18a6584daf",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-2ch-baseline-hev1-ffmpeg.wav",
+          "wav_sha256": "34ab0ed6dc6171d645a17ee9af67bc525538f3787e797f638233fd3f3d9e2b88",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-2ch-baseline-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-2ch-baseline-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    },
+    {
+      "input": "/private/tmp/faac-upstream098-smoke/outputs/tone-2ch-fixed8-hev1.m4a",
+      "input_sha256": "effc1dc109123a755a21de29f4824c2d598cc5ed72fbac8e8d38a181a79a83ef",
+      "ffprobe": {
+        "codec_name": "aac",
+        "profile": "HE-AAC",
+        "sample_rate": "48000",
+        "channels": 2,
+        "duration": "0.042708",
+        "nb_frames": "4"
+      },
+      "decoders": {
+        "faad2": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-2ch-fixed8-hev1-faad.wav",
+          "wav_sha256": "4bb9cb8cee793c92ef6a551b20666c8bc8f4de54baeb5ced881fb7721a4645e5",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "ffmpeg": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/decoder-checks/tone-2ch-fixed8-hev1-ffmpeg.wav",
+          "wav_sha256": "34ab0ed6dc6171d645a17ee9af67bc525538f3787e797f638233fd3f3d9e2b88",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 2050,
+          "sample_width": 2
+        },
+        "fdkdec_existing": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-2ch-fixed8-hev1.wav"
+        },
+        "fdkdec": {
+          "returncode": 0,
+          "wav": "/private/tmp/faac-upstream098-smoke/outputs/tone-2ch-fixed8-hev1.wav",
+          "channels": 2,
+          "rate": 48000,
+          "frames": 3134,
+          "sample_width": 2
+        }
+      }
+    }
+  ],
+  "notes": [
+    "All eight streams were recognized by ffprobe as HE-AAC and decoded successfully by FAAD2 2.11.4, FDK and FFmpeg.",
+    "FAAD2 and FFmpeg preserved mono/stereo channel counts and each produced 2050 frames for the 2049-frame synthetic source. FDK produced 3134 stereo frames in all eight cases, including mono input; baseline and fixed8 agree. This smoke does not establish exact gapless sample counts."
+  ]
+}

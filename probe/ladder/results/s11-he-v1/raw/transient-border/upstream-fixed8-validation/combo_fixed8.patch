@@ -1,0 +1,25 @@
+diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
+index 63ff26f3..8015261b 100644
+--- a/libfaac/sbr_analysis.c
++++ b/libfaac/sbr_analysis.c
+@@ -67,19 +67,15 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+      * envelope borders across all channels to maintain spatial imaging. The
+      * LFE carries no SBR, so it gets no vote. */
+     float frameStrength = 0.0f;
+-    int frameSlot = 0;
+     for (int ch = 0; ch < nch; ch++) {
+         if (isLfe[ch]) continue;
+         if (sa->ch[ch].transientStrength > frameStrength) {
+             frameStrength = sa->ch[ch].transientStrength;
+-            frameSlot = sa->ch[ch].transientSlot;
+         }
+     }
+ 
+     if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
+-        int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
+-        int rel = clamp_int((Ts - 2) / 2, 0, 3);
+-        int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
++        const int innerSbr = SBR_NUM_TIME_SLOTS / 2;
+         sa->numEnvelopes = 2;
+         sa->frameClass = SBR_FRAME_CLASS_VARFIX;
+         sa->tEnv[0] = 0;

@@ -1,0 +1,89 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+The Meson build system
+Version: 1.3.2
+Source dir: /work/source
+Build dir: /tmp/faac-build
+Build type: native build
+Project name: faac
+Project version: 2.2.0
+C compiler for the host machine: gcc-13 (gcc 13.3.0 "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0")
+C linker for the host machine: gcc-13 ld.bfd 2.42
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Has header "getopt.h" : YES 
+Has header "immintrin.h" : YES 
+Library m found: YES
+Configuring config.h using configuration
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Library iconv found: NO
+Has header "iconv.h" : YES 
+Checking for function "iconv_open" with dependency -liconv: YES 
+Library shell32 found: NO
+Build targets in project: 6
+
+faac 2.2.0
+
+  User defined options
+    buildtype      : release
+    default_library: both
+    b_lto          : true
+
+Found ninja-1.11.1 at /usr/bin/ninja
+ninja: Entering directory `/tmp/faac-build'
+[1/56] Compiling C object libfaac/libfaac.a.p/cpu_compute.c.o
+[2/56] Compiling C object libfaac/libfaac.a.p/bitstream.c.o
+[3/56] Compiling C object libfaac/libfaac.a.p/huffdata.c.o
+[4/56] Compiling C object libfaac/libfaac.a.p/fft.c.o
+[5/56] Compiling C object libfaac/libfaac.a.p/blockswitch.c.o
+[6/56] Compiling C object libfaac/libfaac.a.p/faac.c.o
+[7/56] Compiling C object libfaac/libfaac.a.p/channels.c.o
+[8/56] Compiling C object libfaac/libfaac.a.p/huff2.c.o
+[9/56] Compiling C object libfaac/libfaac.a.p/filtbank.c.o
+[10/56] Compiling C object libfaac/libfaac.a.p/frame.c.o
+[11/56] Compiling C object libfaac/libquantize_sse.a.p/quantize_sse.c.o
+[12/56] Compiling C object libfaac/libfaac.a.p/sbr_tables.c.o
+[13/56] Linking static target libfaac/libquantize_sse.a
+[14/56] Compiling C object libfaac/libfaac.a.p/ratecontrol.c.o
+[15/56] Compiling C object libfaac/libfaac.so.2.0.0.p/bitstream.c.o
+[16/56] Compiling C object libfaac/libfaac.a.p/util.c.o
+[17/56] Compiling C object libfaac/libfaac.a.p/sbr_bitstream.c.o
+[18/56] Compiling C object libfaac/libfaac.a.p/sbr.c.o
+[19/56] Compiling C object libfaac/libfaac.a.p/resample.c.o
+[20/56] Compiling C object libfaac/libfaac.a.p/sbr_analysis.c.o
+[21/56] Compiling C object libfaac/libfaac.a.p/quantize.c.o
+[22/56] Compiling C object libfaac/libfaac.a.p/stereo.c.o
+[23/56] Compiling C object libfaac/libfaac.so.2.0.0.p/cpu_compute.c.o
+[24/56] Compiling C object libfaac/libfaac.a.p/tns.c.o
+[25/56] Compiling C object libfaac/libfaac.so.2.0.0.p/channels.c.o
+[26/56] Compiling C object libfaac/libfaac.so.2.0.0.p/blockswitch.c.o
+[27/56] Linking static target libfaac/libfaac.a
+[28/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huffdata.c.o
+[29/56] Compiling C object libfaac/libfaac.so.2.0.0.p/fft.c.o
+[30/56] Compiling C object libfaac/libfaac.so.2.0.0.p/huff2.c.o
+[31/56] Compiling C object libfaac/libfaac.so.2.0.0.p/faac.c.o
+[32/56] Compiling C object libfaac/libfaac.so.2.0.0.p/filtbank.c.o
+[33/56] Compiling C object libfaac/libfaac.so.2.0.0.p/frame.c.o
+[34/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_tables.c.o
+[35/56] Compiling C object libfaac/libfaac.so.2.0.0.p/ratecontrol.c.o
+[36/56] Compiling C object libfaac/libfaac.so.2.0.0.p/quantize.c.o
+[37/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr.c.o
+[38/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_bitstream.c.o
+[39/56] Generating frontend/git_version.h with a custom command
+[40/56] Compiling C object libfaac/libfaac.so.2.0.0.p/sbr_analysis.c.o
+[41/56] Compiling C object libfaac/libfaac.so.2.0.0.p/resample.c.o
+[42/56] Compiling C object libfaac/libfaac.so.2.0.0.p/util.c.o
+[43/56] Compiling C object libfaac/libfaac.so.2.0.0.p/stereo.c.o
+[44/56] Compiling C object libfaac/libfaac.so.2.0.0.p/tns.c.o
+[45/56] Compiling C object frontend/faac.p/main.c.o
+[46/56] Compiling C object frontend/libfrontend.a.p/output.c.o
+[47/56] Compiling C object frontend/libfrontend.a.p/progress.c.o
+[48/56] Compiling C object frontend/libfrontend.a.p/charset.c.o
+[49/56] Compiling C object frontend/libfrontend.a.p/input.c.o
+[50/56] Compiling C object frontend/libfrontend.a.p/mp4write.c.o
+[51/56] Compiling C object frontend/libfrontend.a.p/help.c.o
+[52/56] Compiling C object frontend/libfrontend.a.p/encode_engine.c.o
+[53/56] Linking static target frontend/libfrontend.a
+[54/56] Linking target libfaac/libfaac.so.2.0.0
+[55/56] Generating symbol file libfaac/libfaac.so.2.0.0.p/libfaac.so.2.0.0.symbols
+[56/56] Linking target frontend/faac

@@ -1,0 +1,5255 @@
+{
+  "clips": 49,
+  "comparisons": {
+    "local2_adaptive18_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.14868797510538484,
+        "lo": -0.7356785220990896,
+        "losses": 17,
+        "mean": -0.25744770533891675,
+        "n": 49,
+        "wins": 32
+      },
+      "mean_bd_rate_percent": -0.25744770533891675,
+      "median_bd_rate_percent": 0.14771574813818855,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.14405286446315113,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4465435122193995,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2782588127250971,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12516453536224326,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.14771574813818855,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.1734208075486428,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3996623259810539,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2852228158840786,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.0817472541456494,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.08280835863292424,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.09180649011655273,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5384266233113388,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5138654760944004,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.44661763949831457,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9472828711031278,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.04973873869473788,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.341658603796958,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.016824540114912523,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3444829712924813,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -5.0417633162956,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6233087607278476,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1043806978270112,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5694953712905848,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.24911507101503805,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3733902300375078,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8605416909230224,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.33607370949624293,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.9789588598211663,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5902116907117172,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.24877572114792024,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.15731003642056596,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.24704372657167184,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.292605212642751,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.36427097337190517,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.24874493702534695,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.04121788308476537,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.9718919117773681,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.40737820860505813,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -4.2611766062299665,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -6.7256103542827965,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 1.4827824537235523,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.9284549338907766,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5327458310645516,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.5664679243041149,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.09548114499500215,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 0.8244439791729619,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.1613577154059862,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.33095343481366335,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3564914313314302,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.010679220229691685,
+          "mean_candidate_mos": 3.842291228625239,
+          "mean_mos_delta": -0.00029394577960578763,
+          "mean_reference_mos": 3.842585174404845,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005227458720304528,
+            "lo": -0.006421171889013174,
+            "losses": 21,
+            "mean": -0.00029394577960578763,
+            "n": 49,
+            "wins": 17
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.0064522419414771584,
+          "mean_candidate_mos": 4.2060733960599315,
+          "mean_mos_delta": -0.00022294569988639987,
+          "mean_reference_mos": 4.206296341759818,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0036226486673160475,
+            "lo": -0.0040024689265659875,
+            "losses": 20,
+            "mean": -0.00022294569988639987,
+            "n": 49,
+            "wins": 13
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0007446214905711662,
+          "mean_candidate_mos": 4.443346714486881,
+          "mean_mos_delta": 0.0024232377811354033,
+          "mean_reference_mos": 4.440923476705746,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.004858133744220345,
+            "lo": 5.5099020198899874e-05,
+            "losses": 9,
+            "mean": 0.0024232377811354033,
+            "n": 49,
+            "wins": 16
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.001980336727770902,
+          "mean_candidate_mos": 4.68307301462913,
+          "mean_mos_delta": 0.0029350884106694435,
+          "mean_reference_mos": 4.680137926218461,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005295909180933115,
+            "lo": 0.000912831754100566,
+            "losses": 2,
+            "mean": 0.0029350884106694435,
+            "n": 49,
+            "wins": 13
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.0817472541456494,
+        "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+      }
+    },
+    "local2_adaptive18_vs_local2_static18": {
+      "aac_packet_identity_ties": 138,
+      "decoded_pcm_identity_ties": 142,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.039360777140646015,
+        "lo": -0.15146875774506188,
+        "losses": 6,
+        "mean": -0.046165773417381435,
+        "n": 49,
+        "wins": 6
+      },
+      "mean_bd_rate_percent": -0.046165773417381435,
+      "median_bd_rate_percent": 0.0,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6129311020214856,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2677692580689506,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.10504142632982161,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.00015093094951623698,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3510764849324999,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13281189995060227,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.028614908046420418,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.35994773496994537,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 0.6216700096144168,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.7818684421007092,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": -0.8319117538268195,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -0.00031282979345848005,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.382228594067624,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.39258485591990855,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.002139890492761937,
+          "mean_candidate_mos": 3.842291228625239,
+          "mean_mos_delta": 0.0003011615908875757,
+          "mean_reference_mos": 3.8419900670343514,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0019867858108209104,
+            "lo": -0.0011890615735735213,
+            "losses": 3,
+            "mean": 0.0003011615908875757,
+            "n": 49,
+            "wins": 5
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.0005834919758394642,
+          "mean_candidate_mos": 4.2060733960599315,
+          "mean_mos_delta": 0.00040488826985261877,
+          "mean_reference_mos": 4.205668507790079,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0010609772740578164,
+            "lo": -0.0001686397863894093,
+            "losses": 0,
+            "mean": 0.00040488826985261877,
+            "n": 49,
+            "wins": 4
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0010091633714525354,
+          "mean_candidate_mos": 4.443346714486881,
+          "mean_mos_delta": -3.90811842315051e-05,
+          "mean_reference_mos": 4.443385795671112,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0005596316590601085,
+            "lo": -0.0006557970630879305,
+            "losses": 2,
+            "mean": -3.90811842315051e-05,
+            "n": 49,
+            "wins": 2
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 3.702292843840999e-05,
+          "mean_candidate_mos": 4.68307301462913,
+          "mean_mos_delta": -0.00039765299582967953,
+          "mean_reference_mos": 4.6834706676249604,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.000131344308658522,
+            "lo": -0.0007546677881357622,
+            "losses": 1,
+            "mean": -0.00039765299582967953,
+            "n": 49,
+            "wins": 0
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 0.6216700096144168,
+        "clip": "girl.16b48k.wav"
+      }
+    },
+    "local2_adaptive18_vs_local2_static24": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.049488398643695176,
+        "lo": -0.13012941373105838,
+        "losses": 12,
+        "mean": -0.0300810616593311,
+        "n": 49,
+        "wins": 19
+      },
+      "mean_bd_rate_percent": -0.0300810616593311,
+      "median_bd_rate_percent": 0.0027116668587678916,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.06149838082309955,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0013538032554771817,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.03833693939263583,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.007464092286801893,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0007899060377569711,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.07849185592361252,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5577813028188827,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0016265552525096538,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.27269270124916645,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0017613967593810287,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.565154133606697e-05,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0037776023418034654,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.03141931583537927,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0010046285270126631,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.11644293041619402,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.04997554458947562,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.00443381128781839,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.041579489795018354,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0027621989534432068,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.09511088633649134,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12988274083296503,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.001150174475250676,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.018099531810233938,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.029503785659157344,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.012721525306713666,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0042429555204615,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0027116668587678916,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.021298396187474644,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0034258445843371454,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3566718163215521,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.02665209705656757,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0016579729260945975,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.01417576811286736,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.0043611589329417555,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": 0.033207472171570274,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.06675627039940402,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.00868827584985521,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": -0.012579601761175674,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 0.6947993565602495,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.6214951265820177,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": -0.8718088547967073,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.004617267602236019,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.05546060455960955,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.011466594757381099,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.003783608565299801,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 0.00315364793066486,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3418950623822137,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3261171080175096,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.010712488652298013,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.002139890492761937,
+          "mean_candidate_mos": 3.842291228625239,
+          "mean_mos_delta": 0.00026626489600356745,
+          "mean_reference_mos": 3.8420249637292354,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0019924981253487723,
+            "lo": -0.0012268387541478994,
+            "losses": 3,
+            "mean": 0.00026626489600356745,
+            "n": 49,
+            "wins": 5
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": -0.0005834919758394642,
+          "mean_candidate_mos": 4.2060733960599315,
+          "mean_mos_delta": 0.00036997211222745936,
+          "mean_reference_mos": 4.205703423947704,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.001012860512246891,
+            "lo": -0.00020271418045978156,
+            "losses": 0,
+            "mean": 0.00036997211222745936,
+            "n": 49,
+            "wins": 4
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0010091633714525354,
+          "mean_candidate_mos": 4.443346714486881,
+          "mean_mos_delta": -0.000212503939258809,
+          "mean_reference_mos": 4.44355921842614,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.00038142106970962214,
+            "lo": -0.0008172891577895807,
+            "losses": 2,
+            "mean": -0.000212503939258809,
+            "n": 49,
+            "wins": 2
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 3.702292843840999e-05,
+          "mean_candidate_mos": 4.68307301462913,
+          "mean_mos_delta": -0.00046914937544842157,
+          "mean_reference_mos": 4.683542164004579,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.00020054408482142856,
+            "lo": -0.0008210454668317522,
+            "losses": 1,
+            "mean": -0.00046914937544842157,
+            "n": 49,
+            "wins": 0
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 0.6947993565602495,
+        "clip": "girl.16b48k.wav"
+      }
+    },
+    "local2_adaptive18_vs_oneband_static18": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.5913742889130469,
+        "lo": 0.10888901987050002,
+        "losses": 8,
+        "mean": 0.35531519719104104,
+        "n": 49,
+        "wins": 41
+      },
+      "mean_bd_rate_percent": 0.3553151971910411,
+      "median_bd_rate_percent": 0.3635183367446393,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.5834170942538464,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.47192584734054854,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2816487487040673,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20251945450873166,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3880539473690936,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1738945624736976,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3802568841075882,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4184006021749287,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.595556198727955,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10113787585777079,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2068598407383604,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23119464442173943,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.50247816469129,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.27875527598471006,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.092263026004603,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.035495012372810386,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2996478227331298,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.19476042608745914,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3437033458899563,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.10235964993404734,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6476919373040735,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.07438491731857066,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7164569030169154,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.14590386134307742,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3013699242098387,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3841595547997789,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.31937607120529066,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5228862657479239,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5932261159617092,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.25151682437696277,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3613075226208018,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3635183367446393,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2733271671072974,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.38798677649394264,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.2872490382460735,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.534213739479239,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.07711095218967401,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.8772220141374465,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 1.595316141289449,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2646277908481283,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 1.696884573529922,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.245984932287647,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7743331496145478,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": 0.491488546892338,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.10783234414626364,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 1.6267203798187913,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.179038011611444,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.41433439768308045,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12578170506680753,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.010679220229691685,
+          "mean_candidate_mos": 3.842291228625239,
+          "mean_mos_delta": -0.0054606077622394176,
+          "mean_reference_mos": 3.8477518363874785,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0004837561626823581,
+            "lo": -0.011293090119653819,
+            "losses": 25,
+            "mean": -0.0054606077622394176,
+            "n": 49,
+            "wins": 9
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.0064522419414771584,
+          "mean_candidate_mos": 4.2060733960599315,
+          "mean_mos_delta": -0.0035754077288569237,
+          "mean_reference_mos": 4.209648803788788,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.00020185295416384326,
+            "lo": -0.006975071770804269,
+            "losses": 24,
+            "mean": -0.0035754077288569237,
+            "n": 49,
+            "wins": 8
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0007446214905711662,
+          "mean_candidate_mos": 4.443346714486881,
+          "mean_mos_delta": -0.001240282642598055,
+          "mean_reference_mos": 4.44458699712948,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0005776736201072225,
+            "lo": -0.0030174449998505264,
+            "losses": 13,
+            "mean": -0.001240282642598055,
+            "n": 49,
+            "wins": 6
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.001980336727770902,
+          "mean_candidate_mos": 4.68307301462913,
+          "mean_mos_delta": -0.0011813786565041055,
+          "mean_reference_mos": 4.684254393285634,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.00034434454781668525,
+            "lo": -0.0020715071230518575,
+            "losses": 3,
+            "mean": -0.0011813786565041055,
+            "n": 49,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.595556198727955,
+        "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+      }
+    },
+    "local2_adaptive18_vs_oneband_static24": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.6021387944276357,
+        "lo": 0.13782841882512306,
+        "losses": 7,
+        "mean": 0.373701066524633,
+        "n": 49,
+        "wins": 42
+      },
+      "mean_bd_rate_percent": 0.373701066524633,
+      "median_bd_rate_percent": 0.37702675801762897,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.6959570817338889,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.47464480987953195,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2887985307941552,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20587552300230794,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.39066857524918674,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.16153883387519663,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4600082184069487,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.41879915619610353,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.614763070219972,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11474468715233499,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.32035427171221986,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20798909263918253,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5293189434076204,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2733317234490995,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.0973977033887694,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.03700890745137464,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.291359568621231,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.19514596517387073,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.37702675801762897,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.04518773864139458,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6497682960848516,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.06437391906548573,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7401661950713567,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1566797889648308,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2448249205367912,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.37941869070949874,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3212654742389853,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4937572122327927,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5905740136643134,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.25737325858097293,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3690797985695493,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3672956203419009,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2068578263660044,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.38488350256686843,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.2235158356952649,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5210364428861469,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0284758970727772,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.8883330918600718,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 1.5887642013524772,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.0037582164243783,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 1.6374699265743642,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.2563755221263184,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7545666273741647,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": 0.42841643233104687,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.0840180867201612,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 1.6374130892509164,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.1621249195495231,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4374483778131655,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1691378514845132,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.010679220229691685,
+          "mean_candidate_mos": 3.842291228625239,
+          "mean_mos_delta": -0.005575486591884068,
+          "mean_reference_mos": 3.847866715217123,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0005816002281344667,
+            "lo": -0.011468614850725447,
+            "losses": 25,
+            "mean": -0.005575486591884068,
+            "n": 49,
+            "wins": 9
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.0064522419414771584,
+          "mean_candidate_mos": 4.2060733960599315,
+          "mean_mos_delta": -0.0037876391897396166,
+          "mean_reference_mos": 4.209861035249671,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.00037520758959711816,
+            "lo": -0.007197083259115414,
+            "losses": 24,
+            "mean": -0.0037876391897396166,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0007446214905711662,
+          "mean_candidate_mos": 4.443346714486881,
+          "mean_mos_delta": -0.0011856799222985093,
+          "mean_reference_mos": 4.44453239440918,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.000630544156444316,
+            "lo": -0.0029486247471400668,
+            "losses": 12,
+            "mean": -0.0011856799222985093,
+            "n": 49,
+            "wins": 6
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.001980336727770902,
+          "mean_candidate_mos": 4.68307301462913,
+          "mean_mos_delta": -0.0012490603388572226,
+          "mean_reference_mos": 4.684322074967987,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0004178650525151467,
+            "lo": -0.0021340701044822224,
+            "losses": 3,
+            "mean": -0.0012490603388572226,
+            "n": 49,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.614763070219972,
+        "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+      }
+    },
+    "local2_joint18_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.7720535970255928,
+        "lo": -0.715837728990257,
+        "losses": 25,
+        "mean": 0.004288743185896172,
+        "n": 49,
+        "wins": 24
+      },
+      "mean_bd_rate_percent": 0.004288743185896172,
+      "median_bd_rate_percent": -0.041344234099072175,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.26751422092414767,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6158826720873423,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.041344234099072175,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.05536638725867071,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20346449168949787,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.141368562449797,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 6.111074601976996,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5005653390128373,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 4.031732595348636,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2565913178690482,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.818131087855789,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.715335718801835,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4007842221873235,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.34392823990461174,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.3050827383001895,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.35010796100118924,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7515793024566619,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.22051284751932743,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4971621177661367,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.567077828364874,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4697305007722363,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.12018358853308486,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.128811510804816,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.8768514489702959,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.555871750356752,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4266252138060875,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12476268743657482,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.050480106344398,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5494625403871911,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20337787759829862,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2990006444664184,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4193964446037146,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.382234033878239,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.29619351760299395,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.47943374800641925,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.1954929007734538,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.757898413161619,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.18343052678384542,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -8.429571192875096,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 10.201984125139907,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 1.532328560006091,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.0863180489130597,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2137765810476866,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -1.0625533553185407,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.3154735689481325,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -0.9342281659015184,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7129379031106997,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13559165636429782,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1323529976426041,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.012858334682647528,
+          "mean_candidate_mos": 3.842008668549207,
+          "mean_mos_delta": -0.0005765058556381537,
+          "mean_reference_mos": 3.842585174404845,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.004297232141300123,
+            "lo": -0.005234027395443041,
+            "losses": 21,
+            "mean": -0.0005765058556381537,
+            "n": 49,
+            "wins": 17
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.03424112683309816,
+          "mean_candidate_mos": 4.205645327665368,
+          "mean_mos_delta": -0.0006510140944500359,
+          "mean_reference_mos": 4.206296341759818,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.004600875231684471,
+            "lo": -0.005390721924450933,
+            "losses": 19,
+            "mean": -0.0006510140944500359,
+            "n": 49,
+            "wins": 12
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.017137334629658853,
+          "mean_candidate_mos": 4.4431677740447375,
+          "mean_mos_delta": 0.002244297338991749,
+          "mean_reference_mos": 4.440923476705746,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.006196644841408243,
+            "lo": -0.001827424886275311,
+            "losses": 9,
+            "mean": 0.002244297338991749,
+            "n": 49,
+            "wins": 22
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.007981524579353867,
+          "mean_candidate_mos": 4.681788970013054,
+          "mean_mos_delta": 0.0016510437945930325,
+          "mean_reference_mos": 4.680137926218461,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005961155404849928,
+            "lo": -0.003263872496935786,
+            "losses": 5,
+            "mean": 0.0016510437945930325,
+            "n": 49,
+            "wins": 16
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 10.201984125139907,
+        "clip": "glk.wav"
+      }
+    },
+    "local2_joint18_vs_local2_adaptive18": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 1.1853528718655422,
+        "lo": -0.36581431753655436,
+        "losses": 34,
+        "mean": 0.2620970229122482,
+        "n": 49,
+        "wins": 15
+      },
+      "mean_bd_rate_percent": 0.2620970229122482,
+      "median_bd_rate_percent": -0.16128351959575626,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.12404922606279456,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.17425414665099836,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.27596639515265,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.06974382331855766,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3511669627101366,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.02637027910252776,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 6.026308580749329,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7944888689882079,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.869493130871147,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3377225646331916,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8829206652655186,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.18000691993124152,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.09990653131896066,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1015333556060094,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.37387538148598853,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3975216060875697,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5817287852851849,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23421266059600043,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8324527029610063,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4146849973878153,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.16128351959575626,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23232178081119548,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6432379634101815,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5947629544645014,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.17073221456673782,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5718795824678602,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20798707244902293,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0718678751781332,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.04037854143753572,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.040405976566615376,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.14275304256592403,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1828552314564691,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.11012294001305767,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": -0.06874354639190283,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.22900290002103585,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.152436436414328,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7698897297792939,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": -0.21947444876803113,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -4.6286374742011365,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 17.00365739422518,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 0.05634045434714796,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.1526519769742496,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3145329671679131,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.5010397130860045,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.407590570995664,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -1.7046002044995512,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4435246612243926,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.19096445328037337,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4927951322364352,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.02354095399537126,
+          "mean_candidate_mos": 3.842008668549207,
+          "mean_mos_delta": -0.00028256007603236606,
+          "mean_reference_mos": 3.842291228625239,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0053311026826196786,
+            "lo": -0.004629081609297772,
+            "losses": 16,
+            "mean": -0.00028256007603236606,
+            "n": 49,
+            "wins": 13
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.02779072557230347,
+          "mean_candidate_mos": 4.205645327665368,
+          "mean_mos_delta": -0.000428068394563636,
+          "mean_reference_mos": 4.2060733960599315,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.003086576656419404,
+            "lo": -0.004230236520572584,
+            "losses": 7,
+            "mean": -0.000428068394563636,
+            "n": 49,
+            "wins": 12
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.016392867055450108,
+          "mean_candidate_mos": 4.4431677740447375,
+          "mean_mos_delta": -0.00017894044214365434,
+          "mean_reference_mos": 4.443346714486881,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0029276439121791293,
+            "lo": -0.003599342034787548,
+            "losses": 10,
+            "mean": -0.00017894044214365434,
+            "n": 49,
+            "wins": 16
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.009962329558727568,
+          "mean_candidate_mos": 4.681788970013054,
+          "mean_mos_delta": -0.001284044616076411,
+          "mean_reference_mos": 4.68307301462913,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0020325816407495614,
+            "lo": -0.00524486814226423,
+            "losses": 5,
+            "mean": -0.001284044616076411,
+            "n": 49,
+            "wins": 7
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 17.00365739422518,
+        "clip": "glk.wav"
+      }
+    },
+    "local2_joint18_vs_local2_static18": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.9824545044296248,
+        "lo": -0.35534886274659144,
+        "losses": 33,
+        "mean": 0.18440230390257142,
+        "n": 49,
+        "wins": 16
+      },
+      "mean_bd_rate_percent": 0.18440230390257142,
+      "median_bd_rate_percent": -0.12404922606279456,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.12404922606279456,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.17425414665099836,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.27596639515265,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.06974382331855766,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3511669627101366,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.02637027910252776,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 4.942044844412141,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7944888689882079,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.1284079451192817,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3377225646331916,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8829206652655186,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.18000691993124152,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.09990653131896066,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1015333556060094,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.26758198408478595,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3975216060875697,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5817287852851849,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23421266059600043,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8325895545405526,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.07048452398665805,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.022732091891997097,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23232178081119548,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6432379634101815,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.6227318521053746,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.17073221456673782,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5718795824678602,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20798707244902293,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0718678751781332,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.04037854143753572,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3191158204370437,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.14275304256592403,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1828552314564691,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.11012294001305767,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": -0.06874354639190283,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.22900290002103585,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.152436436414328,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7698897297792939,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": -0.21947444876803113,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -4.038082605994631,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 14.173188468503906,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": -0.763660061919702,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.1526519769742496,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3145329671679131,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.5010397130860045,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.407590570995664,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -1.704923036708872,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.062261758854464944,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.19343214572900003,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4927951322364352,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.025680356590163326,
+          "mean_candidate_mos": 3.842008668549207,
+          "mean_mos_delta": 1.860151485520966e-05,
+          "mean_reference_mos": 3.8419900670343514,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0053908873577507175,
+            "lo": -0.004162837047966159,
+            "losses": 15,
+            "mean": 1.860151485520966e-05,
+            "n": 49,
+            "wins": 11
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.027205792502107237,
+          "mean_candidate_mos": 4.205645327665368,
+          "mean_mos_delta": -2.318012471101722e-05,
+          "mean_reference_mos": 4.205668507790079,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.003391149092693718,
+            "lo": -0.0036891139283472176,
+            "losses": 6,
+            "mean": -2.318012471101722e-05,
+            "n": 49,
+            "wins": 13
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.01740180172928919,
+          "mean_candidate_mos": 4.4431677740447375,
+          "mean_mos_delta": -0.00021802162637515944,
+          "mean_reference_mos": 4.443385795671112,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.002869946616036551,
+            "lo": -0.0037626052389339525,
+            "losses": 8,
+            "mean": -0.00021802162637515944,
+            "n": 49,
+            "wins": 16
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.009999368561491974,
+          "mean_candidate_mos": 4.681788970013054,
+          "mean_mos_delta": -0.0016816976119060905,
+          "mean_reference_mos": 4.6834706676249604,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0017032136722486845,
+            "lo": -0.005803332036855269,
+            "losses": 5,
+            "mean": -0.0016816976119060905,
+            "n": 49,
+            "wins": 7
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 14.173188468503906,
+        "clip": "glk.wav"
+      }
+    },
+    "local2_joint18_vs_local2_static24": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 1.005148484649368,
+        "lo": -0.34377286269835494,
+        "losses": 33,
+        "mean": 0.20220017280050473,
+        "n": 49,
+        "wins": 16
+      },
+      "mean_bd_rate_percent": 0.20220017280050473,
+      "median_bd_rate_percent": -0.1576449718200923,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.1853911893497262,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.17560151131641444,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2381829489583107,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.07713457868289142,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3503604334149313,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10500330737117647,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 4.985407702290634,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7928070567703616,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.1342280063343155,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3395252510475122,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8846132354903724,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.17622406871843355,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.13127797937343422,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.10059055642289705,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.25595945256327024,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3477738774086969,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5861450099875487,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.19278865911205312,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8349486470720646,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.32412956810472515,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.025988280862987434,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2334456246490757,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6606283009799152,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.6238354602692961,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1576449718200923,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5676802213459786,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20530820143256356,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.05097115084605752,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.04380143516097279,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3158977812673269,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1694753509887681,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.18126271003253702,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.09598187239484579,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": -0.06448271340030454,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.1958934179192573,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.08562089835883,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7611641396057411,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": -0.23197082324402096,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -3.962420281029455,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 14.427976799909125,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": -0.8020066166541939,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.15722115995493446,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2591748536431071,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.5131798638286722,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.4113518852004505,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -1.7004335233436918,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10259678392179339,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12700494722299727,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5035063796661419,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.025680356590163326,
+          "mean_candidate_mos": 3.842008668549207,
+          "mean_mos_delta": -1.629518002879863e-05,
+          "mean_reference_mos": 3.8420249637292354,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005418543912926499,
+            "lo": -0.00421918654928402,
+            "losses": 16,
+            "mean": -1.629518002879863e-05,
+            "n": 49,
+            "wins": 11
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.027205792502107237,
+          "mean_candidate_mos": 4.205645327665368,
+          "mean_mos_delta": -5.8096282336176656e-05,
+          "mean_reference_mos": 4.205703423947704,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0033520143859240474,
+            "lo": -0.0037496527846978636,
+            "losses": 6,
+            "mean": -5.8096282336176656e-05,
+            "n": 49,
+            "wins": 14
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.01740180172928919,
+          "mean_candidate_mos": 4.4431677740447375,
+          "mean_mos_delta": -0.00039144438140246334,
+          "mean_reference_mos": 4.44355921842614,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0026888068841428173,
+            "lo": -0.00396405434121891,
+            "losses": 8,
+            "mean": -0.00039144438140246334,
+            "n": 49,
+            "wins": 16
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.009999368561491974,
+          "mean_candidate_mos": 4.681788970013054,
+          "mean_mos_delta": -0.0017531939915248326,
+          "mean_reference_mos": 4.683542164004579,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0016300045714086415,
+            "lo": -0.005871977124895368,
+            "losses": 5,
+            "mean": -0.0017531939915248326,
+            "n": 49,
+            "wins": 7
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 14.427976799909125,
+        "clip": "glk.wav"
+      }
+    },
+    "local2_joint18_vs_oneband_static18": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 1.3716732958503077,
+        "lo": 0.01848715338196441,
+        "losses": 19,
+        "mean": 0.5902206509078014,
+        "n": 49,
+        "wins": 30
+      },
+      "mean_bd_rate_percent": 0.5902206509078014,
+      "median_bd_rate_percent": 0.20417896189728335,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.4611709930831376,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6404749729474135,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.03783250781089764,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13258874924597652,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.03651248889895431,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20417896189728335,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 6.154333698310532,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3676762857316218,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 4.56638504061031,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23902738548020608,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7146845303234284,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4074405315925844,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.389854380431621,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.17619123747216747,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4262210272399933,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3655677402166102,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7096656372956645,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.042478540805579446,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.49722286058310194,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2895323276102646,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4946456264486976,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.15012158451596092,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.015598805068650634,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.7687157472054738,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4820043721606946,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.18940720581426262,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10772288001243968,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.448794205943881,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5524952819173867,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20661618224475653,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5032816676898699,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5346980947022573,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.363960062579318,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.3198440853478868,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.5169246065825583,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6265766183963573,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6928493945774883,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.6530577643491853,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -3.107059509564336,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 13.881523219318304,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 1.7416369496992434,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.4089260913881851,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.45322233496740694,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.017584858726349406,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.30303392076941327,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -0.08761233547777136,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7301585717169767,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.22076576800780234,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.6260285270897956,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.012858334682647528,
+          "mean_candidate_mos": 3.842008668549207,
+          "mean_mos_delta": -0.005743167838271783,
+          "mean_reference_mos": 3.8477518363874785,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.001239455476099131,
+            "lo": -0.010156816365767499,
+            "losses": 25,
+            "mean": -0.005743167838271783,
+            "n": 49,
+            "wins": 11
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.03424112683309816,
+          "mean_candidate_mos": 4.205645327665368,
+          "mean_mos_delta": -0.00400347612342056,
+          "mean_reference_mos": 4.209648803788788,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0007515440181810029,
+            "lo": -0.008357534603196748,
+            "losses": 21,
+            "mean": -0.00400347612342056,
+            "n": 49,
+            "wins": 9
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.017137334629658853,
+          "mean_candidate_mos": 4.4431677740447375,
+          "mean_mos_delta": -0.0014192230847417091,
+          "mean_reference_mos": 4.44458699712948,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0017414579586106905,
+            "lo": -0.0051549210840341995,
+            "losses": 10,
+            "mean": -0.0014192230847417091,
+            "n": 49,
+            "wins": 13
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.007981524579353867,
+          "mean_candidate_mos": 4.681788970013054,
+          "mean_mos_delta": -0.0024654232725805168,
+          "mean_reference_mos": 4.684254393285634,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0010025452594367825,
+            "lo": -0.006581345383001834,
+            "losses": 5,
+            "mean": -0.0024654232725805168,
+            "n": 49,
+            "wins": 5
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 13.881523219318304,
+        "clip": "glk.wav"
+      }
+    },
+    "local2_joint18_vs_oneband_static24": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 1.403516136044242,
+        "lo": 0.027093328051988552,
+        "losses": 19,
+        "mean": 0.6108560093195619,
+        "n": 49,
+        "wins": 30
+      },
+      "mean_bd_rate_percent": 0.6108560093195619,
+      "median_bd_rate_percent": 0.1921792545363843,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.5736865219397869,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6431699882364583,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.030542421971790912,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13614803149530896,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.039134608116686564,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1921792545363843,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 6.221287152410393,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3672807243267462,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 4.587462906138606,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.22566648054659355,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6022188606786716,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3843075934125473,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4166448698146539,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.17081811218153664,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4314444775183954,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3641373164994466,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7013205240495202,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.042102120398446186,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.46456418678664235,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.43184265931324184,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4966880250251382,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.16001951743943588,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.037468984465616195,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.7823913920928636,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4217767872987896,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.19407629623549028,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10960411715468243,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.41871880563093544,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.549848272125697,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.21214822638595532,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5110815030290539,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5384600127495753,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2982999721607333,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.3167176906945013,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.4537313204940996,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.639563523878206,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7415445541075538,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.6641485899127275,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -3.1095221806031303,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 14.260485175865867,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 1.6825753098849816,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.4195352031875386,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.433557926898831,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.08047910395561075,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.32680518170331574,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -0.07581552608642017,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7129113932740072,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2435990807125421,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.670580648295239,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.012858334682647528,
+          "mean_candidate_mos": 3.842008668549207,
+          "mean_mos_delta": -0.005858046667916434,
+          "mean_reference_mos": 3.847866715217123,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.001383499223358777,
+            "lo": -0.010308966344716598,
+            "losses": 26,
+            "mean": -0.005858046667916434,
+            "n": 49,
+            "wins": 9
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.03424112683309816,
+          "mean_candidate_mos": 4.205645327665368,
+          "mean_mos_delta": -0.0042157075843032524,
+          "mean_reference_mos": 4.209861035249671,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.00045205622303242586,
+            "lo": -0.008590012180561922,
+            "losses": 21,
+            "mean": -0.0042157075843032524,
+            "n": 49,
+            "wins": 8
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.017137334629658853,
+          "mean_candidate_mos": 4.4431677740447375,
+          "mean_mos_delta": -0.0013646203644421635,
+          "mean_reference_mos": 4.44453239440918,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.001766525969213369,
+            "lo": -0.005059504995540697,
+            "losses": 10,
+            "mean": -0.0013646203644421635,
+            "n": 49,
+            "wins": 12
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.007981524579353867,
+          "mean_candidate_mos": 4.681788970013054,
+          "mean_mos_delta": -0.0025331049549336335,
+          "mean_reference_mos": 4.684322074967987,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0009080828452596859,
+            "lo": -0.006704447220782845,
+            "losses": 5,
+            "mean": -0.0025331049549336335,
+            "n": 49,
+            "wins": 5
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 14.260485175865867,
+        "clip": "glk.wav"
+      }
+    },
+    "local2_static18_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.18037585454828017,
+        "lo": -0.6540015758555414,
+        "losses": 19,
+        "mean": -0.20519847342399078,
+        "n": 49,
+        "wins": 30
+      },
+      "mean_bd_rate_percent": -0.20519847342399078,
+      "median_bd_rate_percent": 0.1043806978270112,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.14405286446315113,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4465435122193995,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2782588127250971,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12516453536224326,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.14771574813818855,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.1734208075486428,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9609445896711755,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2852228158840786,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.8055774917310474,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.08280835863292424,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.09180649011655273,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5384266233113388,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5138654760944004,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.44661763949831457,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.055052119820421,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.04973873869473788,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.341658603796958,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.016824540114912523,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3446355656816724,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.6808234822507515,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4925068622873896,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1043806978270112,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5694953712905848,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.22276129711269466,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3733902300375078,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8605416909230224,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.33607370949624293,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.9789588598211663,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5902116907117172,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.11335582950242618,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.15731003642056596,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.24704372657167184,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.292605212642751,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.36427097337190517,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.24874493702534695,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.04121788308476537,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.9718919117773681,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.40737820860505813,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -4.764014316133524,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.754227965237112,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 2.3390308273461224,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.9284549338907766,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5327458310645516,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.5664679243041149,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.09548114499500215,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 0.8247790328963944,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7716599035718086,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.05834707511097603,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3564914313314302,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.012817608499629258,
+          "mean_candidate_mos": 3.8419900670343514,
+          "mean_mos_delta": -0.0005951073704933634,
+          "mean_reference_mos": 3.842585174404845,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.004428138538282745,
+            "lo": -0.00644072707818479,
+            "losses": 19,
+            "mean": -0.0005951073704933634,
+            "n": 49,
+            "wins": 17
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.007035727407259051,
+          "mean_candidate_mos": 4.205668507790079,
+          "mean_mos_delta": -0.0006278339697390186,
+          "mean_reference_mos": 4.206296341759818,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0033237496200872927,
+            "lo": -0.00443641506895727,
+            "losses": 21,
+            "mean": -0.0006278339697390186,
+            "n": 49,
+            "wins": 13
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.00026442739012526447,
+          "mean_candidate_mos": 4.443385795671112,
+          "mean_mos_delta": 0.0024623189653669086,
+          "mean_reference_mos": 4.440923476705746,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0049560118694694675,
+            "lo": 0.00012520381382533481,
+            "losses": 6,
+            "mean": 0.0024623189653669086,
+            "n": 49,
+            "wins": 17
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.002017360235073253,
+          "mean_candidate_mos": 4.6834706676249604,
+          "mean_mos_delta": 0.003332741406499123,
+          "mean_reference_mos": 4.680137926218461,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0057284394089056525,
+            "lo": 0.0012535367693219865,
+            "losses": 1,
+            "mean": 0.003332741406499123,
+            "n": 49,
+            "wins": 13
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.3390308273461224,
+        "clip": "hrp.wav"
+      }
+    },
+    "local2_static18_vs_oneband_static18": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.6216669255527733,
+        "lo": 0.17155740591247276,
+        "losses": 8,
+        "mean": 0.40100065415643615,
+        "n": 49,
+        "wins": 41
+      },
+      "mean_bd_rate_percent": 0.40100065415643615,
+      "median_bd_rate_percent": 0.3613075226208018,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.5834170942538464,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.47192584734054854,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2816487487040673,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20251945450873166,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3880539473690936,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1738945624736976,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.959493104812581,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4184006021749287,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.314893349234115,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10113787585777079,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2068598407383604,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23119464442173943,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.50247816469129,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.27875527598471006,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2004990450417585,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.035495012372810386,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2996478227331298,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.19476042608745914,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3438561238277016,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.23687710308164522,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5190814669444599,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.07438491731857066,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7164569030169154,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11937725290884771,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3013699242098387,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3841595547997789,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.31937607120529066,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5228862657479239,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5932261159617092,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.11033401266925535,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3613075226208018,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3635183367446393,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2733271671072974,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.38798677649394264,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.2872490382460735,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.534213739479239,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.07711095218967401,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.8772220141374465,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 0.9613487443445701,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4821717457250241,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 2.5542467756799248,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.245984932287647,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7743331496145478,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": 0.491488546892338,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.10783234414626364,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 1.6270542607355276,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7881868812912196,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.026674922060565542,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12578170506680753,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.012817608499629258,
+          "mean_candidate_mos": 3.8419900670343514,
+          "mean_mos_delta": -0.005761769353126993,
+          "mean_reference_mos": 3.8477518363874785,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0013110589007942043,
+            "lo": -0.011459151092840701,
+            "losses": 25,
+            "mean": -0.005761769353126993,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.007035727407259051,
+          "mean_candidate_mos": 4.205668507790079,
+          "mean_mos_delta": -0.003980295998709542,
+          "mean_reference_mos": 4.209648803788788,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.000480423168260224,
+            "lo": -0.0074048236924774795,
+            "losses": 24,
+            "mean": -0.003980295998709542,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.00026442739012526447,
+          "mean_candidate_mos": 4.443385795671112,
+          "mean_mos_delta": -0.0012012014583665498,
+          "mean_reference_mos": 4.44458699712948,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0004746962566764987,
+            "lo": -0.0029473596689652422,
+            "losses": 13,
+            "mean": -0.0012012014583665498,
+            "n": 49,
+            "wins": 6
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.002017360235073253,
+          "mean_candidate_mos": 4.6834706676249604,
+          "mean_mos_delta": -0.0007837256606744261,
+          "mean_reference_mos": 4.684254393285634,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 9.593185113400828e-05,
+            "lo": -0.0016304911399374203,
+            "losses": 2,
+            "mean": -0.0007837256606744261,
+            "n": 49,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.5542467756799248,
+        "clip": "hrp.wav"
+      }
+    },
+    "local2_static18_vs_oneband_static24": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.6371209303034493,
+        "lo": 0.19765475946835867,
+        "losses": 8,
+        "mean": 0.41917971316928365,
+        "n": 49,
+        "wins": 41
+      },
+      "mean_bd_rate_percent": 0.41917971316928365,
+      "median_bd_rate_percent": 0.3771799282068944,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.6959570817338889,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.47464480987953195,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2887985307941552,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20587552300230794,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.39066857524918674,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.16153883387519663,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.0339060218140128,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.41879915619610353,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.3342023682051627,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11474468715233499,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.32035427171221986,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20798909263918253,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5293189434076204,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2733317234490995,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2056212955017465,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.03700890745137464,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.291359568621231,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.19514596517387073,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3771799282068944,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.382679179285228,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5212230661211015,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.06437391906548573,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7401661950713567,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13023959605271695,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2448249205367912,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.37941869070949874,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3212654742389853,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4937572122327927,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5905740136643134,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.10472526754444766,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3690797985695493,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3672956203419009,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2068578263660044,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.38488350256686843,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.2235158356952649,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5210364428861469,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0284758970727772,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.8883330918600718,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 0.9577460783009029,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.22675132505942663,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 2.494105295234128,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.2563755221263184,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7545666273741647,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": 0.42841643233104687,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.0840180867201612,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 1.637747011044488,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7708013465093866,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.04949907625715344,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1691378514845132,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.012817608499629258,
+          "mean_candidate_mos": 3.8419900670343514,
+          "mean_mos_delta": -0.005876648182771644,
+          "mean_reference_mos": 3.847866715217123,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0013343995931197185,
+            "lo": -0.011674287367840203,
+            "losses": 25,
+            "mean": -0.005876648182771644,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.007035727407259051,
+          "mean_candidate_mos": 4.205668507790079,
+          "mean_mos_delta": -0.0041925274595922355,
+          "mean_reference_mos": 4.209861035249671,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.000712569879025829,
+            "lo": -0.00763209985227001,
+            "losses": 24,
+            "mean": -0.0041925274595922355,
+            "n": 49,
+            "wins": 6
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.00026442739012526447,
+          "mean_candidate_mos": 4.443385795671112,
+          "mean_mos_delta": -0.0011465987380670042,
+          "mean_reference_mos": 4.44453239440918,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.000510186565165617,
+            "lo": -0.0028341935605418925,
+            "losses": 12,
+            "mean": -0.0011465987380670042,
+            "n": 49,
+            "wins": 6
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.002017360235073253,
+          "mean_candidate_mos": 4.6834706676249604,
+          "mean_mos_delta": -0.0008514073430275431,
+          "mean_reference_mos": 4.684322074967987,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 8.602531588807399e-06,
+            "lo": -0.0016965866088867188,
+            "losses": 2,
+            "mean": -0.0008514073430275431,
+            "n": 49,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.494105295234128,
+        "clip": "hrp.wav"
+      }
+    },
+    "local2_static24_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.17598437064271677,
+        "lo": -0.6802869352668512,
+        "losses": 19,
+        "mean": -0.22024531543449924,
+        "n": 49,
+        "wins": 29
+      },
+      "mean_bd_rate_percent": -0.22024531543449924,
+      "median_bd_rate_percent": 0.10545787745137591,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.08263404970110244,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.44521924463061247,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2388812207172029,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1325681112679611,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1468789721058128,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.251072337024851,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9061422884107495,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2835424252774055,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.8002273284713377,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.08458183207629144,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0932255600158971,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5420854716229551,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5461870251308962,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.44573188506948913,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.0668343099590638,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0006224302072865839,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.3461691836495149,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.02495972232288146,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3470694617642822,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.922209880902139,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4958919998630851,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10545787745137591,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5877031242919717,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2218484217705763,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3861887873101497,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8631299604062503,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.333555814576747,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.99738885901961,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.593633174900221,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1100924593119279,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13061087845323005,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.24869531202078576,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.306526456769731,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.3608812083919277,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.2817984758159864,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1088895296632586,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.9803293072082173,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.41942574162450175,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -4.822884819811513,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.898749630517396,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 2.380181318352448,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 0.923883569870454,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.47627166076951166,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.5548254296543043,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.09924771515916753,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 0.8206317126661311,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8123714783293434,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.007693059131441693,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3670479579768413,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.012817608499629258,
+          "mean_candidate_mos": 3.8420249637292354,
+          "mean_mos_delta": -0.000560210675609355,
+          "mean_reference_mos": 3.842585174404845,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.004456461692342953,
+            "lo": -0.006386752031287368,
+            "losses": 19,
+            "mean": -0.000560210675609355,
+            "n": 49,
+            "wins": 17
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.007035727407259051,
+          "mean_candidate_mos": 4.205703423947704,
+          "mean_mos_delta": -0.0005929178121138592,
+          "mean_reference_mos": 4.206296341759818,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.003379179506885762,
+            "lo": -0.0044479516087746135,
+            "losses": 20,
+            "mean": -0.0005929178121138592,
+            "n": 49,
+            "wins": 13
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.00026442739012526447,
+          "mean_candidate_mos": 4.44355921842614,
+          "mean_mos_delta": 0.002635741720394212,
+          "mean_reference_mos": 4.440923476705746,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005166744699283522,
+            "lo": 0.0002554874030911193,
+            "losses": 7,
+            "mean": 0.002635741720394212,
+            "n": 49,
+            "wins": 18
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.002017360235073253,
+          "mean_candidate_mos": 4.683542164004579,
+          "mean_mos_delta": 0.0034042377861178653,
+          "mean_reference_mos": 4.680137926218461,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005871685183778101,
+            "lo": 0.0012956346784319197,
+            "losses": 1,
+            "mean": 0.0034042377861178653,
+            "n": 49,
+            "wins": 14
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.380181318352448,
+        "clip": "hrp.wav"
+      }
+    },
+    "local2_static24_vs_oneband_static18": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.6084793654082684,
+        "lo": 0.15397063890336318,
+        "losses": 10,
+        "mean": 0.3850526188140094,
+        "n": 49,
+        "wins": 39
+      },
+      "mean_bd_rate_percent": 0.3850526188140093,
+      "median_bd_rate_percent": 0.34629540404271797,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.6446463056693386,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.47061004918942384,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.242275928328862,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20992922515870038,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3872092101212532,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.09471915327938785,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9062451954590323,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4167459939517837,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.3099255071553193,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.1029164331425525,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.20880867866861497,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23490750625078105,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5347541873119708,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2778647432711612,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2122798339002872,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.01488960875084544,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.3041572849046723,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.15299844188685352,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.34629540404271797,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.019747700797478895,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5224372900973995,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.07546159339135716,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7347034333931912,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11846411159435188,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.314182798265351,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.38064653130618353,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3168499918756895,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5012317618874773,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5966454335460725,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.10707120005846171,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.33452843697665546,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.365172144609871,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2872511452933453,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.3846394012822163,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.32029044519258365,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.46583712528682764,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.06841169198317232,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.8890221233500473,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 0.8877907769172078,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.635132492301993,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 2.594919983862032,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.2413967791548464,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.717412260792738,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": 0.5036385857452474,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.11160372507608152,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 1.6224277252773867,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8289942837548692,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.09285957355367191,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11505543405407881,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.012817608499629258,
+          "mean_candidate_mos": 3.8420249637292354,
+          "mean_mos_delta": -0.0057268726582429845,
+          "mean_reference_mos": 3.8477518363874785,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0012766195803272482,
+            "lo": -0.01142762145217584,
+            "losses": 25,
+            "mean": -0.0057268726582429845,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.007035727407259051,
+          "mean_candidate_mos": 4.205703423947704,
+          "mean_mos_delta": -0.003945379841084383,
+          "mean_reference_mos": 4.209648803788788,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.00040754006833446267,
+            "lo": -0.007406565607810507,
+            "losses": 24,
+            "mean": -0.003945379841084383,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.00026442739012526447,
+          "mean_candidate_mos": 4.44355921842614,
+          "mean_mos_delta": -0.0010277787033392458,
+          "mean_reference_mos": 4.44458699712948,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0006786852466816805,
+            "lo": -0.0027937305216886557,
+            "losses": 13,
+            "mean": -0.0010277787033392458,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.002017360235073253,
+          "mean_candidate_mos": 4.683542164004579,
+          "mean_mos_delta": -0.000712229281055684,
+          "mean_reference_mos": 4.684254393285634,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.00016886847359793528,
+            "lo": -0.0015742730121223293,
+            "losses": 3,
+            "mean": -0.000712229281055684,
+            "n": 49,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.594919983862032,
+        "clip": "hrp.wav"
+      }
+    },
+    "local2_static24_vs_oneband_static24": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": 0.6218317643602358,
+        "lo": 0.178667118829064,
+        "losses": 9,
+        "mean": 0.4032954614027465,
+        "n": 49,
+        "wins": 40
+      },
+      "mean_bd_rate_percent": 0.4032954614027465,
+      "median_bd_rate_percent": 0.3689495581396196,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.7572316456922357,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.47332950476830504,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2494276155122552,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.2132893639318345,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3898241314346462,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.08235417621771379,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9807616517679252,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.41714464573998633,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.3292507365474835,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11652650220541627,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.32230260944328126,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.21170458802821646,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5616051220436633,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.27243434778978504,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2174010092358634,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.013390494087028859,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2958685265985315,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.15338316348663117,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.379618782929092,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12519476304209132,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5245797886897385,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.06544962290828682,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7584145391904995,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.12932549562183482,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2577154080043784,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.37589569979625814,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3187393227988444,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4721528527354746,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5939922436903444,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.10146025024355687,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.34229490030792675,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3689495581396196,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2207890975325495,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": 0.38151179210206276,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.2565786807921411,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.4526773786108329,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.01978276485765651,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": 0.9001357994254944,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": 0.8844579548101139,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.37616528650075143,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": 2.5347769871457926,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": 1.2517870557277266,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6976582997668013,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": 0.44067716923414935,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.0877869895201222,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": 1.6331190444107913,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8116452339164582,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11569547291969684,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.15840690852282346,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": -0.012817608499629258,
+          "mean_candidate_mos": 3.8420249637292354,
+          "mean_mos_delta": -0.005841751487887636,
+          "mean_reference_mos": 3.847866715217123,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.001308441162109375,
+            "lo": -0.011572949740351463,
+            "losses": 25,
+            "mean": -0.005841751487887636,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.007035727407259051,
+          "mean_candidate_mos": 4.205703423947704,
+          "mean_mos_delta": -0.004157611301967076,
+          "mean_reference_mos": 4.209861035249671,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0005963383888711735,
+            "lo": -0.0076196680263597135,
+            "losses": 24,
+            "mean": -0.004157611301967076,
+            "n": 49,
+            "wins": 6
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": -0.00026442739012526447,
+          "mean_candidate_mos": 4.44355921842614,
+          "mean_mos_delta": -0.0009731759830397003,
+          "mean_reference_mos": 4.44453239440918,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0007158980077626753,
+            "lo": -0.0027006207680215642,
+            "losses": 13,
+            "mean": -0.0009731759830397003,
+            "n": 49,
+            "wins": 7
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": -0.002017360235073253,
+          "mean_candidate_mos": 4.683542164004579,
+          "mean_mos_delta": -0.0007799109634088011,
+          "mean_reference_mos": 4.684322074967987,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 9.355739671356824e-05,
+            "lo": -0.0016240587039869658,
+            "losses": 3,
+            "mean": -0.0007799109634088011,
+            "n": 49,
+            "wins": 1
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 2.5347769871457926,
+        "clip": "hrp.wav"
+      }
+    },
+    "oneband_static18_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.2923551073548544,
+        "lo": -1.0116890018521618,
+        "losses": 34,
+        "mean": -0.6069895818289345,
+        "n": 49,
+        "wins": 11
+      },
+      "mean_bd_rate_percent": -0.6069895818289344,
+      "median_bd_rate_percent": -0.11585325419295467,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.7276977464546697,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.028223487215262022,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002860924686531874,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.07713355323996085,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.24108209489118737,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.3151191146298933,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.013339815951174394,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13448881676652036,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.478125100095772,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.01803594473136494,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.12446955560729833,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3059757136935515,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.011340197868192625,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.16743969510262247,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1530431736921578,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.013708907524700997,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.04191704419820308,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.17705039300246472,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0003062677507159606,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.943866088398718,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.02606012459661633,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.029985806310084406,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.14625468636044747,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.10570455379055321,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0726383021984578,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.2563508237636967,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.023850554255488987,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4946403560903154,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0029913910313150716,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002564104560431879,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20227378459241052,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.11585325419295467,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.019748402604080617,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": -0.023526771860027385,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": 0.03672200432129902,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5799081339366019,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.049445508359782,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": -0.4729962961281142,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -5.702404483959644,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.3187516017808125,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": -0.20954718791530436,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": -0.31568105842990635,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.24212055241296104,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -1.0565344828853407,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": -0.012672149629422425,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -0.8439358655241369,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.013542510536890262,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.08476894109638033,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4898719942448069,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 3.8477518363874785,
+          "mean_mos_delta": 0.005166661982633629,
+          "mean_reference_mos": 3.842585174404845,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007822192445093272,
+            "lo": 0.0030082099291743065,
+            "losses": 0,
+            "mean": 0.005166661982633629,
+            "n": 49,
+            "wins": 14
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.209648803788788,
+          "mean_mos_delta": 0.003352462028970524,
+          "mean_reference_mos": 4.206296341759818,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005377657559453224,
+            "lo": 0.0017063715020004585,
+            "losses": 0,
+            "mean": 0.003352462028970524,
+            "n": 49,
+            "wins": 10
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.44458699712948,
+          "mean_mos_delta": 0.003663520423733458,
+          "mean_reference_mos": 4.440923476705746,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005742082790452607,
+            "lo": 0.0019036993688466598,
+            "losses": 0,
+            "mean": 0.003663520423733458,
+            "n": 49,
+            "wins": 11
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.684254393285634,
+          "mean_mos_delta": 0.004116467067173549,
+          "mean_reference_mos": 4.680137926218461,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.006346692844313018,
+            "lo": 0.0023039019837671395,
+            "losses": 0,
+            "mean": 0.004116467067173549,
+            "n": 49,
+            "wins": 14
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 0.16743969510262247,
+        "clip": "ExitMusic.16b48k.wav"
+      }
+    },
+    "oneband_static24_vs_baseline_original": {
+      "aac_packet_identity_ties": 0,
+      "decoded_pcm_identity_ties": 0,
+      "mean_bd_rate_bootstrap_95_ci": {
+        "hi": -0.30413788075726306,
+        "lo": -1.033378276877421,
+        "losses": 39,
+        "mean": -0.6245217189552018,
+        "n": 49,
+        "wins": 8
+      },
+      "mean_bd_rate_percent": -0.6245217189552018,
+      "median_bd_rate_percent": -0.13525836044003814,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.8397241766395447,
+          "clip": "12-German-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.031059120506526927,
+          "clip": "15-Good-evening.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.009944840440689884,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.08069233346597038,
+          "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.24361591574589836,
+          "clip": "25-This-is-the-end.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.2913343017480603,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.06319787176891634,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.13488818291891302,
+          "clip": "4-Sound-English-male.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.49851905742736013,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.03152089626714538,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2373731016309777,
+          "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3293834588170452,
+          "clip": "Changes.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.015065024632066049,
+          "clip": "Coral.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.17289421961093066,
+          "clip": "ExitMusic.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1579621272006837,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.012125254986194989,
+          "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.050109139717102735,
+          "clip": "Hey Tonight.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1774290888875818,
+          "clip": "Hotel California.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0324851953303229,
+          "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -5.073921151360294,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.02819543477612374,
+          "clip": "NewYorkCity.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.04024949558349977,
+          "clip": "Only Time.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.17056513568524112,
+          "clip": "Robots_old.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.09386343901629512,
+          "clip": "Severance__1.31-1.51_.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.13525836044003814,
+          "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.251289143733425,
+          "clip": "SinceAlways.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.02206500836143821,
+          "clip": "SlavesOfFear.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4615911785286761,
+          "clip": "The Chastising of Renegade.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.000278466117975551,
+          "clip": "Through The Fire And Flames.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.008499105456027944,
+          "clip": "TrosYGareg.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.20993561066400268,
+          "clip": "Waiting.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.11958383407295603,
+          "clip": "With Love (Outro).16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.08731635583281161,
+          "clip": "bah.wav"
+        },
+        {
+          "bd_rate_percent": -0.020308729393203606,
+          "clip": "bas.wav"
+        },
+        {
+          "bd_rate_percent": -0.02632529706410036,
+          "clip": "bonhemian_rhapsody.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.5668694923403717,
+          "clip": "clapton_44k.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -2.0004759377815096,
+          "clip": "cst.wav"
+        },
+        {
+          "bd_rate_percent": -0.48391293194717244,
+          "clip": "fms.wav"
+        },
+        {
+          "bd_rate_percent": -5.686575371569358,
+          "clip": "girl.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -4.56885683890198,
+          "clip": "glk.wav"
+        },
+        {
+          "bd_rate_percent": -0.1517455550923863,
+          "clip": "hrp.wav"
+        },
+        {
+          "bd_rate_percent": -0.3259639358038968,
+          "clip": "liberate.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.22260465252168515,
+          "clip": "lob.wav"
+        },
+        {
+          "bd_rate_percent": -0.9987630899327193,
+          "clip": "mof.wav"
+        },
+        {
+          "bd_rate_percent": 0.011159714325081893,
+          "clip": "qrt.wav"
+        },
+        {
+          "bd_rate_percent": -0.8555769836487759,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.004749553801319806,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1073336213199716,
+          "clip": "trumpet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.5331164050295332,
+          "clip": "velvet.16b48k.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 3.847866715217123,
+          "mean_mos_delta": 0.005281540812278281,
+          "mean_reference_mos": 3.842585174404845,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007955439236699318,
+            "lo": 0.00314089230128697,
+            "losses": 0,
+            "mean": 0.005281540812278281,
+            "n": 49,
+            "wins": 14
+          }
+        },
+        "48": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.209861035249671,
+          "mean_mos_delta": 0.003564693489853217,
+          "mean_reference_mos": 4.206296341759818,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.005614621298653739,
+            "lo": 0.001906866929969009,
+            "losses": 0,
+            "mean": 0.003564693489853217,
+            "n": 49,
+            "wins": 10
+          }
+        },
+        "64": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.44453239440918,
+          "mean_mos_delta": 0.003608917703433913,
+          "mean_reference_mos": 4.440923476705746,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.00570669952703982,
+            "lo": 0.0018673429683763155,
+            "losses": 0,
+            "mean": 0.003608917703433913,
+            "n": 49,
+            "wins": 11
+          }
+        },
+        "96": {
+          "mean_actual_bitrate_delta_percent": 0.0,
+          "mean_candidate_mos": 4.684322074967987,
+          "mean_mos_delta": 0.004184148749526666,
+          "mean_reference_mos": 4.680137926218461,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.006497052251076212,
+            "lo": 0.002357210431780134,
+            "losses": 0,
+            "mean": 0.004184148749526666,
+            "n": 49,
+            "wins": 14
+          }
+        }
+      },
+      "rows": 196,
+      "valid_clips": 49,
+      "worst_clip": {
+        "bd_rate_percent": 0.17289421961093066,
+        "clip": "ExitMusic.16b48k.wav"
+      }
+    }
+  },
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ]
+}

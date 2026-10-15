@@ -1,0 +1,270 @@
+Build started at 2026-10-14T08:13:46.223806
+Main binary: /opt/homebrew/opt/python@3.14/bin/python3.14
+Build Options: 
+Python system: Darwin
+The Meson build system
+Version: 1.12.1
+Source dir: /private/tmp/faac-he-v1-envelopes
+Build dir: /private/tmp/faac-he-v1-envelopes/build-probe
+Build type: native build
+Project name: faac
+Project version: 2.2.0
+-----------
+Detecting compiler via: `cc --version` -> 0
+stdout:
+Apple clang version 21.0.0 (clang-2100.3.34.2)
+Target: arm64-apple-darwin27.0.0
+Thread model: posix
+InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+-----------
+Running command: -x c -E -dM -
+-----
+-----------
+Detecting linker via: `cc -Wl,--version` -> 1
+stderr:
+ld: unknown options: --version 
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+-----------
+-----------
+Detecting Apple linker via: `cc -Wl,-v` -> 1
+stderr:
+@(#)PROGRAM:ld PROJECT:ld-27037.1
+BUILD 21:17:51 Aug 25 2026
+configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em armv8m.main armv8.1m.main
+LTO support using: LLVM version 21.0.0 (static support for 30, runtime is 30)
+TAPI support using: Apple TAPI version 21.0.0 (tapi-2100.3.8.1)
+Library search paths:
+	/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+	/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/swift
+Framework search paths:
+	/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks
+Undefined symbols for architecture arm64:
+  "_main", referenced from:
+      <initial-undefines>
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+-----------
+Sanity check compiler command line: cc -o sanity_check_for_c.exe sanity_check_for_c.c
+Sanity check compile stdout:
+
+-----
+Sanity check compile stderr:
+
+-----
+Sanity check built target output for host machine c compiler
+ -- Running test binary command:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/sanity_check_for_c.exe
+-----------
+Sanity check: `/private/tmp/faac-he-v1-envelopes/build-probe/meson-private/sanity_check_for_c.exe` -> 0
+ -- stdout:
+ 
+ -- stderr:
+ 
+ -- returncode: 0
+C compiler for the host machine: /opt/homebrew/bin/ccache cc (clang 21.0.0 "Apple clang version 21.0.0 (clang-2100.3.34.2)")
+C linker for the host machine: cc ld64 27037.1
+-----------
+Detecting archiver via: `llvm-ar-21 --version` -> [Errno 2] No such file or directory: 'llvm-ar-21'
+-----------
+Detecting archiver via: `llvm-ar --version` -> [Errno 2] No such file or directory: 'llvm-ar'
+-----------
+Detecting archiver via: `ar --version` -> 1
+stderr:
+usage:  ar -d [-TLsv] archive file ...
+	ar -m [-TLsv] archive file ...
+	ar -m [-abiTLsv] position archive file ...
+	ar -p [-TLsv] archive [file ...]
+	ar -q [-cTLsv] archive file ...
+	ar -r [-cuTLsv] archive file ...
+	ar -r [-abciuTLsv] position archive file ...
+	ar -t [-TLsv] archive [file ...]
+	ar -x [-ouTLsv] archive [file ...]
+-----------
+-----------
+Detecting compiler via: `cc --version` -> 0
+stdout:
+Apple clang version 21.0.0 (clang-2100.3.34.2)
+Target: arm64-apple-darwin27.0.0
+Thread model: posix
+InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+-----------
+Running command: -x c -E -dM -
+-----
+-----------
+Detecting linker via: `cc -Wl,--version` -> 1
+stderr:
+ld: unknown options: --version 
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+-----------
+-----------
+Detecting Apple linker via: `cc -Wl,-v` -> 1
+stderr:
+@(#)PROGRAM:ld PROJECT:ld-27037.1
+BUILD 21:17:51 Aug 25 2026
+configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em armv8m.main armv8.1m.main
+LTO support using: LLVM version 21.0.0 (static support for 30, runtime is 30)
+TAPI support using: Apple TAPI version 21.0.0 (tapi-2100.3.8.1)
+Library search paths:
+	/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+	/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/swift
+Framework search paths:
+	/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks
+Undefined symbols for architecture arm64:
+  "_main", referenced from:
+      <initial-undefines>
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+-----------
+Sanity check compiler command line: cc -o sanity_check_for_c.exe sanity_check_for_c.c
+Sanity check compile stdout:
+
+-----
+Sanity check compile stderr:
+
+-----
+Sanity check built target output for build machine c compiler
+ -- Running test binary command:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/sanity_check_for_c.exe
+-----------
+Sanity check: `/private/tmp/faac-he-v1-envelopes/build-probe/meson-private/sanity_check_for_c.exe` -> 0
+ -- stdout:
+ 
+ -- stderr:
+ 
+ -- returncode: 0
+C compiler for the build machine: /opt/homebrew/bin/ccache cc (clang 21.0.0 "Apple clang version 21.0.0 (clang-2100.3.34.2)")
+C linker for the build machine: cc ld64 27037.1
+Build machine cpu family: aarch64
+Build machine cpu: aarch64
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Target machine cpu family: aarch64
+Target machine cpu: aarch64
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmph1zul413
+Code:
+
+        #ifdef __has_include
+         #if !__has_include("getopt.h")
+          #error "Header 'getopt.h' could not be found"
+         #endif
+        #else
+         #include <getopt.h>
+        #endif
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmph1zul413/testfile.c -E -P -P -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -std=gnu11` -> 0
+Has header "getopt.h" : YES 
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmp4yvbqbmb
+Code:
+
+        #ifdef __has_include
+         #if !__has_include("immintrin.h")
+          #error "Header 'immintrin.h' could not be found"
+         #endif
+        #else
+         #include <immintrin.h>
+        #endif
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmp4yvbqbmb/testfile.c -E -P -P -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -std=gnu11` -> 0
+Has header "immintrin.h" : YES 
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpslb7g470
+Code:
+int main(void) { return 0; }
+
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpslb7g470/testfile.c -o /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpslb7g470/output.exe -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -lm -Wl,-undefined,dynamic_lookup` -> 0
+Library m found: YES
+Configuring config.h using configuration
+Pkg-config binary missing from cross or native file, or env var undefined.
+Trying a default Pkg-config fallback at pkg-config
+Found pkg-config: YES (/opt/homebrew/bin/pkg-config) 3.0.7
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpf6ug0k1k
+Code:
+int main(void) { return 0; }
+
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpf6ug0k1k/testfile.c -o /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpf6ug0k1k/output.exe -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -liconv -Wl,-undefined,dynamic_lookup` -> 0
+Library iconv found: YES
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmphnu7kgna
+Code:
+
+        #ifdef __has_include
+         #if !__has_include("iconv.h")
+          #error "Header 'iconv.h' could not be found"
+         #endif
+        #else
+         #include <iconv.h>
+        #endif
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmphnu7kgna/testfile.c -E -P -P -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -std=gnu11` -> 0
+Has header "iconv.h" : YES 
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmp7za__qwv
+Code:
+
+        #define iconv_open meson_disable_define_of_iconv_open
+        
+        #include <limits.h>
+        #undef iconv_open
+        
+        #ifdef __cplusplus
+        extern "C"
+        #endif
+        char iconv_open (void);
+        
+        #if defined __stub_iconv_open || defined __stub___iconv_open
+        fail fail fail this function is not going to work
+        #endif
+        
+        int main(void) {
+          return iconv_open ();
+        }
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmp7za__qwv/testfile.c -o /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmp7za__qwv/output.exe -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -std=gnu11 -Wl,-no_weak_imports -liconv` -> 0
+Checking for function "iconv_open" with dependency -liconv: YES 
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpoeso_xge
+Code:
+int main(void) { return 0; }
+
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpoeso_xge/testfile.c -o /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpoeso_xge/output.exe -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -lshell32 -Wl,-undefined,dynamic_lookup` -> 1
+stderr:
+ld: library 'shell32' not found
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+-----------
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpwjlcprb9
+Code:
+
+        #include<stddef.h>
+        #include<stdio.h>
+        int main(void) {
+            printf("%ld\n", (long)(sizeof(void *)));
+            return 0;
+        }
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpwjlcprb9/testfile.c -o /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpwjlcprb9/output.exe -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration` -> 0
+Program stdout:
+
+8
+
+Program stderr:
+
+
+Running compile:
+Working directory:  /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpe8ajl3n8
+Code:
+
+-----------
+Command line: `cc /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpe8ajl3n8/testfile.c -o /private/tmp/faac-he-v1-envelopes/build-probe/meson-private/tmpe8ajl3n8/output.obj -c -O0 -U_FORTIFY_SOURCE -Werror=implicit-function-declaration -Werror=unknown-warning-option -Werror=unused-command-line-argument -Werror=ignored-optimization-argument --print-search-dirs` -> 0
+stdout:
+programs: =/Library/Developer/CommandLineTools/usr/bin
+libraries: =/Library/Developer/CommandLineTools/usr/lib/clang/21
+-----------
+Library shell32 found: NO
+Build targets in project: 5
+
+Found ninja-1.13.2 at /opt/homebrew/bin/ninja

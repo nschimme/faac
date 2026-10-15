@@ -1,0 +1,1346 @@
+{
+  "encoder_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "new_decoder": {
+    "path": "/private/tmp/faac-upstream098-fdk-new/fdkdec",
+    "sha256": "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18"
+  },
+  "old_decoder": {
+    "path": "/private/tmp/faac-he-v1-upstream098-run-provenance/fdkdec-at-capture",
+    "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf"
+  },
+  "rows": [
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "9ba9d726f84927f0401b47e86726a99424a4030fbd863721456fc9002399d3ab",
+            "frames": 135610,
+            "last_16_pcm_bytes": "abfd8cfec0fe14ff30ffefff93006f2d",
+            "pcm_sha256": "0e419944cef110b37a4d0f7257b39fcfc9b8e838e7d54286d70078cbb57b0cd6",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "9ba9d726f84927f0401b47e86726a99424a4030fbd863721456fc9002399d3ab",
+            "frames": 135610,
+            "last_16_pcm_bytes": "abfd8cfec0fe14ff30ffefff93006f2d",
+            "pcm_sha256": "0e419944cef110b37a4d0f7257b39fcfc9b8e838e7d54286d70078cbb57b0cd6",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_1ch_20.m4a",
+      "encoded_sha256": "96a44b4f2dda32cee09c8d5b256edc4489dc0dc3d3fc08a2205e78b237f48a55",
+      "expected_channels": 1,
+      "expected_frames": 135610,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_1ch.wav",
+      "source_sha256": "d3195151a9fbdc1c3df5c0b8925f6cf12fc8e7acfa3c244f07a740087d7d8c18",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "5169daf8a9119ed755b079898e8d2c65142df193c584384e6d99347a734e86ad",
+            "frames": 135610,
+            "last_16_pcm_bytes": "11fefcfda4fef1fe68ffccffeeffa32e",
+            "pcm_sha256": "c253c539a352bafbc28bc565ca9c70036c304e366e3faef7e82ed63ee3c68f04",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "5169daf8a9119ed755b079898e8d2c65142df193c584384e6d99347a734e86ad",
+            "frames": 135610,
+            "last_16_pcm_bytes": "11fefcfda4fef1fe68ffccffeeffa32e",
+            "pcm_sha256": "c253c539a352bafbc28bc565ca9c70036c304e366e3faef7e82ed63ee3c68f04",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_1ch_48.m4a",
+      "encoded_sha256": "e53143b44e24203172ed195d5169d9f88751a9cfd5905250ce340dd50c6c45f6",
+      "expected_channels": 1,
+      "expected_frames": 135610,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_1ch.wav",
+      "source_sha256": "d3195151a9fbdc1c3df5c0b8925f6cf12fc8e7acfa3c244f07a740087d7d8c18",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "2717f4afabbefef7f8560c9d99c0d8cb15bbdd9bf594ea2d209754df3b0e8ddf",
+            "frames": 135610,
+            "last_16_pcm_bytes": "67ff8000bd00e5fff5003700062d6fd4",
+            "pcm_sha256": "60cad65aaa2c0d2a1c5e8c7aa7d4ff9a084e06a854c7128ff1c3fc9447b2a875",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "2717f4afabbefef7f8560c9d99c0d8cb15bbdd9bf594ea2d209754df3b0e8ddf",
+            "frames": 135610,
+            "last_16_pcm_bytes": "67ff8000bd00e5fff5003700062d6fd4",
+            "pcm_sha256": "60cad65aaa2c0d2a1c5e8c7aa7d4ff9a084e06a854c7128ff1c3fc9447b2a875",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_2ch_20.m4a",
+      "encoded_sha256": "419bd5c6dce31ef6a1e400cd483ef50c61547c5cc6ffc0954f9f0742dd748e40",
+      "expected_channels": 2,
+      "expected_frames": 135610,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_2ch.wav",
+      "source_sha256": "ec4fd80037c425c9eb6f07f75dbd97c992e7f978f195ee3e9bdca5e626981bc9",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "e71fd159b7cc3ed6d832251bd04f26543f93d10ffb955735287bd8a64d509367",
+            "frames": 135610,
+            "last_16_pcm_bytes": "a2ff82005800240041007300142db8d3",
+            "pcm_sha256": "8ddf4029f3948770289e3ec48b8ffdc6a1212ec1b9e86dd1a596fe20ad2b5bc7",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 135610,
+            "outputDelay": 1024,
+            "padding": 582,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "e71fd159b7cc3ed6d832251bd04f26543f93d10ffb955735287bd8a64d509367",
+            "frames": 135610,
+            "last_16_pcm_bytes": "a2ff82005800240041007300142db8d3",
+            "pcm_sha256": "8ddf4029f3948770289e3ec48b8ffdc6a1212ec1b9e86dd1a596fe20ad2b5bc7",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=582 outputDelay=1024 raw_frames=138240 gapless_frames=135610"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_2ch_48.m4a",
+      "encoded_sha256": "d59ab19e36103f533ebdb06b91824e823eabe60fba22ee4c51a8d6ba552336cb",
+      "expected_channels": 2,
+      "expected_frames": 135610,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_135610_2ch.wav",
+      "source_sha256": "ec4fd80037c425c9eb6f07f75dbd97c992e7f978f195ee3e9bdca5e626981bc9",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "1ad82ba4cee62a6bb304d886ea489afe3def87ac63e817bb526b607daa74204e",
+            "frames": 136090,
+            "last_16_pcm_bytes": "c9fe71fe9afea0fe34ff49ff9700742d",
+            "pcm_sha256": "e32e0cd68d69767e7f3870faa782f66bed55abd68065d672e84dce05a6e1ff64",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "1ad82ba4cee62a6bb304d886ea489afe3def87ac63e817bb526b607daa74204e",
+            "frames": 136090,
+            "last_16_pcm_bytes": "c9fe71fe9afea0fe34ff49ff9700742d",
+            "pcm_sha256": "e32e0cd68d69767e7f3870faa782f66bed55abd68065d672e84dce05a6e1ff64",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_1ch_20.m4a",
+      "encoded_sha256": "d9c038ea622b91611e605f7f8d99581b31be501aca7d788eb8c993e021214da7",
+      "expected_channels": 1,
+      "expected_frames": 136090,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_1ch.wav",
+      "source_sha256": "12a0886ea3d554f2345ad9ad7f00d62ae55f96c1d9d9c62d58f34220d163481b",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "7fff7dd86c00451c1e70b5e3d67ac531ef20c4733dafa0a1022a6c2b64ddd524",
+            "frames": 136090,
+            "last_16_pcm_bytes": "9bfe6cfea4feb1fe57ff96ffdfffac2e",
+            "pcm_sha256": "269cb57876ff9537a33f2249910723562f7c0853768ac91871f684929fdf3f26",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "7fff7dd86c00451c1e70b5e3d67ac531ef20c4733dafa0a1022a6c2b64ddd524",
+            "frames": 136090,
+            "last_16_pcm_bytes": "9bfe6cfea4feb1fe57ff96ffdfffac2e",
+            "pcm_sha256": "269cb57876ff9537a33f2249910723562f7c0853768ac91871f684929fdf3f26",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_1ch_48.m4a",
+      "encoded_sha256": "aa268eb680f2359d001a08406394d75bf5bb15148cbccff419eb99d4b195ce85",
+      "expected_channels": 1,
+      "expected_frames": 136090,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_1ch.wav",
+      "source_sha256": "12a0886ea3d554f2345ad9ad7f00d62ae55f96c1d9d9c62d58f34220d163481b",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "cfba4bc72fdc5d476140022c6c2e12c44b4d559f081d795b76db39d7b470c3e8",
+            "frames": 136090,
+            "last_16_pcm_bytes": "d1ff3effbdff21002c005300f32be2d4",
+            "pcm_sha256": "929182241f3adfc749d08106877de872bbdf082cffda57335c13a97cd7a7060c",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "cfba4bc72fdc5d476140022c6c2e12c44b4d559f081d795b76db39d7b470c3e8",
+            "frames": 136090,
+            "last_16_pcm_bytes": "d1ff3effbdff21002c005300f32be2d4",
+            "pcm_sha256": "929182241f3adfc749d08106877de872bbdf082cffda57335c13a97cd7a7060c",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_2ch_20.m4a",
+      "encoded_sha256": "5c35a6b3fcf4930a646271fc0b630f84a4bbdabf32732cf2dff9df0d97d0ed44",
+      "expected_channels": 2,
+      "expected_frames": 136090,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_2ch.wav",
+      "source_sha256": "c7f4dbb98d699ffd19c95797e8b0393fb1daec0df5b5d13de16ec67752301d82",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "4a707fab0bafa233c02f5891623715c254c7de3c52d92d682764763fc574a7bc",
+            "frames": 136090,
+            "last_16_pcm_bytes": "62ff3500d9ff780098003b00332dd9d3",
+            "pcm_sha256": "b62fe21db31273f5c3a2143ded23a865eb3c0ca8bcbcb77b07cb26ba2b3dec87",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136090,
+            "outputDelay": 1024,
+            "padding": 102,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "4a707fab0bafa233c02f5891623715c254c7de3c52d92d682764763fc574a7bc",
+            "frames": 136090,
+            "last_16_pcm_bytes": "62ff3500d9ff780098003b00332dd9d3",
+            "pcm_sha256": "b62fe21db31273f5c3a2143ded23a865eb3c0ca8bcbcb77b07cb26ba2b3dec87",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=102 outputDelay=1024 raw_frames=138240 gapless_frames=136090"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_2ch_48.m4a",
+      "encoded_sha256": "51b269deebe43ede8b6489959600fc70fc298568666f8d9eaafba10fbb7a8a76",
+      "expected_channels": 2,
+      "expected_frames": 136090,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136090_2ch.wav",
+      "source_sha256": "c7f4dbb98d699ffd19c95797e8b0393fb1daec0df5b5d13de16ec67752301d82",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "f2c5ac3c6794af670a31004f575c13fff368468571f034f76b1cee5af5e342d6",
+            "frames": 136091,
+            "last_16_pcm_bytes": "59fe64fea9fed3fe78fff4ff3400cd2d",
+            "pcm_sha256": "8a1dfce83dc2833018fec5451a2e765390a9d9922d57f8f7e69769f1235ed342",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "f2c5ac3c6794af670a31004f575c13fff368468571f034f76b1cee5af5e342d6",
+            "frames": 136091,
+            "last_16_pcm_bytes": "59fe64fea9fed3fe78fff4ff3400cd2d",
+            "pcm_sha256": "8a1dfce83dc2833018fec5451a2e765390a9d9922d57f8f7e69769f1235ed342",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_1ch_20.m4a",
+      "encoded_sha256": "852b7a6bf88a536bd60a780a844cf6a620bb773f4973ed8207c5a44b5da65c67",
+      "expected_channels": 1,
+      "expected_frames": 136091,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_1ch.wav",
+      "source_sha256": "3d503d4a6da54b961ac6c07c8ec11eed7af6a3c60369e9ae699056980a05ea9a",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "a6183befc93474b0c43c7624c8ca83d87b6f17a4d9f2f293111797824ce71906",
+            "frames": 136091,
+            "last_16_pcm_bytes": "32fe58fe8afe0cff6fffbbff2500852e",
+            "pcm_sha256": "a8f5ee8a511d47f21c18041eeb451ef16b377212fca616ef626de80628b85c58",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "a6183befc93474b0c43c7624c8ca83d87b6f17a4d9f2f293111797824ce71906",
+            "frames": 136091,
+            "last_16_pcm_bytes": "32fe58fe8afe0cff6fffbbff2500852e",
+            "pcm_sha256": "a8f5ee8a511d47f21c18041eeb451ef16b377212fca616ef626de80628b85c58",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_1ch_48.m4a",
+      "encoded_sha256": "3b8ad9813258ed93b72544aa48a22e8861dd06475bd090d62cf346ab7d25e9df",
+      "expected_channels": 1,
+      "expected_frames": 136091,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_1ch.wav",
+      "source_sha256": "3d503d4a6da54b961ac6c07c8ec11eed7af6a3c60369e9ae699056980a05ea9a",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "0e7c526fa591aadac071eb7e5f7c780e6a4f03e88870b3d61551edadeada01e0",
+            "frames": 136091,
+            "last_16_pcm_bytes": "190085ff22006c00ac009300ea2cabd4",
+            "pcm_sha256": "856b81b07d847fd09f597d392392b2fb958fdb83a4f00f387df72a845eadea2f",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "0e7c526fa591aadac071eb7e5f7c780e6a4f03e88870b3d61551edadeada01e0",
+            "frames": 136091,
+            "last_16_pcm_bytes": "190085ff22006c00ac009300ea2cabd4",
+            "pcm_sha256": "856b81b07d847fd09f597d392392b2fb958fdb83a4f00f387df72a845eadea2f",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_2ch_20.m4a",
+      "encoded_sha256": "07a86ce03d12c0e68dbc5f26e0dd8294ee635b7d14037fb44e2c5b498931924b",
+      "expected_channels": 2,
+      "expected_frames": 136091,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_2ch.wav",
+      "source_sha256": "31482b1c9e9059390cf28adcdf6a6a8ab6ffe618e2fbe81f1d4a7bae5c77381f",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "93127b50ec6fd4d50195bf0f90da8c6787a98f4b42f427f442a98ae8e1574589",
+            "frames": 136091,
+            "last_16_pcm_bytes": "76ff00000d001600b800e9ffcd2c16d4",
+            "pcm_sha256": "6c7b5a122da43255a2d97fed594b06f2c2d726f2a97eb825b8a27c11d5414a2c",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136091,
+            "outputDelay": 1024,
+            "padding": 101,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "93127b50ec6fd4d50195bf0f90da8c6787a98f4b42f427f442a98ae8e1574589",
+            "frames": 136091,
+            "last_16_pcm_bytes": "76ff00000d001600b800e9ffcd2c16d4",
+            "pcm_sha256": "6c7b5a122da43255a2d97fed594b06f2c2d726f2a97eb825b8a27c11d5414a2c",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=101 outputDelay=1024 raw_frames=138240 gapless_frames=136091"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_2ch_48.m4a",
+      "encoded_sha256": "671dd50c38ec645d4b4158fe41afa4d511655bab0dc20b154c6db998069ee941",
+      "expected_channels": 2,
+      "expected_frames": 136091,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136091_2ch.wav",
+      "source_sha256": "31482b1c9e9059390cf28adcdf6a6a8ab6ffe618e2fbe81f1d4a7bae5c77381f",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "bc5613e29418c62dc0af27fb1eda697aea746828cb59777e3f76fa4168332c44",
+            "frames": 136092,
+            "last_16_pcm_bytes": "3dfe14fe2cff5bffdcff0b006f00bf2d",
+            "pcm_sha256": "7e9256f095474ec7e9033ac74437ad6d9f59ed8703c8800e8c54dca222e55b19",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "bc5613e29418c62dc0af27fb1eda697aea746828cb59777e3f76fa4168332c44",
+            "frames": 136092,
+            "last_16_pcm_bytes": "3dfe14fe2cff5bffdcff0b006f00bf2d",
+            "pcm_sha256": "7e9256f095474ec7e9033ac74437ad6d9f59ed8703c8800e8c54dca222e55b19",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_1ch_20.m4a",
+      "encoded_sha256": "05a3f93e9e496fa2dd4a002a98700c5d71d21925c901446158a0fe3918344074",
+      "expected_channels": 1,
+      "expected_frames": 136092,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_1ch.wav",
+      "source_sha256": "89bcbae438123c6d129386cbce2aa678445486626613e95aa8003eee4fe9c824",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "009cf55a5dd14ffb86970f7d8144af546f4d86c63f309a9d0034d39cacfdabff",
+            "frames": 136092,
+            "last_16_pcm_bytes": "29fe3bfee3fe42ffa6fff4ff4f00802e",
+            "pcm_sha256": "02233ef07bd05a677e8a510b4684aad671b19d4803fe0b337172b0b1dfe4a554",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "009cf55a5dd14ffb86970f7d8144af546f4d86c63f309a9d0034d39cacfdabff",
+            "frames": 136092,
+            "last_16_pcm_bytes": "29fe3bfee3fe42ffa6fff4ff4f00802e",
+            "pcm_sha256": "02233ef07bd05a677e8a510b4684aad671b19d4803fe0b337172b0b1dfe4a554",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_1ch_48.m4a",
+      "encoded_sha256": "7a6ea3601ccef9956453732d56220602191b8b06a5b1ad508436dbbc6cdbd0fb",
+      "expected_channels": 1,
+      "expected_frames": 136092,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_1ch.wav",
+      "source_sha256": "89bcbae438123c6d129386cbce2aa678445486626613e95aa8003eee4fe9c824",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "92f7cd2f95c5e0c9b2da4e71832a4020ee1a9458a3ab70a451a5d8b0d08bfb48",
+            "frames": 136092,
+            "last_16_pcm_bytes": "baffbdffaf0070ff94ff0401972b3dd5",
+            "pcm_sha256": "411f10de298f842066483099313c81d093607f315f6f5e33e70b0ed830156f38",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "92f7cd2f95c5e0c9b2da4e71832a4020ee1a9458a3ab70a451a5d8b0d08bfb48",
+            "frames": 136092,
+            "last_16_pcm_bytes": "baffbdffaf0070ff94ff0401972b3dd5",
+            "pcm_sha256": "411f10de298f842066483099313c81d093607f315f6f5e33e70b0ed830156f38",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_2ch_20.m4a",
+      "encoded_sha256": "245055a0b531f19fa085623d712284992f063f736fbbb1d61b4f7d561bd2566a",
+      "expected_channels": 2,
+      "expected_frames": 136092,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_2ch.wav",
+      "source_sha256": "53dad6b2f5a1aa2d1dfad87b9967cfad989a5635f7c6a5b92969207da80730d7",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "4891b50c6ce28f10ddcb89fe5b621ef425410df75f6cb0f40b849cb436dcf1df",
+            "frames": 136092,
+            "last_16_pcm_bytes": "e3ff88ff0d002200f300d9fffd2c2fd4",
+            "pcm_sha256": "496f389b2f75e89cc8df352b57b68fb52df7d3d313ca937be964e361f4227272",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136092,
+            "outputDelay": 1024,
+            "padding": 100,
+            "priming": 1024,
+            "raw_frames": 138240
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "4891b50c6ce28f10ddcb89fe5b621ef425410df75f6cb0f40b849cb436dcf1df",
+            "frames": 136092,
+            "last_16_pcm_bytes": "e3ff88ff0d002200f300d9fffd2c2fd4",
+            "pcm_sha256": "496f389b2f75e89cc8df352b57b68fb52df7d3d313ca937be964e361f4227272",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=100 outputDelay=1024 raw_frames=138240 gapless_frames=136092"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_2ch_48.m4a",
+      "encoded_sha256": "14b2b2b01da019ceda6788743d020c5ca87437533dc38757eff77992eca75de9",
+      "expected_channels": 2,
+      "expected_frames": 136092,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136092_2ch.wav",
+      "source_sha256": "53dad6b2f5a1aa2d1dfad87b9967cfad989a5635f7c6a5b92969207da80730d7",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "63b7e156edaf299714b0f5be2556f40545fc063c13df33ce478c01beccb9e194",
+            "frames": 136570,
+            "last_16_pcm_bytes": "700084ff45ffa6ff60ff77ff74007b2d",
+            "pcm_sha256": "fe6d870fbb8b7ea908957e73d0c8bab08ed7b860bbe7163b8cbcd8c832f3bf54",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "63b7e156edaf299714b0f5be2556f40545fc063c13df33ce478c01beccb9e194",
+            "frames": 136570,
+            "last_16_pcm_bytes": "700084ff45ffa6ff60ff77ff74007b2d",
+            "pcm_sha256": "fe6d870fbb8b7ea908957e73d0c8bab08ed7b860bbe7163b8cbcd8c832f3bf54",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_1ch_20.m4a",
+      "encoded_sha256": "5e00887b44c47827c8b3d126a9c5007ec5fbe37b29e98773e0be540893574187",
+      "expected_channels": 1,
+      "expected_frames": 136570,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_1ch.wav",
+      "source_sha256": "89cba81d7c960d6541923e9749f349fc03c9518c9ae5760c7d6ce1b8c539a8ee",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "03b73dc1aec22cf8be2b5350870b2304afef5aea508fda05a2432369675ae29e",
+            "frames": 136570,
+            "last_16_pcm_bytes": "3700a2ff44ff6eff46ffb6ffebff602e",
+            "pcm_sha256": "5e77893bf299048e39801ea478c8fd03b565d5c9e5e87b0d10d398c6c3327567",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "03b73dc1aec22cf8be2b5350870b2304afef5aea508fda05a2432369675ae29e",
+            "frames": 136570,
+            "last_16_pcm_bytes": "3700a2ff44ff6eff46ffb6ffebff602e",
+            "pcm_sha256": "5e77893bf299048e39801ea478c8fd03b565d5c9e5e87b0d10d398c6c3327567",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_1ch_48.m4a",
+      "encoded_sha256": "aa13a3b6e8de79bb5b2f3dbc2136c620247239ed9feca7298404f9fc2ac6bbd1",
+      "expected_channels": 1,
+      "expected_frames": 136570,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_1ch.wav",
+      "source_sha256": "89cba81d7c960d6541923e9749f349fc03c9518c9ae5760c7d6ce1b8c539a8ee",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "d06f43e63ca1963b3381d786fa778cd3fa30c4293e45f9d8f2dd27c67ec20b71",
+            "frames": 136570,
+            "last_16_pcm_bytes": "a7ff3d00abff60004300f9ffe72b7ed4",
+            "pcm_sha256": "65b2314d259f9492d64ee906c25ebfa6abc76e54fec28d4c26ffb6c218bf41e7",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "d06f43e63ca1963b3381d786fa778cd3fa30c4293e45f9d8f2dd27c67ec20b71",
+            "frames": 136570,
+            "last_16_pcm_bytes": "a7ff3d00abff60004300f9ffe72b7ed4",
+            "pcm_sha256": "65b2314d259f9492d64ee906c25ebfa6abc76e54fec28d4c26ffb6c218bf41e7",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_2ch_20.m4a",
+      "encoded_sha256": "863b096e968adecf1aa715ab7e38c06d213d28353fcb4fc746cd9be3fb55df13",
+      "expected_channels": 2,
+      "expected_frames": 136570,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_2ch.wav",
+      "source_sha256": "95ef286d5c10325a875406dbe618d5940625a4fc67462bc8aac56792e5a5ff05",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "81c6e040325cdcc2e021868677ea417b1f170b13ffdddb752f59033396e396ca",
+            "frames": 136570,
+            "last_16_pcm_bytes": "9fff5800190006003f001800632c29d4",
+            "pcm_sha256": "ad2062badbab15d695b203cc47116618fa2b92aec82a8588b443091a3f54ac46",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136570,
+            "outputDelay": 1024,
+            "padding": 646,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "81c6e040325cdcc2e021868677ea417b1f170b13ffdddb752f59033396e396ca",
+            "frames": 136570,
+            "last_16_pcm_bytes": "9fff5800190006003f001800632c29d4",
+            "pcm_sha256": "ad2062badbab15d695b203cc47116618fa2b92aec82a8588b443091a3f54ac46",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=646 outputDelay=1024 raw_frames=139264 gapless_frames=136570"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_2ch_48.m4a",
+      "encoded_sha256": "bc6f4be1e965913df4e9f72d4f0a3e7c23c581aaebc80ec0f268dbf3fa9567fa",
+      "expected_channels": 2,
+      "expected_frames": 136570,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136570_2ch.wav",
+      "source_sha256": "95ef286d5c10325a875406dbe618d5940625a4fc67462bc8aac56792e5a5ff05",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "b25b130724a287c6aa7bd54421b0c529253ba81f8552929d68ea749cfd6ce73d",
+            "frames": 136571,
+            "last_16_pcm_bytes": "180095fe27ff98ff6cff9eff3c009c2d",
+            "pcm_sha256": "3776d79670fdba53f028cf976e1d54ee7ad0751c5b932ba966d297820d4a39f7",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "b25b130724a287c6aa7bd54421b0c529253ba81f8552929d68ea749cfd6ce73d",
+            "frames": 136571,
+            "last_16_pcm_bytes": "180095fe27ff98ff6cff9eff3c009c2d",
+            "pcm_sha256": "3776d79670fdba53f028cf976e1d54ee7ad0751c5b932ba966d297820d4a39f7",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_1ch_20.m4a",
+      "encoded_sha256": "c7f190ccd1d4a204241b94e4269e529d67e7b0dfb3b36e1708bea452b575eedd",
+      "expected_channels": 1,
+      "expected_frames": 136571,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_1ch.wav",
+      "source_sha256": "99dd1e788269c4c56f2070f9397444248b6cbcf97c2bf1c9b2c086684e163c8c",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "35bed95e9531bfb29f9dba78c15294300974f14c639cdc033fb203277a1becc6",
+            "frames": 136571,
+            "last_16_pcm_bytes": "b7ff27ff44ff41ff99ffc7ff12007a2e",
+            "pcm_sha256": "b09fccdb55f76682179e93e994af58c2019beff37de00323c9b0283ed3c8f2ab",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 1,
+            "file_sha256": "35bed95e9531bfb29f9dba78c15294300974f14c639cdc033fb203277a1becc6",
+            "frames": 136571,
+            "last_16_pcm_bytes": "b7ff27ff44ff41ff99ffc7ff12007a2e",
+            "pcm_sha256": "b09fccdb55f76682179e93e994af58c2019beff37de00323c9b0283ed3c8f2ab",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=1 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_1ch_48.m4a",
+      "encoded_sha256": "7ef5761eaedda2586fe618c92f13adf06d71521839d8d27f77b8c25329a66a53",
+      "expected_channels": 1,
+      "expected_frames": 136571,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_1ch.wav",
+      "source_sha256": "99dd1e788269c4c56f2070f9397444248b6cbcf97c2bf1c9b2c086684e163c8c",
+      "target_kbps": 48
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "0c144c78dbe7849b427853b51fcae0b8fe78ec5f383637b4def446a2a50c2439",
+            "frames": 136571,
+            "last_16_pcm_bytes": "a4ff4a005e00dbffca00b8ffcb2beed4",
+            "pcm_sha256": "555145afc24c09a739582e00991785f96dbf4d0d93cd14d37c4c6ddcbcf8a523",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "0c144c78dbe7849b427853b51fcae0b8fe78ec5f383637b4def446a2a50c2439",
+            "frames": 136571,
+            "last_16_pcm_bytes": "a4ff4a005e00dbffca00b8ffcb2beed4",
+            "pcm_sha256": "555145afc24c09a739582e00991785f96dbf4d0d93cd14d37c4c6ddcbcf8a523",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_2ch_20.m4a",
+      "encoded_sha256": "aeebf5c3960c585333ea30b2008aa664996cf7ca8c6582cc55893b14968fb532",
+      "expected_channels": 2,
+      "expected_frames": 136571,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_2ch.wav",
+      "source_sha256": "8abc02936189b270ce6be4dd1530e5b06224f4939740495157baf8f627f5d245",
+      "target_kbps": 20
+    },
+    {
+      "decodes": {
+        "new": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "b7ca7f0f1ab186b3a42fad52b1acb9b6c5e3b750faeb0712830edd625c7260a7",
+            "frames": 136571,
+            "last_16_pcm_bytes": "84ff5d003100ecff8100dcff402c4fd4",
+            "pcm_sha256": "02c700d70d39804120d2dc86fef88e2fb314795cacdd427b8541fa1ec59d688b",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        },
+        "old": {
+          "gapless": {
+            "gapless_frames": 136571,
+            "outputDelay": 1024,
+            "padding": 645,
+            "priming": 1024,
+            "raw_frames": 139264
+          },
+          "info": {
+            "channels": 2,
+            "file_sha256": "b7ca7f0f1ab186b3a42fad52b1acb9b6c5e3b750faeb0712830edd625c7260a7",
+            "frames": 136571,
+            "last_16_pcm_bytes": "84ff5d003100ecff8100dcff402c4fd4",
+            "pcm_sha256": "02c700d70d39804120d2dc86fef88e2fb314795cacdd427b8541fa1ec59d688b",
+            "rate": 16000,
+            "sample_width": 2
+          },
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "aot=2 core=16000 out=16000 ch=2 scale=1 priming=1024 padding=645 outputDelay=1024 raw_frames=139264 gapless_frames=136571"
+        }
+      },
+      "encoded": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_2ch_48.m4a",
+      "encoded_sha256": "451965a306fbc7d67deaf404e8bf6340a69ba7c0135c3d362e93e40a0ac1a83b",
+      "expected_channels": 2,
+      "expected_frames": 136571,
+      "new_exact_source_shape": true,
+      "old_new_pcm_equal": true,
+      "source": "/private/tmp/faac-upstream098-lc-tail/lc16k_136571_2ch.wav",
+      "source_sha256": "8abc02936189b270ce6be4dd1530e5b06224f4939740495157baf8f627f5d245",
+      "target_kbps": 48
+    }
+  ],
+  "schema": 1,
+  "source_generator": "deterministic 16-bit PCM sine plus terminal fade and last-sample impulse; 16 kHz; mono/stereo",
+  "summary": {
+    "errors": [],
+    "new_exact_source_shape": 24,
+    "old_and_new_gapless_metadata_equal": 24,
+    "old_exact_source_shape": 24,
+    "old_new_pcm_equal": 24,
+    "old_new_wav_file_equal": 24,
+    "rows": 24,
+    "under_481_exact_rows": 12,
+    "under_481_rows": 12
+  }
+}

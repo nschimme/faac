@@ -1,0 +1,13 @@
+{
+  "all_exact": true,
+  "controls": {
+    "pr60_tier_base": {
+      "exact_matches": 196,
+      "packet_identity_matches": 196,
+      "pcm_identity_matches": 196,
+      "rows": 196
+    }
+  },
+  "rows": 196,
+  "schema": 1
+}

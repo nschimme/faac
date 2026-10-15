@@ -1,0 +1,188 @@
+/*
+ * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ */
+
+#ifndef SBR_INTERNAL_H
+#define SBR_INTERNAL_H
+
+#include "sbr.h"
+#include "sbr_analysis.h"
+#include "resample.h"
+#include <stddef.h>
+
+/* A written frame's last envelope and the layout it was coded in: the
+ * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
+typedef struct {
+    int env[SBR_MAX_BANDS];
+    int nb;
+    int ampRes;
+    int coupled;
+} SbrEnvRef;
+
+/* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
+typedef struct SBRChannel {
+    float qmfOvl64[SBR_QMF_HIST_LEN]; /* QMF overlap plus analysis delay (carries across frames) */
+    /* By access-unit parity: a frame reads the previous frame's slot and writes
+     * its own, so a frame the rate loop writes again codes against the same
+     * reference as the first time. */
+    SbrEnvRef ref[2];
+} SBRChannel;
+
+/* A channel's quantized envelopes, one level per band. */
+typedef struct {
+    int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+} SbrEnvData;
+
+/* One frame's coded SBR payload: every field SbrWrite reads that varies per
+ * frame. What it reads that is constant for the stream (bs_* header fields,
+ * numBands) stays in SBRInfo.
+ *
+ * Sole home for these values: SbrEncode quantizes into a SBRContext.frameFIFO
+ * slot and SbrWrite reads an older one, so the delay costs a ring index. Caching
+ * a copy anywhere else reintroduces the skew this ring exists to remove. */
+typedef struct SbrFrameData {
+    uint8_t numEnvelopes;
+    uint8_t eff_amp_res;
+    uint8_t frameClass;
+    uint8_t tEnv[SBR_MAX_ENVELOPES + 1];
+    uint8_t bsPointer;
+    uint8_t freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
+    float distortion;
+    /* The noise floor and inverse-filter mode are stream constants
+     * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
+    SbrEnvData ch[];
+} SbrFrameData;
+
+/* A FIFO slot owns one or three independently quantized candidates. Candidate
+ * zero starts immediately after this header; later candidates follow it. */
+typedef struct SbrFrameSlot {
+    uint8_t candidateCount;
+    uint8_t envCountMode;
+    uint8_t envCountStack;
+    uint8_t selectedIndex;
+    uint8_t selectedReady;
+    uint8_t retryCount;
+    float envCountLambda;
+    unsigned char candidates[];
+} SbrFrameSlot;
+
+struct SBRInfo {
+    int sbrPresent;
+    /* Coupled rendition of the pair being written: level, then balance. */
+    SbrEnvData cpl[2];
+    int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
+    int numChannels;
+    int sampleRate;        /* full output rate; the dual-rate core runs at sampleRate/2 */
+
+    /* --- frequency band configuration (set at init, constant per stream) --- */
+    int kx;
+    int k2;
+    int numBands;
+    int bandEdges[SBR_MAX_BANDS + 1];
+    int numBandsLow; /* low-res band count: every other high-res edge */
+    int bandEdgesLow[(SBR_MAX_BANDS + 1) / 2 + 1];
+
+    /* --- bitstream header fields --- */
+    int bs_freq_res;       /* envelope frequency resolution: 1 = HIGH (f_master) */
+    int bs_start_freq;
+    int bs_stop_freq;
+    int bs_xover_band;
+    int bs_alter_scale;
+    int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
+    int numEnvFixFix;      /* envelopes in a frame without a transient: 1 or 2 */
+    unsigned long ratePerChannel;
+    int envCountStack;
+    int noiseLevel;
+
+    /* --- per-frame state --- */
+    /* The header decision is made once per access unit, on the first write
+     * request after analysis: the writer runs once per element and again on
+     * every CBR retry, and only access units that are actually written count
+     * toward the header period. */
+    int headerDecided;
+    int sendHeaderThisFrame;
+
+    /* QMF analysis twiddle factors. */
+    float twidCos[SBR_QMF_BANDS_64];
+    float twidSin[SBR_QMF_BANDS_64];
+    float oddCos [SBR_QMF_BANDS_64];
+    float oddSin [SBR_QMF_BANDS_64];
+
+    /* QMF history follows the fixed channel count. */
+    SBRChannel ch[];
+};
+
+struct SBRContext {
+    unsigned long fullSampleRate;
+    unsigned int  fullSampleRateIdx;
+    SBRInfo      *sbrInfo;
+    SBRInfo      *trialInfo;
+    SBRInfo      *snapshotInfo;
+    struct Resampler *resampler;
+    int numChannels;
+    int candidateCapacity;
+    int envCountMode;
+    int envCountStack;
+    float envCountLambda;
+
+    /* Shared signal analysis */
+    SignalAnalysis *signalAnalysis;
+    /* Coded-payload delay ring; see SBR_FRAME_FIFO. frameHead is the newest
+       entry, so its successor (frameHead + 1) % SBR_FRAME_FIFO is the oldest --
+       the payload the current access unit emits. */
+    SbrFrameSlot *frameFIFO[SBR_FRAME_FIFO];
+    int          frameHead;
+    /* Channel-sized payload slots share the context allocation. */
+    unsigned char frameData[];
+};
+
+static inline size_t sbr_frame_candidate_size(int channels)
+{
+    return sizeof(SbrFrameData) + (size_t)channels * sizeof(SbrEnvData);
+}
+
+static inline SbrFrameData *sbr_frame_candidate(SbrFrameSlot *slot, int index, int channels)
+{
+    return (SbrFrameData *)(slot->candidates + (size_t)index * sbr_frame_candidate_size(channels));
+}
+
+static inline const SbrFrameData *sbr_frame_candidate_const(const SbrFrameSlot *slot, int index, int channels)
+{
+    return (const SbrFrameData *)(slot->candidates + (size_t)index * sbr_frame_candidate_size(channels));
+}
+
+/* The envelope band table this frame codes over. The quantizer and the writer
+ * must agree on it, and the decoder picks the same one from bs_freq_res. */
+static inline int sbr_env_bands(const SBRInfo *sbr, const SbrFrameData *fd)
+{
+    return fd->freqRes ? sbr->numBands : sbr->numBandsLow;
+}
+
+static inline const int *sbr_env_edges(const SBRInfo *sbr, const SbrFrameData *fd)
+{
+    return fd->freqRes ? sbr->bandEdges : sbr->bandEdgesLow;
+}
+
+SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
+/* Recompute the bitrate-dependent band config without reallocating; lets
+ * SetConfiguration adjust an existing handle. */
+void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
+void SbrEnd(SBRInfo *sbr);
+
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
+/* Quantizes this frame's payload directly into *fd (a delay-line slot). */
+void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
+void SbrEncodeCandidates(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameSlot *slot, int mode, float lambda, int stack);
+
+#endif

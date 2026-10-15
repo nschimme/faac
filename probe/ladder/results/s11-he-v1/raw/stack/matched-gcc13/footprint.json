@@ -1,0 +1,53 @@
+{
+  "compiler": "GCC13.3.0 x86_64 Linux",
+  "configuration": "Meson release LTO default_library=both",
+  "source_path": "/tmp/faac-source",
+  "build_path": "/tmp/faac-build",
+  "metric": "ROM = .text + .rodata + .data; BSS separate",
+  "variants": {
+    "base": {
+      "sections": {
+        ".text": 65136,
+        ".rodata": 9864,
+        ".data": 1184,
+        ".bss": 20552
+      },
+      "rom_bytes": 76184,
+      "sha256": "1efcee977e6dffe9018ab23c44a2841edd86040443718edede2cdc3f7f3c6289",
+      "delta_rom_bytes": 0
+    },
+    "noise": {
+      "sections": {
+        ".text": 65136,
+        ".rodata": 9864,
+        ".data": 1184,
+        ".bss": 20552
+      },
+      "rom_bytes": 76184,
+      "sha256": "62bf49b2b91f2e5b495496a3455fe188f3f3345622390303d8840a2cf21e42d4",
+      "delta_rom_bytes": 0
+    },
+    "limiter": {
+      "sections": {
+        ".text": 65280,
+        ".rodata": 9864,
+        ".data": 1184,
+        ".bss": 20552
+      },
+      "rom_bytes": 76328,
+      "sha256": "6095f055d5e8fba821561f930d357c437536e11f5012a896153c7648baa03803",
+      "delta_rom_bytes": 144
+    },
+    "stack": {
+      "sections": {
+        ".text": 65280,
+        ".rodata": 9864,
+        ".data": 1184,
+        ".bss": 20552
+      },
+      "rom_bytes": 76328,
+      "sha256": "01deb30ac2a5a68fce7f75a07c4cdb8e3015b0cfb83c1c2c5f5342b9079d1a98",
+      "delta_rom_bytes": 144
+    }
+  }
+}

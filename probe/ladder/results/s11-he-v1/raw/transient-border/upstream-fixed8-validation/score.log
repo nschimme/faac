@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/score_combo_fixed8.py", line 63, in <module>
+    if __name__=='__main__':raise SystemExit(main())
+                                             ~~~~^^
+  File "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/score_combo_fixed8.py", line 55, in main
+    if value is None:raise RuntimeError(f'BD-rate invalid for {clip}')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: BD-rate invalid for 21-classic.441.16b48k.wav

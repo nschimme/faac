@@ -1,0 +1,785 @@
+completed base_fixed1|12-German-male-speech.441.16b48k.wav|32: MOS=3.950219 actual=31.887 kbps source=identity:baseline_original|12-German-male-speech.441.16b48k.wav|32
+completed base_fixed1|15-Good-evening.441.16b48k.wav|32: MOS=3.705923 actual=32.104 kbps source=identity:baseline_original|15-Good-evening.441.16b48k.wav|32
+completed base_fixed1|12-German-male-speech.441.16b48k.wav|48: MOS=4.228295 actual=47.889 kbps source=scored
+completed base_fixed1|12-German-male-speech.441.16b48k.wav|64: MOS=4.548110 actual=63.658 kbps source=scored
+completed base_fixed1|12-German-male-speech.441.16b48k.wav|96: MOS=4.824779 actual=95.571 kbps source=scored
+completed base_fixed1|21-classic.441.16b48k.wav|32: MOS=3.975091 actual=31.866 kbps source=identity:baseline_original|21-classic.441.16b48k.wav|32
+completed base_fixed1|15-Good-evening.441.16b48k.wav|48: MOS=4.048164 actual=48.298 kbps source=scored
+completed base_fixed1|15-Good-evening.441.16b48k.wav|96: MOS=4.556640 actual=95.544 kbps source=scored
+completed base_fixed1|15-Good-evening.441.16b48k.wav|64: MOS=4.284698 actual=63.980 kbps source=scored
+completed base_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.757817 actual=31.875 kbps source=identity:baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32
+completed base_fixed1|21-classic.441.16b48k.wav|48: MOS=4.345308 actual=47.744 kbps source=scored
+completed base_fixed1|21-classic.441.16b48k.wav|64: MOS=4.544404 actual=63.641 kbps source=scored
+completed base_fixed1|21-classic.441.16b48k.wav|96: MOS=4.743803 actual=95.454 kbps source=scored
+completed base_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.046108 actual=47.954 kbps source=scored
+completed base_fixed1|25-This-is-the-end.441.16b48k.wav|32: MOS=3.788301 actual=32.294 kbps source=identity:baseline_original|25-This-is-the-end.441.16b48k.wav|32
+completed base_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.340528 actual=64.040 kbps source=scored
+completed base_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.772595 actual=95.770 kbps source=scored
+completed base_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.044950 actual=32.613 kbps source=identity:baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|32
+completed base_fixed1|25-This-is-the-end.441.16b48k.wav|48: MOS=4.177731 actual=48.707 kbps source=scored
+completed base_fixed1|25-This-is-the-end.441.16b48k.wav|64: MOS=4.424635 actual=64.430 kbps source=scored
+completed base_fixed1|25-This-is-the-end.441.16b48k.wav|96: MOS=4.629416 actual=95.826 kbps source=scored
+completed base_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.149538 actual=32.064 kbps source=identity:baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|32
+completed base_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.355315 actual=48.898 kbps source=scored
+completed base_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.526008 actual=64.367 kbps source=scored
+completed base_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.734730 actual=95.952 kbps source=scored
+completed base_fixed1|4-Sound-English-male.441.16b48k.wav|32: MOS=3.849581 actual=32.191 kbps source=identity:baseline_original|4-Sound-English-male.441.16b48k.wav|32
+completed base_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.483241 actual=48.096 kbps source=scored
+completed base_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.598569 actual=63.768 kbps source=scored
+completed base_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.747012 actual=95.243 kbps source=scored
+completed base_fixed1|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.601993 actual=31.968 kbps source=identity:baseline_original|9-Have-big-expensive-car.441.16b48k.wav|32
+completed base_fixed1|4-Sound-English-male.441.16b48k.wav|64: MOS=4.666512 actual=63.827 kbps source=scored
+completed base_fixed1|4-Sound-English-male.441.16b48k.wav|48: MOS=4.316776 actual=47.976 kbps source=scored
+completed base_fixed1|4-Sound-English-male.441.16b48k.wav|96: MOS=4.812414 actual=95.545 kbps source=scored
+completed base_fixed1|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.709270 actual=31.792 kbps source=identity:baseline_original|Asleep__4.11-4.31_.16b48k.wav|32
+completed base_fixed1|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.060850 actual=48.295 kbps source=scored
+completed base_fixed1|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.488294 actual=95.415 kbps source=scored
+completed base_fixed1|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.276104 actual=64.008 kbps source=scored
+completed base_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.681555 actual=31.757 kbps source=identity:baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32
+completed base_fixed1|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.174474 actual=47.712 kbps source=scored
+completed base_fixed1|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.430921 actual=63.645 kbps source=scored
+completed base_fixed1|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.641789 actual=95.426 kbps source=scored
+completed base_fixed1|Changes.16b48k.wav|32: MOS=3.484576 actual=31.866 kbps source=identity:baseline_original|Changes.16b48k.wav|32
+completed base_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.917162 actual=47.926 kbps source=scored
+completed base_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.081332 actual=63.599 kbps source=scored
+completed base_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.497894 actual=95.156 kbps source=scored
+completed base_fixed1|Coral.16b48k.wav|32: MOS=3.790796 actual=31.851 kbps source=identity:baseline_original|Coral.16b48k.wav|32
+completed base_fixed1|Changes.16b48k.wav|64: MOS=4.166029 actual=63.668 kbps source=scored
+completed base_fixed1|Changes.16b48k.wav|48: MOS=3.832181 actual=47.842 kbps source=scored
+completed base_fixed1|Changes.16b48k.wav|96: MOS=4.527040 actual=95.432 kbps source=scored
+completed base_fixed1|ExitMusic.16b48k.wav|32: MOS=3.900543 actual=31.952 kbps source=identity:baseline_original|ExitMusic.16b48k.wav|32
+completed base_fixed1|Coral.16b48k.wav|48: MOS=4.128061 actual=47.964 kbps source=scored
+completed base_fixed1|Coral.16b48k.wav|64: MOS=4.397322 actual=63.690 kbps source=scored
+completed base_fixed1|Coral.16b48k.wav|96: MOS=4.690687 actual=95.344 kbps source=scored
+completed base_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.428556 actual=31.812 kbps source=identity:baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|32
+completed base_fixed1|ExitMusic.16b48k.wav|48: MOS=4.254025 actual=47.793 kbps source=scored
+completed base_fixed1|ExitMusic.16b48k.wav|64: MOS=4.547348 actual=63.554 kbps source=scored
+completed base_fixed1|ExitMusic.16b48k.wav|96: MOS=4.748653 actual=95.298 kbps source=scored
+completed base_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.704113 actual=31.755 kbps source=identity:baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|32
+completed base_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.703292 actual=47.839 kbps source=scored
+completed base_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.009300 actual=63.701 kbps source=scored
+completed base_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.484217 actual=95.650 kbps source=scored
+completed base_fixed1|Hey Tonight.16b48k.wav|32: MOS=4.255892 actual=31.898 kbps source=identity:baseline_original|Hey Tonight.16b48k.wav|32
+completed base_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.412488 actual=63.662 kbps source=scored
+completed base_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.177071 actual=47.745 kbps source=scored
+completed base_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.698538 actual=95.316 kbps source=scored
+completed base_fixed1|Hotel California.16b48k.wav|32: MOS=3.886071 actual=32.269 kbps source=identity:baseline_original|Hotel California.16b48k.wav|32
+completed base_fixed1|Hey Tonight.16b48k.wav|48: MOS=4.402475 actual=48.152 kbps source=scored
+completed base_fixed1|Hey Tonight.16b48k.wav|64: MOS=4.538992 actual=63.907 kbps source=scored
+completed base_fixed1|Hey Tonight.16b48k.wav|96: MOS=4.710851 actual=95.310 kbps source=scored
+completed base_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.805710 actual=31.914 kbps source=identity:baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|32
+completed base_fixed1|Hotel California.16b48k.wav|48: MOS=4.197210 actual=48.637 kbps source=scored
+completed base_fixed1|Hotel California.16b48k.wav|64: MOS=4.399193 actual=64.430 kbps source=scored
+completed base_fixed1|Hotel California.16b48k.wav|96: MOS=4.607788 actual=95.657 kbps source=scored
+completed base_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.120697 actual=34.026 kbps source=identity:baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32
+completed base_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.186426 actual=48.002 kbps source=scored
+completed base_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.388992 actual=63.695 kbps source=scored
+completed base_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.639492 actual=95.508 kbps source=scored
+completed base_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.328971 actual=49.550 kbps source=scored
+completed base_fixed1|NewYorkCity.16b48k.wav|32: MOS=4.026560 actual=32.203 kbps source=identity:baseline_original|NewYorkCity.16b48k.wav|32
+completed base_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.511842 actual=64.735 kbps source=scored
+completed base_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.700408 actual=95.960 kbps source=scored
+completed base_fixed1|Only Time.16b48k.wav|32: MOS=3.875399 actual=31.729 kbps source=identity:baseline_original|Only Time.16b48k.wav|32
+completed base_fixed1|NewYorkCity.16b48k.wav|48: MOS=4.333858 actual=48.474 kbps source=scored
+completed base_fixed1|NewYorkCity.16b48k.wav|96: MOS=4.679967 actual=95.442 kbps source=scored
+completed base_fixed1|NewYorkCity.16b48k.wav|64: MOS=4.498455 actual=64.234 kbps source=scored
+completed base_fixed1|Robots_old.16b48k.wav|32: MOS=4.232396 actual=31.755 kbps source=identity:baseline_original|Robots_old.16b48k.wav|32
+completed base_fixed1|Only Time.16b48k.wav|48: MOS=4.249408 actual=47.636 kbps source=scored
+completed base_fixed1|Only Time.16b48k.wav|64: MOS=4.487347 actual=63.502 kbps source=scored
+completed base_fixed1|Only Time.16b48k.wav|96: MOS=4.718775 actual=95.323 kbps source=scored
+completed base_fixed1|Robots_old.16b48k.wav|48: MOS=4.423170 actual=47.572 kbps source=scored
+completed base_fixed1|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.200638 actual=31.816 kbps source=identity:baseline_original|Severance__1.31-1.51_.16b48k.wav|32
+completed base_fixed1|Robots_old.16b48k.wav|64: MOS=4.579953 actual=63.343 kbps source=scored
+completed base_fixed1|Robots_old.16b48k.wav|96: MOS=4.721808 actual=95.053 kbps source=scored
+completed base_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.177185 actual=31.797 kbps source=identity:baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|32
+completed base_fixed1|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.742702 actual=47.808 kbps source=scored
+completed base_fixed1|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.280347 actual=63.696 kbps source=scored
+completed base_fixed1|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.598395 actual=95.552 kbps source=scored
+completed base_fixed1|SinceAlways.16b48k.wav|32: MOS=3.940366 actual=31.813 kbps source=identity:baseline_original|SinceAlways.16b48k.wav|32
+completed base_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.456773 actual=47.653 kbps source=scored
+completed base_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.677790 actual=63.537 kbps source=scored
+completed base_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.806343 actual=95.359 kbps source=scored
+completed base_fixed1|SlavesOfFear.16b48k.wav|32: MOS=4.003471 actual=32.241 kbps source=identity:baseline_original|SlavesOfFear.16b48k.wav|32
+completed base_fixed1|SinceAlways.16b48k.wav|48: MOS=4.131420 actual=48.146 kbps source=scored
+completed base_fixed1|SinceAlways.16b48k.wav|64: MOS=4.365182 actual=63.795 kbps source=scored
+completed base_fixed1|SinceAlways.16b48k.wav|96: MOS=4.599671 actual=95.471 kbps source=scored
+completed base_fixed1|The Chastising of Renegade.16b48k.wav|32: MOS=3.707784 actual=32.327 kbps source=identity:baseline_original|The Chastising of Renegade.16b48k.wav|32
+completed base_fixed1|SlavesOfFear.16b48k.wav|48: MOS=4.366942 actual=48.546 kbps source=scored
+completed base_fixed1|SlavesOfFear.16b48k.wav|64: MOS=4.517556 actual=64.239 kbps source=scored
+completed base_fixed1|SlavesOfFear.16b48k.wav|96: MOS=4.678162 actual=95.563 kbps source=scored
+completed base_fixed1|Through The Fire And Flames.16b48k.wav|32: MOS=4.051835 actual=32.240 kbps source=identity:baseline_original|Through The Fire And Flames.16b48k.wav|32
+completed base_fixed1|The Chastising of Renegade.16b48k.wav|48: MOS=4.003480 actual=48.801 kbps source=scored
+completed base_fixed1|The Chastising of Renegade.16b48k.wav|64: MOS=4.295550 actual=64.601 kbps source=scored
+completed base_fixed1|The Chastising of Renegade.16b48k.wav|96: MOS=4.545950 actual=95.887 kbps source=scored
+completed base_fixed1|TrosYGareg.16b48k.wav|32: MOS=3.901191 actual=31.802 kbps source=identity:baseline_original|TrosYGareg.16b48k.wav|32
+completed base_fixed1|Through The Fire And Flames.16b48k.wav|48: MOS=4.361696 actual=48.335 kbps source=scored
+completed base_fixed1|Through The Fire And Flames.16b48k.wav|64: MOS=4.512874 actual=63.966 kbps source=scored
+completed base_fixed1|Through The Fire And Flames.16b48k.wav|96: MOS=4.646971 actual=95.376 kbps source=scored
+completed base_fixed1|Waiting.16b48k.wav|32: MOS=3.715559 actual=31.907 kbps source=identity:baseline_original|Waiting.16b48k.wav|32
+completed base_fixed1|TrosYGareg.16b48k.wav|48: MOS=4.241137 actual=47.680 kbps source=scored
+completed base_fixed1|TrosYGareg.16b48k.wav|64: MOS=4.442363 actual=63.569 kbps source=scored
+completed base_fixed1|TrosYGareg.16b48k.wav|96: MOS=4.732129 actual=95.288 kbps source=scored
+completed base_fixed1|With Love (Outro).16b48k.wav|32: MOS=4.114136 actual=31.836 kbps source=identity:baseline_original|With Love (Outro).16b48k.wav|32
+completed base_fixed1|Waiting.16b48k.wav|48: MOS=3.950831 actual=48.242 kbps source=scored
+completed base_fixed1|Waiting.16b48k.wav|64: MOS=4.228869 actual=64.074 kbps source=scored
+completed base_fixed1|Waiting.16b48k.wav|96: MOS=4.520217 actual=95.863 kbps source=scored
+completed base_fixed1|bah.wav|32: MOS=3.627783 actual=31.850 kbps source=identity:baseline_original|bah.wav|32
+completed base_fixed1|With Love (Outro).16b48k.wav|48: MOS=4.468417 actual=48.049 kbps source=scored
+completed base_fixed1|With Love (Outro).16b48k.wav|64: MOS=4.608331 actual=63.745 kbps source=scored
+completed base_fixed1|With Love (Outro).16b48k.wav|96: MOS=4.778433 actual=95.462 kbps source=scored
+completed base_fixed1|bas.wav|32: MOS=3.509618 actual=31.771 kbps source=identity:baseline_original|bas.wav|32
+completed base_fixed1|bah.wav|48: MOS=4.084496 actual=47.794 kbps source=scored
+completed base_fixed1|bah.wav|64: MOS=4.326852 actual=63.692 kbps source=scored
+completed base_fixed1|bah.wav|96: MOS=4.637539 actual=95.646 kbps source=scored
+completed base_fixed1|bonhemian_rhapsody.16b48k.wav|32: MOS=3.688215 actual=31.781 kbps source=identity:baseline_original|bonhemian_rhapsody.16b48k.wav|32
+completed base_fixed1|bas.wav|48: MOS=3.948877 actual=47.638 kbps source=scored
+completed base_fixed1|bas.wav|64: MOS=4.261601 actual=63.565 kbps source=scored
+completed base_fixed1|bas.wav|96: MOS=4.632121 actual=95.474 kbps source=scored
+completed base_fixed1|clapton_44k.16b48k.wav|32: MOS=3.769165 actual=31.950 kbps source=identity:baseline_original|clapton_44k.16b48k.wav|32
+completed base_fixed1|bonhemian_rhapsody.16b48k.wav|48: MOS=4.080571 actual=47.763 kbps source=scored
+completed base_fixed1|bonhemian_rhapsody.16b48k.wav|64: MOS=4.377660 actual=63.625 kbps source=scored
+completed base_fixed1|bonhemian_rhapsody.16b48k.wav|96: MOS=4.665137 actual=95.422 kbps source=scored
+completed base_fixed1|cst.wav|32: MOS=3.589728 actual=32.219 kbps source=identity:baseline_original|cst.wav|32
+completed base_fixed1|clapton_44k.16b48k.wav|48: MOS=4.085696 actual=48.103 kbps source=scored
+completed base_fixed1|clapton_44k.16b48k.wav|64: MOS=4.290544 actual=63.859 kbps source=scored
+completed base_fixed1|clapton_44k.16b48k.wav|96: MOS=4.496184 actual=95.288 kbps source=scored
+completed base_fixed1|fms.wav|32: MOS=3.952832 actual=31.954 kbps source=identity:baseline_original|fms.wav|32
+completed base_fixed1|cst.wav|48: MOS=3.970025 actual=48.289 kbps source=scored
+completed base_fixed1|cst.wav|64: MOS=4.272295 actual=63.911 kbps source=scored
+completed base_fixed1|cst.wav|96: MOS=4.621369 actual=96.037 kbps source=scored
+completed base_fixed1|girl.16b48k.wav|32: MOS=4.364783 actual=32.142 kbps source=identity:baseline_original|girl.16b48k.wav|32
+completed base_fixed1|fms.wav|48: MOS=4.307375 actual=48.076 kbps source=scored
+completed base_fixed1|fms.wav|64: MOS=4.559557 actual=63.790 kbps source=scored
+completed base_fixed1|fms.wav|96: MOS=4.788607 actual=95.664 kbps source=scored
+completed base_fixed1|glk.wav|32: MOS=4.653925 actual=31.881 kbps source=identity:baseline_original|glk.wav|32
+completed base_fixed1|girl.16b48k.wav|48: MOS=4.561942 actual=48.106 kbps source=scored
+completed base_fixed1|girl.16b48k.wav|64: MOS=4.661332 actual=63.934 kbps source=scored
+completed base_fixed1|girl.16b48k.wav|96: MOS=4.753634 actual=95.534 kbps source=scored
+completed base_fixed1|hrp.wav|32: MOS=4.060687 actual=32.583 kbps source=identity:baseline_original|hrp.wav|32
+completed base_fixed1|glk.wav|48: MOS=4.840668 actual=47.901 kbps source=scored
+completed base_fixed1|glk.wav|64: MOS=4.879171 actual=63.626 kbps source=scored
+completed base_fixed1|glk.wav|96: MOS=4.883690 actual=95.355 kbps source=scored
+completed base_fixed1|liberate.16b48k.wav|32: MOS=3.901757 actual=32.514 kbps source=identity:baseline_original|liberate.16b48k.wav|32
+completed base_fixed1|hrp.wav|48: MOS=4.449449 actual=48.690 kbps source=scored
+completed base_fixed1|hrp.wav|64: MOS=4.598272 actual=64.441 kbps source=scored
+completed base_fixed1|hrp.wav|96: MOS=4.759763 actual=95.871 kbps source=scored
+completed base_fixed1|lob.wav|32: MOS=3.929414 actual=33.253 kbps source=identity:baseline_original|lob.wav|32
+completed base_fixed1|liberate.16b48k.wav|48: MOS=4.196998 actual=49.258 kbps source=scored
+completed base_fixed1|liberate.16b48k.wav|64: MOS=4.346301 actual=65.037 kbps source=scored
+completed base_fixed1|liberate.16b48k.wav|96: MOS=4.521497 actual=96.066 kbps source=scored
+completed base_fixed1|mof.wav|32: MOS=3.173563 actual=31.805 kbps source=identity:baseline_original|mof.wav|32
+completed base_fixed1|lob.wav|48: MOS=4.235424 actual=50.254 kbps source=scored
+completed base_fixed1|lob.wav|64: MOS=4.466194 actual=65.885 kbps source=scored
+completed base_fixed1|lob.wav|96: MOS=4.639280 actual=96.703 kbps source=scored
+completed base_fixed1|qrt.wav|32: MOS=3.540258 actual=31.749 kbps source=identity:baseline_original|qrt.wav|32
+completed base_fixed1|mof.wav|48: MOS=3.636045 actual=47.542 kbps source=scored
+completed base_fixed1|mof.wav|64: MOS=4.004783 actual=63.345 kbps source=scored
+completed base_fixed1|mof.wav|96: MOS=4.224349 actual=95.155 kbps source=scored
+completed base_fixed1|sandman.16b48k.wav|32: MOS=3.755677 actual=31.847 kbps source=identity:baseline_original|sandman.16b48k.wav|32
+completed base_fixed1|qrt.wav|48: MOS=3.922238 actual=47.666 kbps source=scored
+completed base_fixed1|qrt.wav|64: MOS=4.188414 actual=63.622 kbps source=scored
+completed base_fixed1|qrt.wav|96: MOS=4.529854 actual=95.484 kbps source=scored
+completed base_fixed1|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.529418 actual=31.987 kbps source=identity:baseline_original|take_your_finger_frin_my_head.16b48k.wav|32
+completed base_fixed1|sandman.16b48k.wav|48: MOS=4.152897 actual=47.764 kbps source=scored
+completed base_fixed1|sandman.16b48k.wav|64: MOS=4.388916 actual=63.536 kbps source=scored
+completed base_fixed1|sandman.16b48k.wav|96: MOS=4.629796 actual=95.276 kbps source=scored
+completed base_fixed1|trumpet.16b48k.wav|32: MOS=4.080108 actual=33.015 kbps source=identity:baseline_original|trumpet.16b48k.wav|32
+completed base_fixed1|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.920804 actual=48.159 kbps source=scored
+completed base_fixed1|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.127847 actual=64.040 kbps source=scored
+completed base_fixed1|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.450756 actual=95.504 kbps source=scored
+completed base_fixed1|velvet.16b48k.wav|32: MOS=3.622032 actual=33.522 kbps source=identity:baseline_original|velvet.16b48k.wav|32
+completed base_fixed1|trumpet.16b48k.wav|48: MOS=4.259604 actual=49.702 kbps source=scored
+completed base_fixed1|trumpet.16b48k.wav|64: MOS=4.515100 actual=65.681 kbps source=scored
+completed base_fixed1|trumpet.16b48k.wav|96: MOS=4.727244 actual=96.661 kbps source=scored
+completed base_fixed1|velvet.16b48k.wav|48: MOS=3.839798 actual=49.683 kbps source=scored
+completed base_fixed2|12-German-male-speech.441.16b48k.wav|48: MOS=4.252363 actual=47.879 kbps source=identity:baseline_original|12-German-male-speech.441.16b48k.wav|48
+completed base_fixed1|velvet.16b48k.wav|64: MOS=4.117569 actual=64.723 kbps source=scored
+completed base_fixed1|velvet.16b48k.wav|96: MOS=4.390913 actual=95.127 kbps source=scored
+completed base_fixed2|12-German-male-speech.441.16b48k.wav|64: MOS=4.548025 actual=63.663 kbps source=identity:baseline_original|12-German-male-speech.441.16b48k.wav|64
+completed base_fixed2|12-German-male-speech.441.16b48k.wav|96: MOS=4.844498 actual=95.567 kbps source=identity:baseline_original|12-German-male-speech.441.16b48k.wav|96
+completed base_fixed2|15-Good-evening.441.16b48k.wav|48: MOS=4.091450 actual=48.327 kbps source=identity:baseline_original|15-Good-evening.441.16b48k.wav|48
+completed base_fixed2|15-Good-evening.441.16b48k.wav|64: MOS=4.327764 actual=64.014 kbps source=identity:baseline_original|15-Good-evening.441.16b48k.wav|64
+completed base_fixed2|12-German-male-speech.441.16b48k.wav|32: MOS=3.972655 actual=31.891 kbps source=scored
+completed base_fixed2|15-Good-evening.441.16b48k.wav|96: MOS=4.594235 actual=95.573 kbps source=identity:baseline_original|15-Good-evening.441.16b48k.wav|96
+completed base_fixed2|21-classic.441.16b48k.wav|48: MOS=4.332494 actual=47.757 kbps source=identity:baseline_original|21-classic.441.16b48k.wav|48
+completed base_fixed2|21-classic.441.16b48k.wav|64: MOS=4.544110 actual=63.658 kbps source=identity:baseline_original|21-classic.441.16b48k.wav|64
+completed base_fixed2|21-classic.441.16b48k.wav|96: MOS=4.750592 actual=95.468 kbps source=identity:baseline_original|21-classic.441.16b48k.wav|96
+completed base_fixed2|15-Good-evening.441.16b48k.wav|32: MOS=3.725720 actual=32.131 kbps source=scored
+completed base_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.044709 actual=47.958 kbps source=identity:baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48
+completed base_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.358729 actual=64.044 kbps source=identity:baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64
+completed base_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.792137 actual=95.773 kbps source=identity:baseline_original|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96
+completed base_fixed2|21-classic.441.16b48k.wav|32: MOS=3.969712 actual=31.880 kbps source=scored
+completed base_fixed2|25-This-is-the-end.441.16b48k.wav|48: MOS=4.236418 actual=48.730 kbps source=identity:baseline_original|25-This-is-the-end.441.16b48k.wav|48
+completed base_fixed2|25-This-is-the-end.441.16b48k.wav|64: MOS=4.489651 actual=64.442 kbps source=identity:baseline_original|25-This-is-the-end.441.16b48k.wav|64
+completed base_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.772272 actual=31.881 kbps source=scored
+completed base_fixed2|25-This-is-the-end.441.16b48k.wav|96: MOS=4.700666 actual=95.828 kbps source=identity:baseline_original|25-This-is-the-end.441.16b48k.wav|96
+completed base_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.352932 actual=48.907 kbps source=identity:baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|48
+completed base_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.532057 actual=64.397 kbps source=identity:baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|64
+completed base_fixed2|25-This-is-the-end.441.16b48k.wav|32: MOS=3.829550 actual=32.298 kbps source=scored
+completed base_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.740088 actual=95.962 kbps source=identity:baseline_original|27-last-song-drums-and-trampets.441.16b48k.wav|96
+completed base_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.568507 actual=48.114 kbps source=identity:baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|48
+completed base_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.656733 actual=63.786 kbps source=identity:baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|64
+completed base_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.058401 actual=32.635 kbps source=scored
+completed base_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.752960 actual=95.262 kbps source=identity:baseline_original|35_SQAM_glockenspiel_cut.16b48k.wav|96
+completed base_fixed2|4-Sound-English-male.441.16b48k.wav|48: MOS=4.341786 actual=47.992 kbps source=identity:baseline_original|4-Sound-English-male.441.16b48k.wav|48
+completed base_fixed2|4-Sound-English-male.441.16b48k.wav|64: MOS=4.689157 actual=63.836 kbps source=identity:baseline_original|4-Sound-English-male.441.16b48k.wav|64
+completed base_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.168257 actual=32.058 kbps source=scored
+completed base_fixed2|4-Sound-English-male.441.16b48k.wav|96: MOS=4.837930 actual=95.553 kbps source=identity:baseline_original|4-Sound-English-male.441.16b48k.wav|96
+completed base_fixed2|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.166018 actual=48.340 kbps source=identity:baseline_original|9-Have-big-expensive-car.441.16b48k.wav|48
+completed base_fixed2|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.382062 actual=64.020 kbps source=identity:baseline_original|9-Have-big-expensive-car.441.16b48k.wav|64
+completed base_fixed2|4-Sound-English-male.441.16b48k.wav|32: MOS=3.877489 actual=32.211 kbps source=scored
+completed base_fixed2|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.613300 actual=95.427 kbps source=identity:baseline_original|9-Have-big-expensive-car.441.16b48k.wav|96
+completed base_fixed2|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.195323 actual=47.742 kbps source=identity:baseline_original|Asleep__4.11-4.31_.16b48k.wav|48
+completed base_fixed2|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.454903 actual=63.671 kbps source=identity:baseline_original|Asleep__4.11-4.31_.16b48k.wav|64
+completed base_fixed2|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.693178 actual=31.973 kbps source=scored
+completed base_fixed2|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.662446 actual=95.459 kbps source=identity:baseline_original|Asleep__4.11-4.31_.16b48k.wav|96
+completed base_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.943853 actual=47.985 kbps source=identity:baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48
+completed base_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.114367 actual=63.628 kbps source=identity:baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64
+completed base_fixed2|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.739909 actual=31.815 kbps source=scored
+completed base_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.519755 actual=95.183 kbps source=identity:baseline_original|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96
+completed base_fixed2|Changes.16b48k.wav|48: MOS=3.871026 actual=47.867 kbps source=identity:baseline_original|Changes.16b48k.wav|48
+completed base_fixed2|Changes.16b48k.wav|64: MOS=4.211908 actual=63.704 kbps source=identity:baseline_original|Changes.16b48k.wav|64
+completed base_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.583975 actual=31.750 kbps source=scored
+completed base_fixed2|Changes.16b48k.wav|96: MOS=4.576908 actual=95.458 kbps source=identity:baseline_original|Changes.16b48k.wav|96
+completed base_fixed2|Coral.16b48k.wav|48: MOS=4.143460 actual=47.970 kbps source=identity:baseline_original|Coral.16b48k.wav|48
+completed base_fixed2|Coral.16b48k.wav|64: MOS=4.425769 actual=63.697 kbps source=identity:baseline_original|Coral.16b48k.wav|64
+completed base_fixed2|Changes.16b48k.wav|32: MOS=3.520037 actual=31.881 kbps source=scored
+completed base_fixed2|Coral.16b48k.wav|96: MOS=4.711824 actual=95.350 kbps source=identity:baseline_original|Coral.16b48k.wav|96
+completed base_fixed2|ExitMusic.16b48k.wav|48: MOS=4.265250 actual=47.808 kbps source=identity:baseline_original|ExitMusic.16b48k.wav|48
+completed base_fixed2|ExitMusic.16b48k.wav|64: MOS=4.578628 actual=63.568 kbps source=identity:baseline_original|ExitMusic.16b48k.wav|64
+completed base_fixed2|ExitMusic.16b48k.wav|96: MOS=4.774879 actual=95.318 kbps source=identity:baseline_original|ExitMusic.16b48k.wav|96
+completed base_fixed2|Coral.16b48k.wav|32: MOS=3.796267 actual=31.859 kbps source=scored
+completed base_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.776007 actual=47.862 kbps source=identity:baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|48
+completed base_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.096743 actual=63.717 kbps source=identity:baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|64
+completed base_fixed2|ExitMusic.16b48k.wav|32: MOS=3.910138 actual=31.962 kbps source=scored
+completed base_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.558859 actual=95.663 kbps source=identity:baseline_original|Girl_In_The_Fire__Sample_.16b48k.wav|96
+completed base_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.183524 actual=47.761 kbps source=identity:baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|48
+completed base_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.411356 actual=63.678 kbps source=identity:baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|64
+completed base_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.468380 actual=31.834 kbps source=scored
+completed base_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.706733 actual=95.333 kbps source=identity:baseline_original|Greatest_Love_of_All_2min57.16b48k.wav|96
+completed base_fixed2|Hey Tonight.16b48k.wav|48: MOS=4.427426 actual=48.181 kbps source=identity:baseline_original|Hey Tonight.16b48k.wav|48
+completed base_fixed2|Hey Tonight.16b48k.wav|64: MOS=4.564908 actual=63.935 kbps source=identity:baseline_original|Hey Tonight.16b48k.wav|64
+completed base_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.712231 actual=31.770 kbps source=scored
+completed base_fixed2|Hey Tonight.16b48k.wav|96: MOS=4.724113 actual=95.328 kbps source=identity:baseline_original|Hey Tonight.16b48k.wav|96
+completed base_fixed2|Hotel California.16b48k.wav|48: MOS=4.243577 actual=48.631 kbps source=identity:baseline_original|Hotel California.16b48k.wav|48
+completed base_fixed2|Hotel California.16b48k.wav|64: MOS=4.439875 actual=64.442 kbps source=identity:baseline_original|Hotel California.16b48k.wav|64
+completed base_fixed2|Hey Tonight.16b48k.wav|32: MOS=4.272833 actual=31.925 kbps source=scored
+completed base_fixed2|Hotel California.16b48k.wav|96: MOS=4.656405 actual=95.672 kbps source=identity:baseline_original|Hotel California.16b48k.wav|96
+completed base_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.212533 actual=48.031 kbps source=identity:baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|48
+completed base_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.408240 actual=63.724 kbps source=identity:baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|64
+completed base_fixed2|Hotel California.16b48k.wav|32: MOS=3.919955 actual=32.283 kbps source=scored
+completed base_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.651864 actual=95.530 kbps source=identity:baseline_original|Jupiter, the Bringer of Jolity.16b48k.wav|96
+completed base_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.354092 actual=49.522 kbps source=identity:baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48
+completed base_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.540074 actual=64.758 kbps source=identity:baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64
+completed base_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.842136 actual=31.941 kbps source=scored
+completed base_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.729411 actual=95.978 kbps source=identity:baseline_original|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96
+completed base_fixed2|NewYorkCity.16b48k.wav|48: MOS=4.361192 actual=48.480 kbps source=identity:baseline_original|NewYorkCity.16b48k.wav|48
+completed base_fixed2|NewYorkCity.16b48k.wav|64: MOS=4.520451 actual=64.242 kbps source=identity:baseline_original|NewYorkCity.16b48k.wav|64
+completed base_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.123332 actual=34.006 kbps source=scored
+completed base_fixed2|NewYorkCity.16b48k.wav|96: MOS=4.697131 actual=95.454 kbps source=identity:baseline_original|NewYorkCity.16b48k.wav|96
+completed base_fixed2|Only Time.16b48k.wav|48: MOS=4.258500 actual=47.647 kbps source=identity:baseline_original|Only Time.16b48k.wav|48
+completed base_fixed2|Only Time.16b48k.wav|64: MOS=4.484713 actual=63.516 kbps source=identity:baseline_original|Only Time.16b48k.wav|64
+completed base_fixed2|NewYorkCity.16b48k.wav|32: MOS=4.041813 actual=32.211 kbps source=scored
+completed base_fixed2|Only Time.16b48k.wav|96: MOS=4.722862 actual=95.330 kbps source=identity:baseline_original|Only Time.16b48k.wav|96
+completed base_fixed2|Robots_old.16b48k.wav|48: MOS=4.440225 actual=47.592 kbps source=identity:baseline_original|Robots_old.16b48k.wav|48
+completed base_fixed2|Robots_old.16b48k.wav|64: MOS=4.573231 actual=63.366 kbps source=identity:baseline_original|Robots_old.16b48k.wav|64
+completed base_fixed2|Only Time.16b48k.wav|32: MOS=3.890846 actual=31.746 kbps source=scored
+completed base_fixed2|Robots_old.16b48k.wav|96: MOS=4.716589 actual=95.073 kbps source=identity:baseline_original|Robots_old.16b48k.wav|96
+completed base_fixed2|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.753652 actual=47.811 kbps source=identity:baseline_original|Severance__1.31-1.51_.16b48k.wav|48
+completed base_fixed2|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.268456 actual=63.698 kbps source=identity:baseline_original|Severance__1.31-1.51_.16b48k.wav|64
+completed base_fixed2|Robots_old.16b48k.wav|32: MOS=4.190276 actual=31.775 kbps source=scored
+completed base_fixed2|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.595950 actual=95.557 kbps source=identity:baseline_original|Severance__1.31-1.51_.16b48k.wav|96
+completed base_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.453504 actual=47.655 kbps source=identity:baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|48
+completed base_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.680282 actual=63.538 kbps source=identity:baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|64
+completed base_fixed2|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.201905 actual=31.814 kbps source=scored
+completed base_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.809802 actual=95.359 kbps source=identity:baseline_original|Shinsho_pool_3min45_4min4.16b48k.wav|96
+completed base_fixed2|SinceAlways.16b48k.wav|48: MOS=4.248846 actual=48.174 kbps source=identity:baseline_original|SinceAlways.16b48k.wav|48
+completed base_fixed2|SinceAlways.16b48k.wav|64: MOS=4.482471 actual=63.824 kbps source=identity:baseline_original|SinceAlways.16b48k.wav|64
+completed base_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.190893 actual=31.795 kbps source=scored
+completed base_fixed2|SinceAlways.16b48k.wav|96: MOS=4.724606 actual=95.498 kbps source=identity:baseline_original|SinceAlways.16b48k.wav|96
+completed base_fixed2|SlavesOfFear.16b48k.wav|48: MOS=4.372009 actual=48.570 kbps source=identity:baseline_original|SlavesOfFear.16b48k.wav|48
+completed base_fixed2|SlavesOfFear.16b48k.wav|64: MOS=4.523765 actual=64.262 kbps source=identity:baseline_original|SlavesOfFear.16b48k.wav|64
+completed base_fixed2|SinceAlways.16b48k.wav|32: MOS=4.054713 actual=31.839 kbps source=scored
+completed base_fixed2|SlavesOfFear.16b48k.wav|96: MOS=4.680766 actual=95.597 kbps source=identity:baseline_original|SlavesOfFear.16b48k.wav|96
+completed base_fixed2|The Chastising of Renegade.16b48k.wav|48: MOS=4.096523 actual=48.815 kbps source=identity:baseline_original|The Chastising of Renegade.16b48k.wav|48
+completed base_fixed2|The Chastising of Renegade.16b48k.wav|64: MOS=4.350595 actual=64.614 kbps source=identity:baseline_original|The Chastising of Renegade.16b48k.wav|64
+completed base_fixed2|SlavesOfFear.16b48k.wav|32: MOS=4.051630 actual=32.266 kbps source=scored
+completed base_fixed2|The Chastising of Renegade.16b48k.wav|96: MOS=4.601133 actual=95.900 kbps source=identity:baseline_original|The Chastising of Renegade.16b48k.wav|96
+completed base_fixed2|Through The Fire And Flames.16b48k.wav|48: MOS=4.397923 actual=48.374 kbps source=identity:baseline_original|Through The Fire And Flames.16b48k.wav|48
+completed base_fixed2|Through The Fire And Flames.16b48k.wav|64: MOS=4.548352 actual=64.005 kbps source=identity:baseline_original|Through The Fire And Flames.16b48k.wav|64
+completed base_fixed2|The Chastising of Renegade.16b48k.wav|32: MOS=3.754851 actual=32.342 kbps source=scored
+completed base_fixed2|Through The Fire And Flames.16b48k.wav|96: MOS=4.686459 actual=95.409 kbps source=identity:baseline_original|Through The Fire And Flames.16b48k.wav|96
+completed base_fixed2|TrosYGareg.16b48k.wav|48: MOS=4.283131 actual=47.711 kbps source=identity:baseline_original|TrosYGareg.16b48k.wav|48
+completed base_fixed2|TrosYGareg.16b48k.wav|64: MOS=4.496601 actual=63.605 kbps source=identity:baseline_original|TrosYGareg.16b48k.wav|64
+completed base_fixed2|Through The Fire And Flames.16b48k.wav|32: MOS=4.073879 actual=32.266 kbps source=scored
+completed base_fixed2|TrosYGareg.16b48k.wav|96: MOS=4.781372 actual=95.326 kbps source=identity:baseline_original|TrosYGareg.16b48k.wav|96
+completed base_fixed2|Waiting.16b48k.wav|48: MOS=3.983687 actual=48.261 kbps source=identity:baseline_original|Waiting.16b48k.wav|48
+completed base_fixed2|Waiting.16b48k.wav|64: MOS=4.261871 actual=64.095 kbps source=identity:baseline_original|Waiting.16b48k.wav|64
+completed base_fixed2|TrosYGareg.16b48k.wav|32: MOS=3.932540 actual=31.838 kbps source=scored
+completed base_fixed2|Waiting.16b48k.wav|96: MOS=4.548967 actual=95.889 kbps source=identity:baseline_original|Waiting.16b48k.wav|96
+completed base_fixed2|With Love (Outro).16b48k.wav|48: MOS=4.474195 actual=48.064 kbps source=identity:baseline_original|With Love (Outro).16b48k.wav|48
+completed base_fixed2|Waiting.16b48k.wav|32: MOS=3.755133 actual=31.936 kbps source=scored
+completed base_fixed2|With Love (Outro).16b48k.wav|64: MOS=4.608541 actual=63.765 kbps source=identity:baseline_original|With Love (Outro).16b48k.wav|64
+completed base_fixed2|With Love (Outro).16b48k.wav|96: MOS=4.780858 actual=95.474 kbps source=identity:baseline_original|With Love (Outro).16b48k.wav|96
+completed base_fixed2|bah.wav|48: MOS=4.039829 actual=47.813 kbps source=identity:baseline_original|bah.wav|48
+completed base_fixed2|bah.wav|64: MOS=4.328231 actual=63.717 kbps source=identity:baseline_original|bah.wav|64
+completed base_fixed2|bah.wav|96: MOS=4.644324 actual=95.662 kbps source=identity:baseline_original|bah.wav|96
+completed base_fixed2|With Love (Outro).16b48k.wav|32: MOS=4.097021 actual=31.855 kbps source=scored
+completed base_fixed2|bas.wav|48: MOS=3.933545 actual=47.650 kbps source=identity:baseline_original|bas.wav|48
+completed base_fixed2|bas.wav|64: MOS=4.269374 actual=63.574 kbps source=identity:baseline_original|bas.wav|64
+completed base_fixed2|bas.wav|96: MOS=4.641559 actual=95.478 kbps source=identity:baseline_original|bas.wav|96
+completed base_fixed2|bah.wav|32: MOS=3.652928 actual=31.872 kbps source=scored
+completed base_fixed2|bonhemian_rhapsody.16b48k.wav|64: MOS=4.378488 actual=63.629 kbps source=identity:baseline_original|bonhemian_rhapsody.16b48k.wav|64
+completed base_fixed2|bonhemian_rhapsody.16b48k.wav|48: MOS=4.085515 actual=47.775 kbps source=identity:baseline_original|bonhemian_rhapsody.16b48k.wav|48
+completed base_fixed2|bas.wav|32: MOS=3.483452 actual=31.777 kbps source=scored
+completed base_fixed2|bonhemian_rhapsody.16b48k.wav|96: MOS=4.673157 actual=95.442 kbps source=identity:baseline_original|bonhemian_rhapsody.16b48k.wav|96
+completed base_fixed2|clapton_44k.16b48k.wav|48: MOS=4.154908 actual=48.118 kbps source=identity:baseline_original|clapton_44k.16b48k.wav|48
+completed base_fixed2|clapton_44k.16b48k.wav|64: MOS=4.357602 actual=63.872 kbps source=identity:baseline_original|clapton_44k.16b48k.wav|64
+completed base_fixed2|clapton_44k.16b48k.wav|96: MOS=4.566545 actual=95.296 kbps source=identity:baseline_original|clapton_44k.16b48k.wav|96
+completed base_fixed2|bonhemian_rhapsody.16b48k.wav|32: MOS=3.691507 actual=31.791 kbps source=scored
+completed base_fixed2|cst.wav|48: MOS=4.002654 actual=48.310 kbps source=identity:baseline_original|cst.wav|48
+completed base_fixed2|cst.wav|64: MOS=4.319154 actual=63.923 kbps source=identity:baseline_original|cst.wav|64
+completed base_fixed2|clapton_44k.16b48k.wav|32: MOS=3.806174 actual=31.958 kbps source=scored
+completed base_fixed2|cst.wav|96: MOS=4.647655 actual=96.044 kbps source=identity:baseline_original|cst.wav|96
+completed base_fixed2|fms.wav|48: MOS=4.310909 actual=48.089 kbps source=identity:baseline_original|fms.wav|48
+completed base_fixed2|fms.wav|64: MOS=4.568076 actual=63.800 kbps source=identity:baseline_original|fms.wav|64
+completed base_fixed2|cst.wav|32: MOS=3.648187 actual=32.229 kbps source=scored
+completed base_fixed2|fms.wav|96: MOS=4.805694 actual=95.672 kbps source=identity:baseline_original|fms.wav|96
+completed base_fixed2|girl.16b48k.wav|48: MOS=4.581235 actual=48.117 kbps source=identity:baseline_original|girl.16b48k.wav|48
+completed base_fixed2|girl.16b48k.wav|64: MOS=4.686634 actual=63.953 kbps source=identity:baseline_original|girl.16b48k.wav|64
+completed base_fixed2|girl.16b48k.wav|96: MOS=4.769935 actual=95.550 kbps source=identity:baseline_original|girl.16b48k.wav|96
+completed base_fixed2|fms.wav|32: MOS=3.930434 actual=31.960 kbps source=scored
+completed base_fixed2|glk.wav|48: MOS=4.846900 actual=47.921 kbps source=identity:baseline_original|glk.wav|48
+completed base_fixed2|glk.wav|64: MOS=4.874766 actual=63.638 kbps source=identity:baseline_original|glk.wav|64
+completed base_fixed2|girl.16b48k.wav|32: MOS=4.376471 actual=32.155 kbps source=scored
+completed base_fixed2|glk.wav|96: MOS=4.886203 actual=95.369 kbps source=identity:baseline_original|glk.wav|96
+completed base_fixed2|hrp.wav|48: MOS=4.492784 actual=48.716 kbps source=identity:baseline_original|hrp.wav|48
+completed base_fixed2|hrp.wav|64: MOS=4.667538 actual=64.467 kbps source=identity:baseline_original|hrp.wav|64
+completed base_fixed2|glk.wav|32: MOS=4.656362 actual=31.881 kbps source=scored
+completed base_fixed2|hrp.wav|96: MOS=4.835524 actual=95.887 kbps source=identity:baseline_original|hrp.wav|96
+completed base_fixed2|liberate.16b48k.wav|48: MOS=4.257296 actual=49.317 kbps source=identity:baseline_original|liberate.16b48k.wav|48
+completed base_fixed2|liberate.16b48k.wav|64: MOS=4.398832 actual=65.115 kbps source=identity:baseline_original|liberate.16b48k.wav|64
+completed base_fixed2|hrp.wav|32: MOS=4.068633 actual=32.596 kbps source=scored
+completed base_fixed2|liberate.16b48k.wav|96: MOS=4.574144 actual=96.125 kbps source=identity:baseline_original|liberate.16b48k.wav|96
+completed base_fixed2|liberate.16b48k.wav|32: MOS=3.949977 actual=32.584 kbps source=scored
+completed base_fixed2|lob.wav|48: MOS=4.252400 actual=50.253 kbps source=identity:baseline_original|lob.wav|48
+completed base_fixed2|lob.wav|64: MOS=4.482048 actual=65.897 kbps source=identity:baseline_original|lob.wav|64
+completed base_fixed2|lob.wav|96: MOS=4.673047 actual=96.713 kbps source=identity:baseline_original|lob.wav|96
+completed base_fixed2|mof.wav|48: MOS=3.781110 actual=47.562 kbps source=identity:baseline_original|mof.wav|48
+completed base_fixed2|mof.wav|64: MOS=4.179536 actual=63.358 kbps source=identity:baseline_original|mof.wav|64
+completed base_fixed2|mof.wav|96: MOS=4.410930 actual=95.177 kbps source=identity:baseline_original|mof.wav|96
+completed base_fixed2|lob.wav|32: MOS=3.948685 actual=33.261 kbps source=scored
+completed base_fixed2|qrt.wav|48: MOS=3.917210 actual=47.673 kbps source=identity:baseline_original|qrt.wav|48
+completed base_fixed2|qrt.wav|64: MOS=4.184337 actual=63.621 kbps source=identity:baseline_original|qrt.wav|64
+completed base_fixed2|qrt.wav|96: MOS=4.532711 actual=95.486 kbps source=identity:baseline_original|qrt.wav|96
+completed base_fixed2|mof.wav|32: MOS=3.269247 actual=31.836 kbps source=scored
+completed base_fixed2|sandman.16b48k.wav|48: MOS=4.190093 actual=47.769 kbps source=identity:baseline_original|sandman.16b48k.wav|48
+completed base_fixed2|sandman.16b48k.wav|64: MOS=4.443960 actual=63.538 kbps source=identity:baseline_original|sandman.16b48k.wav|64
+completed base_fixed2|sandman.16b48k.wav|96: MOS=4.680239 actual=95.280 kbps source=identity:baseline_original|sandman.16b48k.wav|96
+completed base_fixed2|qrt.wav|32: MOS=3.543157 actual=31.753 kbps source=scored
+completed base_fixed2|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.982106 actual=48.181 kbps source=identity:baseline_original|take_your_finger_frin_my_head.16b48k.wav|48
+completed base_fixed2|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.197937 actual=64.066 kbps source=identity:baseline_original|take_your_finger_frin_my_head.16b48k.wav|64
+completed base_fixed2|sandman.16b48k.wav|32: MOS=3.796299 actual=31.850 kbps source=scored
+completed base_fixed2|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.542262 actual=95.521 kbps source=identity:baseline_original|take_your_finger_frin_my_head.16b48k.wav|96
+completed base_fixed2|trumpet.16b48k.wav|48: MOS=4.268644 actual=49.718 kbps source=identity:baseline_original|trumpet.16b48k.wav|48
+completed base_fixed2|trumpet.16b48k.wav|64: MOS=4.527053 actual=65.702 kbps source=identity:baseline_original|trumpet.16b48k.wav|64
+completed base_fixed2|trumpet.16b48k.wav|96: MOS=4.746549 actual=96.687 kbps source=identity:baseline_original|trumpet.16b48k.wav|96
+completed base_fixed2|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.593564 actual=32.008 kbps source=scored
+completed base_fixed2|velvet.16b48k.wav|48: MOS=3.885248 actual=49.754 kbps source=identity:baseline_original|velvet.16b48k.wav|48
+completed base_fixed2|velvet.16b48k.wav|64: MOS=4.167297 actual=64.794 kbps source=identity:baseline_original|velvet.16b48k.wav|64
+completed base_fixed2|velvet.16b48k.wav|96: MOS=4.450185 actual=95.155 kbps source=identity:baseline_original|velvet.16b48k.wav|96
+completed base_fixed2|trumpet.16b48k.wav|32: MOS=4.089908 actual=33.026 kbps source=scored
+completed stack_fixed1|12-German-male-speech.441.16b48k.wav|32: MOS=3.953334 actual=31.887 kbps source=identity:stack_reference|12-German-male-speech.441.16b48k.wav|32
+completed base_fixed2|velvet.16b48k.wav|32: MOS=3.656561 actual=33.565 kbps source=scored
+completed stack_fixed1|15-Good-evening.441.16b48k.wav|32: MOS=3.705865 actual=32.104 kbps source=identity:stack_reference|15-Good-evening.441.16b48k.wav|32
+completed stack_fixed1|12-German-male-speech.441.16b48k.wav|48: MOS=4.241769 actual=47.875 kbps source=scored
+completed stack_fixed1|12-German-male-speech.441.16b48k.wav|64: MOS=4.560581 actual=63.643 kbps source=scored
+completed stack_fixed1|12-German-male-speech.441.16b48k.wav|96: MOS=4.839445 actual=95.555 kbps source=scored
+completed stack_fixed1|21-classic.441.16b48k.wav|32: MOS=3.974796 actual=31.866 kbps source=identity:stack_reference|21-classic.441.16b48k.wav|32
+completed stack_fixed1|15-Good-evening.441.16b48k.wav|48: MOS=4.051094 actual=48.291 kbps source=scored
+completed stack_fixed1|15-Good-evening.441.16b48k.wav|64: MOS=4.295203 actual=63.972 kbps source=scored
+completed stack_fixed1|15-Good-evening.441.16b48k.wav|96: MOS=4.559200 actual=95.530 kbps source=scored
+completed stack_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.758182 actual=31.875 kbps source=identity:stack_reference|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32
+completed stack_fixed1|21-classic.441.16b48k.wav|48: MOS=4.346242 actual=47.732 kbps source=scored
+completed stack_fixed1|21-classic.441.16b48k.wav|64: MOS=4.556509 actual=63.630 kbps source=scored
+completed stack_fixed1|21-classic.441.16b48k.wav|96: MOS=4.752730 actual=95.444 kbps source=scored
+completed stack_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.050116 actual=47.941 kbps source=scored
+completed stack_fixed1|25-This-is-the-end.441.16b48k.wav|32: MOS=3.790031 actual=32.294 kbps source=identity:stack_reference|25-This-is-the-end.441.16b48k.wav|32
+completed stack_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.347341 actual=64.026 kbps source=scored
+completed stack_fixed1|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.785460 actual=95.755 kbps source=scored
+completed stack_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.053673 actual=32.613 kbps source=identity:stack_reference|27-last-song-drums-and-trampets.441.16b48k.wav|32
+completed stack_fixed1|25-This-is-the-end.441.16b48k.wav|48: MOS=4.190102 actual=48.694 kbps source=scored
+completed stack_fixed1|25-This-is-the-end.441.16b48k.wav|64: MOS=4.420527 actual=64.421 kbps source=scored
+completed stack_fixed1|25-This-is-the-end.441.16b48k.wav|96: MOS=4.633221 actual=95.812 kbps source=scored
+completed stack_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.164621 actual=32.064 kbps source=identity:stack_reference|35_SQAM_glockenspiel_cut.16b48k.wav|32
+completed stack_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.370923 actual=48.890 kbps source=scored
+completed stack_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.540135 actual=64.368 kbps source=scored
+completed stack_fixed1|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.749691 actual=95.939 kbps source=scored
+completed stack_fixed1|4-Sound-English-male.441.16b48k.wav|32: MOS=3.848978 actual=32.191 kbps source=identity:stack_reference|4-Sound-English-male.441.16b48k.wav|32
+completed stack_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.506562 actual=48.085 kbps source=scored
+completed stack_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.609725 actual=63.749 kbps source=scored
+completed stack_fixed1|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.753621 actual=95.230 kbps source=scored
+completed stack_fixed1|4-Sound-English-male.441.16b48k.wav|48: MOS=4.322658 actual=47.963 kbps source=scored
+completed stack_fixed1|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.619915 actual=31.968 kbps source=identity:stack_reference|9-Have-big-expensive-car.441.16b48k.wav|32
+completed stack_fixed1|4-Sound-English-male.441.16b48k.wav|64: MOS=4.670364 actual=63.814 kbps source=scored
+completed stack_fixed1|4-Sound-English-male.441.16b48k.wav|96: MOS=4.816799 actual=95.533 kbps source=scored
+completed stack_fixed1|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.711372 actual=31.792 kbps source=identity:stack_reference|Asleep__4.11-4.31_.16b48k.wav|32
+completed stack_fixed1|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.075583 actual=48.288 kbps source=scored
+completed stack_fixed1|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.287360 actual=64.000 kbps source=scored
+completed stack_fixed1|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.503266 actual=95.403 kbps source=scored
+completed stack_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.685996 actual=31.757 kbps source=identity:stack_reference|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32
+completed stack_fixed1|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.182023 actual=47.701 kbps source=scored
+completed stack_fixed1|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.654440 actual=95.414 kbps source=scored
+completed stack_fixed1|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.442733 actual=63.635 kbps source=scored
+completed stack_fixed1|Changes.16b48k.wav|32: MOS=3.485510 actual=31.866 kbps source=identity:stack_reference|Changes.16b48k.wav|32
+completed stack_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.919098 actual=47.938 kbps source=scored
+completed stack_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.080806 actual=63.590 kbps source=scored
+completed stack_fixed1|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.501018 actual=95.144 kbps source=scored
+completed stack_fixed1|Coral.16b48k.wav|32: MOS=3.790658 actual=31.851 kbps source=identity:stack_reference|Coral.16b48k.wav|32
+completed stack_fixed1|Changes.16b48k.wav|48: MOS=3.826817 actual=47.833 kbps source=scored
+completed stack_fixed1|Changes.16b48k.wav|64: MOS=4.177774 actual=63.657 kbps source=scored
+completed stack_fixed1|Changes.16b48k.wav|96: MOS=4.537379 actual=95.420 kbps source=scored
+completed stack_fixed1|ExitMusic.16b48k.wav|32: MOS=3.900528 actual=31.952 kbps source=identity:stack_reference|ExitMusic.16b48k.wav|32
+completed stack_fixed1|Coral.16b48k.wav|48: MOS=4.137236 actual=47.958 kbps source=scored
+completed stack_fixed1|Coral.16b48k.wav|64: MOS=4.395659 actual=63.682 kbps source=scored
+completed stack_fixed1|Coral.16b48k.wav|96: MOS=4.689173 actual=95.332 kbps source=scored
+completed stack_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.440314 actual=31.812 kbps source=identity:stack_reference|Girl_In_The_Fire__Sample_.16b48k.wav|32
+completed stack_fixed1|ExitMusic.16b48k.wav|48: MOS=4.252511 actual=47.781 kbps source=scored
+completed stack_fixed1|ExitMusic.16b48k.wav|64: MOS=4.550587 actual=63.540 kbps source=scored
+completed stack_fixed1|ExitMusic.16b48k.wav|96: MOS=4.754632 actual=95.289 kbps source=scored
+completed stack_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.705534 actual=31.755 kbps source=identity:stack_reference|Greatest_Love_of_All_2min57.16b48k.wav|32
+completed stack_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.707979 actual=47.827 kbps source=scored
+completed stack_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.018862 actual=63.689 kbps source=scored
+completed stack_fixed1|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.506046 actual=95.637 kbps source=scored
+completed stack_fixed1|Hey Tonight.16b48k.wav|32: MOS=4.255854 actual=31.898 kbps source=identity:stack_reference|Hey Tonight.16b48k.wav|32
+completed stack_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.175292 actual=47.733 kbps source=scored
+completed stack_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.407727 actual=63.647 kbps source=scored
+completed stack_fixed1|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.698648 actual=95.304 kbps source=scored
+completed stack_fixed1|Hotel California.16b48k.wav|32: MOS=3.885713 actual=32.269 kbps source=identity:stack_reference|Hotel California.16b48k.wav|32
+completed stack_fixed1|Hey Tonight.16b48k.wav|48: MOS=4.407131 actual=48.143 kbps source=scored
+completed stack_fixed1|Hey Tonight.16b48k.wav|64: MOS=4.540475 actual=63.900 kbps source=scored
+completed stack_fixed1|Hey Tonight.16b48k.wav|96: MOS=4.709857 actual=95.297 kbps source=scored
+completed stack_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.806330 actual=31.914 kbps source=identity:stack_reference|Jupiter, the Bringer of Jolity.16b48k.wav|32
+completed stack_fixed1|Hotel California.16b48k.wav|48: MOS=4.193437 actual=48.629 kbps source=scored
+completed stack_fixed1|Hotel California.16b48k.wav|64: MOS=4.393516 actual=64.425 kbps source=scored
+completed stack_fixed1|Hotel California.16b48k.wav|96: MOS=4.620921 actual=95.646 kbps source=scored
+completed stack_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.161338 actual=34.026 kbps source=identity:stack_reference|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32
+completed stack_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.207736 actual=47.998 kbps source=scored
+completed stack_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.387797 actual=63.689 kbps source=scored
+completed stack_fixed1|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.641258 actual=95.496 kbps source=scored
+completed stack_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.373319 actual=49.544 kbps source=scored
+completed stack_fixed1|NewYorkCity.16b48k.wav|32: MOS=4.027560 actual=32.203 kbps source=identity:stack_reference|NewYorkCity.16b48k.wav|32
+completed stack_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.558176 actual=64.706 kbps source=scored
+completed stack_fixed1|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.750498 actual=95.949 kbps source=scored
+completed stack_fixed1|Only Time.16b48k.wav|32: MOS=3.875119 actual=31.729 kbps source=identity:stack_reference|Only Time.16b48k.wav|32
+completed stack_fixed1|NewYorkCity.16b48k.wav|48: MOS=4.339411 actual=48.464 kbps source=scored
+completed stack_fixed1|NewYorkCity.16b48k.wav|64: MOS=4.504757 actual=64.231 kbps source=scored
+completed stack_fixed1|NewYorkCity.16b48k.wav|96: MOS=4.680473 actual=95.430 kbps source=scored
+completed stack_fixed1|Robots_old.16b48k.wav|32: MOS=4.232650 actual=31.755 kbps source=identity:stack_reference|Robots_old.16b48k.wav|32
+completed stack_fixed1|Only Time.16b48k.wav|48: MOS=4.260087 actual=47.622 kbps source=scored
+completed stack_fixed1|Only Time.16b48k.wav|64: MOS=4.492012 actual=63.487 kbps source=scored
+completed stack_fixed1|Only Time.16b48k.wav|96: MOS=4.725713 actual=95.310 kbps source=scored
+completed stack_fixed1|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.198618 actual=31.816 kbps source=identity:stack_reference|Severance__1.31-1.51_.16b48k.wav|32
+completed stack_fixed1|Robots_old.16b48k.wav|48: MOS=4.442101 actual=47.562 kbps source=scored
+completed stack_fixed1|Robots_old.16b48k.wav|64: MOS=4.576900 actual=63.334 kbps source=scored
+completed stack_fixed1|Robots_old.16b48k.wav|96: MOS=4.722145 actual=95.041 kbps source=scored
+completed stack_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.176884 actual=31.797 kbps source=identity:stack_reference|Shinsho_pool_3min45_4min4.16b48k.wav|32
+completed stack_fixed1|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.836615 actual=47.796 kbps source=scored
+completed stack_fixed1|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.348063 actual=63.683 kbps source=scored
+completed stack_fixed1|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.691745 actual=95.542 kbps source=scored
+completed stack_fixed1|SinceAlways.16b48k.wav|32: MOS=3.958598 actual=31.813 kbps source=identity:stack_reference|SinceAlways.16b48k.wav|32
+completed stack_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.677410 actual=63.524 kbps source=scored
+completed stack_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.472355 actual=47.642 kbps source=scored
+completed stack_fixed1|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.807299 actual=95.338 kbps source=scored
+completed stack_fixed1|SlavesOfFear.16b48k.wav|32: MOS=4.002418 actual=32.241 kbps source=identity:stack_reference|SlavesOfFear.16b48k.wav|32
+completed stack_fixed1|SinceAlways.16b48k.wav|48: MOS=4.145258 actual=48.141 kbps source=scored
+completed stack_fixed1|SinceAlways.16b48k.wav|96: MOS=4.637004 actual=95.460 kbps source=scored
+completed stack_fixed1|SinceAlways.16b48k.wav|64: MOS=4.389091 actual=63.787 kbps source=scored
+completed stack_fixed1|The Chastising of Renegade.16b48k.wav|32: MOS=3.735924 actual=32.327 kbps source=identity:stack_reference|The Chastising of Renegade.16b48k.wav|32
+completed stack_fixed1|SlavesOfFear.16b48k.wav|48: MOS=4.355528 actual=48.538 kbps source=scored
+completed stack_fixed1|SlavesOfFear.16b48k.wav|64: MOS=4.515790 actual=64.233 kbps source=scored
+completed stack_fixed1|SlavesOfFear.16b48k.wav|96: MOS=4.674472 actual=95.549 kbps source=scored
+completed stack_fixed1|Through The Fire And Flames.16b48k.wav|32: MOS=4.051494 actual=32.240 kbps source=identity:stack_reference|Through The Fire And Flames.16b48k.wav|32
+completed stack_fixed1|The Chastising of Renegade.16b48k.wav|48: MOS=4.018877 actual=48.791 kbps source=scored
+completed stack_fixed1|The Chastising of Renegade.16b48k.wav|64: MOS=4.308494 actual=64.593 kbps source=scored
+completed stack_fixed1|The Chastising of Renegade.16b48k.wav|96: MOS=4.570970 actual=95.877 kbps source=scored
+completed stack_fixed1|TrosYGareg.16b48k.wav|32: MOS=3.900510 actual=31.802 kbps source=identity:stack_reference|TrosYGareg.16b48k.wav|32
+completed stack_fixed1|Through The Fire And Flames.16b48k.wav|48: MOS=4.359366 actual=48.328 kbps source=scored
+completed stack_fixed1|Through The Fire And Flames.16b48k.wav|64: MOS=4.512839 actual=63.959 kbps source=scored
+completed stack_fixed1|Through The Fire And Flames.16b48k.wav|96: MOS=4.647542 actual=95.363 kbps source=scored
+completed stack_fixed1|Waiting.16b48k.wav|32: MOS=3.718257 actual=31.907 kbps source=identity:stack_reference|Waiting.16b48k.wav|32
+completed stack_fixed1|TrosYGareg.16b48k.wav|48: MOS=4.238284 actual=47.668 kbps source=scored
+completed stack_fixed1|TrosYGareg.16b48k.wav|64: MOS=4.445369 actual=63.556 kbps source=scored
+completed stack_fixed1|TrosYGareg.16b48k.wav|96: MOS=4.731630 actual=95.276 kbps source=scored
+completed stack_fixed1|With Love (Outro).16b48k.wav|32: MOS=4.114765 actual=31.836 kbps source=identity:stack_reference|With Love (Outro).16b48k.wav|32
+completed stack_fixed1|Waiting.16b48k.wav|48: MOS=3.959222 actual=48.234 kbps source=scored
+completed stack_fixed1|Waiting.16b48k.wav|64: MOS=4.237153 actual=64.066 kbps source=scored
+completed stack_fixed1|Waiting.16b48k.wav|96: MOS=4.522990 actual=95.853 kbps source=scored
+completed stack_fixed1|bah.wav|32: MOS=3.628046 actual=31.850 kbps source=identity:stack_reference|bah.wav|32
+completed stack_fixed1|With Love (Outro).16b48k.wav|48: MOS=4.472974 actual=48.042 kbps source=scored
+completed stack_fixed1|With Love (Outro).16b48k.wav|64: MOS=4.610672 actual=63.738 kbps source=scored
+completed stack_fixed1|With Love (Outro).16b48k.wav|96: MOS=4.775454 actual=95.450 kbps source=scored
+completed stack_fixed1|bas.wav|32: MOS=3.509815 actual=31.771 kbps source=identity:stack_reference|bas.wav|32
+completed stack_fixed1|bah.wav|64: MOS=4.325414 actual=63.681 kbps source=scored
+completed stack_fixed1|bah.wav|48: MOS=4.075229 actual=47.784 kbps source=scored
+completed stack_fixed1|bah.wav|96: MOS=4.635202 actual=95.633 kbps source=scored
+completed stack_fixed1|bonhemian_rhapsody.16b48k.wav|32: MOS=3.689105 actual=31.781 kbps source=identity:stack_reference|bonhemian_rhapsody.16b48k.wav|32
+completed stack_fixed1|bas.wav|48: MOS=3.957078 actual=47.626 kbps source=scored
+completed stack_fixed1|bas.wav|64: MOS=4.273661 actual=63.553 kbps source=scored
+completed stack_fixed1|bas.wav|96: MOS=4.643367 actual=95.459 kbps source=scored
+completed stack_fixed1|bonhemian_rhapsody.16b48k.wav|48: MOS=4.083627 actual=47.751 kbps source=scored
+completed stack_fixed1|clapton_44k.16b48k.wav|32: MOS=3.774237 actual=31.950 kbps source=identity:stack_reference|clapton_44k.16b48k.wav|32
+completed stack_fixed1|bonhemian_rhapsody.16b48k.wav|64: MOS=4.382998 actual=63.613 kbps source=scored
+completed stack_fixed1|bonhemian_rhapsody.16b48k.wav|96: MOS=4.672311 actual=95.410 kbps source=scored
+completed stack_fixed1|cst.wav|32: MOS=3.596104 actual=32.219 kbps source=identity:stack_reference|cst.wav|32
+completed stack_fixed1|clapton_44k.16b48k.wav|48: MOS=4.089617 actual=48.097 kbps source=scored
+completed stack_fixed1|clapton_44k.16b48k.wav|64: MOS=4.298107 actual=63.854 kbps source=scored
+completed stack_fixed1|clapton_44k.16b48k.wav|96: MOS=4.503488 actual=95.275 kbps source=scored
+completed stack_fixed1|fms.wav|32: MOS=3.954412 actual=31.954 kbps source=identity:stack_reference|fms.wav|32
+completed stack_fixed1|cst.wav|64: MOS=4.263407 actual=63.899 kbps source=scored
+completed stack_fixed1|cst.wav|96: MOS=4.633036 actual=96.017 kbps source=scored
+completed stack_fixed1|cst.wav|48: MOS=3.975877 actual=48.278 kbps source=scored
+completed stack_fixed1|girl.16b48k.wav|32: MOS=4.386047 actual=32.142 kbps source=identity:stack_reference|girl.16b48k.wav|32
+completed stack_fixed1|fms.wav|48: MOS=4.285857 actual=48.064 kbps source=scored
+completed stack_fixed1|fms.wav|64: MOS=4.568134 actual=63.778 kbps source=scored
+completed stack_fixed1|fms.wav|96: MOS=4.797211 actual=95.652 kbps source=scored
+completed stack_fixed1|glk.wav|32: MOS=4.668063 actual=31.881 kbps source=identity:stack_reference|glk.wav|32
+completed stack_fixed1|girl.16b48k.wav|48: MOS=4.580962 actual=48.089 kbps source=scored
+completed stack_fixed1|girl.16b48k.wav|64: MOS=4.683622 actual=63.922 kbps source=scored
+completed stack_fixed1|girl.16b48k.wav|96: MOS=4.781393 actual=95.523 kbps source=scored
+completed stack_fixed1|hrp.wav|32: MOS=4.062230 actual=32.583 kbps source=identity:stack_reference|hrp.wav|32
+completed stack_fixed1|glk.wav|64: MOS=4.898886 actual=63.610 kbps source=scored
+completed stack_fixed1|glk.wav|48: MOS=4.872574 actual=47.894 kbps source=scored
+completed stack_fixed1|glk.wav|96: MOS=4.924589 actual=95.344 kbps source=scored
+completed stack_fixed1|liberate.16b48k.wav|32: MOS=3.905334 actual=32.514 kbps source=identity:stack_reference|liberate.16b48k.wav|32
+completed stack_fixed1|hrp.wav|48: MOS=4.461713 actual=48.681 kbps source=scored
+completed stack_fixed1|hrp.wav|96: MOS=4.797123 actual=95.858 kbps source=scored
+completed stack_fixed1|hrp.wav|64: MOS=4.640295 actual=64.437 kbps source=scored
+completed stack_fixed1|lob.wav|32: MOS=3.932796 actual=33.253 kbps source=identity:stack_reference|lob.wav|32
+completed stack_fixed1|liberate.16b48k.wav|48: MOS=4.197869 actual=49.248 kbps source=scored
+completed stack_fixed1|liberate.16b48k.wav|64: MOS=4.353985 actual=65.021 kbps source=scored
+completed stack_fixed1|liberate.16b48k.wav|96: MOS=4.528874 actual=96.050 kbps source=scored
+completed stack_fixed1|mof.wav|32: MOS=3.188541 actual=31.805 kbps source=identity:stack_reference|mof.wav|32
+completed stack_fixed1|lob.wav|48: MOS=4.215838 actual=50.244 kbps source=scored
+completed stack_fixed1|lob.wav|64: MOS=4.461658 actual=65.875 kbps source=scored
+completed stack_fixed1|lob.wav|96: MOS=4.641728 actual=96.692 kbps source=scored
+completed stack_fixed1|qrt.wav|32: MOS=3.540780 actual=31.749 kbps source=identity:stack_reference|qrt.wav|32
+completed stack_fixed1|mof.wav|48: MOS=3.650789 actual=47.530 kbps source=scored
+completed stack_fixed1|mof.wav|64: MOS=4.042762 actual=63.331 kbps source=scored
+completed stack_fixed1|mof.wav|96: MOS=4.254020 actual=95.144 kbps source=scored
+completed stack_fixed1|sandman.16b48k.wav|32: MOS=3.765385 actual=31.847 kbps source=identity:stack_reference|sandman.16b48k.wav|32
+completed stack_fixed1|qrt.wav|48: MOS=3.899321 actual=47.654 kbps source=scored
+completed stack_fixed1|qrt.wav|64: MOS=4.181124 actual=63.607 kbps source=scored
+completed stack_fixed1|qrt.wav|96: MOS=4.522775 actual=95.471 kbps source=scored
+completed stack_fixed1|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.531920 actual=31.987 kbps source=identity:stack_reference|take_your_finger_frin_my_head.16b48k.wav|32
+completed stack_fixed1|sandman.16b48k.wav|64: MOS=4.413746 actual=63.524 kbps source=scored
+completed stack_fixed1|sandman.16b48k.wav|48: MOS=4.167965 actual=47.759 kbps source=scored
+completed stack_fixed1|sandman.16b48k.wav|96: MOS=4.664722 actual=95.264 kbps source=scored
+completed stack_fixed1|trumpet.16b48k.wav|32: MOS=4.080818 actual=33.015 kbps source=identity:stack_reference|trumpet.16b48k.wav|32
+completed stack_fixed1|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.918528 actual=48.154 kbps source=scored
+completed stack_fixed1|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.451374 actual=95.492 kbps source=scored
+completed stack_fixed1|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.124725 actual=64.034 kbps source=scored
+completed stack_fixed1|velvet.16b48k.wav|32: MOS=3.634866 actual=33.522 kbps source=identity:stack_reference|velvet.16b48k.wav|32
+completed stack_fixed1|trumpet.16b48k.wav|48: MOS=4.256968 actual=49.698 kbps source=scored
+completed stack_fixed1|trumpet.16b48k.wav|64: MOS=4.521765 actual=65.671 kbps source=scored
+completed stack_fixed1|trumpet.16b48k.wav|96: MOS=4.730413 actual=96.658 kbps source=scored
+completed stack_fixed1|velvet.16b48k.wav|48: MOS=3.848686 actual=49.668 kbps source=scored
+completed stack_fixed2|12-German-male-speech.441.16b48k.wav|48: MOS=4.258983 actual=47.879 kbps source=identity:stack_reference|12-German-male-speech.441.16b48k.wav|48
+completed stack_fixed1|velvet.16b48k.wav|64: MOS=4.130947 actual=64.711 kbps source=scored
+completed stack_fixed1|velvet.16b48k.wav|96: MOS=4.407437 actual=95.109 kbps source=scored
+completed stack_fixed2|12-German-male-speech.441.16b48k.wav|64: MOS=4.565957 actual=63.645 kbps source=identity:stack_reference|12-German-male-speech.441.16b48k.wav|64
+completed stack_fixed2|12-German-male-speech.441.16b48k.wav|96: MOS=4.859464 actual=95.553 kbps source=identity:stack_reference|12-German-male-speech.441.16b48k.wav|96
+completed stack_fixed2|15-Good-evening.441.16b48k.wav|48: MOS=4.091957 actual=48.321 kbps source=identity:stack_reference|15-Good-evening.441.16b48k.wav|48
+completed stack_fixed2|15-Good-evening.441.16b48k.wav|64: MOS=4.332792 actual=64.007 kbps source=identity:stack_reference|15-Good-evening.441.16b48k.wav|64
+completed stack_fixed2|12-German-male-speech.441.16b48k.wav|32: MOS=3.978436 actual=31.891 kbps source=scored
+completed stack_fixed2|15-Good-evening.441.16b48k.wav|96: MOS=4.591437 actual=95.559 kbps source=identity:stack_reference|15-Good-evening.441.16b48k.wav|96
+completed stack_fixed2|21-classic.441.16b48k.wav|48: MOS=4.335401 actual=47.747 kbps source=identity:stack_reference|21-classic.441.16b48k.wav|48
+completed stack_fixed2|21-classic.441.16b48k.wav|64: MOS=4.554772 actual=63.645 kbps source=identity:stack_reference|21-classic.441.16b48k.wav|64
+completed stack_fixed2|21-classic.441.16b48k.wav|96: MOS=4.755041 actual=95.459 kbps source=identity:stack_reference|21-classic.441.16b48k.wav|96
+completed stack_fixed2|15-Good-evening.441.16b48k.wav|32: MOS=3.726384 actual=32.131 kbps source=scored
+completed stack_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48: MOS=4.060546 actual=47.947 kbps source=identity:stack_reference|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48
+completed stack_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64: MOS=4.357331 actual=64.032 kbps source=identity:stack_reference|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64
+completed stack_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96: MOS=4.802308 actual=95.759 kbps source=identity:stack_reference|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96
+completed stack_fixed2|21-classic.441.16b48k.wav|32: MOS=3.971097 actual=31.880 kbps source=scored
+completed stack_fixed2|25-This-is-the-end.441.16b48k.wav|48: MOS=4.245572 actual=48.722 kbps source=identity:stack_reference|25-This-is-the-end.441.16b48k.wav|48
+completed stack_fixed2|25-This-is-the-end.441.16b48k.wav|64: MOS=4.492382 actual=64.435 kbps source=identity:stack_reference|25-This-is-the-end.441.16b48k.wav|64
+completed stack_fixed2|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32: MOS=3.772697 actual=31.881 kbps source=scored
+completed stack_fixed2|25-This-is-the-end.441.16b48k.wav|96: MOS=4.703327 actual=95.818 kbps source=identity:stack_reference|25-This-is-the-end.441.16b48k.wav|96
+completed stack_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|48: MOS=4.372894 actual=48.911 kbps source=identity:stack_reference|27-last-song-drums-and-trampets.441.16b48k.wav|48
+completed stack_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|64: MOS=4.539588 actual=64.389 kbps source=identity:stack_reference|27-last-song-drums-and-trampets.441.16b48k.wav|64
+completed stack_fixed2|25-This-is-the-end.441.16b48k.wav|32: MOS=3.831069 actual=32.298 kbps source=scored
+completed stack_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|96: MOS=4.753285 actual=95.949 kbps source=identity:stack_reference|27-last-song-drums-and-trampets.441.16b48k.wav|96
+completed stack_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|48: MOS=4.590911 actual=48.106 kbps source=identity:stack_reference|35_SQAM_glockenspiel_cut.16b48k.wav|48
+completed stack_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|64: MOS=4.691910 actual=63.776 kbps source=identity:stack_reference|35_SQAM_glockenspiel_cut.16b48k.wav|64
+completed stack_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|96: MOS=4.804805 actual=95.251 kbps source=identity:stack_reference|35_SQAM_glockenspiel_cut.16b48k.wav|96
+completed stack_fixed2|27-last-song-drums-and-trampets.441.16b48k.wav|32: MOS=4.067151 actual=32.635 kbps source=scored
+completed stack_fixed2|4-Sound-English-male.441.16b48k.wav|48: MOS=4.354401 actual=47.980 kbps source=identity:stack_reference|4-Sound-English-male.441.16b48k.wav|48
+completed stack_fixed2|4-Sound-English-male.441.16b48k.wav|64: MOS=4.693063 actual=63.823 kbps source=identity:stack_reference|4-Sound-English-male.441.16b48k.wav|64
+completed stack_fixed2|4-Sound-English-male.441.16b48k.wav|96: MOS=4.843554 actual=95.539 kbps source=identity:stack_reference|4-Sound-English-male.441.16b48k.wav|96
+completed stack_fixed2|35_SQAM_glockenspiel_cut.16b48k.wav|32: MOS=4.167778 actual=32.058 kbps source=scored
+completed stack_fixed2|9-Have-big-expensive-car.441.16b48k.wav|48: MOS=4.194602 actual=48.330 kbps source=identity:stack_reference|9-Have-big-expensive-car.441.16b48k.wav|48
+completed stack_fixed2|9-Have-big-expensive-car.441.16b48k.wav|64: MOS=4.397726 actual=64.014 kbps source=identity:stack_reference|9-Have-big-expensive-car.441.16b48k.wav|64
+completed stack_fixed2|4-Sound-English-male.441.16b48k.wav|32: MOS=3.877175 actual=32.211 kbps source=scored
+completed stack_fixed2|9-Have-big-expensive-car.441.16b48k.wav|96: MOS=4.620819 actual=95.414 kbps source=identity:stack_reference|9-Have-big-expensive-car.441.16b48k.wav|96
+completed stack_fixed2|Asleep__4.11-4.31_.16b48k.wav|48: MOS=4.205389 actual=47.729 kbps source=identity:stack_reference|Asleep__4.11-4.31_.16b48k.wav|48
+completed stack_fixed2|Asleep__4.11-4.31_.16b48k.wav|64: MOS=4.460942 actual=63.659 kbps source=identity:stack_reference|Asleep__4.11-4.31_.16b48k.wav|64
+completed stack_fixed2|9-Have-big-expensive-car.441.16b48k.wav|32: MOS=3.697273 actual=31.973 kbps source=scored
+completed stack_fixed2|Asleep__4.11-4.31_.16b48k.wav|96: MOS=4.676221 actual=95.448 kbps source=identity:stack_reference|Asleep__4.11-4.31_.16b48k.wav|96
+completed stack_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48: MOS=3.941843 actual=48.006 kbps source=identity:stack_reference|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48
+completed stack_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64: MOS=4.145272 actual=63.614 kbps source=identity:stack_reference|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64
+completed stack_fixed2|Asleep__4.11-4.31_.16b48k.wav|32: MOS=3.739181 actual=31.815 kbps source=scored
+completed stack_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96: MOS=4.529069 actual=95.172 kbps source=identity:stack_reference|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96
+completed stack_fixed2|Changes.16b48k.wav|48: MOS=3.874280 actual=47.856 kbps source=identity:stack_reference|Changes.16b48k.wav|48
+completed stack_fixed2|Changes.16b48k.wav|64: MOS=4.217329 actual=63.691 kbps source=identity:stack_reference|Changes.16b48k.wav|64
+completed stack_fixed2|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32: MOS=3.581439 actual=31.750 kbps source=scored
+completed stack_fixed2|Changes.16b48k.wav|96: MOS=4.585035 actual=95.446 kbps source=identity:stack_reference|Changes.16b48k.wav|96
+completed stack_fixed2|Coral.16b48k.wav|48: MOS=4.168753 actual=47.962 kbps source=identity:stack_reference|Coral.16b48k.wav|48
+completed stack_fixed2|Coral.16b48k.wav|64: MOS=4.422999 actual=63.690 kbps source=identity:stack_reference|Coral.16b48k.wav|64
+completed stack_fixed2|Changes.16b48k.wav|32: MOS=3.519994 actual=31.881 kbps source=scored
+completed stack_fixed2|Coral.16b48k.wav|96: MOS=4.716592 actual=95.341 kbps source=identity:stack_reference|Coral.16b48k.wav|96
+completed stack_fixed2|ExitMusic.16b48k.wav|48: MOS=4.277024 actual=47.785 kbps source=identity:stack_reference|ExitMusic.16b48k.wav|48
+completed stack_fixed2|ExitMusic.16b48k.wav|64: MOS=4.583361 actual=63.558 kbps source=identity:stack_reference|ExitMusic.16b48k.wav|64
+completed stack_fixed2|Coral.16b48k.wav|32: MOS=3.796215 actual=31.859 kbps source=scored
+completed stack_fixed2|ExitMusic.16b48k.wav|96: MOS=4.780592 actual=95.305 kbps source=identity:stack_reference|ExitMusic.16b48k.wav|96
+completed stack_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|48: MOS=3.764568 actual=47.848 kbps source=identity:stack_reference|Girl_In_The_Fire__Sample_.16b48k.wav|48
+completed stack_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|64: MOS=4.095453 actual=63.706 kbps source=identity:stack_reference|Girl_In_The_Fire__Sample_.16b48k.wav|64
+completed stack_fixed2|ExitMusic.16b48k.wav|32: MOS=3.911751 actual=31.962 kbps source=scored
+completed stack_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|96: MOS=4.572801 actual=95.650 kbps source=identity:stack_reference|Girl_In_The_Fire__Sample_.16b48k.wav|96
+completed stack_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|48: MOS=4.194728 actual=47.749 kbps source=identity:stack_reference|Greatest_Love_of_All_2min57.16b48k.wav|48
+completed stack_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|64: MOS=4.417409 actual=63.663 kbps source=identity:stack_reference|Greatest_Love_of_All_2min57.16b48k.wav|64
+completed stack_fixed2|Girl_In_The_Fire__Sample_.16b48k.wav|32: MOS=3.468938 actual=31.834 kbps source=scored
+completed stack_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|96: MOS=4.707393 actual=95.321 kbps source=identity:stack_reference|Greatest_Love_of_All_2min57.16b48k.wav|96
+completed stack_fixed2|Hey Tonight.16b48k.wav|48: MOS=4.424039 actual=48.174 kbps source=identity:stack_reference|Hey Tonight.16b48k.wav|48
+completed stack_fixed2|Hey Tonight.16b48k.wav|64: MOS=4.558276 actual=63.928 kbps source=identity:stack_reference|Hey Tonight.16b48k.wav|64
+completed stack_fixed2|Greatest_Love_of_All_2min57.16b48k.wav|32: MOS=3.712860 actual=31.770 kbps source=scored
+completed stack_fixed2|Hey Tonight.16b48k.wav|96: MOS=4.728423 actual=95.318 kbps source=identity:stack_reference|Hey Tonight.16b48k.wav|96
+completed stack_fixed2|Hotel California.16b48k.wav|48: MOS=4.244747 actual=48.626 kbps source=identity:stack_reference|Hotel California.16b48k.wav|48
+completed stack_fixed2|Hotel California.16b48k.wav|64: MOS=4.444443 actual=64.434 kbps source=identity:stack_reference|Hotel California.16b48k.wav|64
+completed stack_fixed2|Hey Tonight.16b48k.wav|32: MOS=4.272790 actual=31.925 kbps source=scored
+completed stack_fixed2|Hotel California.16b48k.wav|96: MOS=4.658920 actual=95.660 kbps source=identity:stack_reference|Hotel California.16b48k.wav|96
+completed stack_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|48: MOS=4.209981 actual=48.024 kbps source=identity:stack_reference|Jupiter, the Bringer of Jolity.16b48k.wav|48
+completed stack_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|64: MOS=4.410470 actual=63.715 kbps source=identity:stack_reference|Jupiter, the Bringer of Jolity.16b48k.wav|64
+completed stack_fixed2|Hotel California.16b48k.wav|32: MOS=3.921369 actual=32.283 kbps source=scored
+completed stack_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|96: MOS=4.651875 actual=95.518 kbps source=identity:stack_reference|Jupiter, the Bringer of Jolity.16b48k.wav|96
+completed stack_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48: MOS=4.378016 actual=49.538 kbps source=identity:stack_reference|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48
+completed stack_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64: MOS=4.568497 actual=64.738 kbps source=identity:stack_reference|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64
+completed stack_fixed2|Jupiter, the Bringer of Jolity.16b48k.wav|32: MOS=3.844569 actual=31.941 kbps source=scored
+completed stack_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96: MOS=4.759050 actual=95.966 kbps source=identity:stack_reference|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96
+completed stack_fixed2|NewYorkCity.16b48k.wav|48: MOS=4.361528 actual=48.474 kbps source=identity:stack_reference|NewYorkCity.16b48k.wav|48
+completed stack_fixed2|NewYorkCity.16b48k.wav|64: MOS=4.528395 actual=64.234 kbps source=identity:stack_reference|NewYorkCity.16b48k.wav|64
+completed stack_fixed2|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32: MOS=4.150102 actual=34.006 kbps source=scored
+completed stack_fixed2|NewYorkCity.16b48k.wav|96: MOS=4.696210 actual=95.439 kbps source=identity:stack_reference|NewYorkCity.16b48k.wav|96
+completed stack_fixed2|Only Time.16b48k.wav|48: MOS=4.266244 actual=47.636 kbps source=identity:stack_reference|Only Time.16b48k.wav|48
+completed stack_fixed2|Only Time.16b48k.wav|64: MOS=4.498163 actual=63.504 kbps source=identity:stack_reference|Only Time.16b48k.wav|64
+completed stack_fixed2|NewYorkCity.16b48k.wav|32: MOS=4.041695 actual=32.211 kbps source=scored
+completed stack_fixed2|Only Time.16b48k.wav|96: MOS=4.727342 actual=95.315 kbps source=identity:stack_reference|Only Time.16b48k.wav|96
+completed stack_fixed2|Robots_old.16b48k.wav|48: MOS=4.440138 actual=47.583 kbps source=identity:stack_reference|Robots_old.16b48k.wav|48
+completed stack_fixed2|Robots_old.16b48k.wav|64: MOS=4.581767 actual=63.346 kbps source=identity:stack_reference|Robots_old.16b48k.wav|64
+completed stack_fixed2|Only Time.16b48k.wav|32: MOS=3.890703 actual=31.746 kbps source=scored
+completed stack_fixed2|Robots_old.16b48k.wav|96: MOS=4.709556 actual=95.062 kbps source=identity:stack_reference|Robots_old.16b48k.wav|96
+completed stack_fixed2|Severance__1.31-1.51_.16b48k.wav|48: MOS=3.855723 actual=47.797 kbps source=identity:stack_reference|Severance__1.31-1.51_.16b48k.wav|48
+completed stack_fixed2|Severance__1.31-1.51_.16b48k.wav|64: MOS=4.332024 actual=63.690 kbps source=identity:stack_reference|Severance__1.31-1.51_.16b48k.wav|64
+completed stack_fixed2|Robots_old.16b48k.wav|32: MOS=4.190937 actual=31.775 kbps source=scored
+completed stack_fixed2|Severance__1.31-1.51_.16b48k.wav|96: MOS=4.690452 actual=95.541 kbps source=identity:stack_reference|Severance__1.31-1.51_.16b48k.wav|96
+completed stack_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|48: MOS=4.475609 actual=47.643 kbps source=identity:stack_reference|Shinsho_pool_3min45_4min4.16b48k.wav|48
+completed stack_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|64: MOS=4.679636 actual=63.526 kbps source=identity:stack_reference|Shinsho_pool_3min45_4min4.16b48k.wav|64
+completed stack_fixed2|Severance__1.31-1.51_.16b48k.wav|32: MOS=3.200881 actual=31.814 kbps source=scored
+completed stack_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|96: MOS=4.810863 actual=95.341 kbps source=identity:stack_reference|Shinsho_pool_3min45_4min4.16b48k.wav|96
+completed stack_fixed2|SinceAlways.16b48k.wav|48: MOS=4.249458 actual=48.166 kbps source=identity:stack_reference|SinceAlways.16b48k.wav|48
+completed stack_fixed2|SinceAlways.16b48k.wav|64: MOS=4.492545 actual=63.810 kbps source=identity:stack_reference|SinceAlways.16b48k.wav|64
+completed stack_fixed2|Shinsho_pool_3min45_4min4.16b48k.wav|32: MOS=4.190837 actual=31.795 kbps source=scored
+completed stack_fixed2|SinceAlways.16b48k.wav|96: MOS=4.736036 actual=95.485 kbps source=identity:stack_reference|SinceAlways.16b48k.wav|96
+completed stack_fixed2|SlavesOfFear.16b48k.wav|48: MOS=4.368323 actual=48.560 kbps source=identity:stack_reference|SlavesOfFear.16b48k.wav|48
+completed stack_fixed2|SlavesOfFear.16b48k.wav|64: MOS=4.523429 actual=64.255 kbps source=identity:stack_reference|SlavesOfFear.16b48k.wav|64
+completed stack_fixed2|SinceAlways.16b48k.wav|32: MOS=4.057591 actual=31.839 kbps source=scored
+completed stack_fixed2|SlavesOfFear.16b48k.wav|96: MOS=4.680991 actual=95.582 kbps source=identity:stack_reference|SlavesOfFear.16b48k.wav|96
+completed stack_fixed2|The Chastising of Renegade.16b48k.wav|48: MOS=4.109188 actual=48.810 kbps source=identity:stack_reference|The Chastising of Renegade.16b48k.wav|48
+completed stack_fixed2|The Chastising of Renegade.16b48k.wav|64: MOS=4.354943 actual=64.597 kbps source=identity:stack_reference|The Chastising of Renegade.16b48k.wav|64
+completed stack_fixed2|SlavesOfFear.16b48k.wav|32: MOS=4.052601 actual=32.266 kbps source=scored
+completed stack_fixed2|The Chastising of Renegade.16b48k.wav|96: MOS=4.616349 actual=95.891 kbps source=identity:stack_reference|The Chastising of Renegade.16b48k.wav|96
+completed stack_fixed2|Through The Fire And Flames.16b48k.wav|48: MOS=4.399533 actual=48.366 kbps source=identity:stack_reference|Through The Fire And Flames.16b48k.wav|48
+completed stack_fixed2|Through The Fire And Flames.16b48k.wav|64: MOS=4.549080 actual=63.998 kbps source=identity:stack_reference|Through The Fire And Flames.16b48k.wav|64
+completed stack_fixed2|The Chastising of Renegade.16b48k.wav|32: MOS=3.767375 actual=32.342 kbps source=scored
+completed stack_fixed2|Through The Fire And Flames.16b48k.wav|96: MOS=4.686714 actual=95.397 kbps source=identity:stack_reference|Through The Fire And Flames.16b48k.wav|96
+completed stack_fixed2|TrosYGareg.16b48k.wav|48: MOS=4.291790 actual=47.701 kbps source=identity:stack_reference|TrosYGareg.16b48k.wav|48
+completed stack_fixed2|TrosYGareg.16b48k.wav|64: MOS=4.494315 actual=63.593 kbps source=identity:stack_reference|TrosYGareg.16b48k.wav|64
+completed stack_fixed2|Through The Fire And Flames.16b48k.wav|32: MOS=4.074064 actual=32.266 kbps source=scored
+completed stack_fixed2|TrosYGareg.16b48k.wav|96: MOS=4.782011 actual=95.314 kbps source=identity:stack_reference|TrosYGareg.16b48k.wav|96
+completed stack_fixed2|Waiting.16b48k.wav|48: MOS=3.988305 actual=48.254 kbps source=identity:stack_reference|Waiting.16b48k.wav|48
+completed stack_fixed2|Waiting.16b48k.wav|64: MOS=4.262951 actual=64.087 kbps source=identity:stack_reference|Waiting.16b48k.wav|64
+completed stack_fixed2|TrosYGareg.16b48k.wav|32: MOS=3.933245 actual=31.838 kbps source=scored
+completed stack_fixed2|Waiting.16b48k.wav|96: MOS=4.558051 actual=95.875 kbps source=identity:stack_reference|Waiting.16b48k.wav|96
+completed stack_fixed2|With Love (Outro).16b48k.wav|48: MOS=4.471677 actual=48.058 kbps source=identity:stack_reference|With Love (Outro).16b48k.wav|48
+completed stack_fixed2|With Love (Outro).16b48k.wav|64: MOS=4.611518 actual=63.758 kbps source=identity:stack_reference|With Love (Outro).16b48k.wav|64
+completed stack_fixed2|Waiting.16b48k.wav|32: MOS=3.755885 actual=31.936 kbps source=scored
+completed stack_fixed2|With Love (Outro).16b48k.wav|96: MOS=4.781327 actual=95.463 kbps source=identity:stack_reference|With Love (Outro).16b48k.wav|96
+completed stack_fixed2|bah.wav|48: MOS=4.059219 actual=47.807 kbps source=identity:stack_reference|bah.wav|48
+completed stack_fixed2|bah.wav|64: MOS=4.329133 actual=63.705 kbps source=identity:stack_reference|bah.wav|64
+completed stack_fixed2|With Love (Outro).16b48k.wav|32: MOS=4.098212 actual=31.855 kbps source=scored
+completed stack_fixed2|bah.wav|96: MOS=4.651366 actual=95.657 kbps source=identity:stack_reference|bah.wav|96
+completed stack_fixed2|bas.wav|48: MOS=3.943975 actual=47.638 kbps source=identity:stack_reference|bas.wav|48
+completed stack_fixed2|bas.wav|64: MOS=4.282503 actual=63.562 kbps source=identity:stack_reference|bas.wav|64
+completed stack_fixed2|bah.wav|32: MOS=3.652941 actual=31.872 kbps source=scored
+completed stack_fixed2|bas.wav|96: MOS=4.654603 actual=95.466 kbps source=identity:stack_reference|bas.wav|96
+completed stack_fixed2|bonhemian_rhapsody.16b48k.wav|48: MOS=4.092645 actual=47.761 kbps source=identity:stack_reference|bonhemian_rhapsody.16b48k.wav|48
+completed stack_fixed2|bonhemian_rhapsody.16b48k.wav|64: MOS=4.381341 actual=63.622 kbps source=identity:stack_reference|bonhemian_rhapsody.16b48k.wav|64
+completed stack_fixed2|bas.wav|32: MOS=3.485165 actual=31.777 kbps source=scored
+completed stack_fixed2|bonhemian_rhapsody.16b48k.wav|96: MOS=4.680106 actual=95.430 kbps source=identity:stack_reference|bonhemian_rhapsody.16b48k.wav|96
+completed stack_fixed2|clapton_44k.16b48k.wav|48: MOS=4.156716 actual=48.110 kbps source=identity:stack_reference|clapton_44k.16b48k.wav|48
+completed stack_fixed2|clapton_44k.16b48k.wav|64: MOS=4.363052 actual=63.865 kbps source=identity:stack_reference|clapton_44k.16b48k.wav|64
+completed stack_fixed2|clapton_44k.16b48k.wav|96: MOS=4.567008 actual=95.284 kbps source=identity:stack_reference|clapton_44k.16b48k.wav|96
+completed stack_fixed2|bonhemian_rhapsody.16b48k.wav|32: MOS=3.690251 actual=31.791 kbps source=scored
+completed stack_fixed2|cst.wav|48: MOS=4.010036 actual=48.300 kbps source=identity:stack_reference|cst.wav|48
+completed stack_fixed2|cst.wav|64: MOS=4.325961 actual=63.907 kbps source=identity:stack_reference|cst.wav|64
+completed stack_fixed2|clapton_44k.16b48k.wav|32: MOS=3.809624 actual=31.958 kbps source=scored
+completed stack_fixed2|cst.wav|96: MOS=4.655535 actual=96.025 kbps source=identity:stack_reference|cst.wav|96
+completed stack_fixed2|fms.wav|48: MOS=4.299828 actual=48.071 kbps source=identity:stack_reference|fms.wav|48
+completed stack_fixed2|fms.wav|64: MOS=4.579327 actual=63.786 kbps source=identity:stack_reference|fms.wav|64
+completed stack_fixed2|cst.wav|32: MOS=3.656082 actual=32.229 kbps source=scored
+completed stack_fixed2|fms.wav|96: MOS=4.814585 actual=95.660 kbps source=identity:stack_reference|fms.wav|96
+completed stack_fixed2|girl.16b48k.wav|48: MOS=4.599858 actual=48.100 kbps source=identity:stack_reference|girl.16b48k.wav|48
+completed stack_fixed2|girl.16b48k.wav|64: MOS=4.705094 actual=63.946 kbps source=identity:stack_reference|girl.16b48k.wav|64
+completed stack_fixed2|girl.16b48k.wav|96: MOS=4.798161 actual=95.540 kbps source=identity:stack_reference|girl.16b48k.wav|96
+completed stack_fixed2|fms.wav|32: MOS=3.931349 actual=31.960 kbps source=scored
+completed stack_fixed2|glk.wav|48: MOS=4.875437 actual=47.908 kbps source=identity:stack_reference|glk.wav|48
+completed stack_fixed2|glk.wav|64: MOS=4.905093 actual=63.626 kbps source=identity:stack_reference|glk.wav|64
+completed stack_fixed2|girl.16b48k.wav|32: MOS=4.393582 actual=32.155 kbps source=scored
+completed stack_fixed2|glk.wav|96: MOS=4.932255 actual=95.358 kbps source=identity:stack_reference|glk.wav|96
+completed stack_fixed2|hrp.wav|48: MOS=4.482353 actual=48.699 kbps source=identity:stack_reference|hrp.wav|48
+completed stack_fixed2|hrp.wav|64: MOS=4.673065 actual=64.450 kbps source=identity:stack_reference|hrp.wav|64
+completed stack_fixed2|hrp.wav|96: MOS=4.839642 actual=95.873 kbps source=identity:stack_reference|hrp.wav|96
+completed stack_fixed2|glk.wav|32: MOS=4.662542 actual=31.881 kbps source=scored
+completed stack_fixed2|liberate.16b48k.wav|48: MOS=4.252080 actual=49.306 kbps source=identity:stack_reference|liberate.16b48k.wav|48
+completed stack_fixed2|liberate.16b48k.wav|64: MOS=4.400920 actual=65.104 kbps source=identity:stack_reference|liberate.16b48k.wav|64
+completed stack_fixed2|hrp.wav|32: MOS=4.068464 actual=32.596 kbps source=scored
+completed stack_fixed2|liberate.16b48k.wav|96: MOS=4.575609 actual=96.101 kbps source=identity:stack_reference|liberate.16b48k.wav|96
+completed stack_fixed2|lob.wav|48: MOS=4.247937 actual=50.252 kbps source=identity:stack_reference|lob.wav|48
+completed stack_fixed2|liberate.16b48k.wav|32: MOS=3.950763 actual=32.584 kbps source=scored
+completed stack_fixed2|lob.wav|64: MOS=4.429858 actual=65.890 kbps source=identity:stack_reference|lob.wav|64
+completed stack_fixed2|lob.wav|96: MOS=4.672801 actual=96.706 kbps source=identity:stack_reference|lob.wav|96
+completed stack_fixed2|mof.wav|48: MOS=3.779918 actual=47.550 kbps source=identity:stack_reference|mof.wav|48
+completed stack_fixed2|mof.wav|64: MOS=4.185228 actual=63.346 kbps source=identity:stack_reference|mof.wav|64
+completed stack_fixed2|mof.wav|96: MOS=4.425038 actual=95.165 kbps source=identity:stack_reference|mof.wav|96
+completed stack_fixed2|lob.wav|32: MOS=3.947694 actual=33.261 kbps source=scored
+completed stack_fixed2|qrt.wav|48: MOS=3.916786 actual=47.661 kbps source=identity:stack_reference|qrt.wav|48
+completed stack_fixed2|qrt.wav|64: MOS=4.198890 actual=63.610 kbps source=identity:stack_reference|qrt.wav|64
+completed stack_fixed2|qrt.wav|96: MOS=4.536281 actual=95.472 kbps source=identity:stack_reference|qrt.wav|96
+completed stack_fixed2|mof.wav|32: MOS=3.285897 actual=31.836 kbps source=scored
+completed stack_fixed2|sandman.16b48k.wav|48: MOS=4.195870 actual=47.762 kbps source=identity:stack_reference|sandman.16b48k.wav|48
+completed stack_fixed2|sandman.16b48k.wav|64: MOS=4.445466 actual=63.526 kbps source=identity:stack_reference|sandman.16b48k.wav|64
+completed stack_fixed2|qrt.wav|32: MOS=3.543756 actual=31.753 kbps source=scored
+completed stack_fixed2|sandman.16b48k.wav|96: MOS=4.690715 actual=95.269 kbps source=identity:stack_reference|sandman.16b48k.wav|96
+completed stack_fixed2|take_your_finger_frin_my_head.16b48k.wav|48: MOS=3.994138 actual=48.174 kbps source=identity:stack_reference|take_your_finger_frin_my_head.16b48k.wav|48
+completed stack_fixed2|take_your_finger_frin_my_head.16b48k.wav|64: MOS=4.203424 actual=64.061 kbps source=identity:stack_reference|take_your_finger_frin_my_head.16b48k.wav|64
+completed stack_fixed2|sandman.16b48k.wav|32: MOS=3.803307 actual=31.850 kbps source=scored
+completed stack_fixed2|take_your_finger_frin_my_head.16b48k.wav|96: MOS=4.540116 actual=95.509 kbps source=identity:stack_reference|take_your_finger_frin_my_head.16b48k.wav|96
+completed stack_fixed2|trumpet.16b48k.wav|48: MOS=4.275661 actual=49.713 kbps source=identity:stack_reference|trumpet.16b48k.wav|48
+completed stack_fixed2|trumpet.16b48k.wav|64: MOS=4.532439 actual=65.685 kbps source=identity:stack_reference|trumpet.16b48k.wav|64
+completed stack_fixed2|take_your_finger_frin_my_head.16b48k.wav|32: MOS=3.594965 actual=32.008 kbps source=scored
+completed stack_fixed2|trumpet.16b48k.wav|96: MOS=4.744737 actual=96.682 kbps source=identity:stack_reference|trumpet.16b48k.wav|96
+completed stack_fixed2|velvet.16b48k.wav|48: MOS=3.899096 actual=49.727 kbps source=identity:stack_reference|velvet.16b48k.wav|48
+completed stack_fixed2|velvet.16b48k.wav|64: MOS=4.184359 actual=64.765 kbps source=identity:stack_reference|velvet.16b48k.wav|64
+completed stack_fixed2|trumpet.16b48k.wav|32: MOS=4.089355 actual=33.026 kbps source=scored
+completed stack_fixed2|velvet.16b48k.wav|96: MOS=4.461004 actual=95.145 kbps source=identity:stack_reference|velvet.16b48k.wav|96
+completed stack_fixed2|velvet.16b48k.wav|32: MOS=3.661955 actual=33.565 kbps source=scored
+Saved fixed-control comparisons: /Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/fixed-count-controls/full/comparisons.json

@@ -1,0 +1,13 @@
+{
+  "all_exact": false,
+  "controls": {
+    "tier17_clean_stack": {
+      "exact_matches": 98,
+      "packet_identity_matches": 98,
+      "pcm_identity_matches": 98,
+      "rows": 196
+    }
+  },
+  "rows": 196,
+  "schema": 1
+}

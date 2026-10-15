@@ -1,0 +1,57 @@
+{
+  "input_sha256": "af47088d3c76215da8984862d77f5b494e06146e510250aab154a20820a52788",
+  "method": "paired (fixed8-baseline)/baseline; 2000 paired bootstrap resamples, seed 0; outliers flagged beyond median +/- 3 MAD",
+  "pooled": {
+    "pairs": 40,
+    "mean_paired_delta_s": 1.9374874999999666e-05,
+    "mean_paired_delta_pct": 0.02959771380136228,
+    "mean_delta_pct_bootstrap_95ci_seed0_2000": [
+      -0.3924301981135972,
+      0.41228095299163214
+    ],
+    "median_paired_delta_pct": 0.25182842297251096,
+    "mad_pct": 0.6530604405301732,
+    "outliers_median_plusminus_3mad": [
+      -4.004265371236837,
+      -2.4058926374400325,
+      -2.278401448495282,
+      2.254723016408078
+    ],
+    "max_abs_delta_pct": 4.004265371236837
+  },
+  "by_clip": {
+    "music_percussive.wav": {
+      "pairs": 20,
+      "mean_paired_delta_s": -0.0005986582500000011,
+      "mean_paired_delta_pct": -0.5644488215005777,
+      "mean_delta_pct_bootstrap_95ci_seed0_2000": [
+        -1.1231624716624167,
+        -0.011851597370350353
+      ],
+      "median_paired_delta_pct": -0.4359663711301809,
+      "mad_pct": 0.780580185917934,
+      "outliers_median_plusminus_3mad": [
+        -4.004265371236837
+      ],
+      "max_abs_delta_pct": 4.004265371236837
+    },
+    "music_tonal.wav": {
+      "pairs": 20,
+      "mean_paired_delta_s": 0.0006374080000000004,
+      "mean_paired_delta_pct": 0.6236442491033023,
+      "mean_delta_pct_bootstrap_95ci_seed0_2000": [
+        0.2524674054146975,
+        1.0109375485247791
+      ],
+      "median_paired_delta_pct": 0.4428184499393417,
+      "mad_pct": 0.4622355487879537,
+      "outliers_median_plusminus_3mad": [
+        -1.167425045165038,
+        2.131672671839957,
+        2.0170289247843254,
+        2.254723016408078
+      ],
+      "max_abs_delta_pct": 2.254723016408078
+    }
+  }
+}

@@ -1,0 +1,1384 @@
+{
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "comparisons": {
+    "fixed2_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 2.9562111975806102,
+        "lo": 0.18026614266069274,
+        "losses": 1,
+        "mean": 1.6611153333973587,
+        "n": 4,
+        "wins": 3
+      },
+      "mean_bd_rate_percent": 1.6611153333973587,
+      "median_bd_rate_percent": 1.8468686599507733,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 3.3358906774996644,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.8171727578234487,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.38516666381177567,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.876564562078098,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.017533302307128906,
+          "mean_payload_kbps_delta": -0.0017857551554065765,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.008784770965576172,
+            "lo": -0.043065547943115234,
+            "losses": 3,
+            "mean": -0.017533302307128906,
+            "n": 4,
+            "wins": 1
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.051419973373413086,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.018635988235473633,
+              "payload_kbps_delta": -0.004800000000003024
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.01800227165222168,
+              "payload_kbps_delta": -0.002400000000001512
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.017925024032592773,
+              "payload_kbps_delta": 0.0016569793783745013
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": -0.013846635818481445,
+          "mean_payload_kbps_delta": -0.001578632733110652,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.002246260643005371,
+            "lo": -0.025467514991760254,
+            "losses": 3,
+            "mean": -0.013846635818481445,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.029439926147460938,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.014101982116699219,
+              "payload_kbps_delta": -0.0040000000000048885
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.013550281524658203,
+              "payload_kbps_delta": -0.004800000000003024
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0017056465148925781,
+              "payload_kbps_delta": 0.0024854690675653046
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": -0.012165069580078125,
+          "mean_payload_kbps_delta": 0.00042136726689179227,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0021195411682128906,
+            "lo": -0.02452397346496582,
+            "losses": 2,
+            "mean": -0.012165069580078125,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.03140544891357422,
+              "payload_kbps_delta": 0.002400000000001512
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0130157470703125,
+              "payload_kbps_delta": 0.0007999999999981355
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.003879547119140625,
+              "payload_kbps_delta": -0.003999999999997783
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.00035953521728515625,
+              "payload_kbps_delta": 0.0024854690675653046
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": -0.01242220401763916,
+          "mean_payload_kbps_delta": 2.1367266896277215e-05,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.004313945770263672,
+            "lo": -0.020336031913757324,
+            "losses": 3,
+            "mean": -0.01242220401763916,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.02383279800415039,
+              "payload_kbps_delta": 0.001600000000010482
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.015387535095214844,
+              "payload_kbps_delta": -0.0007999999999981355
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.009845733642578125,
+              "payload_kbps_delta": -0.003199999999992542
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0006227493286132812,
+              "payload_kbps_delta": 0.0024854690675653046
+            }
+          ]
+        }
+      },
+      "reference": "baseline_ref",
+      "valid_clips": 4
+    },
+    "fixed2_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": 2.0137386098810994,
+        "lo": 0.521104544321932,
+        "losses": 0,
+        "mean": 1.4484413651161654,
+        "n": 4,
+        "wins": 4
+      },
+      "mean_bd_rate_percent": 1.4484413651161654,
+      "median_bd_rate_percent": 1.8104809411454648,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 2.114575722227885,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.9097346094501866,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.05822785594584712,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.711227272840743,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.01446390151977539,
+          "mean_payload_kbps_delta": -0.0017857551554065765,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.010092735290527344,
+            "lo": -0.03992891311645508,
+            "losses": 3,
+            "mean": -0.01446390151977539,
+            "n": 4,
+            "wins": 1
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.048859596252441406,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.013974189758300781,
+              "payload_kbps_delta": -0.002400000000001512
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.013136863708496094,
+              "payload_kbps_delta": -0.004800000000003024
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.01811504364013672,
+              "payload_kbps_delta": 0.0016569793783745013
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": -0.011489450931549072,
+          "mean_payload_kbps_delta": 0.001607122422299767,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.007427990436553955,
+            "lo": -0.01702427864074707,
+            "losses": 4,
+            "mean": -0.011489450931549072,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.019567489624023438,
+              "payload_kbps_delta": 0.0016000000000033765
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.010637521743774414,
+              "payload_kbps_delta": 0.008000000000002672
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.009394645690917969,
+              "payload_kbps_delta": 0.0008284896891908033
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.006358146667480469,
+              "payload_kbps_delta": -0.003999999999997783
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": -0.011044621467590332,
+          "mean_payload_kbps_delta": 0.004014244844594117,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0024755001068115234,
+            "lo": -0.019069910049438477,
+            "losses": 3,
+            "mean": -0.011044621467590332,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.020309925079345703,
+              "payload_kbps_delta": 0.015999999999991132
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.01782989501953125,
+              "payload_kbps_delta": 0.002400000000001512
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.008681297302246094,
+              "payload_kbps_delta": -0.003999999999997783
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0026426315307617188,
+              "payload_kbps_delta": 0.0016569793783816067
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": -0.010252118110656738,
+          "mean_payload_kbps_delta": -0.0012142448445935372,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0026606321334838867,
+            "lo": -0.01488947868347168,
+            "losses": 3,
+            "mean": -0.010252118110656738,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.015351295471191406,
+              "payload_kbps_delta": 0.0008000000000123464
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.014427661895751953,
+              "payload_kbps_delta": 0.0007999999999981355
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.012491226196289062,
+              "payload_kbps_delta": -0.004800000000003024
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0012617111206054688,
+              "payload_kbps_delta": -0.0016569793783816067
+            }
+          ]
+        }
+      },
+      "reference": "stack_ref",
+      "valid_clips": 4
+    },
+    "fixed4_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.8396837352123487,
+        "lo": 0.28002149481056726,
+        "losses": 0,
+        "mean": 0.5310509074004877,
+        "n": 4,
+        "wins": 4
+      },
+      "mean_bd_rate_percent": 0.5310509074004877,
+      "median_bd_rate_percent": 0.44137341930583496,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": 0.23141960543564544,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.0100371855546353,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5541234544261808,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.3286233841854891,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.020383894443511963,
+          "mean_payload_kbps_delta": 0.0008071224222980788,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0069313645362854,
+            "lo": -0.03754019737243652,
+            "losses": 3,
+            "mean": -0.020383894443511963,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.04475045204162598,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.017450809478759766,
+              "payload_kbps_delta": 0.002400000000001512
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.015909433364868164,
+              "payload_kbps_delta": 0.0008284896891872506
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.0034248828887939453,
+              "payload_kbps_delta": 0.0015999999999998238
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": -0.002721726894378662,
+          "mean_payload_kbps_delta": 1.4244844591004835e-05,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0003123283386230469,
+            "lo": -0.0049399733543396,
+            "losses": 1,
+            "mean": -0.002721726894378662,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.005425453186035156,
+              "payload_kbps_delta": -0.008000000000002672
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0035915374755859375,
+              "payload_kbps_delta": 0.0016569793783745013
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0034835338592529297,
+              "payload_kbps_delta": 0.003999999999997783
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.001613616943359375,
+              "payload_kbps_delta": 0.0023999999999944066
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": -0.00014412403106689453,
+          "mean_payload_kbps_delta": -0.0017857551554030238,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.008200526237487793,
+            "lo": -0.0067751407623291016,
+            "losses": 2,
+            "mean": -0.00014412403106689453,
+            "n": 4,
+            "wins": 1
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.008189201354980469,
+              "payload_kbps_delta": -0.007999999999995566
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.005361080169677734,
+              "payload_kbps_delta": 0.004799999999995919
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.00025272369384765625,
+              "payload_kbps_delta": 0.0016569793783816067
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.012721061706542969,
+              "payload_kbps_delta": -0.005599999999994054
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": -0.00208890438079834,
+          "mean_payload_kbps_delta": 0.00121424484459709,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.004215598106384277,
+            "lo": -0.007043600082397461,
+            "losses": 1,
+            "mean": -0.00208890438079834,
+            "n": 4,
+            "wins": 1
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.008314132690429688,
+              "payload_kbps_delta": 0.003200000000006753
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.0036454200744628906,
+              "payload_kbps_delta": 0.003199999999992542
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0032320022583007812,
+              "payload_kbps_delta": 0.0016569793783816067
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.0068359375,
+              "payload_kbps_delta": -0.003199999999992542
+            }
+          ]
+        }
+      },
+      "reference": "baseline_ref",
+      "valid_clips": 4
+    },
+    "fixed4_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": 1.4060757378539428,
+        "lo": -0.4330307883644746,
+        "losses": 2,
+        "mean": 0.4599798470244443,
+        "n": 4,
+        "wins": 2
+      },
+      "mean_bd_rate_percent": 0.4599798470244443,
+      "median_bd_rate_percent": 0.2593981770734721,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -0.6317488565730556,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.7531090743028379,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.9528718905238884,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.23431272015589366,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.01950782537460327,
+          "mean_payload_kbps_delta": 0.0008071224222980788,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": -0.0050452351570129395,
+            "lo": -0.037241339683532715,
+            "losses": 3,
+            "mean": -0.01950782537460327,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.04442238807678223,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.01677560806274414,
+              "payload_kbps_delta": 0.002400000000001512
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.01569819450378418,
+              "payload_kbps_delta": 0.0008284896891872506
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.001135110855102539,
+              "payload_kbps_delta": 0.0015999999999998238
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": -0.0022197365760803223,
+          "mean_payload_kbps_delta": 0.0032142448445959815,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.010377168655395508,
+            "lo": -0.019398093223571777,
+            "losses": 1,
+            "mean": -0.0022197365760803223,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.02835988998413086,
+              "payload_kbps_delta": 0.0016569793783745013
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0012733936309814453,
+              "payload_kbps_delta": 0.008800000000000807
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.007487297058105469,
+              "payload_kbps_delta": 0.0040000000000048885
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.013267040252685547,
+              "payload_kbps_delta": -0.001599999999996271
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": 0.0007189512252807617,
+          "mean_payload_kbps_delta": 2.8489689185562383e-05,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0062716007232666016,
+            "lo": -0.004833698272705078,
+            "losses": 1,
+            "mean": 0.0007189512252807617,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.007346630096435547,
+              "payload_kbps_delta": -0.0040000000000048885
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0023207664489746094,
+              "payload_kbps_delta": 0.003313958756756108
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.006042957305908203,
+              "payload_kbps_delta": 0.003999999999997783
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.006500244140625,
+              "payload_kbps_delta": -0.003200000000006753
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": 0.0014967918395996094,
+          "mean_payload_kbps_delta": -0.0002142448445958678,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.0036225318908691406,
+            "lo": -0.0010824203491210938,
+            "losses": 0,
+            "mean": 0.0014967918395996094,
+            "n": 4,
+            "wins": 0
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0024709701538085938,
+              "payload_kbps_delta": 0.0023999999999944066
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.00121307373046875,
+              "payload_kbps_delta": -0.0016569793783816067
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.0030832290649414062,
+              "payload_kbps_delta": -0.003199999999992542
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.004161834716796875,
+              "payload_kbps_delta": 0.001599999999996271
+            }
+          ]
+        }
+      },
+      "reference": "stack_ref",
+      "valid_clips": 4
+    },
+    "fixed6_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 1.3852985604346058,
+        "lo": -0.883401821656768,
+        "losses": 2,
+        "mean": 0.18331500681912083,
+        "n": 4,
+        "wins": 2
+      },
+      "mean_bd_rate_percent": 0.18331500681912083,
+      "median_bd_rate_percent": 0.048048281679524685,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -1.2154181276325837,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.01655053291163,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.8525815915500177,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11264709627067937,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.011590421199798584,
+          "mean_payload_kbps_delta": -0.00280000000000058,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.006742119789123535,
+            "lo": -0.02635866403579712,
+            "losses": 3,
+            "mean": -0.011590421199798584,
+            "n": 4,
+            "wins": 1
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.030765771865844727,
+              "payload_kbps_delta": -0.003999999999997783
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.01717209815979004,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.013137340545654297,
+              "payload_kbps_delta": -0.008000000000002672
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.014713525772094727,
+              "payload_kbps_delta": 0.0007999999999981355
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": -0.004498004913330078,
+          "mean_payload_kbps_delta": -0.0027857551554113513,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.008056163787841797,
+            "lo": -0.01907801628112793,
+            "losses": 2,
+            "mean": -0.004498004913330078,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.02726268768310547,
+              "payload_kbps_delta": 0.0016569793783745013
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.0068416595458984375,
+              "payload_kbps_delta": -0.008800000000007913
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": 0.0054759979248046875,
+              "payload_kbps_delta": -0.002400000000001512
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.010636329650878906,
+              "payload_kbps_delta": -0.001600000000010482
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": 0.005514740943908691,
+          "mean_payload_kbps_delta": 0.0010071224223011654,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.009833216667175293,
+            "lo": 0.0013034343719482422,
+            "losses": 0,
+            "mean": 0.005514740943908691,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0012140274047851562,
+              "payload_kbps_delta": 0.0008284896891908033
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": 0.0013928413391113281,
+              "payload_kbps_delta": 0.0024000000000086175
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.006805419921875,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.012646675109863281,
+              "payload_kbps_delta": 0.000800000000005241
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": 0.005387306213378906,
+          "mean_payload_kbps_delta": 0.00042136726689179227,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011977672576904297,
+            "lo": -0.0012030601501464844,
+            "losses": 0,
+            "mean": 0.005387306213378906,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0016565322875976562,
+              "payload_kbps_delta": 0.0024854690675653046
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0007495880126953125,
+              "payload_kbps_delta": -0.0007999999999981355
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.011345863342285156,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.012609481811523438,
+              "payload_kbps_delta": 0.0
+            }
+          ]
+        }
+      },
+      "reference": "baseline_ref",
+      "valid_clips": 4
+    },
+    "fixed6_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": 1.743639823884155,
+        "lo": -1.0524938201649876,
+        "losses": 3,
+        "mean": 0.15901170471973036,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": 0.15901170471973036,
+      "median_bd_rate_percent": -0.21411088955997637,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -1.3346141886126373,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.2061327148220382,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.3988827866115114,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.22208906429791453,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.011187374591827393,
+          "mean_payload_kbps_delta": -0.00280000000000058,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.007031679153442383,
+            "lo": -0.025442898273468018,
+            "losses": 3,
+            "mean": -0.011187374591827393,
+            "n": 4,
+            "wins": 1
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.02953195571899414,
+              "payload_kbps_delta": -0.003999999999997783
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.017126083374023438,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.013175725936889648,
+              "payload_kbps_delta": -0.008000000000002672
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.015084266662597656,
+              "payload_kbps_delta": 0.0007999999999981355
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": -0.003992199897766113,
+          "mean_payload_kbps_delta": 0.001800000000001134,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.009668946266174316,
+            "lo": -0.026751279830932617,
+            "losses": 1,
+            "mean": -0.003992199897766113,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.037493228912353516,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.004736900329589844,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.005474567413330078,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": 0.01131296157836914,
+              "payload_kbps_delta": 0.008800000000000807
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": 0.005583286285400391,
+          "mean_payload_kbps_delta": 0.0030071224222982806,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012752771377563477,
+            "lo": -0.0015861988067626953,
+            "losses": 0,
+            "mean": 0.005583286285400391,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0034470558166503906,
+              "payload_kbps_delta": 0.014399999999994861
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.000274658203125,
+              "payload_kbps_delta": 0.0008284896891908033
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.008897781372070312,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.01660776138305664,
+              "payload_kbps_delta": -0.001599999999996271
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": 0.0070648193359375,
+          "mean_payload_kbps_delta": -0.0002142448445958678,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012190818786621094,
+            "lo": 0.0015072822570800781,
+            "losses": 0,
+            "mean": 0.0070648193359375,
+            "n": 4,
+            "wins": 3
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0005245208740234375,
+              "payload_kbps_delta": -0.0016569793783816067
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": 0.007390022277832031,
+              "payload_kbps_delta": 0.0023999999999944066
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.007602691650390625,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.013791084289550781,
+              "payload_kbps_delta": 0.0
+            }
+          ]
+        }
+      },
+      "reference": "stack_ref",
+      "valid_clips": 4
+    },
+    "fixed8_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.13816600144285207,
+        "lo": -0.8573134901986412,
+        "losses": 4,
+        "mean": -0.44269218370121266,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -0.44269218370121266,
+      "median_bd_rate_percent": -0.2696338009224919,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -1.096105772717182,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.13539536024268495,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.1409366426430192,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.3983309592019646,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.0018901228904724121,
+          "mean_payload_kbps_delta": -0.0016071224222971026,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.011621832847595215,
+            "lo": -0.015402078628540039,
+            "losses": 2,
+            "mean": -0.0018901228904724121,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.0232846736907959,
+              "payload_kbps_delta": -0.003999999999997783
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.00751948356628418,
+              "payload_kbps_delta": -0.002400000000001512
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.010159730911254883,
+              "payload_kbps_delta": -0.0008284896891872506
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.013083934783935547,
+              "payload_kbps_delta": 0.0007999999999981355
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": 0.0033063292503356934,
+          "mean_payload_kbps_delta": -0.003585755155409487,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.010165035724639893,
+            "lo": -0.0022743940353393555,
+            "losses": 0,
+            "mean": 0.0033063292503356934,
+            "n": 4,
+            "wins": 1
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.0027899742126464844,
+              "payload_kbps_delta": 0.0016569793783745013
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0017588138580322266,
+              "payload_kbps_delta": -0.004800000000003024
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.0036344528198242188,
+              "payload_kbps_delta": -0.010400000000004184
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.014139652252197266,
+              "payload_kbps_delta": -0.000800000000005241
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": 0.005868077278137207,
+          "mean_payload_kbps_delta": 7.122422301719666e-06,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.010009765625,
+            "lo": 0.001726388931274414,
+            "losses": 0,
+            "mean": 0.005868077278137207,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": -0.0004925727844238281,
+              "payload_kbps_delta": 0.0
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.003945350646972656,
+              "payload_kbps_delta": 0.0008284896891908033
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": 0.009487628936767578,
+              "payload_kbps_delta": 0.0024000000000086175
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.010531902313232422,
+              "payload_kbps_delta": -0.003199999999992542
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": 0.004272818565368652,
+          "mean_payload_kbps_delta": -0.000585755155398715,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.010580301284790039,
+            "lo": -0.0020346641540527344,
+            "losses": 0,
+            "mean": 0.004272818565368652,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": -0.00225067138671875,
+              "payload_kbps_delta": 0.0016569793783816067
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0018186569213867188,
+              "payload_kbps_delta": -0.0015999999999820602
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.009510993957519531,
+              "payload_kbps_delta": -0.0023999999999944066
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.011649608612060547,
+              "payload_kbps_delta": 0.0
+            }
+          ]
+        }
+      },
+      "reference": "baseline_ref",
+      "valid_clips": 4
+    },
+    "fixed8_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.4233372814078651,
+        "lo": -1.339994019169377,
+        "losses": 4,
+        "mean": -0.8134651548799082,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -0.8134651548799082,
+      "median_bd_rate_percent": -0.5985191679278523,
+      "per_clip_bd_rate": [
+        {
+          "bd_rate_percent": -1.6425309493814266,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4323832285332285,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.41429133428250164,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.7646551073224761,
+          "clip": "fms.wav"
+        }
+      ],
+      "per_rate": {
+        "32": {
+          "mean_mos_delta": -0.0014554262161254883,
+          "mean_payload_kbps_delta": -0.0016071224222971026,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.01156914234161377,
+            "lo": -0.014479994773864746,
+            "losses": 2,
+            "mean": -0.0014554262161254883,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "fms.wav",
+              "mos_delta": -0.02250838279724121,
+              "payload_kbps_delta": -0.003999999999997783
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.006451606750488281,
+              "payload_kbps_delta": -0.002400000000001512
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.009853124618530273,
+              "payload_kbps_delta": -0.0008284896891872506
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.013285160064697266,
+              "payload_kbps_delta": 0.0007999999999981355
+            }
+          ]
+        },
+        "48": {
+          "mean_mos_delta": 0.007007777690887451,
+          "mean_payload_kbps_delta": 0.000985755155408441,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.013975858688354492,
+            "lo": 3.9696693420410156e-05,
+            "losses": 0,
+            "mean": 0.007007777690887451,
+            "n": 4,
+            "wins": 2
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": -0.0007731914520263672,
+              "payload_kbps_delta": 0.008000000000002672
+            },
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0008525848388671875,
+              "payload_kbps_delta": -0.0016569793783745013
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.013384819030761719,
+              "payload_kbps_delta": -0.001599999999996271
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.014566898345947266,
+              "payload_kbps_delta": -0.0007999999999981355
+            }
+          ]
+        },
+        "64": {
+          "mean_mos_delta": 0.008869409561157227,
+          "mean_payload_kbps_delta": 1.4244844592781192e-05,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.012034773826599121,
+            "lo": 0.004990696907043457,
+            "losses": 0,
+            "mean": 0.008869409561157227,
+            "n": 4,
+            "wins": 3
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0032196044921875,
+              "payload_kbps_delta": 0.0016569793783816067
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.008861541748046875,
+              "payload_kbps_delta": -0.002400000000001512
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": 0.010303974151611328,
+              "payload_kbps_delta": 0.001599999999996271
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.013092517852783203,
+              "payload_kbps_delta": -0.000800000000005241
+            }
+          ]
+        },
+        "96": {
+          "mean_mos_delta": 0.008647441864013672,
+          "mean_payload_kbps_delta": -0.0006142448445949356,
+          "mos_delta_bootstrap_95_ci": {
+            "hi": 0.013435840606689453,
+            "lo": 0.00373077392578125,
+            "losses": 0,
+            "mean": 0.008647441864013672,
+            "n": 4,
+            "wins": 3
+          },
+          "worst_mos_deltas": [
+            {
+              "clip": "21-classic.441.16b48k.wav",
+              "mos_delta": 0.0020389556884765625,
+              "payload_kbps_delta": -0.0016569793783816067
+            },
+            {
+              "clip": "fms.wav",
+              "mos_delta": 0.008745193481445312,
+              "payload_kbps_delta": -0.003199999999992542
+            },
+            {
+              "clip": "velvet.16b48k.wav",
+              "mos_delta": 0.008806228637695312,
+              "payload_kbps_delta": 0.003199999999992542
+            },
+            {
+              "clip": "sandman.16b48k.wav",
+              "mos_delta": 0.0149993896484375,
+              "payload_kbps_delta": -0.0007999999999981355
+            }
+          ]
+        }
+      },
+      "reference": "stack_ref",
+      "valid_clips": 4
+    }
+  },
+  "interop": {
+    "faad_pass": 160,
+    "ffmpeg_pass": 160,
+    "streams": 160
+  },
+  "interpretation": "Four-clip fixed-border attribution gate only; not a full-corpus result or production winner claim.",
+  "matrix_rows": 160,
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1
+}

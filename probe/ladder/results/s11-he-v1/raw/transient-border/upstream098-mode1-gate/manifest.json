@@ -1,0 +1,102 @@
+{
+  "binaries": {
+    "baseline_faac": {
+      "path": "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+      "sha256": "d6ec9ccc8e9eb4f7b2e0787dd6de51e5b87b5ff97af7af20a3e6fc65ab1d6a60"
+    },
+    "baseline_libfaac": {
+      "path": "/private/tmp/faac-upstream098-baseline/build-release/libfaac/libfaac.3.dylib",
+      "sha256": "55abf7d11b0b4b2891b2d6171e4c005e9233d274786f0ece486e20623e8a484f"
+    },
+    "faad": {
+      "path": "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+      "sha256": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111"
+    },
+    "fdkdec": {
+      "path": "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+      "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf"
+    },
+    "ffmpeg": {
+      "path": "/opt/homebrew/bin/ffmpeg",
+      "sha256": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a"
+    },
+    "probe_faac": {
+      "path": "/private/tmp/faac-upstream098-adaptive-border/build-release/frontend/faac",
+      "sha256": "434089f63d40bbba1b8a05a049f3b25d3358d54ba163ec0247dc299806abe841"
+    },
+    "probe_libfaac": {
+      "path": "/private/tmp/faac-upstream098-adaptive-border/build-release/libfaac/libfaac.3.dylib",
+      "sha256": "f70a617a605f2a63e93bb970f4ed36c00d55c897f1ac6b2d624a7aeb7232fd13"
+    }
+  },
+  "build": {
+    "b_lto": true,
+    "command": "CCACHE_DISABLE=1 meson setup build-release --buildtype=release -Db_lto=true -Dmax-channels=8 -Dsbr-decimation=1 -Dstats=false; CCACHE_DISABLE=1 ninja -C build-release",
+    "compiler": "Apple clang 21.0.0",
+    "host": "aarch64-apple-darwin",
+    "max_channels": 8,
+    "meson_buildtype": "release",
+    "result": "79/79 targets built successfully",
+    "sbr_decimation": 1,
+    "stats": false
+  },
+  "decoder_revisions": {
+    "faac_benchmark_commit": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+    "faad_sha256": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+    "fdkdec_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "ffmpeg_sha256": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a"
+  },
+  "gate_results_sha256": "f53e3ca5b660b77969603cbb58535877f70170bbfa60a25edaa6c59b65bceb33",
+  "matrix": {
+    "adaptive_flags": [
+      {
+        "FAAC_SBR_BORDER_LAMBDA": "0.001",
+        "FAAC_SBR_BORDER_MODE": "1"
+      },
+      {
+        "FAAC_SBR_BORDER_LAMBDA": "0.003",
+        "FAAC_SBR_BORDER_MODE": "1"
+      }
+    ],
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "rows": {
+      "adaptive": 32,
+      "faad_strict_pass": 32,
+      "ffmpeg_strict_pass": 32,
+      "unset_exact": 16
+    },
+    "unset_flags": {}
+  },
+  "probe_source_status": "M libfaac/sbr.c\n M libfaac/sbr_analysis.c\n M libfaac/sbr_analysis.h\n M libfaac/sbr_bitstream.c\n M libfaac/sbr_internal.h\n?? probe-results/\n?? probe_gate.py",
+  "runner_path": "/private/tmp/faac-upstream098-adaptive-border/probe_gate.py",
+  "runner_sha256": "c7005d893f6529bcd84ce92e445b2abace9574f5f0b4a382355971154e15e404",
+  "schema": 1,
+  "source_patch_path": "/private/tmp/faac-upstream098-adaptive-border.patch",
+  "source_patch_sha256": "f95a32995add8c3bcbf5e160d26a6b4a4eabb100ef7614a1106319dda4581804",
+  "source_sha256": {
+    "libfaac/sbr.c": "941c60667d4b1a11df431cbd5ea6bfbdd78c98b21c6ff6e45f2c63ab35d832eb",
+    "libfaac/sbr_analysis.c": "b94ae082336b8598c614d2c862601afc0bed6d778912042f5c60f927bdcc6002",
+    "libfaac/sbr_analysis.h": "beea1030c91f28b55c64b546202053f2cb6037e8dc2059d06b839bf031f7a481",
+    "libfaac/sbr_bitstream.c": "6bc5f531972aa43f71860bcd5295afdc94e6000b7596ef4c420e13eb6383ea5e",
+    "libfaac/sbr_internal.h": "fb60d6ecf9a469b046faac63325848dd9af286b3de41e9717ead0bfe4df820d6"
+  },
+  "summary_sha256": "b1f7238cc7ad20ab5705670697e1b17562b58ddd4812fb39f37146d4e86d7789",
+  "upstream_commit": "098e8900289b87d1592a859351ca0bd420397d4b"
+}

@@ -1,0 +1,493 @@
+{
+  "baseline": "baseline_default",
+  "method": "scripts/bd_rate.py:bd_rate_curve",
+  "rungs_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "variants": {
+    "candidate_default": {
+      "mean_percent": 0.0,
+      "median_percent": 0.0,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "defaults_explicit": {
+      "mean_percent": 0.3859002329145489,
+      "median_percent": 0.3430670935007374,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.012620598102230929,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.051696877786389095,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6735135888992438,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9091636224431099,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "harmonic_60": {
+      "mean_percent": 0.004845664524208426,
+      "median_percent": -0.014296108091393922,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.1785420188330833,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.22651689311270484,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.11910755888677738,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.14769977506956522,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "harmonic_75": {
+      "mean_percent": 0.461622394618999,
+      "median_percent": 0.2787528188964883,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.19200835492545476,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.4809922956084742,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5575056377929766,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "harmonic_90": {
+      "mean_percent": 0.12835992718662204,
+      "median_percent": 0.0,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5134397087464881,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "interpol_0": {
+      "mean_percent": 0.6446732366455266,
+      "median_percent": 0.5931970209939852,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.20357275877276315,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.14180081973163006,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.2504980848625058,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9828212832152072,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "invf_0": {
+      "mean_percent": -0.15744400339548215,
+      "median_percent": -0.1528846119616678,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.2611365687490652,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.8084903092455353,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.48448351958694236,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.0446326551742704,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "invf_1": {
+      "mean_percent": -0.16737656061732442,
+      "median_percent": -0.09898447531485055,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.12332372888786969,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.45809234614027083,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.01344494569932575,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.07464522174183141,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "invf_2": {
+      "mean_percent": -0.037164387934404686,
+      "median_percent": -0.022229038973242687,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.02978390867518499,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.10527737600726228,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.014674169271300386,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.001077902216128912,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "limiter_bands_0": {
+      "mean_percent": 0.8233725014319182,
+      "median_percent": 1.0417718064540837,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.08628914991568593,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.1236572429038194,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9753768609616076,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.10816675194656,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "limiter_bands_1": {
+      "mean_percent": 0.7721153394719321,
+      "median_percent": 0.7764061065326011,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.01849093347422448,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.5541400782967507,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5854198550319545,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9673923580332477,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "limiter_bands_3": {
+      "mean_percent": 0.3859002329145489,
+      "median_percent": 0.3430670935007374,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.012620598102230929,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.051696877786389095,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6735135888992438,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9091636224431099,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "limiter_gain_0": {
+      "mean_percent": 1.649416481780075,
+      "median_percent": 1.1380599673936675,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.2052421520823744,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.5646984572164726,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 4.11630384025059,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.7114214775708625,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "limiter_gain_1": {
+      "mean_percent": 0.8088832841768673,
+      "median_percent": 0.6336980252703794,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.07118953645218751,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.0734227342290561,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 2.0393266226188977,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.1939733163117028,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "limiter_gain_3": {
+      "mean_percent": -0.03252850437435728,
+      "median_percent": -0.1711795955201323,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.04194562667854118,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.38430481771880576,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6031156259783899,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.8153607995212253,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "noise_15": {
+      "mean_percent": -0.6425477042690253,
+      "median_percent": -0.6154483554229262,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.7672651162599742,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.3368700930872945,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002424013142954262,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4636315945858782,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "noise_18": {
+      "mean_percent": -0.7024162701458975,
+      "median_percent": -0.6584660808261256,
+      "per_clip": [
+        {
+          "bd_rate_percent": -0.8439358655241369,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -1.4898719942448069,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.002860924686531874,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.4729962961281142,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "noise_6": {
+      "mean_percent": 8.708177466516274,
+      "median_percent": 9.310380187107404,
+      "per_clip": [
+        {
+          "bd_rate_percent": 11.207689126152554,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 16.855825082501852,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.6438755906515659,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 7.413071248062253,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "noise_9": {
+      "mean_percent": 2.8282640829594587,
+      "median_percent": 2.9083154375407982,
+      "per_clip": [
+        {
+          "bd_rate_percent": 4.098802943631874,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 5.510812178368751,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.014386721612513753,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 1.7178279314497225,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    },
+    "smooth_0": {
+      "mean_percent": 0.3859002329145489,
+      "median_percent": 0.3430670935007374,
+      "per_clip": [
+        {
+          "bd_rate_percent": 0.012620598102230929,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": -0.051696877786389095,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.6735135888992438,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "bd_rate_percent": 0.9091636224431099,
+          "clip": "fms.wav"
+        }
+      ],
+      "skipped_clips": [],
+      "valid_count": 4
+    }
+  }
+}

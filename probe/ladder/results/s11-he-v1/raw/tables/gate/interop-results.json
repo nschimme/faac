@@ -1,0 +1,2147 @@
+{
+  "schema": 1,
+  "results_json": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/tables-results.json",
+  "decoder_commit": "333fe311",
+  "original_current_decoder_commit": "333fe311",
+  "faad_binary": "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+  "faad_binary_sha256": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+  "ffmpeg_binary": "ffmpeg (resolved through PATH)",
+  "selected_variants": null,
+  "counts": {
+    "streams": 112,
+    "faad_pass": 112,
+    "faad_fail": 0,
+    "ffmpeg_pass": 112,
+    "ffmpeg_fail": 0
+  },
+  "streams": [
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/32/21-classic.441.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "0f6e09c94e01d17a8fe88201c681d704443e2ee6ffe9219593db8b518fb1a06a",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpecjilnjb.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/48/21-classic.441.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "11cc38b72d2158bbddede2e96bd6fd2ce8efedc105d87c8ae448d8f3f0302265",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp5y5rr0d3.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/64/21-classic.441.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "cbbd3654e0fa8a17fd108b02c3dba783d843f8567444a95d487d7bab5bbff10e",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpzy2euiul.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/96/21-classic.441.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "2734223464681b1a8d9ff10bfe4ac09d44ef3607affbf988372a72aaeb7d209d",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpzgp6opsi.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/32/fms.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "a62f40625ae919909696324c09f60dc29a8b16afdbb4f0b369941eac968fdf02",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpjxy2ayre.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/48/fms.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "355ae6eef293cfcb1fe5ec1c1b224152a5da0acad94d33017619ec9717799fe9",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp2qsu68hv.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/64/fms.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "d9be2fc5c00d78d9dc3e39860da7a60cdae2ab5585a6d9d4efe744bf94d0565c",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpu3aiutdu.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/96/fms.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "9a49ea74a238f55f845935012f02cee17a8e4890c444c48866bd525e6352cb65",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpxrxbzfyc.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/32/sandman.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "4d7ce1d2a37822cfbd4eb7fecd275a34f51c0839b3e567ccb901db9f332fb444",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpk8445ijz.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/48/sandman.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "d073de97e7445a26d23c4f606c18b3dea8aeeaf6348bd4ddf77ec4895f1394f3",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp7ku4ab4l.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/64/sandman.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "6143cfabbb6a631bbe35d7986276f377dcdce5ae9444fd5cdec9cc74cc72070b",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpr0um5t90.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/96/sandman.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "f6a4f791ce90c7822ad9d172d27b4f06534c5f9303c506f26a6348a69d897201",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp8fxc62nu.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/32/velvet.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "96297af5b12339e487ca032ae81aa6d17040b199ae48dca692fbf18e699fcd2f",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpe91a3jgb.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/48/velvet.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "50a300a53f5b6924d7763dd1a9ef6811aa0ee3810f427afe4eed96384c8f2c9d",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmphxsfe6c7.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/64/velvet.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "145e1584910cc5426eaaa85f7d6876b5215b211475f1d418f674bde2c118b957",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpn7xo1j1w.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/baseline_original/96/velvet.16b48k.m4a",
+      "variants": [
+        "baseline_original"
+      ],
+      "encoded_sha256": "4d1c845f21ee2575d5458c3cc09b14ee4817b1c71fd35ebcb38731ecb2213e5d",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp84n7p0a0.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/32/21-classic.441.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "be667faea44442bff3456525d9b295a9adbd01127b93d84d1729fbc6065fe2f8",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpb389v520.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/48/21-classic.441.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "22cae0c05e79a745f7ecc6d88a4dcf8d85261a5b4d124e8bc8acbb5ba086071f",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpaxbrbo3v.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/64/21-classic.441.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "936fc8ef8e6bd42200f89f1d73db44e7ecd3be72a595740b48b1558e25f9876c",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp502nujxg.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/96/21-classic.441.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "b94053824b65b9dd780db767acf571970b3127279d2d6a66f247f11eab97e710",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp93a7wb3p.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/32/fms.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "fe82eff2cd93e3cdb9f7da09941a3db8ef01ca192a6678104b75bcef6920cec0",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpuuawyy1p.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/48/fms.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "ae168706d7738253fed6f6d07bf2e0c65b48a356a3d3e03d733096dcddfce103",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpc3znk3w9.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/64/fms.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "35cbf2b81e01888bc5dc85310208ced9fd80c73ec82c08716f182b1e250c202e",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp_m0ad8by.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/96/fms.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "7047e684c73ec6c47038af4c65c0c86b1ff9e484dd0393c647a3a1d55fef8bca",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpx09hqzxs.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/32/sandman.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "050f7d92aa6d286c3cb03fd69b40fa5c1a49bd4dbe43c68a633a52a5d28fa532",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp5tzsc3a4.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/48/sandman.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "ca6e5e7a01b4c5885fdc49b16efe3ea18e5627d8d0cbf590e2dbda35d28019ea",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp_fai5r3h.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/64/sandman.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "47e262c0edce304bd72bb2d21347fe3084ffbe050d91144f24fa7d6924aedbeb",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpdb7ptsfq.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/96/sandman.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "05a16e2e830aed5581011ab81b7462936ff14e0ee1056358c551f4fc155fe4cd",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpsi8fa0xq.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/32/velvet.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "445e64b93b965403881ab66cb2ed516c2a3f0b6ed7677efbdffbb7c5fbcc68fd",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp6rao73xc.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/48/velvet.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "9a0623bc742ea46d23f001d95a649aba2094182c8794697f41698231185827a0",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpl4i_wq0d.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/64/velvet.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "9d05880d345c710416ad33fc9c9227fa5d2fae8e6812d3965558344bad4f93e6",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpb95bn78v.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/candidate_default/96/velvet.16b48k.m4a",
+      "variants": [
+        "candidate_default"
+      ],
+      "encoded_sha256": "65a01f0078fe37644206aed826110de967a95192f1ae08a3872a1ffc2eceb341",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp_9yw4amo.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/32/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "bf34162700b761fa6e6f62e7f825d7c8d114de7db7270feda2eef5e947e7aa16",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpl3ukdb22.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/48/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "74bbc99ccc0994b36f580b8d7c2266bad41054f9a78fec297d4c159e65e1877e",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp__vxptsy.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/64/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "ed67519ea6c2eab840e3c26dbbbdd604657e15a41bac69c1209b95e7b2b829b7",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpwhzls720.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/96/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "8f57d5cbdb50e3b6cf8fe920975423db39b83db554f93d08f68b2644cc8ac03f",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpq2j_zxqb.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/32/fms.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "9de3a06ce374a2188d6e845c2b6f03eff2181eaedfc8f0ead4a5e269bef62979",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpe440lk84.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/48/fms.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "cb5fb2c222a235db20d3c868b82784590e0eed665a34df4b5dd1a929f53a8d38",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpbje1j3km.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/64/fms.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "3c908b66da3dd5a21d9d7a74639741a602167f649ce383cfd78131efcb8325f7",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpc30yxklp.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/96/fms.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "77e81e6b6e5a3416c845470dedb3105f39cdc2176273b5b19d7cd002c0ddba5e",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpztseta3w.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/32/sandman.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "d3627d0c3dea4bcf6d2531638e80e2b85cf03eb63c914ace769072ccb285f4a8",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp5ywvozw0.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/48/sandman.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "dbeac92199d12084de24694297cb95f9414669f1d675e70e5c2f9b50aa1aaaaa",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp85trma_o.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/64/sandman.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "538f37690529b9c88b010d90ea5e4ace2f2de027a17441bded0bb7f90e36f9f5",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpo0268q1a.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/96/sandman.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "5d10963b72e102b2874b32be833c9a6d41d53763d7c9c46afad007ebf389516a",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpauv2zjs0.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/32/velvet.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "b0d7beb3d5124ed2ce980c249787a29f2abc556ceb9ab4c93c667e7998d22431",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmplnpbi7eg.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/48/velvet.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "cd9c509581b3266157b7f994523f9f49f96c0018ae61d008934e41c1a57ab19a",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmppc05omgv.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/64/velvet.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "599577e1dece0abde4f69094eab170c9a7d39e3ae9e5c4aceeeb1661c726cdb6",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp_1rhvasj.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale1/96/velvet.16b48k.m4a",
+      "variants": [
+        "scale1"
+      ],
+      "encoded_sha256": "e31049f9b566dd3d7230da12441f7e73d3690883dd759b270165b5506e3ddb7c",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpcd1_lg7_.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/32/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "b17f0e21de7bfe4c237f09695d11aee4e288e7524dac3478a912c28f3341a3f2",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp2kah296r.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/48/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "29e07fcff92f48b88b9999b7d93845f8bb0ecc421f199301ee287416373d9aa8",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp7qhmb39u.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/64/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "b66192d8608ebcef24b995b209b5751fb09981b3573170e5bef0f0d9d7139f75",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpkb98rllp.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/96/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "090633d2ad91ba239d5cf404290e589de6695ab36b9dd264b77a8106aa9d054f",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpc4ony7y6.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/32/fms.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "d216178dd56ac3141fd6f6b21018b52307e3b10333116da52d51be3caa877abf",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpn_rkw_r0.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/48/fms.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "df6c9e48adf6213e04178347e518c86fbc97942553454bfea13ef32f9fde6b03",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpq4xwfmv9.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/64/fms.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "d4c65dde22a814c55cdd238597af9dd16725a0a3fbcc823584aff896015e18fe",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpijg603m_.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/96/fms.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "6f2fc273316b2e60389e7cee335e5f4b0429feee4610c08b82a6164dfba2ec98",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmprjh_vx37.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/32/sandman.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "2a8ab62bd924a4853b19d9dc8d931ebbf73d8b7c2551f6a4106c956f86a3e8e4",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp7gnhz75q.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/48/sandman.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "386b960db3e126850d316ac1dde207a45add5312830f7ff768718106fde8240b",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpvhrwgwmf.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/64/sandman.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "413dc8aaa6e607767876af86fa6689d5ba5ab8a94d20b973d391b1e4d68afdee",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpsahowfob.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/96/sandman.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "24f1d194aba9783717a9f2164e85fd275cfeb2af7e716f08716460350b6175c5",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpaf02buev.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/32/velvet.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "655bffeabd8651102057bcecb182c7a3716b7d744b762b5797b0b37274047fbf",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmppolz0u7w.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/48/velvet.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "5cab2580f32201a24703befbc325bc2a05ef15ba83116e9dfa5680cfa36f8f24",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp8ro7eglp.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/64/velvet.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "06a5bcd4041ae1c0478b3e3a4a3c45a7e1ab7fb49c46b384b4e07dbea021a463",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp3qyg4p20.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale2/96/velvet.16b48k.m4a",
+      "variants": [
+        "scale2"
+      ],
+      "encoded_sha256": "95f89d6587adce49ec8edb6eb0c3662ddf825cf32b7fa671d40b2544303d861f",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpix18nqs1.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/32/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "be667faea44442bff3456525d9b295a9adbd01127b93d84d1729fbc6065fe2f8",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmph71dsjw_.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/48/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "22cae0c05e79a745f7ecc6d88a4dcf8d85261a5b4d124e8bc8acbb5ba086071f",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpo_pvy40b.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/64/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "936fc8ef8e6bd42200f89f1d73db44e7ecd3be72a595740b48b1558e25f9876c",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpq0tjjrsg.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/96/21-classic.441.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "b94053824b65b9dd780db767acf571970b3127279d2d6a66f247f11eab97e710",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp2b2hydv1.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/32/fms.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "fe82eff2cd93e3cdb9f7da09941a3db8ef01ca192a6678104b75bcef6920cec0",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpqn91f0ct.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/48/fms.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "ae168706d7738253fed6f6d07bf2e0c65b48a356a3d3e03d733096dcddfce103",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpjd6ehljq.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/64/fms.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "35cbf2b81e01888bc5dc85310208ced9fd80c73ec82c08716f182b1e250c202e",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpz4plthdv.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/96/fms.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "7047e684c73ec6c47038af4c65c0c86b1ff9e484dd0393c647a3a1d55fef8bca",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpp7reir1j.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/32/sandman.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "050f7d92aa6d286c3cb03fd69b40fa5c1a49bd4dbe43c68a633a52a5d28fa532",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpmornp0h1.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/48/sandman.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "ca6e5e7a01b4c5885fdc49b16efe3ea18e5627d8d0cbf590e2dbda35d28019ea",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpa853xz5i.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/64/sandman.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "47e262c0edce304bd72bb2d21347fe3084ffbe050d91144f24fa7d6924aedbeb",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmplz5o4q5k.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/96/sandman.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "05a16e2e830aed5581011ab81b7462936ff14e0ee1056358c551f4fc155fe4cd",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpfw1ajg1l.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/32/velvet.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "445e64b93b965403881ab66cb2ed516c2a3f0b6ed7677efbdffbb7c5fbcc68fd",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp7sagfmhv.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/48/velvet.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "9a0623bc742ea46d23f001d95a649aba2094182c8794697f41698231185827a0",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpwi6dnt4g.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/64/velvet.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "9d05880d345c710416ad33fc9c9227fa5d2fae8e6812d3965558344bad4f93e6",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmppok1y35u.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/scale3/96/velvet.16b48k.m4a",
+      "variants": [
+        "scale3"
+      ],
+      "encoded_sha256": "65a01f0078fe37644206aed826110de967a95192f1ae08a3872a1ffc2eceb341",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpvn0m_628.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/32/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "a768e1fb5f51b6f4c782697ecf831eb08e830644d4633fa6a326d127b4452f9d",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmphknzurtq.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/48/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "85eb0f382de435b25f76af6a1257f2cc77e488355bca35b084df5f4ffc368873",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpzps2vpyp.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/64/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "6c1a9d8a3147d21f033a1d194247ea30fd690e9ac3e197c2df1da56cb7486f9b",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpo4dhcrdn.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/96/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "008fde378699811a4b968b476c1f13957be572e916281fb6082af799ca10770f",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp0tgg6tjl.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/32/fms.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "f81fc907463887fb616e803601480cb1fd425d552314fea2c5b11570d17138a8",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmptf22hob0.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/48/fms.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "472626900b3c8c32d860a48aa9b0f78e981c4a45cc602c1c86eb9ac705eb7137",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpgede0xjx.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/64/fms.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "38a07efb65d90172f325237c6df97034a8782477be3db9f9eaced083c847d223",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp4fs9lyf4.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/96/fms.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "0a60c3a935c8a4c7bc917d2ba28a1422ce71eaa277f11b740c27295731fb5f83",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpj5ytqjio.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/32/sandman.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "b99d64b5e70d6d95a3e49a1ec6543ba38a81f6f8f63e443deb4888f1c6630f0d",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpjpywzxxz.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/48/sandman.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "0db0ca1bdafc02837fe4a8e442b5ce81073e7b13477286b73617cfa8697387db",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpe3ykji4j.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/64/sandman.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "964b84c99e1c0744267da509e13a706c97e854a693a09e3a02ffafd55d41ac25",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpfez810zh.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/96/sandman.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "5982bae063ab7e356a70a6a1601d445718fc23b9d1450eeb0ea85590e6776627",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp79h2yuvz.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/32/velvet.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "14c5f8e8f3e8c2072d103749f9ea5a972141c764d78ee7ca6a78a8cd4595f00d",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp_u3na4rw.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/48/velvet.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "13b021c47610f7b1276eabe350fd14f610cd21651690afd1f8aa05f30a5c8036",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmprf0kwv1q.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/64/velvet.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "9d5b89af0b90055aa8505fafa332ad0bb04d2bc953e4f228a66682555e2be1f8",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp3ls0e633.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop16/96/velvet.16b48k.m4a",
+      "variants": [
+        "stop16"
+      ],
+      "encoded_sha256": "dccf27f1a2c5c7563d87fb31ddb4d0df18daf4366f94b0440e562bd47da94d5a",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmppsmqxfl8.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/32/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "e3813642a02f2991bdf877a5858b72582ef1dd64334142449fc5fe76c3b60610",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpkb0cgrpg.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/48/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "4805b932b3db2bf1cec967a58cf9b222cc0643b36ec6e83af4517b406dd0d7f2",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp8r3dk_24.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/64/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "4e68f01fd8a25950e25f64c6036dfa5fa269d4876b5666305b9339aa5cee21e2",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpurryw_cc.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/96/21-classic.441.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "e4ae52ddb58de0f23adca8a0c4268bd261e20ddf81f45a784988c5f8385f46cc",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 229 frames (1853976 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpi_lcwoty.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/32/fms.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "57cbf983290c2e09cb774fa6a2d47620b3271f3485d51ddcbd783b9d1f07d3fd",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp7ttt06le.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/48/fms.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "bb1bb52f6fc5cc05fdeee078c2a7dd75f622dbc3e2165f0218f8add6a69556a5",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpusmbj9ps.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/64/fms.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "31fcd45d7cdffb535a8d40e6a86fe98233bd89328fdd44657e7660405c90edda",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp7xjmvcxr.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/96/fms.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "c267794c1387582376e79d7c4a6bf3b96d704222205316286fb64c53287d5604",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpplzx4o8m.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/32/sandman.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "47e30641c4912e5b4de3fbda1a7119f323ecc4b6f1dc7da708f63bbd0d3f7bf9",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp6m__1th3.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/48/sandman.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "d4aa532217288954339b6c18ab2dd9bf6335cff637956e56e854512e88b38979",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmptrppivhd.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/64/sandman.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "9a50a4069a6f92fe8f1a6b705970a8f7bdfdb1ae160409448061f43a9bd77bf3",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp8p8ojv8o.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/96/sandman.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "db6416b91fd8bde8ca35ce32c8bce56b6711a6b17ee7ef800121cdf73b281ce3",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpfpctcwv_.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/32/velvet.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "6cb8aba058bf23cb968f29a360edfb7006707a162219e6bb60a0e141783a5b54",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmp64gv5va9.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/48/velvet.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "e6e7a7b0e0d81deb1a1cba767d822cb5c707f33581d73c7c44adc8f2d6268875",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpky9xjhq5.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/64/velvet.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "be679184aa1acf9989d3e1b23e9eaed50ee8fd6b0c8437c950b6870750f9b762",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpbxq4l5g2.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    {
+      "encoded_path": "/private/tmp/faac-he-v1-tables/probe/results-gate-v2/encodes/stop18/96/velvet.16b48k.m4a",
+      "variants": [
+        "stop18"
+      ],
+      "encoded_sha256": "03234573a7bb8b1cfaa9548b16ce4f8b8e5d0fa6133751e11068ec33089751dc",
+      "faad": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Decoded 237 frames (1920000 bytes, 16-bit PCM) to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/tmpx3c2wacr.wav\n"
+      },
+      "ffmpeg": {
+        "passed": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      }
+    }
+  ]
+}

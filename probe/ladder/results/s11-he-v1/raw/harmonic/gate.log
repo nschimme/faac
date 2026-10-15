@@ -1,0 +1,218 @@
+completed baseline_default 96 kbps sandman.16b48k.wav: MOS=4.68024, payload=95.280 kbps
+completed baseline_default 48 kbps sandman.16b48k.wav: MOS=4.19009, payload=47.769 kbps
+completed baseline_default 64 kbps sandman.16b48k.wav: MOS=4.44396, payload=63.538 kbps
+completed baseline_default 32 kbps sandman.16b48k.wav: MOS=3.75568, payload=31.847 kbps
+completed candidate_default 96 kbps sandman.16b48k.wav: MOS=pending, payload=95.280 kbps
+completed candidate_default 32 kbps sandman.16b48k.wav: MOS=pending, payload=31.847 kbps
+completed candidate_default 64 kbps sandman.16b48k.wav: MOS=pending, payload=63.538 kbps
+completed candidate_default 48 kbps sandman.16b48k.wav: MOS=pending, payload=47.769 kbps
+completed baseline_default 32 kbps velvet.16b48k.wav: MOS=3.62203, payload=33.522 kbps
+completed baseline_default 48 kbps velvet.16b48k.wav: MOS=3.88525, payload=49.754 kbps
+completed baseline_default 64 kbps velvet.16b48k.wav: MOS=4.16730, payload=64.794 kbps
+completed baseline_default 96 kbps velvet.16b48k.wav: MOS=4.45018, payload=95.155 kbps
+completed candidate_default 32 kbps velvet.16b48k.wav: MOS=pending, payload=33.522 kbps
+completed candidate_default 48 kbps velvet.16b48k.wav: MOS=pending, payload=49.754 kbps
+completed candidate_default 64 kbps velvet.16b48k.wav: MOS=pending, payload=64.794 kbps
+completed candidate_default 96 kbps velvet.16b48k.wav: MOS=pending, payload=95.155 kbps
+completed baseline_default 32 kbps 21-classic.441.16b48k.wav: MOS=3.97509, payload=31.866 kbps
+completed baseline_default 64 kbps 21-classic.441.16b48k.wav: MOS=4.54411, payload=63.658 kbps
+completed baseline_default 48 kbps 21-classic.441.16b48k.wav: MOS=4.33249, payload=47.757 kbps
+completed baseline_default 96 kbps 21-classic.441.16b48k.wav: MOS=4.75059, payload=95.468 kbps
+completed candidate_default 32 kbps 21-classic.441.16b48k.wav: MOS=pending, payload=31.866 kbps
+completed candidate_default 64 kbps 21-classic.441.16b48k.wav: MOS=pending, payload=63.658 kbps
+completed candidate_default 48 kbps 21-classic.441.16b48k.wav: MOS=pending, payload=47.757 kbps
+completed candidate_default 96 kbps 21-classic.441.16b48k.wav: MOS=pending, payload=95.468 kbps
+completed baseline_default 32 kbps fms.wav: MOS=3.95283, payload=31.954 kbps
+completed baseline_default 48 kbps fms.wav: MOS=4.31091, payload=48.089 kbps
+completed baseline_default 64 kbps fms.wav: MOS=4.56808, payload=63.800 kbps
+completed baseline_default 96 kbps fms.wav: MOS=4.80569, payload=95.672 kbps
+completed candidate_default 32 kbps fms.wav: MOS=pending, payload=31.954 kbps
+completed candidate_default 48 kbps fms.wav: MOS=pending, payload=48.089 kbps
+completed candidate_default 64 kbps fms.wav: MOS=pending, payload=63.800 kbps
+completed candidate_default 96 kbps fms.wav: MOS=pending, payload=95.672 kbps
+completed static24 32 kbps sandman.16b48k.wav: MOS=3.76571, payload=31.847 kbps
+completed missing_t30_r4 32 kbps sandman.16b48k.wav: MOS=3.76074, payload=31.849 kbps
+completed missing_t10_r10 32 kbps sandman.16b48k.wav: MOS=3.76105, payload=31.852 kbps
+completed missing_t10_r4 32 kbps sandman.16b48k.wav: MOS=3.75506, payload=31.849 kbps
+completed missing_max_energy 32 kbps sandman.16b48k.wav: MOS=3.76228, payload=31.848 kbps
+completed missing_t100_r4 32 kbps sandman.16b48k.wav: MOS=3.76085, payload=31.849 kbps
+completed missing_t100_r10 32 kbps sandman.16b48k.wav: MOS=3.76085, payload=31.849 kbps
+completed missing_t30_r10 32 kbps sandman.16b48k.wav: MOS=3.75891, payload=31.848 kbps
+completed missing_midpoint 32 kbps sandman.16b48k.wav: MOS=3.76510, payload=31.850 kbps
+completed missing_t10_r4 48 kbps sandman.16b48k.wav: MOS=4.19710, payload=47.770 kbps
+completed static24 48 kbps sandman.16b48k.wav: MOS=4.19432, payload=47.769 kbps
+completed missing_t10_r10 48 kbps sandman.16b48k.wav: MOS=4.19283, payload=47.769 kbps
+completed missing_t30_r4 48 kbps sandman.16b48k.wav: MOS=4.19011, payload=47.770 kbps
+completed missing_t30_r10 48 kbps sandman.16b48k.wav: MOS=4.19318, payload=47.770 kbps
+completed missing_t100_r4 48 kbps sandman.16b48k.wav: MOS=4.19963, payload=47.769 kbps
+completed missing_t100_r10 48 kbps sandman.16b48k.wav: MOS=4.19963, payload=47.769 kbps
+completed missing_max_energy 48 kbps sandman.16b48k.wav: MOS=4.19122, payload=47.770 kbps
+completed missing_midpoint 48 kbps sandman.16b48k.wav: MOS=4.19006, payload=47.770 kbps
+completed static24 64 kbps sandman.16b48k.wav: MOS=4.45050, payload=63.538 kbps
+completed missing_t10_r4 64 kbps sandman.16b48k.wav: MOS=4.43873, payload=63.539 kbps
+completed missing_t100_r4 64 kbps sandman.16b48k.wav: MOS=4.44043, payload=63.538 kbps
+completed missing_t30_r4 64 kbps sandman.16b48k.wav: MOS=4.44061, payload=63.539 kbps
+completed missing_t10_r10 64 kbps sandman.16b48k.wav: MOS=4.43693, payload=63.539 kbps
+completed missing_t30_r10 64 kbps sandman.16b48k.wav: MOS=4.44068, payload=63.539 kbps
+completed static24 96 kbps sandman.16b48k.wav: MOS=4.69513, payload=95.280 kbps
+completed missing_midpoint 64 kbps sandman.16b48k.wav: MOS=4.44069, payload=63.539 kbps
+completed missing_max_energy 64 kbps sandman.16b48k.wav: MOS=4.43759, payload=63.538 kbps
+completed missing_t100_r10 64 kbps sandman.16b48k.wav: MOS=4.44043, payload=63.538 kbps
+completed missing_t10_r4 96 kbps sandman.16b48k.wav: MOS=4.67930, payload=95.282 kbps
+completed missing_t10_r10 96 kbps sandman.16b48k.wav: MOS=4.67827, payload=95.281 kbps
+completed missing_t30_r10 96 kbps sandman.16b48k.wav: MOS=4.68090, payload=95.281 kbps
+completed missing_t30_r4 96 kbps sandman.16b48k.wav: MOS=4.68083, payload=95.281 kbps
+completed missing_t100_r4 96 kbps sandman.16b48k.wav: MOS=4.68010, payload=95.281 kbps
+completed missing_midpoint 96 kbps sandman.16b48k.wav: MOS=4.68004, payload=95.281 kbps
+completed missing_t100_r10 96 kbps sandman.16b48k.wav: MOS=4.68010, payload=95.281 kbps
+completed missing_max_energy 96 kbps sandman.16b48k.wav: MOS=4.67800, payload=95.281 kbps
+completed missing_t10_r4 32 kbps velvet.16b48k.wav: MOS=3.61566, payload=33.540 kbps
+completed missing_t30_r4 32 kbps velvet.16b48k.wav: MOS=3.62103, payload=33.542 kbps
+completed static24 32 kbps velvet.16b48k.wav: MOS=3.63502, payload=33.522 kbps
+completed missing_t10_r10 32 kbps velvet.16b48k.wav: MOS=3.62184, payload=33.516 kbps
+completed missing_t100_r10 32 kbps velvet.16b48k.wav: MOS=3.62203, payload=33.522 kbps
+completed missing_t100_r4 32 kbps velvet.16b48k.wav: MOS=3.62203, payload=33.522 kbps
+completed missing_t30_r10 32 kbps velvet.16b48k.wav: MOS=3.61526, payload=33.520 kbps
+completed missing_max_energy 32 kbps velvet.16b48k.wav: MOS=3.61644, payload=33.519 kbps
+completed missing_midpoint 32 kbps velvet.16b48k.wav: MOS=3.62099, payload=33.542 kbps
+completed static24 48 kbps velvet.16b48k.wav: MOS=3.89449, payload=49.754 kbps
+completed missing_t10_r4 48 kbps velvet.16b48k.wav: MOS=3.89373, payload=49.761 kbps
+completed missing_t10_r10 48 kbps velvet.16b48k.wav: MOS=3.89739, payload=49.755 kbps
+completed missing_t30_r4 48 kbps velvet.16b48k.wav: MOS=3.89063, payload=49.754 kbps
+completed missing_t100_r4 48 kbps velvet.16b48k.wav: MOS=3.88525, payload=49.754 kbps
+completed missing_t30_r10 48 kbps velvet.16b48k.wav: MOS=3.88741, payload=49.754 kbps
+completed missing_t100_r10 48 kbps velvet.16b48k.wav: MOS=3.88525, payload=49.754 kbps
+completed static24 64 kbps velvet.16b48k.wav: MOS=4.18345, payload=64.794 kbps
+completed missing_max_energy 48 kbps velvet.16b48k.wav: MOS=3.89301, payload=49.753 kbps
+completed missing_t10_r4 64 kbps velvet.16b48k.wav: MOS=4.17588, payload=64.798 kbps
+completed missing_midpoint 48 kbps velvet.16b48k.wav: MOS=3.89068, payload=49.754 kbps
+completed missing_t30_r4 64 kbps velvet.16b48k.wav: MOS=4.17320, payload=64.783 kbps
+completed missing_t10_r10 64 kbps velvet.16b48k.wav: MOS=4.16319, payload=64.794 kbps
+completed missing_t30_r10 64 kbps velvet.16b48k.wav: MOS=4.17091, payload=64.786 kbps
+completed missing_t100_r4 64 kbps velvet.16b48k.wav: MOS=4.16730, payload=64.794 kbps
+completed missing_midpoint 64 kbps velvet.16b48k.wav: MOS=4.17312, payload=64.783 kbps
+completed missing_t100_r10 64 kbps velvet.16b48k.wav: MOS=4.16730, payload=64.794 kbps
+completed missing_max_energy 64 kbps velvet.16b48k.wav: MOS=4.16851, payload=64.785 kbps
+completed static24 96 kbps velvet.16b48k.wav: MOS=4.46003, payload=95.155 kbps
+completed missing_t10_r4 96 kbps velvet.16b48k.wav: MOS=4.44807, payload=95.154 kbps
+completed missing_t30_r4 96 kbps velvet.16b48k.wav: MOS=4.44928, payload=95.154 kbps
+completed missing_t10_r10 96 kbps velvet.16b48k.wav: MOS=4.45011, payload=95.150 kbps
+completed missing_t30_r10 96 kbps velvet.16b48k.wav: MOS=4.45197, payload=95.155 kbps
+completed missing_max_energy 96 kbps velvet.16b48k.wav: MOS=4.45050, payload=95.154 kbps
+completed missing_t100_r10 96 kbps velvet.16b48k.wav: MOS=4.45018, payload=95.155 kbps
+completed missing_t100_r4 96 kbps velvet.16b48k.wav: MOS=4.45018, payload=95.155 kbps
+completed missing_midpoint 96 kbps velvet.16b48k.wav: MOS=4.44924, payload=95.154 kbps
+completed static24 32 kbps 21-classic.441.16b48k.wav: MOS=3.97469, payload=31.866 kbps
+completed missing_t10_r4 32 kbps 21-classic.441.16b48k.wav: MOS=3.98242, payload=31.872 kbps
+completed missing_t30_r4 32 kbps 21-classic.441.16b48k.wav: MOS=3.96461, payload=31.866 kbps
+completed missing_t10_r10 32 kbps 21-classic.441.16b48k.wav: MOS=3.99827, payload=31.870 kbps
+completed missing_t30_r10 32 kbps 21-classic.441.16b48k.wav: MOS=3.99032, payload=31.865 kbps
+completed missing_t100_r4 32 kbps 21-classic.441.16b48k.wav: MOS=3.97509, payload=31.866 kbps
+completed missing_t100_r10 32 kbps 21-classic.441.16b48k.wav: MOS=3.97509, payload=31.866 kbps
+completed missing_max_energy 32 kbps 21-classic.441.16b48k.wav: MOS=3.98716, payload=31.867 kbps
+completed missing_midpoint 32 kbps 21-classic.441.16b48k.wav: MOS=3.96086, payload=31.865 kbps
+completed static24 48 kbps 21-classic.441.16b48k.wav: MOS=4.33283, payload=47.757 kbps
+completed missing_t10_r4 48 kbps 21-classic.441.16b48k.wav: MOS=4.32708, payload=47.766 kbps
+completed missing_t10_r10 48 kbps 21-classic.441.16b48k.wav: MOS=4.31962, payload=47.763 kbps
+completed missing_t30_r10 48 kbps 21-classic.441.16b48k.wav: MOS=4.33545, payload=47.759 kbps
+completed missing_t100_r4 48 kbps 21-classic.441.16b48k.wav: MOS=4.33249, payload=47.757 kbps
+completed missing_t100_r10 48 kbps 21-classic.441.16b48k.wav: MOS=4.33249, payload=47.757 kbps
+completed missing_t30_r4 48 kbps 21-classic.441.16b48k.wav: MOS=4.34220, payload=47.758 kbps
+completed missing_midpoint 48 kbps 21-classic.441.16b48k.wav: MOS=4.34239, payload=47.759 kbps
+completed missing_max_energy 48 kbps 21-classic.441.16b48k.wav: MOS=4.33071, payload=47.757 kbps
+completed missing_t10_r4 64 kbps 21-classic.441.16b48k.wav: MOS=4.54713, payload=63.664 kbps
+completed static24 64 kbps 21-classic.441.16b48k.wav: MOS=4.54423, payload=63.658 kbps
+completed missing_t10_r10 64 kbps 21-classic.441.16b48k.wav: MOS=4.54428, payload=63.665 kbps
+completed missing_t30_r4 64 kbps 21-classic.441.16b48k.wav: MOS=4.55107, payload=63.657 kbps
+completed missing_t30_r10 64 kbps 21-classic.441.16b48k.wav: MOS=4.54557, payload=63.659 kbps
+completed missing_t100_r4 64 kbps 21-classic.441.16b48k.wav: MOS=4.54411, payload=63.658 kbps
+completed missing_t100_r10 64 kbps 21-classic.441.16b48k.wav: MOS=4.54411, payload=63.658 kbps
+completed missing_midpoint 64 kbps 21-classic.441.16b48k.wav: MOS=4.55132, payload=63.658 kbps
+completed static24 96 kbps 21-classic.441.16b48k.wav: MOS=4.75027, payload=95.468 kbps
+completed missing_max_energy 64 kbps 21-classic.441.16b48k.wav: MOS=4.54645, payload=63.657 kbps
+completed missing_t10_r4 96 kbps 21-classic.441.16b48k.wav: MOS=4.74888, payload=95.476 kbps
+completed missing_t10_r10 96 kbps 21-classic.441.16b48k.wav: MOS=4.74791, payload=95.475 kbps
+completed missing_t30_r10 96 kbps 21-classic.441.16b48k.wav: MOS=4.74866, payload=95.470 kbps
+completed missing_t30_r4 96 kbps 21-classic.441.16b48k.wav: MOS=4.74915, payload=95.469 kbps
+completed missing_midpoint 96 kbps 21-classic.441.16b48k.wav: MOS=4.74942, payload=95.470 kbps
+completed missing_t100_r4 96 kbps 21-classic.441.16b48k.wav: MOS=4.75059, payload=95.468 kbps
+completed missing_max_energy 96 kbps 21-classic.441.16b48k.wav: MOS=4.74678, payload=95.469 kbps
+completed missing_t100_r10 96 kbps 21-classic.441.16b48k.wav: MOS=4.75059, payload=95.468 kbps
+completed missing_t30_r4 32 kbps fms.wav: MOS=3.94719, payload=31.953 kbps
+completed static24 32 kbps fms.wav: MOS=3.95438, payload=31.954 kbps
+completed missing_t10_r4 32 kbps fms.wav: MOS=3.91043, payload=31.958 kbps
+completed missing_t10_r10 32 kbps fms.wav: MOS=3.94616, payload=31.956 kbps
+completed missing_max_energy 32 kbps fms.wav: MOS=3.95489, payload=31.954 kbps
+completed missing_t100_r10 32 kbps fms.wav: MOS=3.95283, payload=31.954 kbps
+completed missing_t100_r4 32 kbps fms.wav: MOS=3.95283, payload=31.954 kbps
+completed missing_t30_r10 32 kbps fms.wav: MOS=3.94719, payload=31.953 kbps
+completed missing_t10_r4 48 kbps fms.wav: MOS=4.29656, payload=48.086 kbps
+completed missing_midpoint 32 kbps fms.wav: MOS=3.94719, payload=31.953 kbps
+completed static24 48 kbps fms.wav: MOS=4.31421, payload=48.089 kbps
+completed missing_t10_r10 48 kbps fms.wav: MOS=4.30323, payload=48.082 kbps
+completed missing_t30_r10 48 kbps fms.wav: MOS=4.30957, payload=48.084 kbps
+completed missing_t100_r10 48 kbps fms.wav: MOS=4.31091, payload=48.089 kbps
+completed missing_t100_r4 48 kbps fms.wav: MOS=4.31091, payload=48.089 kbps
+completed missing_t30_r4 48 kbps fms.wav: MOS=4.30957, payload=48.084 kbps
+completed missing_max_energy 48 kbps fms.wav: MOS=4.30954, payload=48.084 kbps
+completed missing_midpoint 48 kbps fms.wav: MOS=4.30957, payload=48.084 kbps
+completed static24 64 kbps fms.wav: MOS=4.57263, payload=63.800 kbps
+completed missing_t10_r4 64 kbps fms.wav: MOS=4.56367, payload=63.804 kbps
+completed missing_t30_r4 64 kbps fms.wav: MOS=4.57218, payload=63.797 kbps
+completed missing_t10_r10 64 kbps fms.wav: MOS=4.56859, payload=63.798 kbps
+completed missing_t30_r10 64 kbps fms.wav: MOS=4.57218, payload=63.797 kbps
+completed missing_t100_r4 64 kbps fms.wav: MOS=4.56808, payload=63.800 kbps
+completed missing_t100_r10 64 kbps fms.wav: MOS=4.56808, payload=63.800 kbps
+completed missing_midpoint 64 kbps fms.wav: MOS=4.57218, payload=63.797 kbps
+completed missing_max_energy 64 kbps fms.wav: MOS=4.57215, payload=63.797 kbps
+completed static24 96 kbps fms.wav: MOS=4.81118, payload=95.672 kbps
+completed missing_t10_r10 96 kbps fms.wav: MOS=4.80309, payload=95.674 kbps
+completed missing_t10_r4 96 kbps fms.wav: MOS=4.80020, payload=95.676 kbps
+completed missing_t30_r4 96 kbps fms.wav: MOS=4.80560, payload=95.670 kbps
+completed missing_t30_r10 96 kbps fms.wav: MOS=4.80560, payload=95.670 kbps
+completed missing_max_energy 96 kbps fms.wav: MOS=4.80556, payload=95.670 kbps
+completed missing_t100_r10 96 kbps fms.wav: MOS=4.80569, payload=95.672 kbps
+completed missing_t100_r4 96 kbps fms.wav: MOS=4.80569, payload=95.672 kbps
+completed missing_midpoint 96 kbps fms.wav: MOS=4.80560, payload=95.670 kbps
+candidate_default @ 32 kbps: MOS Δ=+0.00000, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00000, +0.00000]
+static24 @ 32 kbps: MOS Δ=+0.00604, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00057, +0.01151]
+missing_t10_r4 @ 32 kbps: MOS Δ=-0.01052, bitrate Δ=+0.023%, bootstrap mean 95% CI=[-0.03196, +0.00390]
+missing_t10_r10 @ 32 kbps: MOS Δ=+0.00542, bitrate Δ=+0.004%, bootstrap mean 95% CI=[-0.00366, +0.01734]
+missing_t30_r4 @ 32 kbps: MOS Δ=-0.00302, bitrate Δ=+0.016%, bootstrap mean 95% CI=[-0.00811, +0.00239]
+missing_t30_r10 @ 32 kbps: MOS Δ=+0.00151, bitrate Δ=-0.002%, bootstrap mean 95% CI=[-0.00621, +0.01001]
+missing_t100_r4 @ 32 kbps: MOS Δ=+0.00129, bitrate Δ=+0.001%, bootstrap mean 95% CI=[+0.00000, +0.00388]
+missing_t100_r10 @ 32 kbps: MOS Δ=+0.00129, bitrate Δ=+0.001%, bootstrap mean 95% CI=[+0.00000, +0.00388]
+missing_max_energy @ 32 kbps: MOS Δ=+0.00378, bitrate Δ=-0.000%, bootstrap mean 95% CI=[-0.00255, +0.00957]
+missing_midpoint @ 32 kbps: MOS Δ=-0.00287, bitrate Δ=+0.016%, bootstrap mean 95% CI=[-0.01093, +0.00566]
+candidate_default @ 48 kbps: MOS Δ=+0.00000, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00000, +0.00000]
+static24 @ 48 kbps: MOS Δ=+0.00428, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00131, +0.00776]
+missing_t10_r4 @ 48 kbps: MOS Δ=-0.00107, bitrate Δ=+0.007%, bootstrap mean 95% CI=[-0.00988, +0.00774]
+missing_t10_r10 @ 48 kbps: MOS Δ=-0.00142, bitrate Δ=-0.000%, bootstrap mean 95% CI=[-0.01028, +0.00744]
+missing_t30_r4 @ 48 kbps: MOS Δ=+0.00344, bitrate Δ=-0.002%, bootstrap mean 95% CI=[-0.00066, +0.00755]
+missing_t30_r10 @ 48 kbps: MOS Δ=+0.00172, bitrate Δ=-0.001%, bootstrap mean 95% CI=[-0.00026, +0.00302]
+missing_t100_r4 @ 48 kbps: MOS Δ=+0.00238, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00000, +0.00715]
+missing_t100_r10 @ 48 kbps: MOS Δ=+0.00238, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00000, +0.00715]
+missing_max_energy @ 48 kbps: MOS Δ=+0.00143, bitrate Δ=-0.003%, bootstrap mean 95% CI=[-0.00158, +0.00548]
+missing_midpoint @ 48 kbps: MOS Δ=+0.00349, bitrate Δ=-0.001%, bootstrap mean 95% CI=[-0.00069, +0.00767]
+candidate_default @ 64 kbps: MOS Δ=+0.00000, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00000, +0.00000]
+static24 @ 64 kbps: MOS Δ=+0.00684, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00172, +0.01325]
+missing_t10_r4 @ 64 kbps: MOS Δ=+0.00049, bitrate Δ=+0.006%, bootstrap mean 95% CI=[-0.00482, +0.00580]
+missing_t10_r10 @ 64 kbps: MOS Δ=-0.00262, bitrate Δ=+0.002%, bootstrap mean 95% CI=[-0.00557, +0.00034]
+missing_t30_r4 @ 64 kbps: MOS Δ=+0.00340, bitrate Δ=-0.005%, bootstrap mean 95% CI=[-0.00104, +0.00643]
+missing_t30_r10 @ 64 kbps: MOS Δ=+0.00148, bitrate Δ=-0.004%, bootstrap mean 95% CI=[-0.00155, +0.00386]
+missing_t100_r4 @ 64 kbps: MOS Δ=-0.00088, bitrate Δ=+0.000%, bootstrap mean 95% CI=[-0.00264, +0.00000]
+missing_t100_r10 @ 64 kbps: MOS Δ=-0.00088, bitrate Δ=+0.000%, bootstrap mean 95% CI=[-0.00264, +0.00000]
+missing_max_energy @ 64 kbps: MOS Δ=+0.00031, bitrate Δ=-0.005%, bootstrap mean 95% CI=[-0.00419, +0.00336]
+missing_midpoint @ 64 kbps: MOS Δ=+0.00347, bitrate Δ=-0.005%, bootstrap mean 95% CI=[-0.00100, +0.00652]
+candidate_default @ 96 kbps: MOS Δ=+0.00000, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00000, +0.00000]
+static24 @ 96 kbps: MOS Δ=+0.00747, bitrate Δ=+0.000%, bootstrap mean 95% CI=[+0.00222, +0.01254]
+missing_t10_r4 @ 96 kbps: MOS Δ=-0.00256, bitrate Δ=+0.003%, bootstrap mean 95% CI=[-0.00454, -0.00124]
+missing_t10_r10 @ 96 kbps: MOS Δ=-0.00183, bitrate Δ=+0.001%, bootstrap mean 95% CI=[-0.00264, -0.00071]
+missing_t30_r4 @ 96 kbps: MOS Δ=-0.00046, bitrate Δ=+0.000%, bootstrap mean 95% CI=[-0.00117, +0.00025]
+missing_t30_r10 @ 96 kbps: MOS Δ=+0.00011, bitrate Δ=+0.000%, bootstrap mean 95% CI=[-0.00128, +0.00132]
+missing_t100_r4 @ 96 kbps: MOS Δ=-0.00003, bitrate Δ=+0.000%, bootstrap mean 95% CI=[-0.00010, +0.00000]
+missing_t100_r10 @ 96 kbps: MOS Δ=-0.00003, bitrate Δ=+0.000%, bootstrap mean 95% CI=[-0.00010, +0.00000]
+missing_max_energy @ 96 kbps: MOS Δ=-0.00147, bitrate Δ=-0.000%, bootstrap mean 95% CI=[-0.00303, +0.00009]
+missing_midpoint @ 96 kbps: MOS Δ=-0.00060, bitrate Δ=+0.000%, bootstrap mean 95% CI=[-0.00106, -0.00015]
+Saved rows: /private/tmp/faac-he-v1-harmonic/probe/results-gate/harmonic-results.json
+Saved BD-rate summary: /private/tmp/faac-he-v1-harmonic/probe/results-gate/harmonic-summary.json

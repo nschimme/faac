@@ -1,0 +1,646 @@
+{
+  "bootstrap": {
+    "helper": "compare_results.bootstrap_mean_ci",
+    "resamples": 2000,
+    "seed": 0
+  },
+  "clip_bootstrap_95_ci": {
+    "hi": -0.28170184600776543,
+    "lo": -0.7629293472607116,
+    "mean": -0.5125704787521669,
+    "n": 49
+  },
+  "clips": 49,
+  "comparison": "upstream_fixed8 versus upstream_baseline",
+  "exact_zero_bd": 0,
+  "mean_bd_rate_percent": -0.5125704787521669,
+  "median_bd_rate_percent": -0.32749742870396004,
+  "mos_anchor": "original source WAV converted to 48 kHz stereo, scored with Zimtohrli audio mode",
+  "negative_bd_is_better": true,
+  "per_clip_bd_rate": [
+    {
+      "bd_rate_percent": -2.2168433542643085,
+      "clip": "12-German-male-speech.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.34093808574655604,
+      "clip": "15-Good-evening.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.1917448397582011,
+      "clip": "21-classic.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -1.6855215139010338,
+      "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.5593979879861322,
+      "clip": "25-This-is-the-end.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.5937431264958049,
+      "clip": "27-last-song-drums-and-trampets.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.006224578337943321,
+      "clip": "35_SQAM_glockenspiel_cut.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.8404509434746243,
+      "clip": "4-Sound-English-male.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 1.1226030358554961,
+      "clip": "9-Have-big-expensive-car.441.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.4901633565448815,
+      "clip": "Asleep__4.11-4.31_.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -1.0698595128847632,
+      "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.10551413935762088,
+      "clip": "Changes.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -1.0789552640929179,
+      "clip": "Coral.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.32749742870396004,
+      "clip": "ExitMusic.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.39781352395753533,
+      "clip": "Girl_In_The_Fire__Sample_.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.6337533622507774,
+      "clip": "Greatest_Love_of_All_2min57.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.0258175313455844,
+      "clip": "Hey Tonight.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -1.6469939726083904,
+      "clip": "Hotel California.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.025646546413315985,
+      "clip": "Jupiter, the Bringer of Jolity.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.2747281665477441,
+      "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.14562733603484812,
+      "clip": "NewYorkCity.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.3532887651550576,
+      "clip": "Only Time.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -1.1467544184640133,
+      "clip": "Robots_old.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.9419605863171809,
+      "clip": "Severance__1.31-1.51_.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -1.3429537255515767,
+      "clip": "Shinsho_pool_3min45_4min4.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.3917222562811129,
+      "clip": "SinceAlways.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.17141665788160676,
+      "clip": "SlavesOfFear.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.5557569945418783,
+      "clip": "The Chastising of Renegade.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.22979106741498612,
+      "clip": "Through The Fire And Flames.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.11767185788792434,
+      "clip": "TrosYGareg.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.1600732368948643,
+      "clip": "Waiting.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.3112880179300115,
+      "clip": "With Love (Outro).16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.1808797201980683,
+      "clip": "bah.wav"
+    },
+    {
+      "bd_rate_percent": -0.031088219502983794,
+      "clip": "bas.wav"
+    },
+    {
+      "bd_rate_percent": 0.4884772547890659,
+      "clip": "bonhemian_rhapsody.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.14768693203595085,
+      "clip": "clapton_44k.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -2.3541560723749466,
+      "clip": "cst.wav"
+    },
+    {
+      "bd_rate_percent": -0.4917969719640869,
+      "clip": "fms.wav"
+    },
+    {
+      "bd_rate_percent": -3.005289229124386,
+      "clip": "girl.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.004338061116881953,
+      "clip": "glk.wav"
+    },
+    {
+      "bd_rate_percent": 0.052407076085603244,
+      "clip": "hrp.wav"
+    },
+    {
+      "bd_rate_percent": 0.7437964095784011,
+      "clip": "liberate.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.7378223837538278,
+      "clip": "lob.wav"
+    },
+    {
+      "bd_rate_percent": -2.9950472560354657,
+      "clip": "mof.wav"
+    },
+    {
+      "bd_rate_percent": -0.768348745485159,
+      "clip": "qrt.wav"
+    },
+    {
+      "bd_rate_percent": -1.488196786887408,
+      "clip": "sandman.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.08526799465475854,
+      "clip": "take_your_finger_frin_my_head.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": 0.424538748417258,
+      "clip": "trumpet.16b48k.wav"
+    },
+    {
+      "bd_rate_percent": -0.7337753387258283,
+      "clip": "velvet.16b48k.wav"
+    }
+  ],
+  "per_rate": {
+    "32": {
+      "mean_mos_delta": 0.0027154951679463288,
+      "mean_payload_kbps_delta": -0.0014083669363916512,
+      "mos_delta_bootstrap_95_ci": {
+        "hi": 0.005733100735411352,
+        "lo": -0.0002810273851667132,
+        "mean": 0.0027154951679463288,
+        "n": 49
+      },
+      "worst_mos_deltas": [
+        {
+          "baseline_mos": 3.4403138160705566,
+          "baseline_payload_kbps": 31.812,
+          "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
+          "fixed8_mos": 3.404344081878662,
+          "fixed8_payload_kbps": 31.8112,
+          "mos_delta": -0.03596973419189453,
+          "payload_kbps_delta": -0.0008000000000016882
+        },
+        {
+          "baseline_mos": 3.954411745071411,
+          "baseline_payload_kbps": 31.953599999999998,
+          "clip": "fms.wav",
+          "fixed8_mos": 3.93190336227417,
+          "fixed8_payload_kbps": 31.9496,
+          "mos_delta": -0.02250838279724121,
+          "payload_kbps_delta": -0.003999999999997783
+        },
+        {
+          "baseline_mos": 3.61991548538208,
+          "baseline_payload_kbps": 31.968475748346847,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+          "fixed8_mos": 3.609529495239258,
+          "fixed8_payload_kbps": 31.970948238672584,
+          "mos_delta": -0.010385990142822266,
+          "payload_kbps_delta": 0.002472490325736487
+        },
+        {
+          "baseline_mos": 4.00241756439209,
+          "baseline_payload_kbps": 32.2408,
+          "clip": "SlavesOfFear.16b48k.wav",
+          "fixed8_mos": 3.9921047687530518,
+          "fixed8_payload_kbps": 32.2424,
+          "mos_delta": -0.010312795639038086,
+          "payload_kbps_delta": 0.0016000000000033765
+        },
+        {
+          "baseline_mos": 3.5319197177886963,
+          "baseline_payload_kbps": 31.9872,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav",
+          "fixed8_mos": 3.524594306945801,
+          "fixed8_payload_kbps": 31.9848,
+          "mos_delta": -0.007325410842895508,
+          "payload_kbps_delta": -0.002400000000001512
+        },
+        {
+          "baseline_mos": 4.053672790527344,
+          "baseline_payload_kbps": 32.61290686735654,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav",
+          "fixed8_mos": 4.046795845031738,
+          "fixed8_payload_kbps": 32.606484791470685,
+          "mos_delta": -0.006876945495605469,
+          "payload_kbps_delta": -0.006422075885858192
+        },
+        {
+          "baseline_mos": 3.6348655223846436,
+          "baseline_payload_kbps": 33.522400000000005,
+          "clip": "velvet.16b48k.wav",
+          "fixed8_mos": 3.6284139156341553,
+          "fixed8_payload_kbps": 33.52,
+          "mos_delta": -0.006451606750488281,
+          "payload_kbps_delta": -0.002400000000001512
+        },
+        {
+          "baseline_mos": 3.7742369174957275,
+          "baseline_payload_kbps": 31.950400000000002,
+          "clip": "clapton_44k.16b48k.wav",
+          "fixed8_mos": 3.769275665283203,
+          "fixed8_payload_kbps": 31.948,
+          "mos_delta": -0.004961252212524414,
+          "payload_kbps_delta": -0.002400000000001512
+        },
+        {
+          "baseline_mos": 4.25585412979126,
+          "baseline_payload_kbps": 31.897599999999997,
+          "clip": "Hey Tonight.16b48k.wav",
+          "fixed8_mos": 4.251197814941406,
+          "fixed8_payload_kbps": 31.898400000000002,
+          "mos_delta": -0.004656314849853516,
+          "payload_kbps_delta": 0.000800000000005241
+        },
+        {
+          "baseline_mos": 4.1613383293151855,
+          "baseline_payload_kbps": 34.0256,
+          "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+          "fixed8_mos": 4.156893730163574,
+          "fixed8_payload_kbps": 34.0256,
+          "mos_delta": -0.004444599151611328,
+          "payload_kbps_delta": 0.0
+        }
+      ]
+    },
+    "48": {
+      "mean_mos_delta": 0.004458539339960838,
+      "mean_payload_kbps_delta": -0.0006095171123913518,
+      "mos_delta_bootstrap_95_ci": {
+        "hi": 0.0073418665905388035,
+        "lo": 0.0016176554621482383,
+        "mean": 0.004458539339960838,
+        "n": 49
+      },
+      "worst_mos_deltas": [
+        {
+          "baseline_mos": 4.262741565704346,
+          "baseline_payload_kbps": 48.351196646685,
+          "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+          "fixed8_mos": 4.240079879760742,
+          "fixed8_payload_kbps": 48.354493300452646,
+          "mos_delta": -0.022661685943603516,
+          "payload_kbps_delta": 0.0032966537676486496
+        },
+        {
+          "baseline_mos": 4.124549865722656,
+          "baseline_payload_kbps": 47.796,
+          "clip": "bonhemian_rhapsody.16b48k.wav",
+          "fixed8_mos": 4.107386589050293,
+          "fixed8_payload_kbps": 47.7928,
+          "mos_delta": -0.01716327667236328,
+          "payload_kbps_delta": -0.0031999999999996476
+        },
+        {
+          "baseline_mos": 4.278963565826416,
+          "baseline_payload_kbps": 49.772800000000004,
+          "clip": "trumpet.16b48k.wav",
+          "fixed8_mos": 4.267998695373535,
+          "fixed8_payload_kbps": 49.772800000000004,
+          "mos_delta": -0.01096487045288086,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.388700485229492,
+          "baseline_payload_kbps": 48.98920037629351,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav",
+          "fixed8_mos": 4.38367223739624,
+          "fixed8_payload_kbps": 49.05743493258075,
+          "mos_delta": -0.005028247833251953,
+          "payload_kbps_delta": 0.06823455628723707
+        },
+        {
+          "baseline_mos": 3.9536778926849365,
+          "baseline_payload_kbps": 48.3296,
+          "clip": "Waiting.16b48k.wav",
+          "fixed8_mos": 3.949399471282959,
+          "fixed8_payload_kbps": 48.3264,
+          "mos_delta": -0.004278421401977539,
+          "payload_kbps_delta": -0.0031999999999996476
+        },
+        {
+          "baseline_mos": 4.2154741287231445,
+          "baseline_payload_kbps": 48.1544,
+          "clip": "clapton_44k.16b48k.wav",
+          "fixed8_mos": 4.2113494873046875,
+          "fixed8_payload_kbps": 48.156800000000004,
+          "mos_delta": -0.004124641418457031,
+          "payload_kbps_delta": 0.002400000000001512
+        },
+        {
+          "baseline_mos": 3.8869245052337646,
+          "baseline_payload_kbps": 47.9104,
+          "clip": "Changes.16b48k.wav",
+          "fixed8_mos": 3.8837099075317383,
+          "fixed8_payload_kbps": 47.9104,
+          "mos_delta": -0.003214597702026367,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.480798721313477,
+          "baseline_payload_kbps": 48.1064,
+          "clip": "With Love (Outro).16b48k.wav",
+          "fixed8_mos": 4.477877616882324,
+          "fixed8_payload_kbps": 48.1072,
+          "mos_delta": -0.0029211044311523438,
+          "payload_kbps_delta": 0.0007999999999981355
+        },
+        {
+          "baseline_mos": 4.285156726837158,
+          "baseline_payload_kbps": 49.47808756651951,
+          "clip": "liberate.16b48k.wav",
+          "fixed8_mos": 4.2827277183532715,
+          "fixed8_payload_kbps": 49.47489213332612,
+          "mos_delta": -0.0024290084838867188,
+          "payload_kbps_delta": -0.003195433193390329
+        },
+        {
+          "baseline_mos": 4.111431121826172,
+          "baseline_payload_kbps": 47.85824778512164,
+          "clip": "bah.wav",
+          "fixed8_mos": 4.109077453613281,
+          "fixed8_payload_kbps": 47.857404021937846,
+          "mos_delta": -0.002353668212890625,
+          "payload_kbps_delta": -0.0008437631837949766
+        }
+      ]
+    },
+    "64": {
+      "mean_mos_delta": 0.005065752535450215,
+      "mean_payload_kbps_delta": -0.00014758488150740895,
+      "mos_delta_bootstrap_95_ci": {
+        "hi": 0.007676416513871173,
+        "lo": 0.0028233430823501274,
+        "mean": 0.005065752535450215,
+        "n": 49
+      },
+      "worst_mos_deltas": [
+        {
+          "baseline_mos": 4.433234214782715,
+          "baseline_payload_kbps": 65.28110242445172,
+          "clip": "liberate.16b48k.wav",
+          "fixed8_mos": 4.4267168045043945,
+          "fixed8_payload_kbps": 65.28110242445172,
+          "mos_delta": -0.0065174102783203125,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.487607002258301,
+          "baseline_payload_kbps": 63.56,
+          "clip": "Only Time.16b48k.wav",
+          "fixed8_mos": 4.48321533203125,
+          "fixed8_payload_kbps": 63.5592,
+          "mos_delta": -0.004391670227050781,
+          "payload_kbps_delta": -0.000800000000005241
+        },
+        {
+          "baseline_mos": 4.272864818572998,
+          "baseline_payload_kbps": 63.608,
+          "clip": "bas.wav",
+          "fixed8_mos": 4.269956588745117,
+          "fixed8_payload_kbps": 63.608,
+          "mos_delta": -0.0029082298278808594,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.475966453552246,
+          "baseline_payload_kbps": 63.7376,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav",
+          "fixed8_mos": 4.4743757247924805,
+          "fixed8_payload_kbps": 63.7384,
+          "mos_delta": -0.001590728759765625,
+          "payload_kbps_delta": 0.0007999999999981355
+        },
+        {
+          "baseline_mos": 4.517156600952148,
+          "baseline_payload_kbps": 63.6608,
+          "clip": "TrosYGareg.16b48k.wav",
+          "fixed8_mos": 4.5157365798950195,
+          "fixed8_payload_kbps": 63.6608,
+          "mos_delta": -0.0014200210571289062,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.348645210266113,
+          "baseline_payload_kbps": 63.747996062438474,
+          "clip": "bah.wav",
+          "fixed8_mos": 4.347804546356201,
+          "fixed8_payload_kbps": 63.747996062438474,
+          "mos_delta": -0.0008406639099121094,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.57279634475708,
+          "baseline_payload_kbps": 63.996,
+          "clip": "Hey Tonight.16b48k.wav",
+          "fixed8_mos": 4.571957588195801,
+          "fixed8_payload_kbps": 63.9936,
+          "mos_delta": -0.0008387565612792969,
+          "payload_kbps_delta": -0.002400000000001512
+        },
+        {
+          "baseline_mos": 4.5356950759887695,
+          "baseline_payload_kbps": 64.3248,
+          "clip": "SlavesOfFear.16b48k.wav",
+          "fixed8_mos": 4.534914970397949,
+          "fixed8_payload_kbps": 64.3256,
+          "mos_delta": -0.0007801055908203125,
+          "payload_kbps_delta": 0.0007999999999981355
+        },
+        {
+          "baseline_mos": 4.621974945068359,
+          "baseline_payload_kbps": 63.818400000000004,
+          "clip": "With Love (Outro).16b48k.wav",
+          "fixed8_mos": 4.621203422546387,
+          "fixed8_payload_kbps": 63.818400000000004,
+          "mos_delta": -0.0007715225219726562,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.278409004211426,
+          "baseline_payload_kbps": 64.144,
+          "clip": "Waiting.16b48k.wav",
+          "fixed8_mos": 4.277724742889404,
+          "fixed8_payload_kbps": 64.1432,
+          "mos_delta": -0.0006842613220214844,
+          "payload_kbps_delta": -0.0008000000000123464
+        }
+      ]
+    },
+    "96": {
+      "mean_mos_delta": 0.004490871818698183,
+      "mean_payload_kbps_delta": -0.00014100917309497858,
+      "mos_delta_bootstrap_95_ci": {
+        "hi": 0.007011199484066088,
+        "lo": 0.002250447565195512,
+        "mean": 0.004490871818698183,
+        "n": 49
+      },
+      "worst_mos_deltas": [
+        {
+          "baseline_mos": 4.632282257080078,
+          "baseline_payload_kbps": 96.26402266760421,
+          "clip": "liberate.16b48k.wav",
+          "fixed8_mos": 4.615127086639404,
+          "fixed8_payload_kbps": 96.27201125058771,
+          "mos_delta": -0.017155170440673828,
+          "payload_kbps_delta": 0.007988582983500692
+        },
+        {
+          "baseline_mos": 4.58029842376709,
+          "baseline_payload_kbps": 95.57039999999999,
+          "clip": "take_your_finger_frin_my_head.16b48k.wav",
+          "fixed8_mos": 4.570504188537598,
+          "fixed8_payload_kbps": 95.5672,
+          "mos_delta": -0.009794235229492188,
+          "payload_kbps_delta": -0.003199999999992542
+        },
+        {
+          "baseline_mos": 4.616023063659668,
+          "baseline_payload_kbps": 95.5096,
+          "clip": "Changes.16b48k.wav",
+          "fixed8_mos": 4.611154556274414,
+          "fixed8_payload_kbps": 95.51039999999999,
+          "mos_delta": -0.004868507385253906,
+          "payload_kbps_delta": 0.0007999999999839247
+        },
+        {
+          "baseline_mos": 4.766496658325195,
+          "baseline_payload_kbps": 95.98033239259956,
+          "clip": "27-last-song-drums-and-trampets.441.16b48k.wav",
+          "fixed8_mos": 4.764039993286133,
+          "fixed8_payload_kbps": 95.98996550642836,
+          "mos_delta": -0.0024566650390625,
+          "payload_kbps_delta": 0.009633113828797946
+        },
+        {
+          "baseline_mos": 4.664884567260742,
+          "baseline_payload_kbps": 95.69455772746448,
+          "clip": "bah.wav",
+          "fixed8_mos": 4.663789749145508,
+          "fixed8_payload_kbps": 95.69371396428069,
+          "mos_delta": -0.001094818115234375,
+          "payload_kbps_delta": -0.0008437631837949766
+        },
+        {
+          "baseline_mos": 4.762866973876953,
+          "baseline_payload_kbps": 95.52071871480538,
+          "clip": "21-classic.441.16b48k.wav",
+          "fixed8_mos": 4.7627153396606445,
+          "fixed8_payload_kbps": 95.51823324573782,
+          "mos_delta": -0.00015163421630859375,
+          "payload_kbps_delta": -0.0024854690675653046
+        },
+        {
+          "baseline_mos": 4.874789714813232,
+          "baseline_payload_kbps": 95.933357499769,
+          "clip": "hrp.wav",
+          "fixed8_mos": 4.8746538162231445,
+          "fixed8_payload_kbps": 95.93426729499399,
+          "mos_delta": -0.00013589859008789062,
+          "payload_kbps_delta": 0.0009097952249845775
+        },
+        {
+          "baseline_mos": 4.941531181335449,
+          "baseline_payload_kbps": 95.4104,
+          "clip": "glk.wav",
+          "fixed8_mos": 4.941539764404297,
+          "fixed8_payload_kbps": 95.4104,
+          "mos_delta": 8.58306884765625e-06,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.8273210525512695,
+          "baseline_payload_kbps": 95.30080000000001,
+          "clip": "35_SQAM_glockenspiel_cut.16b48k.wav",
+          "fixed8_mos": 4.827330589294434,
+          "fixed8_payload_kbps": 95.30080000000001,
+          "mos_delta": 9.5367431640625e-06,
+          "payload_kbps_delta": 0.0
+        },
+        {
+          "baseline_mos": 4.695545196533203,
+          "baseline_payload_kbps": 95.52,
+          "clip": "Asleep__4.11-4.31_.16b48k.wav",
+          "fixed8_mos": 4.695690631866455,
+          "fixed8_payload_kbps": 95.52080000000001,
+          "mos_delta": 0.00014543533325195312,
+          "payload_kbps_delta": 0.0008000000000123464
+        }
+      ]
+    }
+  },
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "rows": 392,
+  "schema": 1,
+  "strict_interop": {
+    "faad3_pass": 392,
+    "fdk_pass": 392,
+    "ffmpeg_pass": 392,
+    "new_vs_old_fdk_pcm_exact": 392,
+    "rows": 392
+  },
+  "strict_interop_status": "392/392 strict FAAD3 and FFmpeg pass; 392/392 FDK decoded; new FDK normalized PCM and WAVE shape exact on all 392 rows",
+  "strictly_negative_bd_wins": 36,
+  "strictly_positive_bd_losses": 13
+}

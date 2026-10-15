@@ -1,0 +1,1601 @@
+{
+  "schema": 1,
+  "scope": "AAC-LC ABR packet identity and HE-AAC v1 CBR decode acceptance; no MOS or timing claims",
+  "source_hash_method": "SHA-256 over sorted tracked paths and contents; baseline from HEAD, candidates from worktree contents",
+  "source_builds": {
+    "baseline": {
+      "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "source_tree_sha256": "8e2986b3b931389b19e91f44e04c444fcc5fb33fadd7cb7454532ac81d7ee618",
+      "binary": "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+      "binary_sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+      "linked_library": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+      "linked_library_sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+    },
+    "noise": {
+      "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "source_tree_sha256": "8e3c6e6c812ebab8f61e5a40261196c0c34cce3e7b6eba9236cfd0101237d62c",
+      "binary": "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+      "binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "linked_library": "/private/tmp/faac-he-v1-noise/build-candidate/libfaac/libfaac.2.dylib",
+      "linked_library_sha256": "805cfda281a85172676f77e56f367f43daded342acd18a0d3a10adcf2f779bb4"
+    },
+    "limiter": {
+      "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "source_tree_sha256": "4a4c73371d9abf58b5c9e31a62c8deaf2f8956d30f03291bb41328e84d6475df",
+      "binary": "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+      "binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "linked_library": "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib",
+      "linked_library_sha256": "86a7edc222492ff38dd12b933e0b45c78df0181df5ac1b96d3edb45f564e5496"
+    }
+  },
+  "inputs": {
+    "directory": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio",
+    "gate_clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "sha256": {
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917"
+    }
+  },
+  "decoders": {
+    "strict_fdk": {
+      "binary": "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+      "binary_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf"
+    },
+    "faad3_strict": {
+      "binary": "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+      "binary_sha256": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111"
+    },
+    "ffmpeg_strict": {
+      "binary": "/opt/homebrew/bin/ffmpeg",
+      "binary_sha256": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a"
+    }
+  },
+  "he_rates_kbps_total": [
+    32,
+    64
+  ],
+  "counts": {
+    "lc_packet_comparisons": 8,
+    "lc_packet_identity_pass": 8,
+    "lc_packet_identity_fail": 0,
+    "he_streams": 16,
+    "he_encode_fail": 0,
+    "strict_fdk_pass": 16,
+    "strict_fdk_fail": 0,
+    "faad3_strict_pass": 16,
+    "faad3_strict_fail": 0,
+    "ffmpeg_strict_pass": 16,
+    "ffmpeg_strict_fail": 0
+  },
+  "lc_packet_identity": [
+    {
+      "clip": "21-classic.441.16b48k.wav",
+      "candidate": "limiter",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-cbmshpqg/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/454     (  0%) |    0.0  |    0.0/0.0    | 1939.38x | 0.0 \n    450/454     ( 99%) |  125.9  |    0.0/0.0    |  937.67x | 0.0 \n    454/454     (100%) |  127.0  |    0.0/0.0    |  928.74x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-cbmshpqg/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-cbmshpqg/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/454     (  0%) |    0.0  |    0.0/0.0    | 1939.40x | 0.0 \n    450/454     ( 99%) |  125.9  |    0.0/0.0    |  918.67x | 0.0 \n    454/454     (100%) |  127.0  |    0.0/0.0    |  910.35x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-cbmshpqg/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "baseline_packets": 454,
+      "candidate_packets": 454,
+      "baseline_packet_sha256": "2e5135c4d8c263a549855cd60001e07cb0de36dd4c2b444d54a26a4bf41a162a",
+      "candidate_packet_sha256": "2e5135c4d8c263a549855cd60001e07cb0de36dd4c2b444d54a26a4bf41a162a",
+      "packet_identity": true,
+      "first_differing_packet": null
+    },
+    {
+      "clip": "fms.wav",
+      "candidate": "limiter",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-8x_tbyx7/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 1939.40x | 0.0 \n    466/470     ( 99%) |  126.6  |    0.0/0.0    |  827.75x | 0.0 \n    470/470     (100%) |  127.2  |    0.0/0.0    |  820.01x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-8x_tbyx7/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-8x_tbyx7/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 2133.34x | 0.0 \n    466/470     ( 99%) |  126.6  |    0.0/0.0    |  853.02x | 0.0 \n    470/470     (100%) |  127.2  |    0.0/0.0    |  845.31x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-8x_tbyx7/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "baseline_packets": 470,
+      "candidate_packets": 470,
+      "baseline_packet_sha256": "695956bfa91ac969bad48ede4c02c225cd81a7942d22729313c657374aadc7db",
+      "candidate_packet_sha256": "695956bfa91ac969bad48ede4c02c225cd81a7942d22729313c657374aadc7db",
+      "packet_identity": true,
+      "first_differing_packet": null
+    },
+    {
+      "clip": "sandman.16b48k.wav",
+      "candidate": "limiter",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ixoy68q8/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 2370.38x | 0.0 \n    466/470     ( 99%) |  125.9  |    0.0/0.0    |  962.09x | 0.0 \n    470/470     (100%) |  126.8  |    0.0/0.0    |  954.56x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ixoy68q8/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ixoy68q8/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    |  219.93x | 0.0 \n    466/470     ( 99%) |  125.9  |    0.0/0.0    |  957.30x | 0.0 \n    470/470     (100%) |  126.8  |    0.0/0.0    |  950.66x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ixoy68q8/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "baseline_packets": 470,
+      "candidate_packets": 470,
+      "baseline_packet_sha256": "cab81ce826869e79cface837d827e5b047f52f2975031e253c8c36557fe6de97",
+      "candidate_packet_sha256": "cab81ce826869e79cface837d827e5b047f52f2975031e253c8c36557fe6de97",
+      "packet_identity": true,
+      "first_differing_packet": null
+    },
+    {
+      "clip": "velvet.16b48k.wav",
+      "candidate": "limiter",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-zbs4kr_5/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 2133.34x | 0.0 \n    466/470     ( 99%) |  125.8  |    0.0/0.0    | 1014.61x | 0.0 \n    470/470     (100%) |  127.5  |    0.0/0.0    | 1005.53x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-zbs4kr_5/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-zbs4kr_5/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 2133.32x | 0.0 \n    466/470     ( 99%) |  125.8  |    0.0/0.0    |  981.16x | 0.0 \n    470/470     (100%) |  127.5  |    0.0/0.0    |  972.86x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-zbs4kr_5/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "baseline_packets": 470,
+      "candidate_packets": 470,
+      "baseline_packet_sha256": "d67a0e667039fa0fa7dc0d58c43beaf04860fd94482eb41d5feed4da450d426f",
+      "candidate_packet_sha256": "d67a0e667039fa0fa7dc0d58c43beaf04860fd94482eb41d5feed4da450d426f",
+      "packet_identity": true,
+      "first_differing_packet": null
+    },
+    {
+      "clip": "21-classic.441.16b48k.wav",
+      "candidate": "noise",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-lsg2oelw/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/454     (  0%) |    0.0  |    0.0/0.0    | 1939.38x | 0.0 \n    450/454     ( 99%) |  125.9  |    0.0/0.0    |  885.96x | 0.0 \n    454/454     (100%) |  127.0  |    0.0/0.0    |  877.27x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-lsg2oelw/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-lsg2oelw/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/454     (  0%) |    0.0  |    0.0/0.0    | 2133.34x | 0.0 \n    450/454     ( 99%) |  125.9  |    0.0/0.0    |  925.98x | 0.0 \n    454/454     (100%) |  127.0  |    0.0/0.0    |  917.62x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-lsg2oelw/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "baseline_packets": 454,
+      "candidate_packets": 454,
+      "baseline_packet_sha256": "2e5135c4d8c263a549855cd60001e07cb0de36dd4c2b444d54a26a4bf41a162a",
+      "candidate_packet_sha256": "2e5135c4d8c263a549855cd60001e07cb0de36dd4c2b444d54a26a4bf41a162a",
+      "packet_identity": true,
+      "first_differing_packet": null
+    },
+    {
+      "clip": "fms.wav",
+      "candidate": "noise",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ah_zmows/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 2133.34x | 0.0 \n    466/470     ( 99%) |  126.6  |    0.0/0.0    |  830.43x | 0.0 \n    470/470     (100%) |  127.2  |    0.0/0.0    |  822.91x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ah_zmows/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ah_zmows/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 2133.32x | 0.0 \n    466/470     ( 99%) |  126.6  |    0.0/0.0    |  843.24x | 0.0 \n    470/470     (100%) |  127.2  |    0.0/0.0    |  836.26x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-ah_zmows/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "baseline_packets": 470,
+      "candidate_packets": 470,
+      "baseline_packet_sha256": "695956bfa91ac969bad48ede4c02c225cd81a7942d22729313c657374aadc7db",
+      "candidate_packet_sha256": "695956bfa91ac969bad48ede4c02c225cd81a7942d22729313c657374aadc7db",
+      "packet_identity": true,
+      "first_differing_packet": null
+    },
+    {
+      "clip": "sandman.16b48k.wav",
+      "candidate": "noise",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-qrpjkt91/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    |  561.40x | 0.0 \n    466/470     ( 99%) |  125.9  |    0.0/0.0    |  917.35x | 0.0 \n    470/470     (100%) |  126.8  |    0.0/0.0    |  911.00x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-qrpjkt91/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-qrpjkt91/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    |  219.93x | 0.0 \n    466/470     ( 99%) |  125.9  |    0.0/0.0    |  951.57x | 0.0 \n    470/470     (100%) |  126.8  |    0.0/0.0    |  945.00x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-qrpjkt91/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "baseline_packets": 470,
+      "candidate_packets": 470,
+      "baseline_packet_sha256": "cab81ce826869e79cface837d827e5b047f52f2975031e253c8c36557fe6de97",
+      "candidate_packet_sha256": "cab81ce826869e79cface837d827e5b047f52f2975031e253c8c36557fe6de97",
+      "packet_identity": true,
+      "first_differing_packet": null
+    },
+    {
+      "clip": "velvet.16b48k.wav",
+      "candidate": "noise",
+      "bitrate_kbps": 128,
+      "rate_control": "abr",
+      "baseline_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-txs0dr4z/base.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 1939.40x | 0.0 \n    466/470     ( 99%) |  125.8  |    0.0/0.0    | 1018.02x | 0.0 \n    470/470     (100%) |  127.5  |    0.0/0.0    | 1009.59x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-txs0dr4z/base.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "candidate_encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 349\nAverage bitrate: 64 kbps/channel\nBandwidth: 18750 Hz\nObject type: Low Complexity (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-txs0dr4z/candidate.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/470     (  0%) |    0.0  |    0.0/0.0    | 2370.35x | 0.0 \n    466/470     ( 99%) |  125.8  |    0.0/0.0    | 1001.00x | 0.0 \n    470/470     (100%) |  127.5  |    0.0/0.0    |  992.56x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "128",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-lc-check-txs0dr4z/candidate.m4a",
+          "--object-type",
+          "lc",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "baseline_packets": 470,
+      "candidate_packets": 470,
+      "baseline_packet_sha256": "d67a0e667039fa0fa7dc0d58c43beaf04860fd94482eb41d5feed4da450d426f",
+      "candidate_packet_sha256": "d67a0e667039fa0fa7dc0d58c43beaf04860fd94482eb41d5feed4da450d426f",
+      "packet_identity": true,
+      "first_differing_packet": null
+    }
+  ],
+  "he_decode_acceptance": [
+    {
+      "candidate": "limiter",
+      "clip": "21-classic.441.16b48k.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1709 outputDelay=3010 raw_frames=473088 gapless_frames=464580\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/228     (  0%) |    0.0  |    0.0/0.0    | 1706.67x | 0.0 \n    224/228     ( 98%) |   31.3  |    0.0/0.0    | 1263.56x | 0.0 \n    229/228     (100%) |   31.9  |    0.0/0.0    | 1245.31x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ks9aoq20/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "f8dce8bc5e8aa2f890c9001108aa6c95ca5181aca51d7d273ed9529d471387f5"
+    },
+    {
+      "candidate": "limiter",
+      "clip": "fms.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1641.03x | 0.0 \n    232/236     ( 98%) |   31.4  |    0.0/0.0    | 1218.32x | 0.0 \n    237/236     (100%) |   32.0  |    0.0/0.0    | 1201.06x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-loyfqv2h/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "encoded_sha256": "6021571b34c31535f42b995701c9ed0c2ccd5376f609c3338abe1b4a1a7c045f"
+    },
+    {
+      "candidate": "limiter",
+      "clip": "sandman.16b48k.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1777.78x | 0.0 \n    232/236     ( 98%) |   31.5  |    0.0/0.0    | 1265.66x | 0.0 \n    237/236     (100%) |   31.8  |    0.0/0.0    | 1249.84x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-unu351b5/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "ae878b38502e464ed6dd57fb2e69e0307746db82341d49f969d1483d2d268176"
+    },
+    {
+      "candidate": "limiter",
+      "clip": "velvet.16b48k.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1523.81x | 0.0 \n    232/236     ( 98%) |   31.4  |    0.0/0.0    | 1179.11x | 0.0 \n    237/236     (100%) |   32.0  |    0.0/0.0    | 1164.14x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-ql_k7r02/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "77810942c5d7e8447f846f820e957d84d173aac156e0068aa305478d0654bd99"
+    },
+    {
+      "candidate": "limiter",
+      "clip": "21-classic.441.16b48k.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1709 outputDelay=3010 raw_frames=473088 gapless_frames=464580\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/228     (  0%) |    0.0  |    0.0/0.0    | 1777.78x | 0.0 \n    224/228     ( 98%) |   62.8  |    0.0/0.0    | 1059.37x | 0.0 \n    229/228     (100%) |   64.2  |    0.0/0.0    | 1043.23x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bhdhcv07/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "e11139592b0531911d40b8ec5e17326a7f0d5b068d47bbf58ff310e609c0f2cf"
+    },
+    {
+      "candidate": "limiter",
+      "clip": "fms.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1706.66x | 0.0 \n    232/236     ( 98%) |   63.0  |    0.0/0.0    | 1093.25x | 0.0 \n    237/236     (100%) |   64.2  |    0.0/0.0    | 1078.52x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-vki35qvd/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "encoded_sha256": "1a02f17d77bd979a0a8d5f736ace85b311a4441dbe4530cedd8c6a02154892b8"
+    },
+    {
+      "candidate": "limiter",
+      "clip": "sandman.16b48k.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1523.81x | 0.0 \n    232/236     ( 98%) |   63.0  |    0.0/0.0    | 1109.14x | 0.0 \n    237/236     (100%) |   64.2  |    0.0/0.0    | 1094.45x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-fok3fk_i/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "61551a090dec7c1aa3b500b0613404ef3ff1fbf98a9660253cdfd080007a468d"
+    },
+    {
+      "candidate": "limiter",
+      "clip": "velvet.16b48k.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1641.03x | 0.0 \n    232/236     ( 98%) |   62.9  |    0.0/0.0    | 1064.74x | 0.0 \n    237/236     (100%) |   64.3  |    0.0/0.0    | 1049.10x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-l554u298/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "f764b36c591370855c899eb20e94fd3dcfde3f208d2ce2d78291e25e89baec32"
+    },
+    {
+      "candidate": "noise",
+      "clip": "21-classic.441.16b48k.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1709 outputDelay=3010 raw_frames=473088 gapless_frames=464580\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/228     (  0%) |    0.0  |    0.0/0.0    | 1523.81x | 0.0 \n    224/228     ( 98%) |   31.3  |    0.0/0.0    | 1255.18x | 0.0 \n    229/228     (100%) |   31.9  |    0.0/0.0    | 1231.81x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-tev5z58u/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "a6af2870eb9fdfe2404c17e66049f5b07dce810f30572e1cff8083e777799799"
+    },
+    {
+      "candidate": "noise",
+      "clip": "fms.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1641.03x | 0.0 \n    232/236     ( 98%) |   31.4  |    0.0/0.0    | 1234.11x | 0.0 \n    237/236     (100%) |   32.0  |    0.0/0.0    | 1215.95x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-3y1mz52m/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "encoded_sha256": "997ed30d41abaa6b9b89dc1d27e4ba104b8fa32a3c56da5ba18046e9a33454c3"
+    },
+    {
+      "candidate": "noise",
+      "clip": "sandman.16b48k.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1523.81x | 0.0 \n    232/236     ( 98%) |   31.5  |    0.0/0.0    | 1238.85x | 0.0 \n    237/236     (100%) |   31.8  |    0.0/0.0    | 1221.60x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-5frivcsq/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "83149c7041ced0f73d9fa28cad565bee131cc5d3e06659415fcd5dddd507f82a"
+    },
+    {
+      "candidate": "noise",
+      "clip": "velvet.16b48k.wav",
+      "bitrate_kbps_total": 32,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 151\nConstant bitrate: 16 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1706.67x | 0.0 \n    232/236     ( 98%) |   31.4  |    0.0/0.0    | 1188.50x | 0.0 \n    237/236     (100%) |   32.0  |    0.0/0.0    | 1171.51x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "32",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-bdtb0n0f/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "b5bed67780ea284a76e41579cb887bc8a9d3cbffe3f897daa23fcdfb6b8c6198"
+    },
+    {
+      "candidate": "noise",
+      "clip": "21-classic.441.16b48k.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1709 outputDelay=3010 raw_frames=473088 gapless_frames=464580\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/228     (  0%) |    0.0  |    0.0/0.0    | 1706.67x | 0.0 \n    224/228     ( 98%) |   62.8  |    0.0/0.0    | 1105.96x | 0.0 \n    229/228     (100%) |   64.2  |    0.0/0.0    | 1088.01x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-zerk6jhk/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "291714a581667c52da761c128c3378bc463a07e665428a952ae479a7d1810c1d"
+    },
+    {
+      "candidate": "noise",
+      "clip": "fms.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1641.03x | 0.0 \n    232/236     ( 98%) |   63.0  |    0.0/0.0    | 1080.50x | 0.0 \n    237/236     (100%) |   64.2  |    0.0/0.0    | 1065.53x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1x49dkew/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+        ]
+      },
+      "encoded_sha256": "6c015fdedbbab3d87f38edd01c633eb1eebe6cf5fc0c501780711ac83d4ab950"
+    },
+    {
+      "candidate": "noise",
+      "clip": "sandman.16b48k.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1523.81x | 0.0 \n    232/236     ( 98%) |   63.0  |    0.0/0.0    | 1043.41x | 0.0 \n    237/236     (100%) |   64.2  |    0.0/0.0    | 1029.44x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-i92jnsp_/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "33d67ba01b8f94946aab1b2b429a816ee77e40804616adc4958165fd7b253ec1"
+    },
+    {
+      "candidate": "noise",
+      "clip": "velvet.16b48k.wav",
+      "bitrate_kbps_total": 64,
+      "profile": "he",
+      "rate_control": "cbr",
+      "decoders": {
+        "strict_fdk": {
+          "returncode": 0,
+          "stdout": "aot=2 core=24000 out=48000 ch=2 scale=2 priming=1040 padding=1648 outputDelay=3010 raw_frames=489472 gapless_frames=481086\n",
+          "stderr": "",
+          "command": [
+            "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/stream.m4a",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/strict_fdk.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "faad3_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+            "-q",
+            "--strict",
+            "-o",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/faad3_strict.wav",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/stream.m4a"
+          ],
+          "accepted": true,
+          "output_created": true
+        },
+        "ffmpeg_strict": {
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "command": [
+            "/opt/homebrew/bin/ffmpeg",
+            "-v",
+            "error",
+            "-xerror",
+            "-y",
+            "-i",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/stream.m4a",
+            "-sample_fmt",
+            "s16",
+            "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/ffmpeg_strict.wav"
+          ],
+          "accepted": true,
+          "output_created": true
+        }
+      },
+      "encode": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "Freeware Advanced Audio Coder\nFAAC 2.2.0 (99ce2b09-dirty)\n\nInitial quantization quality: 400\nConstant bitrate: 32 kbps/channel\nBandwidth: 12000 Hz\nObject type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS\nContainer format: MPEG-4 File Format (MP4)\nEncoding /Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav to /var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/stream.m4a\n         frame         | bitrate | elapsed/estim | play/CPU | ETA\n\n      0/236     (  0%) |    0.0  |    0.0/0.0    | 1641.03x | 0.0 \n    232/236     ( 98%) |   62.9  |    0.0/0.0    |  923.45x | 0.0 \n    237/236     (100%) |   64.3  |    0.0/0.0    |  912.08x | 0.0 \n",
+        "command": [
+          "/private/tmp/faac-he-v1-noise/build-candidate/frontend/faac",
+          "-b",
+          "64",
+          "--cbr",
+          "--overwrite",
+          "-o",
+          "/var/folders/ml/4bfrjknj5sz_v3xvxyr_ng040000gn/T/faac-he-check-1g20kk3r/stream.m4a",
+          "--object-type",
+          "he-aac-v1",
+          "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+        ]
+      },
+      "encoded_sha256": "1503979006157aae113bbc975ff78e7a194f5e9ef8c1c7cef139f8eab0e90f01"
+    }
+  ]
+}

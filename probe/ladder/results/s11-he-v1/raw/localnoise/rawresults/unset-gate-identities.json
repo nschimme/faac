@@ -1,0 +1,118 @@
+{
+  "controls": 16,
+  "identical": 16,
+  "rows": [
+    {
+      "clip": "sandman.16b48k.wav",
+      "rate_kbps": 32,
+      "baseline_sha256": "0bc6c05fe6ce7c51e747250a8caf105ad455fd6b7fa2db8e1f398bb7428c9955",
+      "candidate_sha256": "0bc6c05fe6ce7c51e747250a8caf105ad455fd6b7fa2db8e1f398bb7428c9955",
+      "identical": true
+    },
+    {
+      "clip": "sandman.16b48k.wav",
+      "rate_kbps": 48,
+      "baseline_sha256": "3322cc4f75871c0e37423c3ae1c372f39fdfa2094a39319e8213ad2cb5944dfd",
+      "candidate_sha256": "3322cc4f75871c0e37423c3ae1c372f39fdfa2094a39319e8213ad2cb5944dfd",
+      "identical": true
+    },
+    {
+      "clip": "sandman.16b48k.wav",
+      "rate_kbps": 64,
+      "baseline_sha256": "04dd86c434486713067549e73c1da322d56321e6b5a1d11fbe793fb42c3dd329",
+      "candidate_sha256": "04dd86c434486713067549e73c1da322d56321e6b5a1d11fbe793fb42c3dd329",
+      "identical": true
+    },
+    {
+      "clip": "sandman.16b48k.wav",
+      "rate_kbps": 96,
+      "baseline_sha256": "a9616ba047900c2261821003d4c688045569a443cf414f0f1689b806880f5e9f",
+      "candidate_sha256": "a9616ba047900c2261821003d4c688045569a443cf414f0f1689b806880f5e9f",
+      "identical": true
+    },
+    {
+      "clip": "velvet.16b48k.wav",
+      "rate_kbps": 32,
+      "baseline_sha256": "c19f911ca69c0942868b877f406c68e6484b3e0d8033f45aac9226157273f12b",
+      "candidate_sha256": "c19f911ca69c0942868b877f406c68e6484b3e0d8033f45aac9226157273f12b",
+      "identical": true
+    },
+    {
+      "clip": "velvet.16b48k.wav",
+      "rate_kbps": 48,
+      "baseline_sha256": "a7bb9f0bd1cb847c614688fe5c47cd06b7b357caf9b9544e922098885237d6cc",
+      "candidate_sha256": "a7bb9f0bd1cb847c614688fe5c47cd06b7b357caf9b9544e922098885237d6cc",
+      "identical": true
+    },
+    {
+      "clip": "velvet.16b48k.wav",
+      "rate_kbps": 64,
+      "baseline_sha256": "ca2a6e18c98491fbb2ffcc04a14613e763a25a84f3c9f8c2e430785649d18b25",
+      "candidate_sha256": "ca2a6e18c98491fbb2ffcc04a14613e763a25a84f3c9f8c2e430785649d18b25",
+      "identical": true
+    },
+    {
+      "clip": "velvet.16b48k.wav",
+      "rate_kbps": 96,
+      "baseline_sha256": "0c9e5b447b5b298088d6395c13ca1aeeed9187f39451885fdb58418abd654118",
+      "candidate_sha256": "0c9e5b447b5b298088d6395c13ca1aeeed9187f39451885fdb58418abd654118",
+      "identical": true
+    },
+    {
+      "clip": "glk.wav",
+      "rate_kbps": 32,
+      "baseline_sha256": "4cc7a8f8edaa9e6aede8e06727c923ec1e11ae48086db0515294ad4d957a14e4",
+      "candidate_sha256": "4cc7a8f8edaa9e6aede8e06727c923ec1e11ae48086db0515294ad4d957a14e4",
+      "identical": true
+    },
+    {
+      "clip": "glk.wav",
+      "rate_kbps": 48,
+      "baseline_sha256": "8c52a2f91750e6626e5dcf6a6905beecb50c19a302145edeec1400cb9a6e2de5",
+      "candidate_sha256": "8c52a2f91750e6626e5dcf6a6905beecb50c19a302145edeec1400cb9a6e2de5",
+      "identical": true
+    },
+    {
+      "clip": "glk.wav",
+      "rate_kbps": 64,
+      "baseline_sha256": "eb2f800304d1379121601fe48c710fd0866bd2d684d96e1d2896f8c71dfc12dc",
+      "candidate_sha256": "eb2f800304d1379121601fe48c710fd0866bd2d684d96e1d2896f8c71dfc12dc",
+      "identical": true
+    },
+    {
+      "clip": "glk.wav",
+      "rate_kbps": 96,
+      "baseline_sha256": "885080d62d626f0b4dd7a740e65dafb110704ed123ce83467fedbc32d97a93a1",
+      "candidate_sha256": "885080d62d626f0b4dd7a740e65dafb110704ed123ce83467fedbc32d97a93a1",
+      "identical": true
+    },
+    {
+      "clip": "bah.wav",
+      "rate_kbps": 32,
+      "baseline_sha256": "b2248a56fde8879f4ecd808434d9b430d6a2a94445b051c807af95e1a7e2d5f2",
+      "candidate_sha256": "b2248a56fde8879f4ecd808434d9b430d6a2a94445b051c807af95e1a7e2d5f2",
+      "identical": true
+    },
+    {
+      "clip": "bah.wav",
+      "rate_kbps": 48,
+      "baseline_sha256": "8003886d2a519f235da75bd32da489e7a422d0efa92450f59223099d4caf31e6",
+      "candidate_sha256": "8003886d2a519f235da75bd32da489e7a422d0efa92450f59223099d4caf31e6",
+      "identical": true
+    },
+    {
+      "clip": "bah.wav",
+      "rate_kbps": 64,
+      "baseline_sha256": "914917ef385c936030f927c9040dd2a15a9fc21646895f0c8a34d52fa4393730",
+      "candidate_sha256": "914917ef385c936030f927c9040dd2a15a9fc21646895f0c8a34d52fa4393730",
+      "identical": true
+    },
+    {
+      "clip": "bah.wav",
+      "rate_kbps": 96,
+      "baseline_sha256": "acc2dff52b64468b5273a8c872a9ba304d2bcff625edad51303bd75a643eb739",
+      "candidate_sha256": "acc2dff52b64468b5273a8c872a9ba304d2bcff625edad51303bd75a643eb739",
+      "identical": true
+    }
+  ]
+}

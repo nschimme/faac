@@ -1,0 +1,7 @@
+{
+  "parent_head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+  "patch": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/production-footprint/gcc13/tier17/clean-tier17-stack.patch",
+  "source_patch_sha256": "d109b48eedec1990d3dd76148be1fa8b224192ccc8fac869c17bd39d35d86f34",
+  "source_tree_sha256": "35def174d4c705b4b095d226a330c89913b9de59babaefb4f1939b4aa856e47d",
+  "staged_source": "/private/tmp/faac-he-v1-clean-tier17-gcc13/source-final"
+}

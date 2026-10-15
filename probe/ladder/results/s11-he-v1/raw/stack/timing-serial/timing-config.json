@@ -1,0 +1,127 @@
+{
+  "baseline_binary": {
+    "linked_libraries": [
+      {
+        "install_name": "@rpath/libfaac.2.dylib",
+        "resolved_build_path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+        "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+        "version_info": " 2.0.0, current version 2.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libiconv.2.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 7.0.0, current version 7.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libSystem.B.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "path": "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+    "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+  },
+  "baseline_source_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "candidate_binary": {
+    "linked_libraries": [
+      {
+        "install_name": "@rpath/libfaac.2.dylib",
+        "resolved_build_path": "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib",
+        "sha256": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+        "version_info": " 2.0.0, current version 2.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libiconv.2.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 7.0.0, current version 7.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libSystem.B.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "path": "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+    "sha256": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87"
+  },
+  "candidate_source_commit": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+  "clips": {
+    "fms.wav": {
+      "channels": 2,
+      "pcm_method": "direct concatenation of original interleaved PCM frames; no resampling or format conversion",
+      "repeat_count": 12,
+      "repeated_duration_seconds": 120.0,
+      "repeated_frames": 5760000,
+      "repeated_pcm_sha256": "6b1a0230e0161c8e4dfda6086661e356100562276ceaa08f0c73048620d35bbd",
+      "repeated_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/stack/timing-serial/inputs/fms.wav",
+      "repeated_wav_sha256": "3d476edb2965952bb797dd506fda604e8ae6f8b9d2dc21afcdcbdf21b7d2c13f",
+      "sample_rate_hz": 48000,
+      "sample_width_bytes": 2,
+      "source_duration_seconds": 10.0,
+      "source_frames": 480000,
+      "source_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+      "source_pcm_sha256": "d27a1b961a0ca07ae9499b4558bdc2a3c34cb299db763dcd850ac9f088dc3c1e",
+      "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917"
+    },
+    "sandman.16b48k.wav": {
+      "channels": 2,
+      "pcm_method": "direct concatenation of original interleaved PCM frames; no resampling or format conversion",
+      "repeat_count": 12,
+      "repeated_duration_seconds": 120.0,
+      "repeated_frames": 5760000,
+      "repeated_pcm_sha256": "37dff67091047d91b91959ecdf58a6bd666071d0f0a0ec84b2acfec82038b58c",
+      "repeated_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/stack/timing-serial/inputs/sandman.16b48k.wav",
+      "repeated_wav_sha256": "904392767efe66d0e389d90ba9f34856183dcdd0bf027ed890d93961fb431b20",
+      "sample_rate_hz": 48000,
+      "sample_width_bytes": 2,
+      "source_duration_seconds": 10.0,
+      "source_frames": 480000,
+      "source_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+      "source_pcm_sha256": "5aef0923a39f65100657641df49f1e5fa34546eed327786437240d394d5c5e28",
+      "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18"
+    }
+  },
+  "created_utc": "2026-10-14T12:03:45.021432+00:00",
+  "environment": "All FAAC_SBR_* probe variables are removed; each encode is a separate measure_peak_ram invocation",
+  "host": {
+    "architecture": "arm64",
+    "system": "Darwin Nilss-MBP.lan 27.0.0 Darwin Kernel Version 27.0.0: Tue Aug 11 21:22:49 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T6000 arm64"
+  },
+  "libfaac_dylibs": {
+    "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib": {
+      "sha256": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786"
+    },
+    "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": {
+      "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+    }
+  },
+  "method": "native serial encoder timing with faac-benchmark utils.measure_peak_ram; do not overlap other quality/decoder jobs",
+  "pair_order": "20 paired observations per clip, alternating baseline/candidate then candidate/baseline",
+  "pairs_per_clip": 20,
+  "peak_ram_metric": "measure_peak_ram returned peak_rss_kb, measured separately from duration; on macOS helper converts ru_maxrss bytes to KiB",
+  "production_equivalence": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/stack/production-equivalence/production-equivalence.json",
+    "rows": {
+      "both_matches": 196,
+      "mos_reuse_allowed": 196,
+      "packet_matches": 196,
+      "pcm_matches": 196,
+      "rows": 196
+    },
+    "sha256": "fb923f390edf4916329d879c46fafd3256f81b57a25328ed05a63dbee13337ec"
+  },
+  "profile": "HE-AAC v1; command must force he-aac-v1 and ffprobe must report HE-AAC",
+  "schema": 1,
+  "stack18_reference_results": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/stack/results-all/stack-results.json",
+    "sha256": "87a61b6147480dfc1f4cf96d8c64d03c51e57c35070366f50b5bae5440ce2530"
+  },
+  "start_requested": true,
+  "target_kbps": 64,
+  "timing_metric": "measure_peak_ram returned encoder subprocess duration_seconds"
+}

@@ -1,0 +1,657 @@
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index 0970628a..ef6604f8 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -17,6 +17,8 @@
+ #include <string.h>
+ #include <math.h>
+ #include <assert.h>
++#include <errno.h>
++#include <stdio.h>
+ 
+ #include "sbr.h"
+ #include "sbr_tables.h"
+@@ -140,6 +142,66 @@ static int build_freq_table(SBRInfo *sbr)
+     return n_master;
+ }
+ 
++static int sbr_probe_int(const char *name, int fallback, int min, int max)
++{
++    const char *text = getenv(name);
++    char *end;
++    long value;
++
++    if (!text || !*text) return fallback;
++    errno = 0;
++    value = strtol(text, &end, 10);
++    if (errno || end == text || *end || value < min || value > max) return fallback;
++    return (int)value;
++}
++
++static void sbr_build_source_map(SBRInfo *sbr)
++{
++    int k0 = sbr->kx, kx = sbr->kx, k2 = sbr->k2, M = k2 - kx;
++    int msb = k0, usb = kx, np = 0, patchStart[SBR_MAX_BANDS], patchNum[SBR_MAX_BANDS];
++    int goal_sb = (int)((2048000 + ((unsigned int)sbr->sampleRate >> 1)) / sbr->sampleRate);
++    int k;
++    memset(sbr->sourceMap, 255, sizeof(sbr->sourceMap));
++    if (goal_sb < kx + M) {
++        for (k = 0; k < sbr->numBands && sbr->bandEdges[k] < goal_sb; k++) ;
++    } else {
++        k = sbr->numBands;
++    }
++    int sb;
++    for (int pass = 0; pass < 4 * 6; pass++) {
++        int j = k + 1, odd;
++        do {
++            j--;
++            sb = sbr->bandEdges[j];
++            odd = (sb - 2 + k0) & 1;
++        } while (sb > k0 - 1 + msb - odd && j > 0);
++
++        int num = sb - usb > 0 ? sb - usb : 0;
++        int patch_start = k0 - odd - num;
++        if (num > 0) {
++            if (np < SBR_MAX_BANDS) { patchStart[np] = usb; patchNum[np] = num; }
++            for (int x = 0; x < num; x++) {
++                int target = usb + x, source = patch_start + x;
++                if (target >= 0 && target < SBR_QMF_BANDS_64 && source >= 0 && source < kx)
++                    sbr->sourceMap[target] = (uint8_t)source;
++            }
++            usb = sb;
++            msb = sb;
++            np++;
++        } else {
++            msb = kx;
++        }
++        if (k < sbr->numBands && sbr->bandEdges[k] - sb < 3) k = sbr->numBands;
++        if (sb == kx + M) break;
++        if (pass == 4 * 6 - 1) memset(sbr->sourceMap, 255, sizeof(sbr->sourceMap));
++    }
++    if (np > 1 && patchNum[np - 1] < 3) {
++        for (int x = 0; x < patchNum[np - 1]; x++) sbr->sourceMap[patchStart[np - 1] + x] = 255;
++        np--;
++    }
++    if (!np) memset(sbr->sourceMap, 255, sizeof(sbr->sourceMap));
++}
++
+ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+ {
+     size_t size = sizeof(SBRInfo) + channels * sizeof(SBRChannel);
+@@ -149,6 +211,20 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+     sbr->sbrPresent = 1;
+     sbr->numChannels = channels;
+     sbr->sampleRate = sampleRate;
++    const char *adaptive = getenv("FAAC_SBR_ADAPTIVE_NOISE");
++    sbr->adaptiveNoise = adaptive && adaptive[0] == '1' && adaptive[1] == '\0';
++    adaptive = getenv("FAAC_SBR_ADAPTIVE_INVF");
++    sbr->adaptiveInvf = adaptive && adaptive[0] == '1' && adaptive[1] == '\0';
++    sbr->invfTonalityDb = sbr_probe_int("FAAC_SBR_INVF_TONALITY_DB", 0, 0, 1);
++    sbr->staticNoiseLevel = sbr_probe_int("FAAC_SBR_STATIC_NOISE_LEVEL", SBR_NOISE_LEVEL_DEFAULT, 0, 30);
++    sbr->noiseMinLevel = sbr_probe_int("FAAC_SBR_NOISE_MIN_LEVEL", 12, 0, 30);
++    sbr->noiseMaxLevel = sbr_probe_int("FAAC_SBR_NOISE_MAX_LEVEL", 24, 0, 30);
++    if (sbr->noiseMinLevel > sbr->noiseMaxLevel) {
++        sbr->noiseMinLevel = 12;
++        sbr->noiseMaxLevel = 24;
++    }
++    sbr->noiseOffsetLog2 = sbr_probe_int("FAAC_SBR_NOISE_OFFSET_LOG2", -8, -16, 0);
++    sbr->bs_noise_bands = sbr_probe_int("FAAC_SBR_LOCAL_NOISE_BANDS", 0, 0, 2);
+ 
+     /* Pre-calculate twiddle factors for the FFT-based QMF analysis.
+      * These coefficients rotate the subband indices into the odd-frequency
+@@ -189,6 +265,28 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
+     sbr->k2 = compute_k2(sampleRate, sbr->bs_stop_freq);
+ 
+     build_freq_table(sbr);
++    sbr->numNoiseBands = sbr->bs_noise_bands ?
++        clamp_int((int)floor((double)sbr->bs_noise_bands * log2((double)sbr->k2 / sbr->kx) + 0.5), 1, SBR_MAX_NOISE_BANDS) : 1;
++    sbr->noiseEdges[0] = sbr->kx;
++    if (!sbr->bs_noise_bands) {
++        sbr->noiseEdges[1] = sbr->k2;
++    } else {
++        int idx = 0;
++        for (int q = 1; q <= sbr->numNoiseBands; q++) {
++            idx += (sbr->numBandsLow - idx) / (sbr->numNoiseBands + 1 - q);
++            sbr->noiseEdges[q] = sbr->bandEdgesLow[idx];
++        }
++    }
++    sbr_build_source_map(sbr);
++    for (int ch = 0; ch < sbr->numChannels; ch++)
++        for (int q = 0; q < SBR_MAX_NOISE_BANDS; q++)
++            for (int p = 0; p < 2; p++) sbr->ch[ch].ref[p].noiseLast[q] = SBR_NOISE_LEVEL_DEFAULT;
++    const char *trace = getenv("FAAC_SBR_LOCAL_NOISE_TRACE");
++    if (trace && trace[0] == '1' && trace[1] == '\0') {
++        fprintf(stderr, "SBR noise table rate=%d selector=%d nq=%d edges=", sampleRate, sbr->bs_noise_bands, sbr->numNoiseBands);
++        for (int q = 0; q <= sbr->numNoiseBands; q++) fprintf(stderr, "%s%d", q ? "," : "", sbr->noiseEdges[q]);
++        fputc('\n', stderr);
++    }
+ }
+ 
+ void SbrEnd(SBRInfo *sbr)
+@@ -201,6 +299,9 @@ void SbrEnd(SBRInfo *sbr)
+  * legal payload: numEnvelopes == 0 encodes no grid at all. */
+ static void sbr_frame_silence(SbrFrameData *fd, int channels)
+ {
++    const char *adaptive = getenv("FAAC_SBR_ADAPTIVE_NOISE");
++    int isAdaptive = adaptive && adaptive[0] == '1' && adaptive[1] == '\0';
++    int level;
+     memset(fd, 0, sizeof(*fd) + channels * sizeof(fd->ch[0]));
+     fd->numEnvelopes = 1;
+     fd->eff_amp_res  = 0;
+@@ -209,6 +310,17 @@ static void sbr_frame_silence(SbrFrameData *fd, int channels)
+     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
+     fd->bsPointer    = 0;
+     fd->freqRes      = 1;
++    for (int ch = 0; ch < channels; ch++) for (int q = 0; q < SBR_MAX_NOISE_BANDS; q++) fd->ch[ch].invfMode[q] = SBR_INVF_MODE;
++    if (isAdaptive) {
++        int min = sbr_probe_int("FAAC_SBR_NOISE_MIN_LEVEL", 12, 0, 30);
++        int max = sbr_probe_int("FAAC_SBR_NOISE_MAX_LEVEL", 24, 0, 30);
++        if (min > max) { min = 12; max = 24; }
++        level = clamp_int(8, min, max);
++    } else {
++        level = sbr_probe_int("FAAC_SBR_STATIC_NOISE_LEVEL", SBR_NOISE_LEVEL_DEFAULT, 0, 30);
++    }
++    for (int ch = 0; ch < channels; ch++) for (int e = 0; e < 2; e++)
++        for (int q = 0; q < SBR_MAX_NOISE_BANDS; q++) fd->ch[ch].noiseLevel[e][q] = (uint8_t)level;
+ }
+ 
+ SBRContext *SbrContextInit(int channels)
+@@ -358,7 +470,8 @@ static inline float fast_log2(float x)
+  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
+  * a standard 128-point implementation. Phase info is discarded as the
+  * SBR bitstream only transmits envelope magnitudes. */
+-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
++void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy,
++                    int kx, int k2, float (*qmf)[2])
+ {
+     float x[128], y[128];
+     float * restrict xr = x, * restrict xi = x + 64;
+@@ -399,6 +512,10 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
+         float Sr = Ar + wr * Br - wi * Bi;
+         float Si = Ai + wr * Bi + wi * Br;
+         energy[k] += Sr * Sr + Si * Si;
++        if (qmf) {
++            qmf[k][0] = Sr;
++            qmf[k][1] = Si;
++        }
+     }
+ }
+ 
+@@ -459,6 +576,12 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
+ 
+     sbr_adopt_envelope_grid(sbr, sa, fd);
+     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
++    for (int ch = 0; ch < numChannels; ch++) {
++        for (int e = 0; e < 2; e++) for (int q = 0; q < SBR_MAX_NOISE_BANDS; q++)
++            fd->ch[ch].noiseLevel[e][q] = (uint8_t)(sbr->adaptiveNoise ? sa->ch[ch].noiseLevel[e][q] : sbr->staticNoiseLevel);
++        for (int q = 0; q < SBR_MAX_NOISE_BANDS; q++)
++            fd->ch[ch].invfMode[q] = (uint8_t)(sbr->adaptiveInvf ? sa->ch[ch].invfMode[q] : SBR_INVF_MODE);
++    }
+ 
+ #ifdef FAAC_STATS
+     g_faacStats.sbrFrames++;
+@@ -467,7 +590,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
+     }
+     for (int ch = 0; ch < numChannels; ch++) {
+         if (isLfe[ch]) continue;
+-        g_faacStats.sbrInvfSum += SBR_INVF_MODE;
++        g_faacStats.sbrInvfSum += fd->ch[ch].invfMode[0];
+         g_faacStats.sbrInvfCount++;
+     }
+ #endif
+diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
+index 63ff26f3..0ef2ef2b 100644
+--- a/libfaac/sbr_analysis.c
++++ b/libfaac/sbr_analysis.c
+@@ -18,6 +18,9 @@
+ #include "sbr_internal.h"
+ #include "util.h"
+ #include <string.h>
++#include <math.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ /* Which envelope a QMF slot falls in; slots before tEnv[0] fold into
+  * envelope 0 rather than dropping their energy. */
+@@ -28,12 +31,24 @@ static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slo
+     return e;
+ }
+ 
++static uint8_t sbr_invf_region(double value, const int borders[4], int previous, int valid)
++{
++    int region = 0;
++    while (region < 4 && value >= borders[region]) region++;
++    if (valid) {
++        while (region > previous && value < borders[previous] + 1) region--;
++        while (region < previous && value >= borders[previous - 1] - 1) region++;
++    }
++    return (uint8_t)region;
++}
++
+ /* Multi-pass signal analysis: transient detection, temporal grid selection,
+  * and subband energy accumulation. */
+ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
+ {
+     int num_slots = numSamples / SBR_QMF_BANDS_64;
+     float workspace[SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
++    for (int ch = 0; ch < nch; ch++) for (int q = 0; q < SBR_MAX_NOISE_BANDS; q++) sa->ch[ch].invfMode[q] = SBR_INVF_MODE;
+ 
+     /* Pass 1: Time-domain transient detection. Identifies the temporal position
+      * and strength of transients across all channels. */
+@@ -116,8 +131,13 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+     if (sbr) {
+         int kx = sbr->kx;
+         int kEnd = sbr->k2;
++        int adaptiveAnalysis = sbr->adaptiveNoise || sbr->adaptiveInvf;
++        float stat[2][SBR_QMF_BANDS_64][9];
++        double tonality[2][SBR_QMF_BANDS_64];
++        memset(tonality, 0, sizeof(tonality));
+         for (int ch = 0; ch < nch; ch++) {
+             if (isLfe[ch]) continue;
++            memset(stat, 0, sizeof(stat));
+             memset(sa->ch[ch].bandE, 0, sizeof(sa->ch[ch].bandE));
+ 
+             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
+@@ -129,8 +149,116 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+ #endif
+                 {
+                     int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
+-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->ch[ch].bandE[e], kx, kEnd);
++                    float qmf[SBR_QMF_BANDS_64][2] = {{0}};
++                    int q0 = adaptiveAnalysis ? 0 : kx;
++                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->ch[ch].bandE[e], q0, kEnd,
++                                   adaptiveAnalysis ? qmf : NULL);
++                    if (adaptiveAnalysis) {
++                        for (int k = 0; k < kEnd; k++) {
++                            double cr = qmf[k][0], ci = qmf[k][1];
++                            double p1r = sbr->ch[ch].qmfPrev[0][k][0], p1i = sbr->ch[ch].qmfPrev[0][k][1];
++                            double p2r = sbr->ch[ch].qmfPrev[1][k][0], p2i = sbr->ch[ch].qmfPrev[1][k][1];
++                            if (sbr->ch[ch].qmfHistory >= 2) {
++                                float *v = stat[e][k];
++                                v[0] += (float)(cr*cr + ci*ci); v[1] += (float)(p1r*p1r + p1i*p1i);
++                                v[2] += (float)(p2r*p2r + p2i*p2i);
++                                v[3] += (float)(p1r*p2r + p1i*p2i); v[4] += (float)(p1r*p2i - p1i*p2r);
++                                v[5] += (float)(p1r*cr + p1i*ci); v[6] += (float)(p1r*ci - p1i*cr);
++                                v[7] += (float)(p2r*cr + p2i*ci); v[8] += (float)(p2r*ci - p2i*cr);
++                            }
++                            sbr->ch[ch].qmfPrev[1][k][0] = sbr->ch[ch].qmfPrev[0][k][0];
++                            sbr->ch[ch].qmfPrev[1][k][1] = sbr->ch[ch].qmfPrev[0][k][1];
++                            sbr->ch[ch].qmfPrev[0][k][0] = qmf[k][0];
++                            sbr->ch[ch].qmfPrev[0][k][1] = qmf[k][1];
++                        }
++                        if (sbr->ch[ch].qmfHistory < 2) sbr->ch[ch].qmfHistory++;
++                    }
++                }
++            }
++            if (adaptiveAnalysis) {
++                int split = sa->numEnvelopes > 1 ? envStart[1] : num_slots;
++                int starts[2] = {0, split}, ends[2] = {split, num_slots};
++                for (int e = 0; e < sa->numEnvelopes; e++) {
++                    int a = starts[e], z = ends[e];
++                    double n = z > a ? z - a : 1;
++                    for (int k = 0; k < kEnd; k++) {
++                        float *v = stat[e][k];
++                        double p00=v[0]/n, p11=v[1]/n, p22=v[2]/n;
++                        double p12r=v[3]/n, p12i=v[4]/n, r1r=v[5]/n, r1i=v[6]/n, r2r=v[7]/n, r2i=v[8]/n;
++                        double p11e=p11*(1.0+1e-6), p22e=p22*(1.0+1e-6);
++                        double det=p11e*p22e-p12r*p12r-p12i*p12i;
++                        double pred=0;
++                        if (p00 > SBR_ENERGY_FLOOR && p11 > 0) {
++                            double zre=p12r*r2r-p12i*r2i, zim=p12r*r2i+p12i*r2r;
++                            if (det > 0) {
++                                pred=(p22e*(r1r*r1r+r1i*r1i)+p11e*(r2r*r2r+r2i*r2i)-2*(r1r*zre+r1i*zim))/det;
++                            } else {
++                                pred=(r1r*r1r+r1i*r1i)/p11;
++                            }
++                            if (pred < 0) pred=0;
++                            if (pred > (1.0-1e-6)*p00) pred=(1.0-1e-6)*p00;
++                        }
++                        tonality[e][k]=pred > 0 ? pred/fmax(p00-pred,1e-15) : 0;
++                    }
++                }
++                double orig[2][SBR_MAX_NOISE_BANDS]={{0}}, src[2][SBR_MAX_NOISE_BANDS]={{0}};
++                double meanOrig=0, meanSrc=0;
++                int nq=sbr->numNoiseBands;
++                for (int e=0;e<sa->numEnvelopes;e++) for (int q=0;q<nq;q++) {
++                    int lo=sbr->noiseEdges[q], hi=sbr->noiseEdges[q+1], count=hi-lo;
++                    if (count<1) count=1;
++                    for (int k=lo;k<hi;k++) {
++                        orig[e][q]+=tonality[e][k];
++                        int source=sbr->sourceMap[k];
++                        if (source<SBR_QMF_BANDS_64) src[e][q]+=tonality[e][source];
++                    }
++                    orig[e][q]/=count; src[e][q]/=count;
++                    meanOrig+=orig[e][q]; meanSrc+=src[e][q];
++                }
++                meanOrig/=sa->numEnvelopes*nq; meanSrc/=sa->numEnvelopes*nq;
++                SignalAnalysisChannel *analysis=&sa->ch[ch];
++                analysis->invfTorig=(float)meanOrig; analysis->invfTsource=(float)meanSrc;
++                analysis->invfFilteredTorig=(float)meanOrig; analysis->invfFilteredTsource=(float)meanSrc;
++                const char *trace=getenv("FAAC_SBR_NOISE_TRACE");
++                int traceOn=trace && trace[0]=='1' && trace[1]=='\0';
++                static const uint8_t stationary[5][5]={{2,1,0,0,0},{2,1,0,0,0},{3,2,1,0,0},{3,3,2,0,0},{3,3,2,0,0}};
++                static const uint8_t transient[5][5]={{1,1,1,0,0},{1,1,1,0,0},{3,2,2,0,0},{3,3,2,0,0},{3,3,2,0,0}};
++                const uint8_t (*matrix)[5] = sa->frameClass != SBR_FRAME_CLASS_FIXFIX ? transient : stationary;
++                int origBorders[4]={0,3,7,10}, sourceBorders[4]={1,10,14,19};
++                for (int q=0;q<nq;q++) {
++                    double qOrig=0,qSrc=0;
++                    for(int e=0;e<sa->numEnvelopes;e++){qOrig+=orig[e][q];qSrc+=src[e][q];}
++                    qOrig/=sa->numEnvelopes;qSrc/=sa->numEnvelopes;
++                    analysis->invfMode[q]=SBR_INVF_MODE;
++                    uint8_t origRegion=0,sourceRegion=0;
++                    double filteredOrig=qOrig,filteredSrc=qSrc;
++                    if (sbr->adaptiveInvf) {
++                        SBRChannel *state=&sbr->ch[ch];
++                        filteredOrig=state->invfToneValid ? (2.0/3.0)*qOrig+(1.0/3.0)*state->invfToneHist[0][q] : qOrig;
++                        filteredSrc=state->invfToneValid ? (2.0/3.0)*qSrc+(1.0/3.0)*state->invfToneHist[1][q] : qSrc;
++                        double ro=filteredOrig,rs=filteredSrc;
++                        if(sbr->invfTonalityDb){ro=10.0*log10(fmax(ro,1e-6));rs=10.0*log10(fmax(rs,1e-6));}
++                        origRegion=sbr_invf_region(ro,origBorders,state->invfOrigRegion[q],state->invfToneValid);
++                        sourceRegion=sbr_invf_region(rs,sourceBorders,state->invfSourceRegion[q],state->invfToneValid);
++                        analysis->invfMode[q]=matrix[sourceRegion][origRegion];
++                        state->invfToneHist[0][q]=(float)qOrig; state->invfToneHist[1][q]=(float)qSrc;
++                        state->invfOrigRegion[q]=origRegion; state->invfSourceRegion[q]=sourceRegion;
++                    }
++                    if (traceOn) fprintf(stderr,"SBR invf ch=%d band=%d Torig=%.8g Tsource=%.8g mode=%u\n",ch,q,filteredOrig,filteredSrc,analysis->invfMode[q]);
++                    if (sbr->adaptiveNoise) for(int e=0;e<sa->numEnvelopes;e++) {
++                        double denom=fmax(orig[e][q],1e-6), rawQ;
++                        if (analysis->invfMode[q] <= 2) rawQ=fmin(.25,exp2(sbr->noiseOffsetLog2)/denom);
++                        else { double correction=fmax(1.0,.25*src[e][q]/denom); rawQ=fmin(.25,(correction/denom)*exp2(sbr->noiseOffsetLog2)); }
++                        float *hist=sbr->ch[ch].noiseQHist[q];
++                        if (!sbr->ch[ch].noiseQValid[q]) { for(int h=0;h<3;h++) hist[h]=(float)rawQ; sbr->ch[ch].noiseQValid[q]=1; }
++                        double smooth=.4*rawQ+.34142135623731*hist[0]+.2*hist[1]+.05857864376269*hist[2];
++                        int level=(int)lrint(6.0-log2(fmax(smooth,1e-12)));
++                        analysis->noiseLevel[e][q]=(uint8_t)clamp_int(level,sbr->noiseMinLevel,sbr->noiseMaxLevel);
++                        if(traceOn) fprintf(stderr,"SBR noise ch=%d env=%d band=%d Torig=%.8g Tsource=%.8g rawQ=%.8g smoothedQ=%.8g finalLevel=%u\n",ch,e,q,orig[e][q],src[e][q],rawQ,smooth,analysis->noiseLevel[e][q]);
++                        hist[2]=hist[1];hist[1]=hist[0];hist[0]=(float)rawQ;
++                    }
+                 }
++                if (sbr->adaptiveInvf) sbr->ch[ch].invfToneValid=1;
+             }
+         }
+     }
+diff --git a/libfaac/sbr_analysis.h b/libfaac/sbr_analysis.h
+index b509c30d..741d66d3 100644
+--- a/libfaac/sbr_analysis.h
++++ b/libfaac/sbr_analysis.h
+@@ -17,6 +17,7 @@
+ #define SBR_ANALYSIS_H
+ 
+ #include <stdbool.h>
++#include <stdint.h>
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -29,6 +30,9 @@ extern "C" {
+ #ifndef SBR_MAX_ENVELOPES
+ #define SBR_MAX_ENVELOPES 2
+ #endif
++#ifndef SBR_MAX_NOISE_BANDS
++#define SBR_MAX_NOISE_BANDS 5
++#endif
+ 
+ struct SBRInfo;
+ 
+@@ -37,6 +41,11 @@ typedef struct SignalAnalysisChannel {
+     float transientStrength;
+     /* Each channel owns its envelope energy over the shared grid. */
+     float bandE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
++    int noiseLevel[2][SBR_MAX_NOISE_BANDS];
++    uint8_t invfMode[SBR_MAX_NOISE_BANDS];
++    float invfTorig, invfTsource;
++    float invfFilteredTorig, invfFilteredTsource;
++    uint8_t invfOrigRegion, invfSourceRegion;
+ } SignalAnalysisChannel;
+ 
+ typedef struct SignalAnalysis {
+diff --git a/libfaac/sbr_bitstream.c b/libfaac/sbr_bitstream.c
+index 6b81d837..6cbfa176 100644
+--- a/libfaac/sbr_bitstream.c
++++ b/libfaac/sbr_bitstream.c
+@@ -16,6 +16,7 @@
+ #include <assert.h>
+ #include <limits.h>
+ #include <string.h>
++#include <math.h>
+ 
+ #include "sbr.h"
+ #include "sbr_internal.h"
+@@ -25,17 +26,45 @@
+ #include "util.h"
+ #include "faac_internal.h"
+ 
++static const uint8_t noise_order[2][63] = {
++    {31,32,30,29,33,28,34,27,35,26,36,42,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,37,38,39,40,41,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62},
++    {12,11,13,10,14,0,1,2,3,4,5,6,7,8,9,15,16,17,18,19,20,21,22,23,24}
++};
++static const uint8_t noise_first[2][22] = {
++    {0,0,1,2,3,4,5,6,6,8,8,9,10,10,61,63,63,63,63,63,63,63},
++    {0,0,1,2,3,3,4,5,5,25,25,25,25,25,25,25,25,25,25,25,25,25}
++};
++
++static int noise_time_code(int balance, int delta, uint32_t *code, int *bits)
++{
++    int off = balance ? 12 : 31, n = balance ? 25 : 63, idx = -1;
++    for (int i = 0; i < n; i++) if ((int)noise_order[balance][i] - off == delta) { idx = i; break; }
++    if (idx < 0) return 0;
++    uint32_t firstCode = 0;
++    for (int len = 1; len <= 20; len++) {
++        int count = noise_first[balance][len + 1] - noise_first[balance][len];
++        if (idx >= noise_first[balance][len] && idx < noise_first[balance][len + 1]) {
++            *code = firstCode + (uint32_t)(idx - noise_first[balance][len]);
++            *bits = len;
++            return 1;
++        }
++        firstCode = (firstCode + (uint32_t)count) << 1;
++    }
++    return 0;
++}
++
+ static void put_header(const SBRInfo *sbr, BitStream *bs)
+ {
+-    /* sbr_header(), with extra_1 present and extra_2 absent (21 bits). */
+-    uint32_t header = SBR_AMP_RES;
+-    header = (header << 4) | sbr->bs_start_freq;
+-    header = (header << 4) | sbr->bs_stop_freq;
+-    header = (header << 3) | sbr->bs_xover_band;
+-    header = (header << 4) | 2; /* reserved=0, extra_1=1, extra_2=0 */
+-    header = (header << 2) | sbr->bs_freq_scale;
+-    header = (header << 1) | sbr->bs_alter_scale;
+-    PutBit(bs, header << 2, 21); /* noise_bands=0 */
++    PutBit(bs, SBR_AMP_RES, 1);
++    PutBit(bs, sbr->bs_start_freq, 4);
++    PutBit(bs, sbr->bs_stop_freq, 4);
++    PutBit(bs, sbr->bs_xover_band, 3);
++    PutBit(bs, 0, 2); /* reserved */
++    PutBit(bs, 1, 1); /* bs_header_extra_1 */
++    PutBit(bs, 0, 1); /* bs_header_extra_2 */
++    PutBit(bs, sbr->bs_freq_scale, 2);
++    PutBit(bs, sbr->bs_alter_scale, 1);
++    PutBit(bs, sbr->bs_noise_bands, 2);
+ }
+ 
+ static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
+@@ -66,6 +95,19 @@ static const SbrDeltaBook sbr_env_books[2][2] = {
+ };
+ _Static_assert(272 + (2 * 12 + 1) + (2 * T_HUFF_ENV_LAV + 1) == SBR_ENV_CODES_LEN, "sbr_env_books must tile sbr_env_codes");
+ 
++static int noise_frequency_code(int balance, const int *values, int count, BitStream *bs)
++{
++    const SbrDeltaBook *book=&sbr_env_books[balance][1];
++    const uint16_t *tab=sbr_env_codes+book->offset+book->lav;
++    PutBit(bs,values[0],5);
++    for(int i=1;i<count;i++) {
++        int d=values[i]-values[i-1];
++        if(d < -book->lav || d > book->lav) return -1;
++        PutBit(bs,(tab[d]>>5)|~63U,tab[d]&31);
++    }
++    return 0;
++}
++
+ /* Writes a run of envelope values, as time deltas against previous or as
+  * frequency deltas along the run; -1 when one falls outside the book. */
+ static int code_deltas(const int *values, const int *previous, int count, int time,
+@@ -105,6 +147,14 @@ static void couple_envelopes(SBRInfo *sbr, const SbrFrameData *fd, int ch0)
+         level[b] = (l > r ? l : r) - (d >= 2) - (!amp && d >= 5);
+         balance[b] = (clamp_int(pan + l - r, 0, 2 * pan) + 1) >> 1;
+     }
++    int n_q=fd->numEnvelopes>1?2:1;
++    for(int e=0;e<n_q;e++) for(int q=0;q<SBR_MAX_NOISE_BANDS;q++) {
++        int l=fd->ch[ch0].noiseLevel[e][q],r=fd->ch[ch0+1].noiseLevel[e][q];
++        if(l==r){sbr->cpl[0].noiseLevel[e][q]=(uint8_t)l;sbr->cpl[1].noiseLevel[e][q]=6;}
++        else {double ql=exp2(6.0-l),qr=exp2(6.0-r);
++            sbr->cpl[0].noiseLevel[e][q]=(uint8_t)clamp_int((int)lrint(6.0-log2((ql+qr)*.5)),0,30);
++            sbr->cpl[1].noiseLevel[e][q]=(uint8_t)clamp_int((int)lrint(6.0+(r-l)*.5),0,12);}
++    }
+ }
+ 
+ /* What envelope e of channel ch is coded against in time: the one before it,
+@@ -153,8 +203,9 @@ static int choose_dt(const SBRInfo *sbr, const SbrFrameData *fd, const SbrEnvDat
+ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int nch, int ch0,
+                         int sendHeader, int coupled)
+ {
++    if(coupled) for(int q=0;q<sbr->numNoiseBands;q++) if(fd->ch[ch0].invfMode[q]!=fd->ch[ch0+1].invfMode[q]) return -1;
+     const SbrEnvRef *prev = &sbr->ch[ch0].ref[~sbr->frameCount & 1];
+-    int nb = sbr_env_bands(sbr, fd), n_env = fd->numEnvelopes, n_q = n_env > 1 ? 2 : 1;
++    int nb = sbr_env_bands(sbr, fd), n_env = fd->numEnvelopes, n_q = n_env > 1 ? 2 : 1, n_noise=sbr->numNoiseBands;
+     /* Time deltas need the previous frame's envelope in the same layout;
+      * header frames stay self-contained so a decoder can start there. */
+     int noiseLinked = !sendHeader && prev->nb && prev->coupled == coupled;
+@@ -163,18 +214,36 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
+     const SbrDeltaBook *book[2] = { &sbr_env_books[0][fd->eff_amp_res], &sbr_env_books[coupled][fd->eff_amp_res] };
+     int ngrid = nch >> coupled;
+     int dt[2];
++    int noiseDt[2][2] = {{0}};
++    int noiseLinkedCh[2] = {0};
++    const SbrEnvRef *noisePrev[2] = {NULL, NULL};
++    for (int ch = 0; ch < nch; ch++) {
++        noisePrev[ch] = &sbr->ch[ch0 + ch].ref[~sbr->frameCount & 1];
++        noiseLinkedCh[ch] = !sendHeader && noisePrev[ch]->nb && noisePrev[ch]->coupled == coupled;
++    }
+ 
+     for (int ch = 0; ch < nch; ch++)
+         if ((dt[ch] = choose_dt(sbr, fd, &env[ch], ch0 + ch, linked, book[ch])) < 0) return -1;
++    for(int ch=0;ch<nch;ch++) for(int e=0;e<n_q;e++) {
++        const int *values=coupled?sbr->cpl[ch].noiseLevel[e]:fd->ch[ch0+ch].noiseLevel[e];
++        const int *prevValues=e?(coupled?sbr->cpl[ch].noiseLevel[e-1]:fd->ch[ch0+ch].noiseLevel[e-1]):noisePrev[ch]->noiseLast;
++        int freqBits=5; int freqOk=1,timeBits=0,timeOk=(e||noiseLinkedCh[ch]);
++        const SbrDeltaBook *fbook=&sbr_env_books[coupled&&ch][1];
++        for(int q=1;q<n_noise;q++){int d=values[q]-values[q-1];if(d < -fbook->lav||d>fbook->lav)freqOk=0;else freqBits+=sbr_env_codes[fbook->offset+fbook->lav+d]&31;}
++        for(int q=0;q<n_noise;q++){uint32_t code;int bits;if(!noise_time_code(coupled&&ch,values[q]-prevValues[q],&code,&bits))timeOk=0;else timeBits+=bits;}
++        if(!freqOk&&!timeOk) return -1;
++        if(timeOk&&(!freqOk||timeBits<freqBits))noiseDt[ch][e]=1;
++    }
+ 
+     PutBit(bs, 0, 1); /* bs_data_extra */
+     if (nch == 2) PutBit(bs, coupled, 1); /* bs_coupling */
+     for (int ch = 0; ch < ngrid; ch++) put_grid(sbr, fd, bs);
+     for (int ch = 0; ch < nch; ch++) {
+         for (int e = 0; e < n_env; e++) PutBit(bs, dt[ch] >> e & 1, 1);
+-        for (int q = 0; q < n_q; q++) PutBit(bs, q | noiseLinked, 1);
++        for (int q = 0; q < n_q; q++) PutBit(bs, noiseDt[ch][q], 1);
+     }
+-    for (int ch = 0; ch < ngrid; ch++) PutBit(bs, SBR_INVF_MODE, 2);
++    for (int ch = 0; ch < ngrid; ch++)
++        for(int q=0;q<n_noise;q++) PutBit(bs, fd->ch[ch0 + (coupled ? 0 : ch)].invfMode[q], 2);
+     /* Coupled pairs send envelope and noise per channel in turn; otherwise
+      * all envelopes come first, then all noise floors. k walks that order:
+      * its high bit picks the channel and its low bit envelope or noise when
+@@ -183,12 +252,11 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
+         int hi = k >> (nch - 1), lo = k & (nch - 1);
+         int ch = coupled ? hi : lo;
+         if (coupled ? lo : hi) {
+-            /* One band at a constant level: 5-bit absolute (the level, or for
+-             * a coupled balance channel the centre 6), or the time delta 0,
+-             * whose code is the single bit 0. */
+-            for (int q = 0; q < n_q; q++) {
+-                int t = q | noiseLinked;
+-                PutBit(bs, t ? 0 : (coupled & ch) ? 6 : SBR_NOISE_LEVEL_DEFAULT, t ? 1 : 5);
++            for(int e=0;e<n_q;e++) {
++                const int *values=coupled?sbr->cpl[ch].noiseLevel[e]:fd->ch[ch0+ch].noiseLevel[e];
++                const int *prevValues=e?(coupled?sbr->cpl[ch].noiseLevel[e-1]:fd->ch[ch0+ch].noiseLevel[e-1]):noisePrev[ch]->noiseLast;
++                if(noiseDt[ch][e]) for(int q=0;q<n_noise;q++){uint32_t code;int bits;noise_time_code(coupled&&ch,values[q]-prevValues[q],&code,&bits);PutBit(bs,code,bits);}
++                else noise_frequency_code(coupled&&ch,values,n_noise,bs);
+             }
+         } else {
+             for (int e = 0; e < n_env; e++)
+@@ -204,6 +272,8 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
+         cur->nb = nb;
+         cur->ampRes = fd->eff_amp_res;
+         cur->coupled = coupled;
++        const int *lastNoise=coupled?sbr->cpl[ch].noiseLevel[n_q-1]:fd->ch[ch0+ch].noiseLevel[n_q-1];
++        memcpy(cur->noiseLast,lastNoise,n_noise*sizeof(int));
+     }
+     return 0;
+ }
+diff --git a/libfaac/sbr_internal.h b/libfaac/sbr_internal.h
+index 6aed45fb..1476ee44 100644
+--- a/libfaac/sbr_internal.h
++++ b/libfaac/sbr_internal.h
+@@ -20,6 +20,10 @@
+ #include "sbr_analysis.h"
+ #include "resample.h"
+ 
++#ifndef SBR_MAX_NOISE_BANDS
++#define SBR_MAX_NOISE_BANDS 5
++#endif
++
+ /* A written frame's last envelope and the layout it was coded in: the
+  * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
+ typedef struct {
+@@ -27,6 +31,7 @@ typedef struct {
+     int nb;
+     int ampRes;
+     int coupled;
++    int noiseLast[SBR_MAX_NOISE_BANDS];
+ } SbrEnvRef;
+ 
+ /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
+@@ -36,11 +41,20 @@ typedef struct SBRChannel {
+      * its own, so a frame the rate loop writes again codes against the same
+      * reference as the first time. */
+     SbrEnvRef ref[2];
++    float noiseQHist[SBR_MAX_NOISE_BANDS][3];
++    uint8_t noiseQValid[SBR_MAX_NOISE_BANDS];
++    float qmfPrev[2][SBR_QMF_BANDS_64][2];
++    uint8_t qmfHistory;
++    float invfToneHist[2][SBR_MAX_NOISE_BANDS];
++    uint8_t invfOrigRegion[SBR_MAX_NOISE_BANDS], invfSourceRegion[SBR_MAX_NOISE_BANDS];
++    uint8_t invfToneValid;
+ } SBRChannel;
+ 
+ /* A channel's quantized envelopes, one level per band. */
+ typedef struct {
+     int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
++    int noiseLevel[2][SBR_MAX_NOISE_BANDS];
++    uint8_t invfMode[SBR_MAX_NOISE_BANDS];
+ } SbrEnvData;
+ 
+ /* One frame's coded SBR payload: every field SbrWrite reads that varies per
+@@ -77,6 +91,17 @@ struct SBRInfo {
+     int bandEdges[SBR_MAX_BANDS + 1];
+     int numBandsLow; /* low-res band count: every other high-res edge */
+     int bandEdgesLow[(SBR_MAX_BANDS + 1) / 2 + 1];
++    uint8_t sourceMap[SBR_QMF_BANDS_64];
++    int adaptiveNoise;
++    int adaptiveInvf;
++    int invfTonalityDb;
++    int staticNoiseLevel;
++    int noiseMinLevel;
++    int noiseMaxLevel;
++    int noiseOffsetLog2;
++    int bs_noise_bands;
++    int numNoiseBands;
++    int noiseEdges[SBR_MAX_NOISE_BANDS + 1];
+ 
+     /* --- bitstream header fields --- */
+     int bs_freq_res;       /* envelope frequency resolution: 1 = HIGH (f_master) */
+@@ -140,7 +165,8 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
+ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
+ void SbrEnd(SBRInfo *sbr);
+ 
+-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
++void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy,
++                    int kx, int k2, float (*qmf)[2]);
+ /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
+ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
+ 

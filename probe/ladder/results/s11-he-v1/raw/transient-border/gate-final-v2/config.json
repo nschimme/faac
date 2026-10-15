@@ -1,0 +1,121 @@
+{
+  "created_utc": "2026-10-14T17:09:21.248201+00:00",
+  "immutable_run_config": {
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "/opt/homebrew/bin/ffmpeg": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a",
+      "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87",
+      "/private/tmp/faac-he-v1-decoder-build/frontend/faad": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+      "/private/tmp/faac-he-v1-transient-border/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+    },
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "encoder_environment_recorded": "only explicit FAAC_SBR_BORDER_MODE, FAAC_SBR_BORDER_LAMBDA, FAAC_SBR_ENVCOUNT_STACK plus NUMBA_DISABLE_JIT/CCACHE_DISABLE; no full process environment is serialized",
+    "libraries": {
+      "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+      "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+      "/private/tmp/faac-he-v1-transient-border/build-probe/libfaac/libfaac.2.dylib": "edf8e9459beb57803611388f3d64ea2042402d8aee478330935cc683c1c3a575"
+    },
+    "matrix": {
+      "expected_rows": 192,
+      "features": {
+        "mode1_lam0001_base": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.001",
+          "FAAC_SBR_BORDER_MODE": "1",
+          "FAAC_SBR_ENVCOUNT_STACK": "0"
+        },
+        "mode1_lam0001_stack": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.001",
+          "FAAC_SBR_BORDER_MODE": "1",
+          "FAAC_SBR_ENVCOUNT_STACK": "1"
+        },
+        "mode1_lam0003_base": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.003",
+          "FAAC_SBR_BORDER_MODE": "1",
+          "FAAC_SBR_ENVCOUNT_STACK": "0"
+        },
+        "mode1_lam0003_stack": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.003",
+          "FAAC_SBR_BORDER_MODE": "1",
+          "FAAC_SBR_ENVCOUNT_STACK": "1"
+        },
+        "mode2_lam0001_base": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.001",
+          "FAAC_SBR_BORDER_MODE": "2",
+          "FAAC_SBR_ENVCOUNT_STACK": "0"
+        },
+        "mode2_lam0001_stack": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.001",
+          "FAAC_SBR_BORDER_MODE": "2",
+          "FAAC_SBR_ENVCOUNT_STACK": "1"
+        },
+        "mode2_lam0003_base": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.003",
+          "FAAC_SBR_BORDER_MODE": "2",
+          "FAAC_SBR_ENVCOUNT_STACK": "0"
+        },
+        "mode2_lam0003_stack": {
+          "FAAC_SBR_BORDER_LAMBDA": "0.003",
+          "FAAC_SBR_BORDER_MODE": "2",
+          "FAAC_SBR_ENVCOUNT_STACK": "1"
+        },
+        "off_base": {
+          "FAAC_SBR_BORDER_MODE": "0",
+          "FAAC_SBR_ENVCOUNT_STACK": "0"
+        },
+        "off_stack": {
+          "FAAC_SBR_BORDER_MODE": "0",
+          "FAAC_SBR_ENVCOUNT_STACK": "1"
+        }
+      },
+      "probe_off_controls": [
+        "off_base",
+        "off_stack"
+      ],
+      "reference_rows": [
+        "baseline_ref",
+        "stack_ref"
+      ]
+    },
+    "probe_changed_file_sha256": {
+      "libfaac/sbr.c": "ab168e23068d2c353b1d8eab69c97affd51a1651089ecec9ea296a060414dad1",
+      "libfaac/sbr_analysis.c": "516396c2c9eea0a38f04bddb0745357f09413203df49444316856022e6f0df78",
+      "libfaac/sbr_analysis.h": "7b71d92a91ceb785af5dd592b5d233d8bb7c02908d624f2ea4db4066ff85abb2",
+      "libfaac/sbr_bitstream.c": "3fe3acdbd4c8a4dec6451cea1bd96f404430c3a3b377d9816e333c95a41f9daa",
+      "libfaac/sbr_internal.h": "3ef01cf86af96251eb8c021c1cf77e7ed0cf8ab7bd936df7cbbdf3b3a6df3bc2"
+    },
+    "probe_diff_sha256": "cfc8fcc71637d268acd3fc08f0e70f07d16f53c605cd1a6237b5e66bb5c8e5f2",
+    "probe_head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "probe_patch_path": "/private/tmp/faac-he-v1-transient-border/probe/transient-border.patch",
+    "probe_patch_sha256": "0a9d3a2e201ca59e25f00943d0efb9ee68d8e76da99ff91de00cc1062eb2249d",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "reference_results": {
+      "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/stack/results-all/stack-results.json": "87a61b6147480dfc1f4cf96d8c64d03c51e57c35070366f50b5bae5440ce2530",
+      "/private/tmp/faac-he-v1-probes/probe/results-all/feature-results.json": "933d06f168a51456d68016b4a95ccfbe08729cafb7a2a6163b219bc888250142"
+    },
+    "runner_sha256": "c4866d48301753a9c85d1d582b502f9f054d7981649473b323da01233203a8a7",
+    "scoring": "strict FDK before MOS; Zimtohrli audio mode; actual AAC packet payload bitrate; PCHIP BD-rate and four-clip bootstrap; strict FAAD3 and FFmpeg after scoring",
+    "starting_scoring_requires_root_go": true
+  },
+  "output_dir": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/gate-final-v2",
+  "schema": 1,
+  "scoring_enabled": true,
+  "workers": 2
+}

@@ -1,0 +1,676 @@
+{
+  "input_archive": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/validation.json",
+  "new_binary": "/private/tmp/faac-upstream098-fdk-new/fdkdec",
+  "new_binary_sha256": "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18",
+  "old_binary": "/private/tmp/faac-he-v1-upstream098-run-provenance/fdkdec-at-capture",
+  "old_binary_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+  "rows": {
+    "combo_fixed8|21-classic.441.16b48k.wav|32": {
+      "archived_fdk_pcm_sha256": "5ba47dee6d2eec7ad38f30f1d8a98e68f2f9d3247f406c24c2a70d2bb3692964",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "5ba47dee6d2eec7ad38f30f1d8a98e68f2f9d3247f406c24c2a70d2bb3692964",
+        "frames": 464580,
+        "pcm_sha256": "3e57e4d8efab8e33cb6c3d0180a1670fe9a89a2d44ee03eb5396d826c6f411ca",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/32/21-classic.441.16b48k.m4a",
+      "encoded_sha256": "8783530feb1ef9d3b73d5592a9609e09405d2940b7c05131c0bbeb3510ee5dd3",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "afb2d8207788dd96894e06815ad3af954769cbf14ea6261518d5a9f84ec1e5eb",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_21-classic.441.16b48k.wav_32.wav",
+          "pcm_sha256": "3e57e4d8efab8e33cb6c3d0180a1670fe9a89a2d44ee03eb5396d826c6f411ca",
+          "rate": 48000,
+          "sha256": "afb2d8207788dd96894e06815ad3af954769cbf14ea6261518d5a9f84ec1e5eb",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "afb2d8207788dd96894e06815ad3af954769cbf14ea6261518d5a9f84ec1e5eb",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_21-classic.441.16b48k.wav_32.wav",
+          "pcm_sha256": "3e57e4d8efab8e33cb6c3d0180a1670fe9a89a2d44ee03eb5396d826c6f411ca",
+          "rate": 48000,
+          "sha256": "afb2d8207788dd96894e06815ad3af954769cbf14ea6261518d5a9f84ec1e5eb",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|21-classic.441.16b48k.wav|48": {
+      "archived_fdk_pcm_sha256": "c183493b5d7652b5087b6ac781f477acb7c930bd7d6667d71322c318e2fe8c85",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "c183493b5d7652b5087b6ac781f477acb7c930bd7d6667d71322c318e2fe8c85",
+        "frames": 464580,
+        "pcm_sha256": "2dfddd6a99ff4ab9f360cefcae091d2a78daf98b0df0e44d79fad949c1e67630",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/48/21-classic.441.16b48k.m4a",
+      "encoded_sha256": "9194777a78da0b59acc4779ccaff3325c10630d2d37d2e306a15498d3d33e63e",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "a5c4b92f9f57ea79482e682ea0a12574883babb109eacbf5643864d830412137",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_21-classic.441.16b48k.wav_48.wav",
+          "pcm_sha256": "2dfddd6a99ff4ab9f360cefcae091d2a78daf98b0df0e44d79fad949c1e67630",
+          "rate": 48000,
+          "sha256": "a5c4b92f9f57ea79482e682ea0a12574883babb109eacbf5643864d830412137",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "a5c4b92f9f57ea79482e682ea0a12574883babb109eacbf5643864d830412137",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_21-classic.441.16b48k.wav_48.wav",
+          "pcm_sha256": "2dfddd6a99ff4ab9f360cefcae091d2a78daf98b0df0e44d79fad949c1e67630",
+          "rate": 48000,
+          "sha256": "a5c4b92f9f57ea79482e682ea0a12574883babb109eacbf5643864d830412137",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|21-classic.441.16b48k.wav|64": {
+      "archived_fdk_pcm_sha256": "f4e34fbf795564931118b9f391b740b0441f1c3eb22ea849e45fd5428b9e475f",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "f4e34fbf795564931118b9f391b740b0441f1c3eb22ea849e45fd5428b9e475f",
+        "frames": 464580,
+        "pcm_sha256": "bf910f4f50cc70b72c858cc5c4928163ba3f35ac0a66a5258ae5a4fca3e409dd",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/64/21-classic.441.16b48k.m4a",
+      "encoded_sha256": "c20c35431e4a67d90bfdb53d0989bec0cab148a922f49a8f9a35c9e5ef5ce39c",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "1bc0c436f99b7dfa5c1d5e7290ae2a465bd7f21c5854f9bc9aa53aafec98bad1",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_21-classic.441.16b48k.wav_64.wav",
+          "pcm_sha256": "bf910f4f50cc70b72c858cc5c4928163ba3f35ac0a66a5258ae5a4fca3e409dd",
+          "rate": 48000,
+          "sha256": "1bc0c436f99b7dfa5c1d5e7290ae2a465bd7f21c5854f9bc9aa53aafec98bad1",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "1bc0c436f99b7dfa5c1d5e7290ae2a465bd7f21c5854f9bc9aa53aafec98bad1",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_21-classic.441.16b48k.wav_64.wav",
+          "pcm_sha256": "bf910f4f50cc70b72c858cc5c4928163ba3f35ac0a66a5258ae5a4fca3e409dd",
+          "rate": 48000,
+          "sha256": "1bc0c436f99b7dfa5c1d5e7290ae2a465bd7f21c5854f9bc9aa53aafec98bad1",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|21-classic.441.16b48k.wav|96": {
+      "archived_fdk_pcm_sha256": "a2b627a8cda6fca768a0241459020a2383c78fd791fa70f7ad9ecc4590adc3e5",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "a2b627a8cda6fca768a0241459020a2383c78fd791fa70f7ad9ecc4590adc3e5",
+        "frames": 464580,
+        "pcm_sha256": "3ae798b189eaba9e1636fa5c9b2b271e83601b64cc01e69afd8295f21135dd94",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/96/21-classic.441.16b48k.m4a",
+      "encoded_sha256": "3be725eed6dd0c51aa1b7ea3a7f01ec10ae0bf1516370146407d85c4aafc94eb",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "51c33835034a478c9cb719ece1e0d6b734a91fa4a5cdc4220bed30d12a965ab0",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_21-classic.441.16b48k.wav_96.wav",
+          "pcm_sha256": "3ae798b189eaba9e1636fa5c9b2b271e83601b64cc01e69afd8295f21135dd94",
+          "rate": 48000,
+          "sha256": "51c33835034a478c9cb719ece1e0d6b734a91fa4a5cdc4220bed30d12a965ab0",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "51c33835034a478c9cb719ece1e0d6b734a91fa4a5cdc4220bed30d12a965ab0",
+          "frames": 464580,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_21-classic.441.16b48k.wav_96.wav",
+          "pcm_sha256": "3ae798b189eaba9e1636fa5c9b2b271e83601b64cc01e69afd8295f21135dd94",
+          "rate": 48000,
+          "sha256": "51c33835034a478c9cb719ece1e0d6b734a91fa4a5cdc4220bed30d12a965ab0",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|fms.wav|32": {
+      "archived_fdk_pcm_sha256": "2167ce3b8f137ad06de2c21c9c275961a2470c2c1d9f7b3269e65b27e37ad1a4",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "2167ce3b8f137ad06de2c21c9c275961a2470c2c1d9f7b3269e65b27e37ad1a4",
+        "frames": 481086,
+        "pcm_sha256": "aa71d6ddd0d34dae76f4842ea7fabc56295bccb8c0ddce063ed14183527c356b",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/32/fms.m4a",
+      "encoded_sha256": "b6aa52e2a0bcea39eb26cbd409cd25b42305872413211486bafbde6dd931e949",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "81d285db99bf055874a1bf2829f489ee4ad2b2cc7b574aeb1b41d220f2549802",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_fms.wav_32.wav",
+          "pcm_sha256": "aa71d6ddd0d34dae76f4842ea7fabc56295bccb8c0ddce063ed14183527c356b",
+          "rate": 48000,
+          "sha256": "81d285db99bf055874a1bf2829f489ee4ad2b2cc7b574aeb1b41d220f2549802",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "81d285db99bf055874a1bf2829f489ee4ad2b2cc7b574aeb1b41d220f2549802",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_fms.wav_32.wav",
+          "pcm_sha256": "aa71d6ddd0d34dae76f4842ea7fabc56295bccb8c0ddce063ed14183527c356b",
+          "rate": 48000,
+          "sha256": "81d285db99bf055874a1bf2829f489ee4ad2b2cc7b574aeb1b41d220f2549802",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|fms.wav|48": {
+      "archived_fdk_pcm_sha256": "cbc07526fa696c7ea3291c90a7e4abe838d7013d337135ebd6d1ff580a33236c",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "cbc07526fa696c7ea3291c90a7e4abe838d7013d337135ebd6d1ff580a33236c",
+        "frames": 481086,
+        "pcm_sha256": "45f00579c542de25c4e3831371d0438458bcd9c59c53d2d8228c99b65f5c9351",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/48/fms.m4a",
+      "encoded_sha256": "4bcfea6e14c4e48004897c5543eba6fd1340b34fd9999514c41b439ee5701324",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "cf52ce4b738f9eb0ef28e9b570faf3a29e1b574755e1cdbf7ada5e1619127ec5",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_fms.wav_48.wav",
+          "pcm_sha256": "45f00579c542de25c4e3831371d0438458bcd9c59c53d2d8228c99b65f5c9351",
+          "rate": 48000,
+          "sha256": "cf52ce4b738f9eb0ef28e9b570faf3a29e1b574755e1cdbf7ada5e1619127ec5",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "cf52ce4b738f9eb0ef28e9b570faf3a29e1b574755e1cdbf7ada5e1619127ec5",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_fms.wav_48.wav",
+          "pcm_sha256": "45f00579c542de25c4e3831371d0438458bcd9c59c53d2d8228c99b65f5c9351",
+          "rate": 48000,
+          "sha256": "cf52ce4b738f9eb0ef28e9b570faf3a29e1b574755e1cdbf7ada5e1619127ec5",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|fms.wav|64": {
+      "archived_fdk_pcm_sha256": "c820942d4ce3c1121c7f1da64b3cf874ec612a13368a19b8efc220d11bee5fa7",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "c820942d4ce3c1121c7f1da64b3cf874ec612a13368a19b8efc220d11bee5fa7",
+        "frames": 481086,
+        "pcm_sha256": "e81a25a9466b1a769512188090db655a9f0469a747e97725c6bfabd7d1109e81",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/64/fms.m4a",
+      "encoded_sha256": "f5dc4b5e54d629a2a3e09062618fd877dc3ba7eb62bacb5fbdcda7461ced13c0",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "6445ea87b4e8d8bd3fa8aed9a74da5b410a5368678ab0e5d6322115377352ca0",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_fms.wav_64.wav",
+          "pcm_sha256": "e81a25a9466b1a769512188090db655a9f0469a747e97725c6bfabd7d1109e81",
+          "rate": 48000,
+          "sha256": "6445ea87b4e8d8bd3fa8aed9a74da5b410a5368678ab0e5d6322115377352ca0",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "6445ea87b4e8d8bd3fa8aed9a74da5b410a5368678ab0e5d6322115377352ca0",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_fms.wav_64.wav",
+          "pcm_sha256": "e81a25a9466b1a769512188090db655a9f0469a747e97725c6bfabd7d1109e81",
+          "rate": 48000,
+          "sha256": "6445ea87b4e8d8bd3fa8aed9a74da5b410a5368678ab0e5d6322115377352ca0",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|fms.wav|96": {
+      "archived_fdk_pcm_sha256": "5eed1d9cb6f007223ba08f6fd44c55f0aae4c7a98aa573073cb9047c1179247d",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "5eed1d9cb6f007223ba08f6fd44c55f0aae4c7a98aa573073cb9047c1179247d",
+        "frames": 481086,
+        "pcm_sha256": "faf923d27d39c5c46260314dd6cbaf83026996b677b6b2257f7f63e4ec4bb8af",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/96/fms.m4a",
+      "encoded_sha256": "26153406f21201a30146a97b59bbd26df26798fc2b824dfbaf0c1c21e2b55bce",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "1d667d7eb727318073da2ffab4a767de2e428af3950fbd13c23039ad1f1140e9",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_fms.wav_96.wav",
+          "pcm_sha256": "faf923d27d39c5c46260314dd6cbaf83026996b677b6b2257f7f63e4ec4bb8af",
+          "rate": 48000,
+          "sha256": "1d667d7eb727318073da2ffab4a767de2e428af3950fbd13c23039ad1f1140e9",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "1d667d7eb727318073da2ffab4a767de2e428af3950fbd13c23039ad1f1140e9",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_fms.wav_96.wav",
+          "pcm_sha256": "faf923d27d39c5c46260314dd6cbaf83026996b677b6b2257f7f63e4ec4bb8af",
+          "rate": 48000,
+          "sha256": "1d667d7eb727318073da2ffab4a767de2e428af3950fbd13c23039ad1f1140e9",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|sandman.16b48k.wav|32": {
+      "archived_fdk_pcm_sha256": "8f412a0f7009a60bb910be893ad0658e7310a61299fffac253c343d6e53efa68",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "8f412a0f7009a60bb910be893ad0658e7310a61299fffac253c343d6e53efa68",
+        "frames": 481086,
+        "pcm_sha256": "65dc8629781655d2786923ebc8b471e196e3df22939c08aaa6ae0db9d579d0ee",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/32/sandman.16b48k.m4a",
+      "encoded_sha256": "8c7e2ace12bcf89bfb04ccdd209578f6d18078332870978d6487aa63dc0f886f",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "fa474ab7661893d40b359f7767dcc1065aaf7028ee2c669eff72caf417fc2d95",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_sandman.16b48k.wav_32.wav",
+          "pcm_sha256": "65dc8629781655d2786923ebc8b471e196e3df22939c08aaa6ae0db9d579d0ee",
+          "rate": 48000,
+          "sha256": "fa474ab7661893d40b359f7767dcc1065aaf7028ee2c669eff72caf417fc2d95",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "fa474ab7661893d40b359f7767dcc1065aaf7028ee2c669eff72caf417fc2d95",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_sandman.16b48k.wav_32.wav",
+          "pcm_sha256": "65dc8629781655d2786923ebc8b471e196e3df22939c08aaa6ae0db9d579d0ee",
+          "rate": 48000,
+          "sha256": "fa474ab7661893d40b359f7767dcc1065aaf7028ee2c669eff72caf417fc2d95",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|sandman.16b48k.wav|48": {
+      "archived_fdk_pcm_sha256": "c11d3a2f876fe4433ad9bfc0a7d86fc183348b5d683a04ba0feaddb35b47fef7",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "c11d3a2f876fe4433ad9bfc0a7d86fc183348b5d683a04ba0feaddb35b47fef7",
+        "frames": 481086,
+        "pcm_sha256": "e7760c441bf8982b8a43802e5ff473a1865d1af65b543556fbef185989929340",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/48/sandman.16b48k.m4a",
+      "encoded_sha256": "67a6433b7b03ff159fc24b87fd66fed97dddec601f497965a51ff9f20d3a983f",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "77e53232f777b9a7bd0712eced844a0dda666ed17a085da533cc5d9ef22f7b04",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_sandman.16b48k.wav_48.wav",
+          "pcm_sha256": "e7760c441bf8982b8a43802e5ff473a1865d1af65b543556fbef185989929340",
+          "rate": 48000,
+          "sha256": "77e53232f777b9a7bd0712eced844a0dda666ed17a085da533cc5d9ef22f7b04",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "77e53232f777b9a7bd0712eced844a0dda666ed17a085da533cc5d9ef22f7b04",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_sandman.16b48k.wav_48.wav",
+          "pcm_sha256": "e7760c441bf8982b8a43802e5ff473a1865d1af65b543556fbef185989929340",
+          "rate": 48000,
+          "sha256": "77e53232f777b9a7bd0712eced844a0dda666ed17a085da533cc5d9ef22f7b04",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|sandman.16b48k.wav|64": {
+      "archived_fdk_pcm_sha256": "52e4c5a6c0af0020e88d0471cc7626ec6fb85f97c7efe482ee45c7fc08d204bc",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "52e4c5a6c0af0020e88d0471cc7626ec6fb85f97c7efe482ee45c7fc08d204bc",
+        "frames": 481086,
+        "pcm_sha256": "153d72bf50991a8f4a4f39a7a542c97415a8fbeaeb265e74e960015e0b7dbe9e",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/64/sandman.16b48k.m4a",
+      "encoded_sha256": "20282054aa43ab65dba69e8edf7fc0034c5f5fe688418273be56d927702ffe0d",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "a6498d7d04e64f7f8fd93b54a34d383aba142d663bcbf0d9e3b46945e91b42c0",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_sandman.16b48k.wav_64.wav",
+          "pcm_sha256": "153d72bf50991a8f4a4f39a7a542c97415a8fbeaeb265e74e960015e0b7dbe9e",
+          "rate": 48000,
+          "sha256": "a6498d7d04e64f7f8fd93b54a34d383aba142d663bcbf0d9e3b46945e91b42c0",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "a6498d7d04e64f7f8fd93b54a34d383aba142d663bcbf0d9e3b46945e91b42c0",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_sandman.16b48k.wav_64.wav",
+          "pcm_sha256": "153d72bf50991a8f4a4f39a7a542c97415a8fbeaeb265e74e960015e0b7dbe9e",
+          "rate": 48000,
+          "sha256": "a6498d7d04e64f7f8fd93b54a34d383aba142d663bcbf0d9e3b46945e91b42c0",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|sandman.16b48k.wav|96": {
+      "archived_fdk_pcm_sha256": "dbb9a0147c3b637398110eacc57bcbf5ac5e764d3b2fc31a53917ce9a6088407",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "dbb9a0147c3b637398110eacc57bcbf5ac5e764d3b2fc31a53917ce9a6088407",
+        "frames": 481086,
+        "pcm_sha256": "0878da5979f005bfe37213ae9e236332c9909d9676665294c9afb9fbe5d2f585",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/96/sandman.16b48k.m4a",
+      "encoded_sha256": "b5c4b4aa80594eb0aa920fbc18e475f5adafe4b8f2a05d5e7aa1ad0908d0383b",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "9c879df5ccb569b6635066da7ac1162dfdcb2728c3e390986ae40ac72039af49",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_sandman.16b48k.wav_96.wav",
+          "pcm_sha256": "0878da5979f005bfe37213ae9e236332c9909d9676665294c9afb9fbe5d2f585",
+          "rate": 48000,
+          "sha256": "9c879df5ccb569b6635066da7ac1162dfdcb2728c3e390986ae40ac72039af49",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "9c879df5ccb569b6635066da7ac1162dfdcb2728c3e390986ae40ac72039af49",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_sandman.16b48k.wav_96.wav",
+          "pcm_sha256": "0878da5979f005bfe37213ae9e236332c9909d9676665294c9afb9fbe5d2f585",
+          "rate": 48000,
+          "sha256": "9c879df5ccb569b6635066da7ac1162dfdcb2728c3e390986ae40ac72039af49",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|velvet.16b48k.wav|32": {
+      "archived_fdk_pcm_sha256": "b5e23c88c03e31b2e941574248a5e20c419b9202e3140e71308485a6974b5538",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "b5e23c88c03e31b2e941574248a5e20c419b9202e3140e71308485a6974b5538",
+        "frames": 481086,
+        "pcm_sha256": "03593a9e023adb438c6ef2c4c4a65dbe37cd9ec893b20a84431fb2f8c83906e3",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/32/velvet.16b48k.m4a",
+      "encoded_sha256": "265e7d955047031fbc5db95487b67244faf5bd3a7b9f35f099e4cf0e260cefbd",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "93acba4787f324a370d8d7203995ae190c754d8f89d21df5523fd3d8176556e8",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_velvet.16b48k.wav_32.wav",
+          "pcm_sha256": "03593a9e023adb438c6ef2c4c4a65dbe37cd9ec893b20a84431fb2f8c83906e3",
+          "rate": 48000,
+          "sha256": "93acba4787f324a370d8d7203995ae190c754d8f89d21df5523fd3d8176556e8",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "93acba4787f324a370d8d7203995ae190c754d8f89d21df5523fd3d8176556e8",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_velvet.16b48k.wav_32.wav",
+          "pcm_sha256": "03593a9e023adb438c6ef2c4c4a65dbe37cd9ec893b20a84431fb2f8c83906e3",
+          "rate": 48000,
+          "sha256": "93acba4787f324a370d8d7203995ae190c754d8f89d21df5523fd3d8176556e8",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|velvet.16b48k.wav|48": {
+      "archived_fdk_pcm_sha256": "8aea50a57c648b80da63ff47c0d71e77b9ea89bf8f5b329a141d614c8263e4c0",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "8aea50a57c648b80da63ff47c0d71e77b9ea89bf8f5b329a141d614c8263e4c0",
+        "frames": 481086,
+        "pcm_sha256": "4986408d5543d995f754a39b7e933bc8c17a7575b958a4026003ba06ab7e2698",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/48/velvet.16b48k.m4a",
+      "encoded_sha256": "3467dd74ce553a8b461cc3762373443d7e8459db95da32bd2e22281e4ecb1557",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "4c9771a167865581711c49c078ae20bf2771f824a9ac6b4cd3c239694789af0b",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_velvet.16b48k.wav_48.wav",
+          "pcm_sha256": "4986408d5543d995f754a39b7e933bc8c17a7575b958a4026003ba06ab7e2698",
+          "rate": 48000,
+          "sha256": "4c9771a167865581711c49c078ae20bf2771f824a9ac6b4cd3c239694789af0b",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "4c9771a167865581711c49c078ae20bf2771f824a9ac6b4cd3c239694789af0b",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_velvet.16b48k.wav_48.wav",
+          "pcm_sha256": "4986408d5543d995f754a39b7e933bc8c17a7575b958a4026003ba06ab7e2698",
+          "rate": 48000,
+          "sha256": "4c9771a167865581711c49c078ae20bf2771f824a9ac6b4cd3c239694789af0b",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|velvet.16b48k.wav|64": {
+      "archived_fdk_pcm_sha256": "77b1fb38818e7e44c7e83d06b78b9d6fc0ce0d941aea09cfec368a310b7ebc9b",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "77b1fb38818e7e44c7e83d06b78b9d6fc0ce0d941aea09cfec368a310b7ebc9b",
+        "frames": 481086,
+        "pcm_sha256": "70719931aaa5f1328e997fa40ea0a84c6736d7279a5add0fd70fc1751440c4be",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/64/velvet.16b48k.m4a",
+      "encoded_sha256": "abe4c18cf865dc53ef78fa879c6cd93f9f0affaba4e5a1ba968a88dece43c322",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "da94098a39de2b17af90c6d092d582dd4818ca98c3060a69a00ba31de234cecd",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_velvet.16b48k.wav_64.wav",
+          "pcm_sha256": "70719931aaa5f1328e997fa40ea0a84c6736d7279a5add0fd70fc1751440c4be",
+          "rate": 48000,
+          "sha256": "da94098a39de2b17af90c6d092d582dd4818ca98c3060a69a00ba31de234cecd",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "da94098a39de2b17af90c6d092d582dd4818ca98c3060a69a00ba31de234cecd",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_velvet.16b48k.wav_64.wav",
+          "pcm_sha256": "70719931aaa5f1328e997fa40ea0a84c6736d7279a5add0fd70fc1751440c4be",
+          "rate": 48000,
+          "sha256": "da94098a39de2b17af90c6d092d582dd4818ca98c3060a69a00ba31de234cecd",
+          "stderr": ""
+        }
+      }
+    },
+    "combo_fixed8|velvet.16b48k.wav|96": {
+      "archived_fdk_pcm_sha256": "8a0ea79e4fdf06bbee77a5347c6b02c242143d825157eb7d95adee9e3bf29501",
+      "archived_pcm": {
+        "channels": 2,
+        "file_sha256": "8a0ea79e4fdf06bbee77a5347c6b02c242143d825157eb7d95adee9e3bf29501",
+        "frames": 481086,
+        "pcm_sha256": "e1e28bee93a378d1dd0e1111df76ef4275a88c2940aeed888210f9855e701735",
+        "rate": 48000
+      },
+      "encoded": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream-fixed8-validation/artifacts/combo_fixed8/96/velvet.16b48k.m4a",
+      "encoded_sha256": "51efd184fa470672df61c79e830c4e675ad49a4f6874c7009cf36f01617b74c1",
+      "old_new_equal": true,
+      "outputs": {
+        "new": {
+          "channels": 2,
+          "file_sha256": "8d8247671ef44c66f8338fd18f9f5ffd4dbf8de7d7b6c3305cae8a53cc3e1fa9",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/new/combo_fixed8_velvet.16b48k.wav_96.wav",
+          "pcm_sha256": "e1e28bee93a378d1dd0e1111df76ef4275a88c2940aeed888210f9855e701735",
+          "rate": 48000,
+          "sha256": "8d8247671ef44c66f8338fd18f9f5ffd4dbf8de7d7b6c3305cae8a53cc3e1fa9",
+          "stderr": ""
+        },
+        "old": {
+          "channels": 2,
+          "file_sha256": "8d8247671ef44c66f8338fd18f9f5ffd4dbf8de7d7b6c3305cae8a53cc3e1fa9",
+          "frames": 481086,
+          "matches_archived": false,
+          "matches_archived_frames_channels_rate": true,
+          "matches_archived_pcm": true,
+          "path": "/private/tmp/faac-upstream098-fdk-ab/old/combo_fixed8_velvet.16b48k.wav_96.wav",
+          "pcm_sha256": "e1e28bee93a378d1dd0e1111df76ef4275a88c2940aeed888210f9855e701735",
+          "rate": 48000,
+          "sha256": "8d8247671ef44c66f8338fd18f9f5ffd4dbf8de7d7b6c3305cae8a53cc3e1fa9",
+          "stderr": ""
+        }
+      }
+    }
+  },
+  "schema": 1,
+  "summary": {
+    "errors": [],
+    "new_matches_archived": 0,
+    "new_matches_archived_pcm": 16,
+    "old_matches_archived": 0,
+    "old_matches_archived_pcm": 16,
+    "old_new_equal": 16,
+    "old_new_pcm_equal": 16,
+    "rows": 16
+  }
+}

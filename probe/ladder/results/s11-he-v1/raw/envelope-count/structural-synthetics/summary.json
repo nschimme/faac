@@ -1,0 +1,2158 @@
+{
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87",
+    "/private/tmp/faac-he-v1-decoder-build/frontend/faad": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+    "/private/tmp/faac-he-v1-envelopes/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+  },
+  "comparisons": {
+    "asymmetric_stereo": {
+      "candidate_default_packet_match": true,
+      "candidate_default_pcm_match": true,
+      "stack_mode0_packet_match": true,
+      "stack_mode0_pcm_match": true
+    },
+    "busy_am_retry": {
+      "candidate_default_packet_match": true,
+      "candidate_default_pcm_match": true,
+      "stack_mode0_packet_match": true,
+      "stack_mode0_pcm_match": true
+    },
+    "silence": {
+      "candidate_default_packet_match": true,
+      "candidate_default_pcm_match": true,
+      "stack_mode0_packet_match": true,
+      "stack_mode0_pcm_match": true
+    },
+    "smooth_am_highband": {
+      "candidate_default_packet_match": true,
+      "candidate_default_pcm_match": true,
+      "stack_mode0_packet_match": true,
+      "stack_mode0_pcm_match": true
+    },
+    "stationary_tone": {
+      "candidate_default_packet_match": true,
+      "candidate_default_pcm_match": true,
+      "stack_mode0_packet_match": true,
+      "stack_mode0_pcm_match": true
+    },
+    "white_noise": {
+      "candidate_default_packet_match": true,
+      "candidate_default_pcm_match": true,
+      "stack_mode0_packet_match": true,
+      "stack_mode0_pcm_match": true
+    }
+  },
+  "created_utc": "2026-10-14T13:18:13.610899+00:00",
+  "inputs": {
+    "asymmetric_stereo": {
+      "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/structural-synthetics/inputs/asymmetric_stereo.wav",
+      "sha256": "06576878a35fc7ced959a603e3328b2f5ece2e71e65ed1c3754433126054d87d"
+    },
+    "busy_am_retry": {
+      "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/structural-synthetics/inputs/busy_am_retry.wav",
+      "sha256": "a4dc30c199faa404c1ed445e265f290fdfcb4664ebff2dfeea45d08e4a5ea664"
+    },
+    "silence": {
+      "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/structural-synthetics/inputs/silence.wav",
+      "sha256": "46ea71da247c66a543a722efb94bc0008c5448bc6b03da650b8d818627c196ac"
+    },
+    "smooth_am_highband": {
+      "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/structural-synthetics/inputs/smooth_am_highband.wav",
+      "sha256": "68a8045d4ee6fb9a0f6473d961a40a82c5be896801d1c5865e3f3f39749a9721"
+    },
+    "stationary_tone": {
+      "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/structural-synthetics/inputs/stationary_tone.wav",
+      "sha256": "0730c68c248567e8d5aa93b6dd01462fb749463410e07576f31d37e1ce1e45a7"
+    },
+    "white_noise": {
+      "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/structural-synthetics/inputs/white_noise.wav",
+      "sha256": "93a0fbb0a9ae1dcfdd887249e39d9d42840252c9c3bdf8a80b81055e79f9cffa"
+    }
+  },
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "probe_source_tree_sha256": "e10f50f56974f909f771561a6fc54e29c9e1f5fb3ef089138a5ffb003c645643",
+  "purpose": "No-MOS structural traces, synthetic input diversity, and exact unset controls.",
+  "rate_kbps": 32,
+  "schema": 1,
+  "scoring_performed": false,
+  "trace_retries_stable": true,
+  "trace_retry_count": 92,
+  "trace_rows": {
+    "ad01_base|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.291855365,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 1.48185539
+        },
+        {
+          "distortion": 0.610964656,
+          "envelopes": 2,
+          "exact_bits": 159,
+          "objective": 2.20096469
+        },
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 2.29248261
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.01 candidates=3 c0=1,0.291855365,119,1.48185539 c1=2,0.610964656,159,2.20096469 c2=4,0.222482696,207,2.29248261 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad01_base|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.02354169,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 1.89354169
+        },
+        {
+          "distortion": 1.2009027,
+          "envelopes": 2,
+          "exact_bits": 111,
+          "objective": 2.3109026
+        },
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 1.92284036
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.01 candidates=3 c0=1,1.02354169,87,1.89354169 c1=2,1.2009027,111,2.3109026 c2=4,0.492840379,143,1.92284036 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad01_base|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 0.550000012
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 2,
+          "exact_bits": 71,
+          "objective": 0.709999979
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 1.02999997
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.01 candidates=3 c0=1,0,55,0.550000012 c1=2,0,71,0.709999979 c2=4,0,103,1.02999997 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad01_base|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.432386696,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 1.38238668
+        },
+        {
+          "distortion": 0.638502717,
+          "envelopes": 2,
+          "exact_bits": 167,
+          "objective": 2.30850267
+        },
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 2.40894723
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.01 candidates=3 c0=1,0.432386696,95,1.38238668 c1=2,0.638502717,167,2.30850267 c2=4,0.17894727,223,2.40894723 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad01_base|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.565811455,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 1.51581144
+        },
+        {
+          "distortion": 0.783622026,
+          "envelopes": 2,
+          "exact_bits": 175,
+          "objective": 2.53362203
+        },
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 2.47577763
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.01 candidates=3 c0=1,0.565811455,95,1.51581144 c1=2,0.783622026,175,2.53362203 c2=4,0.245777681,223,2.47577763 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad01_base|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.08476269,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 1.71476269
+        },
+        {
+          "distortion": 1.31270766,
+          "envelopes": 2,
+          "exact_bits": 79,
+          "objective": 2.10270762
+        },
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 1.98768258
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.01 candidates=3 c0=1,1.08476269,63,1.71476269 c1=2,1.31270766,79,2.10270762 c2=4,0.637682557,135,1.98768258 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad01_stack|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.291855365,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 1.48185539
+        },
+        {
+          "distortion": 0.610964656,
+          "envelopes": 2,
+          "exact_bits": 159,
+          "objective": 2.20096469
+        },
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 2.29248261
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.01 candidates=3 c0=1,0.291855365,119,1.48185539 c1=2,0.610964656,159,2.20096469 c2=4,0.222482696,207,2.29248261 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad01_stack|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.02354169,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 1.89354169
+        },
+        {
+          "distortion": 1.2009027,
+          "envelopes": 2,
+          "exact_bits": 111,
+          "objective": 2.3109026
+        },
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 1.92284036
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.01 candidates=3 c0=1,1.02354169,87,1.89354169 c1=2,1.2009027,111,2.3109026 c2=4,0.492840379,143,1.92284036 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad01_stack|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 0.550000012
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 2,
+          "exact_bits": 71,
+          "objective": 0.709999979
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 1.02999997
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.01 candidates=3 c0=1,0,55,0.550000012 c1=2,0,71,0.709999979 c2=4,0,103,1.02999997 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad01_stack|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.432386696,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 1.38238668
+        },
+        {
+          "distortion": 0.638502717,
+          "envelopes": 2,
+          "exact_bits": 167,
+          "objective": 2.30850267
+        },
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 2.40894723
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.01 candidates=3 c0=1,0.432386696,95,1.38238668 c1=2,0.638502717,167,2.30850267 c2=4,0.17894727,223,2.40894723 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad01_stack|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.565811455,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 1.51581144
+        },
+        {
+          "distortion": 0.783622026,
+          "envelopes": 2,
+          "exact_bits": 175,
+          "objective": 2.53362203
+        },
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 2.47577763
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.01 candidates=3 c0=1,0.565811455,95,1.51581144 c1=2,0.783622026,175,2.53362203 c2=4,0.245777681,223,2.47577763 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad01_stack|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.08476269,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 1.71476269
+        },
+        {
+          "distortion": 1.31270766,
+          "envelopes": 2,
+          "exact_bits": 79,
+          "objective": 2.10270762
+        },
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 1.98768258
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.01 candidates=3 c0=1,1.08476269,63,1.71476269 c1=2,1.31270766,79,2.10270762 c2=4,0.637682557,135,1.98768258 selected=1",
+      "lambda": "0.01",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad03_base|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.291855365,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 3.86185527
+        },
+        {
+          "distortion": 0.610964656,
+          "envelopes": 2,
+          "exact_bits": 159,
+          "objective": 5.38096476
+        },
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 6.43248272
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.03 candidates=3 c0=1,0.291855365,119,3.86185527 c1=2,0.610964656,159,5.38096476 c2=4,0.222482696,207,6.43248272 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad03_base|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.02354169,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 3.63354158
+        },
+        {
+          "distortion": 1.2009027,
+          "envelopes": 2,
+          "exact_bits": 111,
+          "objective": 4.53090286
+        },
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 4.78284025
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.03 candidates=3 c0=1,1.02354169,87,3.63354158 c1=2,1.2009027,111,4.53090286 c2=4,0.492840379,143,4.78284025 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad03_base|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 1.64999998
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 2,
+          "exact_bits": 71,
+          "objective": 2.12999988
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 3.08999991
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.03 candidates=3 c0=1,0,55,1.64999998 c1=2,0,71,2.12999988 c2=4,0,103,3.08999991 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad03_base|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.432386696,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 3.28238654
+        },
+        {
+          "distortion": 0.638502717,
+          "envelopes": 2,
+          "exact_bits": 167,
+          "objective": 5.64850283
+        },
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.86894703
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.03 candidates=3 c0=1,0.432386696,95,3.28238654 c1=2,0.638502717,167,5.64850283 c2=4,0.17894727,223,6.86894703 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad03_base|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.565811455,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 3.4158113
+        },
+        {
+          "distortion": 0.783622026,
+          "envelopes": 2,
+          "exact_bits": 175,
+          "objective": 6.03362179
+        },
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.93577766
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.03 candidates=3 c0=1,0.565811455,95,3.4158113 c1=2,0.783622026,175,6.03362179 c2=4,0.245777681,223,6.93577766 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad03_base|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.08476269,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 2.97476268
+        },
+        {
+          "distortion": 1.31270766,
+          "envelopes": 2,
+          "exact_bits": 79,
+          "objective": 3.68270755
+        },
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 4.68768263
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.03 candidates=3 c0=1,1.08476269,63,2.97476268 c1=2,1.31270766,79,3.68270755 c2=4,0.637682557,135,4.68768263 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad03_stack|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.291855365,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 3.86185527
+        },
+        {
+          "distortion": 0.610964656,
+          "envelopes": 2,
+          "exact_bits": 159,
+          "objective": 5.38096476
+        },
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 6.43248272
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.03 candidates=3 c0=1,0.291855365,119,3.86185527 c1=2,0.610964656,159,5.38096476 c2=4,0.222482696,207,6.43248272 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad03_stack|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.02354169,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 3.63354158
+        },
+        {
+          "distortion": 1.2009027,
+          "envelopes": 2,
+          "exact_bits": 111,
+          "objective": 4.53090286
+        },
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 4.78284025
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.03 candidates=3 c0=1,1.02354169,87,3.63354158 c1=2,1.2009027,111,4.53090286 c2=4,0.492840379,143,4.78284025 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad03_stack|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 1.64999998
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 2,
+          "exact_bits": 71,
+          "objective": 2.12999988
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 3.08999991
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.03 candidates=3 c0=1,0,55,1.64999998 c1=2,0,71,2.12999988 c2=4,0,103,3.08999991 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad03_stack|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.432386696,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 3.28238654
+        },
+        {
+          "distortion": 0.638502717,
+          "envelopes": 2,
+          "exact_bits": 167,
+          "objective": 5.64850283
+        },
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.86894703
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.03 candidates=3 c0=1,0.432386696,95,3.28238654 c1=2,0.638502717,167,5.64850283 c2=4,0.17894727,223,6.86894703 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad03_stack|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.565811455,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 3.4158113
+        },
+        {
+          "distortion": 0.783622026,
+          "envelopes": 2,
+          "exact_bits": 175,
+          "objective": 6.03362179
+        },
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.93577766
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.03 candidates=3 c0=1,0.565811455,95,3.4158113 c1=2,0.783622026,175,6.03362179 c2=4,0.245777681,223,6.93577766 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad03_stack|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.08476269,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 2.97476268
+        },
+        {
+          "distortion": 1.31270766,
+          "envelopes": 2,
+          "exact_bits": 79,
+          "objective": 3.68270755
+        },
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 4.68768263
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.03 candidates=3 c0=1,1.08476269,63,2.97476268 c1=2,1.31270766,79,3.68270755 c2=4,0.637682557,135,4.68768263 selected=1",
+      "lambda": "0.03",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad10_base|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.291855365,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 12.1918554
+        },
+        {
+          "distortion": 0.610964656,
+          "envelopes": 2,
+          "exact_bits": 159,
+          "objective": 16.5109653
+        },
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 20.9224834
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.1 candidates=3 c0=1,0.291855365,119,12.1918554 c1=2,0.610964656,159,16.5109653 c2=4,0.222482696,207,20.9224834 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad10_base|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.02354169,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 9.72354221
+        },
+        {
+          "distortion": 1.2009027,
+          "envelopes": 2,
+          "exact_bits": 111,
+          "objective": 12.3009033
+        },
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 14.792841
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.1 candidates=3 c0=1,1.02354169,87,9.72354221 c1=2,1.2009027,111,12.3009033 c2=4,0.492840379,143,14.792841 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad10_base|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 5.5
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 2,
+          "exact_bits": 71,
+          "objective": 7.0999999
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 10.3000002
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.1 candidates=3 c0=1,0,55,5.5 c1=2,0,71,7.0999999 c2=4,0,103,10.3000002 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad10_base|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.432386696,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 9.9323864
+        },
+        {
+          "distortion": 0.638502717,
+          "envelopes": 2,
+          "exact_bits": 167,
+          "objective": 17.3385029
+        },
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 22.4789467
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.1 candidates=3 c0=1,0.432386696,95,9.9323864 c1=2,0.638502717,167,17.3385029 c2=4,0.17894727,223,22.4789467 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad10_base|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.565811455,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 10.0658112
+        },
+        {
+          "distortion": 0.783622026,
+          "envelopes": 2,
+          "exact_bits": 175,
+          "objective": 18.2836227
+        },
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 22.5457783
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.1 candidates=3 c0=1,0.565811455,95,10.0658112 c1=2,0.783622026,175,18.2836227 c2=4,0.245777681,223,22.5457783 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad10_base|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.08476269,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 7.38476276
+        },
+        {
+          "distortion": 1.31270766,
+          "envelopes": 2,
+          "exact_bits": 79,
+          "objective": 9.21270752
+        },
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 14.1376829
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=0 lambda=0.1 candidates=3 c0=1,1.08476269,63,7.38476276 c1=2,1.31270766,79,9.21270752 c2=4,0.637682557,135,14.1376829 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "ad10_stack|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.291855365,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 12.1918554
+        },
+        {
+          "distortion": 0.610964656,
+          "envelopes": 2,
+          "exact_bits": 159,
+          "objective": 16.5109653
+        },
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 20.9224834
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.1 candidates=3 c0=1,0.291855365,119,12.1918554 c1=2,0.610964656,159,16.5109653 c2=4,0.222482696,207,20.9224834 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad10_stack|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.02354169,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 9.72354221
+        },
+        {
+          "distortion": 1.2009027,
+          "envelopes": 2,
+          "exact_bits": 111,
+          "objective": 12.3009033
+        },
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 14.792841
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.1 candidates=3 c0=1,1.02354169,87,9.72354221 c1=2,1.2009027,111,12.3009033 c2=4,0.492840379,143,14.792841 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad10_stack|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 5.5
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 2,
+          "exact_bits": 71,
+          "objective": 7.0999999
+        },
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 10.3000002
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.1 candidates=3 c0=1,0,55,5.5 c1=2,0,71,7.0999999 c2=4,0,103,10.3000002 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad10_stack|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.432386696,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 9.9323864
+        },
+        {
+          "distortion": 0.638502717,
+          "envelopes": 2,
+          "exact_bits": 167,
+          "objective": 17.3385029
+        },
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 22.4789467
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.1 candidates=3 c0=1,0.432386696,95,9.9323864 c1=2,0.638502717,167,17.3385029 c2=4,0.17894727,223,22.4789467 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad10_stack|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.565811455,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 10.0658112
+        },
+        {
+          "distortion": 0.783622026,
+          "envelopes": 2,
+          "exact_bits": 175,
+          "objective": 18.2836227
+        },
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 22.5457783
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.1 candidates=3 c0=1,0.565811455,95,10.0658112 c1=2,0.783622026,175,18.2836227 c2=4,0.245777681,223,22.5457783 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "ad10_stack|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 1.08476269,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 7.38476276
+        },
+        {
+          "distortion": 1.31270766,
+          "envelopes": 2,
+          "exact_bits": 79,
+          "objective": 9.21270752
+        },
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 14.1376829
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=3 stack=1 lambda=0.1 candidates=3 c0=1,1.08476269,63,7.38476276 c1=2,1.31270766,79,9.21270752 c2=4,0.637682557,135,14.1376829 selected=1",
+      "lambda": "0.1",
+      "mode": 3,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "all_base|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 6.43248272
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=0 lambda=0.03 candidates=1 c0=4,0.222482696,207,6.43248272 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 0
+    },
+    "all_base|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 4.78284025
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=0 lambda=0.03 candidates=1 c0=4,0.492840379,143,4.78284025 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 10,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 2,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 6,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        }
+      ],
+      "selected": 4,
+      "stack": 0
+    },
+    "all_base|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 3.08999991
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=0 lambda=0.03 candidates=1 c0=4,0,103,3.08999991 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 0
+    },
+    "all_base|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.86894703
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=0 lambda=0.03 candidates=1 c0=4,0.17894727,223,6.86894703 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 0
+    },
+    "all_base|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.93577766
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=0 lambda=0.03 candidates=1 c0=4,0.245777681,223,6.93577766 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 0
+    },
+    "all_base|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 4.68768263
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=0 lambda=0.03 candidates=1 c0=4,0.637682557,135,4.68768263 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 0
+    },
+    "all_stack|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.222482696,
+          "envelopes": 4,
+          "exact_bits": 207,
+          "objective": 6.43248272
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=1 lambda=0.03 candidates=1 c0=4,0.222482696,207,6.43248272 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 1
+    },
+    "all_stack|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.492840379,
+          "envelopes": 4,
+          "exact_bits": 143,
+          "objective": 4.78284025
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=1 lambda=0.03 candidates=1 c0=4,0.492840379,143,4.78284025 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 10,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 2,
+          "selected": 4,
+          "stable": true
+        },
+        {
+          "frame": 6,
+          "retry": 1,
+          "selected": 4,
+          "stable": true
+        }
+      ],
+      "selected": 4,
+      "stack": 1
+    },
+    "all_stack|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 4,
+          "exact_bits": 103,
+          "objective": 3.08999991
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=1 lambda=0.03 candidates=1 c0=4,0,103,3.08999991 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 1
+    },
+    "all_stack|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.17894727,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.86894703
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=1 lambda=0.03 candidates=1 c0=4,0.17894727,223,6.86894703 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 1
+    },
+    "all_stack|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.245777681,
+          "envelopes": 4,
+          "exact_bits": 223,
+          "objective": 6.93577766
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=1 lambda=0.03 candidates=1 c0=4,0.245777681,223,6.93577766 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 1
+    },
+    "all_stack|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.637682557,
+          "envelopes": 4,
+          "exact_bits": 135,
+          "objective": 4.68768263
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=2 stack=1 lambda=0.03 candidates=1 c0=4,0.637682557,135,4.68768263 selected=4",
+      "lambda": "0.03",
+      "mode": 2,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 4,
+      "stack": 1
+    },
+    "tier_base|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 3.56999993
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=0 lambda=0.03 candidates=1 c0=1,0,119,3.56999993 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "tier_base|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 2.6099999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=0 lambda=0.03 candidates=1 c0=1,0,87,2.6099999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 0
+    },
+    "tier_base|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 1.64999998
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=0 lambda=0.03 candidates=1 c0=1,0,55,1.64999998 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "tier_base|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 2.8499999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=0 lambda=0.03 candidates=1 c0=1,0,95,2.8499999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "tier_base|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 2.8499999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=0 lambda=0.03 candidates=1 c0=1,0,95,2.8499999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "tier_base|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 1.88999999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=0 lambda=0.03 candidates=1 c0=1,0,63,1.88999999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 0
+    },
+    "tier_stack|asymmetric_stereo|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 119,
+          "objective": 3.56999993
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=1 lambda=0.03 candidates=1 c0=1,0,119,3.56999993 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "tier_stack|busy_am_retry|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 87,
+          "objective": 2.6099999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=1 lambda=0.03 candidates=1 c0=1,0,87,2.6099999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 9,
+      "retry_rows": [
+        {
+          "frame": 2,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 3,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 2,
+          "retry": 4,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 3,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 4,
+          "retry": 2,
+          "selected": 1,
+          "stable": true
+        },
+        {
+          "frame": 5,
+          "retry": 1,
+          "selected": 1,
+          "stable": true
+        }
+      ],
+      "selected": 1,
+      "stack": 1
+    },
+    "tier_stack|silence|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 55,
+          "objective": 1.64999998
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=1 lambda=0.03 candidates=1 c0=1,0,55,1.64999998 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "tier_stack|smooth_am_highband|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 2.8499999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=1 lambda=0.03 candidates=1 c0=1,0,95,2.8499999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "tier_stack|stationary_tone|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 95,
+          "objective": 2.8499999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=1 lambda=0.03 candidates=1 c0=1,0,95,2.8499999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    },
+    "tier_stack|white_noise|32": {
+      "all_retries_stable": true,
+      "candidates": [
+        {
+          "distortion": 0.0,
+          "envelopes": 1,
+          "exact_bits": 63,
+          "objective": 1.88999999
+        }
+      ],
+      "header": "ENVCOUNT_TRACE mode=1 stack=1 lambda=0.03 candidates=1 c0=1,0,63,1.88999999 selected=1",
+      "lambda": "0.03",
+      "mode": 1,
+      "retry_count": 0,
+      "retry_rows": [],
+      "selected": 1,
+      "stack": 1
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "status": "full corpus scored; strict FAAD3 and FFmpeg validation passed",
+  "encoder_base": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "worktree": "/private/tmp/faac-he-v1-localnoise",
+  "branch": "he-v1-localnoise",
+  "build": "Meson release, native Apple ARM64 Clang",
+  "implementation": [
+    "multi-band noise selector and decoder-matched boundaries",
+    "per-channel/per-band original/source tonality, INVF selection, and smoothed adaptive noise",
+    "frequency/time noise Huffman selection, per-band references, and coupled level/balance coding"
+  ],
+  "full_variants": [
+    "oneband_static18",
+    "oneband_static24",
+    "local2_static18",
+    "local2_static24",
+    "local2_adaptive18",
+    "local2_joint18"
+  ],
+  "full_corpus": {
+    "clips": 49,
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "scored_rows": 1176,
+    "result_rows": 1568,
+    "result_variants": [
+      "baseline_original",
+      "candidate_default",
+      "oneband_static18",
+      "oneband_static24",
+      "local2_static18",
+      "local2_static24",
+      "local2_adaptive18",
+      "local2_joint18"
+    ]
+  },
+  "settings": {
+    "selector": "FAAC_SBR_LOCAL_NOISE_BANDS (1 or 2)",
+    "adaptive_noise": "FAAC_SBR_ADAPTIVE_NOISE=1",
+    "adaptive_invf": "FAAC_SBR_ADAPTIVE_INVF=1",
+    "noise_levels": [
+      18,
+      24
+    ],
+    "offset_log2": -8
+  },
+  "actual_tables_48kHz_all_tested_rates": {
+    "selector1": {
+      "nq": 1,
+      "edges": [
+        31,
+        54
+      ]
+    },
+    "selector2": {
+      "nq": 2,
+      "edges": [
+        31,
+        37,
+        54
+      ]
+    }
+  },
+  "controls": {
+    "unset_gate_adts_packet_identity": "16/16",
+    "strict_fdk_before_scoring": true,
+    "strict_faad3_and_ffmpeg_full": "1568/1568 each",
+    "decoder_commit": "333fe311"
+  },
+  "quality_conclusion": "frequency-local 2-band candidates regress against matched one-band static18/24 controls; no candidate promoted",
+  "source_diff_sha256": "e80a672ed2273a06e52f4835a81bbc87202fe79e9d4ae4cb6127108ab67b2681",
+  "artifacts": {
+    "full_results": "full/localnoise-results.json",
+    "summary": "full/RESULTS.md",
+    "comparisons": "full/direct-comparisons.json",
+    "interop": "full/interop-results.json",
+    "encoded_files": "/private/tmp/faac-he-v1-localnoise/probe/results-all/encodes (not copied)"
+  }
+}

@@ -1,0 +1,12 @@
+Freeware Advanced Audio Coder
+FAAC 2.2.0 (99ce2b09-dirty)
+
+SBR noise table rate=48000 selector=1 nq=1 edges=31,54
+Initial quantization quality: 400
+Average bitrate: 32 kbps/channel
+Bandwidth: 12000 Hz
+Object type: HE-AAC v1 (MPEG-4) + TNS + Mixed + PNS
+Container format: Transport Stream (ADTS)
+Encoding control/synthetic/high_tone.wav to control/table_trace/s1-r64.aac
+         frame         | bitrate | elapsed/estim | play/CPU | ETA
+      0/48      (  0%) |    0.0  |    0.0/0.0    | 1254.91x | 0.0      44/48      ( 91%) |   59.2  |    0.0/0.0    | 1172.33x | 0.0      49/48      (102%) |   66.4  |    0.0/0.0    | 1082.84x | 0.0 

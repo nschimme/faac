@@ -1,0 +1,13 @@
+diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
+index 63ff26f3..fc95aa86 100644
+--- a/libfaac/sbr_analysis.c
++++ b/libfaac/sbr_analysis.c
+@@ -87,7 +87,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+         sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
+         sa->bsPointer = 0;
+     } else {
+-        int ne = sbr->numEnvFixFix;
++        int ne = 1;
+         sa->numEnvelopes = ne;
+         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
+         for (int e = 0; e <= ne; e++)

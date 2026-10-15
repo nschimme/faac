@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "base_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "source_diff_sha256": "325df9e96ba7f5af87663bcaacbc19db4650308d07527e2b63c856ae22a84514",
+  "source_tree_sha256": "5a37c24f7381aab1faebe089ba59ba985db3079905afbba704636d79deb6193b",
+  "source_patch": "implementation.patch",
+  "source_patch_sha256": "ef972e56f2d84af73eeddc327397088b84a9452f8e7cb2174e918e85e623202f",
+  "build_command": "CCACHE_DISABLE=1 meson setup /private/tmp/faac-he-v1-envcount-build /private/tmp/faac-he-v1-envelopes && CCACHE_DISABLE=1 ninja -C /private/tmp/faac-he-v1-envcount-build -v",
+  "build_log": "fresh-build.log",
+  "build_options": "build-options.json",
+  "binary": {
+    "path": "/private/tmp/faac-he-v1-envelopes/build-probe/frontend/faac",
+    "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+  },
+  "linked_library": {
+    "path": "/private/tmp/faac-he-v1-envelopes/build-probe/libfaac/libfaac.2.dylib",
+    "sha256": "8193c573677753254e4ab21e91ee16be5e1b972e6d0889ec681ba375ab5ef750"
+  },
+  "checks": {
+    "meson_ninja_build": "pass",
+    "git_diff_check": "pass",
+    "gate_control_packet_pcm": "16/16 baseline and 16/16 retained-stack exact; strict FDK; no MOS",
+    "synthetic_structural": "pass; no MOS",
+    "quality_scoring": "not started"
+  },
+  "host": "macOS Apple Silicon; Clang 21.0.0; Meson 1.12.1; Ninja 1.13.2",
+  "working_patch_sha256": "ef972e56f2d84af73eeddc327397088b84a9452f8e7cb2174e918e85e623202f"
+}

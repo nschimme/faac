@@ -1,0 +1,591 @@
+{
+  "comparison": "candidate encoder vs baseline encoder; all probe variables unset",
+  "interpretation": "Measurement only; no speed-win claim. Repeat under the established benchmark gate before drawing a performance conclusion.",
+  "mean_delta_bootstrap_95_ci_percent": {
+    "hi": 2.131888147729923,
+    "lo": -4.527414025698046
+  },
+  "method": "12 alternating paired encodes per clip; two clips; measure_peak_ram",
+  "pair_count": 24,
+  "paired_mean_duration_delta_percent": -1.234092315667559,
+  "paired_median_duration_delta_percent": -2.682450121809321,
+  "paired_median_rss_delta_percent": -0.3424657534246589,
+  "timing_rows": [
+    {
+      "candidate_vs_baseline_duration_delta_percent": -5.377843420484407,
+      "candidate_vs_baseline_rss_delta_percent": 0.6896551724137945,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 1,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01477358,
+          "order_index": 0,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01397908,
+          "order_index": 1,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2336
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -3.895594619600018,
+      "candidate_vs_baseline_rss_delta_percent": -2.0547945205479423,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 2,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.014051,
+          "order_index": 1,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2336
+        },
+        "candidate": {
+          "duration_seconds": 0.01350363,
+          "order_index": 0,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2288
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -2.6153783211708803,
+      "candidate_vs_baseline_rss_delta_percent": -0.6896551724137945,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 3,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01393221,
+          "order_index": 0,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01356783,
+          "order_index": 1,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2304
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 2.26841941197935,
+      "candidate_vs_baseline_rss_delta_percent": -1.3698630136986356,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 4,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01353762,
+          "order_index": 1,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2336
+        },
+        "candidate": {
+          "duration_seconds": 0.01384471,
+          "order_index": 0,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2304
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -3.8130723491145546,
+      "candidate_vs_baseline_rss_delta_percent": -1.379310344827589,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 5,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01480958,
+          "order_index": 0,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01424488,
+          "order_index": 1,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2288
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -2.4286816497172126,
+      "candidate_vs_baseline_rss_delta_percent": -1.3698630136986356,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 6,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01504767,
+          "order_index": 1,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2336
+        },
+        "candidate": {
+          "duration_seconds": 0.01468221,
+          "order_index": 0,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2304
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -4.177668584351924,
+      "candidate_vs_baseline_rss_delta_percent": 1.388888888888884,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 7,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01372488,
+          "order_index": 0,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2304
+        },
+        "candidate": {
+          "duration_seconds": 0.0131515,
+          "order_index": 1,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2336
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -4.851072067765272,
+      "candidate_vs_baseline_rss_delta_percent": 2.083333333333326,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 8,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01518654,
+          "order_index": 1,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2304
+        },
+        "candidate": {
+          "duration_seconds": 0.01444983,
+          "order_index": 0,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2352
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -18.243343899843477,
+      "candidate_vs_baseline_rss_delta_percent": -2.684563758389258,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 9,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01684883,
+          "order_index": 0,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2384
+        },
+        "candidate": {
+          "duration_seconds": 0.01377504,
+          "order_index": 1,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 18.672554049202272,
+      "candidate_vs_baseline_rss_delta_percent": 0.0,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 10,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01465054,
+          "order_index": 1,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01738617,
+          "order_index": 0,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 8.294265339675588,
+      "candidate_vs_baseline_rss_delta_percent": 0.694444444444442,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 11,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01400763,
+          "order_index": 0,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2304
+        },
+        "candidate": {
+          "duration_seconds": 0.01516946,
+          "order_index": 1,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 4.342239767766287,
+      "candidate_vs_baseline_rss_delta_percent": -2.0547945205479423,
+      "clip": "sandman.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 12,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01416504,
+          "order_index": 1,
+          "output_size_bytes": 81355,
+          "peak_rss_kb": 2336
+        },
+        "candidate": {
+          "duration_seconds": 0.01478012,
+          "order_index": 0,
+          "output_size_bytes": 81361,
+          "peak_rss_kb": 2288
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -10.45803418619945,
+      "candidate_vs_baseline_rss_delta_percent": 0.0,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 1,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01537287,
+          "order_index": 0,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01376517,
+          "order_index": 1,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -5.554863711107183,
+      "candidate_vs_baseline_rss_delta_percent": 1.388888888888884,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 2,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01493592,
+          "order_index": 1,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2304
+        },
+        "candidate": {
+          "duration_seconds": 0.01410625,
+          "order_index": 0,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2336
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 1.2171220855900833,
+      "candidate_vs_baseline_rss_delta_percent": -0.6849315068493178,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 3,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01376608,
+          "order_index": 0,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2336
+        },
+        "candidate": {
+          "duration_seconds": 0.01393363,
+          "order_index": 1,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -3.2692658597408886,
+      "candidate_vs_baseline_rss_delta_percent": -1.3698630136986356,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 4,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01446808,
+          "order_index": 1,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2336
+        },
+        "candidate": {
+          "duration_seconds": 0.01399508,
+          "order_index": 0,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2304
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 6.790853602988056,
+      "candidate_vs_baseline_rss_delta_percent": 0.0,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 5,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01372125,
+          "order_index": 0,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01465304,
+          "order_index": 1,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 0.7727848551291272,
+      "candidate_vs_baseline_rss_delta_percent": 0.0,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 6,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01378262,
+          "order_index": 1,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01388913,
+          "order_index": 0,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -0.7611992783973731,
+      "candidate_vs_baseline_rss_delta_percent": -1.3698630136986356,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 7,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01399108,
+          "order_index": 0,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2336
+        },
+        "candidate": {
+          "duration_seconds": 0.01388458,
+          "order_index": 1,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2304
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -7.99765842163449,
+      "candidate_vs_baseline_rss_delta_percent": -0.6896551724137945,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 8,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01609171,
+          "order_index": 1,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01480475,
+          "order_index": 0,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2304
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": 19.56638532623016,
+      "candidate_vs_baseline_rss_delta_percent": -1.379310344827589,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 9,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01373662,
+          "order_index": 0,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01642438,
+          "order_index": 1,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2288
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -13.682989540781588,
+      "candidate_vs_baseline_rss_delta_percent": 0.0,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 10,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01667333,
+          "order_index": 1,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01439192,
+          "order_index": 0,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2320
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -2.749521922447762,
+      "candidate_vs_baseline_rss_delta_percent": 1.379310344827589,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "baseline",
+        "candidate"
+      ],
+      "iteration": 11,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01388896,
+          "order_index": 0,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2320
+        },
+        "candidate": {
+          "duration_seconds": 0.01350708,
+          "order_index": 1,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2352
+        }
+      }
+    },
+    {
+      "candidate_vs_baseline_duration_delta_percent": -1.6666521822258584,
+      "candidate_vs_baseline_rss_delta_percent": 1.3986013986013957,
+      "clip": "velvet.16b48k.wav",
+      "execution_order": [
+        "candidate",
+        "baseline"
+      ],
+      "iteration": 12,
+      "measurements": {
+        "baseline": {
+          "duration_seconds": 0.01380792,
+          "order_index": 1,
+          "output_size_bytes": 82924,
+          "peak_rss_kb": 2288
+        },
+        "candidate": {
+          "duration_seconds": 0.01357779,
+          "order_index": 0,
+          "output_size_bytes": 82930,
+          "peak_rss_kb": 2320
+        }
+      }
+    }
+  ]
+}

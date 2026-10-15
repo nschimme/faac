@@ -1,0 +1,84 @@
+{
+  "build": {
+    "b_lto": true,
+    "build_command": "CCACHE_DISABLE=1 ninja -C build-release",
+    "buildtype": "release",
+    "compiler": "Apple clang 21.0.0",
+    "host": "aarch64-apple-darwin",
+    "max_channels": 8,
+    "meson": "1.12.1",
+    "ninja": "1.13.2",
+    "optimization": "3",
+    "sbr_decimation": 1,
+    "setup_command": "CCACHE_DISABLE=1 meson setup build-release --buildtype=release",
+    "stats": false
+  },
+  "clips": {
+    "21-classic.441.16b48k.wav": {
+      "path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+      "sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6"
+    },
+    "fms.wav": {
+      "path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+      "sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917"
+    },
+    "sandman.16b48k.wav": {
+      "path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+      "sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18"
+    },
+    "velvet.16b48k.wav": {
+      "path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+      "sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    }
+  },
+  "matrix": {
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "profile": "HE-AAC v1 forced with --object-type he-aac-v1",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "required_checks": [
+      "strict FDK decode and scoring PCM hash",
+      "packet payload hash and actual payload bitrate",
+      "strict FAAD",
+      "strict FFmpeg"
+    ],
+    "rows_per_variant": 16
+  },
+  "schema": 1,
+  "upstream_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "variants": {
+    "upstream_baseline": {
+      "binary": "/private/tmp/faac-upstream098-baseline/build-release/frontend/faac",
+      "binary_sha256": "d6ec9ccc8e9eb4f7b2e0787dd6de51e5b87b5ff97af7af20a3e6fc65ab1d6a60",
+      "commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+      "git_status": "",
+      "library": "/private/tmp/faac-upstream098-baseline/build-release/libfaac/libfaac.3.dylib",
+      "library_sha256": "55abf7d11b0b4b2891b2d6171e4c005e9233d274786f0ece486e20623e8a484f",
+      "repo": "/private/tmp/faac-upstream098-baseline",
+      "source_diff_path": "/private/tmp/upstream_baseline.patch",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_diff_stat": ""
+    },
+    "upstream_fixed8": {
+      "binary": "/private/tmp/faac-upstream098-fixed8/build-release/frontend/faac",
+      "binary_sha256": "434089f63d40bbba1b8a05a049f3b25d3358d54ba163ec0247dc299806abe841",
+      "commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+      "git_status": "M libfaac/sbr_analysis.c",
+      "library": "/private/tmp/faac-upstream098-fixed8/build-release/libfaac/libfaac.3.dylib",
+      "library_sha256": "55de9b67ebd6405b7b250159873a29e031ebd6e5870989681baf210bc5c71c72",
+      "repo": "/private/tmp/faac-upstream098-fixed8",
+      "source_diff_path": "/private/tmp/upstream_fixed8.patch",
+      "source_diff_sha256": "fa7443329cf5c97f434161212ab0d5381f629c86740cea3443e1325c11f5dd60",
+      "source_diff_stat": "libfaac/sbr_analysis.c | 6 +-----\n 1 file changed, 1 insertion(+), 5 deletions(-)"
+    }
+  }
+}

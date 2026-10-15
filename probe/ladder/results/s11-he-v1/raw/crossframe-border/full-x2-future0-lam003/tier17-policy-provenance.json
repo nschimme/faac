@@ -1,0 +1,33 @@
+{
+  "command": "NUMBA_DISABLE_JIT=1 ../faac-benchmark/.venv/bin/python .cache/he-v1-feature-study/crossframe-border/tools/derive_tier17_comparison.py",
+  "helpers": {
+    "bd_rate.py": "2b8d8277aedea4e031998927358e054f0be0148c2fb8e7e47fdaf59e0245d9c3",
+    "compare_results.py": "53b9175b4610e504aee1e291483295e1a7fc713ef2b0d7a559b71be8b9c3e2f3"
+  },
+  "measured_rows_modified": false,
+  "persistent_config": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/crossframe-border/full-x2-future0-lam003/config.json",
+    "sha256": "9b540370050ce236e063f80f256dac3591bc99f5c84dd728ec00933eee93df0c"
+  },
+  "persistent_rows": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/crossframe-border/full-x2-future0-lam003/rows.json",
+    "sha256": "dd40ca0bd0660d85ba609e81458c36bbc507ca99a1873aef656ee727d877a941"
+  },
+  "result": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/crossframe-border/full-x2-future0-lam003/tier17-policy-comparison-derived.json",
+    "sha256": "c446aa3e9425b28bd23d45327d35be1f268d88d5ecddf7d113230898dbd52153"
+  },
+  "schema": 1,
+  "script": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/crossframe-border/tools/derive_tier17_comparison.py",
+    "sha256": "ac6a6de7110ed32b8f69fcbd81df47dcdfc950037c0509e82dd95d036853725d"
+  },
+  "tier17_config": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/full-active-lambda/envcount-config.json",
+    "sha256": "e588706d3797a36cd34f7e876609ebb6ee0a35d249d7ad7f44f335aaef952f65"
+  },
+  "tier17_rows": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/full-active-lambda/envcount-results.json",
+    "sha256": "646bc1cf56a41d76d19ce784fb330b2fe1d04373d2c08b94e3e8a59a7a42cdb8"
+  }
+}

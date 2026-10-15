@@ -1,0 +1,112 @@
+{
+  "all_checks_pass": true,
+  "audit_kind": "read-only final matrix/provenance integrity; no encoding, MOS, or decoder tests rerun",
+  "audit_script_sha256": "27ac25a8de2a445f5785b064c45f0a42c8f2a02830fa6b5bda55806ce6bb0da2",
+  "checks": {
+    "adaptive_and_control_scorer_helpers_match": true,
+    "adaptive_keys_complete_per_lambda": true,
+    "adaptive_matrix_is_49x4x2": true,
+    "adaptive_original_source_files_unchanged": true,
+    "adaptive_profile_finite_mos_positive_payload": true,
+    "adaptive_rows_reference_frozen_fresh_controls": true,
+    "adaptive_source_anchor_hashes_match_rows": true,
+    "adaptive_strict392_matches_raw_rows": true,
+    "archived_combo16_baseline_refs_exact_packet_pcm": true,
+    "archived_combo16_fixed8_candidates_exact_packet_pcm": true,
+    "captured_baseline_binary_matches_manifest": true,
+    "captured_fixed8_binary_matches_manifest": true,
+    "captured_fixed8_checkout_clean": true,
+    "captured_fixed8_commit_parent_is_098": true,
+    "fixed8_manifest_and_quality_source_commit_match": true,
+    "fixed8_quality_manifest_pins_same_build_manifest": true,
+    "full_controls_are_49x4_each": true,
+    "original_checkout_only_AGENTS_untracked": true,
+    "source_commit_is_098": true,
+    "source_patch_effect_matches_frozen_archive": true
+  },
+  "decoder_equivalence_scope": {
+    "adaptive_candidate_gate_32_rows_only": {
+      "path": "/private/tmp/faac-upstream098-fdk-ab/adaptive32/equivalence.json",
+      "sha256": "1c9335a788326f9033649486dc4cc5d0677bbf0b9cad606354a97fe73f850cbe",
+      "summary": {
+        "errors": 0,
+        "new_decoder_sha256": "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18",
+        "normalized_pcm_equal": 32,
+        "old_decoder_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+        "rows_checked": 32
+      }
+    },
+    "adaptive_full392_old_new_fdk_equivalence_claimed": false,
+    "fresh_baseline_and_fixed8_controls_full392": {
+      "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-fixed8-gate-v2/validation-build/full392-normalized-equivalence.json",
+      "sha256": "6c6b8e939aeb1a17a4f1ae86b77d662d8beb269eb1419b366bb4fe7f56a26772",
+      "summary": {
+        "errors": [],
+        "new_decoder_sha256": "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18",
+        "normalized_pcm_equal": 392,
+        "old_decoder_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+        "rows_checked": 392,
+        "rows_input": 392
+      }
+    }
+  },
+  "matrices": {
+    "adaptive": {
+      "clips": 49,
+      "lambdas": [
+        "0.001",
+        "0.003"
+      ],
+      "rates_kbps": [
+        32,
+        48,
+        64,
+        96
+      ],
+      "rows": 392,
+      "rows_sha256": "2a2de9485eb7ecc2dc9fff5b70c1afa39120feadccf5df5a8e483ee15e855c85",
+      "summary_sha256": "30227f0cdb8afa9082097ab2a5cdcea6d12d9517751723b6d66ff4c21d3a7863"
+    },
+    "archived_combo_fixed8_candidate_exact_packet_pcm": 16,
+    "archived_combo_mismatches": {
+      "baseline_refs": [],
+      "fixed8_candidates": []
+    },
+    "archived_combo_reference_baseline_exact_packet_pcm": 16,
+    "archived_combo_reference_rows": 16,
+    "fresh_baseline": {
+      "rows": 196,
+      "rows_sha256": "01755c8ba6bdb3a6d00d85c75e7b8b550206c245af53d6d26a349e35644a00f0"
+    },
+    "fresh_fixed8": {
+      "rows": 196
+    }
+  },
+  "schema": 1,
+  "source_and_scorer": {
+    "adaptive_fdk_path_sha256": [
+      "/private/tmp/faac-upstream098-fdk-new/fdkdec",
+      "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18"
+    ],
+    "adaptive_manifest_sha256": "458247de679011c7e16298645bbc2a8f1a992030dd5373053fe08fbcec01f8e3",
+    "adaptive_run_config_sha256": "1edb5183967d98d5a14556204830daf55e7f5a34abaddb4b71c3936a63b05b79",
+    "adaptive_runner_sha256": "6e365bf7bd198c3c917c8cfe14e21d94a3b1499da98ebbf7d3a8a081e1cd76e2",
+    "adaptive_source_anchor_count": 49,
+    "build_manifest_sha256": "c1390aa6fd7724c4dd9afb2197c754a112c17f415aaf44df763f001122876605",
+    "fixed8_source_patch": {
+      "archived_patch_sha256": "b646018eb664a70387ab762a85b3fee03512cc69b4eaf26b9cb3e944bf743ecb",
+      "commit": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "commit_and_archive_changed_lines_match": true,
+      "commit_patch_sha256": "1bb0d64ab8c13367f64044791301ba218f482c8f58f391f5c4fb925e045fc846",
+      "manifest_patch_actual_sha256": "fa7443329cf5c97f434161212ab0d5381f629c86740cea3443e1325c11f5dd60",
+      "manifest_patch_hash_matches": true,
+      "manifest_patch_is_parseable": false,
+      "manifest_patch_path": "/private/tmp/upstream_fixed8.patch",
+      "manifest_patch_recorded_sha256": "fa7443329cf5c97f434161212ab0d5381f629c86740cea3443e1325c11f5dd60",
+      "note": "The frozen build manifest hash equals the recorded /private/tmp patch hash, but that patch artifact lacks its final newline and is not parseable. The committed clean fixed8 checkout has parent 098; its change lines match the archived base_fixed8.patch. Both captured binary hashes match the build manifest.",
+      "parent": "098e8900289b87d1592a859351ca0bd420397d4b"
+    },
+    "original_checkout_status": "?? AGENTS.md",
+    "upstream_commit": "098e8900289b87d1592a859351ca0bd420397d4b"
+  }
+}

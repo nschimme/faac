@@ -1,0 +1,44 @@
+{
+  "he": {
+    "faad_pass": 16,
+    "fdk_pass": 16,
+    "ffmpeg_pass": 16,
+    "rates_and_boundary_cases": {
+      "partial_mono": [
+        17,
+        32
+      ],
+      "partial_stereo": [
+        34,
+        64
+      ],
+      "silence_mono": [
+        16,
+        17,
+        18
+      ],
+      "silence_stereo": [
+        32,
+        34,
+        36
+      ],
+      "tone_mono": [
+        16,
+        17,
+        18
+      ],
+      "tone_stereo": [
+        32,
+        34,
+        36
+      ]
+    },
+    "rows": 16
+  },
+  "lc": {
+    "rows": 32,
+    "stack_packet_matches": 16,
+    "stack_pcm_matches": 16
+  },
+  "schema": 1
+}

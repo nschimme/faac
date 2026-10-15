@@ -1,0 +1,135 @@
+{
+  "schema": "faac-upstream098-timing-stream-profile-and-fdk-v1",
+  "source_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "decoder": "/private/tmp/faac-upstream098-fdk-new/fdkdec",
+  "rows": [
+    {
+      "clip": "music_percussive.wav",
+      "variant": "baseline",
+      "input_sha256": "904392767efe66d0e389d90ba9f34856183dcdd0bf027ed890d93961fb431b20",
+      "encoded_sha256": "c85913098d26c7a461de8ff32cf4366bfaf0b1acaa09114a1e11e3b0b085fda7",
+      "timing_pair0_encoded_sha256": "c85913098d26c7a461de8ff32cf4366bfaf0b1acaa09114a1e11e3b0b085fda7",
+      "exact_timed_stream_match": true,
+      "ffprobe": {
+        "streams": [
+          {
+            "codec_name": "aac",
+            "profile": "HE-AAC",
+            "sample_rate": "48000",
+            "channels": 2,
+            "duration": "120.000000",
+            "nb_frames": "2815"
+          }
+        ],
+        "format": {
+          "duration": "120.000000"
+        }
+      },
+      "decoded_sha256": "88925a5d2e9ad380689e82dd01e5a66e45beba13cc7fd37c68b6b36c578953ef",
+      "fdk_decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 5761086,
+        "sample_width": 2
+      },
+      "fdk_returncode": 0,
+      "stderr_tail": ""
+    },
+    {
+      "clip": "music_percussive.wav",
+      "variant": "fixed8",
+      "input_sha256": "904392767efe66d0e389d90ba9f34856183dcdd0bf027ed890d93961fb431b20",
+      "encoded_sha256": "1e2782092b44103316aca94abb1b67d7d3b6d08a4ad67fafb50b3212684a96ec",
+      "timing_pair0_encoded_sha256": "1e2782092b44103316aca94abb1b67d7d3b6d08a4ad67fafb50b3212684a96ec",
+      "exact_timed_stream_match": true,
+      "ffprobe": {
+        "streams": [
+          {
+            "codec_name": "aac",
+            "profile": "HE-AAC",
+            "sample_rate": "48000",
+            "channels": 2,
+            "duration": "120.000000",
+            "nb_frames": "2815"
+          }
+        ],
+        "format": {
+          "duration": "120.000000"
+        }
+      },
+      "decoded_sha256": "d9b6c1d8e026b2b31bfb2a9c88ca76d66210f44d5b97152f7e8ae2dc84733fea",
+      "fdk_decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 5761086,
+        "sample_width": 2
+      },
+      "fdk_returncode": 0,
+      "stderr_tail": ""
+    },
+    {
+      "clip": "music_tonal.wav",
+      "variant": "baseline",
+      "input_sha256": "40a2f507823cfc73cad3a22f9c76ccdd56534386a4bf932f06671087540326fd",
+      "encoded_sha256": "7452a33829c6918cd8fc0f0efe13d0c0a059d7291cedaf7d44d09123000ff516",
+      "timing_pair0_encoded_sha256": "7452a33829c6918cd8fc0f0efe13d0c0a059d7291cedaf7d44d09123000ff516",
+      "exact_timed_stream_match": true,
+      "ffprobe": {
+        "streams": [
+          {
+            "codec_name": "aac",
+            "profile": "HE-AAC",
+            "sample_rate": "48000",
+            "channels": 2,
+            "duration": "120.000000",
+            "nb_frames": "2815"
+          }
+        ],
+        "format": {
+          "duration": "120.000000"
+        }
+      },
+      "decoded_sha256": "d3117a574f65c36faa4b006cc45946f2f2106537b12f58126b13dc1f68fb0138",
+      "fdk_decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 5761086,
+        "sample_width": 2
+      },
+      "fdk_returncode": 0,
+      "stderr_tail": ""
+    },
+    {
+      "clip": "music_tonal.wav",
+      "variant": "fixed8",
+      "input_sha256": "40a2f507823cfc73cad3a22f9c76ccdd56534386a4bf932f06671087540326fd",
+      "encoded_sha256": "5599d3e17feb4d18b069ab5bc835e1a3e0ed06adfd090f4589196f8edc2d33c9",
+      "timing_pair0_encoded_sha256": "5599d3e17feb4d18b069ab5bc835e1a3e0ed06adfd090f4589196f8edc2d33c9",
+      "exact_timed_stream_match": true,
+      "ffprobe": {
+        "streams": [
+          {
+            "codec_name": "aac",
+            "profile": "HE-AAC",
+            "sample_rate": "48000",
+            "channels": 2,
+            "duration": "120.000000",
+            "nb_frames": "2815"
+          }
+        ],
+        "format": {
+          "duration": "120.000000"
+        }
+      },
+      "decoded_sha256": "c57a689532e65a11a4d518b607bcfae38f2a9688f14809d1cbbac1341b7e047f",
+      "fdk_decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 5761086,
+        "sample_width": 2
+      },
+      "fdk_returncode": 0,
+      "stderr_tail": ""
+    }
+  ]
+}

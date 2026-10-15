@@ -1,0 +1,49 @@
+{
+  "compiler": "Apple clang version 21.0.0",
+  "target": "arm64-apple-darwin27.0.0",
+  "architecture": "arm64",
+  "baseline_source": "/private/tmp/faac-he-v1-gcc13/base (clean archive)",
+  "baseline_native_build_config": "/private/tmp/faac-he-v1-probes/build-baseline/config.h",
+  "invf_source": "/private/tmp/faac-he-v1-invf",
+  "invf_base_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "invf_build_config": "/private/tmp/faac-he-v1-invf/build-probe/config.h",
+  "baseline_sizeof": {
+    "SBRInfo": 2508,
+    "SBRChannel": 4376,
+    "SbrFrameData": 8,
+    "SbrEnvData": 512,
+    "SBRContext": 80,
+    "SignalAnalysis": 32,
+    "SignalAnalysisChannel": 520,
+    "SBR_FRAME_FIFO": 4
+  },
+  "invf_sizeof": {
+    "SBRInfo": 2608,
+    "SBRChannel": 5440,
+    "SbrFrameData": 8,
+    "SbrEnvData": 516,
+    "SBRContext": 80,
+    "SignalAnalysis": 32,
+    "SignalAnalysisChannel": 544,
+    "SBR_FRAME_FIFO": 4
+  },
+  "allocations": {
+    "1": {
+      "baseline": {"SBRInfo": 6884, "SBRContext": 2160, "SignalAnalysis": 552, "total_bytes": 9596},
+      "invf": {"SBRInfo": 8048, "SBRContext": 2176, "SignalAnalysis": 576, "total_bytes": 10800},
+      "incremental_bytes": 1204
+    },
+    "2": {
+      "baseline": {"SBRInfo": 11260, "SBRContext": 4208, "SignalAnalysis": 1072, "total_bytes": 16540},
+      "invf": {"SBRInfo": 13488, "SBRContext": 4240, "SignalAnalysis": 1120, "total_bytes": 18848},
+      "incremental_bytes": 2308
+    },
+    "8": {
+      "baseline": {"SBRInfo": 37516, "SBRContext": 16496, "SignalAnalysis": 4192, "total_bytes": 58204},
+      "invf": {"SBRInfo": 46128, "SBRContext": 16624, "SignalAnalysis": 4384, "total_bytes": 67136},
+      "incremental_bytes": 8932
+    }
+  },
+  "model": "SBRInfo + nch*SBRChannel + SBRContext + SBR_FRAME_FIFO*(SbrFrameData + nch*SbrEnvData) + SignalAnalysis + nch*SignalAnalysisChannel; resampler excluded",
+  "scope": "sizeof-derived incremental state estimate; not peak RSS, stack, or shipping-footprint claim"
+}

@@ -1,0 +1,7 @@
+{
+  "adaptive_rows": 32,
+  "expected_unset_rows": 16,
+  "faad_strict_pass": 32,
+  "ffmpeg_strict_pass": 32,
+  "unset_packet_pcm_exact": 16
+}

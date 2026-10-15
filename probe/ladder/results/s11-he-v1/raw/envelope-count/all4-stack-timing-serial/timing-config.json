@@ -1,0 +1,131 @@
+{
+  "all4_stack_binary": {
+    "linked_libraries": [
+      {
+        "install_name": "@rpath/libfaac.2.dylib",
+        "resolved_build_path": "/private/tmp/faac-envcount-all4-stack/build-all4/libfaac/libfaac.2.dylib",
+        "sha256": "9c488164a8e0e9321e8fbd5a8eda8290ec7393b180110cdc3cfdcb7b1ff74e00",
+        "version_info": " 2.0.0, current version 2.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libiconv.2.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 7.0.0, current version 7.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libSystem.B.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "path": "/private/tmp/faac-envcount-all4-stack/build-all4/frontend/faac",
+    "sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d"
+  },
+  "all4_stack_source_commit": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+  "all4_stack_source_patch": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/all4-controls/stack-all4.patch",
+    "sha256": "90d73084b5981de0f83ca116a4e143c928a9e6bd8e6661d1f26ab9751336c922"
+  },
+  "all4_stack_worktree_diff_sha256": "90d73084b5981de0f83ca116a4e143c928a9e6bd8e6661d1f26ab9751336c922",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "clips": {
+    "fms.wav": {
+      "channels": 2,
+      "pcm_method": "direct concatenation of original interleaved PCM frames; no resampling or format conversion",
+      "repeat_count": 12,
+      "repeated_duration_seconds": 120.0,
+      "repeated_frames": 5760000,
+      "repeated_pcm_sha256": "6b1a0230e0161c8e4dfda6086661e356100562276ceaa08f0c73048620d35bbd",
+      "repeated_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/all4-stack-timing-serial/inputs/fms.wav",
+      "repeated_wav_sha256": "3d476edb2965952bb797dd506fda604e8ae6f8b9d2dc21afcdcbdf21b7d2c13f",
+      "sample_rate_hz": 48000,
+      "sample_width_bytes": 2,
+      "source_duration_seconds": 10.0,
+      "source_frames": 480000,
+      "source_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+      "source_pcm_sha256": "d27a1b961a0ca07ae9499b4558bdc2a3c34cb299db763dcd850ac9f088dc3c1e",
+      "source_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917"
+    },
+    "sandman.16b48k.wav": {
+      "channels": 2,
+      "pcm_method": "direct concatenation of original interleaved PCM frames; no resampling or format conversion",
+      "repeat_count": 12,
+      "repeated_duration_seconds": 120.0,
+      "repeated_frames": 5760000,
+      "repeated_pcm_sha256": "37dff67091047d91b91959ecdf58a6bd666071d0f0a0ec84b2acfec82038b58c",
+      "repeated_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/all4-stack-timing-serial/inputs/sandman.16b48k.wav",
+      "repeated_wav_sha256": "904392767efe66d0e389d90ba9f34856183dcdd0bf027ed890d93961fb431b20",
+      "sample_rate_hz": 48000,
+      "sample_width_bytes": 2,
+      "source_duration_seconds": 10.0,
+      "source_frames": 480000,
+      "source_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+      "source_pcm_sha256": "5aef0923a39f65100657641df49f1e5fa34546eed327786437240d394d5c5e28",
+      "source_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18"
+    }
+  },
+  "created_utc": "2026-10-14T16:55:19.323824+00:00",
+  "environment": "All FAAC_SBR_* probe variables are removed; each encode is a separate measure_peak_ram invocation",
+  "host": {
+    "architecture": "arm64",
+    "system": "Darwin Nilss-MBP.lan 27.0.0 Darwin Kernel Version 27.0.0: Tue Aug 11 21:22:49 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T6000 arm64"
+  },
+  "libfaac_dylibs": {
+    "/private/tmp/faac-envcount-all4-stack/build-all4/libfaac/libfaac.2.dylib": {
+      "sha256": "9c488164a8e0e9321e8fbd5a8eda8290ec7393b180110cdc3cfdcb7b1ff74e00"
+    },
+    "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib": {
+      "sha256": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786"
+    }
+  },
+  "method": "native serial encoder timing with faac-benchmark utils.measure_peak_ram; do not overlap other quality/decoder jobs",
+  "pair_order": "20 paired observations per clip, alternating retained-stack/all4-stack then all4-stack/retained-stack",
+  "pairs_per_clip": 20,
+  "peak_ram_metric": "measure_peak_ram returned peak_rss_kb, measured separately from duration; on macOS helper converts ru_maxrss bytes to KiB",
+  "production_equivalence": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/production-equivalence/all4_stack/equivalence-summary.json",
+    "rows": {
+      "exact_matches": 196,
+      "packet_identity_matches": 196,
+      "pcm_identity_matches": 196,
+      "rows": 196
+    },
+    "sha256": "9233f81f4fe8915b26a48c8566a91bff0fae57a9109e31d0f23a9bd8021a14fd"
+  },
+  "profile": "HE-AAC v1; command must force he-aac-v1 and ffprobe must report HE-AAC",
+  "retained_stack_binary": {
+    "linked_libraries": [
+      {
+        "install_name": "@rpath/libfaac.2.dylib",
+        "resolved_build_path": "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib",
+        "sha256": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+        "version_info": " 2.0.0, current version 2.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libiconv.2.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 7.0.0, current version 7.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libSystem.B.dylib",
+        "resolved_build_path": null,
+        "sha256": null,
+        "version_info": " 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "path": "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+    "sha256": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87"
+  },
+  "retained_stack_reference_results": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/envelope-count/full-active-lambda/envcount-results.json",
+    "sha256": "646bc1cf56a41d76d19ce784fb330b2fe1d04373d2c08b94e3e8a59a7a42cdb8"
+  },
+  "retained_stack_source_commit": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+  "schema": 1,
+  "start_requested": false,
+  "target_kbps": 64,
+  "timing_metric": "measure_peak_ram returned encoder subprocess duration_seconds"
+}

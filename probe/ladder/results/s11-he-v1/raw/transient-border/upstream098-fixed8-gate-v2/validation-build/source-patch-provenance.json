@@ -1,0 +1,25 @@
+{
+  "schema": "faac-upstream098-fixed8-patch-provenance-v1",
+  "original_patch": {
+    "path": "/private/tmp/upstream_fixed8.patch",
+    "sha256": "fa7443329cf5c97f434161212ab0d5381f629c86740cea3443e1325c11f5dd60",
+    "ends_with_newline": false,
+    "preserved_unchanged": true,
+    "note": "The original artifact hash matches the pre-commit source manifest but it has no final newline and is not accepted by git apply.",
+    "git_apply_check": "failed in disposable clone: corrupt patch at line 25"
+  },
+  "canonical_patch": {
+    "path": ".cache/he-v1-feature-study/transient-border/upstream098-fixed8-gate-v2/validation-build/source-committed.patch",
+    "sha256": "1bb0d64ab8c13367f64044791301ba218f482c8f58f391f5c4fb925e045fc846",
+    "generated_from": "git diff 098e8900289b87d1592a859351ca0bd420397d4b c50b66aab79f754fc17e2550159a861d26403b65 -- libfaac/sbr_analysis.c",
+    "git_apply_check": "passed in disposable clone at /private/tmp/faac-upstream098-patch-check",
+    "disposable_clone_status": "clean after check"
+  },
+  "source_commit": "c50b66aab79f754fc17e2550159a861d26403b65",
+  "parent_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "candidate_source_file_sha256": "febe0e3f8e183c33fe63ccec1f2f3cef0acc41e0cd665911c6dd54e20bd57672",
+  "source_clone_statuses": {
+    "baseline": "clean",
+    "fixed8": "clean"
+  }
+}

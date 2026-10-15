@@ -1,0 +1,252 @@
+{
+  "actual_bitrate": "ffprobe audio packet bytes * 8 / source WAV duration",
+  "baseline_binary": "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+    "/private/tmp/faac-he-v1-stack/build-stack/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+  },
+  "calibration_note": "Independent opt-in limiter header and static noise floor overrides; noise values are 18 and 24.",
+  "candidate_binary": "/private/tmp/faac-he-v1-stack/build-stack/frontend/faac",
+  "clip_sha256": {
+    "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+    "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+    "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+    "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+  },
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "created_utc": "2026-10-14T05:19:39.150734+00:00",
+  "decoder": "FDK AAC strict; no fallback",
+  "feature_environment": {
+    "limiter": {
+      "FAAC_SBR_LIMITER": "1"
+    },
+    "stack18": {
+      "FAAC_SBR_LIMITER": "1",
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+    },
+    "stack24": {
+      "FAAC_SBR_LIMITER": "1",
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+    },
+    "static18": {
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+    },
+    "static24": {
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+    }
+  },
+  "immutable_run_config": {
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+      "/private/tmp/faac-he-v1-stack/build-stack/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+    },
+    "calibration_note": "Independent opt-in limiter header and static noise floor overrides; noise values are 18 and 24.",
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "feature_environment": {
+      "limiter": {
+        "FAAC_SBR_LIMITER": "1"
+      },
+      "stack18": {
+        "FAAC_SBR_LIMITER": "1",
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+      },
+      "stack24": {
+        "FAAC_SBR_LIMITER": "1",
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+      },
+      "static18": {
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+      },
+      "static24": {
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+      }
+    },
+    "libraries": {
+      "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+    },
+    "linked_libraries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": [
+        {
+          "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+          "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+          "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-stack/build-stack/frontend/faac": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ]
+    },
+    "measured_reference_variants": [
+      "limiter",
+      "static18",
+      "static24",
+      "stack18",
+      "stack24"
+    ],
+    "prior_measurement_results": {
+      "adaptive": "/private/tmp/faac-he-v1-adaptive/probe/results-gate/noise-results.json",
+      "baseline": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json"
+    },
+    "prior_measurement_results_sha256": {
+      "adaptive": "a178198513782dc322e9d730fddc77b892333ba5712dc1b352b9b33bec9ce1cf",
+      "baseline": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585"
+    },
+    "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "source_diff_sha256": "1bdd5c0346df4cedee88ba76870fc3c5de7110280735d31b5f8292b1946c290d",
+    "source_tree_sha256": "6708d7bd49993b22c0aa9a6276f4ac3efe8f0de447ee7755f68e932dd395d278",
+    "variants": [
+      "limiter",
+      "static18",
+      "static24",
+      "stack18",
+      "stack24"
+    ]
+  },
+  "libraries": {
+    "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+  },
+  "linked_libraries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": [
+      {
+        "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+        "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+        "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+      {
+        "path": "@rpath/libfaac.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+      },
+      {
+        "path": "/usr/lib/libiconv.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-stack/build-stack/frontend/faac": [
+      {
+        "path": "@rpath/libfaac.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+      },
+      {
+        "path": "/usr/lib/libiconv.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ]
+  },
+  "measured_reference_variants": [
+    "limiter",
+    "static18",
+    "static24",
+    "stack18",
+    "stack24"
+  ],
+  "metric": "Zimtohrli via phase2_mos.score_wav_pair audio mode at 48 kHz",
+  "prior_measurement_results": {
+    "adaptive": "/private/tmp/faac-he-v1-adaptive/probe/results-gate/noise-results.json",
+    "baseline": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json"
+  },
+  "prior_measurement_results_sha256": {
+    "adaptive": "a178198513782dc322e9d730fddc77b892333ba5712dc1b352b9b33bec9ce1cf",
+    "baseline": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585"
+  },
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "source_diff_sha256": "1bdd5c0346df4cedee88ba76870fc3c5de7110280735d31b5f8292b1946c290d",
+  "source_tree_sha256": "6708d7bd49993b22c0aa9a6276f4ac3efe8f0de447ee7755f68e932dd395d278",
+  "variants": [
+    "limiter",
+    "static18",
+    "static24",
+    "stack18",
+    "stack24"
+  ],
+  "workers": 4
+}

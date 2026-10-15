@@ -1,0 +1,3543 @@
+{
+  "errors": [],
+  "faad_sha256": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+  "ffmpeg_sha256": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a",
+  "rows": {
+    "0.001|12-German-male-speech.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.88410079531896,
+      "encoded_sha256": "c23b0fbacabec68b0f243c3dd3e34acecb9cb64dc5880971d24fa72600c2a71e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|12-German-male-speech.441.16b48k.wav|48": {
+      "actual_payload_kbps": 47.892986684452616,
+      "encoded_sha256": "64dfe0328e9c2866506127df7eb3645f17a9f1a308bc6caa5b6f9cfdf3374f1e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|12-German-male-speech.441.16b48k.wav|64": {
+      "actual_payload_kbps": 63.69167240192705,
+      "encoded_sha256": "c480dc4d46d995205cf06238cf20148b2f1cd13a41b126f273f37736c47cd87e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|12-German-male-speech.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.57475280806321,
+      "encoded_sha256": "9b76ec70161e3e01c11e14aa5fab5192d14ef65ae170d70420f69d5a37921a5a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|15-Good-evening.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.10164462323487,
+      "encoded_sha256": "b0988250781594abddfc879ade34ea97aa0191dc573db734cd66c17cf27edb45",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|15-Good-evening.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.39716118864281,
+      "encoded_sha256": "7fa7b229350ac5f322169b9c70f05769dabd29b4b8f70eee5618e1dde3650975",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|15-Good-evening.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.08747975230933,
+      "encoded_sha256": "51c68f75423549595e810f83f40b7207e5a217b1cf5cf9a41d8240a6c2e3f7be",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|15-Good-evening.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.64369901595009,
+      "encoded_sha256": "8ff555105b3e211c948e0f959b6ddd14a6d2fd641bd499cb88a14cccf1f4df0e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|21-classic.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.866198915196314,
+      "encoded_sha256": "02a04bb5fd1de4668d224723c67ef1e964da562270a8afd8aed5a1e6d2d07833",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|21-classic.441.16b48k.wav|48": {
+      "actual_payload_kbps": 47.82870975676061,
+      "encoded_sha256": "0040e5da102fc44fa881c70aa6d53ad15c231e3081a9cea86d728003bf88d3bc",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|21-classic.441.16b48k.wav|64": {
+      "actual_payload_kbps": 63.71831350567645,
+      "encoded_sha256": "efe1c4b0c9f30d2321309a8b6e2309e227e53d0fa1f5ee47582f9317ecf938d4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|21-classic.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.519061735427,
+      "encoded_sha256": "a889ae95cdb2a89bf4347bb4bbe139804d8996561fa2adeb74beddad84051b42",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.876146788990823,
+      "encoded_sha256": "92a0743c7c7ee62ac96f6c450922707a5b02b39ee5a7695e31b9576041d384bd",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48": {
+      "actual_payload_kbps": 47.96880733944953,
+      "encoded_sha256": "267de1f7b01235b2d361881b74d3fa7c4c98c8fff5b760d58d0f84c51c13803e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.05688073394495,
+      "encoded_sha256": "d4000b395d50a38e72f9f87bfed0d4b91fdf2216385fc83679be4f990577e002",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.77798165137614,
+      "encoded_sha256": "0ce2a5e2a72167c11c26809562f7197104c8355d9b417b85b0613bc9cd40d600",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|25-This-is-the-end.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.29579289053621,
+      "encoded_sha256": "c7989f1231898ce26424f26ed2dc8c9afc0814d781daae0ead0e027cc4b5ffaa",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|25-This-is-the-end.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.779477780373774,
+      "encoded_sha256": "73ca037ea37985f8a5882b9628bb3e72ed6441de4a0651c9152118ff8da9ce6d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|25-This-is-the-end.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.47660763662842,
+      "encoded_sha256": "fa551373f205c32fc62c39441d95f1d103a0c46332080ee1be24bc3847fa13fb",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|25-This-is-the-end.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.85170432506368,
+      "encoded_sha256": "040a0502405ef058016541d60aafdea6fe6a16e7eb0c157765de9f60c2316e6c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|27-last-song-drums-and-trampets.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.61531514581374,
+      "encoded_sha256": "1819a09fff908b4b5f06822c3ea202fe554bd9db6a358131f5713a18d5cda8ad",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|27-last-song-drums-and-trampets.441.16b48k.wav|48": {
+      "actual_payload_kbps": 49.06706804640954,
+      "encoded_sha256": "40665717e180c70ffca3d98eb62674a460b735bf5fe3783ee701564dc6bae342",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|27-last-song-drums-and-trampets.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.41984321103796,
+      "encoded_sha256": "5af8ab326d8152b3f8ff96c9a56ba1ab2a28b6ead19639ba70f174c4976efb2a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|27-last-song-drums-and-trampets.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.98434619002823,
+      "encoded_sha256": "3f89f87034ec29ec84d7f71c3da7e29317a86409cbbae65e7272fbdcf9a98d07",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|35_SQAM_glockenspiel_cut.16b48k.wav|32": {
+      "actual_payload_kbps": 32.064,
+      "encoded_sha256": "479a96bcd8df2ae193c46422229ae713a7e3b3db1fe01b704b2360f337ef7d66",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|35_SQAM_glockenspiel_cut.16b48k.wav|48": {
+      "actual_payload_kbps": 48.156800000000004,
+      "encoded_sha256": "ffe9a0de87d00a5be66d37b2041fbcfdb6667bc5f4e19325c16c95bd91463c92",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|35_SQAM_glockenspiel_cut.16b48k.wav|64": {
+      "actual_payload_kbps": 63.8176,
+      "encoded_sha256": "4766dac9d23d1a226b9f9fc86c6aec9626df5a1d963e7e85e44ff0a1529e4b8e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|35_SQAM_glockenspiel_cut.16b48k.wav|96": {
+      "actual_payload_kbps": 95.30239999999999,
+      "encoded_sha256": "9d9f1006547047e2756a886d6cfa7cda5cd579d2d5dcd3373f5a321980330967",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|4-Sound-English-male.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.18999840775722,
+      "encoded_sha256": "0c5f5575948329c3dd746ade13349e60176058a2368aba1f08223ed6fdef92d5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|4-Sound-English-male.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.016947001391486,
+      "encoded_sha256": "2a04dee4cbb233b91ef48c8dcc4b4424272d834ec20e078cdc161b99d5ddb8cf",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|4-Sound-English-male.441.16b48k.wav|64": {
+      "actual_payload_kbps": 63.858959596262615,
+      "encoded_sha256": "cfd57a70fa55da47e90e129914616c312c97565deb296102fb087f199e1be111",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|4-Sound-English-male.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.56247937584084,
+      "encoded_sha256": "3ac2ef74425c0637a4969f7c0916606f7e0eafc8b28c874d73182ce1342e3573",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|9-Have-big-expensive-car.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.970948238672584,
+      "encoded_sha256": "fa35347b70b3d533404b82efa2448d0a66f74a214d0d823fbcb44caadf06c350",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|9-Have-big-expensive-car.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.35284497356882,
+      "encoded_sha256": "fc641989215ab6294bbc1ddcb97de29e168baa74285fb015c909f047b381aaf6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|9-Have-big-expensive-car.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.06716932051587,
+      "encoded_sha256": "db99792b76fc6ea64e6461cd1db1042c1d994e86326c6baa69d368ce57c6b590",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|9-Have-big-expensive-car.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.46120314984965,
+      "encoded_sha256": "32e371b552d60efb62428d1684591212940e6c380e3b29f2a5ba01778f72eb64",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Asleep__4.11-4.31_.16b48k.wav|32": {
+      "actual_payload_kbps": 31.7904,
+      "encoded_sha256": "b98365a75503c2a80f5f0d3aa3823c73945d3e0ad13a62e28b35daa442aacfab",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Asleep__4.11-4.31_.16b48k.wav|48": {
+      "actual_payload_kbps": 47.8136,
+      "encoded_sha256": "5896cfd60c4ffe2720717439ea6e7841b48238fc7545c83acae6d36f841936cb",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Asleep__4.11-4.31_.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7376,
+      "encoded_sha256": "92b94cff9008f9c91d2482cd535d940736019c4225e1f356eb652095989545eb",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Asleep__4.11-4.31_.16b48k.wav|96": {
+      "actual_payload_kbps": 95.52080000000001,
+      "encoded_sha256": "096db21e6350766f1ab4d14c20490805b2740662844f4aa4cc43bd84f8caa98b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32": {
+      "actual_payload_kbps": 31.756,
+      "encoded_sha256": "177d420384a3acbf51d6b089ddfb303ac4188d8cf1d453678db2de7a8e0a2428",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48": {
+      "actual_payload_kbps": 48.0456,
+      "encoded_sha256": "3c83f418eec9565c3e5af2b2d429540937d9b198b7ad762c15c5e852611a5041",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64": {
+      "actual_payload_kbps": 63.68,
+      "encoded_sha256": "d078c47b522c0e9ac4a07593004ee9d057b29d76a17e2a2ea5e0cfb7ce23a127",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96": {
+      "actual_payload_kbps": 95.24080000000001,
+      "encoded_sha256": "19801dbd18e444e812f7120abc7aaa9b8a358766b683eda6fbd7b2a437fbc6f7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Changes.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8648,
+      "encoded_sha256": "c29f834e7cdd438dffc42200e73b6327094864c94de38357d28cd0b8c3bf6f8f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Changes.16b48k.wav|48": {
+      "actual_payload_kbps": 47.9088,
+      "encoded_sha256": "15b3a94c5301dbde54b62fb3e32b8dd73115a8b8e22ce1805d6abd24a4741785",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Changes.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7472,
+      "encoded_sha256": "f9ab82c6fc0477a753fc8a6dbd92fedcbd9632d53baf57999f54ddae78652a8a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Changes.16b48k.wav|96": {
+      "actual_payload_kbps": 95.508,
+      "encoded_sha256": "11705e29f15f25ab5076d32463848305a92d242d313e733ae9df05901832477d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Coral.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8536,
+      "encoded_sha256": "daa3c8e2c051354680e2db1a5edc09754d26d5d04c387df6ed5073e0d9ad4976",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Coral.16b48k.wav|48": {
+      "actual_payload_kbps": 47.992,
+      "encoded_sha256": "bf98f3690df7ce8597d2c9606b25da29cf9418e5c3e79e95db7f0623c72b8ab9",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Coral.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7256,
+      "encoded_sha256": "d927d9a6680b5765f8ed248a939beb3c03cfd1b3f8a99eeaf445759a5de29e47",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Coral.16b48k.wav|96": {
+      "actual_payload_kbps": 95.3744,
+      "encoded_sha256": "6c20bd9d05665d56ca44913609d66fe60955ee8b82939683c25e1a6121994891",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|ExitMusic.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9512,
+      "encoded_sha256": "cb1bb57a77116688e3b7f4b269b405551534e9183bde0975b8eeb6478c52c979",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|ExitMusic.16b48k.wav|48": {
+      "actual_payload_kbps": 47.843199999999996,
+      "encoded_sha256": "db50989e83a8db534dd602f00c79ba60d7a1494ca0cbc6dff69a99401857c4bf",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|ExitMusic.16b48k.wav|64": {
+      "actual_payload_kbps": 63.6216,
+      "encoded_sha256": "c534d6a358d0a02e0bb57f5e5db1d25ec38e78a16b1961d07d0ae2e3b49e3c1b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|ExitMusic.16b48k.wav|96": {
+      "actual_payload_kbps": 95.3712,
+      "encoded_sha256": "058c249ae30368367fff3b36b322afdf98ab34ec1301a685a469e4c72b23940f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Girl_In_The_Fire__Sample_.16b48k.wav|32": {
+      "actual_payload_kbps": 31.812,
+      "encoded_sha256": "aa98ce7527b802f645eaa48e3ed44d6ce7a9ca2891794665ab09288c07afadfd",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Girl_In_The_Fire__Sample_.16b48k.wav|48": {
+      "actual_payload_kbps": 47.9096,
+      "encoded_sha256": "872ebc94bfc3ec53a88e4cc5e9eb47cc11d3ab8a8261e70e3e140e0bb2c8a93a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Girl_In_The_Fire__Sample_.16b48k.wav|64": {
+      "actual_payload_kbps": 63.772,
+      "encoded_sha256": "4910b90bca8f927acec1a919fddbe90cc19afd3d3f3175f3b9bc0d6929de3880",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Girl_In_The_Fire__Sample_.16b48k.wav|96": {
+      "actual_payload_kbps": 95.7192,
+      "encoded_sha256": "0ee94dfff53b2a45fde7320ddcb206600ba946302261bc9b7d74c399dada4329",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Greatest_Love_of_All_2min57.16b48k.wav|32": {
+      "actual_payload_kbps": 31.755200000000002,
+      "encoded_sha256": "359242d61d947a247163b6612b304bcc87a8d9d69f163ec67627bf5a26034675",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Greatest_Love_of_All_2min57.16b48k.wav|48": {
+      "actual_payload_kbps": 47.808800000000005,
+      "encoded_sha256": "2c938b93aa531b6428b2bc9e08711dc8a72379c6ea98d1162de806eb0f6dc50d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Greatest_Love_of_All_2min57.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7296,
+      "encoded_sha256": "fd7e639e4329b1011aaf6c1de23b011cdbe419c45a8e96f4c20dee897af335ef",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Greatest_Love_of_All_2min57.16b48k.wav|96": {
+      "actual_payload_kbps": 95.3848,
+      "encoded_sha256": "23bac5263066222fdb00f3d49a72a21e5a95d85a94529c3f7c621a7b0af5fbd4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hey Tonight.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8992,
+      "encoded_sha256": "38c5d90418f60a3da4b5516705ab48901bb26d636df675ae98966bcee4bd10cc",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hey Tonight.16b48k.wav|48": {
+      "actual_payload_kbps": 48.244,
+      "encoded_sha256": "ef012e580bd4ef67526b429442956e94510e976f7fee7b77acdfde0deb9cffda",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hey Tonight.16b48k.wav|64": {
+      "actual_payload_kbps": 63.9952,
+      "encoded_sha256": "b7811fb17247126bc462b52c1f510197b55e10f616e9cb524f7d1fb5040ccf81",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hey Tonight.16b48k.wav|96": {
+      "actual_payload_kbps": 95.392,
+      "encoded_sha256": "2bed7a4d57f1bbf73df9e8ac8b8c111fd5330ca153192bcd036952b1cef4dfe3",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hotel California.16b48k.wav|32": {
+      "actual_payload_kbps": 32.266400000000004,
+      "encoded_sha256": "8b2e8636b34406c36602a7ba87127eaa9671ccbc4592e89886bb4c2c30e98c81",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hotel California.16b48k.wav|48": {
+      "actual_payload_kbps": 48.6624,
+      "encoded_sha256": "5ad18a827761c8b31821bf8b830e4228ad556c593d4eea53d65d45a971752a82",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hotel California.16b48k.wav|64": {
+      "actual_payload_kbps": 64.48,
+      "encoded_sha256": "5ccf90952778ed0a8e02e22df629090973d810cd764ed5b7b0ac83f15888497c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Hotel California.16b48k.wav|96": {
+      "actual_payload_kbps": 95.7048,
+      "encoded_sha256": "c2561ef4045de10bc5983f95d04ffe8acb074f46079547d81046ea223c3f205b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Jupiter, the Bringer of Jolity.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9136,
+      "encoded_sha256": "dca070f5300e60ec4a43528650a78260162d1e976b459ce86b48152d1261b3b8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Jupiter, the Bringer of Jolity.16b48k.wav|48": {
+      "actual_payload_kbps": 48.086400000000005,
+      "encoded_sha256": "4b0d985341009f63f6570061637655b8c0326998fab1d8289e4161f494d7c9ad",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Jupiter, the Bringer of Jolity.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7896,
+      "encoded_sha256": "349638c88cac664f9f5c088330b86cd4d9f18ca6b012734d87f44463869ccb62",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Jupiter, the Bringer of Jolity.16b48k.wav|96": {
+      "actual_payload_kbps": 95.58239999999999,
+      "encoded_sha256": "f040d624cf521ec9445d173b9ba86677e0dbbdf5d58469315063bdd095804d6d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32": {
+      "actual_payload_kbps": 34.0264,
+      "encoded_sha256": "51a0b6a43b43c7eca753371af5fd0d3bf5932cc9f596935a902e59d5cecc91de",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48": {
+      "actual_payload_kbps": 49.6944,
+      "encoded_sha256": "2946eb91b43a8e7552f59260c1cd2a1c8f6f2946849b991249510f7d7b20807f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64": {
+      "actual_payload_kbps": 64.7872,
+      "encoded_sha256": "a8086299463da30c1942e4deaa96e7b04e77629c760b82582ba07a751ab480a0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96": {
+      "actual_payload_kbps": 96.008,
+      "encoded_sha256": "cbdb683b6bc9bef029943d3118792ad2bfe63fe79c198b2318cbbbdd098eae59",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|NewYorkCity.16b48k.wav|32": {
+      "actual_payload_kbps": 32.2016,
+      "encoded_sha256": "9466ce8fa47b1b08caee0b3b7b03e14c210a5894bba03a0d5cecd364660b134d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|NewYorkCity.16b48k.wav|48": {
+      "actual_payload_kbps": 48.541599999999995,
+      "encoded_sha256": "dbe165a88a0d700712d26e2d0bafe7b6d1118f42d1b867e0ea13aab1e2a5bb64",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|NewYorkCity.16b48k.wav|64": {
+      "actual_payload_kbps": 64.296,
+      "encoded_sha256": "0d5983b51dae00f6e7e64804853191194faa9039191f51c271341f68996f5e66",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|NewYorkCity.16b48k.wav|96": {
+      "actual_payload_kbps": 95.49839999999999,
+      "encoded_sha256": "e86b7b74a3c7d52d0fed62dfa0381c0c3e78190b3ae4c3366d21b8772fbf3586",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Only Time.16b48k.wav|32": {
+      "actual_payload_kbps": 31.729599999999998,
+      "encoded_sha256": "4426c70cd780cc2fb86243a0f68b36cff4552635e5a36d7676d4b39e34edc7f6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Only Time.16b48k.wav|48": {
+      "actual_payload_kbps": 47.691199999999995,
+      "encoded_sha256": "92e872a893a41b862dc98aa607f31263aa0d72df4998d3af0af8489ad6718c14",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Only Time.16b48k.wav|64": {
+      "actual_payload_kbps": 63.5608,
+      "encoded_sha256": "bf702eae9d7b635abb23e4b1be5f8efe731f667120493898012de6ccc0aa8b7e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Only Time.16b48k.wav|96": {
+      "actual_payload_kbps": 95.388,
+      "encoded_sha256": "845fc94af3bec44457cfb31d57502a44cafb921acae6ea9d1c52cf496c6b3362",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Robots_old.16b48k.wav|32": {
+      "actual_payload_kbps": 31.756,
+      "encoded_sha256": "941037f1afbc0e5423450f4c8631f9464409035154d7d9c1bcf080a4bffe35f8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Robots_old.16b48k.wav|48": {
+      "actual_payload_kbps": 47.6424,
+      "encoded_sha256": "b876e31eccaec83e3c6808d4bb90cb7689e0a95f21c9278414d498f95e5fec9a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Robots_old.16b48k.wav|64": {
+      "actual_payload_kbps": 63.4304,
+      "encoded_sha256": "6c0f47f79df5b2cfdabf11a915f8f4d1422ee72a211f2f38ff736fbc220176e3",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Robots_old.16b48k.wav|96": {
+      "actual_payload_kbps": 95.1184,
+      "encoded_sha256": "4b0157edbc46ec56bb0514447c4715c5cf8ae1bcecbbdb67a1ca097d92578956",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Severance__1.31-1.51_.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8152,
+      "encoded_sha256": "ee9f14217a32d5ab06169e135d94daa85894472dac31fd2ba94617b9745971ac",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Severance__1.31-1.51_.16b48k.wav|48": {
+      "actual_payload_kbps": 47.828,
+      "encoded_sha256": "4e409eb8d63d5300a122c59dc148555fe16d59c4c831412e5ba5f9dec4423443",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Severance__1.31-1.51_.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7184,
+      "encoded_sha256": "5012c9c31b9441b2964cd0f81c92b027662e77b1bdeffb04bc20d65e362490c1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Severance__1.31-1.51_.16b48k.wav|96": {
+      "actual_payload_kbps": 95.568,
+      "encoded_sha256": "4d36e8553fe8786a3abb4c64e2431b9415a6eec4fb6add6cf2e274a43f0c41f1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Shinsho_pool_3min45_4min4.16b48k.wav|32": {
+      "actual_payload_kbps": 31.796799999999998,
+      "encoded_sha256": "11f8277dbf2d9703f7c017f18bd9ee5e8e0df592ce39d8e095ad12fd71ca7512",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Shinsho_pool_3min45_4min4.16b48k.wav|48": {
+      "actual_payload_kbps": 47.672,
+      "encoded_sha256": "79dd7f6b9c867e4342a0fb8172471e6a40a885c67508d43dc6e30f0d85aadcd9",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Shinsho_pool_3min45_4min4.16b48k.wav|64": {
+      "actual_payload_kbps": 63.5728,
+      "encoded_sha256": "e46a491bb1042cf43c7919084de7ec2048c609080c6818b4a03926b804cc5b27",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Shinsho_pool_3min45_4min4.16b48k.wav|96": {
+      "actual_payload_kbps": 95.3712,
+      "encoded_sha256": "5b856c7846243d1d81129aaca05f424e3cc9da3ede7a786aa51b757256743709",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SinceAlways.16b48k.wav|32": {
+      "actual_payload_kbps": 31.813599999999997,
+      "encoded_sha256": "65c7263d8a57de1997cbb393664c24799eaab42945d52fd8b3493e4538fccce5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SinceAlways.16b48k.wav|48": {
+      "actual_payload_kbps": 48.231199999999994,
+      "encoded_sha256": "e047252240fac1f9562317b7fc3d48e513a4e59d5ae55c9f330da5446efd0eb3",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SinceAlways.16b48k.wav|64": {
+      "actual_payload_kbps": 63.8872,
+      "encoded_sha256": "7898837c242e20dfa3821d3938119e16ddb0f5384a3a4cf54e2fa6126ac10b68",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SinceAlways.16b48k.wav|96": {
+      "actual_payload_kbps": 95.5384,
+      "encoded_sha256": "33b8d737d409bbb5a6612802be91d3b6aef6c7b1d98df41d082e2c4c2fd793de",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SlavesOfFear.16b48k.wav|32": {
+      "actual_payload_kbps": 32.2416,
+      "encoded_sha256": "5dcf54375a90309dd9257ce5727b72749b5b91cbcf72d1d29ca22645db6ff27f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SlavesOfFear.16b48k.wav|48": {
+      "actual_payload_kbps": 48.64,
+      "encoded_sha256": "746eaa61d40fa3fd6719f30d956505ec58a7cd6d47099aeec8309d4e758654d5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SlavesOfFear.16b48k.wav|64": {
+      "actual_payload_kbps": 64.328,
+      "encoded_sha256": "a4e4105adb47d5543eac784c4db9cbc135d8e0624a930c4d042f124b53cf2553",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|SlavesOfFear.16b48k.wav|96": {
+      "actual_payload_kbps": 95.6352,
+      "encoded_sha256": "8782d4458c87053a6ab47307341004df8e3047b6a68f85395a2072f437e534cc",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|The Chastising of Renegade.16b48k.wav|32": {
+      "actual_payload_kbps": 32.324,
+      "encoded_sha256": "e3c189395ba950cca4e3979e91dd6aea8ea90f77263bad41c79a2e33af871c87",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|The Chastising of Renegade.16b48k.wav|48": {
+      "actual_payload_kbps": 48.872,
+      "encoded_sha256": "5f28aa1f8a7eea2bcbf6c33eefc90acb6d8b2955e040f62fb07692ce0f12be7f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|The Chastising of Renegade.16b48k.wav|64": {
+      "actual_payload_kbps": 64.6832,
+      "encoded_sha256": "94a0ac753c8b20e890e04e798c59bde68996c625bb91e3f742d4f26628d15757",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|The Chastising of Renegade.16b48k.wav|96": {
+      "actual_payload_kbps": 95.94160000000001,
+      "encoded_sha256": "2103d8d815921b679ef30c2153442ff6563d93ad833075b8061e8b692d8563fd",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Through The Fire And Flames.16b48k.wav|32": {
+      "actual_payload_kbps": 32.24,
+      "encoded_sha256": "eb6106aa860497144b9c820ecb601db60dbbc35a3174eb30ee1716aadf339b07",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Through The Fire And Flames.16b48k.wav|48": {
+      "actual_payload_kbps": 48.458400000000005,
+      "encoded_sha256": "e9ce53afb457d99e0d5a0fceb654fc8a8d311fa570c8ac30a6cdc0f38e01ea50",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Through The Fire And Flames.16b48k.wav|64": {
+      "actual_payload_kbps": 64.0856,
+      "encoded_sha256": "f9ff3db0ef43019f3806e70faf09ad3336b7cb5be0214934eac3cfcd44926f9d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Through The Fire And Flames.16b48k.wav|96": {
+      "actual_payload_kbps": 95.472,
+      "encoded_sha256": "d3ab0389731893e9f4549c8fa2b523d3b27617aadb4e824effcaa1746983055f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|TrosYGareg.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8008,
+      "encoded_sha256": "1edd7a3552e168b24182e5075b284e3e060b966c7959c39b4b2ac8552290f299",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|TrosYGareg.16b48k.wav|48": {
+      "actual_payload_kbps": 47.785599999999995,
+      "encoded_sha256": "060c3054a899b23781c1252e492f466a585f1630bc8cd501b9de703efff9010b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|TrosYGareg.16b48k.wav|64": {
+      "actual_payload_kbps": 63.6608,
+      "encoded_sha256": "1bd9482ad626c461d99b5f0adf389c9bcb6d379904a6f5051048684e2cf4206d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|TrosYGareg.16b48k.wav|96": {
+      "actual_payload_kbps": 95.396,
+      "encoded_sha256": "79f9458eb5f4486571840b9432b63ab595dbb2c60077c1a07e9a1a4e9810bf3a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Waiting.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9136,
+      "encoded_sha256": "1048d1fbe5f604a81aea9c1d74059390c2a1a0c45c33dbcb591584b9e7888ec0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Waiting.16b48k.wav|48": {
+      "actual_payload_kbps": 48.3272,
+      "encoded_sha256": "0688e75768ffa04987358e491dd75c53f1998a411fd9f78663ab4429e602455f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Waiting.16b48k.wav|64": {
+      "actual_payload_kbps": 64.1472,
+      "encoded_sha256": "aa074718c577237d07fe7715c82e77b3ca26b28f8293e6ed846b567a5a1deba5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|Waiting.16b48k.wav|96": {
+      "actual_payload_kbps": 95.94,
+      "encoded_sha256": "fdfb559c4fcf06637525cc0cab5a961dab5823c5a7af00617736831a36a578b6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|With Love (Outro).16b48k.wav|32": {
+      "actual_payload_kbps": 31.8376,
+      "encoded_sha256": "aa0e8e7976e9a9e40c466699ea5ecc24b841ef5a8077f3271cc05f4636302a82",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|With Love (Outro).16b48k.wav|48": {
+      "actual_payload_kbps": 48.1088,
+      "encoded_sha256": "d4143a8954cd9c00e7f75e90bfbfea20eb1890623038a9e87329473c7da9e2d4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|With Love (Outro).16b48k.wav|64": {
+      "actual_payload_kbps": 63.819199999999995,
+      "encoded_sha256": "a8398fd3936f25bb2da52ce753ce649bd1001c2106e1a270c0965a57cea3275a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|With Love (Outro).16b48k.wav|96": {
+      "actual_payload_kbps": 95.5232,
+      "encoded_sha256": "8c3eb66266daf6bcc52967f27df8d83fb5ffd70feb2c9e9d5ad57ae0b0b5f0b7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bah.wav|32": {
+      "actual_payload_kbps": 31.84952889888904,
+      "encoded_sha256": "de1d2be10e612f7a4cfea6e95e372bcf151da45d5b7e1b908cbf487050850bb7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bah.wav|48": {
+      "actual_payload_kbps": 47.857404021937846,
+      "encoded_sha256": "c9c0c37136d3623873edfe776a40ce4f77cae1378822b902197957d4dff673e6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bah.wav|64": {
+      "actual_payload_kbps": 63.747996062438474,
+      "encoded_sha256": "b005202bb5086a9ccd88b53846f29b9280ff668f7547b64ecba3afecd7f8ef28",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bah.wav|96": {
+      "actual_payload_kbps": 95.69371396428069,
+      "encoded_sha256": "3d964dc985a9edd17a9f2e6b591c37b83c28d46f76a03a127a4214a89df800d0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bas.wav|32": {
+      "actual_payload_kbps": 31.772,
+      "encoded_sha256": "742ce3b9ad0ee06a45856436a6ed9ec57f05520295a90b03e2f5825093699c2b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bas.wav|48": {
+      "actual_payload_kbps": 47.6768,
+      "encoded_sha256": "01f46dc17b816b6092ceb4f687fd2279d8dc3c1636d2ddd3decf3cfbf13d8d86",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bas.wav|64": {
+      "actual_payload_kbps": 63.603199999999994,
+      "encoded_sha256": "71e79a812b2ae429712597b7b19803369471a86b33b009c49c0a9275484d0322",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bas.wav|96": {
+      "actual_payload_kbps": 95.52080000000001,
+      "encoded_sha256": "7e45724fd346161d63e1638f4a548e8838b77d9f81bd6b5f8d0fcc97762a5ec4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bonhemian_rhapsody.16b48k.wav|32": {
+      "actual_payload_kbps": 31.7776,
+      "encoded_sha256": "c184e0066e5caa607d5dce1e84c9d42d8f8e0ed21e706e63bcfe6b7301828dad",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bonhemian_rhapsody.16b48k.wav|48": {
+      "actual_payload_kbps": 47.7944,
+      "encoded_sha256": "965795de97a688c9ad35e258dc60e440a01144284bfaff7d326e2d518bb3cf95",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bonhemian_rhapsody.16b48k.wav|64": {
+      "actual_payload_kbps": 63.6624,
+      "encoded_sha256": "4628b041e1e1a4d81136c71128c66176097c775821a83602c7e9432645148f40",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|bonhemian_rhapsody.16b48k.wav|96": {
+      "actual_payload_kbps": 95.4736,
+      "encoded_sha256": "6af9527af27609bbe108ffdd521c9d174a0689b3d41b91ca541514e9d399acdd",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|clapton_44k.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9512,
+      "encoded_sha256": "a47646ce6505ac601e328ff91b2f2db27d055a551e3fcd276b784b44ac217ebf",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|clapton_44k.16b48k.wav|48": {
+      "actual_payload_kbps": 48.156800000000004,
+      "encoded_sha256": "67a60dc3eceb964bede37a8b454abd34daf4da04ab993390bcb6555c11779955",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|clapton_44k.16b48k.wav|64": {
+      "actual_payload_kbps": 63.9056,
+      "encoded_sha256": "0bab3d6e70d59546e0f3d373bbc2a11598fd380e62dc713d3f3d4d6c780862e4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|clapton_44k.16b48k.wav|96": {
+      "actual_payload_kbps": 95.3248,
+      "encoded_sha256": "2503f45eecf0ebf007d46da2ac0298739b8035d4bcd5b3ee37278bea4ef1fef6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|cst.wav|32": {
+      "actual_payload_kbps": 32.213805730499715,
+      "encoded_sha256": "da3f1aa346242b11ea1844e9703452322c27fb7dc3d470eca2fa20842f513eda",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|cst.wav|48": {
+      "actual_payload_kbps": 48.34156769140808,
+      "encoded_sha256": "2bf0bf0a43309b37ca26780263c61eb23ae4f5949d18674f3c4b279928a40c65",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|cst.wav|64": {
+      "actual_payload_kbps": 63.95276028336161,
+      "encoded_sha256": "a1819bba2c1b849ba7af35608c86835f05117125b80df08d68c14ff1c4800e75",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|cst.wav|96": {
+      "actual_payload_kbps": 96.06963256933061,
+      "encoded_sha256": "c07df0fd23589ea2de1b0e970469fc4e2615795abd7fdc04239c583a7d0ccaff",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|fms.wav|32": {
+      "actual_payload_kbps": 31.9528,
+      "encoded_sha256": "78ef4fbdbb4f8fc60b93fd85a1db23d0a4f3fc4b478881eb7c5fdde7d21b5c8c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|fms.wav|48": {
+      "actual_payload_kbps": 48.104800000000004,
+      "encoded_sha256": "5777d1cd8728e7add98933253a23d1fe875c5c2f75dc7eeb6ac89fa01522f433",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|fms.wav|64": {
+      "actual_payload_kbps": 63.8144,
+      "encoded_sha256": "5fea303c59ae3217718fe9f51af182801ec64f8f52a56bb96e8a465277da7f54",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|fms.wav|96": {
+      "actual_payload_kbps": 95.67360000000001,
+      "encoded_sha256": "e7dcf9f73840b08076ebbee3a0c9bc1323dd5dd7e9b847cd3e37beb2b5045be0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|girl.16b48k.wav|32": {
+      "actual_payload_kbps": 32.1416,
+      "encoded_sha256": "55edace0dad1fa04256926b82cc4d39b787406261aa761afbc3976b37fccc44f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|girl.16b48k.wav|48": {
+      "actual_payload_kbps": 48.155199999999994,
+      "encoded_sha256": "3d36af05178cff9db7f7f463b0aad87e45ad79c9aaf2453cb8757ec6b7750fa8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|girl.16b48k.wav|64": {
+      "actual_payload_kbps": 63.9808,
+      "encoded_sha256": "31a3c1f4a57a203082aa96c6294d0e8c4869f509fdf5920595ea3888e6f16475",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|girl.16b48k.wav|96": {
+      "actual_payload_kbps": 95.5888,
+      "encoded_sha256": "368df1136ff6029f99c8aa80677d1a1f3ee2b29cb21e7b47e8302431021b3833",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|glk.wav|32": {
+      "actual_payload_kbps": 31.8808,
+      "encoded_sha256": "e8f7b305ea5aaeee41c389fd80bc9a581260a3f6c22bed5f7f36d56f008973d6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|glk.wav|48": {
+      "actual_payload_kbps": 47.956,
+      "encoded_sha256": "7c88ee7223816d52cbd29678df3bebd77d0be160d2d927eb31b9ec7f9b6fdb49",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|glk.wav|64": {
+      "actual_payload_kbps": 63.663199999999996,
+      "encoded_sha256": "719bdc558b276e89e2e100688b09c99929f31b3d2a3a9f806ab99631155f2ed9",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|glk.wav|96": {
+      "actual_payload_kbps": 95.4104,
+      "encoded_sha256": "022bffbcc7a762a7fc1cc2629e8e49e28b2f4be1134d5f8f6179968514e1c3b1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|hrp.wav|32": {
+      "actual_payload_kbps": 32.55520253605419,
+      "encoded_sha256": "e5b542abf1bd9256172e44e68331c0a7e98d1af4304f27809e224db07e1e2f5e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|hrp.wav|48": {
+      "actual_payload_kbps": 48.76775344549402,
+      "encoded_sha256": "ac4c211ee2e1ed65250febeb361f4a8a54499e04cb4b4d955123d347ad36f9ff",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|hrp.wav|64": {
+      "actual_payload_kbps": 64.51812838063557,
+      "encoded_sha256": "9d9abd9ae3220f9a14cd68d8b09e8172e37ab58d5bfdf0cecf1179955c96ed8a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|hrp.wav|96": {
+      "actual_payload_kbps": 95.933357499769,
+      "encoded_sha256": "900eeec580133885702ed35015024d4de0d9fee277e6c681743a847e533eec19",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|liberate.16b48k.wav|32": {
+      "actual_payload_kbps": 32.51513045938513,
+      "encoded_sha256": "268d5978167c0fbf4406856d8a778df0e8d9f93b26f8a85fdd5962ed67aa8c36",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|liberate.16b48k.wav|48": {
+      "actual_payload_kbps": 49.47808756651951,
+      "encoded_sha256": "240a38527dd8d0b951f539f851bed5c263d8a71815e83d7e0749ac65d5214f08",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|liberate.16b48k.wav|64": {
+      "actual_payload_kbps": 65.28429785764511,
+      "encoded_sha256": "c4b1d3d2c04476b615fb2e3eab6064918385d8ff3571d061d433fc51f4fe6d47",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|liberate.16b48k.wav|96": {
+      "actual_payload_kbps": 96.2736089671844,
+      "encoded_sha256": "d46125a6fa55d7eee3611af8794dbe031b9bad79cef0c9b7dcc9357a8f500aa5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|lob.wav|32": {
+      "actual_payload_kbps": 33.25329659515843,
+      "encoded_sha256": "c516c918f119d27ad5ea81f9d3a74dfaa93a1c33000880c232718b229954a7ac",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|lob.wav|48": {
+      "actual_payload_kbps": 50.297303092880405,
+      "encoded_sha256": "d39d60a7c34de7128bf55d3cefd63e4ea758ef2df82833e14c31a7769a89780f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|lob.wav|64": {
+      "actual_payload_kbps": 65.92680369065909,
+      "encoded_sha256": "ffda9908762f996185d9447dcab58d1ccdc698f5fcf160815f6cb8a1a7bc9680",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|lob.wav|96": {
+      "actual_payload_kbps": 96.74927076876982,
+      "encoded_sha256": "ff3c4be70246810c367290231882739f969953eda7e7128c10d1e978ad067f15",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|mof.wav|32": {
+      "actual_payload_kbps": 31.796799999999998,
+      "encoded_sha256": "4209cb713eef6c8e7d17149e681aa33581eb8776f0449835b0186a0852389059",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|mof.wav|48": {
+      "actual_payload_kbps": 47.636,
+      "encoded_sha256": "d95f9501be4d6e849aae022face0a4cb9f00408f5b44964dfd1d88ceb34114c2",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|mof.wav|64": {
+      "actual_payload_kbps": 63.4288,
+      "encoded_sha256": "508e3237dee7d6772edd5620eaf120dd8ab1157065b96491f6cbab353dbf9092",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|mof.wav|96": {
+      "actual_payload_kbps": 95.2536,
+      "encoded_sha256": "cd2d74835d767dea25967a327f72872e556ee83fe140ed5db03e570582d9a171",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|qrt.wav|32": {
+      "actual_payload_kbps": 31.7512,
+      "encoded_sha256": "93c944b9a9c7eae1c43b18449ba348f21b89140bf469c0bc7588e5c1af91ffb4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|qrt.wav|48": {
+      "actual_payload_kbps": 47.696,
+      "encoded_sha256": "1e4304c221d401bb72562c563ac73ab2bc0b4a45c4f10f5f06a887619105caa4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|qrt.wav|64": {
+      "actual_payload_kbps": 63.640800000000006,
+      "encoded_sha256": "b30a1710eaeab665555856c40d389c3f82a009a605bfee81555b7c4ab7fe379c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|qrt.wav|96": {
+      "actual_payload_kbps": 95.508,
+      "encoded_sha256": "fcd5c680c1a70ab49fbe1ed6976afaf1477f1be988a788b08bdc3e01316c4a8d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|sandman.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8472,
+      "encoded_sha256": "4aa94b09637e343bea05b9dba5ea460113d599d19540e236edcd0ea58e6d7992",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|sandman.16b48k.wav|48": {
+      "actual_payload_kbps": 47.7872,
+      "encoded_sha256": "0ef9aaf033fd530497572db5083eb8cc4d2af234b5dfd8ed4c51162763028cbf",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|sandman.16b48k.wav|64": {
+      "actual_payload_kbps": 63.5504,
+      "encoded_sha256": "9fd2112ee54d99d08a557ec2aa139758c0563f32a1c47573f19861c1ca354844",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|sandman.16b48k.wav|96": {
+      "actual_payload_kbps": 95.29360000000001,
+      "encoded_sha256": "4bf18ddf37055e41b39ee58c5bfcfea2cce487ae317af971eb813465d0795ec8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|take_your_finger_frin_my_head.16b48k.wav|32": {
+      "actual_payload_kbps": 31.985599999999998,
+      "encoded_sha256": "49a18c8a8d3f03ebf2042c7e6d2ecca3e7876deb34e3f8fdefb1e7a29408277d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|take_your_finger_frin_my_head.16b48k.wav|48": {
+      "actual_payload_kbps": 48.2392,
+      "encoded_sha256": "04f1f296fb532b191f705003c84e62ef0718651778451c10613ac860ce9eebb1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|take_your_finger_frin_my_head.16b48k.wav|64": {
+      "actual_payload_kbps": 64.11840000000001,
+      "encoded_sha256": "fa67d30573368f934ea7c5a3941d5301e44d0b0444d6cc277b6554b4b402e17c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|take_your_finger_frin_my_head.16b48k.wav|96": {
+      "actual_payload_kbps": 95.568,
+      "encoded_sha256": "9e4361b4f3c9b67e221091ff8ef720078dbdf292c4e0321d2d46872490f16c4d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|trumpet.16b48k.wav|32": {
+      "actual_payload_kbps": 33.016,
+      "encoded_sha256": "bc4d33796202c01e6cd5e3add208ddc7431bd2bc63ad7c8948a93306185ca77b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|trumpet.16b48k.wav|48": {
+      "actual_payload_kbps": 49.7736,
+      "encoded_sha256": "0a4bbad189e6a3024c336e786b9e5c315d328c9472246f18cb57b9e205501c2b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|trumpet.16b48k.wav|64": {
+      "actual_payload_kbps": 65.736,
+      "encoded_sha256": "4dfb1d1073afb8a97b339ce00d1697c5fa282da7304ef3b662abbd59e48415b5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|trumpet.16b48k.wav|96": {
+      "actual_payload_kbps": 96.744,
+      "encoded_sha256": "82b9cc04fe133a6f769b178245c44a0a333908f2c0028680c12c1e6ab68aa030",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|velvet.16b48k.wav|32": {
+      "actual_payload_kbps": 33.5136,
+      "encoded_sha256": "df43bd99bc7a5d7440131b86ab3028035eb3ff84b63b711cad4b6afb1dd9527f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|velvet.16b48k.wav|48": {
+      "actual_payload_kbps": 49.828,
+      "encoded_sha256": "1f1d8a6113e7dbd13e46265746a86788ad1d4a1d5bd11b9d1ee684b7e5e826f0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|velvet.16b48k.wav|64": {
+      "actual_payload_kbps": 64.9232,
+      "encoded_sha256": "30f31837e9baf170622bf76e2c625dc1f41c1a8dcbc50f7896f8149f74e75481",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.001|velvet.16b48k.wav|96": {
+      "actual_payload_kbps": 95.2608,
+      "encoded_sha256": "3cfc7f61e8822cf4dea558d5ec6d7a846b0be3734e126896acd24a9cce9dc235",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|12-German-male-speech.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.885121184501774,
+      "encoded_sha256": "37aa83026646116eaa12772472b894f5e82560cca06972aeaab23d13538e296d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|12-German-male-speech.441.16b48k.wav|48": {
+      "actual_payload_kbps": 47.89094590608699,
+      "encoded_sha256": "ff033bb81c9363349106674149a4676c58515ff15d34a8b0bbd16a8dc5944453",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|12-German-male-speech.441.16b48k.wav|64": {
+      "actual_payload_kbps": 63.69065201274424,
+      "encoded_sha256": "0eb62a200def9a8b4fcc9f8be01d4a8d44e245fdff9f0fa42bf837070bf8443f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|12-German-male-speech.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.57475280806321,
+      "encoded_sha256": "629fd90f95924be7e0e15e2a53ca2283143abe096d1edbac2cbcfa64eb42c719",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|15-Good-evening.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.10164462323487,
+      "encoded_sha256": "b0988250781594abddfc879ade34ea97aa0191dc573db734cd66c17cf27edb45",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|15-Good-evening.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.39716118864281,
+      "encoded_sha256": "7e112c26a0dce517e4f8f09d63f0a631c84ff9cd96092134d8d473f9eea3e42d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|15-Good-evening.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.08747975230933,
+      "encoded_sha256": "1a5f2023cd4bd634748e1b65cc6feaf4746601a18f1980df3971cff3497963f8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|15-Good-evening.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.64463296348363,
+      "encoded_sha256": "681f93a9de8a93f1a92db24467ea44c4632baaa211120193179c178ef6a1039b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|21-classic.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.866198915196314,
+      "encoded_sha256": "02a04bb5fd1de4668d224723c67ef1e964da562270a8afd8aed5a1e6d2d07833",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|21-classic.441.16b48k.wav|48": {
+      "actual_payload_kbps": 47.82870975676061,
+      "encoded_sha256": "0040e5da102fc44fa881c70aa6d53ad15c231e3081a9cea86d728003bf88d3bc",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|21-classic.441.16b48k.wav|64": {
+      "actual_payload_kbps": 63.71831350567645,
+      "encoded_sha256": "efe1c4b0c9f30d2321309a8b6e2309e227e53d0fa1f5ee47582f9317ecf938d4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|21-classic.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.519061735427,
+      "encoded_sha256": "a889ae95cdb2a89bf4347bb4bbe139804d8996561fa2adeb74beddad84051b42",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|24-Greensleeves-Korean-male-speech.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.876146788990823,
+      "encoded_sha256": "399e52212857f06fd5945115e3b5898902c701861a6508b6ff9b6ac4b4b6dd4f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|24-Greensleeves-Korean-male-speech.441.16b48k.wav|48": {
+      "actual_payload_kbps": 47.971559633027525,
+      "encoded_sha256": "0916566d0fe0bf2db843c9f67672281b781c35b45f908fa74485596628dd36b6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|24-Greensleeves-Korean-male-speech.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.05779816513761,
+      "encoded_sha256": "e6e26f88b491cdff6e0c1f9bfed8ec6375c2dc8bba83c5a579e46450682eff60",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|24-Greensleeves-Korean-male-speech.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.77798165137614,
+      "encoded_sha256": "2726c00cecb6156ecb2a211528265458648e9e1b2594bb1e0f2f1c0685b9459b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|25-This-is-the-end.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.29579289053621,
+      "encoded_sha256": "4f7821fced445d718bd222e5fec5fca4b2c907d91d287b9bda985f8d2e40d252",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|25-This-is-the-end.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.775122547629685,
+      "encoded_sha256": "7fd59ae2e6b301c0f092369f9eea9b54c27041677be7afad2d3904ee88ac90c9",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|25-This-is-the-end.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.47660763662842,
+      "encoded_sha256": "22fea41b4d7e4138017ab3403df9001341a239e2567468c3210fc964020e0e5c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|25-This-is-the-end.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.8525753716125,
+      "encoded_sha256": "3bca9b303db8c3b1ca54834bcde1403352669843b3e765d493c9007b867e9c9e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|27-last-song-drums-and-trampets.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.60969582941361,
+      "encoded_sha256": "8aac7d73c71a3c850515de85adb6a70d27531f906473ed1e729ad3a9149bab8d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|27-last-song-drums-and-trampets.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.991608654750706,
+      "encoded_sha256": "c10a59093d278373eb1f89c644bef0ddec26d54af413b786ca6cc79a27503461",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|27-last-song-drums-and-trampets.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.41823769206648,
+      "encoded_sha256": "c6d8d8b951e5d57a07854b0fc46beea72c374c4820a1ef75853f82f5da639a6b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|27-last-song-drums-and-trampets.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.98916274694261,
+      "encoded_sha256": "251a2c2225188c3b8f8829bac866b83d7ecf451cd5ef9ef5632cedf3743a14c3",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|35_SQAM_glockenspiel_cut.16b48k.wav|32": {
+      "actual_payload_kbps": 32.064,
+      "encoded_sha256": "479a96bcd8df2ae193c46422229ae713a7e3b3db1fe01b704b2360f337ef7d66",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|35_SQAM_glockenspiel_cut.16b48k.wav|48": {
+      "actual_payload_kbps": 48.156800000000004,
+      "encoded_sha256": "ffe9a0de87d00a5be66d37b2041fbcfdb6667bc5f4e19325c16c95bd91463c92",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|35_SQAM_glockenspiel_cut.16b48k.wav|64": {
+      "actual_payload_kbps": 63.8176,
+      "encoded_sha256": "4766dac9d23d1a226b9f9fc86c6aec9626df5a1d963e7e85e44ff0a1529e4b8e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|35_SQAM_glockenspiel_cut.16b48k.wav|96": {
+      "actual_payload_kbps": 95.30239999999999,
+      "encoded_sha256": "9d9f1006547047e2756a886d6cfa7cda5cd579d2d5dcd3373f5a321980330967",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|4-Sound-English-male.441.16b48k.wav|32": {
+      "actual_payload_kbps": 32.19265676091667,
+      "encoded_sha256": "bf0570758048862dd87168310feb304a406279341fef8524b26d4683bbc62034",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|4-Sound-English-male.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.016947001391486,
+      "encoded_sha256": "16e88749bc4ebfecb71e809ca2e1d6f68286936c31f853f95979d7eff738d57e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|4-Sound-English-male.441.16b48k.wav|64": {
+      "actual_payload_kbps": 63.8580734785428,
+      "encoded_sha256": "89ead56a3f88784a0332fba42d20c4b66a32ce19d53f719be9c770c4ef5f048c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|4-Sound-English-male.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.56247937584084,
+      "encoded_sha256": "b9382db9cbcec2c23ab8a2a7c0ed10633734d5d0fa18b7a2b80540707952fccb",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|9-Have-big-expensive-car.441.16b48k.wav|32": {
+      "actual_payload_kbps": 31.975069055882145,
+      "encoded_sha256": "c694ff65ab1f8568c278ba5fd6b6bab2fea3f81b286b37a218c8a3db6d209d0e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|9-Have-big-expensive-car.441.16b48k.wav|48": {
+      "actual_payload_kbps": 48.35861411766221,
+      "encoded_sha256": "f58939232e530c36808cf2242311b54b7dff733e7b2d48bd6b89dff47b30ea06",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|9-Have-big-expensive-car.441.16b48k.wav|64": {
+      "actual_payload_kbps": 64.06716932051587,
+      "encoded_sha256": "f8311d4f993c6c95c952e8289f50108ecc4608133e26f0e0b0a2d33a2b14ff0c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|9-Have-big-expensive-car.441.16b48k.wav|96": {
+      "actual_payload_kbps": 95.46120314984965,
+      "encoded_sha256": "589b87df4029cb9b33e94bc542b01446403f342dc2488fb8f622e8a3a3b071e4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Asleep__4.11-4.31_.16b48k.wav|32": {
+      "actual_payload_kbps": 31.7904,
+      "encoded_sha256": "b98365a75503c2a80f5f0d3aa3823c73945d3e0ad13a62e28b35daa442aacfab",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Asleep__4.11-4.31_.16b48k.wav|48": {
+      "actual_payload_kbps": 47.8144,
+      "encoded_sha256": "b531b2ec46434fd8e2ca01eea575b46f29e7f94b762e263e0a7dccf00cccbc9d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Asleep__4.11-4.31_.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7376,
+      "encoded_sha256": "c3fb1521a00ea0c9edfe6e1d5cfec6bb9b5b275228cebb1d8cbad5887099f193",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Asleep__4.11-4.31_.16b48k.wav|96": {
+      "actual_payload_kbps": 95.52080000000001,
+      "encoded_sha256": "548afff947241c785839322aa9d47e7a4cc001e50feec0a5901a33858bb4c53d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|32": {
+      "actual_payload_kbps": 31.7672,
+      "encoded_sha256": "f43b2a1e9b74f57cc8392104693fe5279d409e1618b384cb7ac93b3d56810d16",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|48": {
+      "actual_payload_kbps": 48.040800000000004,
+      "encoded_sha256": "ebad6fee153923cf0f56ec659bc8a6390e4559a2e0de4099e510e9e5fc265516",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|64": {
+      "actual_payload_kbps": 63.680800000000005,
+      "encoded_sha256": "9ab26cd2c9197eec690a40330ff0bcf29fe6cb2248e1d95530ddf3c40ffb592c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav|96": {
+      "actual_payload_kbps": 95.2368,
+      "encoded_sha256": "0b0fe6457d1e63c328835b6cb60a9aa2d687aa8813e13e88f42f6e56e8335af8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Changes.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8648,
+      "encoded_sha256": "c29f834e7cdd438dffc42200e73b6327094864c94de38357d28cd0b8c3bf6f8f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Changes.16b48k.wav|48": {
+      "actual_payload_kbps": 47.9088,
+      "encoded_sha256": "92ae6426e577e8179f13a0bc4d8fe6389e2d689f8f7e4f9e1a826596c9fdf97f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Changes.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7464,
+      "encoded_sha256": "1516ddd3af1536b01904bb2a214f889052a9f8e62b77cf7ad1b6adbb594e7fdb",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Changes.16b48k.wav|96": {
+      "actual_payload_kbps": 95.508,
+      "encoded_sha256": "a167652011451043d97df67114580ae4eb35300b847d53d57de3bb5abe9bd56b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Coral.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8536,
+      "encoded_sha256": "1d7f016c24c1d188795946e4848478c7aa250cd43aa76b286e24937983aff76f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Coral.16b48k.wav|48": {
+      "actual_payload_kbps": 47.992,
+      "encoded_sha256": "365dbe0e0ff87194343c108f062d67e31ee7e6f5f11c74d798d21ef4e370dcea",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Coral.16b48k.wav|64": {
+      "actual_payload_kbps": 63.727199999999996,
+      "encoded_sha256": "fcfefc419a78c22f9d700e66587b2a9c18b66dafba8408b87aecaae91ba52e89",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Coral.16b48k.wav|96": {
+      "actual_payload_kbps": 95.37360000000001,
+      "encoded_sha256": "fdb8908bb05dc710453b9acaa8da38215248809231b0dabafc758dea5b0d0577",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|ExitMusic.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9552,
+      "encoded_sha256": "e28b230afde72260098e62ace218ce5749a02ec885cf2a627d4fabaedc6b932d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|ExitMusic.16b48k.wav|48": {
+      "actual_payload_kbps": 47.843199999999996,
+      "encoded_sha256": "069d360b1ebb541eb8f5426505642859a05346cfcdf6f8d2d685fe5b84e9cbfc",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|ExitMusic.16b48k.wav|64": {
+      "actual_payload_kbps": 63.6216,
+      "encoded_sha256": "438f9e6dc1183433dbe78bf1ba0324465513a019dd13e2dcd4126132fe08ab53",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|ExitMusic.16b48k.wav|96": {
+      "actual_payload_kbps": 95.37039999999999,
+      "encoded_sha256": "2196ae571e5b957f81709d3d019e92636fdd7af33de36186da05336c779b5f83",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Girl_In_The_Fire__Sample_.16b48k.wav|32": {
+      "actual_payload_kbps": 31.812,
+      "encoded_sha256": "cb59419846bc624ec1fb6dbc9231d564b1f8878c985bfff98fd646d2ff384768",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Girl_In_The_Fire__Sample_.16b48k.wav|48": {
+      "actual_payload_kbps": 47.9088,
+      "encoded_sha256": "4357f0183f7e357e6a17abf719eec6781ad3dfa5d80d07262d9925c9f5babb11",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Girl_In_The_Fire__Sample_.16b48k.wav|64": {
+      "actual_payload_kbps": 63.772800000000004,
+      "encoded_sha256": "5375180bbdb1319dd94f57e86331e4f768ba0447b496ae6889829ed7768b044d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Girl_In_The_Fire__Sample_.16b48k.wav|96": {
+      "actual_payload_kbps": 95.71839999999999,
+      "encoded_sha256": "96a0dee58dd42117d206ac7f7d871f8a9d05a949f2df241c637b224b34ac3dd6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Greatest_Love_of_All_2min57.16b48k.wav|32": {
+      "actual_payload_kbps": 31.755200000000002,
+      "encoded_sha256": "4776c64ec05b7c5ea0f71a355133ca7a0eb4069a5cc49f7b56cd85d89e0d3882",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Greatest_Love_of_All_2min57.16b48k.wav|48": {
+      "actual_payload_kbps": 47.808800000000005,
+      "encoded_sha256": "26e92ca0ebdab7b4c544b9e4b5f2285fa7ff480625a559e391857ebff68ce494",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Greatest_Love_of_All_2min57.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7296,
+      "encoded_sha256": "c3328c68eec1f93afccc103a7216df1444d3e50e67bdc5fafa6223c9a74a06e1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Greatest_Love_of_All_2min57.16b48k.wav|96": {
+      "actual_payload_kbps": 95.3848,
+      "encoded_sha256": "ebf53092caab1950bef5fc0239c8a5e1305ea618143cc73bdc648e25c31d589f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hey Tonight.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8992,
+      "encoded_sha256": "b40ebfea5b27304ee3c5881ef6fd8e2b5e1db06c6e479e82403425e9801c0d6a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hey Tonight.16b48k.wav|48": {
+      "actual_payload_kbps": 48.244800000000005,
+      "encoded_sha256": "1d231d51fcc0eb9569f67c5e1ec6caaafd6abb52ddd7d196e048399d74c4679a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hey Tonight.16b48k.wav|64": {
+      "actual_payload_kbps": 63.9952,
+      "encoded_sha256": "e0229a26b698271353726169899679b7a55b63811fc028fdafd9b4992f86fc69",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hey Tonight.16b48k.wav|96": {
+      "actual_payload_kbps": 95.392,
+      "encoded_sha256": "915f199eb03ddba337f5bc8bf0b8371935927af8e4c68fa489e8915e5ac0fb1c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hotel California.16b48k.wav|32": {
+      "actual_payload_kbps": 32.266400000000004,
+      "encoded_sha256": "f6b37422c840f100c853944c1af0512905913015a97f0839e5c7c051ef7b7e56",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hotel California.16b48k.wav|48": {
+      "actual_payload_kbps": 48.6624,
+      "encoded_sha256": "a708bda93304fddc6351cf30efc801844c25bb353855c67f5f068fb83bbc6b30",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hotel California.16b48k.wav|64": {
+      "actual_payload_kbps": 64.47919999999999,
+      "encoded_sha256": "e508dfb017c92cfa7f186d7c6fc6c1fecc206553b729e15b446130b2c4e6c595",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Hotel California.16b48k.wav|96": {
+      "actual_payload_kbps": 95.7032,
+      "encoded_sha256": "186a2366dd8d9cb33feffeaa5e74dce5851c7bd82d6dd7280695569376ce88fa",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Jupiter, the Bringer of Jolity.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9136,
+      "encoded_sha256": "dca070f5300e60ec4a43528650a78260162d1e976b459ce86b48152d1261b3b8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Jupiter, the Bringer of Jolity.16b48k.wav|48": {
+      "actual_payload_kbps": 48.086400000000005,
+      "encoded_sha256": "4b0d985341009f63f6570061637655b8c0326998fab1d8289e4161f494d7c9ad",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Jupiter, the Bringer of Jolity.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7896,
+      "encoded_sha256": "349638c88cac664f9f5c088330b86cd4d9f18ca6b012734d87f44463869ccb62",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Jupiter, the Bringer of Jolity.16b48k.wav|96": {
+      "actual_payload_kbps": 95.58239999999999,
+      "encoded_sha256": "f040d624cf521ec9445d173b9ba86677e0dbbdf5d58469315063bdd095804d6d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Last_Of_The_Mohicanz__Sample_.16b48k.wav|32": {
+      "actual_payload_kbps": 34.008,
+      "encoded_sha256": "9c0f07fcda0846c1c3730769af6d7d991b50346659bc1bcc14b11bd40d62e6c9",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Last_Of_The_Mohicanz__Sample_.16b48k.wav|48": {
+      "actual_payload_kbps": 49.6976,
+      "encoded_sha256": "bfa52147d078a54579498f2873a6b91661c4952d90c89aea847983051011bca8",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Last_Of_The_Mohicanz__Sample_.16b48k.wav|64": {
+      "actual_payload_kbps": 64.8016,
+      "encoded_sha256": "ffae8ac9e279bd6ca559453bb53cd7920ffafff34ee812a810181f632605d1ca",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Last_Of_The_Mohicanz__Sample_.16b48k.wav|96": {
+      "actual_payload_kbps": 96.0064,
+      "encoded_sha256": "b59734e5378bafdb5c3026f18fb3bdd2d3f04021bf6d0caa6bbaa459b1baae7a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|NewYorkCity.16b48k.wav|32": {
+      "actual_payload_kbps": 32.2016,
+      "encoded_sha256": "78b08da68788166eb82c0977294448cb9f00dd76870b3ee0df85264d58012147",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|NewYorkCity.16b48k.wav|48": {
+      "actual_payload_kbps": 48.541599999999995,
+      "encoded_sha256": "ac147a03b61fd1a572169967ac12250a33fad925b1aa4db282afa8219320b0f2",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|NewYorkCity.16b48k.wav|64": {
+      "actual_payload_kbps": 64.2952,
+      "encoded_sha256": "dc81246765d197bb06b39ac8c7dfafd064b52f4305f0564f3e9ff06146632780",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|NewYorkCity.16b48k.wav|96": {
+      "actual_payload_kbps": 95.49839999999999,
+      "encoded_sha256": "7df31ba747d424ac42e4d6a6ebf683135f2a9530341dae260a06060e2a5b2931",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Only Time.16b48k.wav|32": {
+      "actual_payload_kbps": 31.730400000000003,
+      "encoded_sha256": "8cb01128af47c2b43d83fc314d22ded2895eddd827f5b4f3f4bca394ca5b1cc4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Only Time.16b48k.wav|48": {
+      "actual_payload_kbps": 47.6944,
+      "encoded_sha256": "02a8c0f5c692e516c0aeba99439d6255202f5194f9d0e7a322f08d5846606022",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Only Time.16b48k.wav|64": {
+      "actual_payload_kbps": 63.5592,
+      "encoded_sha256": "6cb48cd7812b4a7b44f7cc04efb335d3d4439c70f1f0230d86208326f0461013",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Only Time.16b48k.wav|96": {
+      "actual_payload_kbps": 95.388,
+      "encoded_sha256": "1adb45da054e4a5fc4bf941479a63e5eca0b64b4d170f31309a60e343bd8bda4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Robots_old.16b48k.wav|32": {
+      "actual_payload_kbps": 31.7512,
+      "encoded_sha256": "fc67b12a8cd2350d051a4ab2bbdef52372775d31c5583a4ab85ea4967be3b3be",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Robots_old.16b48k.wav|48": {
+      "actual_payload_kbps": 47.6472,
+      "encoded_sha256": "34bebb79f1df5f34bb69b5dddfc85567e45891ed922d216f40b17ba06fb89bc0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Robots_old.16b48k.wav|64": {
+      "actual_payload_kbps": 63.434400000000004,
+      "encoded_sha256": "df7bcae8045723f9a5d54c2cbf4d03cdd2421b63f9db71c34dd5529a74549af5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Robots_old.16b48k.wav|96": {
+      "actual_payload_kbps": 95.1184,
+      "encoded_sha256": "59f2f30d7475ee6b859c5d98bb65fa0515e8880cd436cd4c62ae5194eace1b1f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Severance__1.31-1.51_.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8152,
+      "encoded_sha256": "54648db86f2dbddaa6d952821527f088a6f4d2cbf864f6a4ab844e4d2e6132e0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Severance__1.31-1.51_.16b48k.wav|48": {
+      "actual_payload_kbps": 47.8288,
+      "encoded_sha256": "18731668e64aa1fe1ad17198eb40428583e0e01476e21d6c9b7b8df1c950a7b1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Severance__1.31-1.51_.16b48k.wav|64": {
+      "actual_payload_kbps": 63.7176,
+      "encoded_sha256": "16d0fdc47a4e6118c7dd0f8802e0e11283f7949ffbe9fec478dc4ef4b95c082b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Severance__1.31-1.51_.16b48k.wav|96": {
+      "actual_payload_kbps": 95.57039999999999,
+      "encoded_sha256": "28e31d82b03cab0f3cf4b96f38643ed3a06d3103bf25d8e82760dc637bbf3790",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Shinsho_pool_3min45_4min4.16b48k.wav|32": {
+      "actual_payload_kbps": 31.796,
+      "encoded_sha256": "024c2eda9e904a4600c366d8e4265af290ef40ceb62f17eae7decbaed34c3634",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Shinsho_pool_3min45_4min4.16b48k.wav|48": {
+      "actual_payload_kbps": 47.6712,
+      "encoded_sha256": "b3c6898400a0caeb4c3864686cb3930383d44039fab030fbcc40c165db2e8271",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Shinsho_pool_3min45_4min4.16b48k.wav|64": {
+      "actual_payload_kbps": 63.5616,
+      "encoded_sha256": "10760eef68cf5cc8ff9fc2f4e29b2d96724b53fa20cc44d72de196ca8e1e8ae1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Shinsho_pool_3min45_4min4.16b48k.wav|96": {
+      "actual_payload_kbps": 95.3768,
+      "encoded_sha256": "098f5444177e6092d9d2af282eadc980348b07012024c83fa08603f59d7be970",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SinceAlways.16b48k.wav|32": {
+      "actual_payload_kbps": 31.812,
+      "encoded_sha256": "a11ba88273bbf36d0bda860b0fa36b2aaab8222a5c244854f86d6d11f9e7bd3e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SinceAlways.16b48k.wav|48": {
+      "actual_payload_kbps": 48.231199999999994,
+      "encoded_sha256": "73a9e1836da7a7fe046dc78e3e05179e13f055c7e51650da8cbde2280e8452d4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SinceAlways.16b48k.wav|64": {
+      "actual_payload_kbps": 63.8872,
+      "encoded_sha256": "a77737bbc0497ec63e70064f43cd21828da4004a2433079fcec92e33ded1d686",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SinceAlways.16b48k.wav|96": {
+      "actual_payload_kbps": 95.5384,
+      "encoded_sha256": "bd30944bc618079ded53e8a509274d0ac0e4f1d6a3c6b9b0488cd73f79319556",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SlavesOfFear.16b48k.wav|32": {
+      "actual_payload_kbps": 32.24,
+      "encoded_sha256": "4be1dc23cd9134654382ed619e424ab91192771fdba5bc12221918a664b1cdf7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SlavesOfFear.16b48k.wav|48": {
+      "actual_payload_kbps": 48.639199999999995,
+      "encoded_sha256": "3bd6986de5ca730d407e2c238da38e77fcd594c71f99d78e873ad2d8a9b3e0e3",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SlavesOfFear.16b48k.wav|64": {
+      "actual_payload_kbps": 64.3232,
+      "encoded_sha256": "d8824eb7b1c6f925664dba342504153bf7c6f223e9b69e591b35903ded000af7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|SlavesOfFear.16b48k.wav|96": {
+      "actual_payload_kbps": 95.6336,
+      "encoded_sha256": "71ec7b6575e7fc426da5892ebb6a1b106e4c5099c349a0671ad458f0dcd84731",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|The Chastising of Renegade.16b48k.wav|32": {
+      "actual_payload_kbps": 32.3256,
+      "encoded_sha256": "a5abddf47d62f6a46d6d1ef2e0974830ed80067e8385e0c1b61e12335971719f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|The Chastising of Renegade.16b48k.wav|48": {
+      "actual_payload_kbps": 48.8672,
+      "encoded_sha256": "94ae3506887702bb7de918b356982e11ead6fbb20e51511683c8d48089540802",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|The Chastising of Renegade.16b48k.wav|64": {
+      "actual_payload_kbps": 64.6824,
+      "encoded_sha256": "89d187eb95d468121c411410c92255f427771bda0dd2cc47bc85472617423e53",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|The Chastising of Renegade.16b48k.wav|96": {
+      "actual_payload_kbps": 95.944,
+      "encoded_sha256": "13d0a66849197c374eb00190a00670fb6caf55dfb464489ba1466d8b6e7708ad",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Through The Fire And Flames.16b48k.wav|32": {
+      "actual_payload_kbps": 32.24,
+      "encoded_sha256": "a3e6b1dfcb52c1b9b7b4c924664c2304121306a0094049fb46cac239943e88a1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Through The Fire And Flames.16b48k.wav|48": {
+      "actual_payload_kbps": 48.458400000000005,
+      "encoded_sha256": "e9ce53afb457d99e0d5a0fceb654fc8a8d311fa570c8ac30a6cdc0f38e01ea50",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Through The Fire And Flames.16b48k.wav|64": {
+      "actual_payload_kbps": 64.0856,
+      "encoded_sha256": "f9ff3db0ef43019f3806e70faf09ad3336b7cb5be0214934eac3cfcd44926f9d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Through The Fire And Flames.16b48k.wav|96": {
+      "actual_payload_kbps": 95.472,
+      "encoded_sha256": "d3ab0389731893e9f4549c8fa2b523d3b27617aadb4e824effcaa1746983055f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|TrosYGareg.16b48k.wav|32": {
+      "actual_payload_kbps": 31.8008,
+      "encoded_sha256": "1edd7a3552e168b24182e5075b284e3e060b966c7959c39b4b2ac8552290f299",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|TrosYGareg.16b48k.wav|48": {
+      "actual_payload_kbps": 47.785599999999995,
+      "encoded_sha256": "060c3054a899b23781c1252e492f466a585f1630bc8cd501b9de703efff9010b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|TrosYGareg.16b48k.wav|64": {
+      "actual_payload_kbps": 63.6608,
+      "encoded_sha256": "1bd9482ad626c461d99b5f0adf389c9bcb6d379904a6f5051048684e2cf4206d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|TrosYGareg.16b48k.wav|96": {
+      "actual_payload_kbps": 95.396,
+      "encoded_sha256": "79f9458eb5f4486571840b9432b63ab595dbb2c60077c1a07e9a1a4e9810bf3a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Waiting.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9136,
+      "encoded_sha256": "1048d1fbe5f604a81aea9c1d74059390c2a1a0c45c33dbcb591584b9e7888ec0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Waiting.16b48k.wav|48": {
+      "actual_payload_kbps": 48.3272,
+      "encoded_sha256": "0688e75768ffa04987358e491dd75c53f1998a411fd9f78663ab4429e602455f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Waiting.16b48k.wav|64": {
+      "actual_payload_kbps": 64.1472,
+      "encoded_sha256": "aa074718c577237d07fe7715c82e77b3ca26b28f8293e6ed846b567a5a1deba5",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|Waiting.16b48k.wav|96": {
+      "actual_payload_kbps": 95.94,
+      "encoded_sha256": "fdfb559c4fcf06637525cc0cab5a961dab5823c5a7af00617736831a36a578b6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|With Love (Outro).16b48k.wav|32": {
+      "actual_payload_kbps": 31.8376,
+      "encoded_sha256": "d50455acbbf2904a6c9d328c8005485d9624191524de06e1c085a224c23c156c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|With Love (Outro).16b48k.wav|48": {
+      "actual_payload_kbps": 48.1072,
+      "encoded_sha256": "56ff6a85258a60348081e0a37dcdb554966089777371284d0e90b7514f900f30",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|With Love (Outro).16b48k.wav|64": {
+      "actual_payload_kbps": 63.818400000000004,
+      "encoded_sha256": "0f7aec693d11f53a3a7c81aa999148d7d305ac4ef31167fc4e044a02ddea355d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|With Love (Outro).16b48k.wav|96": {
+      "actual_payload_kbps": 95.5216,
+      "encoded_sha256": "faec392649025389cb0687fe555d631dcaf05bbbf5ef1cd84e1dc7571c572f64",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bah.wav|32": {
+      "actual_payload_kbps": 31.848685135705242,
+      "encoded_sha256": "527b7e8cbd616752ed71982e6930179d6204def1ca5affdc4dcd78611c8fcc19",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bah.wav|48": {
+      "actual_payload_kbps": 47.85824778512164,
+      "encoded_sha256": "2e96db55ac713e75192d69a1fcfd09f1db8040c3c99b257ba0abd4f4769c8678",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bah.wav|64": {
+      "actual_payload_kbps": 63.74883982562227,
+      "encoded_sha256": "3692ea9d0a0c282d3cc6a1725111fb43cc2aaa25ad965ddb71fa87edd1517766",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bah.wav|96": {
+      "actual_payload_kbps": 95.69371396428069,
+      "encoded_sha256": "48ab6bc459f5659f9b4ac886009ba9abc2b0010c01ecd7c33c3e77043e95e46c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bas.wav|32": {
+      "actual_payload_kbps": 31.772,
+      "encoded_sha256": "742ce3b9ad0ee06a45856436a6ed9ec57f05520295a90b03e2f5825093699c2b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bas.wav|48": {
+      "actual_payload_kbps": 47.6768,
+      "encoded_sha256": "01f46dc17b816b6092ceb4f687fd2279d8dc3c1636d2ddd3decf3cfbf13d8d86",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bas.wav|64": {
+      "actual_payload_kbps": 63.603199999999994,
+      "encoded_sha256": "71e79a812b2ae429712597b7b19803369471a86b33b009c49c0a9275484d0322",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bas.wav|96": {
+      "actual_payload_kbps": 95.52080000000001,
+      "encoded_sha256": "7e45724fd346161d63e1638f4a548e8838b77d9f81bd6b5f8d0fcc97762a5ec4",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bonhemian_rhapsody.16b48k.wav|32": {
+      "actual_payload_kbps": 31.7776,
+      "encoded_sha256": "cabeb7ba0fc3d51a9a9f54988cdc05310e1b3cd81fee2dfc9dd44d3a2b5fda27",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bonhemian_rhapsody.16b48k.wav|48": {
+      "actual_payload_kbps": 47.7928,
+      "encoded_sha256": "2f530913f98da8857a5e7babf91dd661d03a3c934a37760613bd428b070e832a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bonhemian_rhapsody.16b48k.wav|64": {
+      "actual_payload_kbps": 63.6608,
+      "encoded_sha256": "24349b9dd99691be48b8668b6f027807c464df803e6af65bd8af9e30b5ae0ce0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|bonhemian_rhapsody.16b48k.wav|96": {
+      "actual_payload_kbps": 95.472,
+      "encoded_sha256": "7e7e27fc9d77b27717cea1a433f12d99d4a2671903aa8ff86d3084c37a735bce",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|clapton_44k.16b48k.wav|32": {
+      "actual_payload_kbps": 31.9512,
+      "encoded_sha256": "6cfa4c171c509ce0693cc053ba493181acc1d0d95820200448c3355783d34c9e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|clapton_44k.16b48k.wav|48": {
+      "actual_payload_kbps": 48.157599999999995,
+      "encoded_sha256": "494561a6fe0465896db45a14c4a9587816698511ff53ead2f2e6129ff2215547",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|clapton_44k.16b48k.wav|64": {
+      "actual_payload_kbps": 63.9088,
+      "encoded_sha256": "0424242127a93998f6343e682b085731abbbe459ee10f1c6e344cd181c798913",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|clapton_44k.16b48k.wav|96": {
+      "actual_payload_kbps": 95.32560000000001,
+      "encoded_sha256": "6474e326fea47a3c978ddd031525ee375db7f67dba52e0d9e08c8ff11d610614",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|cst.wav|32": {
+      "actual_payload_kbps": 32.213805730499715,
+      "encoded_sha256": "da3f1aa346242b11ea1844e9703452322c27fb7dc3d470eca2fa20842f513eda",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|cst.wav|48": {
+      "actual_payload_kbps": 48.34156769140808,
+      "encoded_sha256": "2bf0bf0a43309b37ca26780263c61eb23ae4f5949d18674f3c4b279928a40c65",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|cst.wav|64": {
+      "actual_payload_kbps": 63.95276028336161,
+      "encoded_sha256": "a1819bba2c1b849ba7af35608c86835f05117125b80df08d68c14ff1c4800e75",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|cst.wav|96": {
+      "actual_payload_kbps": 96.06963256933061,
+      "encoded_sha256": "c07df0fd23589ea2de1b0e970469fc4e2615795abd7fdc04239c583a7d0ccaff",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|fms.wav|32": {
+      "actual_payload_kbps": 31.950400000000002,
+      "encoded_sha256": "ba83ebe6ea476814110050a84a8bc156d4e652883af0ea41c7183b0efbbb181b",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|fms.wav|48": {
+      "actual_payload_kbps": 48.105599999999995,
+      "encoded_sha256": "7227b206cbb7b5e367fc94f30952ad5eb1b91b8f815c6b5740f443b161e3c67f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|fms.wav|64": {
+      "actual_payload_kbps": 63.8144,
+      "encoded_sha256": "c6e7f8ba840df70676d79ef9d96d552358d3deb9c910784f7984c38b495669ce",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|fms.wav|96": {
+      "actual_payload_kbps": 95.67360000000001,
+      "encoded_sha256": "e7baedbab8f38d99a18a58a1f09ddfc7621e1c27dedb822b708895cb3d1da5c7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|girl.16b48k.wav|32": {
+      "actual_payload_kbps": 32.144,
+      "encoded_sha256": "68ff3ddf9f61c6c66b492f7b984876f9ea17f473ed764cb86f22255bfd228a52",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|girl.16b48k.wav|48": {
+      "actual_payload_kbps": 48.1496,
+      "encoded_sha256": "f42dafd6d6eb9a2725150edf9dd6c38dd70c0b052120b34661a814eb8c5c0283",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|girl.16b48k.wav|64": {
+      "actual_payload_kbps": 63.9816,
+      "encoded_sha256": "61a57b667bee3f77162b5ee556c66d7244826ad1ce5eb859ce223c74764d1022",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|girl.16b48k.wav|96": {
+      "actual_payload_kbps": 95.5888,
+      "encoded_sha256": "d8d40b684cc6db8c8c0917b893e7ec03d5f1c71053f3705b174c58f27a4cced7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|glk.wav|32": {
+      "actual_payload_kbps": 31.8808,
+      "encoded_sha256": "e8f7b305ea5aaeee41c389fd80bc9a581260a3f6c22bed5f7f36d56f008973d6",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|glk.wav|48": {
+      "actual_payload_kbps": 47.956,
+      "encoded_sha256": "7c88ee7223816d52cbd29678df3bebd77d0be160d2d927eb31b9ec7f9b6fdb49",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|glk.wav|64": {
+      "actual_payload_kbps": 63.663199999999996,
+      "encoded_sha256": "719bdc558b276e89e2e100688b09c99929f31b3d2a3a9f806ab99631155f2ed9",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|glk.wav|96": {
+      "actual_payload_kbps": 95.4104,
+      "encoded_sha256": "022bffbcc7a762a7fc1cc2629e8e49e28b2f4be1134d5f8f6179968514e1c3b1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|hrp.wav|32": {
+      "actual_payload_kbps": 32.55520253605419,
+      "encoded_sha256": "e5b542abf1bd9256172e44e68331c0a7e98d1af4304f27809e224db07e1e2f5e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|hrp.wav|48": {
+      "actual_payload_kbps": 48.76775344549402,
+      "encoded_sha256": "ac4c211ee2e1ed65250febeb361f4a8a54499e04cb4b4d955123d347ad36f9ff",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|hrp.wav|64": {
+      "actual_payload_kbps": 64.51812838063557,
+      "encoded_sha256": "9d9abd9ae3220f9a14cd68d8b09e8172e37ab58d5bfdf0cecf1179955c96ed8a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|hrp.wav|96": {
+      "actual_payload_kbps": 95.933357499769,
+      "encoded_sha256": "900eeec580133885702ed35015024d4de0d9fee277e6c681743a847e533eec19",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|liberate.16b48k.wav|32": {
+      "actual_payload_kbps": 32.51513045938513,
+      "encoded_sha256": "268d5978167c0fbf4406856d8a778df0e8d9f93b26f8a85fdd5962ed67aa8c36",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|liberate.16b48k.wav|48": {
+      "actual_payload_kbps": 49.476489849922814,
+      "encoded_sha256": "737b8f32eacfbfeb969a782b80c79a46117a49575e852621cef7582dded51399",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|liberate.16b48k.wav|64": {
+      "actual_payload_kbps": 65.28429785764511,
+      "encoded_sha256": "48433af9cc6df6062d0f10a511dac598b1a89f09e6be811f351c1d469c2e3c2c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|liberate.16b48k.wav|96": {
+      "actual_payload_kbps": 96.27201125058771,
+      "encoded_sha256": "fdaee98816845e38ec60696faa001cf9d33ac53b20ef4923ca96beb37a6c21ad",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|lob.wav|32": {
+      "actual_payload_kbps": 33.25216860002291,
+      "encoded_sha256": "b99e37d8849490168d5d195fd80194458a335caf475bc6773a7aa59b8e45e02e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|lob.wav|48": {
+      "actual_payload_kbps": 50.29617509774489,
+      "encoded_sha256": "ad92949f08de413aefe56724e63b03e940da47e29fb5fe5ced080972024dfecf",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|lob.wav|64": {
+      "actual_payload_kbps": 65.92454770038803,
+      "encoded_sha256": "627c87e4835e7d655300b774bacc7c39bed7d52f269f0ece400c652ae850cdf7",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|lob.wav|96": {
+      "actual_payload_kbps": 96.75039876390532,
+      "encoded_sha256": "c70a7ccc2019747277592b2a8e0b46632a4b92aca4b9500478efbe9459694596",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|mof.wav|32": {
+      "actual_payload_kbps": 31.796799999999998,
+      "encoded_sha256": "4209cb713eef6c8e7d17149e681aa33581eb8776f0449835b0186a0852389059",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|mof.wav|48": {
+      "actual_payload_kbps": 47.636,
+      "encoded_sha256": "d95f9501be4d6e849aae022face0a4cb9f00408f5b44964dfd1d88ceb34114c2",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|mof.wav|64": {
+      "actual_payload_kbps": 63.4288,
+      "encoded_sha256": "508e3237dee7d6772edd5620eaf120dd8ab1157065b96491f6cbab353dbf9092",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|mof.wav|96": {
+      "actual_payload_kbps": 95.2536,
+      "encoded_sha256": "cd2d74835d767dea25967a327f72872e556ee83fe140ed5db03e570582d9a171",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|qrt.wav|32": {
+      "actual_payload_kbps": 31.7464,
+      "encoded_sha256": "b5e7da77cc0e77953fbda8c928d1c27f8563c2ee40edce5b2965d053c1acc10e",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|qrt.wav|48": {
+      "actual_payload_kbps": 47.6952,
+      "encoded_sha256": "7ff2f1d58d360d7496903e9b5e643e48ee117e8941b3248db9c47fabb766763a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|qrt.wav|64": {
+      "actual_payload_kbps": 63.638400000000004,
+      "encoded_sha256": "5371a0d3bba41ed7b820631dac37a6536d5a5b79f8c2f122f344efcdf9f34e66",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|qrt.wav|96": {
+      "actual_payload_kbps": 95.5072,
+      "encoded_sha256": "7b7b531041519c19dc90218f5994f67c35bf1d5aba1d5d3537b642d9562fbf87",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|sandman.16b48k.wav|32": {
+      "actual_payload_kbps": 31.846400000000003,
+      "encoded_sha256": "5cf0531817b345144c6a0e5817832292e5d6f17ceab8d526452545862d2dc90a",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|sandman.16b48k.wav|48": {
+      "actual_payload_kbps": 47.7864,
+      "encoded_sha256": "0b44b0f311984cfcaac555cd60a2b6e1b29b91555ba682413c908e887504cd44",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|sandman.16b48k.wav|64": {
+      "actual_payload_kbps": 63.552,
+      "encoded_sha256": "700a2e182a73c18acec224540bf02b3f276fa9d9a2d892d0f492d4d71abefe51",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|sandman.16b48k.wav|96": {
+      "actual_payload_kbps": 95.29360000000001,
+      "encoded_sha256": "f0c014fcdd5374e1dbd7fa90bb182de6a27bc607d88fc2fbd03d88d4410fdc00",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|take_your_finger_frin_my_head.16b48k.wav|32": {
+      "actual_payload_kbps": 31.985599999999998,
+      "encoded_sha256": "49a18c8a8d3f03ebf2042c7e6d2ecca3e7876deb34e3f8fdefb1e7a29408277d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|take_your_finger_frin_my_head.16b48k.wav|48": {
+      "actual_payload_kbps": 48.2392,
+      "encoded_sha256": "04f1f296fb532b191f705003c84e62ef0718651778451c10613ac860ce9eebb1",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|take_your_finger_frin_my_head.16b48k.wav|64": {
+      "actual_payload_kbps": 64.11840000000001,
+      "encoded_sha256": "fa67d30573368f934ea7c5a3941d5301e44d0b0444d6cc277b6554b4b402e17c",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|take_your_finger_frin_my_head.16b48k.wav|96": {
+      "actual_payload_kbps": 95.568,
+      "encoded_sha256": "9e4361b4f3c9b67e221091ff8ef720078dbdf292c4e0321d2d46872490f16c4d",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|trumpet.16b48k.wav|32": {
+      "actual_payload_kbps": 33.0168,
+      "encoded_sha256": "228915c3a47610b044847a3a0baac76e5db9ec533eab2e6fb9cb026a5a932687",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|trumpet.16b48k.wav|48": {
+      "actual_payload_kbps": 49.772,
+      "encoded_sha256": "eae44509d285f8861cb84182542a7d2ce825726fa10ac794dd4cd6a9fdb640b9",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|trumpet.16b48k.wav|64": {
+      "actual_payload_kbps": 65.7376,
+      "encoded_sha256": "9c8deec887214f5e1d094ed032ddc7d30f252983a9b7a27cd4193aac8060d8f2",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|trumpet.16b48k.wav|96": {
+      "actual_payload_kbps": 96.74239999999999,
+      "encoded_sha256": "7fb7d145cf81dd4633bd048672b8a8dc02feccfa21f4cf7e6cea163e11fd5a86",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|velvet.16b48k.wav|32": {
+      "actual_payload_kbps": 33.5136,
+      "encoded_sha256": "df43bd99bc7a5d7440131b86ab3028035eb3ff84b63b711cad4b6afb1dd9527f",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|velvet.16b48k.wav|48": {
+      "actual_payload_kbps": 49.828,
+      "encoded_sha256": "1f1d8a6113e7dbd13e46265746a86788ad1d4a1d5bd11b9d1ee684b7e5e826f0",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|velvet.16b48k.wav|64": {
+      "actual_payload_kbps": 64.9232,
+      "encoded_sha256": "30f31837e9baf170622bf76e2c625dc1f41c1a8dcbc50f7896f8149f74e75481",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    },
+    "0.003|velvet.16b48k.wav|96": {
+      "actual_payload_kbps": 95.2608,
+      "encoded_sha256": "3cfc7f61e8822cf4dea558d5ec6d7a846b0be3734e126896acd24a9cce9dc235",
+      "faad_returncode": 0,
+      "faad_strict_pass": true,
+      "ffmpeg_returncode": 0,
+      "ffmpeg_strict_pass": true,
+      "profile": "HE-AAC"
+    }
+  },
+  "schema": 1,
+  "source_rows_sha256": "2a2de9485eb7ecc2dc9fff5b70c1afa39120feadccf5df5a8e483ee15e855c85",
+  "summary": {
+    "errors": 0,
+    "faad_pass": 392,
+    "ffmpeg_pass": 392,
+    "rows": 392
+  }
+}

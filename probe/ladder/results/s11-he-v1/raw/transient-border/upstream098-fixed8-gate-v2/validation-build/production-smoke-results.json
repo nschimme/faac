@@ -1,0 +1,206 @@
+{
+  "schema": "faac-upstream098-fixed8-smoke-v1",
+  "source_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "decimation": 4,
+  "input_rate": 48000,
+  "synthetic_input_frames": 2049,
+  "encoder_paths": {
+    "baseline": "/private/tmp/faac-upstream098-baseline/build-release-dec4/frontend/faac",
+    "fixed8": "/private/tmp/faac-upstream098-fixed8/build-release-dec4/frontend/faac"
+  },
+  "fdkdec_path": "/private/tmp/faac-upstream098-fdk-new/fdkdec",
+  "rows": [
+    {
+      "kind": "tone",
+      "channels": 1,
+      "mode": "LC CBR 48 ADTS",
+      "input_frames": 2049,
+      "input_sha256": "1ec1abefb5f6fc464076913ce5c8152f3f99ab00e27a93ad2fd22219c6a7a20b",
+      "baseline_encoded_sha256": "97b6d16049a75eac5201fa4127a4af283c5e89d574456115feb0815064b37ae5",
+      "fixed8_encoded_sha256": "97b6d16049a75eac5201fa4127a4af283c5e89d574456115feb0815064b37ae5",
+      "exact_bitstream_identity": true
+    },
+    {
+      "kind": "tone",
+      "channels": 1,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "baseline",
+      "input_frames": 2049,
+      "input_sha256": "1ec1abefb5f6fc464076913ce5c8152f3f99ab00e27a93ad2fd22219c6a7a20b",
+      "encoded_sha256": "15885f00a32a38380b4b13272f35dcbf244507cb0fa55655e29e822f66856ef6",
+      "decoded_sha256": "766f077987d731bd0c53fd6b717f9e75ea400bd7c39e71be19847140336dfbff",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    },
+    {
+      "kind": "tone",
+      "channels": 1,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "fixed8",
+      "input_frames": 2049,
+      "input_sha256": "1ec1abefb5f6fc464076913ce5c8152f3f99ab00e27a93ad2fd22219c6a7a20b",
+      "encoded_sha256": "4d6ed86379a1fe6d7f85fc5367bc568fcc34d44380a2706ce441f1fd421eb4c8",
+      "decoded_sha256": "0c969128dad638adadbb1a0fdb999dee4fd2e4881d5f0ce79070310b364c646b",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    },
+    {
+      "kind": "tone",
+      "channels": 2,
+      "mode": "LC CBR 48 ADTS",
+      "input_frames": 2049,
+      "input_sha256": "459ae563016248388ad4849e80902b555cf6ea72a48a34065c8fae3b9cb87ca4",
+      "baseline_encoded_sha256": "11af66b0fb9eed7cb84a18527fa9d2a25b9f445641dd9ff931ce5fc3897ffc10",
+      "fixed8_encoded_sha256": "11af66b0fb9eed7cb84a18527fa9d2a25b9f445641dd9ff931ce5fc3897ffc10",
+      "exact_bitstream_identity": true
+    },
+    {
+      "kind": "tone",
+      "channels": 2,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "baseline",
+      "input_frames": 2049,
+      "input_sha256": "459ae563016248388ad4849e80902b555cf6ea72a48a34065c8fae3b9cb87ca4",
+      "encoded_sha256": "a9e2040ee568010f09349d4f5340a74f6c565f2ccb7a24532d72249b3043b11c",
+      "decoded_sha256": "2f085b2c817837ec24c5c816ce6d32dc315922159be81f506144504b933fc996",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    },
+    {
+      "kind": "tone",
+      "channels": 2,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "fixed8",
+      "input_frames": 2049,
+      "input_sha256": "459ae563016248388ad4849e80902b555cf6ea72a48a34065c8fae3b9cb87ca4",
+      "encoded_sha256": "effc1dc109123a755a21de29f4824c2d598cc5ed72fbac8e8d38a181a79a83ef",
+      "decoded_sha256": "7e99ffee27b6d0e4a0afc5663264e9109d98dd044b24bf8d916a36cf060bfd84",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    },
+    {
+      "kind": "silence",
+      "channels": 1,
+      "mode": "LC CBR 48 ADTS",
+      "input_frames": 2049,
+      "input_sha256": "3a83eb2c1821e636b413fb0e440b10c6ceb75ae984e28af8e614f70617353a25",
+      "baseline_encoded_sha256": "ed8631a48be5505614be91a48e038361b2f5dd588fd925c3782bbf8ac57de305",
+      "fixed8_encoded_sha256": "ed8631a48be5505614be91a48e038361b2f5dd588fd925c3782bbf8ac57de305",
+      "exact_bitstream_identity": true
+    },
+    {
+      "kind": "silence",
+      "channels": 1,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "baseline",
+      "input_frames": 2049,
+      "input_sha256": "3a83eb2c1821e636b413fb0e440b10c6ceb75ae984e28af8e614f70617353a25",
+      "encoded_sha256": "4ac8c97d692ad3669ab1054f92e2623d7a3ae5b8a97c943cbdd244bdab241b38",
+      "decoded_sha256": "a78d1c15a8eeb7d7a48e0249cfb78d0d1264130549a9416ebbd9bb1df11b9f11",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    },
+    {
+      "kind": "silence",
+      "channels": 1,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "fixed8",
+      "input_frames": 2049,
+      "input_sha256": "3a83eb2c1821e636b413fb0e440b10c6ceb75ae984e28af8e614f70617353a25",
+      "encoded_sha256": "f61a2b570a388a66d01e939634a9cd1a785834f926c5c590b5a28ea439503fc5",
+      "decoded_sha256": "a78d1c15a8eeb7d7a48e0249cfb78d0d1264130549a9416ebbd9bb1df11b9f11",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    },
+    {
+      "kind": "silence",
+      "channels": 2,
+      "mode": "LC CBR 48 ADTS",
+      "input_frames": 2049,
+      "input_sha256": "88073a6cad178880fb20e45762e0ca6e659420806aa9fac2c1ec75d86c743b25",
+      "baseline_encoded_sha256": "34b694dfab88853bf2d7957bb49cc5ab65ba042efc12330004e13e067257af59",
+      "fixed8_encoded_sha256": "34b694dfab88853bf2d7957bb49cc5ab65ba042efc12330004e13e067257af59",
+      "exact_bitstream_identity": true
+    },
+    {
+      "kind": "silence",
+      "channels": 2,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "baseline",
+      "input_frames": 2049,
+      "input_sha256": "88073a6cad178880fb20e45762e0ca6e659420806aa9fac2c1ec75d86c743b25",
+      "encoded_sha256": "bc6ec2fa22be5ead0bd2480b7eb6c0afa7c85eb7371114dc538dec85162fc7ac",
+      "decoded_sha256": "a78d1c15a8eeb7d7a48e0249cfb78d0d1264130549a9416ebbd9bb1df11b9f11",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    },
+    {
+      "kind": "silence",
+      "channels": 2,
+      "mode": "HE-AAC v1 CBR 48",
+      "variant": "fixed8",
+      "input_frames": 2049,
+      "input_sha256": "88073a6cad178880fb20e45762e0ca6e659420806aa9fac2c1ec75d86c743b25",
+      "encoded_sha256": "d0e172d55c46eedb0e7ebb79d451e3962919e276e88c0990f447536ab6f1c794",
+      "decoded_sha256": "a78d1c15a8eeb7d7a48e0249cfb78d0d1264130549a9416ebbd9bb1df11b9f11",
+      "decoded": {
+        "channels": 2,
+        "rate": 48000,
+        "frames": 3134,
+        "sample_width": 2
+      },
+      "returncode": 0
+    }
+  ],
+  "source_file_sha256": {
+    "baseline_libfaac_sbr_analysis.c": "e130f2a8e00e5b616ee387e4aafccab558596c02ec641e0e757556338fd8bd29",
+    "fixed8_libfaac_sbr_analysis.c": "febe0e3f8e183c33fe63ccec1f2f3cef0acc41e0cd665911c6dd54e20bd57672"
+  },
+  "strict_interoperability": {
+    "report": "three-decoder-smoke.json",
+    "rows": 8,
+    "all_profile_HE_AAC": true,
+    "faad2_all_decode": true,
+    "fdk_all_decode": true,
+    "ffmpeg_all_decode": true,
+    "source_file_sha256": {
+      "baseline": "e130f2a8e00e5b616ee387e4aafccab558596c02ec641e0e757556338fd8bd29",
+      "fixed8": "febe0e3f8e183c33fe63ccec1f2f3cef0acc41e0cd665911c6dd54e20bd57672"
+    }
+  }
+}

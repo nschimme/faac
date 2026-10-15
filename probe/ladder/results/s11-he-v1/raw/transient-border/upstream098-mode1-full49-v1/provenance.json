@@ -1,0 +1,463 @@
+{
+  "benchmark_commit": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+  "benchmark_helpers": {
+    "compare_results.py": "53b9175b4610e504aee1e291483295e1a7fc713ef2b0d7a559b71be8b9c3e2f3",
+    "phase2_mos.py": "374ecb752727f85323aeb2f2e6694ebbe7c0f0f33a48c8e947e799501d11278b",
+    "scripts/bd_rate.py": "2b8d8277aedea4e031998927358e054f0be0148c2fb8e7e47fdaf59e0245d9c3",
+    "utils.py": "a1705af219e01c21e760f6b9530768149de50c9ca7e7b0cbd731f506dc851022"
+  },
+  "config_sha256": "1edb5183967d98d5a14556204830daf55e7f5a34abaddb4b71c3936a63b05b79",
+  "faad_path": "/private/tmp/faac-he-v1-decoder-build/frontend/faad",
+  "faad_sha256": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+  "fdk_path": "/private/tmp/faac-upstream098-fdk-new/fdkdec",
+  "fdk_sha256": "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18",
+  "ffmpeg_path": "/opt/homebrew/bin/ffmpeg",
+  "ffmpeg_sha256": "e9fa823d0d91cb290b537e30b2a67d448accc1be858ededc8a0b98a3ce5f385a",
+  "final_validation": {
+    "final_integrity_audit": {
+      "all_checks_pass": true,
+      "archived_combo_baseline_reference_packet_pcm_exact": 16,
+      "archived_combo_fixed8_candidate_packet_pcm_exact": 16,
+      "note": "Read-only integrity audit; did not re-encode, rescore MOS, or rerun decoder tests.",
+      "path": ".cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/final-integrity-audit.json",
+      "script_path": ".cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/final-integrity-audit.py",
+      "script_sha256": "27ac25a8de2a445f5785b064c45f0a42c8f2a02830fa6b5bda55806ce6bb0da2",
+      "sha256": "9d87656f4f89e1efc33fb0e41ba23cfaeb0cdbd14607b2445ee0effc12e1842a"
+    },
+    "fresh_controls_fdk_equivalence": {
+      "adaptive_full_matrix_old_new_equivalence_claimed": false,
+      "errors": 0,
+      "normalized_pcm_exact": 392,
+      "result_path": ".cache/he-v1-feature-study/transient-border/upstream098-fixed8-gate-v2/validation-build/full392-normalized-equivalence.json",
+      "result_sha256": "6c6b8e939aeb1a17a4f1ae86b77d662d8beb269eb1419b366bb4fe7f56a26772",
+      "rows": 392,
+      "scope": "fresh upstream098 baseline and fixed8 full 49x4 control matrices only"
+    },
+    "interpretation": "Full 49-clip corpus confirmation only; no held-out corpus was tested. Both adaptive lambdas improve versus fresh upstream098 baseline, while bootstrap CIs versus merged fixed8 cross zero.",
+    "strict_interop": {
+      "errors": 0,
+      "faad_pass": 392,
+      "ffmpeg_pass": 392,
+      "path": ".cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/strict-interop.json",
+      "result": "all 392 adaptive payloads passed forced-HEv1 profile, strict FAAD decode, and strict FFmpeg decode",
+      "rows": 392,
+      "rows_sha256": "2a2de9485eb7ecc2dc9fff5b70c1afa39120feadccf5df5a8e483ee15e855c85",
+      "runner_path": ".cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/run_strict_interop.py",
+      "runner_sha256": "b7c9ebbaa252650bdced704e5150f99481b18b82621604697565fab46260f987",
+      "sha256": "dab2c866a45a38f4776f4041523d343f81a3d6dfe8519641e7b0b59cbeb288fa"
+    },
+    "summary_sha256": "30227f0cdb8afa9082097ab2a5cdcea6d12d9517751723b6d66ff4c21d3a7863"
+  },
+  "full_reference_rows_sha256": "01755c8ba6bdb3a6d00d85c75e7b8b550206c245af53d6d26a349e35644a00f0",
+  "new_vs_old_fdk_gate_equivalence": {
+    "errors": 0,
+    "new_decoder_sha256": "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18",
+    "normalized_pcm_exact": 32,
+    "old_decoder_sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "result_path": "/private/tmp/faac-upstream098-fdk-ab/adaptive32/equivalence.json",
+    "result_sha256": "1c9335a788326f9033649486dc4cc5d0677bbf0b9cad606354a97fe73f850cbe",
+    "rows": 32,
+    "scope": "adaptive 16-clip gate, two lambdas, 32 kbps only; does not establish old/new FDK equivalence for the 392-row adaptive full run",
+    "status": "verified"
+  },
+  "probe_manifest_sha256": "458247de679011c7e16298645bbc2a8f1a992030dd5373053fe08fbcec01f8e3",
+  "rows_sha256": "2a2de9485eb7ecc2dc9fff5b70c1afa39120feadccf5df5a8e483ee15e855c85",
+  "runner_sha256": "6e365bf7bd198c3c917c8cfe14e21d94a3b1499da98ebbf7d3a8a081e1cd76e2",
+  "schema": 1,
+  "source_anchor_hashes": {
+    "12-German-male-speech.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/12-German-male-speech.441.16b48k.wav",
+      "input_sha256": "7a95d753f73fea76324cf65ecabf7db6b602c71d7aa8b6605a272c3ede28add6",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/12-German-male-speech.441.16b48k.wav.wav",
+      "reference_wav_sha256": "f5bd959db4e651710db955158de5353d5955f1b22a59d997265876ad32140918",
+      "sample_rate": 48000
+    },
+    "15-Good-evening.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/15-Good-evening.441.16b48k.wav",
+      "input_sha256": "ae6f28ea8877edb576ce2c91381d07290ad5edb475be8d57cd7049fd7e654c85",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/15-Good-evening.441.16b48k.wav.wav",
+      "reference_wav_sha256": "202eecae01ee517134ee5e5da5155dfd9280a8fdee76e4ecacd35140313ee649",
+      "sample_rate": 48000
+    },
+    "21-classic.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav",
+      "input_sha256": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/21-classic.441.16b48k.wav.wav",
+      "reference_wav_sha256": "740990cc92d88c21c3f6eabf177a7052b7cb39634433faaf9949a3417e046d88",
+      "sample_rate": 48000
+    },
+    "24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+      "input_sha256": "3b9cf4371c251d8aede6da0083979a18c8724c89453227cbebf6d1a5b4a9bedc",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/24-Greensleeves-Korean-male-speech.441.16b48k.wav.wav",
+      "reference_wav_sha256": "d1b2d88a7c2ff7c161473048b7810f8c9e0edae95127d68461bab87c8ef3cf48",
+      "sample_rate": 48000
+    },
+    "25-This-is-the-end.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/25-This-is-the-end.441.16b48k.wav",
+      "input_sha256": "3658312e71788fc5f65f6baba42e758cd3f19369f6fd39c0dda61129a49ea507",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/25-This-is-the-end.441.16b48k.wav.wav",
+      "reference_wav_sha256": "d27145eea8097d8943be00328ae1c1611e70cb74e92ee66d0491a1aa0f05beb0",
+      "sample_rate": 48000
+    },
+    "27-last-song-drums-and-trampets.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/27-last-song-drums-and-trampets.441.16b48k.wav",
+      "input_sha256": "330bb3dc58da9c5a701cc14d97bf2ddb1a930a1d8b57311aba7ef9f1fd17d44e",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/27-last-song-drums-and-trampets.441.16b48k.wav.wav",
+      "reference_wav_sha256": "ab90e216630dc292e6747da47a9380cb5db812debcd00f574f5b8887720ef469",
+      "sample_rate": 48000
+    },
+    "35_SQAM_glockenspiel_cut.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/35_SQAM_glockenspiel_cut.16b48k.wav",
+      "input_sha256": "e1eb107c23fe366c7a3153c089b4d66e3ccb2987f9d53290b5bb7f90aa8f4411",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/35_SQAM_glockenspiel_cut.16b48k.wav.wav",
+      "reference_wav_sha256": "84e529ae0b2e22409c16c33f18ae6f74ce096566b5045726c045d846a7b2f9f6",
+      "sample_rate": 48000
+    },
+    "4-Sound-English-male.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/4-Sound-English-male.441.16b48k.wav",
+      "input_sha256": "4d3f8767e6b6b4af95fb3acb11a8663e05549534294431bef181094611a1a943",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/4-Sound-English-male.441.16b48k.wav.wav",
+      "reference_wav_sha256": "be28b54dd6aa3ab3aedc772b932548a2b6cc7a8bfa482d676ff20c76868184a1",
+      "sample_rate": 48000
+    },
+    "9-Have-big-expensive-car.441.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/9-Have-big-expensive-car.441.16b48k.wav",
+      "input_sha256": "9e14a37851818302b9be964c0381df4e51a4cf6067441c38077350d512b67939",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/9-Have-big-expensive-car.441.16b48k.wav.wav",
+      "reference_wav_sha256": "2c21820f4d000968237b18fbfbc8e2acc519326126041d82a895a7404b3d722a",
+      "sample_rate": 48000
+    },
+    "Asleep__4.11-4.31_.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Asleep__4.11-4.31_.16b48k.wav",
+      "input_sha256": "e01a8400337664e351335da3794e95e6810816fa4f30d80fc4b43435cb5478b6",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Asleep__4.11-4.31_.16b48k.wav.wav",
+      "reference_wav_sha256": "9d44413d1c4c20cc144a0d3aa806d95a9ce799e268e4db8ff32e12cc1a1897d1",
+      "sample_rate": 48000
+    },
+    "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+      "input_sha256": "fe931f397a9249f245aa6f9f5c056df6feb8e921e7fcbb887bce5c4943ed4c84",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.wav",
+      "reference_wav_sha256": "a2627a4c788e699fdda5166673a92dd1373458f933224091ec6aa0fd758fe4db",
+      "sample_rate": 48000
+    },
+    "Changes.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Changes.16b48k.wav",
+      "input_sha256": "14f8f4fb34a2b64f181b1a80d93ecfff417bb5680eeb6e01aeb9b2b5dc7b2bd4",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Changes.16b48k.wav.wav",
+      "reference_wav_sha256": "07b674235257b4fca62aa29ef5e1f40470000e16f87ab1fc8cf79f05f794d0ca",
+      "sample_rate": 48000
+    },
+    "Coral.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Coral.16b48k.wav",
+      "input_sha256": "30b81903cd6325da9a576b9eb48cd5090138e33a7e9bb111125f439758457161",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Coral.16b48k.wav.wav",
+      "reference_wav_sha256": "5c7f7414b76d73a92433e505ad7dfb74cf6dc6ad8c20e7128b5ca6592abbb263",
+      "sample_rate": 48000
+    },
+    "ExitMusic.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/ExitMusic.16b48k.wav",
+      "input_sha256": "8836a5a06d50834916b278b88e4f44a5e0257d101671d902567b5dc9f7829f34",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/ExitMusic.16b48k.wav.wav",
+      "reference_wav_sha256": "03cde46ecfafa4c1ad7d1b7eb827dbf6d23a57dfa44fa041f984730da9530f2e",
+      "sample_rate": 48000
+    },
+    "Girl_In_The_Fire__Sample_.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Girl_In_The_Fire__Sample_.16b48k.wav",
+      "input_sha256": "73ade72e7969fd70056808711553407e14890415383a16045cacc9616a1a6b67",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Girl_In_The_Fire__Sample_.16b48k.wav.wav",
+      "reference_wav_sha256": "74ee80da149ab7e6a32488ef76d7a15aa8194dca8f1e0b8a70834d8a05882f8c",
+      "sample_rate": 48000
+    },
+    "Greatest_Love_of_All_2min57.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Greatest_Love_of_All_2min57.16b48k.wav",
+      "input_sha256": "e01c435d3308642f60b5ae7f126c00be36eb2fbfeb947274dbf394e458c7e10a",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Greatest_Love_of_All_2min57.16b48k.wav.wav",
+      "reference_wav_sha256": "fff647e35420dab52db67677aedde2779514a8e9b48d6017dda1b5fced3e9ff6",
+      "sample_rate": 48000
+    },
+    "Hey Tonight.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Hey Tonight.16b48k.wav",
+      "input_sha256": "ec736a43c40f98b64073c98fb24206a34fd38cd1ddd38bac4badbaaaf286ff86",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Hey Tonight.16b48k.wav.wav",
+      "reference_wav_sha256": "9de96c960a6dfeeea3d7d3a7e16d81eaa19f5fc9c46afff3ffc3230a5a969908",
+      "sample_rate": 48000
+    },
+    "Hotel California.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Hotel California.16b48k.wav",
+      "input_sha256": "e729c334641c6d11588fa7cd9302c5db93c351ab13ada5f884a6e5e8cbc56083",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Hotel California.16b48k.wav.wav",
+      "reference_wav_sha256": "3efb6703db3dcad8b5c69249ff04a38ef99c3bfa2c04b1f63623a18a056c306c",
+      "sample_rate": 48000
+    },
+    "Jupiter, the Bringer of Jolity.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Jupiter, the Bringer of Jolity.16b48k.wav",
+      "input_sha256": "91815464d4e0c846663471a43fb49f5e1be10958c7bd155b92c6162e49a7d82e",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Jupiter, the Bringer of Jolity.16b48k.wav.wav",
+      "reference_wav_sha256": "5336525a22d7f039517f46658f7362753e411158442c266fc2af707de31cac8b",
+      "sample_rate": 48000
+    },
+    "Last_Of_The_Mohicanz__Sample_.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+      "input_sha256": "050e6bc7e0288ca3ffe2d1ac116a961cd1c84e9600d3d385f98e686be8482deb",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Last_Of_The_Mohicanz__Sample_.16b48k.wav.wav",
+      "reference_wav_sha256": "9e7a560f2acb6ebd1e7ff87b5c1e537081c1b994094dbcb6635d80d8f5f4954c",
+      "sample_rate": 48000
+    },
+    "NewYorkCity.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/NewYorkCity.16b48k.wav",
+      "input_sha256": "75e6a00bbb6936f3dca669e3095b45de8a3b7ec363e71c0514ac73199d7e8fb5",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/NewYorkCity.16b48k.wav.wav",
+      "reference_wav_sha256": "ceda966881d7bab430bc16938b815a9d3b7e999192e735cc4706281cbe5b4129",
+      "sample_rate": 48000
+    },
+    "Only Time.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Only Time.16b48k.wav",
+      "input_sha256": "9c6b328633b08453755c9448b6569bdac949563b84f7eb6206d106482e785ce7",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Only Time.16b48k.wav.wav",
+      "reference_wav_sha256": "5bd34333665a112d98b738b19f88794b8bad857c2f26d776352b292a09b8cd9f",
+      "sample_rate": 48000
+    },
+    "Robots_old.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Robots_old.16b48k.wav",
+      "input_sha256": "8e25e517759945df061bdc2cc1ba7a113b4c32c9729d73b27cde929d222e15f3",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Robots_old.16b48k.wav.wav",
+      "reference_wav_sha256": "aef6a7667b50d23cc975786aa71519008a5ab0c4e7220ec0572a628b0cced9a2",
+      "sample_rate": 48000
+    },
+    "Severance__1.31-1.51_.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Severance__1.31-1.51_.16b48k.wav",
+      "input_sha256": "9bd9627723033dfa402cd267a2e0ef226655a5508baa86d92f139b808b3cad76",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Severance__1.31-1.51_.16b48k.wav.wav",
+      "reference_wav_sha256": "ee9e80c35f66004d481a2a4b1f68c65d03d08e36034b488d4147eaf8d99c410f",
+      "sample_rate": 48000
+    },
+    "Shinsho_pool_3min45_4min4.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Shinsho_pool_3min45_4min4.16b48k.wav",
+      "input_sha256": "cac2233f0ed08fb9ddfc42ff0bc6538971fd2ab067b075237adc556ba2a416be",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Shinsho_pool_3min45_4min4.16b48k.wav.wav",
+      "reference_wav_sha256": "4552e233280e9ef6f2284c0da4577f47c48a723f226d3630f81b926715e6ba7c",
+      "sample_rate": 48000
+    },
+    "SinceAlways.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/SinceAlways.16b48k.wav",
+      "input_sha256": "897016560a9382db722c0f3adf0539f4daa8d7a05c27bf6e2dc4e1c84e05f9f9",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/SinceAlways.16b48k.wav.wav",
+      "reference_wav_sha256": "15f1e88a23b9f4fe1a87dde3cc69631ffedccbdef035d06a3a8aabb1413c2242",
+      "sample_rate": 48000
+    },
+    "SlavesOfFear.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/SlavesOfFear.16b48k.wav",
+      "input_sha256": "a45bac38ac6e4cb5c4215caf0cc9eff97e27c9a97ac63f6e62ccc30909a9ceae",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/SlavesOfFear.16b48k.wav.wav",
+      "reference_wav_sha256": "559528243fad5285f9f69b91f8cd98ca6927d9d9d6b17d63c4b08fe66dc87626",
+      "sample_rate": 48000
+    },
+    "The Chastising of Renegade.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/The Chastising of Renegade.16b48k.wav",
+      "input_sha256": "2f001fac18149104052fe7b7d650f563305678c59c408a7440e5aeda00b271aa",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/The Chastising of Renegade.16b48k.wav.wav",
+      "reference_wav_sha256": "1f2f3e2d42e96ff635cd69df7239ea13b90739c58b913246ddb7a1ce5d627db5",
+      "sample_rate": 48000
+    },
+    "Through The Fire And Flames.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Through The Fire And Flames.16b48k.wav",
+      "input_sha256": "0a32b6a4a0af94152abba2fe4440abc701762f8fbc15b33163b09b618c84eab6",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Through The Fire And Flames.16b48k.wav.wav",
+      "reference_wav_sha256": "6368299ef6269b7ce5ffcefe65706c8a421047fae443860ce8dec40141e1a01d",
+      "sample_rate": 48000
+    },
+    "TrosYGareg.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/TrosYGareg.16b48k.wav",
+      "input_sha256": "a30465b08cb5d0a51a3a0b7f860fe693ccb33a178eadf2e6a8af934b96d23f9b",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/TrosYGareg.16b48k.wav.wav",
+      "reference_wav_sha256": "f06ec9d4d54c483e17ee173d816c1ecc469a6ead1c56ec2837a03aca2fc729ba",
+      "sample_rate": 48000
+    },
+    "Waiting.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Waiting.16b48k.wav",
+      "input_sha256": "ede4285aa86a7fbeae943ab3446e68bf0ba1e91435b2f9c7e26d74b420c872cf",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/Waiting.16b48k.wav.wav",
+      "reference_wav_sha256": "387c2d6341cc36e54e6e590851cb5717a584b1e8b621005f55b13571e01c8218",
+      "sample_rate": 48000
+    },
+    "With Love (Outro).16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/With Love (Outro).16b48k.wav",
+      "input_sha256": "f3fbf8d970f4a63e85599fabe0e131da841ae5f309dd87b9ce0ae7fa614f4d62",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/With Love (Outro).16b48k.wav.wav",
+      "reference_wav_sha256": "7b521a98a782bcf9acb6b3bc957bf5f22bb70b371466e4cc274f1ca827f14732",
+      "sample_rate": 48000
+    },
+    "bah.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/bah.wav",
+      "input_sha256": "91b619bc579302f502a7941a8b27d2061b11724a2e59dd87b91be131d7fb017a",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/bah.wav.wav",
+      "reference_wav_sha256": "787a94b1eca06e78e059c998a1facd3d7b58ebf45f8023bb42c5fead7f53444c",
+      "sample_rate": 48000
+    },
+    "bas.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/bas.wav",
+      "input_sha256": "5f416d33c09e50d42818c9e948ef1ca90888ad04523c4c75728ca02fe74d6d2a",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/bas.wav.wav",
+      "reference_wav_sha256": "363365c028a60a2669df5d99898121e03c2bf1a1322745a55696f7fe04fa569f",
+      "sample_rate": 48000
+    },
+    "bonhemian_rhapsody.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/bonhemian_rhapsody.16b48k.wav",
+      "input_sha256": "126fc4ddb43b396cf1a7d665048793c2c1a76830128c61bb0b65703705837388",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/bonhemian_rhapsody.16b48k.wav.wav",
+      "reference_wav_sha256": "a1148d99eb300380e63801595f9d66865692ea00b01cb42b5d65c65d37c19e18",
+      "sample_rate": 48000
+    },
+    "clapton_44k.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/clapton_44k.16b48k.wav",
+      "input_sha256": "1eb6c8c654fd4550eb49b93050303cf265c29a76de641bd7c75eab3878ed8e9b",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/clapton_44k.16b48k.wav.wav",
+      "reference_wav_sha256": "943820f684beab8e3c01fac6790fb6373ad94ada044fb49e22c592d158ce6fc4",
+      "sample_rate": 48000
+    },
+    "cst.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/cst.wav",
+      "input_sha256": "79834793f3230dcc676779aa8522b1e8e8bd5a5da56c5a44f8ff51401fd46fd6",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/cst.wav.wav",
+      "reference_wav_sha256": "110bde1807320261403b2b84db03d0ef42d42a9a86b6548c6ac3de3e49678ab1",
+      "sample_rate": 48000
+    },
+    "fms.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav",
+      "input_sha256": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/fms.wav.wav",
+      "reference_wav_sha256": "88446a50a30e0f371a2cb826c9a439ba12d7850fcb7d4cc97cd431d0ccb88ec9",
+      "sample_rate": 48000
+    },
+    "girl.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/girl.16b48k.wav",
+      "input_sha256": "2f0912248abcd7ecb3be65918d7b3067116f090b99bfb169ebbf204316781930",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/girl.16b48k.wav.wav",
+      "reference_wav_sha256": "2c6dc0aebf5cfdaab721238dd7a1e67fd5fa4b13558e14c4584bb2882d4f6c88",
+      "sample_rate": 48000
+    },
+    "glk.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/glk.wav",
+      "input_sha256": "5117504878848fcc5a9120d11746a2b1f34729f8295ddc4b59f918407f02a53e",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/glk.wav.wav",
+      "reference_wav_sha256": "11709a041078396ecfe833eb1d178fd9b46bec715396ff840db029da27740bfc",
+      "sample_rate": 48000
+    },
+    "hrp.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/hrp.wav",
+      "input_sha256": "90ae0967eb507a4f425777f3500ef72bf2aa950ceaf6b956bcc0191ffc9a6d5f",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/hrp.wav.wav",
+      "reference_wav_sha256": "a2b43d2d4ebd2d9c7a9b6aacc028847d4e6c47d9f2d8787e7fd32a13f000fb10",
+      "sample_rate": 48000
+    },
+    "liberate.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/liberate.16b48k.wav",
+      "input_sha256": "5c740fc8be1b77d7a1cc9ed4eea565505fc1d1fd1a58d02be8a6a3ae17ca1fa0",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/liberate.16b48k.wav.wav",
+      "reference_wav_sha256": "d10d062f28ad6320e8a1b270752dc8322ac6577b5ef52f6eb8b59023d4bae36c",
+      "sample_rate": 48000
+    },
+    "lob.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/lob.wav",
+      "input_sha256": "3cacfc044bf356a735c5e60fe4a17916fa4622f72e11dd5e6fd948835488643c",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/lob.wav.wav",
+      "reference_wav_sha256": "eaa130fc93bfaa746a21999ade64ada60bf3670464fe190d4160c9d75371d29c",
+      "sample_rate": 48000
+    },
+    "mof.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/mof.wav",
+      "input_sha256": "acdd423143fc2e6e48b8c78b54e20e9f67403932d90669915da3dacb9859749c",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/mof.wav.wav",
+      "reference_wav_sha256": "ffe0d497da4c69bbeefde6484173755d7a594afa65143ce3bfb691e7f4a7ee74",
+      "sample_rate": 48000
+    },
+    "qrt.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/qrt.wav",
+      "input_sha256": "6bc3311ce3e1fc2a8fdc32f9156fa6f54115771d97fda238b88ebacc8adc031b",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/qrt.wav.wav",
+      "reference_wav_sha256": "a7e2cfec5acdf4157780c7ce5f4985002a22cf6554e2280905ba23ca1252973f",
+      "sample_rate": 48000
+    },
+    "sandman.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav",
+      "input_sha256": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/sandman.16b48k.wav.wav",
+      "reference_wav_sha256": "0b18c69cbf5e11b3dcbe15f58836fb5bffee6fd3e9d7e830f2bf260975c9661c",
+      "sample_rate": 48000
+    },
+    "take_your_finger_frin_my_head.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/take_your_finger_frin_my_head.16b48k.wav",
+      "input_sha256": "35785b162e33ed64f45287eba47cb727614411d911d5d08d9bc74b8516a7657e",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/take_your_finger_frin_my_head.16b48k.wav.wav",
+      "reference_wav_sha256": "0a63c8aa1c644a910abacc797ef3e308f7c1bf77bf86b833c7a9427a68499453",
+      "sample_rate": 48000
+    },
+    "trumpet.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/trumpet.16b48k.wav",
+      "input_sha256": "265baa7ba90e71969ec8c227476f5f25ed35f2f154fa503aad5f6feccdfb05d2",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/trumpet.16b48k.wav.wav",
+      "reference_wav_sha256": "bb3642d2496c77492a79b1aa33aaa89ffb84eb744564ec2aa09be6ae826a9ca1",
+      "sample_rate": 48000
+    },
+    "velvet.16b48k.wav": {
+      "channels": 2,
+      "input_path": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav",
+      "input_sha256": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6",
+      "reference_wav_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-mode1-full49-v1/original-reference-48k-stereo/velvet.16b48k.wav.wav",
+      "reference_wav_sha256": "eb72aa2eaf4d363edc9d0a5240b266755b0bf6bb42dd6ce88177c3ebac388873",
+      "sample_rate": 48000
+    }
+  },
+  "strict_interop": "pending",
+  "summary_sha256": "30227f0cdb8afa9082097ab2a5cdcea6d12d9517751723b6d66ff4c21d3a7863"
+}

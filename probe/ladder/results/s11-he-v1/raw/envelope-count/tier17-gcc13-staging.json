@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "variants": {
+    "base": {
+      "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "source_patch_sha256": null,
+      "staged_source": "/private/tmp/faac-he-v1-tier17-gcc13/base"
+    },
+    "stack": {
+      "head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+      "source_patch_sha256": null,
+      "staged_source": "/private/tmp/faac-he-v1-tier17-gcc13/stack"
+    },
+    "tier17-base": {
+      "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+      "source_patch_sha256": "61c1f2042346ebc676812623fcffa6f097439082e462a8b619d4fbcbd5581398",
+      "staged_source": "/private/tmp/faac-he-v1-tier17-gcc13/tier17-base"
+    },
+    "tier17-stack": {
+      "head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+      "source_patch_sha256": "d3807c5337e8f4a58992c3ba5e75f835f3f7a07d2565c703bbe48c779e1d9ce4",
+      "staged_source": "/private/tmp/faac-he-v1-tier17-gcc13/tier17-stack"
+    }
+  }
+}

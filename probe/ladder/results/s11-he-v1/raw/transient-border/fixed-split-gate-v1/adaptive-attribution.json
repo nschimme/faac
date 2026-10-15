@@ -1,0 +1,470 @@
+{
+  "comparisons": {
+    "mode1_lam0001_base_vs_fixed2_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.45219136840283225,
+        "lo": -4.7359343636951134,
+        "losses": 3,
+        "mean": -2.329987463521813,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -2.329987463521813,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -5.533838380766632,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.3422223124805575,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 1.6263273172256953,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -3.070216478065757,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0001_base_vs_fixed4_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.09914065603104927,
+        "lo": -2.3421628097706595,
+        "losses": 3,
+        "mean": -1.269962528049945,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -1.269962528049945,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.6016383165587964,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.5637362894062479,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.6555190651794662,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.5699945714142016,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0001_base_vs_fixed6_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.5871818776751414,
+        "lo": -1.2674893370690665,
+        "losses": 4,
+        "mean": -0.927335607372104,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -0.927335607372104,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.1807453352408293,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.5516239235652032,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.6227398317850796,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.3542333388973038,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0001_base_vs_fixed8_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.8146231499471052,
+        "lo": -1.0826824099829435,
+        "losses": 3,
+        "mean": -0.3043120929756754,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -0.3043120929756754,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.3012312314078067,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.4270359457083539,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 1.3737368972874808,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.8627180920740218,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0001_stack_vs_fixed2_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.9556161842131428,
+        "lo": -4.029008202614904,
+        "losses": 4,
+        "mean": -2.526747241927091,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -2.526747241927091,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -4.701109513612733,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.0127042696214126,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.21464477618917677,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -3.1785304082850407,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0001_stack_vs_fixed4_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": -1.1051969956529573,
+        "lo": -2.0505878359365735,
+        "losses": 4,
+        "mean": -1.5778924157947656,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -1.5778924157947656,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.0556826843050824,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.9266937494065597,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.045492987568065,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.2837002418993548,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0001_stack_vs_fixed6_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.32764127054768777,
+        "lo": -2.1774498076916062,
+        "losses": 3,
+        "mean": -1.2780113922404719,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -1.2780113922404719,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.3594213664512966,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.01628542808684852,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.4704448000844925,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.2984648305129465,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0001_stack_vs_fixed8_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.25876002847304846,
+        "lo": -0.9070548175539039,
+        "losses": 2,
+        "mean": -0.32414739454042774,
+        "n": 4,
+        "wins": 2
+      },
+      "mean_bd_rate_percent": -0.32414739454042774,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.0503887166014692,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.25134473015326897,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.26617532679282796,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.7637209185063387,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_base_vs_fixed2_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.4933739064472087,
+        "lo": -4.866592381045622,
+        "losses": 3,
+        "mean": -2.332357597927606,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -2.332357597927606,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -5.708049070567311,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.3422223124805575,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 1.6263273172256953,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.9054863258882513,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_base_vs_fixed4_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.1007052265330377,
+        "lo": -2.4366713464081204,
+        "losses": 3,
+        "mean": -1.2736310370996207,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -1.2736310370996207,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.78018923073039,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.5637362894062479,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.6555190651794662,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.406117693441311,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_base_vs_fixed6_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.5871818776751414,
+        "lo": -1.275418422144764,
+        "losses": 4,
+        "mean": -0.9313001499099527,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -0.9313001499099527,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.359715098245784,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.5516239235652032,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.6227398317850796,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.191121746043744,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_base_vs_fixed8_base": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.855488868936638,
+        "lo": -1.216356115506592,
+        "losses": 3,
+        "mean": -0.3080042758273588,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -0.3080042758273588,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.4794628387726716,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.4270359457083539,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 1.3737368972874808,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.6992552161158905,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_stack_vs_fixed2_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.8482500783870778,
+        "lo": -4.033684374725458,
+        "losses": 4,
+        "mean": -2.4209398601378775,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -2.4209398601378775,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -4.70734440976014,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.0127042696214126,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.21464477618917677,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.749065984980781,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_stack_vs_fixed4_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.892562276925063,
+        "lo": -2.059863457025024,
+        "losses": 4,
+        "mean": -1.4762128669750436,
+        "n": 4,
+        "wins": 0
+      },
+      "mean_bd_rate_percent": -1.4762128669750436,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.074233926481983,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.9266937494065597,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.045492987568065,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.8584308044435662,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_stack_vs_fixed6_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": -0.333718267946273,
+        "lo": -2.071017781087578,
+        "losses": 3,
+        "mean": -1.177656363035029,
+        "n": 4,
+        "wins": 1
+      },
+      "mean_bd_rate_percent": -1.177656363035029,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.3837293560456376,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.01628542808684852,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -2.4704448000844925,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.8727367240968342,
+          "clip": "fms.wav"
+        }
+      ]
+    },
+    "mode1_lam0003_stack_vs_fixed8_stack": {
+      "clip_bootstrap_95_ci": {
+        "hi": 0.25876002847304846,
+        "lo": -0.7425201878451637,
+        "losses": 2,
+        "mean": -0.22293450444032248,
+        "n": 4,
+        "wins": 2
+      },
+      "mean_bd_rate_percent": -0.22293450444032248,
+      "per_clip": [
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -1.0738084938446413,
+          "clip": "sandman.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.25134473015326897,
+          "clip": "velvet.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": 0.26617532679282796,
+          "clip": "21-classic.441.16b48k.wav"
+        },
+        {
+          "adaptive_vs_fixed_bd_rate_percent": -0.33544958086274557,
+          "clip": "fms.wav"
+        }
+      ]
+    }
+  },
+  "interpretation": "Four-clip paired PCHIP comparison; negative BD-rate means adaptive uses fewer bits than the fixed split for equal MOS. Screening attribution only.",
+  "schema": 1
+}

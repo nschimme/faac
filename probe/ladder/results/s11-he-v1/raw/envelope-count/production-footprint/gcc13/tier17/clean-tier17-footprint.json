@@ -1,0 +1,97 @@
+{
+  "binary_sha256": "395d06adb721984298e48654d2f769b194711779e47f40cc72ae2ed6df604b42",
+  "compiler": "GCC 13.3.0 x86_64 Linux, faac-gcc13 image under Apple Silicon emulation",
+  "configuration": "Meson release, default_library=both, b_lto=true; same /work/source and /tmp/faac-build paths",
+  "delta": {
+    "SbrWrite_stack_scratch_bytes": 2048,
+    "SbrWrite_stack_scratch_change_bytes": 1024,
+    "bss_bytes": 0,
+    "persistent_sbr_allocation_bytes_by_channels": {
+      "1": 3616,
+      "2": 6176,
+      "4": 11296,
+      "8": 21536
+    },
+    "rom_bytes": 96
+  },
+  "docker_image_sha256": "5b57ea918f81ba4868d1438f76c7a5023fad1215818d43a9282a6429e389febe",
+  "equivalence": "196/196 AAC packet + strict FDK PCM matches to measured all_stack; additional LC 16/16 exact and HE boundary 16/16 FDK/FAAD/FFmpeg pass",
+  "source_parent_head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+  "source_patch_sha256": "d109b48eedec1990d3dd76148be1fa8b224192ccc8fac869c17bd39d35d86f34",
+  "source_tree_sha256": "35def174d4c705b4b095d226a330c89913b9de59babaefb4f1939b4aa856e47d",
+  "timing": "Not measured; this is emulated amd64 code-size evidence, not native timing.",
+  "variants": {
+    "clean_tier17_stack": {
+      "production_sizes_excluding_resampler": {
+        "SBR_FRAME_FIFO": 4,
+        "SBR_MAX_ENVELOPES": 4,
+        "channels_1_sbr_context_alloc": 4224,
+        "channels_1_sbr_info_alloc": 7908,
+        "channels_1_signal_analysis_alloc": 1080,
+        "channels_1_total_excluding_resampler": 13212,
+        "channels_2_sbr_context_alloc": 8320,
+        "channels_2_sbr_info_alloc": 12284,
+        "channels_2_signal_analysis_alloc": 2112,
+        "channels_2_total_excluding_resampler": 22716,
+        "channels_4_sbr_context_alloc": 16512,
+        "channels_4_sbr_info_alloc": 21036,
+        "channels_4_signal_analysis_alloc": 4176,
+        "channels_4_total_excluding_resampler": 41724,
+        "channels_8_sbr_context_alloc": 32896,
+        "channels_8_sbr_info_alloc": 38540,
+        "channels_8_signal_analysis_alloc": 8304,
+        "channels_8_total_excluding_resampler": 79740,
+        "sizeof_SBRChannel": 4376,
+        "sizeof_SBRContext": 80,
+        "sizeof_SBRInfo": 3532,
+        "sizeof_SbrEnvData": 1024,
+        "sizeof_SbrFrameData": 12,
+        "sizeof_SignalAnalysis": 48,
+        "sizeof_SignalAnalysisChannel": 1032
+      },
+      "rom_text_rodata_data_bytes": 76456,
+      "sections_bytes": {
+        ".bss": 20552,
+        ".data": 1184,
+        ".rodata": 9880,
+        ".text": 65392
+      }
+    },
+    "stack_parent": {
+      "production_sizes_excluding_resampler": {
+        "SBR_FRAME_FIFO": 4,
+        "SBR_MAX_ENVELOPES": 2,
+        "channels_1_sbr_context_alloc": 2160,
+        "channels_1_sbr_info_alloc": 6884,
+        "channels_1_signal_analysis_alloc": 552,
+        "channels_1_total_excluding_resampler": 9596,
+        "channels_2_sbr_context_alloc": 4208,
+        "channels_2_sbr_info_alloc": 11260,
+        "channels_2_signal_analysis_alloc": 1072,
+        "channels_2_total_excluding_resampler": 16540,
+        "channels_4_sbr_context_alloc": 8304,
+        "channels_4_sbr_info_alloc": 20012,
+        "channels_4_signal_analysis_alloc": 2112,
+        "channels_4_total_excluding_resampler": 30428,
+        "channels_8_sbr_context_alloc": 16496,
+        "channels_8_sbr_info_alloc": 37516,
+        "channels_8_signal_analysis_alloc": 4192,
+        "channels_8_total_excluding_resampler": 58204,
+        "sizeof_SBRChannel": 4376,
+        "sizeof_SBRContext": 80,
+        "sizeof_SBRInfo": 2508,
+        "sizeof_SbrEnvData": 512,
+        "sizeof_SbrFrameData": 8,
+        "sizeof_SignalAnalysis": 32,
+        "sizeof_SignalAnalysisChannel": 520
+      },
+      "rom_text_rodata_data_bytes": 76360,
+      "sections_bytes": {
+        ".bss": 20552,
+        ".data": 1184,
+        ".rodata": 9896,
+        ".text": 65280
+      }
+    }
+  }
+}

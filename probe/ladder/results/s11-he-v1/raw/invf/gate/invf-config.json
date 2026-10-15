@@ -1,0 +1,386 @@
+{
+  "actual_bitrate": "ffprobe audio packet bytes * 8 / source WAV duration",
+  "baseline_binary": "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "/private/tmp/faac-he-v1-invf/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+  },
+  "calibration_note": "Raw inverse-filtering tonality and explicit 10*log10(T) are exploratory alternatives; one noise band is retained.",
+  "candidate_binary": "/private/tmp/faac-he-v1-invf/build-probe/frontend/faac",
+  "clip_sha256": {
+    "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+    "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+    "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+    "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+  },
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "created_utc": "2026-10-14T04:49:01.094462+00:00",
+  "decoder": "FDK AAC strict; no fallback",
+  "feature_environment": {
+    "invf_db12": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_INVF_TONALITY_DB": "1"
+    },
+    "invf_db18": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_INVF_TONALITY_DB": "1",
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+    },
+    "invf_db24": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_INVF_TONALITY_DB": "1",
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+    },
+    "invf_raw12": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1"
+    },
+    "invf_raw18": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+    },
+    "invf_raw24": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+    },
+    "joint_db12": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_INVF_TONALITY_DB": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "12",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "joint_db18": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_INVF_TONALITY_DB": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "joint_raw12": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "12",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "joint_raw18": {
+      "FAAC_SBR_ADAPTIVE_INVF": "1",
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "noise_only18": {
+      "FAAC_SBR_ADAPTIVE_NOISE": "1",
+      "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+      "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+      "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+    },
+    "static18": {
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+    },
+    "static24": {
+      "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+    }
+  },
+  "immutable_run_config": {
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "/private/tmp/faac-he-v1-invf/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+    },
+    "calibration_note": "Raw inverse-filtering tonality and explicit 10*log10(T) are exploratory alternatives; one noise band is retained.",
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "feature_environment": {
+      "invf_db12": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_INVF_TONALITY_DB": "1"
+      },
+      "invf_db18": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_INVF_TONALITY_DB": "1",
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+      },
+      "invf_db24": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_INVF_TONALITY_DB": "1",
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+      },
+      "invf_raw12": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1"
+      },
+      "invf_raw18": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+      },
+      "invf_raw24": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+      },
+      "joint_db12": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_INVF_TONALITY_DB": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "12",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "joint_db18": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_INVF_TONALITY_DB": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "joint_raw12": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "12",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "joint_raw18": {
+        "FAAC_SBR_ADAPTIVE_INVF": "1",
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "noise_only18": {
+        "FAAC_SBR_ADAPTIVE_NOISE": "1",
+        "FAAC_SBR_NOISE_MAX_LEVEL": "24",
+        "FAAC_SBR_NOISE_MIN_LEVEL": "18",
+        "FAAC_SBR_NOISE_OFFSET_LOG2": "-8"
+      },
+      "static18": {
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "18"
+      },
+      "static24": {
+        "FAAC_SBR_STATIC_NOISE_LEVEL": "24"
+      }
+    },
+    "libraries": {
+      "/private/tmp/faac-he-v1-invf/build-probe/libfaac/libfaac.2.dylib": "05d85260a394fc7a35fcefcf877fce553f07862f7a464418b94171a754862c3f",
+      "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+    },
+    "linked_libraries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": [
+        {
+          "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+          "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+          "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-invf/build-probe/frontend/faac": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ]
+    },
+    "measured_reference_variants": [
+      "static18",
+      "static24",
+      "invf_raw12",
+      "invf_raw18",
+      "invf_raw24",
+      "invf_db12",
+      "invf_db18",
+      "invf_db24",
+      "noise_only18",
+      "joint_raw12",
+      "joint_raw18",
+      "joint_db12",
+      "joint_db18"
+    ],
+    "prior_measurement_results": {
+      "adaptive": "/private/tmp/faac-he-v1-adaptive/probe/results-gate/noise-results.json",
+      "baseline": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json"
+    },
+    "prior_measurement_results_sha256": {
+      "adaptive": "a178198513782dc322e9d730fddc77b892333ba5712dc1b352b9b33bec9ce1cf",
+      "baseline": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585"
+    },
+    "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "source_diff_sha256": "a41b7951d75752198610f82dbe9e29eb9845c7f4e6c94ac2b52f2d49f53a9eff",
+    "source_tree_sha256": "2b695730de8a96e196662fbfc16802aec6cc037ec6a974d59d59803b1a38f622",
+    "variants": [
+      "static18",
+      "static24",
+      "invf_raw12",
+      "invf_raw18",
+      "invf_raw24",
+      "invf_db12",
+      "invf_db18",
+      "invf_db24",
+      "noise_only18",
+      "joint_raw12",
+      "joint_raw18",
+      "joint_db12",
+      "joint_db18"
+    ]
+  },
+  "libraries": {
+    "/private/tmp/faac-he-v1-invf/build-probe/libfaac/libfaac.2.dylib": "05d85260a394fc7a35fcefcf877fce553f07862f7a464418b94171a754862c3f",
+    "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+  },
+  "linked_libraries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": [
+      {
+        "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+        "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+        "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-invf/build-probe/frontend/faac": [
+      {
+        "path": "@rpath/libfaac.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+      },
+      {
+        "path": "/usr/lib/libiconv.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+      {
+        "path": "@rpath/libfaac.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+      },
+      {
+        "path": "/usr/lib/libiconv.2.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+      },
+      {
+        "path": "/usr/lib/libSystem.B.dylib",
+        "sha256": null,
+        "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+      }
+    ]
+  },
+  "measured_reference_variants": [
+    "static18",
+    "static24",
+    "invf_raw12",
+    "invf_raw18",
+    "invf_raw24",
+    "invf_db12",
+    "invf_db18",
+    "invf_db24",
+    "noise_only18",
+    "joint_raw12",
+    "joint_raw18",
+    "joint_db12",
+    "joint_db18"
+  ],
+  "metric": "Zimtohrli via phase2_mos.score_wav_pair audio mode at 48 kHz",
+  "prior_measurement_results": {
+    "adaptive": "/private/tmp/faac-he-v1-adaptive/probe/results-gate/noise-results.json",
+    "baseline": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json"
+  },
+  "prior_measurement_results_sha256": {
+    "adaptive": "a178198513782dc322e9d730fddc77b892333ba5712dc1b352b9b33bec9ce1cf",
+    "baseline": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585"
+  },
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "schema": 1,
+  "source_diff_sha256": "a41b7951d75752198610f82dbe9e29eb9845c7f4e6c94ac2b52f2d49f53a9eff",
+  "source_tree_sha256": "2b695730de8a96e196662fbfc16802aec6cc037ec6a974d59d59803b1a38f622",
+  "variants": [
+    "static18",
+    "static24",
+    "invf_raw12",
+    "invf_raw18",
+    "invf_raw24",
+    "invf_db12",
+    "invf_db18",
+    "invf_db24",
+    "noise_only18",
+    "joint_raw12",
+    "joint_raw18",
+    "joint_db12",
+    "joint_db18"
+  ],
+  "workers": 4
+}

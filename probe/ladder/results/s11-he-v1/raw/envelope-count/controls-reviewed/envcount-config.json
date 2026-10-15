@@ -1,0 +1,328 @@
+{
+  "actual_bitrate": "ffprobe AAC packet bytes * 8 / source WAV duration",
+  "baseline_binary": "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac",
+  "baseline_measurements": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json",
+  "baseline_measurements_sha256": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+    "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87",
+    "/private/tmp/faac-he-v1-decoder-build/frontend/faad": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+    "/private/tmp/faac-he-v1-envelopes/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+  },
+  "candidate_binary": "/private/tmp/faac-he-v1-envelopes/build-probe/frontend/faac",
+  "clip_sha256": {
+    "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+    "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+    "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+    "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+  },
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "created_utc": "2026-10-14T13:17:11.603889+00:00",
+  "decoder": "FDK AAC, strict no-fallback before MOS; FAAD3 strict and FFmpeg after MOS",
+  "feature_environment": {
+    "ad01_base": {
+      "FAAC_SBR_ENVCOUNT_LAMBDA": "0.01",
+      "FAAC_SBR_ENVCOUNT_MODE": "3"
+    },
+    "ad01_stack": {
+      "FAAC_SBR_ENVCOUNT_LAMBDA": "0.01",
+      "FAAC_SBR_ENVCOUNT_MODE": "3",
+      "FAAC_SBR_ENVCOUNT_STACK": "1"
+    },
+    "ad03_base": {
+      "FAAC_SBR_ENVCOUNT_LAMBDA": "0.03",
+      "FAAC_SBR_ENVCOUNT_MODE": "3"
+    },
+    "ad03_stack": {
+      "FAAC_SBR_ENVCOUNT_LAMBDA": "0.03",
+      "FAAC_SBR_ENVCOUNT_MODE": "3",
+      "FAAC_SBR_ENVCOUNT_STACK": "1"
+    },
+    "ad10_base": {
+      "FAAC_SBR_ENVCOUNT_LAMBDA": "0.1",
+      "FAAC_SBR_ENVCOUNT_MODE": "3"
+    },
+    "ad10_stack": {
+      "FAAC_SBR_ENVCOUNT_LAMBDA": "0.1",
+      "FAAC_SBR_ENVCOUNT_MODE": "3",
+      "FAAC_SBR_ENVCOUNT_STACK": "1"
+    },
+    "all_base": {
+      "FAAC_SBR_ENVCOUNT_MODE": "2"
+    },
+    "all_stack": {
+      "FAAC_SBR_ENVCOUNT_MODE": "2",
+      "FAAC_SBR_ENVCOUNT_STACK": "1"
+    },
+    "tier_base": {
+      "FAAC_SBR_ENVCOUNT_MODE": "1"
+    },
+    "tier_stack": {
+      "FAAC_SBR_ENVCOUNT_MODE": "1",
+      "FAAC_SBR_ENVCOUNT_STACK": "1"
+    }
+  },
+  "immutable_run_config": {
+    "baseline_measurements": "/private/tmp/faac-he-v1-probes/probe/results-gate/feature-results.json",
+    "baseline_measurements_sha256": "05ec5d4f550d6498d2753ca5e9a1e6496463142c042fdff674a8c48e33848585",
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87",
+      "/private/tmp/faac-he-v1-decoder-build/frontend/faad": "21f01362a0db865542466da224a53ea033fe61faf21c6b6ec5313388760ae111",
+      "/private/tmp/faac-he-v1-envelopes/build-probe/frontend/faac": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820"
+    },
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "feature_environment": {
+      "ad01_base": {
+        "FAAC_SBR_ENVCOUNT_LAMBDA": "0.01",
+        "FAAC_SBR_ENVCOUNT_MODE": "3"
+      },
+      "ad01_stack": {
+        "FAAC_SBR_ENVCOUNT_LAMBDA": "0.01",
+        "FAAC_SBR_ENVCOUNT_MODE": "3",
+        "FAAC_SBR_ENVCOUNT_STACK": "1"
+      },
+      "ad03_base": {
+        "FAAC_SBR_ENVCOUNT_LAMBDA": "0.03",
+        "FAAC_SBR_ENVCOUNT_MODE": "3"
+      },
+      "ad03_stack": {
+        "FAAC_SBR_ENVCOUNT_LAMBDA": "0.03",
+        "FAAC_SBR_ENVCOUNT_MODE": "3",
+        "FAAC_SBR_ENVCOUNT_STACK": "1"
+      },
+      "ad10_base": {
+        "FAAC_SBR_ENVCOUNT_LAMBDA": "0.1",
+        "FAAC_SBR_ENVCOUNT_MODE": "3"
+      },
+      "ad10_stack": {
+        "FAAC_SBR_ENVCOUNT_LAMBDA": "0.1",
+        "FAAC_SBR_ENVCOUNT_MODE": "3",
+        "FAAC_SBR_ENVCOUNT_STACK": "1"
+      },
+      "all_base": {
+        "FAAC_SBR_ENVCOUNT_MODE": "2"
+      },
+      "all_stack": {
+        "FAAC_SBR_ENVCOUNT_MODE": "2",
+        "FAAC_SBR_ENVCOUNT_STACK": "1"
+      },
+      "tier_base": {
+        "FAAC_SBR_ENVCOUNT_MODE": "1"
+      },
+      "tier_stack": {
+        "FAAC_SBR_ENVCOUNT_MODE": "1",
+        "FAAC_SBR_ENVCOUNT_STACK": "1"
+      }
+    },
+    "library_hashes": {
+      "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+      "/private/tmp/faac-he-v1-envelopes/build-probe/libfaac/libfaac.2.dylib": "8193c573677753254e4ab21e91ee16be5e1b972e6d0889ec681ba375ab5ef750",
+      "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+    },
+    "linked_libraries": {
+      "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac": [
+        {
+          "install_name": "@rpath/libfaac.2.dylib",
+          "resolved_path": "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib",
+          "sha256": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+          "version_info": " 2.0.0, current version 2.0.0)"
+        },
+        {
+          "install_name": "/usr/lib/libiconv.2.dylib",
+          "resolved_path": null,
+          "sha256": null,
+          "version_info": " 7.0.0, current version 7.0.0)"
+        },
+        {
+          "install_name": "/usr/lib/libSystem.B.dylib",
+          "resolved_path": null,
+          "sha256": null,
+          "version_info": " 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-envelopes/build-probe/frontend/faac": [
+        {
+          "install_name": "@rpath/libfaac.2.dylib",
+          "resolved_path": "/private/tmp/faac-he-v1-envelopes/build-probe/libfaac/libfaac.2.dylib",
+          "sha256": "8193c573677753254e4ab21e91ee16be5e1b972e6d0889ec681ba375ab5ef750",
+          "version_info": " 2.0.0, current version 2.0.0)"
+        },
+        {
+          "install_name": "/usr/lib/libiconv.2.dylib",
+          "resolved_path": null,
+          "sha256": null,
+          "version_info": " 7.0.0, current version 7.0.0)"
+        },
+        {
+          "install_name": "/usr/lib/libSystem.B.dylib",
+          "resolved_path": null,
+          "sha256": null,
+          "version_info": " 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+        {
+          "install_name": "@rpath/libfaac.2.dylib",
+          "resolved_path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+          "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+          "version_info": " 2.0.0, current version 2.0.0)"
+        },
+        {
+          "install_name": "/usr/lib/libiconv.2.dylib",
+          "resolved_path": null,
+          "sha256": null,
+          "version_info": " 7.0.0, current version 7.0.0)"
+        },
+        {
+          "install_name": "/usr/lib/libSystem.B.dylib",
+          "resolved_path": null,
+          "sha256": null,
+          "version_info": " 1.0.0, current version 1359.0.0)"
+        }
+      ]
+    },
+    "phase": "gate",
+    "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "probe_variety": false,
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "source_diff_sha256": "325df9e96ba7f5af87663bcaacbc19db4650308d07527e2b63c856ae22a84514",
+    "source_tree_sha256": "e2f6e74f497ccd7e9b16865a319e084c35c709536426a526c83fbf5bf3604ef8",
+    "stack_measurements": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/stack/results-all/stack-results.json",
+    "stack_measurements_sha256": "87a61b6147480dfc1f4cf96d8c64d03c51e57c35070366f50b5bae5440ce2530",
+    "variants": [
+      "tier_base",
+      "all_base",
+      "ad01_base",
+      "ad03_base",
+      "ad10_base",
+      "tier_stack",
+      "all_stack",
+      "ad01_stack",
+      "ad03_stack",
+      "ad10_stack"
+    ]
+  },
+  "library_hashes": {
+    "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+    "/private/tmp/faac-he-v1-envelopes/build-probe/libfaac/libfaac.2.dylib": "8193c573677753254e4ab21e91ee16be5e1b972e6d0889ec681ba375ab5ef750",
+    "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59"
+  },
+  "linked_libraries": {
+    "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac": [
+      {
+        "install_name": "@rpath/libfaac.2.dylib",
+        "resolved_path": "/private/tmp/faac-he-v1-candidate/build-candidate/libfaac/libfaac.2.dylib",
+        "sha256": "5089f93d63d2f18da806cc43e8fc1fabf1fcff4708281763a3471e9e81cd7786",
+        "version_info": " 2.0.0, current version 2.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libiconv.2.dylib",
+        "resolved_path": null,
+        "sha256": null,
+        "version_info": " 7.0.0, current version 7.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libSystem.B.dylib",
+        "resolved_path": null,
+        "sha256": null,
+        "version_info": " 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-envelopes/build-probe/frontend/faac": [
+      {
+        "install_name": "@rpath/libfaac.2.dylib",
+        "resolved_path": "/private/tmp/faac-he-v1-envelopes/build-probe/libfaac/libfaac.2.dylib",
+        "sha256": "8193c573677753254e4ab21e91ee16be5e1b972e6d0889ec681ba375ab5ef750",
+        "version_info": " 2.0.0, current version 2.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libiconv.2.dylib",
+        "resolved_path": null,
+        "sha256": null,
+        "version_info": " 7.0.0, current version 7.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libSystem.B.dylib",
+        "resolved_path": null,
+        "sha256": null,
+        "version_info": " 1.0.0, current version 1359.0.0)"
+      }
+    ],
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": [
+      {
+        "install_name": "@rpath/libfaac.2.dylib",
+        "resolved_path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+        "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+        "version_info": " 2.0.0, current version 2.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libiconv.2.dylib",
+        "resolved_path": null,
+        "sha256": null,
+        "version_info": " 7.0.0, current version 7.0.0)"
+      },
+      {
+        "install_name": "/usr/lib/libSystem.B.dylib",
+        "resolved_path": null,
+        "sha256": null,
+        "version_info": " 1.0.0, current version 1359.0.0)"
+      }
+    ]
+  },
+  "metric": "Zimtohrli via phase2_mos.score_wav_pair audio mode at 48 kHz",
+  "phase": "gate",
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "probe_variety": false,
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "retained_stack_reference_binary": "/private/tmp/faac-he-v1-candidate/build-candidate/frontend/faac",
+  "schema": 1,
+  "scoring_enabled": false,
+  "source_diff_sha256": "325df9e96ba7f5af87663bcaacbc19db4650308d07527e2b63c856ae22a84514",
+  "source_tree_sha256": "e2f6e74f497ccd7e9b16865a319e084c35c709536426a526c83fbf5bf3604ef8",
+  "stack_measurements": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/stack/results-all/stack-results.json",
+  "stack_measurements_sha256": "87a61b6147480dfc1f4cf96d8c64d03c51e57c35070366f50b5bae5440ce2530",
+  "variants": [
+    "tier_base",
+    "all_base",
+    "ad01_base",
+    "ad03_base",
+    "ad10_base",
+    "tier_stack",
+    "all_stack",
+    "ad01_stack",
+    "ad03_stack",
+    "ad10_stack"
+  ],
+  "workers": 4
+}

@@ -1,0 +1,31 @@
+{
+  "benchmark_head": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+  "benchmark_source": {
+    "build_script": "/Users/nschimme/gitprojects/faac-benchmark/scripts/build_fdkdec.sh",
+    "build_script_sha256": "12628991fc719635ea1abc39bb7dc88dac9b46c0921d77084ece61f29f0e6b05",
+    "fdkdec_c": "/Users/nschimme/gitprojects/faac-benchmark/scripts/fdkdec/fdkdec.c",
+    "fdkdec_c_sha256": "59aeba848fbe1ee306655e8fe0c0a111fb5de5c7a78917bc08ae3c30394eb233"
+  },
+  "build_command": "gcc -O2 -o /private/tmp/faac-upstream098-fdk-new/fdkdec scripts/fdkdec/fdkdec.c -I /private/tmp/faac-upstream098-baseline/include $(pkg-config --cflags fdk-aac) /private/tmp/faac-upstream098-baseline/build-release/libfaam/libfaam.a $(pkg-config --libs fdk-aac)",
+  "compiler": "gcc (Apple clang driver) -O2",
+  "faac_source_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "faam_static_library": "/private/tmp/faac-upstream098-baseline/build-release/libfaam/libfaam.a",
+  "faam_static_library_sha256": "22fa5ecdfc5f8089225e27e9eff4113f4f198ae65539b96cc656dd91f41befce",
+  "fdk_version": "2.0.0",
+  "matrix": {
+    "matches": 392,
+    "normalized_pcm_rows": 392,
+    "normalized_pcm_validation": "/private/tmp/faac-upstream098-fdk-ab/full392/full392-normalized-equivalence.json",
+    "rows_path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/upstream098-fixed8-gate-v2/full49/rows.json",
+    "rows_sha256": "01755c8ba6bdb3a6d00d85c75e7b8b550206c245af53d6d26a349e35644a00f0"
+  },
+  "new_decoder": {
+    "path": "/private/tmp/faac-upstream098-fdk-new/fdkdec",
+    "sha256": "f33f38e1b6bcfd3326c7ccd5863ef1fdd7ea0468df3a5c4eb698d9d9a91b2f18"
+  },
+  "old_decoder": {
+    "path": "/private/tmp/faac-he-v1-upstream098-run-provenance/fdkdec-at-capture",
+    "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf"
+  },
+  "schema": 1
+}

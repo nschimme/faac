@@ -1,0 +1,436 @@
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index edef50e6..ebdcd9ae 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -17,6 +17,8 @@
+ #include <string.h>
+ #include <math.h>
+ #include <assert.h>
++#include <errno.h>
++#include <float.h>
+ 
+ #include "sbr.h"
+ #include "sbr_tables.h"
+@@ -211,25 +213,59 @@ static void sbr_frame_silence(SbrFrameData *fd, int channels)
+     fd->freqRes      = 1;
+ }
+ 
++static int sbr_border_probe_mode(void)
++{
++    const char *value = getenv("FAAC_SBR_BORDER_MODE");
++    if (!value || !*value) return 0;
++    char *end = NULL;
++    errno = 0;
++    long parsed = strtol(value, &end, 10);
++    return errno || end == value || *end || parsed != 1 ? 0 : 1;
++}
++
++static float sbr_border_probe_lambda(void)
++{
++    const char *value = getenv("FAAC_SBR_BORDER_LAMBDA");
++    if (!value || !*value) return 0.001f;
++    char *end = NULL;
++    errno = 0;
++    float parsed = strtof(value, &end);
++    return errno || end == value || *end || !isfinite(parsed) ||
++           (parsed != 0.001f && parsed != 0.003f) ? 0.001f : parsed;
++}
++
+ SBRContext *SbrContextInit(int channels)
+ {
+-    size_t frameSize = sizeof(SbrFrameData) + channels * sizeof(((SbrFrameData *)0)->ch[0]);
++    const int candidateCapacity = 5;
++    size_t candidateSize = sbr_frame_candidate_size(channels);
++    size_t frameSize = sizeof(SbrFrameSlot) + candidateCapacity * candidateSize;
+     SBRContext *sbrCtx = (SBRContext *)AllocMemory(sizeof(SBRContext) + SBR_FRAME_FIFO * frameSize);
+     if (sbrCtx) {
+         memset(sbrCtx, 0, sizeof(SBRContext));
++        sbrCtx->numChannels = channels;
++        sbrCtx->borderMode = sbr_border_probe_mode();
++        sbrCtx->borderLambda = sbr_border_probe_lambda();
++        if (sbrCtx->borderMode) {
++            size_t trialSize = sizeof(SBRInfo) + channels * sizeof(SBRChannel);
++            sbrCtx->trialInfo = AllocMemory(trialSize);
++        }
+         sbrCtx->resampler = ResampleInit(channels);
+         size_t size = sizeof(SignalAnalysis) + channels * sizeof(SignalAnalysisChannel);
+         sbrCtx->signalAnalysis = AllocMemory(size);
+-        if (!sbrCtx->resampler || !sbrCtx->signalAnalysis) {
++        if (!sbrCtx->resampler || !sbrCtx->signalAnalysis ||
++            (sbrCtx->borderMode && !sbrCtx->trialInfo)) {
+             SbrContextEnd(sbrCtx);
+             return NULL;
+         }
+         memset(sbrCtx->signalAnalysis, 0, size);
++        sbrCtx->signalAnalysis->borderProbeMode = sbrCtx->borderMode;
+         /* The first access units carry the core's silent lead-in, so the ring
+          * has to start full of payloads that describe silence. */
+         for (int i = 0; i < SBR_FRAME_FIFO; i++) {
+-            sbrCtx->frameFIFO[i] = (SbrFrameData *)(sbrCtx->frameData + i * frameSize);
+-            sbr_frame_silence(sbrCtx->frameFIFO[i], channels);
++            sbrCtx->frameFIFO[i] = (SbrFrameSlot *)(sbrCtx->frameData + i * frameSize);
++            memset(sbrCtx->frameFIFO[i], 0, frameSize);
++            sbrCtx->frameFIFO[i]->candidateCount = 1;
++            sbr_frame_silence(sbr_frame_candidate(sbrCtx->frameFIFO[i], 0, channels), channels);
+         }
+     }
+     return sbrCtx;
+@@ -241,6 +277,7 @@ void SbrContextEnd(SBRContext *sbrCtx)
+     if (sbrCtx->sbrInfo) {
+         SbrEnd(sbrCtx->sbrInfo);
+     }
++    FreeMemory(sbrCtx->trialInfo);
+     if (sbrCtx->resampler) {
+         ResampleEnd(sbrCtx->resampler);
+     }
+@@ -278,7 +315,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
+     /* SbrEncode quantizes into the new head; SbrWrite (via SbrContextGetBits)
+      * emits the oldest slot, which is the payload for this frame's core audio. */
+     sCtx->frameHead = (sCtx->frameHead + 1) % SBR_FRAME_FIFO;
+-    SbrFrameData *fd = sCtx->frameFIFO[sCtx->frameHead];
++    SbrFrameSlot *slot = sCtx->frameFIFO[sCtx->frameHead];
+     sCtx->sbrInfo->headerDecided = 0;
+ 
+     /* Tick 1 still has real signal in the QMF overlap and the decimation FIR;
+@@ -290,7 +327,9 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
+             heHalfRate[channel] = rs->halfRate[channel];
+             sCtx->signalAnalysis->ch[channel].transientStrength = 0.0f;
+         }
+-        sbr_frame_silence(fd, numChannels);
++        slot->candidateCount = 1;
++        slot->selectedReady = 0;
++        sbr_frame_silence(sbr_frame_candidate(slot, 0, numChannels), numChannels);
+     } else {
+         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
+             /* SBR finishes before the FIR overwrites the consumed FIFO front. */
+@@ -309,7 +348,15 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
+          * would inflate its levels, and the QMF-overlap save below reads the last
+          * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
+         SbrAnalyze(sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
+-        SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->signalAnalysis, fd);
++        if (sCtx->borderMode)
++            SbrEncodeBorderCandidates(sCtx->sbrInfo, fullPtrs, numChannels, isLfe,
++                                      2 * FRAME_LEN, sCtx->signalAnalysis, slot);
++        else {
++            slot->candidateCount = 1;
++            slot->selectedReady = 0;
++            SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN,
++                      sCtx->signalAnalysis, sbr_frame_candidate(slot, 0, numChannels));
++        }
+         /* Dual-rate decimation: produces the halved-rate core signal. */
+         Resample(rs, 2 * FRAME_LEN);
+     }
+@@ -473,6 +520,124 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
+ #endif
+ }
+ 
++static float sbr_existing_grid_distortion(const SBRInfo *sbr, int nch, const bool *isLfe,
++                                         const SignalAnalysis *sa, const SbrFrameData *fd)
++{
++    int nb = sbr_env_bands(sbr, fd);
++    const int *edges = sbr_env_edges(sbr, fd);
++    int slots = (2 * FRAME_LEN) / SBR_QMF_BANDS_64;
++    double total = 0.0;
++    for (int ch = 0; ch < nch; ch++) {
++        if (isLfe[ch]) continue;
++        for (int slot = 0; slot < slots; slot++)
++            for (int k = sbr->kx; k < sbr->k2; k++) total += sa->ch[ch].slotBandE[slot][k];
++    }
++    float distortion = 0.0f;
++    for (int ch = 0; ch < nch; ch++) {
++        if (isLfe[ch]) continue;
++        for (int slot = 0; slot < slots; slot++) {
++            int time = slot * SBR_NUM_TIME_SLOTS / slots;
++            int e = time < fd->tEnv[1] ? 0 : 1;
++            for (int b = 0; b < nb; b++) {
++                float bandEnergy = 0.0f;
++                for (int k = edges[b]; k < edges[b + 1]; k++)
++                    bandEnergy += sa->ch[ch].slotBandE[slot][k];
++                float original = bandEnergy / (float)(edges[b + 1] - edges[b]);
++                float reconstructed = exp2f((float)fd->ch[ch].envData[e][b] /
++                    (fd->eff_amp_res ? 1.0f : 2.0f) + SBR_ENV_LEVEL_LOG2_OFFSET);
++                if (original > 0.0f && reconstructed > 0.0f) {
++                    float delta = log2f(original + SBR_LOG_ENERGY_FLOOR) -
++                                  log2f(reconstructed + SBR_LOG_ENERGY_FLOOR);
++                    distortion += (float)(1.0 / total) * bandEnergy * delta * delta;
++                }
++            }
++        }
++    }
++    return isfinite(distortion) ? distortion : FLT_MAX;
++}
++
++static void sbr_make_border_candidate(const SBRInfo *sbr, int nch, const bool *isLfe,
++                                     const SignalAnalysis *sa, int border,
++                                     SbrFrameData *fd)
++{
++    memset(fd, 0, sbr_frame_candidate_size(nch));
++    fd->numEnvelopes = 2;
++    fd->frameClass = SBR_FRAME_CLASS_VARFIX;
++    fd->freqRes = (uint8_t)sbr->bs_freq_res;
++    fd->eff_amp_res = SBR_AMP_RES;
++    fd->tEnv[0] = 0;
++    fd->tEnv[1] = (uint8_t)border;
++    fd->tEnv[2] = SBR_NUM_TIME_SLOTS;
++
++    int nb = sbr_env_bands(sbr, fd);
++    const int *edges = sbr_env_edges(sbr, fd);
++    int slots = (2 * FRAME_LEN) / SBR_QMF_BANDS_64;
++    for (int ch = 0; ch < nch; ch++) {
++        if (isLfe[ch]) continue;
++        int sampled[2] = {0, 0};
++        float envEnergy[2][SBR_QMF_BANDS_64] = {{0}};
++        for (int slot = 0; slot < slots; slot++) {
++#if FAAC_SBR_DECIMATION > 1
++            if (slot % FAAC_SBR_DECIMATION != 0) continue;
++#endif
++            int e = slot * SBR_NUM_TIME_SLOTS / slots < border ? 0 : 1;
++            sampled[e]++;
++            for (int k = sbr->kx; k < sbr->k2; k++)
++                envEnergy[e][k] += sa->ch[ch].slotBandE[slot][k];
++        }
++        int dlav = SBR_ENV_DELTA_LIMIT_HIRES;
++        for (int e = 0; e < 2; e++) {
++            int prev = -1;
++            int eSlots = sampled[e] > 0 ? sampled[e] : 1;
++            for (int b = 0; b < nb; b++) {
++                float energy = 0.0f;
++                for (int k = edges[b]; k < edges[b + 1]; k++) energy += envEnergy[e][k];
++                energy /= (float)(eSlots * (edges[b + 1] - edges[b]));
++                int level = lrintf(fast_log2(energy + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET);
++                int raw = clamp_int(level, 0, 127);
++                if (prev < 0) raw = clamp_int(raw, 0, 63);
++                else raw = clamp_int(raw, prev - dlav, prev + dlav);
++                fd->ch[ch].envData[e][b] = prev = raw;
++            }
++        }
++    }
++    fd->distortion = sbr_existing_grid_distortion(sbr, nch, isLfe, sa, fd);
++}
++
++void SbrEncodeBorderCandidates(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels,
++                         const bool *isLfe, int numSamples, SignalAnalysis *sa,
++                         SbrFrameSlot *slot)
++{
++    for (int ch = 0; ch < numChannels; ch++)
++        if (!isLfe[ch])
++            memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_HIST_LEN,
++                   SBR_QMF_HIST_LEN * sizeof(float));
++
++    SbrFrameData *first = sbr_frame_candidate(slot, 0, numChannels);
++    sbr_adopt_envelope_grid(sbr, sa, first);
++    sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, first);
++    slot->candidateCount = 1;
++    slot->selectedReady = 0;
++    if (numChannels <= 2 && sa->numEnvelopes == 2 &&
++        sa->frameClass == SBR_FRAME_CLASS_VARFIX) {
++        static const int borders[] = {2, 4, 6, 8};
++        first->distortion = sbr_existing_grid_distortion(sbr, numChannels, isLfe, sa, first);
++        for (int i = 0; i < 4; i++) {
++            SbrFrameData *candidate = sbr_frame_candidate(slot, slot->candidateCount, numChannels);
++            sbr_make_border_candidate(sbr, numChannels, isLfe, sa, borders[i], candidate);
++            slot->candidateCount++;
++        }
++    }
++#ifdef FAAC_STATS
++    g_faacStats.sbrFrames++;
++    if (first->frameClass != SBR_FRAME_CLASS_FIXFIX) g_faacStats.sbrTransientFrames++;
++    for (int ch = 0; ch < numChannels; ch++) if (!isLfe[ch]) {
++        g_faacStats.sbrInvfSum += SBR_INVF_MODE;
++        g_faacStats.sbrInvfCount++;
++    }
++#endif
++}
++
+ /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
+  * Replays the write sequence into a counting sink during rate control to
+  * ensure accurate bit budget allocation. */
+diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
+index ab9ffa95..a381a00b 100644
+--- a/libfaac/sbr_analysis.c
++++ b/libfaac/sbr_analysis.c
+@@ -113,6 +113,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+         for (int ch = 0; ch < nch; ch++) {
+             if (isLfe[ch]) continue;
+             memset(sa->ch[ch].bandE, 0, (size_t)sa->numEnvelopes * sizeof(sa->ch[ch].bandE[0]));
++            int probeGrid = sa->borderProbeMode && sa->numEnvelopes == 2 &&
++                            sa->frameClass == SBR_FRAME_CLASS_VARFIX;
++            if (probeGrid) memset(sa->ch[ch].slotBandE, 0, sizeof(sa->ch[ch].slotBandE));
+ 
+             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
+             memcpy(workspace + SBR_QMF_HIST_LEN, fullPtrs[ch], numSamples * sizeof(float));
+@@ -126,6 +129,15 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+                     SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->ch[ch].bandE[e], kx, kEnd);
+                 }
+             }
++            if (probeGrid) {
++                for (int slot = 0; slot < num_slots; slot++) {
++#if FAAC_SBR_DECIMATION > 1
++                    if (slot % FAAC_SBR_DECIMATION != 0) continue;
++#endif
++                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64,
++                                   sa->ch[ch].slotBandE[slot], kx, kEnd);
++                }
++            }
+         }
+     }
+ }
+diff --git a/libfaac/sbr_analysis.h b/libfaac/sbr_analysis.h
+index b4bf7e72..3613296b 100644
+--- a/libfaac/sbr_analysis.h
++++ b/libfaac/sbr_analysis.h
+@@ -37,6 +37,7 @@ typedef struct SignalAnalysisChannel {
+     float transientStrength;
+     /* Each channel owns its envelope energy over the shared grid. */
+     float bandE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
++    float slotBandE[(2 * FRAME_LEN) / SBR_QMF_BANDS_64][SBR_QMF_BANDS_64];
+ } SignalAnalysisChannel;
+ 
+ typedef struct SignalAnalysis {
+@@ -46,6 +47,7 @@ typedef struct SignalAnalysis {
+     int tEnv[SBR_MAX_ENVELOPES + 1];
+     int bsPointer;
+     int envSampled[SBR_MAX_ENVELOPES];
++    int borderProbeMode;
+ 
+     /* Block switching needs a decision for every core channel, so pass 1 runs
+        full width. */
+diff --git a/libfaac/sbr_bitstream.c b/libfaac/sbr_bitstream.c
+index 44cfaa09..7826cdea 100644
+--- a/libfaac/sbr_bitstream.c
++++ b/libfaac/sbr_bitstream.c
+@@ -14,7 +14,9 @@
+  */
+ 
+ #include <assert.h>
++#include <float.h>
+ #include <limits.h>
++#include <stdlib.h>
+ #include <string.h>
+ 
+ #include "sbr.h"
+@@ -285,13 +287,42 @@ int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, i
+             int id_aac = (elem->type == ID_CPE) ? ID_CPE : ID_SCE;
+             /* One step past the newest slot is the oldest: the payload whose
+              * audio this access unit's core carries. See SBR_FRAME_FIFO. */
+-            const SbrFrameData *fd = sCtx->frameFIFO[(sCtx->frameHead + 1) % SBR_FRAME_FIFO];
++            SbrFrameSlot *slot = sCtx->frameFIFO[(sCtx->frameHead + 1) % SBR_FRAME_FIFO];
+             SBRInfo *sbr = sCtx->sbrInfo;
+             if (!sbr->headerDecided) {
+                 sbr->sendHeaderThisFrame = (sbr->frameCount++ % SBR_HEADER_PERIOD == 0);
+                 sbr->headerDecided = 1;
+             }
+-            return SbrWrite(sbr, fd, bs, id_aac, elem->channels[0]);
++            int selected = 0;
++            if (slot->candidateCount > 1) {
++                if (slot->selectedReady) {
++                    selected = slot->selectedIndex;
++                } else {
++                    float best = FLT_MAX;
++                    uint8_t scratch[2048];
++                    size_t infoSize = sizeof(SBRInfo) + sbr->numChannels * sizeof(SBRChannel);
++                    for (int i = 0; i < slot->candidateCount; i++) {
++                        const SbrFrameData *candidate = sbr_frame_candidate_const(slot, i, sCtx->numChannels);
++                        memcpy(sCtx->trialInfo, sbr, infoSize);
++                        BitStream dry;
++                        InitBitStream(&dry, scratch, sizeof(scratch));
++                        int bits = SbrWrite(sCtx->trialInfo, candidate, &dry, id_aac,
++                                            elem->channels[0]);
++                        float objective = candidate->distortion + sCtx->borderLambda * bits;
++                        int border = candidate->tEnv[1];
++                        int selectedBorder = sbr_frame_candidate_const(slot, selected,
++                                                                       sCtx->numChannels)->tEnv[1];
++                        if (objective < best || (objective == best && border < selectedBorder)) {
++                            best = objective;
++                            selected = i;
++                        }
++                    }
++                    slot->selectedIndex = (uint8_t)selected;
++                    slot->selectedReady = 1;
++                }
++            }
++            return SbrWrite(sbr, sbr_frame_candidate_const(slot, selected, sCtx->numChannels),
++                            bs, id_aac, elem->channels[0]);
+         }
+     }
+     return 0;
+diff --git a/libfaac/sbr_internal.h b/libfaac/sbr_internal.h
+index a1cf3e6c..2b5fc0b5 100644
+--- a/libfaac/sbr_internal.h
++++ b/libfaac/sbr_internal.h
+@@ -19,6 +19,7 @@
+ #include "sbr.h"
+ #include "sbr_analysis.h"
+ #include "resample.h"
++#include <stddef.h>
+ 
+ /* A written frame's last envelope and the layout it was coded in: the
+  * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
+@@ -57,11 +58,20 @@ typedef struct SbrFrameData {
+     uint8_t tEnv[SBR_MAX_ENVELOPES + 1];
+     uint8_t bsPointer;
+     uint8_t freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
++    float distortion;
+     /* The noise floor and inverse-filter mode are stream constants
+      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
+     SbrEnvData ch[];
+ } SbrFrameData;
+ 
++typedef struct SbrFrameSlot {
++    uint8_t candidateCount;
++    uint8_t selectedIndex;
++    uint8_t selectedReady;
++    uint8_t reserved;
++    unsigned char candidates[];
++} SbrFrameSlot;
++
+ struct SBRInfo {
+     int sbrPresent;
+     /* Coupled rendition of the pair being written: level, then balance. */
+@@ -109,19 +119,38 @@ struct SBRContext {
+     unsigned long fullSampleRate;
+     unsigned int  fullSampleRateIdx;
+     SBRInfo      *sbrInfo;
++    SBRInfo      *trialInfo;
+     struct Resampler *resampler;
++    int numChannels;
++    int borderMode;
++    float borderLambda;
+ 
+     /* Shared signal analysis */
+     SignalAnalysis *signalAnalysis;
+     /* Coded-payload delay ring; see SBR_FRAME_FIFO. frameHead is the newest
+        entry, so its successor (frameHead + 1) % SBR_FRAME_FIFO is the oldest --
+        the payload the current access unit emits. */
+-    SbrFrameData *frameFIFO[SBR_FRAME_FIFO];
++    SbrFrameSlot *frameFIFO[SBR_FRAME_FIFO];
+     int          frameHead;
+     /* Channel-sized payload slots share the context allocation. */
+     unsigned char frameData[];
+ };
+ 
++static inline size_t sbr_frame_candidate_size(int channels)
++{
++    return sizeof(SbrFrameData) + (size_t)channels * sizeof(SbrEnvData);
++}
++
++static inline SbrFrameData *sbr_frame_candidate(SbrFrameSlot *slot, int index, int channels)
++{
++    return (SbrFrameData *)(slot->candidates + (size_t)index * sbr_frame_candidate_size(channels));
++}
++
++static inline const SbrFrameData *sbr_frame_candidate_const(const SbrFrameSlot *slot, int index, int channels)
++{
++    return (const SbrFrameData *)(slot->candidates + (size_t)index * sbr_frame_candidate_size(channels));
++}
++
+ /* The envelope band table this frame codes over. The quantizer and the writer
+  * must agree on it, and the decoder picks the same one from bs_freq_res. */
+ static inline int sbr_env_bands(const SBRInfo *sbr, const SbrFrameData *fd)
+@@ -143,5 +172,6 @@ void SbrEnd(SBRInfo *sbr);
+ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
+ /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
+ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
++void SbrEncodeBorderCandidates(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameSlot *slot);
+ 
+ #endif

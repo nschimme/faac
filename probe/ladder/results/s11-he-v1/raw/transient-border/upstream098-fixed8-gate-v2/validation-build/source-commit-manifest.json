@@ -1,0 +1,20 @@
+{
+  "schema": "faac-upstream098-fixed8-source-commit-v1",
+  "branch": "upstream098-fixed8",
+  "commit": "c50b66aab79f754fc17e2550159a861d26403b65",
+  "parent_commit": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "source_base": "098e8900289b87d1592a859351ca0bd420397d4b",
+  "commit_message": "sbr: fix transient inner envelope at slot 8",
+  "changed_paths": [
+    "libfaac/sbr_analysis.c"
+  ],
+  "diff_check": "clean",
+  "candidate_file_sha256": "febe0e3f8e183c33fe63ccec1f2f3cef0acc41e0cd665911c6dd54e20bd57672",
+  "baseline_file_sha256": "e130f2a8e00e5b616ee387e4aafccab558596c02ec641e0e757556338fd8bd29",
+  "commit_patch_sha256": "1bb0d64ab8c13367f64044791301ba218f482c8f58f391f5c4fb925e045fc846",
+  "worktree_status": "clean (ignored build artifacts only)",
+  "canonical_parseable_patch_path": "source-committed.patch",
+  "canonical_parseable_patch_sha256": "1bb0d64ab8c13367f64044791301ba218f482c8f58f391f5c4fb925e045fc846",
+  "canonical_patch_git_apply_check": "passed on disposable clone",
+  "original_patch_provenance": "Original /private/tmp/upstream_fixed8.patch preserved unchanged; matching hash but missing final newline, so use canonical committed diff above."
+}

@@ -1,0 +1,189 @@
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index 0970628a..259b3751 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -17,6 +17,7 @@
+ #include <string.h>
+ #include <math.h>
+ #include <assert.h>
++#include <errno.h>
+ 
+ #include "sbr.h"
+ #include "sbr_tables.h"
+@@ -451,6 +452,47 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
+     }
+ }
+ 
++static int sbr_probe_harmonic_threshold(void)
++{
++    const char *text = getenv("FAAC_SBR_PROBE_HARMONIC");
++    char *end;
++    long value;
++
++    if (!text || !*text) return 0;
++    errno = 0;
++    value = strtol(text, &end, 10);
++    if (errno || end == text || *end || value < 50 || value > 95) return 0;
++    return (int)value;
++}
++
++static void sbr_probe_harmonics(const SBRInfo *sbr, int nch, const bool *isLfe,
++                                const struct SignalAnalysis *sa, SbrFrameData *fd)
++{
++    int threshold = sbr_probe_harmonic_threshold();
++
++    for (int ch = 0; ch < nch; ch++) {
++        memset(fd->ch[ch].harmonic, 0, sizeof(fd->ch[ch].harmonic));
++        if (!threshold || isLfe[ch]) continue;
++
++        const float (*bandE)[SBR_QMF_BANDS_64] = sa->ch[ch].bandE;
++        for (int b = 0; b < sbr->numBands; b++) {
++            int lo = sbr->bandEdges[b], hi = sbr->bandEdges[b + 1];
++            if (hi - lo < 3) continue;
++            int mid = (lo + hi) / 2;
++            bool concentrated = true;
++            for (int e = 0; e < fd->numEnvelopes; e++) {
++                float sum = 0.0f;
++                for (int k = lo; k < hi; k++) sum += bandE[e][k];
++                if (sum <= SBR_ENERGY_FLOOR || bandE[e][mid] / sum < (float)threshold / 100.0f) {
++                    concentrated = false;
++                    break;
++                }
++            }
++            fd->ch[ch].harmonic[b] = concentrated;
++        }
++    }
++}
++
+ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
+ {
+     for (int ch = 0; ch < numChannels; ch++)
+@@ -459,6 +501,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
+ 
+     sbr_adopt_envelope_grid(sbr, sa, fd);
+     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
++    sbr_probe_harmonics(sbr, numChannels, isLfe, sa, fd);
+ 
+ #ifdef FAAC_STATS
+     g_faacStats.sbrFrames++;
+diff --git a/libfaac/sbr_bitstream.c b/libfaac/sbr_bitstream.c
+index 6b81d837..b0e168a2 100644
+--- a/libfaac/sbr_bitstream.c
++++ b/libfaac/sbr_bitstream.c
+@@ -14,7 +14,9 @@
+  */
+ 
+ #include <assert.h>
++#include <errno.h>
+ #include <limits.h>
++#include <stdlib.h>
+ #include <string.h>
+ 
+ #include "sbr.h"
+@@ -25,17 +27,50 @@
+ #include "util.h"
+ #include "faac_internal.h"
+ 
++static int probe_value(const char *name, int fallback, int min, int max, int *configured)
++{
++    const char *text = getenv(name);
++    char *end;
++    long value;
++
++    if (configured) *configured = 0;
++    if (!text || !*text) return fallback;
++    errno = 0;
++    value = strtol(text, &end, 10);
++    if (errno || end == text || *end || value < min || value > max) return fallback;
++    if (configured) *configured = 1;
++    return (int)value;
++}
++
+ static void put_header(const SBRInfo *sbr, BitStream *bs)
+ {
+-    /* sbr_header(), with extra_1 present and extra_2 absent (21 bits). */
+-    uint32_t header = SBR_AMP_RES;
+-    header = (header << 4) | sbr->bs_start_freq;
+-    header = (header << 4) | sbr->bs_stop_freq;
+-    header = (header << 3) | sbr->bs_xover_band;
+-    header = (header << 4) | 2; /* reserved=0, extra_1=1, extra_2=0 */
+-    header = (header << 2) | sbr->bs_freq_scale;
+-    header = (header << 1) | sbr->bs_alter_scale;
+-    PutBit(bs, header << 2, 21); /* noise_bands=0 */
++    int configured, any_header_probe = 0;
++    int limiter_bands = probe_value("FAAC_SBR_PROBE_LIMITER_BANDS", 2, 0, 3, &configured);
++    any_header_probe |= configured;
++    int limiter_gain = probe_value("FAAC_SBR_PROBE_LIMITER_GAIN", 2, 0, 3, &configured);
++    any_header_probe |= configured;
++    int interpol = probe_value("FAAC_SBR_PROBE_INTERPOL", 1, 0, 1, &configured);
++    any_header_probe |= configured;
++    int smoothing = probe_value("FAAC_SBR_PROBE_SMOOTH", 1, 0, 1, &configured);
++    any_header_probe |= configured;
++
++    /* Keep the legacy header byte-identical unless a valid header probe is set. */
++    PutBit(bs, SBR_AMP_RES, 1);
++    PutBit(bs, sbr->bs_start_freq, 4);
++    PutBit(bs, sbr->bs_stop_freq, 4);
++    PutBit(bs, sbr->bs_xover_band, 3);
++    PutBit(bs, 0, 2); /* reserved */
++    PutBit(bs, 1, 1); /* bs_header_extra_1 */
++    PutBit(bs, any_header_probe, 1); /* bs_header_extra_2 */
++    PutBit(bs, sbr->bs_freq_scale, 2);
++    PutBit(bs, sbr->bs_alter_scale, 1);
++    PutBit(bs, 0, 2); /* bs_noise_bands */
++    if (any_header_probe) {
++        PutBit(bs, limiter_bands, 2);
++        PutBit(bs, limiter_gain, 2);
++        PutBit(bs, interpol, 1);
++        PutBit(bs, smoothing, 1);
++    }
+ }
+ 
+ static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
+@@ -174,7 +209,8 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
+         for (int e = 0; e < n_env; e++) PutBit(bs, dt[ch] >> e & 1, 1);
+         for (int q = 0; q < n_q; q++) PutBit(bs, q | noiseLinked, 1);
+     }
+-    for (int ch = 0; ch < ngrid; ch++) PutBit(bs, SBR_INVF_MODE, 2);
++    int invf_mode = probe_value("FAAC_SBR_PROBE_INVF", SBR_INVF_MODE, 0, 3, NULL);
++    for (int ch = 0; ch < ngrid; ch++) PutBit(bs, invf_mode, 2);
+     /* Coupled pairs send envelope and noise per channel in turn; otherwise
+      * all envelopes come first, then all noise floors. k walks that order:
+      * its high bit picks the channel and its low bit envelope or noise when
+@@ -188,14 +224,22 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
+              * whose code is the single bit 0. */
+             for (int q = 0; q < n_q; q++) {
+                 int t = q | noiseLinked;
+-                PutBit(bs, t ? 0 : (coupled & ch) ? 6 : SBR_NOISE_LEVEL_DEFAULT, t ? 1 : 5);
++                int noise_level = probe_value("FAAC_SBR_PROBE_NOISE", SBR_NOISE_LEVEL_DEFAULT, 0, 30, NULL);
++                PutBit(bs, t ? 0 : (coupled & ch) ? 6 : noise_level, t ? 1 : 5);
+             }
+         } else {
+             for (int e = 0; e < n_env; e++)
+                 code_deltas(env[ch].envData[e], env_ref(sbr, &env[ch], ch0 + ch, e), nb, dt[ch] >> e & 1, book[ch], bs);
+         }
+     }
+-    for (int ch = 0; ch < nch; ch++) PutBit(bs, 0, 1); /* bs_add_harmonic_flag */
++    for (int ch = 0; ch < nch; ch++) {
++        const uint8_t *harmonic = fd->ch[ch0 + ch].harmonic;
++        int any = 0;
++        for (int b = 0; b < sbr->numBands; b++) any |= harmonic[b];
++        PutBit(bs, any, 1); /* bs_add_harmonic_flag */
++        if (any)
++            for (int b = 0; b < sbr->numBands; b++) PutBit(bs, harmonic[b], 1);
++    }
+     PutBit(bs, 0, 1); /* bs_extended_data */
+ 
+     for (int ch = 0; ch < nch; ch++) {
+diff --git a/libfaac/sbr_internal.h b/libfaac/sbr_internal.h
+index 6aed45fb..b3627ca8 100644
+--- a/libfaac/sbr_internal.h
++++ b/libfaac/sbr_internal.h
+@@ -41,6 +41,7 @@ typedef struct SBRChannel {
+ /* A channel's quantized envelopes, one level per band. */
+ typedef struct {
+     int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
++    uint8_t harmonic[SBR_MAX_BANDS];
+ } SbrEnvData;
+ 
+ /* One frame's coded SBR payload: every field SbrWrite reads that varies per

@@ -1,0 +1,88 @@
+{
+  "command": "NUMBA_DISABLE_JIT=1 ../faac-benchmark/.venv/bin/python .cache/he-v1-feature-study/transient-border/fixed8-full-v2/tools/derive_summary49.py",
+  "derivation_script": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/fixed8-full-v2/tools/derive_summary49.py",
+    "sha256": "d33732979191469e7e6c18000bd23b1938cb8559977acaad157a5fcaa75417a3"
+  },
+  "derived_summary": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/fixed8-full-v2/summary-derived.json",
+    "sha256": "c2acc871a5735b541d3c47a430746ba32b551309b353ad2baf5051454b100b0e"
+  },
+  "helpers": {
+    "bd_rate.py": {
+      "path": "/Users/nschimme/gitprojects/faac-benchmark/scripts/bd_rate.py",
+      "sha256": "2b8d8277aedea4e031998927358e054f0be0148c2fb8e7e47fdaf59e0245d9c3"
+    },
+    "compare_results.py": {
+      "path": "/Users/nschimme/gitprojects/faac-benchmark/compare_results.py",
+      "sha256": "53b9175b4610e504aee1e291483295e1a7fc713ef2b0d7a559b71be8b9c3e2f3"
+    }
+  },
+  "interop": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/fixed8-full-v2/interop-results.json",
+    "sha256": "f0641694def2c8eff02d9cdd19c40123a23cdf9f43ea362773c14e96e03b3b99"
+  },
+  "method": "clips are explicitly derived from fixed8_* row keys; compute per-clip PCHIP BD-rate and fixed-seed (seed=0, 2000 draws) clip bootstrap using faac-benchmark helpers",
+  "raw_measurements_modified": false,
+  "raw_rows": {
+    "clips": [
+      "12-German-male-speech.441.16b48k.wav",
+      "15-Good-evening.441.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+      "25-This-is-the-end.441.16b48k.wav",
+      "27-last-song-drums-and-trampets.441.16b48k.wav",
+      "35_SQAM_glockenspiel_cut.16b48k.wav",
+      "4-Sound-English-male.441.16b48k.wav",
+      "9-Have-big-expensive-car.441.16b48k.wav",
+      "Asleep__4.11-4.31_.16b48k.wav",
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+      "Changes.16b48k.wav",
+      "Coral.16b48k.wav",
+      "ExitMusic.16b48k.wav",
+      "Girl_In_The_Fire__Sample_.16b48k.wav",
+      "Greatest_Love_of_All_2min57.16b48k.wav",
+      "Hey Tonight.16b48k.wav",
+      "Hotel California.16b48k.wav",
+      "Jupiter, the Bringer of Jolity.16b48k.wav",
+      "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+      "NewYorkCity.16b48k.wav",
+      "Only Time.16b48k.wav",
+      "Robots_old.16b48k.wav",
+      "Severance__1.31-1.51_.16b48k.wav",
+      "Shinsho_pool_3min45_4min4.16b48k.wav",
+      "SinceAlways.16b48k.wav",
+      "SlavesOfFear.16b48k.wav",
+      "The Chastising of Renegade.16b48k.wav",
+      "Through The Fire And Flames.16b48k.wav",
+      "TrosYGareg.16b48k.wav",
+      "Waiting.16b48k.wav",
+      "With Love (Outro).16b48k.wav",
+      "bah.wav",
+      "bas.wav",
+      "bonhemian_rhapsody.16b48k.wav",
+      "clapton_44k.16b48k.wav",
+      "cst.wav",
+      "fms.wav",
+      "girl.16b48k.wav",
+      "glk.wav",
+      "hrp.wav",
+      "liberate.16b48k.wav",
+      "lob.wav",
+      "mof.wav",
+      "qrt.wav",
+      "sandman.16b48k.wav",
+      "take_your_finger_frin_my_head.16b48k.wav",
+      "trumpet.16b48k.wav",
+      "velvet.16b48k.wav"
+    ],
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/fixed8-full-v2/rows.json",
+    "rows": 784,
+    "sha256": "2a72454283c3b5c3761884dc8849df34c2e4ecf9b91742a3cadfcf2366869202"
+  },
+  "run_config": {
+    "path": "/Users/nschimme/gitprojects/faac/.cache/he-v1-feature-study/transient-border/fixed8-full-v2/config.json",
+    "sha256": "30ef1e74d917ea401afb6f3a4c064e4ebd385cdd4962fbcd609f70a3243fc348"
+  },
+  "schema": 1
+}

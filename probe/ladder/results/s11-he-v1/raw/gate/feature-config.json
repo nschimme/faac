@@ -1,0 +1,375 @@
+{
+  "actual_bitrate": "sum(ffprobe audio packet size) * 8 / input WAV duration",
+  "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+  "benchmark_root": "/Users/nschimme/gitprojects/faac-benchmark",
+  "binaries": {
+    "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": {
+      "linked_libraries": [
+        {
+          "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+          "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+          "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+      "size_bytes": 35864
+    },
+    "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": {
+      "linked_libraries": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+      "size_bytes": 120936
+    },
+    "/private/tmp/faac-he-v1-probes/build-probe/frontend/faac": {
+      "linked_libraries": [
+        {
+          "path": "@rpath/libfaac.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+        },
+        {
+          "path": "/usr/lib/libiconv.2.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+        },
+        {
+          "path": "/usr/lib/libSystem.B.dylib",
+          "sha256": null,
+          "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+        }
+      ],
+      "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+      "size_bytes": 120936
+    },
+    "baseline_libfaac": {
+      "path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+      "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+      "size_bytes": 135168
+    },
+    "probe_libfaac": {
+      "path": "/private/tmp/faac-he-v1-probes/build-probe/libfaac/libfaac.2.dylib",
+      "sha256": "bd772a280c01896a794e6ec72b8f2b6c359bc1525913a07286c3ec75e08e3117",
+      "size_bytes": 135312
+    }
+  },
+  "clip_sha256": {
+    "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+    "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+    "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+    "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+  },
+  "clips": [
+    "sandman.16b48k.wav",
+    "velvet.16b48k.wav",
+    "21-classic.441.16b48k.wav",
+    "fms.wav"
+  ],
+  "controls": [
+    "baseline_default",
+    "candidate_default",
+    "defaults_explicit"
+  ],
+  "created_utc": "2026-10-14T03:51:03.323177+00:00",
+  "decoder": "FDK AAC via codec_bench.decoders.FDKDecoder; strict command failure",
+  "feature_env": {
+    "defaults_explicit": {
+      "FAAC_SBR_PROBE_INTERPOL": "1",
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "2",
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "2",
+      "FAAC_SBR_PROBE_SMOOTH": "1"
+    },
+    "harmonic_60": {
+      "FAAC_SBR_PROBE_HARMONIC": "60"
+    },
+    "harmonic_75": {
+      "FAAC_SBR_PROBE_HARMONIC": "75"
+    },
+    "harmonic_90": {
+      "FAAC_SBR_PROBE_HARMONIC": "90"
+    },
+    "interpol_0": {
+      "FAAC_SBR_PROBE_INTERPOL": "0"
+    },
+    "invf_0": {
+      "FAAC_SBR_PROBE_INVF": "0"
+    },
+    "invf_1": {
+      "FAAC_SBR_PROBE_INVF": "1"
+    },
+    "invf_2": {
+      "FAAC_SBR_PROBE_INVF": "2"
+    },
+    "limiter_bands_0": {
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "0"
+    },
+    "limiter_bands_1": {
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "1"
+    },
+    "limiter_bands_3": {
+      "FAAC_SBR_PROBE_LIMITER_BANDS": "3"
+    },
+    "limiter_gain_0": {
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "0"
+    },
+    "limiter_gain_1": {
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "1"
+    },
+    "limiter_gain_3": {
+      "FAAC_SBR_PROBE_LIMITER_GAIN": "3"
+    },
+    "noise_15": {
+      "FAAC_SBR_PROBE_NOISE": "15"
+    },
+    "noise_18": {
+      "FAAC_SBR_PROBE_NOISE": "18"
+    },
+    "noise_6": {
+      "FAAC_SBR_PROBE_NOISE": "6"
+    },
+    "noise_9": {
+      "FAAC_SBR_PROBE_NOISE": "9"
+    },
+    "smooth_0": {
+      "FAAC_SBR_PROBE_SMOOTH": "0"
+    }
+  },
+  "immutable_run_config": {
+    "benchmark_commit": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+    "binaries": {
+      "/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec": {
+        "linked_libraries": [
+          {
+            "path": "/opt/homebrew/opt/fdk-aac/lib/libfdk-aac.2.dylib",
+            "sha256": "e311f1b88b70fd007f1df48855c9bfb7195a1a533e2b07ff007ccdcdff75f76d",
+            "version_info": "(compatibility version 3.0.0, current version 3.3.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "32528021e276e28fd54874dfda806c7eb4a73e67796b4a39c811991dc0f7cbbf",
+        "size_bytes": 35864
+      },
+      "/private/tmp/faac-he-v1-probes/build-baseline/frontend/faac": {
+        "linked_libraries": [
+          {
+            "path": "@rpath/libfaac.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+          },
+          {
+            "path": "/usr/lib/libiconv.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+        "size_bytes": 120936
+      },
+      "/private/tmp/faac-he-v1-probes/build-probe/frontend/faac": {
+        "linked_libraries": [
+          {
+            "path": "@rpath/libfaac.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 2.0.0, current version 2.0.0)"
+          },
+          {
+            "path": "/usr/lib/libiconv.2.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 7.0.0, current version 7.0.0)"
+          },
+          {
+            "path": "/usr/lib/libSystem.B.dylib",
+            "sha256": null,
+            "version_info": "(compatibility version 1.0.0, current version 1359.0.0)"
+          }
+        ],
+        "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+        "size_bytes": 120936
+      },
+      "baseline_libfaac": {
+        "path": "/private/tmp/faac-he-v1-probes/build-baseline/libfaac/libfaac.2.dylib",
+        "sha256": "745b92787d3970d935d2afeb3f711a8761c4c9a7b18b7ad603a0e6253038ae59",
+        "size_bytes": 135168
+      },
+      "probe_libfaac": {
+        "path": "/private/tmp/faac-he-v1-probes/build-probe/libfaac/libfaac.2.dylib",
+        "sha256": "bd772a280c01896a794e6ec72b8f2b6c359bc1525913a07286c3ec75e08e3117",
+        "size_bytes": 135312
+      }
+    },
+    "clip_sha256": {
+      "21-classic.441.16b48k.wav": "5b80f46d5edfdaf62a46e274c0f8d2e6be411a5ef27196e419c9ac399695c4f6",
+      "fms.wav": "0e36da135aec98797a56cf79f7a79a9ddd8d6c7c28f38f0703889d051ce84917",
+      "sandman.16b48k.wav": "bbb7ec6ca7480c324b310cc987d9ce02d7f96dd4821b02806cd4d69d82569d18",
+      "velvet.16b48k.wav": "de97f771ef8efdf30c7b30332baae61ed29e71edccf7fb052f3411f359423cf6"
+    },
+    "clips": [
+      "sandman.16b48k.wav",
+      "velvet.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "fms.wav"
+    ],
+    "feature_env": {
+      "defaults_explicit": {
+        "FAAC_SBR_PROBE_INTERPOL": "1",
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "2",
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "2",
+        "FAAC_SBR_PROBE_SMOOTH": "1"
+      },
+      "harmonic_60": {
+        "FAAC_SBR_PROBE_HARMONIC": "60"
+      },
+      "harmonic_75": {
+        "FAAC_SBR_PROBE_HARMONIC": "75"
+      },
+      "harmonic_90": {
+        "FAAC_SBR_PROBE_HARMONIC": "90"
+      },
+      "interpol_0": {
+        "FAAC_SBR_PROBE_INTERPOL": "0"
+      },
+      "invf_0": {
+        "FAAC_SBR_PROBE_INVF": "0"
+      },
+      "invf_1": {
+        "FAAC_SBR_PROBE_INVF": "1"
+      },
+      "invf_2": {
+        "FAAC_SBR_PROBE_INVF": "2"
+      },
+      "limiter_bands_0": {
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "0"
+      },
+      "limiter_bands_1": {
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "1"
+      },
+      "limiter_bands_3": {
+        "FAAC_SBR_PROBE_LIMITER_BANDS": "3"
+      },
+      "limiter_gain_0": {
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "0"
+      },
+      "limiter_gain_1": {
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "1"
+      },
+      "limiter_gain_3": {
+        "FAAC_SBR_PROBE_LIMITER_GAIN": "3"
+      },
+      "noise_15": {
+        "FAAC_SBR_PROBE_NOISE": "15"
+      },
+      "noise_18": {
+        "FAAC_SBR_PROBE_NOISE": "18"
+      },
+      "noise_6": {
+        "FAAC_SBR_PROBE_NOISE": "6"
+      },
+      "noise_9": {
+        "FAAC_SBR_PROBE_NOISE": "9"
+      },
+      "smooth_0": {
+        "FAAC_SBR_PROBE_SMOOTH": "0"
+      }
+    },
+    "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "source_diff_sha256": "0478d4aa6c5e9175088188fc19e55a7023ce55b54bc1d1713257a32d9938ac2e",
+    "source_tree_sha256": "ae5fc1699afacf67b12d90bbce2dff969a346853038d5aae01db4256a5887eec",
+    "variants": [
+      "invf_0",
+      "invf_1",
+      "invf_2",
+      "noise_6",
+      "noise_9",
+      "noise_15",
+      "noise_18",
+      "smooth_0",
+      "interpol_0",
+      "limiter_gain_0",
+      "limiter_gain_1",
+      "limiter_gain_3",
+      "limiter_bands_0",
+      "limiter_bands_1",
+      "limiter_bands_3",
+      "harmonic_60",
+      "harmonic_75",
+      "harmonic_90",
+      "defaults_explicit"
+    ]
+  },
+  "metric": "phase2_mos.score_wav_pair(mode_str='audio', sample_rate=48000) / Zimtohrli",
+  "output_dir": "/private/tmp/faac-he-v1-probes/probe/results-gate",
+  "probe_commit": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+  "probe_root": "/private/tmp/faac-he-v1-probes",
+  "profile": "HE-AAC v1; forced by FAACEncoder(profile='he') command",
+  "rates_kbps": [
+    32,
+    48,
+    64,
+    96
+  ],
+  "resumed_after_source_metadata_change": {
+    "current_source_diff_sha256": "0478d4aa6c5e9175088188fc19e55a7023ce55b54bc1d1713257a32d9938ac2e",
+    "current_source_tree_sha256": "ae5fc1699afacf67b12d90bbce2dff969a346853038d5aae01db4256a5887eec",
+    "note": "Binary hashes and all run inputs match; source hashes changed after the encoded artifacts were produced.",
+    "previous_source_diff_sha256": "0478d4aa6c5e9175088188fc19e55a7023ce55b54bc1d1713257a32d9938ac2e",
+    "previous_source_tree_sha256": "22647dc6476192ffe3f31c7c476217a742f0a46703bad7cb50210b15692acf73"
+  },
+  "schema": 1,
+  "source_diff_sha256": "0478d4aa6c5e9175088188fc19e55a7023ce55b54bc1d1713257a32d9938ac2e",
+  "source_tree_sha256": "ae5fc1699afacf67b12d90bbce2dff969a346853038d5aae01db4256a5887eec",
+  "variants": [
+    "invf_0",
+    "invf_1",
+    "invf_2",
+    "noise_6",
+    "noise_9",
+    "noise_15",
+    "noise_18",
+    "smooth_0",
+    "interpol_0",
+    "limiter_gain_0",
+    "limiter_gain_1",
+    "limiter_gain_3",
+    "limiter_bands_0",
+    "limiter_bands_1",
+    "limiter_bands_3",
+    "harmonic_60",
+    "harmonic_75",
+    "harmonic_90",
+    "defaults_explicit"
+  ]
+}

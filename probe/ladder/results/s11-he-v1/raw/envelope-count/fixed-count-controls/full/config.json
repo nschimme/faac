@@ -1,0 +1,119 @@
+{
+  "created_utc": "2026-10-14T13:48:37.413617+00:00",
+  "immutable_run_config": {
+    "active_probe_binary_sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9",
+    "baseline_binary_sha256": "9294961e59263ee1a107fd3af88de17f0ce6013ff6d0d2840fe505d50f61b820",
+    "clips": [
+      "12-German-male-speech.441.16b48k.wav",
+      "15-Good-evening.441.16b48k.wav",
+      "21-classic.441.16b48k.wav",
+      "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+      "25-This-is-the-end.441.16b48k.wav",
+      "27-last-song-drums-and-trampets.441.16b48k.wav",
+      "35_SQAM_glockenspiel_cut.16b48k.wav",
+      "4-Sound-English-male.441.16b48k.wav",
+      "9-Have-big-expensive-car.441.16b48k.wav",
+      "Asleep__4.11-4.31_.16b48k.wav",
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+      "Changes.16b48k.wav",
+      "Coral.16b48k.wav",
+      "ExitMusic.16b48k.wav",
+      "Girl_In_The_Fire__Sample_.16b48k.wav",
+      "Greatest_Love_of_All_2min57.16b48k.wav",
+      "Hey Tonight.16b48k.wav",
+      "Hotel California.16b48k.wav",
+      "Jupiter, the Bringer of Jolity.16b48k.wav",
+      "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+      "NewYorkCity.16b48k.wav",
+      "Only Time.16b48k.wav",
+      "Robots_old.16b48k.wav",
+      "Severance__1.31-1.51_.16b48k.wav",
+      "Shinsho_pool_3min45_4min4.16b48k.wav",
+      "SinceAlways.16b48k.wav",
+      "SlavesOfFear.16b48k.wav",
+      "The Chastising of Renegade.16b48k.wav",
+      "Through The Fire And Flames.16b48k.wav",
+      "TrosYGareg.16b48k.wav",
+      "Waiting.16b48k.wav",
+      "With Love (Outro).16b48k.wav",
+      "bah.wav",
+      "bas.wav",
+      "bonhemian_rhapsody.16b48k.wav",
+      "clapton_44k.16b48k.wav",
+      "cst.wav",
+      "fms.wav",
+      "girl.16b48k.wav",
+      "glk.wav",
+      "hrp.wav",
+      "liberate.16b48k.wav",
+      "lob.wav",
+      "mof.wav",
+      "qrt.wav",
+      "sandman.16b48k.wav",
+      "take_your_finger_frin_my_head.16b48k.wav",
+      "trumpet.16b48k.wav",
+      "velvet.16b48k.wav"
+    ],
+    "control_binaries": {
+      "base_fixed1": {
+        "library_path": "/private/tmp/faac-envcount-fixed1-base/build-fixed/libfaac/libfaac.2.dylib",
+        "library_sha256": "6c1c5ccb22876e881b4704608d5a475f133f0902058426d8260e4db1d7f4b5e5",
+        "path": "/private/tmp/faac-envcount-fixed1-base/build-fixed/frontend/faac",
+        "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+      },
+      "base_fixed2": {
+        "library_path": "/private/tmp/faac-envcount-fixed2-base/build-fixed/libfaac/libfaac.2.dylib",
+        "library_sha256": "d74ddbfb2ef5d99f60cc2f0b54deb50004a10dfdfac213f48946f2eca9bb37bb",
+        "path": "/private/tmp/faac-envcount-fixed2-base/build-fixed/frontend/faac",
+        "sha256": "c0dc1e7420c70657307af24d866786c3d15e37fee919834d43cd37157d7529b9"
+      },
+      "stack_fixed1": {
+        "library_path": "/private/tmp/faac-envcount-fixed1-stack/build-fixed/libfaac/libfaac.2.dylib",
+        "library_sha256": "e8069b77feeb21cf7dfa5a950bd63a92e398bc0a579c084c0e471562cea04d94",
+        "path": "/private/tmp/faac-envcount-fixed1-stack/build-fixed/frontend/faac",
+        "sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d"
+      },
+      "stack_fixed2": {
+        "library_path": "/private/tmp/faac-envcount-fixed2-stack/build-fixed/libfaac/libfaac.2.dylib",
+        "library_sha256": "5cd28bf8ba48da6ec7ec60bd119fdf1b5e954fb979fd7480cf426138252db700",
+        "path": "/private/tmp/faac-envcount-fixed2-stack/build-fixed/frontend/faac",
+        "sha256": "7741458a69d12c7ceabd7e0b2b3e60f85f74620f29a28c7be49fb2f1c6b32d5d"
+      }
+    },
+    "control_worktrees": {
+      "base_fixed1": {
+        "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+        "path": "/private/tmp/faac-envcount-fixed1-base",
+        "source_diff_sha256": "f9d5fe4d9df74738b539617e7d38292ecc5296aa9cb9c4b43aa1afc7c01bd12a"
+      },
+      "base_fixed2": {
+        "head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+        "path": "/private/tmp/faac-envcount-fixed2-base",
+        "source_diff_sha256": "ba01953602e0a26e934e42000c0723b898581801b95a63d64c1ea59daa0eda9f"
+      },
+      "stack_fixed1": {
+        "head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+        "path": "/private/tmp/faac-envcount-fixed1-stack",
+        "source_diff_sha256": "a300ac27697b468bd62f8250c7e43822ea7bb7ba78d11159bada9df95dfb78c2"
+      },
+      "stack_fixed2": {
+        "head": "5d1bd74703657ae6e9acc5fae1df63ce07190071",
+        "path": "/private/tmp/faac-envcount-fixed2-stack",
+        "source_diff_sha256": "b1b87a079c58b0dea2a4612c6879f658de8f3370dd90061a2c22f03fc1a5c3d8"
+      }
+    },
+    "encoder_source_diff_sha256": "325df9e96ba7f5af87663bcaacbc19db4650308d07527e2b63c856ae22a84514",
+    "encoder_source_head": "99ce2b0980180194f9ccd1993a786208d277cf3e",
+    "full_results_sha256": "646bc1cf56a41d76d19ce784fb330b2fe1d04373d2c08b94e3e8a59a7a42cdb8",
+    "rates_kbps": [
+      32,
+      48,
+      64,
+      96
+    ],
+    "runner_sha256": "bf982d84407bea38c5314faead3b2f1ff0591646099fb2fc86e87eac6e1198a8",
+    "scoring": "Zimtohrli audio mode at 48 kHz, strict FDK decode first, actual AAC packet bitrate",
+    "scoring_performed": true,
+    "stack_reference_binary_sha256": "1239a021e7801f9b402a43105bb3f3f9412c9c9071cd3bc5bac388a8ae197d87"
+  }
+}
