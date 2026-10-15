@@ -43,3 +43,23 @@ music available here (PMLT numbered variants are codec-degraded copies of them),
 held-out set is speech-only and dual-mono, so it tests generalisation to a different signal class, not to unseen music.
 Success criterion: BD-rate vs control CI excludes 0 on the favourable side and per-rung mean MOS delta > 0 at >= 3 of 4
 rungs. A music held-out claim would need new music clips.
+
+## Amendment 2 (sample-rate generalisation; written before any 44.1/32 kHz crossover scoring)
+Corpora: faac-benchmark `audio_44k1` and `audio_32k` (the same 49 clips resampled by setup_datasets.py), HE-AAC v1 forced,
+ABR stereo. Rungs keep the per-channel rate of the 48 kHz ladder where valid: 44.1 kHz 40/48/56/64 kbps;
+32 kHz 32/40/48/56 kbps (a 64 kbps rung at 32 kHz is 2 bits/sample-ish and outside the HE regime). Arms: control (fix, start 15),
+fix11, fix9; bs_start_freq 10 is run on 3 clips only as a decoder-agreement diagnostic. A start value is acceptable at a rate only
+if FAAD2 and FFmpeg decodes agree on a probe clip (MOS difference < 0.15); decoder disagreement is reported, not scored over.
+Same decision rules as the main screen: BD-rate CI vs control excludes 0 favourably and per-rung deltas positive at >= 3 of 4
+rungs; both FAAD2 and FFmpeg decode reported. These clips are not independent of the 49-clip corpus; they test the rate-dependent
+kx / master-table path, not generalisation across material. Mono and VBR/CBR remain untested.
+
+## Amendment 3 (written after seeing the 44.1/32 kHz results, before any further 32 kHz scoring)
+Observed (FAAD2 and FFmpeg agree): start 9 and 11 lose at 32 kHz (+7.1 % / +4.1 % BD-rate vs control) while helping at 44.1/48 kHz.
+The start index is not a rate-invariant quantity: kx = start_min + sbr_offset[row][idx] with different tables per rate, giving
+crossover frequencies kx*fs/128:  48 kHz idx 9/11/15 = 6.4/7.5/11.6 kHz;  44.1 kHz idx 9/11/15 = 6.2/7.2/11.0 kHz;
+32 kHz idx 9/11/12/13/14/15 = 5.25/5.75/6.25/6.75/7.25/8.0 kHz. Hypothesis (post-hoc, stated as such): the benefit comes from
+a crossover near 6-7.5 kHz, so at 32 kHz the Hz-matched indices are 13 (6.75 kHz) and 14 (7.25 kHz). Arms to add at 32 kHz only:
+fix13, fix14 (same corpus, rungs, decoders, rules). This is a hypothesis test on already-seen data: any positive result needs the
+same kind of independent confirmation and is not a claim. Decoder agreement for 13/14 at 32 kHz was already seen in the scan
+(cst/SinceAlways: agree). A single formula for kx as a function of rate_per_ch and sample rate is NOT proposed until this resolves.

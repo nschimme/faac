@@ -66,3 +66,42 @@ table fix matters only at very low crossovers (7: +5.87 % without it vs -1.03 % 
 drops therefore came from low crossovers hitting the table bug and/or older encoder states, not from rate dependence.
 Open: music held-out (none available here), 44.1/32 kHz, mono, VBR/CBR, decoder coverage beyond FAAD2+FFmpeg (no FDK
 decoder here), CPU/footprint (a constant change).
+
+## Amendments 2-3: 44.1 / 32 kHz and an independent FDK decoder (this section supersedes the headline above where they conflict)
+Decoders: FAAD2 287c00c, FFmpeg 6.1.1, and `fdkdec` from faac-benchmark (`scripts/fdkdec`, built here against libfdk-aac 2.0.0;
+Linux sha256 629616c1f0b41518...). FFmpeg's SBR descends from the same design as FAAD2's, so FDK is the more independent check.
+Files: `rows_44k1_*`, `rows_32k_*`, `rows_32kb_*`, `fdkdec_*.json`, `bd_rates.py`, `decoder_agreement_scan.py`.
+
+### 1. Decoder agreement of the stream (cst / SinceAlways, 10 start values x 3 rates; scan script above)
+FAAD2 decodes to MOS ~1.2-1.7 (broken) while FFmpeg and FDK decode normally at: **48 kHz** start 10; **44.1 kHz** 6, 7, 10, 11;
+**32 kHz** 7, 8, 11. Start 9 is accepted by FAAD2 at all three rates. FDK-decoder rescoring confirms FAAD2 is the odd one out
+(start 11 at 44.1/32: faad2 minus fdkdec = -2.5 / -2.3 MOS on every stream). The failures are in FAAD2's master-table adjustment
+(see above); the branch's spec-compliant split decodes correctly under FFmpeg and FDK.
+
+### 2. BD-rate of lower crossover vs control (start 15), mean [95 % CI], by decoder
+| rate | arm | FAAD2 | FFmpeg | FDK dec |
+|---|---|---|---|---|
+| 48 | 11 | -4.60 [-7.55,-0.89] | -6.03 [-8.22,-3.78] | **-0.97 [-3.69,+2.24]** |
+| 48 | 9  | -6.10 [-8.50,-3.50] | -5.75 [-8.40,-2.93] | **-2.45 [-5.05,+0.27]** |
+| 44.1 | 11 | undecodable | -6.60 [-8.77,-4.31] | -2.56 [-4.87,-0.16] |
+| 44.1 | 9  | -4.81 [-7.44,-2.15] | -4.87 [-7.48,-2.13] | -1.43 [-4.17,+1.55] |
+| 32 | 11 | undecodable | +4.07 [+1.39,+7.20] | +3.96 [+1.91,+6.25] |
+| 32 | 9  | +7.06 [+3.81,+10.89] | +6.51 [+3.41,+10.11] | +5.32 [+2.13,+9.06] |
+| 32 | 13 | -0.88 [-1.60,-0.12] | -0.97 [-1.79,-0.17] | -0.39 [-1.45,+0.75] |
+| 32 | 14 | -1.15 [-1.96,-0.46] | -1.06 [-1.90,-0.36] | -0.19 [-0.80,+0.39] |
+Held-out speech (48 kHz, dual mono): start 11 -14.05 / -14.05 / -12.28 %, start 9 -18.62 / -18.62 / -14.95 % (FAAD2 / FFmpeg / FDK);
+per-rung FDK deltas are mixed (start 9: -0.012 at 40, -0.024 at 64) while the BD-rate is large.
+
+### 3. What this establishes and what it does not
+- The earlier statement that lower crossover brings FAAC to parity with FDK/Apple was scored with FAAD2 only. With the FDK decoder
+  the 48 kHz gain is roughly 1-2.5 % and its CI includes 0 for both arms; at 44.1 kHz start 9 also includes 0. FAAD2 and FFmpeg agree
+  with each other (-4.6 to -6.6 %) but are not independent of one another. The parity-with-references numbers above therefore rest on
+  the decoder family that favours the change, and must not be quoted as decoder-independent.
+- Lowering the start index is **not** rate-invariant. 32 kHz loses at start 9/11 under every decoder (+4 to +7 %). Indices matched in Hz
+  (13/14 at 32 kHz = 6.75/7.25 kHz) are within about -1 % to 0 %: marginal.
+- The table split fix is needed for correct operation at lower crossovers (see start 7) and is spec-conformant; it does not make
+  start 10/11 decode in FAAD2.
+- Net: a real but decoder-dependent effect at 44.1/48 kHz (4-6 % on FAAD2/FFmpeg, ~1-2.5 % [CI spans 0] on FDK), no reliable gain at
+  32 kHz, and a hard decoder-compat constraint (FAAD2 fails at several indices that other decoders accept). A production change
+  would need FDK-decoder significance, FAAD2 fixed or the index restricted, and an independent music held-out set. Not shown: Apple's
+  decoder, mono, VBR/CBR, CPU/footprint.
