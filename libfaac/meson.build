@@ -55,7 +55,7 @@ common_src = [
 ]
 
 if get_option('drc')
-    common_src += ['drc.c', 'drc.h']
+    common_src += ['drc.c', 'drc.h', 'drc_analyzer.c', 'drc_analyzer.h']
 endif
 
 libfaac = disabler()

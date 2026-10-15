@@ -42,6 +42,7 @@ _Static_assert(sizeof(enum faac_mpeg_version)  == 4, "faac_mpeg_version must be 
 _Static_assert(sizeof(enum faac_rate_control)  == 4, "faac_rate_control must be 32-bit");
 _Static_assert((int)FAAC_RC_AUTO == RATE_AUTO && (int)FAAC_RC_VBR == RATE_VBR
             && (int)FAAC_RC_ABR == RATE_ABR && (int)FAAC_RC_CBR == RATE_CBR, "rate control drift");
+_Static_assert((int)FAAC_DRC_OFF == DRC_OFF && (int)FAAC_DRC_AUTO == DRC_AUTO, "drc mode drift");
 _Static_assert(sizeof(enum faac_joint_mode)    == 4, "faac_joint_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_shortctl_mode) == 4, "faac_shortctl_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_stream_format) == 4, "faac_stream_format must be 32-bit");
@@ -130,6 +131,8 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.output_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
+    tmp.drc_mode      = FAAC_DRC_OFF;
+    tmp.drc_ref_level = 0.0f;
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_params; report the byte count actually set. */
@@ -194,6 +197,22 @@ static faac_status validate_params(const faac_params *p)
             if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->num_channels)
                 return FAAC_ERR_INVALID_ARGUMENT;
     }
+    switch (p->drc_mode) {
+        case FAAC_DRC_OFF: case FAAC_DRC_AUTO: break;
+        default: return FAAC_ERR_INVALID_ARGUMENT;
+    }
+    if (p->drc_mode == FAAC_DRC_AUTO) {
+#if !FAAC_DRC
+        return FAAC_ERR_UNSUPPORTED;
+#else
+        if (!isfinite(p->drc_ref_level) || p->drc_ref_level < -31.75f || p->drc_ref_level > 0.0f)
+            return FAAC_ERR_INVALID_ARGUMENT;
+#endif
+    } else if (p->drc_ref_level != 0.0f) {
+        if (!isfinite(p->drc_ref_level) || p->drc_ref_level < -31.75f || p->drc_ref_level > 0.0f)
+            return FAAC_ERR_INVALID_ARGUMENT;
+    }
+
     /* bit_rate is per channel, as is the bound. Only a ceiling: it is the
      * ISO/IEC 14496-3 per-frame limit and therefore real, whereas the format
      * sets no minimum and the encoder's own floor already ends the descent. */
@@ -273,6 +292,8 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
      * HE-AAC clamp preserves that distinction. */
     cfg->rateControl   = p->rate_control == FAAC_RC_AUTO
         ? (p->bit_rate ? RATE_ABR : RATE_VBR) : (unsigned int)p->rate_control;
+    cfg->drcMode       = (unsigned int)p->drc_mode;
+    cfg->drcRefLevel   = (p->drc_ref_level == 0.0f) ? -23.0f : p->drc_ref_level;
     if (p->channel_map) {
         uint32_t i;
         for (i = 0; i < p->num_channels; i++)
@@ -346,6 +367,8 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
     info.max_bit_rate     = (uint32_t)h->config.maxBitRate;
     info.encoder_delay    = faacEncoderDelay(h);
     info.rate_control     = (enum faac_rate_control)h->config.rateControl;
+    info.drc_mode         = (enum faac_drc_mode)h->config.drcMode;
+    info.drc_ref_level    = h->config.drcRefLevel;
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_encoder_info; report the byte count actually set. */
@@ -423,6 +446,7 @@ FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info 
     return FAAC_ERR_UNSUPPORTED;
 #else
     if (!drc) {
+        h->manualDrcActive = false;
         memset(&h->drcInfo, 0, sizeof(h->drcInfo));
         return FAAC_OK;
     }
@@ -431,6 +455,7 @@ FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info 
         return FAAC_ERR_INVALID_ARGUMENT;
 
     if (!drc->enabled) {
+        h->manualDrcActive = false;
         memset(&h->drcInfo, 0, sizeof(h->drcInfo));
         return FAAC_OK;
     }
@@ -445,6 +470,7 @@ FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info 
             return FAAC_ERR_INVALID_ARGUMENT;
     }
 
+    h->manualDrcActive = true;
     h->drcInfo.enabled = true;
     h->drcInfo.gain_db = drc->dynamic_range_gain;
     h->drcInfo.prog_ref_level_present = drc->prog_ref_level_present;

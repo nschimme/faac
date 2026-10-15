@@ -44,6 +44,7 @@ extern "C" {
 #include "stereo.h"
 #if FAAC_DRC
 #include "drc.h"
+#include "drc_analyzer.h"
 #endif
 
 typedef struct faacEncStruct {
@@ -116,6 +117,8 @@ typedef struct faacEncStruct {
 #if FAAC_DRC
     /* Dynamic Range Control (DRC) frame state */
     DRCInfo drcInfo;
+    DrcAnalyzer *drcAnalyzer;
+    bool manualDrcActive;
 #endif
 
     /* Keep frame controls before the large coder state, sized at open to

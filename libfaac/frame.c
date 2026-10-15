@@ -387,6 +387,18 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     RateControlReset(&hEncoder->rc, hEncoder->numChannels, hEncoder->config.bitRate,
                      hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
 
+#if FAAC_DRC
+    if (hEncoder->config.drcMode == DRC_AUTO) {
+        unsigned long outputRate = hEncoder->sampleRate;
+        if (hEncoder->config.aacObjectType == HE_V1)
+            outputRate *= 2;
+        hEncoder->drcAnalyzer = DrcAnalyzerInit((uint32_t)outputRate, hEncoder->numChannels,
+                                                hEncoder->isLfeChannel, hEncoder->config.drcRefLevel);
+        if (!hEncoder->drcAnalyzer)
+            return -1;
+    }
+#endif
+
     return 1;
 }
 
@@ -621,6 +633,13 @@ int faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrContext = NULL;
     }
 
+#if FAAC_DRC
+    if (hEncoder->drcAnalyzer) {
+        DrcAnalyzerEnd(hEncoder->drcAnalyzer);
+        hEncoder->drcAnalyzer = NULL;
+    }
+#endif
+
     FreeMemory(hEncoder);
 
     return 0;
@@ -721,6 +740,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (hEncoder->flushFrame > flushBudget)
             return 0;
+
+#if FAAC_DRC
+        if (hEncoder->config.drcMode == DRC_AUTO && !hEncoder->manualDrcActive && hEncoder->drcAnalyzer) {
+            DrcAnalyzerProcessFrame(hEncoder->drcAnalyzer, hEncoder->inputFifo,
+                                    frameSamplesPerCh, &hEncoder->drcInfo);
+        }
+#endif
 
         /* HE-AAC: run SBR + downsample first; the core then encodes heHalfRate.
          * Flush frames (realPerCh == 0) included -- the SBR payload runs
