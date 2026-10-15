@@ -55,6 +55,13 @@ jobs:
               options: -Ddecoder-dab=false,
             }
           - {
+              name: Linux GCC (DRC disabled),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Ddecoder-drc=false,
+            }
+          - {
               name: Linux GCC (32-bit),
               os: ubuntu-latest,
               compiler: gcc,
