@@ -5,9 +5,9 @@ sys.path.insert(0,S+'/fb')
 from phase2_mos import score_wav_pair
 FAAC=S+'/base/build/frontend/faac'; FAAD=S+'/fb/bin/faad'
 FDK=S+'/fdkprefix/bin/fdkaac'
-AUD=S+'/fb/data/external/audio'
+AUD=os.environ.get('AUDDIR',S+'/fb/data/external/audio')
 APPLE='/home/user/faac/probe/ladder/ref/apple-s11-367cf8dc/'+('lc' if os.environ.get('PROFILE')=='lc' else 'he')
-OUT=S+'/run/out'+('_lc' if os.environ.get('PROFILE')=='lc' else ''); os.makedirs(OUT,exist_ok=True)
+OUT=S+'/run/out'+('_held' if os.environ.get('AUDDIR') else '')+('_lc' if os.environ.get('PROFILE')=='lc' else ''); os.makedirs(OUT,exist_ok=True)
 LC=os.environ.get('PROFILE')=='lc'
 RUNGS=[96,128,160,192] if LC else [40,48,56,64]
 def pkt_bits(f):
@@ -37,7 +37,7 @@ def job(a):
     os.remove(dec)
     return dict(arm=arm,clip=clip,rate=rate,mos=mos,kbps=pkt_bits(enc)/dur/1000,sha=hashlib.sha256(open(enc,'rb').read()).hexdigest())
 if __name__=='__main__':
-    clips=sorted(os.listdir(AUD)); clips=[c for c in clips if c.endswith('.wav') and os.path.exists(f'{APPLE}/{RUNGS[0]}k/{c}.m4a')]
+    clips=sorted(os.listdir(AUD)); clips=[c for c in clips if c.endswith('.wav') and (os.environ.get('AUDDIR') or os.path.exists(f'{APPLE}/{RUNGS[0]}k/{c}.m4a'))]
     arms=sys.argv[1].split(',')
     jobs=[(a,c,r) for a in arms for c in clips for r in RUNGS]
     print(len(clips),'clips',len(jobs),'jobs',flush=True)
@@ -46,4 +46,4 @@ if __name__=='__main__':
         for i,x in enumerate(p.imap_unordered(job,jobs)):
             res.append(x)
             if i%40==0: print(i,flush=True)
-    json.dump(res,open(f'{S}/run/rows_{'lc_' if LC else ''}{sys.argv[1].replace(',','_')}.json','w'))
+    json.dump(res,open(f'{S}/run/rows_{'held_' if os.environ.get('AUDDIR') else ''}{'lc_' if LC else ''}{sys.argv[1].replace(',','_')}.json','w'))

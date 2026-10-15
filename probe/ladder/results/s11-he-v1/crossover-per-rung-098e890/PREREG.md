@@ -33,3 +33,13 @@ Rungs 40/48/56/64 ABR, 49 clips, same FAAD2 decode, zimtohrli scorer, actual pac
 - bs_start_freq below 15 moves the core/SBR split and the spectrum SBR must synthesise; envelope-bit cost changes the
   core budget through rate control (charged via actual bitrate).
 - Only FAAD2 is used to decode; table correctness is also checked implicitly by MOS, not by an independent decoder.
+
+## Amendment (written after the 49-clip screen, before any held-out scoring)
+The screen favoured start 9 and 11 at every rung. Held-out confirmation arms: control (fix15), fix11, fix10, fix9
+(10 added as the midpoint; this is an amendment, not a result). The 49 PMLT/SoundExpert references are all the
+music available here (PMLT numbered variants are codec-degraded copies of them), so the only independent clips are the
+400 TCD-VoIP clean speech references (48 kHz mono). Frozen rule: every 8th file of the C-locale sorted path list
+(`heldout_list.txt`, 50 clips), converted with ffmpeg to 48 kHz stereo s16 (dual mono). Limits stated up front: this
+held-out set is speech-only and dual-mono, so it tests generalisation to a different signal class, not to unseen music.
+Success criterion: BD-rate vs control CI excludes 0 on the favourable side and per-rung mean MOS delta > 0 at >= 3 of 4
+rungs. A music held-out claim would need new music clips.

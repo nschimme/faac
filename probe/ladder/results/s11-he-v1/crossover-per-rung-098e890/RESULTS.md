@@ -31,3 +31,38 @@ Limits: selection screen on the same 49 clips that define the gap; the 9 vs 11 v
 post-hoc and the pooled-ladder BD-rate is not a per-rung optimum. The PREREG rule requires held-out
 confirmation (below) before any claim. Not shown: perceptual agreement with a listening test, other
 decoders (FDK/ffmpeg) decoding these streams identically, CPU/footprint cost (none expected: one constant).
+
+## Held-out confirmation (PREREG amendment) and decoder cross-check
+Held-out = 50 TCD-VoIP clean speech references (frozen rule in `PREREG.md`), dual-mono 48 kHz stereo; 800 jobs, 0 invalid.
+BD-rate vs control (FAAD2 decode / FFmpeg `N`-series 6.1.1 decode):
+- fix11: -14.05 % [-14.42, -13.66] / -14.07 % [-14.43, -13.71]; per-rung MOS delta +0.017/+0.041/+0.057/+0.040 (FAAD2).
+- fix9:  -18.62 % [-19.11, -18.12] / -18.65 % [-19.14, -18.15]; per-rung +0.030/+0.062/+0.072/+0.031 (FAAD2).
+Success criterion (CI excludes 0 favourably and per-rung delta > 0 at >= 3/4 rungs) is met. Caveats: speech-only and dual-mono,
+whose ABR output undershoots the nominal rate (control 36.9 kbps at "40"); lower-crossover arms spend 4-6 kbps less at higher
+MOS here, so the -14/-19 % is far larger than on music and should not be extrapolated. Tight CIs reflect a homogeneous clip set.
+
+Decoder cross-check on the 49 music clips, same encoded streams scored after FFmpeg decode: fix11 -6.03 % [-8.22, -3.78],
+fix9 -5.75 % [-8.40, -2.93] (FAAD2: -4.60 / -6.10). The gain is not a FAAD2 artefact.
+
+### bs_start_freq 10 is a FAAD2 decode failure, not an encoder defect
+At 48 kHz start 10 gives kx 18 and a two-region table. FAAD2 (287c00c) decodes the streams to MOS 1.30 (cst) / 1.91 (SinceAlways),
+FFmpeg to 3.96 / 4.32 (control 4.03 / 4.27). On the held-out set fix10 scored about 1.97 under FAAD2 (excluded from the
+BD table). FAAD2's `master_frequency_table` (libfaad/sbr_fbt.c) differs from the spec algorithm the branch implements:
+it applies the whole `change` to vDk1[0] without the (vDk1[last]-vDk1[0])/2 cap, and sorts `nrBand1+1` entries first.
+Starts 9 and 11 agree between decoders. Any production choice must therefore avoid start 10 (or FAAD2 must be fixed),
+and be re-validated per sample rate: kx differs at 32/44.1/48 kHz.
+
+### Gap to the references on the 49 clips (FAAD2 decode, mean BD-rate [95 % CI])
+| arm | vs FDK | vs Apple |
+|---|---|---|
+| baseline | +6.46 % [+2.70, +10.23] | +4.95 % [+0.46, +9.60] |
+| start 11 | +1.19 % [-2.20, +5.15] | +0.33 % [-3.35, +4.65] |
+| start 9  | +1.38 % [-2.32, +5.44] | -2.37 % [-5.25, +0.68] |
+The gap to both references is no longer statistically resolved. Start 9 vs 11 differ by less than the CI width.
+
+### Reading against the stated hypothesis
+Static crossover tests losing MOS was not explained by "static across rungs": 9 and 11 help at every rung. The branch's
+table fix matters only at very low crossovers (7: +5.87 % without it vs -1.03 % with it); at 9-11 it is neutral. The earlier
+drops therefore came from low crossovers hitting the table bug and/or older encoder states, not from rate dependence.
+Open: music held-out (none available here), 44.1/32 kHz, mono, VBR/CBR, decoder coverage beyond FAAD2+FFmpeg (no FDK
+decoder here), CPU/footprint (a constant change).
