@@ -105,3 +105,13 @@ per-rung FDK deltas are mixed (start 9: -0.012 at 40, -0.024 at 64) while the BD
   32 kHz, and a hard decoder-compat constraint (FAAD2 fails at several indices that other decoders accept). A production change
   would need FDK-decoder significance, FAAD2 fixed or the index restricted, and an independent music held-out set. Not shown: Apple's
   decoder, mono, VBR/CBR, CPU/footprint.
+
+### 4. Is the FAAD2 master-table deviation also in the in-tree `libfaad` branch? No.
+`nschimme/faac` branch `libfaad` (d7fe6f7, `FAAD 3.0.0`, rewritten decoder) implements the spec adjustment in
+`libfaad/sbr.c: sbr_master_log` including the `(vDk1[last]-vDk1[0])/2` cap and the post-sort. Built with meson and run on the same
+encoder streams (cst.wav; MOS, FAAD2 287c00c vs libfaad branch; `libfaad_branch_check.py`):
+- 48 kHz start 10: 1.30 vs **3.96**; 44.1 kHz start 7/10/11: 1.22/1.27/1.46 vs **3.59/4.05/4.00**;
+  32 kHz start 7/8/11: 1.22/1.24/1.35 vs **3.52/3.29/3.27**. Control (start 15) is identical in both (4.03 / 4.00 / 3.82 vs 3.81).
+So the libfaad branch agrees with FFmpeg and FDK where standalone FAAD2 (FreewareAdvancedAudio/faad2 287c00c, the pin used by
+faac-benchmark) fails. The defect is in `libfaad/sbr_fbt.c: master_frequency_table` of the standalone FAAD2: no cap on `change`
+and an extra `qsort(vDk1, nrBand1 + 1, ...)`. Single clip per case; not a full-corpus decode.
