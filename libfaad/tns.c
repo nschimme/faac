@@ -62,7 +62,6 @@ void apply_tns(ICSInfo *ics, float *spec)
 
     bool is_short = (ics->window_sequence == EIGHT_SHORT_SEQUENCE);
     int tns_max_bands = tns_max_bands_for(ics->sample_rate_index, is_short);
-    int max_order = is_short ? 7 : 12;
 
 #ifndef FAAD_DISABLE_DAB
     int short_len = (ics->frame_len_long == 960) ? 120 : 128;
@@ -78,7 +77,6 @@ void apply_tns(ICSInfo *ics, float *spec)
             int order = ics->tns_order[w][f];
             int length = ics->tns_length[w][f];
             int dir = ics->tns_direction[w][f];
-            if (order > max_order) order = max_order;
 
             /* Filter regions stack downwards from the top of the sfb table;
              * only afterwards is each clipped to max_sfb / TNS_MAX_BANDS. */
