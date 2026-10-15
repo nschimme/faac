@@ -30,6 +30,11 @@ option('decoder-ps',
     type: 'boolean',
     value: true)
 
+option('decoder-dab',
+    description: 'Enable DAB+ (960/120 frame length and ADIF) support in libfaad',
+    type: 'boolean',
+    value: true)
+
 # Muxer (libfaam)
 option('muxer',
     description: 'Build the faam CLI tool (libfaam itself is always built)',
