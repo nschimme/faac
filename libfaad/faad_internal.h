@@ -249,6 +249,15 @@ typedef struct {
 #define PS_MAX_ENV      5   /* four coded envelopes plus the implicit trailing one */
 #define PS_NR_PAR       34
 #define PS_NR_BANDS     91  /* hybrid sub-bands in the 34-parameter layout */
+/* Without DAB+ support the frame length is a constant, so the 1024-sample
+ * paths fold at compile time instead of branching on the stream. */
+#ifdef FAAD_DISABLE_DAB
+#define FRAME_IS_960(dec) 0
+#define ICS_IS_960(ics) 0
+#else
+#define FRAME_IS_960(dec) ((dec)->asc.frame_length_flag)
+#define ICS_IS_960(ics) ((ics)->frame_len_long == 960)
+#endif
 #define PS_QMF_SLOTS    32
 #define PS_IN_SLOTS     38  /* QMF slots handed to the hybrid bank: 32 plus 6 of look-ahead */
 #define PS_MAX_DELAY    14

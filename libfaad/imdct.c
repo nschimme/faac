@@ -221,7 +221,7 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequ
 {
     float * restrict work = dec->scratch->work;
     uint8_t prev_shape = dec->prev_window_shape[ch];
-    int frame_len_long = dec->asc.frame_length_flag ? 960 : 1024;
+    int frame_len_long = FRAME_IS_960(dec) ? 960 : 1024;
     int short_len = (frame_len_long == 960) ? 120 : 128;
     int short_win_len = 2 * short_len;
     int long_win_len = 2 * frame_len_long;

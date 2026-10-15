@@ -41,7 +41,7 @@ void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
         return;
     }
 #ifndef FAAD_DISABLE_DAB
-    bool is_960 = (ics->frame_len_long == 960);
+    bool is_960 = ICS_IS_960(ics);
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         ics->num_sfbs = is_960 ? num_sfbs_120[sr_idx] : num_sfbs_128[sr_idx];
         const uint16_t *offsets = is_960 ? sfb_offsets_120[sr_idx] : sfb_offsets_128[sr_idx];
@@ -550,8 +550,8 @@ faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec)
     if (max_sfb > MAX_SFB) max_sfb = MAX_SFB;
 
 #ifndef FAAD_DISABLE_DAB
-    int short_len = (ics->frame_len_long == 960) ? 120 : 128;
-    int long_len = (ics->frame_len_long == 960) ? 960 : 1024;
+    int short_len = ICS_IS_960(ics) ? 120 : 128;
+    int long_len = ICS_IS_960(ics) ? 960 : 1024;
 #else
     int short_len = 128;
     int long_len = 1024;
