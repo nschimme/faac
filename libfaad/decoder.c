@@ -250,7 +250,7 @@ static uint32_t output_capacity(const faad_decoder *dec)
 #endif
     if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO) channels = 1;
     else if (dec->config.downmix_mode == FAAD_DOWNMIX_STEREO && channels > 2) channels = 2;
-    uint32_t samples = dec->asc.frame_length_flag ? 960 : 1024;
+    uint32_t samples = FRAME_IS_960(dec) ? 960 : 1024;
 #ifndef FAAD_DISABLE_SBR
     samples *= 2;
 #endif
@@ -335,7 +335,7 @@ static faad_status init_decoder(faad_decoder *dec, const faad_config *resolved,
         dec->core_sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
         if (get_sr_index(dec->core_sample_rate) < 0) return FAAD_ERR_UNSUPPORTED;
         dec->sample_rate = dec->asc.is_sbr ? dec->asc.sbr_sample_rate : dec->core_sample_rate;
-        uint32_t core_samples = dec->asc.frame_length_flag ? 960 : 1024;
+        uint32_t core_samples = FRAME_IS_960(dec) ? 960 : 1024;
         dec->frame_samples = dec->asc.is_sbr ? (core_samples * 2) : core_samples;
         dec->asc_parsed = true;
         dec->format_known = dec->asc.num_channels != 0;
@@ -543,7 +543,7 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
     }
     bool sbr = dec->asc.is_sbr || dec->sbr_seen;
     info.sample_rate = dec->core_sample_rate;
-    uint32_t core_samples = dec->asc.frame_length_flag ? 960 : 1024;
+    uint32_t core_samples = FRAME_IS_960(dec) ? 960 : 1024;
     info.frame_samples = core_samples;
 #ifndef FAAD_DISABLE_SBR
     if (sbr) { info.sample_rate *= 2; info.frame_samples = core_samples * 2; }
@@ -985,7 +985,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #ifdef FAAD_DISABLE_SBR
     sbr_frame = false;
 #endif
-    uint32_t core_samples = dec->asc.frame_length_flag ? 960 : 1024;
+    uint32_t core_samples = FRAME_IS_960(dec) ? 960 : 1024;
     dec->frame_samples = sbr_frame ? (core_samples * 2) : core_samples;
     float *pcm_final = dec->pcm;
     uint32_t num_chs = dec->num_channels;

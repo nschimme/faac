@@ -701,7 +701,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     if (data_extra) bits_skip(bs, 4 * (uint32_t)nch); /* bs_reserved, ahead of bs_coupling */
     el->coupling = (nch == 2) ? bits_get(bs, 1) : false;
 
-    int num_time_slots = dec->asc.frame_length_flag ? 15 : 16;
+    int num_time_slots = FRAME_IS_960(dec) ? 15 : 16;
     if (!sbr_read_grid(bs, chs[0], num_time_slots)) return FAAD_ERR_DECODE_FAILED;
     if (nch == 2) {
         if (el->coupling) {
@@ -1366,7 +1366,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
     SBRScratch *sc = &dec->sbr_scratch;
     /* Channel runs stay 2048 apart whatever the core frame length. */
     uint32_t sbr_out_len = SBR_OUT_LEN;
-    int sbr_slots = dec->asc.frame_length_flag ? 30 : 32;
+    int sbr_slots = FRAME_IS_960(dec) ? 30 : 32;
 
     /* The first 128 spectrum floats hold streaming output; the remaining
      * storage preserves leading low bands across a crossover change. */
@@ -1450,7 +1450,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
 #else
     (void)dec;
     (void)pcm_in; (void)pcm_out;
-    uint32_t core_len = dec->asc.frame_length_flag ? 960 : 1024;
+    uint32_t core_len = FRAME_IS_960(dec) ? 960 : 1024;
     uint32_t sbr_out_len = SBR_OUT_LEN;
     /* no SBR decoder: linear 2x upsampling, backwards so it can run in place */
     for (uint32_t ch = 0; ch < num_ch; ch++) {

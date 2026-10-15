@@ -219,7 +219,7 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
     int num_env = ps_num_env_tab[ps->frame_class & 1][bits_get(bs, 2) & 3];
     ps->num_env = (uint8_t)num_env;
     ps->border[0] = -1;
-    int num_qmf_slots = dec->asc.frame_length_flag ? 30 : 32;
+    int num_qmf_slots = FRAME_IS_960(dec) ? 30 : 32;
     if (ps->frame_class) {
         for (int e = 1; e <= num_env && e < PS_MAX_ENV; e++) {
             ps->border[e] = (int8_t)bits_get(bs, 5);
@@ -765,7 +765,7 @@ void ps_slot(struct faad_decoder *dec, int n, float X[64][2], float L[64][2], fl
     ps_mix_slot(ps, n, l, r);
     ps_hybrid_synthesis_slot(l, L, ps->is34);
     ps_hybrid_synthesis_slot(r, R, ps->is34);
-    int num_qmf_slots = dec->asc.frame_length_flag ? 30 : 32;
+    int num_qmf_slots = FRAME_IS_960(dec) ? 30 : 32;
     if (n == num_qmf_slots - 1) {
         for (int i = 0; i < 5; i++)
             memmove(ps->in_buf[i], ps->in_buf[i] + num_qmf_slots, 6 * sizeof(ps->in_buf[i][0]));
