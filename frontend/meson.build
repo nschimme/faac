@@ -41,6 +41,13 @@ if get_option('encoder')
         install: true
     )
 
+    if get_option('drc') and get_option('tests')
+        python3 = import('python').find_installation('python3')
+        test('test_cli_drc', python3,
+             args: [files('../tests/test_cli_drc.py'), faac],
+             depends: [faac])
+    endif
+
     if target_machine.system() == 'windows'
         windows = import('windows')
         resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',

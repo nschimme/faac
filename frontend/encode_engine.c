@@ -66,6 +66,9 @@ void init_encode_options(encode_options_t *opts)
     opts->raw_endian = true;
     opts->encoder_info = true;
     opts->verbose = 1;
+    opts->drc = false;
+    opts->drc_ref_level = -23.0f;
+    opts->drc_ref_level_given = false;
 }
 
 bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value)
@@ -308,6 +311,13 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
         ADD(", noshort");
     else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
         ADD(", nolong");
+
+    if (info->drc_mode == FAAC_DRC_AUTO) {
+        if (opts->drc_ref_level_given)
+            ADD(", DRC auto, ref %g LUFS", (double)info->drc_ref_level);
+        else
+            ADD(", DRC auto");
+    }
 #undef ADD
 
     return strdup(buf);
@@ -563,6 +573,17 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.bandwidth = opts->bandwidth;
     params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
+    if (opts->drc)
+    {
+        params.drc_mode = FAAC_DRC_AUTO;
+        if (opts->drc_ref_level_given)
+            params.drc_ref_level = opts->drc_ref_level;
+    }
+    else
+    {
+        params.drc_mode = FAAC_DRC_OFF;
+    }
+
     /* Hand integer PCM to the encoder as it is: one conversion pass instead of
        two, and nothing for it to sanitise. The encoder applies the channel map. */
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
@@ -577,6 +598,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     {
         faac_status st = faac_encoder_open(&params, &hEncoder);
+        if (st == FAAC_ERR_UNSUPPORTED && params.drc_mode == FAAC_DRC_AUTO)
+            FAIL("This build of libfaac has no DRC support (-Ddrc=true required)\n");
         if (st != FAAC_OK)
             FAIL("Couldn't open encoder instance for %s: %s\n",
                  opts->input_filename, faac_strerror(st));
