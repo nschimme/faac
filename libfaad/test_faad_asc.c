@@ -31,6 +31,8 @@ static void check(const char *name, const uint8_t *asc, uint32_t len,
 
 int main(void)
 {
+    faad_library_info library = { .struct_size = sizeof library };
+    if (faad_get_library_info(&library) != FAAD_OK) return 1;
     /* LC 44.1 kHz stereo, dependsOnCoreCoder set but no coreCoderDelay (Audible). */
     static const uint8_t no_delay[] = { 0x12, 0x12 };
     /* The same with the 14-bit delay and extensionFlag present. */
@@ -42,7 +44,7 @@ int main(void)
 
     check("no coreCoderDelay", no_delay, sizeof(no_delay), FAAD_OK, 44100);
     check("coreCoderDelay present", with_delay, sizeof(with_delay), FAAD_OK, 44100);
-    check("coreCoderDelay then SBR extension", with_delay_sbr, sizeof(with_delay_sbr), FAAD_OK, 88200);
+    check("coreCoderDelay then SBR extension", with_delay_sbr, sizeof(with_delay_sbr), FAAD_OK, library.sbr_supported ? 88200 : 44100);
     check("plain LC", plain, sizeof(plain), FAAD_OK, 44100);
     return failures ? 1 : 0;
 }
