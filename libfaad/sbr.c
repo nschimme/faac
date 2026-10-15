@@ -1156,13 +1156,13 @@ static inline void sbr_assemble_slot(const SBRElement *el, SBRChannel *ch, SBRSc
 }
 
 #ifndef FAAD_DISABLE_PS
-static void sbr_assemble_hybrid_input(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int i, float (*slot)[2], float (*low_head)[SBR_T_HFGEN][2])
+static void sbr_assemble_hybrid_input(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int i, float (*slot)[2], float (*low_head)[SBR_T_HFGEN][2], int sbr_slots)
 {
     int n = i + SBR_T_HFADJ;
-    bool previous = have_hf && i < (int)ch->t_E_end_prev - SBR_SLOTS;
+    bool previous = have_hf && i < (int)ch->t_E_end_prev - sbr_slots;
     int kx = have_hf ? (previous ? ch->kx_prev : el->kx) : 32;
     int kend = have_hf ? (previous ? ch->kx_prev + ch->M_prev : el->kx + el->M) : 32;
-    if (i >= SBR_SLOTS) kend = kx;
+    if (i >= sbr_slots) kend = kx;
     for (int k = 0; k < 5; k++) {
         const float *input = NULL;
         if (k < kx && k < 32)
@@ -1364,8 +1364,8 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
     float *pcm_in = pcm, *pcm_out = pcm;
 #ifndef FAAD_DISABLE_SBR
     SBRScratch *sc = &dec->sbr_scratch;
-    uint32_t core_len = dec->asc.frame_length_flag ? 960 : 1024;
-    uint32_t sbr_out_len = core_len * 2;
+    /* Channel runs stay 2048 apart whatever the core frame length. */
+    uint32_t sbr_out_len = SBR_OUT_LEN;
     int sbr_slots = dec->asc.frame_length_flag ? 30 : 32;
 
     /* The first 128 spectrum floats hold streaming output; the remaining
@@ -1414,7 +1414,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
                                sizeof(float[PS_IN_SLOTS][2]));
                 } else {
                     for (int i = 0; i < PS_IN_SLOTS; i++) {
-                        sbr_assemble_hybrid_input(el, sch, sc, have_hf, i, slot, low_head);
+                        sbr_assemble_hybrid_input(el, sch, sc, have_hf, i, slot, low_head, sbr_slots);
                         ps_frame_input(dec, i, slot);
                     }
                 }
@@ -1426,10 +1426,10 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
                 if (ps_active) {
                     ps_slot(dec, i, slot, L, R);
                     qmf_synthesis_slot(&dec->sbr[0], L, pcm_out + i * 64);
-                    qmf_synthesis_slot(&dec->sbr[1], R, pcm_out + 2 * core_len + i * 64);
+                    qmf_synthesis_slot(&dec->sbr[1], R, pcm_out + SBR_OUT_LEN + i * 64);
                 } else {
                     qmf_synthesis_slot(sch, slot, pcm_out + i * 64);
-                    qmf_synthesis_slot(&dec->sbr[1], slot, pcm_out + 2 * core_len + i * 64);
+                    qmf_synthesis_slot(&dec->sbr[1], slot, pcm_out + SBR_OUT_LEN + i * 64);
                 }
             }
             sbr_finish_channel(el, sch, sc, have_hf, sbr_slots);
@@ -1451,7 +1451,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
     (void)dec;
     (void)pcm_in; (void)pcm_out;
     uint32_t core_len = dec->asc.frame_length_flag ? 960 : 1024;
-    uint32_t sbr_out_len = core_len * 2;
+    uint32_t sbr_out_len = SBR_OUT_LEN;
     /* no SBR decoder: linear 2x upsampling, backwards so it can run in place */
     for (uint32_t ch = 0; ch < num_ch; ch++) {
         float *p = pcm + ch * sbr_out_len;
