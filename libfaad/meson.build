@@ -41,7 +41,7 @@ default_lib = get_option('default_library')
 
 if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') and get_option('frontend-static'))
     libfaad_static = static_library(
-        'faad',
+        'faad3',
         faad_src,
         kwargs : common_args + {
           'override_options' : ['b_lto=false'],
@@ -51,7 +51,7 @@ endif
 
 if default_lib == 'shared' or default_lib == 'both'
     libfaad_shared = shared_library(
-        'faad',
+        'faad3',
         faad_src,
         kwargs : common_args + {
           'c_args' : common_args['c_args'] + ['-DFAAD_BUILDING'],

@@ -655,7 +655,7 @@ For source-tree static archives built in `b/`:
 
 ```sh
 cc -std=c11 -Wall -Wextra -Iinclude -Icommon \
-  m4a_decode.c b/libfaam/libfaam.a b/libfaad/libfaad.a -lm -o m4a_decode
+  m4a_decode.c b/libfaam/libfaam.a b/libfaad/libfaad3.a -lm -o m4a_decode
 ```
 
 Run `./m4a_decode input.m4a output.pcm`. On a little-endian host,
