@@ -110,7 +110,7 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 }
 
 // masking target per scalefactor band: 0 marks a band inaudible
-#define SILENCE_RMS            0.4f     // per-sample RMS gate for silence
+#define SILENCE_RMS            0.4f     // time-domain RMS, in 16-bit PCM units
 #define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
 #define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
 #define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
@@ -125,11 +125,21 @@ typedef struct
     float peak_energy; /* mean of the per-window peak energies */
 } BandEnergy;
 
+static float silence_energy(const CoderInfo *ci)
+{
+    int len = (ci->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    /* The unnormalised, doubled MDCT has 2*len times the input mean-square
+     * energy for a sine-windowed stationary signal. Keep the silence floor
+     * in sample units rather than making it depend on the transform length. */
+    return (2.0f * len) * (SILENCE_RMS * SILENCE_RMS);
+}
+
 static float measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict xr0,
                                   int gnum, int cutoff, BandEnergy * __restrict out)
 {
     int gsize = ci->groups.len[gnum];
     float group_total = 0.0f;
+    float silence = silence_energy(ci);
     int sfb;
 
     for (sfb = 0; sfb < ci->sfbn; sfb++)
@@ -175,7 +185,7 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
          * its own level would code the side as finely as the mid. A half
          * that is silent on its own stays silent. */
         float ms = ci->msEl[gnum * ci->sfbn + sfb];
-        if (ms > 0.0f && sum >= (SILENCE_RMS * SILENCE_RMS) * (float)(gsize * len))
+        if (ms > 0.0f && sum >= silence * (float)(gsize * len))
         {
             float ref = 0.5f * fminf(ms, ci->msPeer[gnum * ci->sfbn + sfb]);
             if (sum > 0.0f)
@@ -211,7 +221,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     int sfb;
 
     // whole group below the silence gate: force every band to a zero target
-    if (group_total < (SILENCE_RMS * SILENCE_RMS) * (float)(gsize * total_len))
+    if (group_total < silence_energy(ci) * (float)(gsize * total_len))
     {
         for (sfb = 0; sfb < ci->sfbn; sfb++)
         {
@@ -301,6 +311,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                                    int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
 {
     int gsize = ci->groups.len[gnum];
+    float silence = silence_energy(ci);
     float pns_threshold = 0.1f * (float)pnslevel;
     int smooth = ci->block_type != ONLY_SHORT_WINDOW;
     int base = ci->bandcnt;
@@ -327,9 +338,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         int width = ci->sfb_offset[sb + 1] - ci->sfb_offset[sb];
         float avg_per_window = be[sb].sum / (float)gsize;
-        float rms = sqrtf(avg_per_window / width);
-
-        if (rms < SILENCE_RMS || target[sb] == 0.0f)
+        if (avg_per_window < silence * width || target[sb] == 0.0f)
         {
             ci->book[band] = HCB_ZERO;
             continue;
