@@ -32,15 +32,22 @@ void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed)
                 if (nrg > 120) nrg = 120;
                 float scale = powf(2.0f, 0.25f * (float)nrg);
 
+#ifndef FAAD_DISABLE_DAB
+                int short_len = (ics->frame_len_long == 960) ? 120 : 128;
+                int long_len = (ics->frame_len_long == 960) ? 960 : 1024;
+#else
+                int short_len = 128;
+                int long_len = 1024;
+#endif
                 int start_k = ics->sfb_offsets[sfb];
                 int end_k = ics->sfb_offsets[sfb + 1];
-                if (start_k >= FRAME_LEN_LONG) continue;
-                if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
+                if (start_k >= long_len) continue;
+                if (end_k > long_len) end_k = long_len;
                 int len = end_k - start_k;
 
                 for (int w = 0; w < ics->window_group_length[g]; w++) {
-                    int win_offset_k = (window_offset + w) * 128 + start_k;
-                    if (win_offset_k < 0 || win_offset_k + len > FRAME_LEN_LONG) continue;
+                    int win_offset_k = (window_offset + w) * short_len + start_k;
+                    if (win_offset_k < 0 || win_offset_k + len > long_len) continue;
                     float * restrict ptr = spec + win_offset_k;
                     float energy = 0.0f;
 
