@@ -115,3 +115,32 @@ encoder streams (cst.wav; MOS, FAAD2 287c00c vs libfaad branch; `libfaad_branch_
 So the libfaad branch agrees with FFmpeg and FDK where standalone FAAD2 (FreewareAdvancedAudio/faad2 287c00c, the pin used by
 faac-benchmark) fails. The defect is in `libfaad/sbr_fbt.c: master_frequency_table` of the standalone FAAD2: no cap on `change`
 and an extra `qsort(vDk1, nrBand1 + 1, ...)`. Single clip per case; not a full-corpus decode.
+
+## Corrections and new base (he-v1-retune 217f913) -- supersedes earlier statements where they conflict
+### FAAD2 diagnosis corrected (section 4 above was incomplete)
+The standalone FAAD2 failure is mainly that `master_frequency_table()` ignores `bs_alter_scale` and always warps the upper region by
+1.3 (`(void)bs_alter_scale; /* TODO */`), so for `bs_alter_scale == 0` the upper region has fewer bands than the spec formula gives
+(k1=36,k2=49,fs3: 4 vs 2). The unbounded `change` and the `nrBand1 + 1` sort are additional deviations; warp alone fixes most, not
+44.1 kHz / start 11. Fix: https://github.com/nschimme/faad2/pull/2 (no code from any other decoder was read or copied; other decoders
+were used only as black-box binaries to compare output). The patched decoder tracks the spec-conformant streams: of 600 sampled streams
+522 are bit-identical and the 78 that change are all two-region streams (decoded vs source: 1.3-1.4 before, 3.4-4.1 after).
+
+### Experiment on he-v1-retune 217f913 (PREREG amendment 4; 49 clips, 48 kHz, 40-64 kbps; mean BD-rate [95 % CI], neg = fewer bits)
+Control = capped start 12 (= retune as shipped). "capped" keeps retune's k2/kx <= 2.2449 one-region rule; "lifted" removes it and uses the
+two-region table fix 51c589e. Table fix alone is payload-identical to 217f913 (12/12).
+| arm | FAAD2 | FFmpeg | FDK decoder |
+|---|---|---|---|
+| capped 13 | +3.25 [+2.51,+4.12] | +3.16 [+2.48,+3.92] | +1.91 [+0.13,+4.67] |
+| capped 11 | +2.60 [+0.67,+4.71] | +2.67 [+0.79,+4.85] | +2.35 [+0.44,+4.58] |
+| capped 10 | +1.91 [-0.55,+4.82] | +1.85 [-0.60,+4.77] | -0.03 [-1.82,+2.05] |
+| capped 9  | +1.95 [-0.37,+4.47] | +2.52 [-0.10,+5.66] | +1.84 [-0.66,+4.62] |
+| lifted 12 | -0.58 [-1.27,+0.17] | -0.61 [-1.32,+0.19] | -1.37 [-2.35,-0.52] |
+| **lifted 9** | **-3.20 [-4.17,-2.10]** | **-3.02 [-4.18,-1.64]** | **-2.81 [-3.68,-1.95]** |
+| lifted 9 vs capped 9 | -4.66 [-6.45,-3.03] | -4.69 [-6.49,-3.10] | -2.12 [-4.66,+0.85] |
+Findings: (1) inside retune's capped design a lower start loses, because the cap truncates the SBR range more the lower the crossover;
+(2) removing the cap and using start 9 beats retune under all three decoders with CIs excluding 0 (the first change in this study that does);
+(3) mean MOS at 40/64 kbps (FAAD2): retune 4.172/4.567, lifted 9 4.199/4.588 at the same bitrate to within 0.1 kbps.
+Starts 9 and 12 decode correctly in unpatched FAAD2, starts 10/11 do not (see the scan script and PR above), so the arm that wins is also the one
+compatible with the pinned decoder. Limits: same 49 clips that selected 9 in the earlier screen (not independent), 48 kHz only. 44.1/32 kHz
+need a start chosen in Hz (index 9 is 5.25 kHz at 32 kHz, where lower crossovers lost); no held-out music; VBR/CBR and mono untested.
+Production sketch (not implemented): table fix 51c589e + remove the k2/kx cap + SBR_START_FREQ_RICH 12 -> 9 at 44.1/48 kHz, with a unit test of the table.

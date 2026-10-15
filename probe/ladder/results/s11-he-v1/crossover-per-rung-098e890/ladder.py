@@ -22,6 +22,13 @@ def job(a):
         kind='nofix' if arm.startswith('nofix') else 'exp'; st=arm.lstrip('nofix') if False else arm.replace('nofix','').replace('fix','')
         env=dict(os.environ,FAAC_PROBE_SBR_START=st)
         subprocess.run([f'{S}/{kind}/build/frontend/faac','--object-type','he-aac-v1','--overwrite','-b',str(rate),'-o',enc,ref],check=True,capture_output=True,env=env)
+    elif arm.startswith('x2'):
+        enc=f'{d}/{clip}.m4a'; st=arm[3:]; env=dict(os.environ,FAAC_PROBE_SBR_START=st)
+        if arm[2]=='n': env['FAAC_PROBE_NOCAP']='1'
+        subprocess.run([S+'/x2/build/frontend/faac','--object-type','he-aac-v1','--overwrite','-b',str(rate),'-o',enc,ref],check=True,capture_output=True,env=env)
+    elif arm=='ret':
+        enc=f'{d}/{clip}.m4a'
+        subprocess.run([S+'/ret/build/frontend/faac','--object-type','he-aac-v1','--overwrite','-b',str(rate),'-o',enc,ref],check=True,capture_output=True)
     elif arm=='faac':
         enc=f'{d}/{clip}.m4a'
         subprocess.run([FAAC,'--object-type',('lc' if LC else 'he-aac-v1'),'--overwrite','-b',str(rate),'-o',enc,ref],check=True,capture_output=True)

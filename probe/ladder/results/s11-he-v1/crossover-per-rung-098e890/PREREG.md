@@ -63,3 +63,15 @@ a crossover near 6-7.5 kHz, so at 32 kHz the Hz-matched indices are 13 (6.75 kHz
 fix13, fix14 (same corpus, rungs, decoders, rules). This is a hypothesis test on already-seen data: any positive result needs the
 same kind of independent confirmation and is not a claim. Decoder agreement for 13/14 at 32 kHz was already seen in the scan
 (cst/SinceAlways: agree). A single formula for kx as a function of rate_per_ch and sample rate is NOT proposed until this resolves.
+
+## Amendment 4 (new base: nschimme/faac `he-v1-retune` 217f913; written before scoring these arms)
+Base moved: 217f913 ("retune HE-AAC v1 for rich cores"): start 12 and light inverse filtering/transient 8 from 20 kbps/ch, stop frequency
+capped so k2/kx <= 2.2449 (one-region table). Experiment tree = 217f913 + table fix 51c589e (conflict: comment only) + probe env
+`FAAC_PROBE_SBR_START` (rich rungs only) and `FAAC_PROBE_NOCAP` (lift the cap; requires the two-region table). Table fix alone is
+payload-identical to 217f913 on 3 clips x 4 rungs (12/12).
+Pre-scoring decoder-agreement scan (FAAD2 287c00c, libfaad branch d7fe6f7, FFmpeg 6.1.1, fdkdec; cst/SinceAlways, three rates, starts 9-13):
+capped arms agree in all decoders at every start; cap-lifted arms break FAAD2 (MOS 1.3-2.1) at 48k start 10, 44.1k starts 10/11,
+32k start 11, while libfaad/FFmpeg/FDK decode them. Therefore: arms are capped starts {13, 11, 10, 9} and cap-lifted starts {12, 9}
+(cap-lifted 12/9 decoded correctly everywhere in the scan), control = capped 12 (= base). Corpus/rungs/scorers as in the main screen
+(49 clips, 48 kHz, 40/48/56/64, scored with FAAD2, FFmpeg and fdkdec). Decision rules unchanged; the claim "lifting the cap helps" requires
+cap-lifted S to beat capped S with CI excluding 0 under the FDK decoder as well. Follow-ups at 44.1 and 32 kHz only for arms that pass at 48 kHz.
