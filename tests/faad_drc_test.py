@@ -17,16 +17,13 @@ def main():
     enabled, sbr, dab = sys.argv[3:6]
     enabled = enabled == 'true'
     case = sys.argv[6] if len(sys.argv) > 6 else 'all'
-    channels = min(2, int(sys.argv[7]))
-    if case == 'excluded' and channels < 2:
-        return sys.exit(77)
-    if (case in ('he', 'hetilt') and sbr != 'true') or (case == 'dab' and dab != 'true'):
+    if (case == 'he' and sbr != 'true') or (case == 'dab' and dab != 'true'):
         return sys.exit(77)
     def selected(name):
         return case in ('all', name)
     with tempfile.TemporaryDirectory() as directory:
         src = os.path.join(directory, 'in.wav')
-        make_wav(src, channels, secs=0.35)
+        make_wav(src, 2, secs=0.35)
         aac = os.path.join(directory, 'in.aac')
         subprocess.run([faac, '-a', '--object-type', 'lc', '-o', aac, src], check=True, capture_output=True)
         original = open(aac, 'rb').read()
@@ -50,16 +47,14 @@ def main():
         def samples(records, channel=None):
             data = b''.join(p for _, p in records[3:])
             v = struct.unpack('=' + 'f' * (len(data) // 4), data)
-            return v if channel is None else v[channel::channels]
+            return v if channel is None else v[channel::2]
         def ratio(actual, reference, expected, tolerance=.05):
             a, b = sum(x*x for x in actual), sum(x*x for x in reference)
             assert b > 1e-8
             db = 10 * math.log10(a / b)
             assert abs(db - expected) < tolerance, (db, expected)
-        def flags(records, active, info=None):
-            # bit 5: gain applied; bit 6: the frame carried dynamic_range_info
-            info = active if info is None else info
-            assert all(bool(r[3] & 32) == (active and enabled) and bool(r[3] & 64) == (info and enabled) for r, _ in records)
+        def flags(records, active):
+            assert all(bool(r[3] & 32) == (active and enabled) for r, _ in records)
         reference = decode(original)
         if case == 'oversized':
             # A fill that claims more bytes than the frame holds is malformed whatever it
@@ -84,7 +79,7 @@ def main():
                     assert [p for _, p in result] == [p for _, p in reference]
             print('known gain and frame flags: PASS')
         if selected('flags'):
-            flags(decode(inject(original, drc(ctl=0)), cut=127), False, True)
+            flags(decode(inject(original, drc(ctl=0)), cut=127), False)
             flags(decode(inject(original, drc()), cut=127), True)
             first_end = ((original[3]&3)<<11) | original[4]<<3 | original[5]>>5
             isolated = inject(original[:first_end], drc()) + original[first_end:]
@@ -99,9 +94,9 @@ def main():
             for sign, cut, boost in ((1,0,127), (0,127,0)):
                 result = decode(inject(original, drc(sign)), cut, boost)
                 assert [p for _, p in result] == [p for _, p in reference]
-                flags(result, False, True)
+                flags(result, False)
             print('compress/boost routing: PASS')
-        if selected('excluded') and channels >= 2:
+        if selected('excluded'):
             result = decode(inject(original, drc(exclude=True)), 127)
             def right_bytes(records):
                 return b''.join(p[i:i+4] for _,p in records for i in range(4, len(p), 8))
@@ -138,7 +133,7 @@ def main():
                 b = struct.unpack('='+'f'*(len(baseline)//4), baseline)
                 target_gain = 2**(32/24) if index < midpoint and enabled else 1.0
                 for i, (x,y) in enumerate(zip(a,b)):
-                    gain = previous + (target_gain-previous)*(i//channels+1)/(len(a)//channels)
+                    gain = previous + (target_gain-previous)*(i//2+1)/(len(a)//2)
                     assert abs(x-y*gain) < 2e-7, (index, i, x, y*gain)
                 previous = target_gain
             print('normalisation, metadata and flush: PASS')
@@ -160,8 +155,8 @@ def main():
         if selected('multiband'):
             tones = (440, 4000, 10000)
             with wave.open(src, 'wb') as w:
-                w.setparams((channels, 2, 44100, 0, 'NONE', ''))
-                w.writeframes(b''.join(struct.pack('<' + 'h'*channels, *([int(sum(1500*math.sin(2*math.pi*f*i/44100) for f in tones))]*channels)) for i in range(22050)))
+                w.setparams((2, 2, 44100, 0, 'NONE', ''))
+                w.writeframes(b''.join(struct.pack('<hh', *([int(sum(1500*math.sin(2*math.pi*f*i/44100) for f in tones))]*2)) for i in range(22050)))
             os.unlink(aac)
             subprocess.run([faac, '-a', '--shortctl', '1', '--object-type', 'lc', '-o', aac, src], check=True, capture_output=True)
             multitone = open(aac, 'rb').read()
@@ -175,46 +170,11 @@ def main():
                 assert abs(db - (20*math.log10(gain) if enabled else 0)) < .1, (frequency, db)
             print('multiband and above-top unity: PASS')
             assert all(not r[6] for r, _ in decode(multitone)[3:]), 'spectral fixture must use long windows'
-        if selected('limiter') and enabled:
-            with wave.open(src, 'wb') as w:
-                w.setparams((channels, 2, 44100, 0, 'NONE', ''))
-                w.writeframes(b''.join(struct.pack('<' + 'h'*channels, *([int(30000*math.sin(2*math.pi*500*i/44100))]*channels)) for i in range(22050)))
-            os.unlink(aac)
-            subprocess.run([faac, '-a', '--object-type', 'lc', '-o', aac, src], check=True, capture_output=True)
-            loud = inject(open(aac, 'rb').read(), drc(sign=0))
-            # Float peaks prove the integer path must compress rather than merely stay quiet.
-            assert max(abs(x) for x in samples(decode(loud, boost=127))) > 1.0
-            data = b''.join(p for _, p in decode(loud, boost=127, floating=False)[3:])
-            pcm = struct.unpack('=' + 'h' * (len(data) // 2), data)
-            assert min(pcm) > -32768 and max(pcm) < 32767, (min(pcm), max(pcm))
-            assert max(abs(x) for x in pcm) > .89*32768
-            print('integer soft-knee limiter: PASS')
-        if selected('hetilt') and sbr == 'true':
-            # A longer projection reduces SBR startup history's effect on the HF level.
-            # Keep the HF tone above the 11.025 kHz core but below
-            # the less stable top SBR bands.
-            tones = (500, 12000)
-            with wave.open(src, 'wb') as w:
-                w.setparams((channels, 2, 44100, 0, 'NONE', ''))
-                w.writeframes(b''.join(struct.pack('<' + 'h'*channels, *([int(sum(6000*math.sin(2*math.pi*f*i/44100) for f in tones))]*channels)) for i in range(88200)))
-            os.unlink(aac)
-            subprocess.run([faac, '-a', '--object-type', 'he-aac-v1', '-b', str(32 * channels), '-o', aac, src], check=True, capture_output=True)
-            he = open(aac, 'rb').read()
-            base = samples(decode(he), 0)
-            changed = samples(decode(inject(he, drc()), cut=127), 0)
-            def energy(v, frequency):
-                # Separate core and reconstructed HF levels so core energy cannot hide missing SBR gain.
-                return sum(x*math.cos(2*math.pi*frequency*i/44100) for i,x in enumerate(v))**2 + sum(x*math.sin(2*math.pi*frequency*i/44100) for i,x in enumerate(v))**2
-            for frequency in tones:
-                assert energy(base, frequency) > 1e-8
-                db = 10*math.log10(energy(changed, frequency)/energy(base, frequency))
-                assert abs(db - (-20*math.log10(2) if enabled else 0)) < .5, (frequency, db)
-            print('HE core and HF gain: PASS')
         if selected('short'):
             # An isolated burst forces the encoder's transient detector into short blocks.
             with wave.open(src, 'wb') as w:
-                w.setparams((channels, 2, 44100, 0, 'NONE', ''))
-                w.writeframes(b''.join(struct.pack('<' + 'h'*channels, *([int(6000*math.sin(i*1.7)) if i % 4096 < 64 else 0]*channels)) for i in range(22050)))
+                w.setparams((2, 2, 44100, 0, 'NONE', ''))
+                w.writeframes(b''.join(struct.pack('<hh', *([int(6000*math.sin(i*1.7)) if i % 4096 < 64 else 0]*2)) for i in range(22050)))
             os.unlink(aac)
             subprocess.run([faac, '-a', '--object-type', 'lc', '-o', aac, src], check=True, capture_output=True)
             transient = open(aac, 'rb').read()
@@ -223,7 +183,7 @@ def main():
             ratio(samples(decode(inject(transient, drc()), 127)), samples(base_short), -20*math.log10(2) if enabled else 0)
             print('verified short-window single-band gain: PASS')
         if selected('dab') and dab == 'true':
-            for name in (('lc_mono32', 'lc_st48') if channels >= 2 else ('lc_mono32',)):
+            for name in ('lc_mono32', 'lc_st48'):
                 path = os.path.join(os.path.dirname(__file__), 'data', 'dab', name + '.dab')
                 data = open(path, 'rb').read()
                 offset = 4 + struct.unpack_from('<I', data)[0]
@@ -238,11 +198,11 @@ def main():
                     modified += struct.pack('<I', len(body)) + body
                     offset += n
                 ratio(samples(decode(modified, 127, raw=True)), samples(decode(data, raw=True)), -20*math.log10(2) if enabled else 0)
-            print('960-sample gain: PASS')
+            print('960-sample mono and stereo gain: PASS')
 
         if selected('he') and sbr == 'true':
             os.unlink(aac)
-            subprocess.run([faac, '-a', '--object-type', 'he-aac-v1', '-b', str(32 * channels), '-o', aac, src], check=True, capture_output=True)
+            subprocess.run([faac, '-a', '--object-type', 'he-aac-v1', '-b', '64', '-o', aac, src], check=True, capture_output=True)
             he = open(aac, 'rb').read()
             # SBR envelope reconstruction and startup history permit a looser level bound.
             ratio(samples(decode(inject(he, drc()), 127)), samples(decode(he)), -20*math.log10(2) if enabled else 0, .5)

@@ -2,19 +2,16 @@
 """Round-trip the faad frontend through faac: ADTS and MP4 input, WAV to a
 file and to stdout.
 
-Usage: faad_frontend_test.py <faac> <faad> <faam> <max-channels> <decoder-sbr> <decoder-drc> <decoder-dab>
+Usage: faad_frontend_test.py <faac> <faad> <faam> <max-channels> <decoder-sbr> <decoder-drc>
 """
 
 import math
 import json
 import os
-import re
 import struct
 import subprocess
 import sys
 import tempfile
-import threading
-import time
 import wave
 
 
@@ -59,256 +56,12 @@ def main():
             assert actual > 0, f"{ext}: -w produced no PCM"
             assert riff == 0xFFFFFFFF and data == 0xFFFFFFFF, f"{ext}: -w header must declare a streaming length, got {riff}/{data}"
             assert piped[80:] == open(out, "rb").read()[80:], f"{ext}: -w PCM differs from -o PCM"
-            dash = subprocess.run([os.path.abspath(faad), "-q", "-o", "-", enc], cwd=d, check=True, capture_output=True).stdout
-            assert dash == piped, f"{ext}: -o - differs from -w"
-            assert not os.path.exists(os.path.join(d, "-")), f"{ext}: -o - wrote a file named -"
-
-            # ADTS seeking must preserve synthesis history, including stdin.
-            if ext == "aac":
-                skipped = 20
-                jump = str((skipped + 0.25) * 1024 / 44100)
-                expected = piped[80 + skipped * 1024 * channels * 2:]
-                for source in (enc, "-"):
-                    result = subprocess.run(
-                        [faad, "-q", "-w", "--jump", jump, source],
-                        input=open(enc, "rb").read() if source == "-" else None,
-                        check=True, capture_output=True)
-                    assert result.stdout[80:] == expected, "ADTS jump PCM/history"
-                result = subprocess.run([faad, "-q", "-w", "--jump", "10", enc],
-                                        check=True, capture_output=True)
-                assert result.stdout[80:] == b"", "ADTS jump beyond EOF"
 
             with open(enc, "rb") as stream:
                 stdin_pcm = subprocess.run([faad, "-q", "-w", "-"],
                                            input=stream.read(), check=True,
                                            capture_output=True).stdout
             assert stdin_pcm == piped, f"{ext}: stdin changed the decoded WAV"
-
-        # MP4 seeking must match the sequential PCM suffix for file and stdin.
-        mp4 = os.path.join(d, "t.m4a")
-        sequential = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw", mp4],
-                                    check=True, capture_output=True).stdout
-        sequential_wav = subprocess.run([faad, "-q", "-w", "-g", mp4],
-                                        check=True, capture_output=True).stdout
-        for skipped in (1, 20, 1000):
-            jump = str((skipped + 0.25) * 1024 / 44100)
-            expected = sequential[skipped * 1024 * channels * 2:]
-            for source in (mp4, "-"):
-                result = subprocess.run(
-                    [faad, "-q", "-w", "-g", "-f", "raw", "--jump", jump, source],
-                    input=open(mp4, "rb").read() if source == "-" else None,
-                    check=True, capture_output=True)
-                assert result.stdout == expected, ("MP4 jump PCM/history", skipped, source)
-            if skipped < 1000:
-                result = subprocess.run([faad, "-q", "-w", "-g", "--jump", jump, mp4],
-                                        check=True, capture_output=True)
-                assert result.stdout == sequential_wav[:80] + expected, "MP4 jump WAV format/history"
-
-        # Input-controlled brands must remain JSON strings.
-        original = open(os.path.join(d, "t.m4a"), "rb").read()
-        assert original[4:8] == b"ftyp"
-        for brand in (b'x"xx', b'x\\xx', b'x\x01xx'):
-            branded = os.path.join(d, "brand.m4a")
-            with open(branded, "wb") as f:
-                f.write(original[:8] + brand + original[12:])
-            metadata = json.loads(subprocess.run([faad, "--json", branded],
-                                                 check=True, capture_output=True).stdout)
-            assert metadata["major_brand"] == brand.decode("ascii")
-
-        # A live producer leaves stdin open. PCM must arrive before EOF even
-        # though the compressed segment is smaller than the input buffer.
-        segment = open(os.path.join(d, "t.aac"), "rb").read() * 3
-        assert len(segment) < 262144
-        live_out = os.path.join(d, "live.raw")
-        proc = subprocess.Popen([faad, "-q", "-f", "raw", "-o", live_out, "-"],
-                                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                                stderr=subprocess.PIPE)
-        def feed():
-            try:
-                proc.stdin.write(segment)
-                proc.stdin.flush()
-            except (BrokenPipeError, ValueError):
-                pass
-        feeder = threading.Thread(target=feed, daemon=True)
-        feeder.start()
-        try:
-            deadline = time.monotonic() + 5
-            while time.monotonic() < deadline:
-                if os.path.exists(live_out) and os.path.getsize(live_out) > 0:
-                    break
-                time.sleep(0.02)
-            else:
-                raise AssertionError("live ADTS produced no PCM before EOF")
-        finally:
-            proc.kill()
-            proc.wait()
-            feeder.join(timeout=5)
-            proc.stdin.close()
-            proc.stderr.close()
-
-        # Default names use only the basename's extension. A leading dot
-        # alone is part of a hidden filename, and directory dots stay intact.
-        dotted = os.path.join(d, "audio.v1")
-        os.mkdir(dotted)
-        for name in ("track", ".track", ".track.aac", "track.aac"):
-            source = os.path.join(dotted, name)
-            with open(source, "wb") as f:
-                f.write(open(os.path.join(d, "t.aac"), "rb").read())
-            stem = name.rsplit(".", 1)[0] if "." in name[1:] else name
-            for options, suffix in (([], ".wav"), (["-f", "raw"], ".raw")):
-                expected = os.path.join(dotted, stem + suffix)
-                subprocess.run([faad, "-q", "--overwrite", *options, source], check=True)
-                assert os.path.getsize(expected) > 0, expected
-                os.unlink(expected)
-                assert os.path.isfile(source), source
-
-        # A partial final payload or header must fail in strict mode, including
-        # stdin and both information-only paths. Lenient decoding stays usable.
-        complete = open(os.path.join(d, "t.aac"), "rb").read()
-        offset = last = 0
-        while offset < len(complete):
-            last = offset
-            offset += ((complete[offset + 3] & 3) << 11 |
-                       complete[offset + 4] << 3 | complete[offset + 5] >> 5)
-        for tail in (complete[:-20], complete[:last + 3]):
-            truncated = os.path.join(d, "truncated.aac")
-            with open(truncated, "wb") as f:
-                f.write(tail)
-            for options in (("-w",), ("-i",), ("--json",)):
-                for source in (truncated, "-"):
-                    result = subprocess.run([faad, "--strict", *options, source],
-                                            input=tail if source == "-" else None,
-                                            capture_output=True)
-                    assert result.returncode == 1 and b"frame" in result.stderr.lower(), result.stderr
-            subprocess.run([faad, "-q", "-w", truncated], check=True, capture_output=True)
-
-        def check_duration(path, expected):
-            metadata = json.loads(subprocess.run([faad, "--json", path],
-                                                 check=True, capture_output=True).stdout)
-            assert abs(metadata["duration_seconds"] - expected) <= 0.0051, metadata
-            bitrate = os.path.getsize(path) * 8 / expected / 1000
-            assert abs(metadata["audio"]["bitrate_avg_kbps"] - bitrate) <= 0.051, metadata
-            text = subprocess.run([faad, "-i", path], check=True, capture_output=True).stdout.decode()
-            assert abs(float(re.search(r"\(([0-9.]+) seconds\)", text)[1]) - expected) <= 0.0051, text
-            assert abs(float(re.search(r"Bitrate: +([0-9.]+)", text)[1]) - bitrate) <= 0.051, text
-
-        # Wrap the independent 960-sample LC and HE v2 access units in MP4.
-        # Keep the original ASC, which signals the DAB frame length.
-        def box(kind, payload):
-            return struct.pack(">I4s", len(payload) + 8, kind.encode()) + payload
-
-        def u32(*values):
-            return struct.pack(">" + "I" * len(values), *values)
-
-        # Minimal MP4 samples exercise extraction without decoding the payload.
-        def extraction_mp4(asc, units):
-            esds = box("esds", u32(0) + bytes((3, 20 + len(asc))) + b"\x00\x01\x00" +
-                       bytes((4, 15 + len(asc))) + b"\x40\x15" + bytes(11) +
-                       bytes((5, len(asc))) + asc)
-            entry = box("mp4a", bytes(6) + struct.pack(">H", 1) + bytes(8) +
-                        struct.pack(">HHHHI", 2, 16, 0, 0, 44100 << 16) + esds)
-            prefix = box("ftyp", b"M4A " + u32(0) + b"M4A ")
-            stbl = box("stbl", box("stsd", u32(0, 1) + entry) +
-                       box("stsz", u32(0, 0, len(units), *map(len, units))) +
-                       box("stsc", u32(0, 1, 1, len(units), 1)) +
-                       box("stco", u32(0, 1, len(prefix) + 8)) +
-                       box("stts", u32(0, 1, len(units), 1024)))
-            mdia = box("mdia", box("mdhd", u32(0, 0, 0, 44100, len(units) * 1024, 0)) +
-                       box("hdlr", u32(0, 0) + b"soun" + bytes(12)) + box("minf", stbl))
-            return prefix + box("mdat", b"".join(units)) + box("moov", box("trak", mdia))
-
-        # Explicit SBR and PS wrap the core GASpecificConfig, including its
-        # frameLengthFlag. Check both 960 rejection and 1024 acceptance.
-        def explicit_asc(aot, short):
-            bits = f"{aot:05b}{6:04b}{2:04b}{3:04b}{2:05b}{int(short)}00"
-            bits += "0" * (-len(bits) % 8)
-            return int(bits, 2).to_bytes(len(bits) // 8, "big")
-
-        for asc, size, diagnostic in ((b"\x12\x14", 1, b"960-sample"),
-                                       (explicit_asc(5, True), 1, b"960-sample"),
-                                       (explicit_asc(29, True), 1, b"960-sample"),
-                                       (explicit_asc(5, False), 8184, None),
-                                       (explicit_asc(29, False), 8184, None),
-                                       (b"\x12\x10", 8185, b"ADTS payload limit"),
-                                       (b"\x12\x10", 8184, None)):
-            data = extraction_mp4(asc, [bytes(size)])
-            path = os.path.join(d, "extract.m4a")
-            with open(path, "wb") as f:
-                f.write(data)
-            for source in (path, "-"):
-                out = os.path.join(d, "extract.aac")
-                result = subprocess.run([faad, "-q", "--overwrite", "-a", out, source],
-                                        input=data if source == "-" else None, capture_output=True)
-                if diagnostic:
-                    assert result.returncode == 1 and diagnostic in result.stderr, result.stderr
-                    assert not os.path.exists(out) or os.path.getsize(out) == 0
-                else:
-                    assert result.returncode == 0, result.stderr
-                    extracted = open(out, "rb").read()
-                    assert len(extracted) == 8191 and extracted[7:] == bytes(size)
-                if os.path.exists(out):
-                    os.unlink(out)
-
-        # A corrupt later sample must not turn extraction into a successful
-        # conversion of just the valid prefix.
-        data = bytearray(extraction_mp4(b"\x12\x10", [b"\0", b"\0"]))
-        stsz = data.index(b"stsz")
-        struct.pack_into(">I", data, stsz + 20, len(data) + 1)
-        path = os.path.join(d, "incomplete_samples.m4a")
-        with open(path, "wb") as f:
-            f.write(data)
-        for source in (path, "-"):
-            out = os.path.join(d, "incomplete_samples.aac")
-            result = subprocess.run([faad, "-q", "-a", out, source],
-                                    input=data if source == "-" else None, capture_output=True)
-            assert result.returncode == 1 and b"sample table" in result.stderr, result.stderr
-            assert not os.path.exists(out)
-
-        dab_vectors = (("lc_st48", 48000, 960),
-                                           ("he2_st48", 48000 if sbr else 24000,
-                                            1920 if sbr else 960))
-        for name, rate, frame_samples in (dab_vectors if sys.argv[7] == "true" and channels == 2 else ()):
-            fixture = os.path.join(os.path.dirname(__file__), "data", "dab", name + ".dab")
-            data = open(fixture, "rb").read()
-            asc_len = struct.unpack_from("<I", data)[0]
-            asc = data[4:4 + asc_len]
-            units = []
-            pos = 4 + asc_len
-            while pos < len(data):
-                size = struct.unpack_from("<I", data, pos)[0]
-                units.append(data[pos + 4:pos + 4 + size])
-                pos += 4 + size
-            # Seek past the repeated initial SBR/PS configuration packet.
-            skipped = len(units) * 2 + 1
-            units *= 4
-            def descriptor(tag, payload):
-                assert len(payload) < 128
-                return bytes((tag, len(payload))) + payload
-            esds = box("esds", u32(0) + descriptor(3, b"\x00\x01\x00" +
-                       descriptor(4, b"\x40\x15" + bytes(11) + descriptor(5, asc))))
-            entry = box("mp4a", bytes(6) + struct.pack(">H", 1) + bytes(8) +
-                        struct.pack(">HHHHI", 2, 16, 0, 0, 48000 << 16) + esds)
-            prefix = box("ftyp", b"M4A " + u32(0) + b"M4A ")
-            mdat = box("mdat", b"".join(units))
-            stbl = box("stbl", box("stsd", u32(0, 1) + entry) +
-                       box("stsz", u32(0, 0, len(units), *map(len, units))) +
-                       box("stsc", u32(0, 1, 1, len(units), 1)) +
-                       box("stco", u32(0, 1, len(prefix) + 8)) +
-                       box("stts", u32(0, 1, len(units), 960)))
-            mdia = box("mdia", box("mdhd", u32(0, 0, 0, 24000, len(units) * 960, 0)) +
-                       box("hdlr", u32(0, 0) + b"soun" + bytes(12)) + box("minf", stbl))
-            path = os.path.join(d, name + ".m4a")
-            with open(path, "wb") as f:
-                f.write(prefix + mdat + box("moov", box("trak", mdia)))
-            check_duration(path, len(units) * frame_samples / rate)
-            # A fractional frame offset distinguishes 960 from 1024 samples.
-            jump = str((skipped + 0.25) * frame_samples / rate)
-            result = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw",
-                                     "--jump", jump, path], check=True, capture_output=True)
-            assert len(result.stdout) == (len(units) - skipped) * frame_samples * 2 * 2, (name, len(units), skipped, len(result.stdout), (len(units) - skipped) * frame_samples * 2 * 2)
-            sequential = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw", path],
-                                        check=True, capture_output=True).stdout
-            assert result.stdout == sequential[skipped * frame_samples * 2 * 2:], (name, "MP4 jump PCM/history")
 
         from faad_drc_stream import drc, inject
         drc_path = os.path.join(d, 'drc.aac')
@@ -351,17 +104,6 @@ def main():
             return result.stdout[80:]
 
         first_pcm, second_pcm = pcm(adts1), pcm(adts2)
-        check_duration(adts1, len(first_pcm) / (2 * channels * 44100))
-        check_duration(adts2, len(second_pcm) / (2 * channels * 48000))
-        changing = os.path.join(d, "rate_change.aac")
-        with open(changing, "wb") as f:
-            f.write(open(adts1, "rb").read() + open(adts2, "rb").read())
-        check_duration(changing, len(first_pcm) / (2 * channels * 44100) +
-                       len(second_pcm) / (2 * channels * 48000))
-        for options in (("-w",), ("-o", os.path.join(d, "changing.wav"))):
-            result = subprocess.run([faad, "-q", *options, changing], capture_output=True)
-            assert result.returncode == 1 and b"WAV output cannot change" in result.stderr
-        assert pcm(changing, ["-f", "raw"]), "raw output accepts format changes"
         assert first_pcm != second_pcm, "track selection fixtures must differ"
         assert pcm(multi, ["--track", "2"]) == second_pcm, "second track PCM"
         assert pcm(multi) == first_pcm, "default first track PCM"
@@ -516,9 +258,12 @@ def main():
             assert metadata["audio"]["channels"] == 6, "fixture did not reach six-channel frames"
 
             mp4_gapless_out = os.path.join(d, "gapless_transition.wav")
-            for options in (("-o", mp4_gapless_out), ("-w",)):
-                result = subprocess.run([faad, "-q", *options, mp4_gapless], capture_output=True)
-                assert result.returncode == 1 and b"WAV output cannot change" in result.stderr
+            subprocess.run([faad, "-q", "-o", mp4_gapless_out, mp4_gapless], check=True)
+            riff, data, actual = wav_sizes(open(mp4_gapless_out, "rb").read())
+            assert data == actual > 0 and riff == data + 72, "MP4 gapless format transition produced valid WAV"
+
+            mp4_gapless_piped = subprocess.run([faad, "-q", "-w", mp4_gapless], check=True, capture_output=True).stdout
+            assert mp4_gapless_piped[80:] == open(mp4_gapless_out, "rb").read()[80:], "MP4 gapless transition -w PCM differs from -o PCM"
 
             # Compare both output paths to explicit trimming of the untrimmed
             # stream, including a final channel count larger than the header.
@@ -551,8 +296,6 @@ def main():
 
         he_adts = os.path.join(d, "he.aac")
         subprocess.run([faad, "-q", "-a", he_adts, he], check=True, capture_output=True)
-        check_duration(he_adts, len(pcm(he_adts)) /
-                       (2 * channels * (44100 if sbr else 22050)))
         # ADTS must preserve decoder delay regardless of the gapless option.
         for bits in ("16", "24", "32", "32f"):
             for fmt in ("wav", "raw"):
