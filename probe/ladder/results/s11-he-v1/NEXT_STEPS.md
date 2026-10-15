@@ -13,11 +13,17 @@ claim against Apple needs corresponding Apple references. The research
 sequence below is retained as rationale, not a report of additional runs.
 
 This is a proposed research sequence, not measured evidence or a new quality
-claim. Read Stage S10 in `../../LADDER_RESULT.md`, the Stage S11 ledger, and
-the recorded limitations before running it. The old long-block plan is
-superseded. This probe branch records research; do not merge its encoder or
-injector code into production. Production candidates start independently from
-current `FreewareAdvancedAudio/faac:master` and go to `nschimme/faac` first.
+claim. The sole experiment baseline is frozen `upstream/master` commit
+`098e8900289b87d1592a859351ca0bd420397d4b`; branch every proposed experiment
+independently from that commit. PR #70 fixed8 commit
+`c50b66aab79f754fc17e2550159a861d26403b65` is an optional separate arm for
+paired comparison only, never a required starting point or stack base. If
+separate experiments pass independently, test their combination as a new,
+explicit arm. Read Stage S10 in `../../LADDER_RESULT.md`, the Stage S11 ledger,
+and the recorded limitations before running anything. The old long-block plan
+is superseded. This probe branch records research; do not merge its encoder or
+injector code into production. Production candidates should start from the
+same frozen baseline and go to `nschimme/faac` first.
 
 ## 1. Rebuild the reference scoreboard on the current baseline
 
@@ -26,10 +32,10 @@ that current FAAC beats Apple or FDK. Stage S10's reference gaps belong to an
 older encoder, metric and decoder configuration. Do not subtract the new
 BD-rate improvement from an old MOS gap.
 
-Freeze current upstream, the candidate from fork PR #70 if still relevant,
-faac-benchmark, both reference encoder versions, scoring decoder and metric
-helpers. Re-run the standard CI scenarios and the established LC/HE reference
-ladders on the same original PCM inputs. Use the same decoder for each paired
+Freeze the baseline commit above, faac-benchmark, both reference encoder
+versions, scoring decoder and metric helpers. Re-run the standard CI scenarios
+and the established LC/HE reference ladders on the same original PCM inputs.
+Use the same decoder for each paired
 comparison, corrected bounded alignment, actual AAC packet bitrate, and
 per-clip PCHIP BD-rate with clip-bootstrap intervals. Record ABR, CBR and VBR
 separately. Keep the existing 49-clip corpus as a confirmation corpus and add a
