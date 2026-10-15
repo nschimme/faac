@@ -195,9 +195,6 @@ typedef struct {
 
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc);
 faad_status adts_decode_header(BitReader *bs, AudioSpecificConfig *asc, uint32_t *frame_length);
-#ifndef FAAD_DISABLE_DAB
-faad_status adif_decode_header(BitReader *bs, AudioSpecificConfig *asc);
-#endif
 
 #define MAX_SFB       52 /* long blocks reach 51 bands, short ones 8 x 15 */
 #define TNS_MAX_ORDER 12 /* AAC-LC: 12 for long blocks, 7 for short */
