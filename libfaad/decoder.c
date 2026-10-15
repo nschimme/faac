@@ -1253,6 +1253,7 @@ output_done:
     uint32_t flags = 0;
 #ifndef FAAD_DISABLE_DRC
     if (dec->drc.applied) flags |= FAAD_FRAME_DRC;
+    if (dec->drc.present) flags |= FAAD_FRAME_DRC_INFO;
 #endif
     if (!dec->pcm_emitted || dec->emitted_format.sample_rate != dec->sample_rate
         || dec->emitted_format.channels != num_chs

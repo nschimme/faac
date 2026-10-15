@@ -17,6 +17,7 @@
   - [Decoder delay](#decoder-delay)
   - [Packet errors and seeking](#packet-errors-and-seeking)
 - [Porting from the legacy NeAACDec* API](#porting-from-the-legacy-neaacdec-api)
+  - [What the legacy API did that you may be working around](#what-the-legacy-api-did-that-you-may-be-working-around)
   - [Configuration field mapping](#configuration-field-mapping)
   - [Frame metadata mapping](#frame-metadata-mapping)
 - [ABI compatibility](#abi-compatibility)
@@ -492,7 +493,11 @@ files, which keep their names, and both can be installed side by side.
 
 Replace legacy `<neaacdec.h>` / `<faad.h>` with this project's `<faad3.h>` and
 rebuild against `libfaad3` (ABI 3). Remove old include/library paths. There is
-no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
+no `NeAACDec*` or `faacDec*` compatibility code in this library. The FAAD2
+repository (nschimme/faad2) ships a thin `libfaad.so.2` shim over libfaad3 for
+programs that cannot be rebuilt; it reproduces the behaviours listed under
+[What the legacy API did that you may be working around](#what-the-legacy-api-did-that-you-may-be-working-around),
+and new code should use libfaad3 directly.
 
 - **Open and initialization.** Replace `NeAACDecHandle` with
   `faad_decoder *`. The old sequence of `NeAACDecOpen()`,
@@ -551,6 +556,26 @@ no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
   be cast to the new ones. Lengths and counts are now `uint32_t`, rather than
   platform-dependent `unsigned long`; check larger container lengths before
   narrowing them.
+
+### What the legacy API did that you may be working around
+
+Programs written against FAAD2 often carry workarounds for the behaviours
+below. The shim keeps them so those programs keep working; with libfaad3 the
+workarounds can go.
+
+| Legacy behaviour | libfaad3 |
+|---|---|
+| The first decoded frame returned `samples == 0` although it was decoded | Every frame that produces PCM reports it; use `decoder_delay` and the container's priming for trimming |
+| Streams with `dynamic_range_info` but no programme reference level came out 20 dB quieter (the missing level was treated as 0 dBFS) | No attenuation; `prog_ref_level_present` says whether a level exists, `FAAD_FRAME_DRC_INFO` says the frame carried DRC data |
+| DRC and normalisation applied silently, with no way to read or change them | Off unless `drc_cut`, `drc_boost` or `drc_target_level` is set; `FAAD_FRAME_DRC` reports what was applied |
+| Channels in bitstream order (C L R, side, back, LFE) with a position array to decode | WAVE speaker order with `channel_mask` |
+| Output format and downmix settable at any time, and `Init` reported a sample rate that could be wrong for implicit SBR at 24 kHz or below | Configuration is fixed at open; `faad_decoder_get_info()` reports the rate and channels of the PCM actually emitted, and `FAAD_FRAME_FORMAT_CHANGED` marks changes |
+| LC-only streams at 24 kHz or below were upsampled to twice the rate | Emitted at their real rate |
+| A decode call searched up to 768 bytes for an ADTS syncword and decoded the frame behind it | One resynchronisation step per call: `FAAD_ERR_SYNC_LOST` with `bytes_consumed` set to the bytes skipped; call again |
+| Corrupt frames were errors with no samples, reported with `bytesconsumed == 0` | Concealed audio is returned with `FAAD_FRAME_CONCEALED`; every error reports how far to advance |
+| 32-bit PCM wrapped to the opposite sign at exactly positive full scale | Clamped |
+| `char` return values, unsigned on ARM Linux, so `< 0` tests failed there | `faad_status`, negative on failure |
+| Error numbers 1 to 34 | `faad_status` and `faad_strerror()` |
 
 ### Configuration field mapping
 
