@@ -1384,6 +1384,20 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
         bool have_hf = el->header_present && dec->sbr[ch].have_frame && (!pair || dec->sbr[ch + 1].have_frame);
 
         if (have_hf) sbr_dequant(el, &dec->sbr[ch], pair ? &dec->sbr[ch + 1] : NULL, E0, Q0, E1, Q1);
+#ifndef FAAD_DISABLE_DRC
+        if (have_hf && dec->drc.applied) {
+            float (*energy[2])[SBR_MAX_BANDS] = { E0, E1 };
+            for (int c = 0; c < nch; c++) {
+                float gain = dec->drc.sbr_gain[ch + c];
+                if (gain == 1.0f) continue;
+                SBRChannel *channel = &dec->sbr[ch + c];
+                for (int l = 0; l < channel->L_E; l++) {
+                    int nb = channel->freq_res[l] ? el->n_high : el->n_low;
+                    for (int k = 0; k < nb; k++) energy[c][l][k] *= gain;
+                }
+            }
+        }
+#endif
 
 #ifdef FAAD_STATS
         if (have_hf) {
