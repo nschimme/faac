@@ -178,7 +178,7 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
         for (int e = 0; e < n_env; e++) PutBit(bs, dt[ch] >> e & 1, 1);
         for (int q = 0; q < n_q; q++) PutBit(bs, q | noiseLinked, 1);
     }
-    for (int ch = 0; ch < ngrid; ch++) PutBit(bs, SBR_INVF_MODE, 2);
+    for (int ch = 0; ch < ngrid; ch++) PutBit(bs, sbr->rich ? SBR_INVF_MODE_RICH : SBR_INVF_MODE, 2);
     /* Coupled pairs send envelope and noise per channel in turn; otherwise
      * all envelopes come first, then all noise floors. k walks that order:
      * its high bit picks the channel and its low bit envelope or noise when

@@ -46,36 +46,6 @@ static int compute_kx(int sampleRate, int bs_start_freq)
 static int cmp_int16(const void *a, const void *b) { return (int)(*(const short *)a) - (int)(*(const short *)b); }
 static int cmp_int(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }
 
-/* SBR stop frequency (k2), ISO 14496-3 §4.6.18.3.2.1. Decoders derive it
- * from bs_stop_freq alone, so it can't be adjusted here. */
-static int compute_k2(int sampleRate, int bs_stop_freq)
-{
-    if (bs_stop_freq == 14 || bs_stop_freq == 15) return 64;
-    int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
-    int stop_min = ((temp << 8) + (sampleRate >> 1)) / sampleRate;
-    int k2;
-    if (bs_stop_freq < 14) {
-        short stop_dk[13];
-        float prod = (float)stop_min;
-        int prev = stop_min;
-        float base = powf(64.0f / (float)stop_min, (float)(1.0f / 13.0f));
-        for (int i = 0; i < 12; i++) {
-            prod *= base;
-            int present = (int)lrintf(prod);
-            stop_dk[i] = (short)(present - prev);
-            prev = present;
-        }
-        stop_dk[12] = (short)(64 - prev);
-        qsort(stop_dk, 13, sizeof(short), cmp_int16);
-        k2 = stop_min;
-        for (int i = 0; i < bs_stop_freq; i++) k2 += stop_dk[i];
-    } else {
-        k2 = 64;
-    }
-
-    return k2;
-}
-
 /* Fewest QMF bands between kx and k2 that still yield an envelope band at
  * every freq_scale; above 64 kHz the 20 kHz target can fall below kx. */
 #define SBR_MIN_SPAN 4
@@ -87,17 +57,39 @@ static int max_sbr_span(int sampleRate)
 }
 
 /* Smallest stop-frequency index reaching targetHz, or the widest one decoders
- * accept. Searched rather than tabulated: the index-to-frequency mapping
- * shifts with sample rate, so a fixed table would overshoot at some rates. */
-static int pick_stop_freq(int sampleRate, int kx, int targetHz)
+ * accept; *k2_out receives its QMF band. Searched rather than tabulated: the
+ * index-to-frequency mapping shifts with sample rate, so a fixed table would
+ * overshoot at some rates. Decoders derive k2 from bs_stop_freq alone (ISO
+ * 14496-3 §4.6.18.3.2.1), so the table is rebuilt as the spec defines it:
+ * stop_min plus the sf narrowest of 13 geometric steps. */
+static int pick_stop_freq(int sampleRate, int kx, int targetHz, int *k2_out)
 {
-    int best = SBR_STOP_FREQ_MIN;
+    int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
+    int stop_min = ((temp << 8) + (sampleRate >> 1)) / sampleRate;
+    short stop_dk[13];
+    float prod = (float)stop_min;
+    int prev = stop_min;
+    float base = powf(64.0f / (float)stop_min, (float)(1.0f / 13.0f));
+    for (int i = 0; i < 12; i++) {
+        prod *= base;
+        int present = (int)lrintf(prod);
+        stop_dk[i] = (short)(present - prev);
+        prev = present;
+    }
+    stop_dk[12] = (short)(64 - prev);
+    qsort(stop_dk, 13, sizeof(short), cmp_int16);
+
+    int best = SBR_STOP_FREQ_MIN, best_k2 = stop_min, k2 = stop_min;
     for (int sf = SBR_STOP_FREQ_MIN; sf <= SBR_STOP_FREQ_MAX; sf++) {
-        int k2 = compute_k2(sampleRate, sf);
-        if (k2 - kx > max_sbr_span(sampleRate)) break;
+        if (sf > 0) k2 += stop_dk[sf - 1];
+        /* Past this ratio the decoder builds a two-region master table, so its
+         * envelope band edges would differ from the ones written. */
+        if (k2 * SBR_ONE_REGION_DEN > SBR_ONE_REGION_NUM * kx || k2 - kx > max_sbr_span(sampleRate)) break;
         best = sf;
+        best_k2 = k2;
         if (k2 - kx >= SBR_MIN_SPAN && (long)k2 * sampleRate / (2 * SBR_QMF_BANDS_64) >= targetHz) break;
     }
+    *k2_out = best_k2;
     return best;
 }
 
@@ -105,9 +97,8 @@ static int pick_stop_freq(int sampleRate, int kx, int targetHz)
  * dk-spacing, residual bands merged into the first/last pairs. 1/2/3:
  * log-spaced with 12/10/8 bands per octave, widths of a geometric series
  * rounded and sorted so the narrow bands sit at the bottom. Only the
- * one-region case exists here: at bs_start_freq 15 kx is at least 30 at
- * every sample rate and k2 at most 64, so k2/kx never reaches the 2.2449
- * split. */
+ * one-region case exists here: pick_stop_freq keeps k2/kx under the 2.2449
+ * split, which a low crossover would otherwise reach. */
 static int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2;
@@ -170,10 +161,12 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     int sampleRate = sbr->sampleRate;
     unsigned long rate_per_ch = bitRate / sbr->numChannels;
     sbr->numEnvFixFix = (rate_per_ch >= SBR_FOUR_ENV_BITRATE_BPS) ? 4 : 1;
-    /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
-     * Higher-order parametric reconstruction below 10 kHz is audible and
-     * generally inferior to the bit-starved LC core. */
-    sbr->bs_start_freq = 15;
+    sbr->rich = rate_per_ch >= SBR_RICH_BPS;
+    /* A crossover near the core ceiling (~11.6 kHz) maximizes MOS while the
+     * core is bit-starved: parametric reconstruction below 10 kHz is audible
+     * and generally inferior to that core. A rich core can afford SBR from
+     * about 8 kHz (SBR_RICH_BPS). */
+    sbr->bs_start_freq = sbr->rich ? SBR_START_FREQ_RICH : SBR_START_FREQ_DEFAULT;
     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
@@ -185,8 +178,9 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     /* Where the reconstruction stops. Aim at hearing rather than k2's ceiling:
      * bands above the target cost the same envelope bits as the ones below, so
      * there's no reason to stop short of what's audible. */
-    sbr->bs_stop_freq = pick_stop_freq(sampleRate, sbr->kx, SBR_STOP_FREQ_TARGET_HZ);
-    sbr->k2 = compute_k2(sampleRate, sbr->bs_stop_freq);
+    sbr->bs_stop_freq = pick_stop_freq(sampleRate, sbr->kx,
+                                       (rate_per_ch < SBR_NARROW_STOP_BPS && sampleRate > SBR_NARROW_STOP_MIN_RATE) ? SBR_STOP_FREQ_TARGET_NARROW_HZ : SBR_STOP_FREQ_TARGET_HZ,
+                                       &sbr->k2);
 
     build_freq_table(sbr);
 }
@@ -467,7 +461,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
     }
     for (int ch = 0; ch < numChannels; ch++) {
         if (isLfe[ch]) continue;
-        g_faacStats.sbrInvfSum += SBR_INVF_MODE;
+        g_faacStats.sbrInvfSum += sbr->rich ? SBR_INVF_MODE_RICH : SBR_INVF_MODE;
         g_faacStats.sbrInvfCount++;
     }
 #endif

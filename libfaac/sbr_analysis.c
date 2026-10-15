@@ -78,7 +78,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         }
     }
 
-    if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
+    if (frameStrength > (sbr->rich ? SBR_TRANSIENT_THRESH_RICH : SBR_TRANSIENT_THRESH_DEFAULT)) {
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
         int rel = clamp_int((Ts - 2) / 2, 0, 3);
         int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
