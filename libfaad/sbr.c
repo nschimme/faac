@@ -472,7 +472,11 @@ static bool sbr_read_grid(BitReader *bs, SBRChannel *ch, int num_time_slots)
         if (L_E > 4) return false;
         uint8_t fr = (uint8_t)bits_get(bs, 1);
         ch->t_E[0] = 0;
-        for (int i = 1; i <= L_E; i++) ch->t_E[i] = (uint8_t)(i * num_time_slots / L_E);
+        /* The spacing is rounded and the last border is the frame end, so 15 slots
+         * give 0 8 15 and 0 4 8 12 15; truncating would put them at 7 and 3 7 11. */
+        int spacing = (num_time_slots + (L_E >> 1)) / L_E;
+        for (int i = 1; i < L_E; i++) ch->t_E[i] = (uint8_t)(i * spacing);
+        ch->t_E[L_E] = (uint8_t)num_time_slots;
         for (int i = 0; i < L_E; i++) ch->freq_res[i] = fr;
         ch->bs_pointer = 0;
         break;
