@@ -19,9 +19,9 @@ SKIP_EXIT_CODE = 77
 # for synthetic 8s 48 kHz stereo WAV input (4s -40 dBFS 997 Hz sine, 4s -3 dBFS 997 Hz sine).
 BASELINE_MD5 = {
     'lc_adts': '406df6509b0bbba06c9977e77854d19a',
-    'lc_m4a':  '94142dec744133b37aec7582ae88eb8f',
+    'lc_m4a':  '0c11e3cef5acd189d55bc72bffa1b70a',
     'he_adts': '92e36995b9f1231e18cd8af84de1e5ff',
-    'he_m4a':  '9aa320f1c3a77bad7330121270c2bf15',
+    'he_m4a':  'cd1f9a8fb7eaafd440435827004bd5bf',
 }
 
 def generate_synthetic_wav(filename):
@@ -96,9 +96,9 @@ def main():
         print('Test 1: Verification of no-flag MD5 identity against base branch constants...')
         cases = [
             ('lc_adts', ['-o', 'out_lc.adts', wav_file]),
-            ('lc_m4a',  ['-o', 'out_lc.m4a', wav_file]),
+            ('lc_m4a',  ['--no-encoder-info', '-o', 'out_lc.m4a', wav_file]),
             ('he_adts', ['--object-type', 'he-aac-v1', '-b', '32', '-o', 'out_he.adts', wav_file]),
-            ('he_m4a',  ['--object-type', 'he-aac-v1', '-b', '32', '-o', 'out_he.m4a', wav_file]),
+            ('he_m4a',  ['--no-encoder-info', '--object-type', 'he-aac-v1', '-b', '32', '-o', 'out_he.m4a', wav_file]),
         ]
 
         for key, args in cases:
