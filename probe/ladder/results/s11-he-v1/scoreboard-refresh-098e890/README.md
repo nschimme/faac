@@ -48,3 +48,27 @@ trumpet +37.0 %, cst +29.8 %, Girl_In_The_Fire +27.3 %. Best: glk -30.3 %, Robot
 (The MOS lines printed by bd2.py label the reference arm "apple"; for this run it is FDK.)
 FDK is therefore not an easier target at HE 40-64k here: the gap is slightly larger than Apple's.
 Baseline for all arms: FreewareAdvancedAudio/faac master = 098e8900 (verified with ls-remote).
+
+## Band-split diagnostic (first cause isolation; 4 worst clips)
+`bands.py`: decode with the same FAAD2, zero-phase 8th-order Butterworth split of both
+reference and decode into 0-4 / 4-8 / 8-12 / 12k+ Hz, zimtohrli MOS per band
+(`bands.json`; rungs 48 and 64; clips cst, Girl_In_The_Fire, glockenspiel, SinceAlways).
+This is a diagnostic proxy: band-limited MOS values are compressed and not comparable with
+full-band MOS, and one HE crossover is not assumed. Only same-band differences between
+encoders are read.
+
+Findings (FAAC minus FDK, per band MOS):
+- **48 kbps, 0-4 kHz:** cst -0.09, Girl -0.08, SinceAlways -0.17, glockenspiel -0.07.
+- **48 kbps, 4-8 kHz:** cst -0.13, Girl -0.24, SinceAlways -0.18, glockenspiel -0.03.
+- **48 kbps, 8-12 kHz:** -0.05, -0.14, -0.17, +0.03.
+- **48 kbps, 12k+:** mixed: cst -0.05, Girl +0.17, SinceAlways -0.01, glockenspiel +0.12
+  (FAAC ahead on two clips).
+- At 64 kbps the 0-4 kHz deficit nearly closes (-0.03 to +0.02 on three clips) while 4-12 kHz
+  stays behind (up to -0.19).
+Reading: on these clips FAAC's deficit sits in the core band (below ~8 kHz) at 48 kbps and in
+the 4-12 kHz region at 64 kbps; the top band (12k+), where SBR reconstructs everything, is not
+consistently worse. This is consistent with the earlier S6-X/S9 conclusion (core coding
+efficiency dominates), but it is four clips and a proxy: it neither proves the cause nor
+covers SBR parameter quality below 12 kHz. Caveat from the rows: Apple spends up to 73 kbps on
+Girl_In_The_Fire at the "64" rung (vs 64 for FAAC), so its +45 % BD-rate on that clip partly
+reflects curve extrapolation.
