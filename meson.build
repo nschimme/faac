@@ -18,7 +18,7 @@ config_h = configuration_data()
 config_h.set_quoted('PACKAGE', meson.project_name())
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
 
-foreach h: ['getopt.h']
+foreach h: ['getopt.h', 'immintrin.h']
     config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
 
@@ -26,6 +26,10 @@ config_h.set10('WORDS_BIGENDIAN', host_machine.endian() == 'big')
 
 
 libm = cc.find_library('m', required: false)
+
+cpu_family = target_machine.cpu_family()
+
+config_h.set('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and config_h.get('HAVE_IMMINTRIN_H'))
 
 config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 

@@ -21,7 +21,14 @@
 #include <string.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "cpu_compute.h"
 #include "stats.h"
+
+typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n4, float sfacfix);
+
+#if defined(HAVE_SSE2)
+extern int quantize_sse2(const float * __restrict xr, int * __restrict xi, int n4, float sfacfix);
+#endif
 
 /* Written so the loop auto-vectorizes: fabsf() makes the sqrtf() argument
  * provably non-negative (no errno path), the sign is re-applied as a
@@ -43,6 +50,7 @@ static int quantize_scalar(const float * __restrict xr, int * __restrict xi, int
     return maxq;
 }
 
+static QuantizeFunc qfunc = quantize_scalar;
 static float sfstep;
 static float max_quant_limit;
 
@@ -58,6 +66,14 @@ static float log10_width_sf_lut[128];
 void QuantizeInit(void)
 {
     int i;
+#if defined(HAVE_SSE2)
+    CPUCaps caps = get_cpu_caps();
+    if (caps & CPU_CAP_SSE2)
+        qfunc = quantize_sse2;
+    else
+#endif
+        qfunc = quantize_scalar;
+
     sfstep = SF_STEP_AMPL;
     /* Pre-calculate lookup table for 10^(sfac / sfstep) = 2^(sfac / 4) */
     for (i = -GAIN_LUT_BIAS; i < GAIN_LUT_SIZE - GAIN_LUT_BIAS; i++)
@@ -433,7 +449,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         for (win = 0; win < gsize; win++)
         {
-            int qm = quantize_scalar(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width >> 2, gain);
+            int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width >> 2, gain);
             if (qm > maxq) maxq = qm;
         }
         /* One step coarser, kept when masking-weighted error costs less than
@@ -453,7 +469,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             {
                 for (win = 0; win < gsize; win++)
                 {
-                    int qm = quantize_scalar(xr0 + win * BLOCK_LEN_SHORT + lo, cand + win * width, width >> 2, gain2);
+                    int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, cand + win * width, width >> 2, gain2);
                     if (qm > qm2) qm2 = qm;
                 }
                 if (band_delta(xr0 + lo, xi, cand, width, gsize, 1.0f / gain, 1.0f / gain2, &saved)
