@@ -2,24 +2,12 @@
  * FAAC - Freeware Advanced Audio Coder
  * Copyright (C) 2026 Nils Schimmelmann
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- */
-
-/*
- * Automatic Dynamic Range Control (DRC) Causal Analyzer
+ * Dynamic Range Control (DRC) Causal Analyzer
  *
  * Implements ITU-R BS.1770-4 K-weighting filters, 400 ms momentary and 3 s
  * short-term sliding window loudness measurement, linear boost tapering,
  * fast attack / slow release ballistics, peak headroom clip protection, and
- * 0.25 dB grid quantization.
+ * 0.25 dB grid quantization with 1-frame lookahead.
  */
 
 #include <assert.h>
@@ -85,6 +73,10 @@ struct DrcAnalyzer {
     /* Ballistics state */
     float prev_smooth_gain_db;
     bool  has_prev_gain;
+
+    /* 1-frame lookahead state */
+    DRCInfo lookahead_drc;
+    bool  has_lookahead;
 };
 
 /*
@@ -169,6 +161,7 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
 
     da->prev_smooth_gain_db = 0.0f;
     da->has_prev_gain = false;
+    da->has_lookahead = false;
 
     return da;
 }
@@ -180,16 +173,18 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
         return;
 
     float max_peak_lin = 0.0f;
+    double frame_sum_sq = 0.0;
+    const float pcm_scale = 1.0f / 32768.0f;
 
     /*
      * Filter input samples through BS.1770 K-weighting biquads and accumulate
-     * squared channel-weighted outputs into sub-block accumulators.
+     * squared channel-weighted outputs into frame and sub-block accumulators.
      */
     for (uint32_t i = 0; i < samples_per_ch; i++) {
         double sample_sum_sq = 0.0;
 
         for (uint32_t ch = 0; ch < da->num_channels; ch++) {
-            float x = input_pcm[ch][i];
+            float x = input_pcm[ch][i] * pcm_scale;
             float abs_x = fabsf(x);
             if (abs_x > max_peak_lin)
                 max_peak_lin = abs_x;
@@ -210,6 +205,7 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
             sample_sum_sq += (double)da->ch_state[ch].weight * (double)y2 * (double)y2;
         }
 
+        frame_sum_sq += sample_sum_sq;
         da->current_subblock_sum += sample_sum_sq;
         da->subblock_sample_count++;
 
@@ -226,10 +222,11 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
     }
 
     /*
-     * Compute short-term (3 s) and momentary (400 ms) loudness.
+     * Compute short-term (3 s), momentary (400 ms), and per-frame loudness.
      */
     float z_short = 0.0f;
     float z_momentary = 0.0f;
+    float z_frame = (float)(frame_sum_sq / (double)samples_per_ch);
 
     if (da->subblock_count > 0) {
         float sum_3s = 0.0f;
@@ -245,20 +242,24 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
             sum_400ms += da->subblock_energy[idx];
         }
         z_momentary = sum_400ms / (float)m_count;
-    } else if (da->subblock_sample_count > 0) {
-        z_short = z_momentary = (float)(da->current_subblock_sum / (double)da->subblock_sample_count);
+    } else {
+        z_short = z_momentary = z_frame;
     }
 
     float L_short = (z_short > 1e-12f) ? (-0.691f + 10.0f * log10f(z_short)) : -100.0f;
     float L_momentary = (z_momentary > 1e-12f) ? (-0.691f + 10.0f * log10f(z_momentary)) : -100.0f;
+    float L_frame = (z_frame > 1e-12f) ? (-0.691f + 10.0f * log10f(z_frame)) : -100.0f;
 
     /*
-     * Effective loudness selection: short-term baseline, overridden by momentary
-     * when momentary loudness exceeds short-term by > 3.0 LU (transient attack).
+     * Effective loudness selection: short-term baseline, overridden by per-frame
+     * or momentary loudness when a transient attack exceeds short-term by > 3.0 LU.
      */
     float L_eff = L_short;
-    if (L_momentary > L_short + DRC_MOMENTARY_OVERRIDE_LU)
+    if (L_frame > L_short + DRC_MOMENTARY_OVERRIDE_LU) {
+        L_eff = L_frame;
+    } else if (L_momentary > L_short + DRC_MOMENTARY_OVERRIDE_LU) {
         L_eff = L_momentary;
+    }
 
     /*
      * Compression curve and gating:
@@ -317,8 +318,6 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
             g_smooth_db = headroom_db;
     }
 
-    da->prev_smooth_gain_db = g_smooth_db;
-
     /* Quantize to existing 0.25 dB grid */
     float g_quant_db = roundf(g_smooth_db / 0.25f) * 0.25f;
     if (g_quant_db > 31.75f)
@@ -326,10 +325,30 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
     if (g_quant_db < -31.75f)
         g_quant_db = -31.75f;
 
-    out_drc->enabled = true;
-    out_drc->gain_db = g_quant_db;
-    out_drc->prog_ref_level_present = true;
-    out_drc->prog_ref_level_db = da->ref_level_lufs;
+    DRCInfo curr_drc;
+    curr_drc.enabled = true;
+    curr_drc.gain_db = g_quant_db;
+    curr_drc.prog_ref_level_present = true;
+    curr_drc.prog_ref_level_db = da->ref_level_lufs;
+
+    /*
+     * 1-Frame Lookahead Output:
+     * Lookahead allows incoming transient cuts at frame M to take effect at frame M-1 (K_step - 1).
+     */
+    if (!da->has_lookahead) {
+        da->lookahead_drc = curr_drc;
+        da->has_lookahead = true;
+        *out_drc = curr_drc;
+        da->prev_smooth_gain_db = g_smooth_db;
+    } else {
+        /* If incoming frame M requires a cut deeper than lookahead frame, advance cut to lookahead frame */
+        if (curr_drc.gain_db < da->lookahead_drc.gain_db) {
+            da->lookahead_drc.gain_db = curr_drc.gain_db;
+        }
+        *out_drc = da->lookahead_drc;
+        da->prev_smooth_gain_db = da->lookahead_drc.gain_db;
+        da->lookahead_drc = curr_drc;
+    }
 }
 
 void DrcAnalyzerEnd(DrcAnalyzer *da)

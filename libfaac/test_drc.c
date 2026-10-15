@@ -142,12 +142,13 @@ static void test_meter_accuracy(void)
         assert(da != NULL);
 
         uint32_t frame_samples = 1024;
-        float amp = powf(10.0f, -23.0f / 20.0f); /* -23 dBFS peak sine */
+        float amp = 32768.0f * powf(10.0f, -23.0f / 20.0f); /* -23 dBFS peak sine */
         float *pcm[2];
         pcm[0] = (float *)malloc(frame_samples * sizeof(float));
         pcm[1] = (float *)malloc(frame_samples * sizeof(float));
 
         DRCInfo drc;
+        memset(&drc, 0, sizeof(drc));
         uint32_t total_samples = 0;
         /* Process 3.5 seconds to reach steady state short-term loudness */
         for (int frame = 0; frame < (int)(3.5f * fs / frame_samples); frame++) {
@@ -184,7 +185,7 @@ static void test_meter_accuracy(void)
         for (int frame = 0; frame < (int)(3.5f * fs / frame_samples); frame++) {
             for (uint32_t i = 0; i < frame_samples; i++) {
                 double t = (double)(total_samples + i) / (double)fs;
-                pcm[0][i] = (float)sin(2.0 * M_PI_DOUBLE * 997.0 * t); /* 0 dBFS mono sine */
+                pcm[0][i] = 32768.0f * (float)sin(2.0 * M_PI_DOUBLE * 997.0 * t); /* 0 dBFS mono sine */
             }
             total_samples += frame_samples;
             DrcAnalyzerProcessFrame(da, pcm, frame_samples, &drc);
@@ -217,7 +218,7 @@ static void test_meter_accuracy(void)
         }
 
         /* Now step to -13 LUFS stereo sine (+10 LU relative to ref) */
-        float step_amp = powf(10.0f, -13.0f / 20.0f);
+        float step_amp = 32768.0f * powf(10.0f, -13.0f / 20.0f);
         uint32_t sample_cnt = 0;
         int step_frame_90 = -1;
 
@@ -256,7 +257,7 @@ static void test_meter_accuracy(void)
         pcm[1] = (float *)malloc(frame_samples * sizeof(float));
 
         /* Feed -75 LUFS quiet signal */
-        float quiet_amp = powf(10.0f, -75.0f / 20.0f);
+        float quiet_amp = 32768.0f * powf(10.0f, -75.0f / 20.0f);
         for (uint32_t i = 0; i < frame_samples; i++) {
             pcm[0][i] = quiet_amp;
             pcm[1][i] = quiet_amp;
@@ -310,7 +311,7 @@ static void test_curve_and_slew(void)
         pcm[1] = (float *)malloc(frame_samples * sizeof(float));
 
         float level_lufs = curve_points[p].input_lufs;
-        float amp = powf(10.0f, level_lufs / 20.0f);
+        float amp = 32768.0f * powf(10.0f, level_lufs / 20.0f);
 
         DRCInfo drc;
         uint32_t total_samples = 0;
@@ -349,7 +350,7 @@ static void test_curve_and_slew(void)
         pcm[1] = (float *)malloc(frame_samples * sizeof(float));
 
         /* Start with stereo reference level (-23 LUFS) */
-        float ref_amp = powf(10.0f, -23.0f / 20.0f);
+        float ref_amp = 32768.0f * powf(10.0f, -23.0f / 20.0f);
         for (uint32_t i = 0; i < frame_samples; i++) {
             pcm[0][i] = ref_amp;
             pcm[1][i] = ref_amp;
@@ -362,7 +363,7 @@ static void test_curve_and_slew(void)
         float prev_gain = drc.gain_db; /* ~0.0 dB */
 
         /* Step to loud stereo level (-10.0 LUFS, peak <= 0 dBFS) requiring -6.5 dB cut */
-        float loud_amp = powf(10.0f, -10.0f / 20.0f);
+        float loud_amp = 32768.0f * powf(10.0f, -10.0f / 20.0f);
         for (uint32_t i = 0; i < frame_samples; i++) {
             pcm[0][i] = loud_amp;
             pcm[1][i] = loud_amp;
@@ -390,7 +391,7 @@ static void test_curve_and_slew(void)
         pcm[1] = (float *)malloc(frame_samples * sizeof(float));
 
         /* Feed quiet stereo sine (-33 LUFS) to build up +5.0 dB boost request */
-        float quiet_amp = powf(10.0f, -33.0f / 20.0f);
+        float quiet_amp = 32768.0f * powf(10.0f, -33.0f / 20.0f);
         DRCInfo drc;
         uint32_t total_samples = 0;
 
@@ -408,7 +409,7 @@ static void test_curve_and_slew(void)
         assert(drc.gain_db > +3.0f);
 
         /* Introduce a 0 dBFS peak in current frame (headroom = 0 dB) */
-        pcm[0][100] = 1.0f;
+        pcm[0][100] = 32768.0f;
         DrcAnalyzerProcessFrame(da, pcm, frame_samples, &drc);
 
         /* Boost gain must be instantaneously clamped to <= 0.0 dB to prevent clipping */
@@ -450,8 +451,8 @@ static void test_alignment_and_latency(void)
         uint8_t outbuf[8192];
         uint32_t bytes_written = 0;
 
-        float ref_amp = powf(10.0f, -23.0f / 20.0f);
-        float loud_amp = powf(10.0f, -13.0f / 20.0f);
+        float ref_amp = 32768.0f * powf(10.0f, -23.0f / 20.0f);
+        float loud_amp = 32768.0f * powf(10.0f, -13.0f / 20.0f);
 
         int cut_start_frame = -1;
         uint32_t total_samples = 0;
@@ -495,8 +496,8 @@ static void test_alignment_and_latency(void)
 
         faac_encoder_close(&enc);
 
-        /* Step enters at frame 110; 100 ms sub-block momentary override triggers cut at frame 112 */
-        assert(cut_start_frame == 112);
+        /* Step enters at frame 110; emitted ADTS frame 110 carries gain cut, leading decoded step at frame 111 by 1 frame */
+        assert(cut_start_frame == 110);
     }
 
     /* HE-AAC v1 alignment and encoder_delay verification */
@@ -796,6 +797,166 @@ static void test_drc_invalid_inputs(void)
     faac_encoder_close(&enc);
 }
 
+/*
+ * Full encoder integration test for DRC AUTO mode across LC and HE-AAC v1
+ * in both 16-bit integer and 32-bit float input formats.
+ */
+static void test_drc_auto_encoder_integration(void)
+{
+    const enum faac_object_type obj_types[] = { FAAC_OBJ_LOW, FAAC_OBJ_HE_AAC_V1 };
+    const uint32_t bit_rates[] = { 64000, 24000 };
+
+    for (int obj_idx = 0; obj_idx < 2; obj_idx++) {
+        enum faac_object_type aot = obj_types[obj_idx];
+        uint32_t br = bit_rates[obj_idx];
+        uint32_t frame_samples_per_ch = (aot == FAAC_OBJ_HE_AAC_V1) ? 2048 : 1024;
+        uint32_t total_input_frames = 300;
+
+        float gains_16bit[500];
+        float gains_float[500];
+        uint32_t count_16bit = 0;
+        uint32_t count_float = 0;
+
+        /* Run 1: 16-bit integer PCM input */
+        {
+            faac_params params;
+            faac_params_init(&params, sizeof(params));
+            params.sample_rate = 48000;
+            params.num_channels = 2;
+            params.object_type = aot;
+            params.bit_rate = br;
+            params.drc_mode = FAAC_DRC_AUTO;
+            params.drc_ref_level = -23.0f;
+            params.output_format = FAAC_STREAM_ADTS;
+            params.input_format = FAAC_INPUT_16BIT;
+
+            faac_encoder *enc = NULL;
+            faac_status st = faac_encoder_open(&params, &enc);
+            assert(st == FAAC_OK && enc != NULL);
+
+            int16_t pcm_buf[2048 * 2];
+            uint8_t outbuf[8192];
+            uint32_t bytes_written = 0;
+            uint32_t total_samples = 0;
+
+            for (uint32_t f = 0; f < total_input_frames; f++) {
+                float amp_lin = (f < 200) ? 0.010f : 0.707f; /* -40 dBFS quiet, -3 dBFS loud */
+                int16_t amp_i16 = (int16_t)(amp_lin * 32767.0f);
+
+                for (uint32_t i = 0; i < frame_samples_per_ch; i++) {
+                    double t = (double)(total_samples + i) / 48000.0;
+                    int16_t val = (int16_t)(amp_i16 * sin(2.0 * M_PI_DOUBLE * 997.0 * t));
+                    pcm_buf[2 * i] = val;
+                    pcm_buf[2 * i + 1] = val;
+                }
+                total_samples += frame_samples_per_ch;
+
+                st = faac_encoder_encode(enc, pcm_buf, frame_samples_per_ch * 2, outbuf, sizeof(outbuf), &bytes_written);
+                assert(st == FAAC_OK);
+
+                if (bytes_written > 7) {
+                    float g_db = 0.0f;
+                    if (parse_adts_drc(outbuf, bytes_written, &g_db, NULL))
+                        gains_16bit[count_16bit++] = g_db;
+                }
+            }
+
+            do {
+                st = faac_encoder_encode(enc, NULL, 0, outbuf, sizeof(outbuf), &bytes_written);
+                assert(st == FAAC_OK);
+                if (bytes_written > 7) {
+                    float g_db = 0.0f;
+                    if (parse_adts_drc(outbuf, bytes_written, &g_db, NULL))
+                        gains_16bit[count_16bit++] = g_db;
+                }
+            } while (bytes_written > 0);
+
+            faac_encoder_close(&enc);
+        }
+
+        /* Run 2: 32-bit float PCM input */
+        {
+            faac_params params;
+            faac_params_init(&params, sizeof(params));
+            params.sample_rate = 48000;
+            params.num_channels = 2;
+            params.object_type = aot;
+            params.bit_rate = br;
+            params.drc_mode = FAAC_DRC_AUTO;
+            params.drc_ref_level = -23.0f;
+            params.output_format = FAAC_STREAM_ADTS;
+            params.input_format = FAAC_INPUT_FLOAT;
+
+            faac_encoder *enc = NULL;
+            faac_status st = faac_encoder_open(&params, &enc);
+            assert(st == FAAC_OK && enc != NULL);
+
+            float pcm_buf[2048 * 2];
+            uint8_t outbuf[8192];
+            uint32_t bytes_written = 0;
+            uint32_t total_samples = 0;
+
+            for (uint32_t f = 0; f < total_input_frames; f++) {
+                float amp_lin = (f < 200) ? 0.010f : 0.707f;
+                float amp_flt = amp_lin * 32768.0f; /* 16-bit scale for float input */
+
+                for (uint32_t i = 0; i < frame_samples_per_ch; i++) {
+                    double t = (double)(total_samples + i) / 48000.0;
+                    float val = (float)(amp_flt * sin(2.0 * M_PI_DOUBLE * 997.0 * t));
+                    pcm_buf[2 * i] = val;
+                    pcm_buf[2 * i + 1] = val;
+                }
+                total_samples += frame_samples_per_ch;
+
+                st = faac_encoder_encode(enc, pcm_buf, frame_samples_per_ch * 2, outbuf, sizeof(outbuf), &bytes_written);
+                assert(st == FAAC_OK);
+
+                if (bytes_written > 7) {
+                    float g_db = 0.0f;
+                    if (parse_adts_drc(outbuf, bytes_written, &g_db, NULL))
+                        gains_float[count_float++] = g_db;
+                }
+            }
+
+            do {
+                st = faac_encoder_encode(enc, NULL, 0, outbuf, sizeof(outbuf), &bytes_written);
+                assert(st == FAAC_OK);
+                if (bytes_written > 7) {
+                    float g_db = 0.0f;
+                    if (parse_adts_drc(outbuf, bytes_written, &g_db, NULL))
+                        gains_float[count_float++] = g_db;
+                }
+            } while (bytes_written > 0);
+
+            faac_encoder_close(&enc);
+        }
+
+        /* (e) Assert 16-bit int and float inputs produce identical gain counts and sequences */
+        assert(count_16bit == count_float && count_16bit > 0);
+        for (uint32_t i = 0; i < count_16bit; i++) {
+            assert(fabsf(gains_16bit[i] - gains_float[i]) <= 0.25f);
+        }
+
+        /* (d) First frames on quiet input behave sensibly (no -15 dB cut clamp at start) */
+        assert(gains_16bit[0] >= 0.0f);
+
+        /* (a) Steady boost on quiet part near +6.0 dB */
+        assert(gains_16bit[100] >= 5.0f && gains_16bit[100] <= 6.0f);
+
+        /* (b) Steady cut on loud part near -10.0 dB */
+        uint32_t loud_idx = count_16bit - 10;
+        assert(gains_16bit[loud_idx] <= -9.5f && gains_16bit[loud_idx] >= -10.5f);
+
+        /* (c) Per-frame cut step <= 3.0 dB */
+        for (uint32_t i = 1; i < count_16bit; i++) {
+            float step = gains_16bit[i - 1] - gains_16bit[i]; /* cut step */
+            if (step > 0.0f) {
+                assert(step <= 3.00f + 1e-3f);
+            }
+        }
+    }
+}
+
 int main(void)
 {
     test_bitstream_payloads();
@@ -803,6 +964,7 @@ int main(void)
     test_curve_and_slew();
     test_alignment_and_latency();
     test_decoder_simulation_harness();
+    test_drc_auto_encoder_integration();
     test_drc_off_baseline_hash();
     test_drc_invalid_inputs();
     printf("DRC unit tests passed successfully.\n");
