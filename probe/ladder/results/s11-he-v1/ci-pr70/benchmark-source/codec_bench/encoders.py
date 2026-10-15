@@ -1,0 +1,725 @@
+"""
+ * FAAC Benchmark Suite - Encoder Classes & Auto-Detection
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+"""
+
+import os
+import sys
+import subprocess
+import shutil
+import tempfile
+import wave
+import json
+import re
+
+from utils import (get_binary_size, get_elf_section_sizes, get_ffmpeg_path,
+                   safe_run, find_linked_lib, is_faac_legacy, resolve_wrapper_target,
+                   guess_lib_version_from_path, is_system_library, flatten_arg_list,
+                   probe_version, make_unique_name_and_id, hosted_codec_ver)
+
+PROFILE_LABELS = {"lc": "LC", "he": "HE-v1", "hev2": "HE-v2", "standard": "Standard", "xhe": "xHE-AAC", "usac": "xHE-AAC"}
+
+def profile_label(profile):
+    return PROFILE_LABELS.get(profile, profile.upper())
+
+def encoder_row_key(encoder):
+    """Stable identity key for an (encoder_tool, profile) combination."""
+    return f"{encoder.tool_id}_{encoder.profile}"
+
+row_key = encoder_row_key
+
+def use_he_aac(bitrate_kbps, channels, sample_rate):
+    """Heuristic for when HE-AAC v1 is selected for standard AAC encoders."""
+    if sample_rate < 32000:
+        return False
+    bitrate_per_ch = bitrate_kbps / max(1, channels)
+    return 8 <= bitrate_per_ch <= 48
+
+def use_he_v2_aac(bitrate_kbps, channels, sample_rate):
+    """Heuristic for when HE-AAC v2 (Parametric Stereo) is selected."""
+    if channels < 2 or sample_rate < 32000:
+        return False
+    bitrate_per_ch = bitrate_kbps / max(1, channels)
+    return 6 <= bitrate_per_ch <= 20
+
+
+class Encoder:
+    def __init__(self, name, binary_path, tool_id, profile, lib_name_substr=None, lib_override=None):
+        self.name = name
+        self.binary_path = binary_path
+        self.tool_id = tool_id
+        self.profile = profile
+        self.lib_override = lib_override
+
+        measure_bin = resolve_wrapper_target(binary_path) if binary_path else binary_path
+        lib_path = lib_override or (find_linked_lib(measure_bin, lib_name_substr) if lib_name_substr else None)
+
+        measured_path = None
+        if lib_path and not lib_override and is_system_library(lib_path):
+            self.size = 0
+        elif lib_path:
+            self.size = get_binary_size(lib_path)
+            measured_path = lib_path
+        else:
+            if is_system_library(measure_bin):
+                self.size = 0
+            else:
+                self.size = get_binary_size(measure_bin) if measure_bin else 0
+                measured_path = measure_bin if measure_bin and not is_system_library(measure_bin) else None
+
+        sec_sizes = get_elf_section_sizes(measured_path) if measured_path else {"text": 0, "rodata": 0, "bss": 0, "data": 0}
+        self.file_ext = ".m4a"
+        self.text_size = sec_sizes.get("text", 0)
+        self.rodata_size = sec_sizes.get("rodata", 0)
+        self.bss_size = sec_sizes.get("bss", 0)
+        self.data_size = sec_sizes.get("data", 0)
+
+    def supports_scenario(self, bitrate_kbps, channels, sample_rate):
+        if self.profile in ("he", "hev2") and sample_rate < 32000:
+            return False, f"sample rate {sample_rate} Hz < 32 kHz required for SBR ({profile_label(self.profile)})"
+        if self.profile == "hev2" and channels != 2:
+            return False, f"HE-v2 (Parametric Stereo) requires exactly 2 channels (got {channels})"
+        return True, ""
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        raise NotImplementedError
+
+    def get_mux_cmd(self, output_path):
+        """Optional second step: the encode command wrote an elementary stream
+        to output_path + ".es"; return a command that muxes it into
+        output_path, or None when the encoder writes the container itself."""
+        return None
+
+    def get_run_env(self):
+        if not self.lib_override:
+            return {}
+        env = dict(os.environ)
+        abs_lib = os.path.abspath(self.lib_override)
+        lib_dir = os.path.dirname(abs_lib)
+        if sys.platform == "darwin":
+            env["DYLD_LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("DYLD_LIBRARY_PATH", "")
+            env["DYLD_INSERT_LIBRARIES"] = abs_lib
+        else:
+            env["LD_LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("LD_LIBRARY_PATH", "")
+            env["LD_PRELOAD"] = (abs_lib + " " + env.get("LD_PRELOAD", "")).strip()
+        return env
+
+
+class FAACEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="faac", profile="lc", lib_override=None, pns=True, adts=False):
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr="libfaac", lib_override=lib_override)
+        self.legacy = is_faac_legacy(binary_path, lib_override=lib_override)
+        # PNS noise is non-normative, so decoders cannot agree sample-for-sample
+        # on PNS-coded bands; the pns=False variant exists to gate decoder
+        # conformance on streams every compliant decoder must reproduce alike.
+        self.pns = pns
+        self.pns_free = not pns
+        # ADTS rows gate the decoders' ADTS header/resync path; M4A rows
+        # gate the container and ASC path.
+        self.adts = adts
+        if adts:
+            self.file_ext = ".aac"
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate,
+                       rate_control="abr", vbr_q=None):
+        cmd = [self.binary_path]
+        if self.legacy:
+            cmd.append("-w")
+        if rate_control == "vbr":
+            cmd.extend(["-q", str(vbr_q if vbr_q is not None else bitrate_kbps)])
+        else:
+            cmd.extend(["-b", str(bitrate_kbps)])
+            if rate_control == "cbr":
+                cmd.append("--cbr")
+        cmd.extend(["--overwrite", "-o", output_path])
+        if self.adts:
+            cmd.append("-a")
+        if not self.legacy:
+            if self.profile == "he":
+                cmd.extend(["--object-type", "he-aac-v1"])
+            elif self.profile == "hev2":
+                cmd.extend(["--object-type", "he-aac-v2"])
+            elif self.profile == "lc":
+                cmd.extend(["--object-type", "lc"])
+            if not self.pns:
+                cmd.extend(["--pns", "0"])
+        cmd.append(input_path)
+        return cmd
+
+
+class FFmpegEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="ffmpeg_aac", profile="lc", pns=True, adts=False):
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr=None)
+        # Same role as FAACEncoder's pns=False: a PNS-free stream from a
+        # second muxer/encoder, so decoder conformance is gated on ffmpeg's
+        # container and ASC signalling too, not only faac's.
+        self.pns = pns
+        self.pns_free = not pns
+        self.adts = adts
+        if adts:
+            self.file_ext = ".aac"
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        cmd = [self.binary_path, "-y", "-i", input_path, "-c:a"]
+        if self.profile == "lc":
+            cmd.extend(["aac", "-b:a", f"{bitrate_kbps}k"])
+            if not self.pns:
+                cmd.extend(["-aac_pns", "0"])
+        elif self.profile == "he":
+            cmd.extend(["libfdk_aac", "-profile:a", "aac_he", "-b:a", f"{bitrate_kbps}k"])
+        elif self.profile == "hev2":
+            cmd.extend(["libfdk_aac", "-profile:a", "aac_he_v2", "-b:a", f"{bitrate_kbps}k"])
+        cmd.extend(["-ac", str(channels)])
+        if self.adts:
+            cmd.extend(["-f", "adts"])
+        cmd.append(output_path)
+        return cmd
+
+
+class FDKAACEncoder(Encoder):
+    # signaling: None writes fdkaac's own M4A; "adts" an ADTS stream; any
+    # other value is a faam mux --sbr-signaling mode applied to an ADTS
+    # stream, which is how the implicit and explicit hierarchical SBR/PS
+    # signalling forms (that no encoder here emits) get exercised.
+    def __init__(self, name, binary_path, tool_id="fdkaac", profile="lc", signaling=None, faam_bin=None):
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr="libfdk-aac")
+        self.signaling = signaling
+        self.faam_bin = faam_bin
+        if signaling == "adts":
+            self.file_ext = ".aac"
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        p_val = "29" if self.profile == "hev2" else ("5" if self.profile == "he" else "2")
+        bps = bitrate_kbps * 1000
+        cmd = [self.binary_path, "-p", p_val, "-b", str(bps)]
+        if self.signaling == "adts":
+            cmd.extend(["-f", "2"])
+        elif self.signaling:
+            cmd.extend(["-f", "2"])
+            output_path = output_path + ".es"
+        cmd.extend(["-o", output_path, input_path])
+        return cmd
+
+    def get_mux_cmd(self, output_path):
+        if not self.signaling or self.signaling == "adts":
+            return None
+        return [self.faam_bin, "mux", output_path + ".es", "-o", output_path,
+                "--sbr-signaling", self.signaling]
+
+
+class AACEncEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="aac_enc", profile="lc"):
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr=None)
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        t_val = "29" if self.profile == "hev2" else ("5" if self.profile == "he" else "2")
+        bps = bitrate_kbps * 1000
+        return [self.binary_path, "-t", t_val, "-r", str(bps), "-o", output_path, input_path]
+
+
+class FalabaacEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="falabaac", profile="lc"):
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr=None)
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        return [self.binary_path, "-b", str(bitrate_kbps), "-o", output_path, input_path]
+
+
+class AFConvertEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="afconvert", profile="lc"):
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr="AudioToolbox")
+
+    def supports_scenario(self, bitrate_kbps, channels, sample_rate):
+        if self.profile in ("he", "hev2") and channels > 2:
+            return False, f"Apple AAC ({profile_label(self.profile)}) only supports max 2 channels (got {channels})"
+
+        br_per_ch = bitrate_kbps / max(1, channels)
+        if self.profile == "he":
+            if br_per_ch < 12 or br_per_ch > 32:
+                return False, f"Apple AAC HE-v1 supports 12-32 kbps/ch (got {br_per_ch:.1f} kbps/ch)"
+        elif self.profile == "hev2":
+            if channels != 2:
+                return False, f"Apple AAC HE-v2 requires 2 channels (got {channels})"
+            if bitrate_kbps < 16 or bitrate_kbps > 48:
+                return False, f"Apple AAC HE-v2 supports 16-48 kbps total (got {bitrate_kbps} kbps)"
+
+        return super().supports_scenario(bitrate_kbps, channels, sample_rate)
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        d_val = "aacp" if self.profile == "hev2" else ("aach" if self.profile == "he" else "aac")
+        bps = bitrate_kbps * 1000
+        return [self.binary_path, "-f", "m4af", "-d", d_val, "-b", str(bps), "-c", str(channels), input_path, output_path]
+
+
+class OpusEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="opusenc", profile="standard", is_ffmpeg=False):
+        lib_substr = "libopus" if is_ffmpeg else "libopus"
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr=lib_substr)
+        self.is_ffmpeg = is_ffmpeg
+        self.file_ext = ".opus"
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        if self.is_ffmpeg:
+            return [self.binary_path, "-y", "-i", input_path, "-c:a", "libopus", "-b:a", f"{bitrate_kbps}k", "-ac", str(channels), output_path]
+        return [self.binary_path, "--bitrate", str(bitrate_kbps), input_path, output_path]
+
+
+class LameEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="lame", profile="standard", is_ffmpeg=False):
+        lib_substr = "libmp3lame" if is_ffmpeg else "libmp3lame"
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr=lib_substr)
+        self.is_ffmpeg = is_ffmpeg
+        self.file_ext = ".mp3"
+
+    def supports_scenario(self, bitrate_kbps, channels, sample_rate):
+        if channels > 2:
+            return False, f"LAME MP3 supports max 2 channels (got {channels})"
+        return super().supports_scenario(bitrate_kbps, channels, sample_rate)
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        if self.is_ffmpeg:
+            return [self.binary_path, "-y", "-i", input_path, "-c:a", "libmp3lame", "-b:a", f"{bitrate_kbps}k", "-ac", str(channels), output_path]
+        return [self.binary_path, "-b", str(bitrate_kbps), "-s", str(sample_rate / 1000.0), input_path, output_path]
+
+
+class ExhaleEncoder(Encoder):
+    def __init__(self, name, binary_path, tool_id="exhale", profile="standard", is_ffmpeg=False):
+        base = os.path.basename(binary_path or "").lower()
+        if "ffmpeg" in base:
+            is_ffmpeg = True
+        lib_substr = "exhale" if not is_ffmpeg else None
+        super().__init__(name, binary_path, tool_id, profile, lib_name_substr=lib_substr)
+        self.is_ffmpeg = is_ffmpeg
+        self.file_ext = ".m4a"
+
+    def get_encode_cmd(self, input_path, output_path, bitrate_kbps, channels, sample_rate):
+        if self.is_ffmpeg:
+            return [self.binary_path, "-y", "-i", input_path, "-c:a", "libmpeghdec", "-b:a", f"{bitrate_kbps}k", "-ac", str(channels), output_path]
+
+        # Map target bitrate (kbps) to exhale quality mode 1..9
+        if bitrate_kbps <= 28:
+            mode = 1
+        elif bitrate_kbps <= 40:
+            mode = 2
+        elif bitrate_kbps <= 56:
+            mode = 3
+        elif bitrate_kbps <= 72:
+            mode = 4
+        elif bitrate_kbps <= 88:
+            mode = 5
+        elif bitrate_kbps <= 112:
+            mode = 6
+        elif bitrate_kbps <= 144:
+            mode = 7
+        elif bitrate_kbps <= 176:
+            mode = 8
+        else:
+            mode = 9
+
+        return [self.binary_path, str(mode), input_path, output_path]
+
+
+def probe_faac_version(faac_path, lib_override=None):
+    if not faac_path or not os.path.exists(faac_path):
+        return None
+    env = None
+    if lib_override:
+        env = dict(os.environ)
+        abs_lib = os.path.abspath(lib_override)
+        lib_dir = os.path.dirname(abs_lib)
+        if sys.platform == "darwin":
+            env["DYLD_LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("DYLD_LIBRARY_PATH", "")
+            env["DYLD_INSERT_LIBRARIES"] = abs_lib
+        else:
+            env["LD_LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("LD_LIBRARY_PATH", "")
+            env["LD_PRELOAD"] = (abs_lib + " " + env.get("LD_PRELOAD", "")).strip()
+
+    with tempfile.TemporaryDirectory() as td:
+        dummy_wav = os.path.join(td, "test.wav")
+        dummy_m4a = os.path.join(td, "test.m4a")
+        try:
+            with wave.open(dummy_wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(44100)
+                w.writeframes(b"\x00\x00" * 44100)
+            res = safe_run([faac_path, "-b", "64", "-o", dummy_m4a, dummy_wav], capture_output=True, check=False, env=env)
+            stdout_stderr = (res.stdout or "") + "\n" + (res.stderr or "")
+            m = re.search(r"FAAC\s+v?(\d+\.\d+(?:\.\d+)*[a-z0-9.]*(?:\s+\([^)]+\))?)", stdout_stderr, re.IGNORECASE)
+            if m:
+                return m.group(1).strip()
+        except Exception:
+            pass
+    return None
+
+
+def get_encoder_instance(encoder_type="faac", binary_path=None, lib_override=None, profile="lc", version=None):
+    """Instantiates an Encoder instance for a given encoder type or binary path."""
+    encoder_type = (encoder_type or "faac").lower().strip()
+
+    if encoder_type in ("faac", "libfaac"):
+        f_bin = binary_path or shutil.which("faac")
+        legacy = is_faac_legacy(f_bin, lib_override=lib_override)
+        ver = version
+        if not ver and f_bin and os.path.exists(f_bin):
+            ver = probe_version(f_bin, ["-H", "--help-advanced", "--help", "-h", "-v"],
+                                [r"FAAC\s+v?(\d+\.\d+(?:\.\d+)*[a-z0-9.]*(?:\s+\([^)]+\))?)",
+                                 r"version\s+(\d+\.\d+(?:\.\d+)*[a-z0-9.]*)"])
+        if not ver and f_bin and os.path.exists(f_bin):
+            ver = probe_faac_version(f_bin, lib_override=lib_override)
+        if not ver and legacy:
+            ver = "1.x"
+        display_name = f"FAAC {ver}" if ver else "FAAC"
+        return FAACEncoder(display_name, f_bin, "faac", profile, lib_override=lib_override)
+
+    elif encoder_type in ("ffmpeg", "ffmpeg_aac"):
+        f_bin = binary_path or get_ffmpeg_path()
+        ver = version
+        if not ver and f_bin and os.path.exists(f_bin):
+            res = safe_run([f_bin, "-version"], capture_output=True, check=False)
+            m = re.search(r"ffmpeg version (\S+)", res.stdout or "")
+            ver = m.group(1) if m else None
+        display_name = f"FFmpeg AAC {ver}" if ver else "FFmpeg AAC"
+        return FFmpegEncoder(display_name, f_bin, "ffmpeg_aac", profile)
+
+    elif encoder_type in ("fdkaac", "fdk", "fdk_aac"):
+        f_bin = binary_path or shutil.which("fdkaac")
+        ver = version
+        if not ver and f_bin and os.path.exists(f_bin):
+            ver = probe_version(f_bin, ["-h", "--help"], [r"fdkaac\s+v?(\d+\.\d+(?:\.\d+)*)"])
+        display_name = f"fdkaac {ver}" if ver else "fdkaac"
+        return FDKAACEncoder(display_name, f_bin, "fdkaac", profile)
+
+    elif encoder_type in ("aac_enc", "aac-enc", "aacenc"):
+        a_bin = binary_path or shutil.which("aac-enc")
+        ver = version
+        if not ver and a_bin and os.path.exists(a_bin):
+            ver = probe_version(a_bin, ["-h", "--help", "-v"], [r"aac-enc\s+v?(\d+\.\d+(?:\.\d+)*)"])
+        display_name = f"aac-enc {ver}" if ver else "aac-enc"
+        return AACEncEncoder(display_name, a_bin, "aac_enc", profile)
+
+    elif encoder_type in ("falabaac", "fala"):
+        f_bin = binary_path or shutil.which("falabaac")
+        ver = version
+        if not ver and f_bin and os.path.exists(f_bin):
+            ver = probe_version(f_bin, ["-h", "--help", "-v"], [r"falabaac\s+v?(\d+\.\d+(?:\.\d+)*)"])
+        display_name = f"falabaac {ver}" if ver else "falabaac"
+        return FalabaacEncoder(display_name, f_bin, "falabaac", profile)
+
+    elif encoder_type in ("afconvert", "apple"):
+        a_bin = binary_path or shutil.which("afconvert")
+        ver = version
+        if not ver and a_bin and os.path.exists(a_bin):
+            ver = probe_version(a_bin, ["-h"], [r"afconvert\s+version\s+(\d+\.\d+(?:\.\d+)*)", r"version\s+(\d+\.\d+(?:\.\d+)*)"])
+            if not ver and sys.platform == "darwin":
+                try:
+                    import platform
+                    mac_v = platform.mac_ver()[0]
+                    if mac_v:
+                        ver = mac_v
+                except Exception:
+                    pass
+        display_name = f"Apple AAC {ver}" if ver else "Apple AAC"
+        return AFConvertEncoder(display_name, a_bin, "afconvert", profile)
+
+    elif encoder_type in ("opus", "opusenc"):
+        o_bin = binary_path or shutil.which("opusenc") or get_ffmpeg_path()
+        ver = version
+        if not ver and o_bin and os.path.exists(o_bin):
+            ver = probe_version(o_bin, ["-V", "--version", "-version"], [r"opusenc\s+[\w\s.-]+\s+v?(\d+\.\d+(?:\.\d+)*)"])
+        display_name = f"Opus {ver}" if ver else "Opus"
+        return OpusEncoder(display_name, o_bin, "opus", "standard")
+
+    elif encoder_type in ("lame", "mp3"):
+        l_bin = binary_path or shutil.which("lame") or get_ffmpeg_path()
+        ver = version
+        if not ver and l_bin and os.path.exists(l_bin):
+            ver = probe_version(l_bin, ["--version", "-version"], [r"LAME\s+(?:64bits\s+)?version\s+(\d+\.\d+(?:\.\d+)*)"])
+        display_name = f"LAME MP3 {ver}" if ver else "LAME MP3"
+        return LameEncoder(display_name, l_bin, "lame", "standard")
+
+    elif encoder_type in ("exhale", "xhe", "xhe_aac", "xheaac", "usac"):
+        e_bin = binary_path or shutil.which("exhale") or get_ffmpeg_path()
+        is_ff = bool(e_bin and "ffmpeg" in os.path.basename(e_bin).lower())
+        ver = version
+        if not ver and e_bin and os.path.exists(e_bin):
+            if is_ff:
+                res = safe_run([e_bin, "-version"], capture_output=True, check=False)
+                m = re.search(r"ffmpeg version (\S+)", res.stdout or "")
+                ver = m.group(1) if m else None
+            else:
+                ver = probe_version(e_bin, ["-v", "--version", "-h", "-help"], [r"exhale\s+v?(\d+\.\d+(?:\.\d+)*)"])
+        tag = "exhale" if not is_ff else "FFmpeg"
+        display_name = f"xHE-AAC ({tag}) {ver}" if ver else f"xHE-AAC ({tag})"
+        return ExhaleEncoder(display_name, e_bin, "exhale", profile, is_ffmpeg=is_ff)
+
+    else:
+        if os.path.exists(encoder_type):
+            base = os.path.basename(encoder_type).lower()
+            if "faac" in base:
+                return get_encoder_instance("faac", binary_path=encoder_type, lib_override=lib_override, profile=profile, version=version)
+            elif "fdk" in base:
+                return get_encoder_instance("fdkaac", binary_path=encoder_type, profile=profile, version=version)
+            elif "afconvert" in base:
+                return get_encoder_instance("afconvert", binary_path=encoder_type, profile=profile, version=version)
+            else:
+                return get_encoder_instance("ffmpeg", binary_path=encoder_type, profile=profile, version=version)
+        raise ValueError(f"Unknown encoder type or invalid binary path: {encoder_type}")
+
+
+def probe_encoder_capability(encoder, bitrate_kbps=None, channels=2, sample_rate=44100):
+    if bitrate_kbps is None:
+        if encoder.profile == "hev2":
+            bitrate_kbps = 24
+        elif encoder.profile == "he":
+            bitrate_kbps = 32
+        else:
+            bitrate_kbps = 64
+    supported, reason = encoder.supports_scenario(bitrate_kbps, channels, sample_rate)
+    if not supported:
+        return False
+    with tempfile.TemporaryDirectory() as td:
+        dummy_wav = os.path.join(td, "test.wav")
+        out_file = os.path.join(td, f"test{encoder.file_ext}")
+        try:
+            with wave.open(dummy_wav, "wb") as w:
+                w.setnchannels(channels)
+                w.setsampwidth(2)
+                w.setframerate(sample_rate)
+                w.writeframes(b"\x00\x00" * sample_rate * channels)
+            cmd = encoder.get_encode_cmd(dummy_wav, out_file, bitrate_kbps, channels, sample_rate)
+            res = safe_run(cmd, env=encoder.get_run_env() or None, capture_output=True, check=False)
+            if res.returncode != 0:
+                return False
+            mux_cmd = encoder.get_mux_cmd(out_file)
+            if mux_cmd:
+                res = safe_run(mux_cmd, capture_output=True, check=False)
+                if res.returncode != 0:
+                    return False
+            return os.path.exists(out_file) and os.path.getsize(out_file) > 0
+        except Exception:
+            return False
+
+
+def detect_encoders(args):
+    encoders = []
+    existing_names = set()
+    existing_ids = set()
+
+    include_variations = getattr(args, "include_encoder_variations", False)
+    include_pns_off = getattr(args, "include_pns_off", False) or getattr(args, "pns_off", False) or include_variations
+    include_adts = getattr(args, "include_adts", False) or getattr(args, "adts_variations", False) or include_variations
+    include_faam = getattr(args, "include_faam_variations", False) or include_variations
+
+    faac_bins = flatten_arg_list(getattr(args, "faac_bin", None))
+    faac_libs = flatten_arg_list(getattr(args, "faac_lib", None))
+    faac_vers = flatten_arg_list(getattr(args, "faac_bin_version", None))
+    if not faac_bins:
+        which_faac = shutil.which("faac")
+        if which_faac:
+            faac_bins = [which_faac]
+
+    for idx, f_bin in enumerate(faac_bins):
+        f_lib = faac_libs[idx] if idx < len(faac_libs) else (faac_libs[0] if faac_libs else None)
+        legacy = is_faac_legacy(f_bin, lib_override=f_lib)
+        ver = faac_vers[idx] if idx < len(faac_vers) else None
+        if not ver:
+            ver = probe_version(f_bin, ["-H", "--help-advanced", "--help", "-h", "-v"],
+                                [r"FAAC\s+v?(\d+\.\d+(?:\.\d+)*[a-z0-9.]*(?:\s+\([^)]+\))?)",
+                                 r"version\s+(\d+\.\d+(?:\.\d+)*[a-z0-9.]*)"])
+        if not ver:
+            ver = probe_faac_version(f_bin, lib_override=f_lib)
+        if not ver and legacy:
+            ver = "1.x"
+        name, tool_id = make_unique_name_and_id("FAAC", ver, "faac", existing_names, existing_ids)
+
+        enc_lc = FAACEncoder(name, f_bin, tool_id, "lc", lib_override=f_lib)
+        if probe_encoder_capability(enc_lc):
+            encoders.append(enc_lc)
+
+        # hev2 is probed with --object-type he-aac-v2 forced, so a build without
+        # encoder-ps (which rejects it) drops out here instead of AUTO quietly
+        # encoding the probe as LC/v1.
+        if not legacy:
+            for p in ("he", "hev2"):
+                enc_p = FAACEncoder(name, f_bin, tool_id, p, lib_override=f_lib)
+                if probe_encoder_capability(enc_p):
+                    encoders.append(enc_p)
+
+        if include_pns_off:
+            for p in (("lc", "he", "hev2") if not legacy else ("lc",)):
+                enc = FAACEncoder(name + " (PNS off)", f_bin, tool_id + "_nopns", p, lib_override=f_lib, pns=False)
+                if probe_encoder_capability(enc):
+                    encoders.append(enc)
+
+        if include_adts:
+            for p in (("lc", "he", "hev2") if not legacy else ("lc",)):
+                if include_pns_off:
+                    enc = FAACEncoder(name + " (PNS off, ADTS)", f_bin, tool_id + "_nopns_adts", p, lib_override=f_lib, pns=False, adts=True)
+                else:
+                    enc = FAACEncoder(name + " (ADTS)", f_bin, tool_id + "_adts", p, lib_override=f_lib, adts=True)
+                if probe_encoder_capability(enc):
+                    encoders.append(enc)
+
+    fdkaac_bins = flatten_arg_list(getattr(args, "fdkaac_bin", None))
+    if not fdkaac_bins:
+        which_fdk = shutil.which("fdkaac")
+        if which_fdk:
+            fdkaac_bins = [which_fdk]
+
+    for f_bin in fdkaac_bins:
+        ver = probe_version(f_bin, ["-h", "--help"], [r"fdkaac\s+v?(\d+\.\d+(?:\.\d+)*)"])
+        name, tool_id = make_unique_name_and_id("fdkaac", ver, "fdkaac", existing_names, existing_ids)
+
+        for p in ["lc", "he", "hev2"]:
+            enc = FDKAACEncoder(name, f_bin, tool_id, p)
+            if probe_encoder_capability(enc):
+                encoders.append(enc)
+
+        if include_adts:
+            # fdkaac's HE profiles are PNS-free, so they are the streams that
+            # gate the ADTS path.
+            for p in ("he", "hev2"):
+                enc = FDKAACEncoder(name + " (ADTS)", f_bin, tool_id + "_adts", p, signaling="adts")
+                if probe_encoder_capability(enc):
+                    encoders.append(enc)
+
+        if include_faam:
+            faam_bin = getattr(args, "faam_bin", None) or shutil.which("faam")
+            if faam_bin:
+                for p, sig in (("he", "none"), ("he", "explicit"), ("hev2", "ps-explicit")):
+                    label = {"none": "implicit SBR", "explicit": "explicit SBR", "ps-explicit": "explicit PS"}[sig]
+                    enc = FDKAACEncoder(f"{name} (faam, {label})", f_bin, f"{tool_id}_faam_{sig.replace('-', '_')}", p,
+                                        signaling=sig, faam_bin=faam_bin)
+                    if probe_encoder_capability(enc):
+                        encoders.append(enc)
+
+    aac_enc_bins = flatten_arg_list(getattr(args, "aac_enc_bin", None))
+    if not aac_enc_bins:
+        which_aacenc = shutil.which("aac-enc")
+        if which_aacenc:
+            aac_enc_bins = [which_aacenc]
+
+    if not fdkaac_bins:
+        for a_bin in aac_enc_bins:
+            ver = probe_version(a_bin, ["-h", "--help", "-v"], [r"aac-enc\s+v?(\d+\.\d+(?:\.\d+)*)"])
+            name, tool_id = make_unique_name_and_id("aac-enc", ver, "aac_enc", existing_names, existing_ids)
+
+            for p in ["lc", "he", "hev2"]:
+                enc = AACEncEncoder(name, a_bin, tool_id, p)
+                if probe_encoder_capability(enc):
+                    encoders.append(enc)
+
+    falabaac_bins = flatten_arg_list(getattr(args, "falabaac_bin", None))
+    if not falabaac_bins:
+        which_fala = shutil.which("falabaac")
+        if which_fala:
+            falabaac_bins = [which_fala]
+
+    for f_bin in falabaac_bins:
+        ver = probe_version(f_bin, ["-h", "--help", "-v"], [r"falabaac\s+v?(\d+\.\d+(?:\.\d+)*)"])
+        name, tool_id = make_unique_name_and_id("falabaac", ver, "falabaac", existing_names, existing_ids)
+        enc = FalabaacEncoder(name, f_bin, tool_id, "lc")
+        if probe_encoder_capability(enc):
+            encoders.append(enc)
+
+    ffmpeg_bin = getattr(args, "ffmpeg_bin", None) or get_ffmpeg_path()
+    if ffmpeg_bin and os.path.exists(ffmpeg_bin):
+        res = safe_run([ffmpeg_bin, "-version"], capture_output=True, check=False)
+        m = re.search(r"ffmpeg version (\S+)", res.stdout)
+        ffmpeg_ver = m.group(1) if m else None
+
+        res_codecs = safe_run([ffmpeg_bin, "-codecs"], capture_output=True, check=False)
+        has_native_aac = bool(re.search(r"^\s*[A-Z.]*E[A-Z.]*\s+aac\b", res_codecs.stdout, re.M)) or (" aac " in res_codecs.stdout)
+        has_libfdk = "libfdk_aac" in res_codecs.stdout
+
+        if has_native_aac:
+            res_encoders = safe_run([ffmpeg_bin, "-h", "encoder=aac"], capture_output=True, check=False)
+            has_nmr = bool(re.search(r"\bnmr\b", res_encoders.stdout, re.IGNORECASE))
+            disp_name = f"FFmpeg AAC {ffmpeg_ver} (NMR experimental)" if has_nmr else f"FFmpeg AAC {ffmpeg_ver}" if ffmpeg_ver else "FFmpeg AAC"
+            name, tool_id = make_unique_name_and_id(disp_name, None, "ffmpeg_aac", existing_names, existing_ids)
+            enc_lc = FFmpegEncoder(name, ffmpeg_bin, tool_id, "lc")
+            if probe_encoder_capability(enc_lc):
+                encoders.append(enc_lc)
+
+            if include_pns_off:
+                enc = FFmpegEncoder(name + " (PNS off)", ffmpeg_bin, tool_id + "_nopns", "lc", pns=False)
+                if probe_encoder_capability(enc):
+                    encoders.append(enc)
+
+            if include_adts:
+                if include_pns_off:
+                    enc = FFmpegEncoder(name + " (PNS off, ADTS)", ffmpeg_bin, tool_id + "_nopns_adts", "lc", pns=False, adts=True)
+                else:
+                    enc = FFmpegEncoder(name + " (ADTS)", ffmpeg_bin, tool_id + "_adts", "lc", adts=True)
+                if probe_encoder_capability(enc):
+                    encoders.append(enc)
+
+        if has_libfdk:
+            ver_label = hosted_codec_ver(ffmpeg_bin, "libfdk-aac", ffmpeg_ver)
+            base_name = f"FFmpeg libfdk-aac {ver_label}" if ver_label else "FFmpeg libfdk-aac"
+            name, tool_id = make_unique_name_and_id(base_name, None, "ffmpeg_libfdk", existing_names, existing_ids)
+            for p in ["lc", "he", "hev2"]:
+                enc = FFmpegEncoder(name, ffmpeg_bin, tool_id, p)
+                if probe_encoder_capability(enc):
+                    encoders.append(enc)
+
+    afconvert_bin = getattr(args, "afconvert_bin", None) or shutil.which("afconvert")
+    if afconvert_bin and os.path.exists(afconvert_bin):
+        ver = probe_version(afconvert_bin, ["-h"], [r"afconvert\s+version\s+(\d+\.\d+(?:\.\d+)*)", r"version\s+(\d+\.\d+(?:\.\d+)*)"])
+        if not ver and sys.platform == "darwin":
+            try:
+                import platform
+                mac_v = platform.mac_ver()[0]
+                if mac_v:
+                    ver = mac_v
+            except Exception:
+                pass
+        name, tool_id = make_unique_name_and_id("Apple AAC", ver, "afconvert", existing_names, existing_ids)
+        for p in ["lc", "he", "hev2"]:
+            enc = AFConvertEncoder(name, afconvert_bin, tool_id, p)
+            if probe_encoder_capability(enc):
+                encoders.append(enc)
+
+    if getattr(args, "include_other_codecs", False):
+        opusenc_bin = getattr(args, "opusenc_bin", None) or shutil.which("opusenc") or ffmpeg_bin
+        if opusenc_bin and os.path.exists(opusenc_bin):
+            ver = probe_version(opusenc_bin, ["-V", "--version", "-version"], [r"opusenc\s+[\w\s.-]+\s+v?(\d+\.\d+(?:\.\d+)*)"])
+            if not ver and ffmpeg_ver:
+                ver = hosted_codec_ver(opusenc_bin, "libopus", ffmpeg_ver)
+            name, tool_id = make_unique_name_and_id("Opus", ver, "opus", existing_names, existing_ids)
+            enc = OpusEncoder(name, opusenc_bin, tool_id, "standard")
+            if probe_encoder_capability(enc, bitrate_kbps=64):
+                encoders.append(enc)
+
+        lame_bin = getattr(args, "lame_bin", None) or shutil.which("lame") or ffmpeg_bin
+        if lame_bin and os.path.exists(lame_bin):
+            ver = probe_version(lame_bin, ["--version", "-version"], [r"LAME\s+(?:64bits\s+)?version\s+(\d+\.\d+(?:\.\d+)*)"])
+            if not ver and ffmpeg_ver:
+                ver = hosted_codec_ver(lame_bin, "libmp3lame", ffmpeg_ver)
+            name, tool_id = make_unique_name_and_id("LAME MP3", ver, "lame", existing_names, existing_ids)
+            enc = LameEncoder(name, lame_bin, tool_id, "standard")
+            if probe_encoder_capability(enc, bitrate_kbps=128):
+                encoders.append(enc)
+
+        exhale_bin = getattr(args, "exhale_bin", None) or getattr(args, "xhe_bin", None) or shutil.which("exhale")
+        if exhale_bin and os.path.exists(exhale_bin):
+            ver = probe_version(exhale_bin, ["-v", "--version", "-h", "-help"], [r"exhale\s+v?(\d+\.\d+(?:\.\d+)*)"])
+            name, tool_id = make_unique_name_and_id("xHE-AAC (exhale)", ver, "exhale", existing_names, existing_ids)
+            enc = ExhaleEncoder(name, exhale_bin, tool_id, "standard", is_ffmpeg=False)
+            if probe_encoder_capability(enc, bitrate_kbps=48):
+                encoders.append(enc)
+        elif ffmpeg_bin and os.path.exists(ffmpeg_bin):
+            res_codecs = safe_run([ffmpeg_bin, "-codecs"], capture_output=True, check=False)
+            if "libmpeghdec" in (res_codecs.stdout or "") or "xhe_aac" in (res_codecs.stdout or ""):
+                name, tool_id = make_unique_name_and_id("xHE-AAC (FFmpeg)", ffmpeg_ver, "exhale_ffmpeg", existing_names, existing_ids)
+                enc = ExhaleEncoder(name, ffmpeg_bin, tool_id, "standard", is_ffmpeg=True)
+                if probe_encoder_capability(enc, bitrate_kbps=48):
+                    encoders.append(enc)
+
+    return encoders

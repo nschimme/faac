@@ -1,0 +1,1358 @@
+"""
+ * FAAC Benchmark Suite - Utilities
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+"""
+
+import os
+import subprocess
+import hashlib
+import json
+import sys
+import re
+import shutil
+import tempfile
+import time
+import math
+import threading
+import concurrent.futures
+from functools import lru_cache
+
+import numpy as np
+
+
+class WorkerPool(concurrent.futures.ProcessPoolExecutor):
+    """ProcessPoolExecutor that tears its workers down if the block exits on an exception.
+
+    The stock __exit__ waits for every queued task, and a second Ctrl-C during
+    that wait abandons the workers as orphans (PPID 1) that keep running.
+    """
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is not None:
+            procs = list((getattr(self, "_processes", None) or {}).values())
+            self.shutdown(wait=False, cancel_futures=True)
+            for proc in procs:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            for proc in procs:
+                try:
+                    proc.join(timeout=5)
+                except Exception:
+                    pass
+            return False
+        return super().__exit__(exc_type, exc, tb)
+
+
+def _exit_when_orphaned(parent_pid):
+    while os.getppid() == parent_pid:
+        time.sleep(2)
+    os._exit(1)
+
+
+def start_orphan_watchdog():
+    """Pool-worker initializer step: exit if the parent dies (SIGKILL, closed terminal)."""
+    threading.Thread(target=_exit_when_orphaned, args=(os.getppid(),), daemon=True).start()
+
+def safe_run(cmd, env=None, capture_output=True, check=True, shell=False):
+    """Safe wrapper for subprocess.run."""
+    try:
+        return subprocess.run(
+            cmd,
+            env=env,
+            capture_output=capture_output,
+            check=check,
+            text=True,
+            shell=shell
+        )
+    except subprocess.CalledProcessError as e:
+        if capture_output:
+            print(f"Command failed: {' '.join(cmd)}")
+            if e.stdout:
+                print(f"STDOUT: {e.stdout}")
+            if e.stderr:
+                print(f"STDERR: {e.stderr}")
+        raise e
+
+def sanitize_m4a_encoder_tag(data):
+    """Normalizes variable FAAC version strings in the ©too MP4 metadata atom while preserving exact container bytes and file length."""
+    if not isinstance(data, (bytes, bytearray)):
+        return data
+
+    def replace_fn(match):
+        s = match.group(2)
+        prefix = match.group(0)[:match.start(2) - match.start(0)]
+        return prefix + b"FAAC " + b"0" * max(0, len(s) - 5)
+
+    pattern = rb"(\x29too|\xa9too)[\s\S]{1,64}?(FAAC [a-zA-Z0-9.\-_\s()/:=]+)"
+    return re.sub(pattern, replace_fn, data)
+
+
+def get_file_hash(path, algo="md5"):
+    """Calculates the hash of a file, normalizing dynamic FAAC encoder version tags for M4A containers."""
+    if not os.path.exists(path):
+        return ""
+
+    if algo == "md5":
+        hasher = hashlib.md5()
+        with open(path, "rb") as f:
+            data = f.read()
+
+        if path.lower().endswith((".m4a", ".mp4", ".aac")):
+            data = sanitize_m4a_encoder_tag(data)
+
+        hasher.update(data)
+        return hasher.hexdigest()
+
+    elif algo == "sha256":
+        hasher = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    else:
+        raise ValueError(f"Unsupported algorithm: {algo}")
+
+def get_binary_size(path):
+    if os.path.exists(path):
+        return os.path.getsize(path)
+    return 0
+
+def is_system_library(path):
+    """Checks if a library path belongs to a system directory."""
+    if not path:
+        return False
+    if sys.platform == "darwin":
+        system_prefixes = ["/System/", "/usr/lib/libSystem", "/usr/lib/system/"]
+        return any(path.startswith(prefix) for prefix in system_prefixes)
+    return False
+
+def flatten_arg_list(arg_val):
+    """Flattens a string or list argument value into a list of strings split by commas."""
+    if not arg_val:
+        return []
+    if isinstance(arg_val, str):
+        arg_val = [arg_val]
+    res = []
+    for item in arg_val:
+        for p in item.split(","):
+            p = p.strip()
+            if p and p not in res:
+                res.append(p)
+    return res
+
+def probe_version(bin_path, flag_list, patterns, env=None):
+    """Probes a binary by running it with candidate flags and matching output against regex patterns."""
+    if not bin_path or not os.path.exists(bin_path):
+        return None
+    for flag in flag_list:
+        try:
+            cmd = [bin_path, flag] if flag else [bin_path]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=5, env=env)
+            text = (res.stdout or "") + "\n" + (res.stderr or "")
+            for p in patterns:
+                m = re.search(p, text, re.IGNORECASE)
+                if m:
+                    return m.group(1).strip()
+        except Exception:
+            pass
+    return None
+
+def make_unique_name_and_id(base_name, version, base_id, existing_names, existing_ids):
+    """Generates unique display name and sanitized tool ID."""
+    display_name = f"{base_name} {version}" if version else base_name
+    candidate_name = display_name
+    idx = 2
+    while candidate_name in existing_names:
+        candidate_name = f"{display_name} (#{idx})"
+        idx += 1
+    existing_names.add(candidate_name)
+
+    sanitized_id = re.sub(r"[^a-zA-Z0-9_]", "_", candidate_name.lower())
+    candidate_id = sanitized_id
+    idx = 2
+    while candidate_id in existing_ids:
+        candidate_id = f"{sanitized_id}_{idx}"
+        idx += 1
+    existing_ids.add(candidate_id)
+
+    return candidate_name, candidate_id
+
+def format_size(bytes_val):
+    """Formats bytes into human readable B / KB / MB representation."""
+    if bytes_val is None or bytes_val == 0:
+        return "0 B"
+    if bytes_val < 1024:
+        return f"{bytes_val} B"
+    if bytes_val < 1024 * 1024:
+        return f"{bytes_val / 1024:.1f} KB"
+    return f"{bytes_val / (1024 * 1024):.1f} MB"
+
+def make_progress_bar(val, max_val=1.0, width=8, lower_is_better=False):
+    """Generates an ASCII progress bar (e.g. ' ████░░░░')."""
+    if val is None or max_val <= 0:
+        return ""
+    ratio = max(0.0, min(1.0, val / max_val))
+    if lower_is_better:
+        ratio = 1.0 - ratio
+    filled = int(round(ratio * width))
+    return " " + "█" * filled + "░" * (width - filled)
+
+def zoomed_y_range(vals, y_range):
+    """Calculates a zoomed min/max y-axis range for Mermaid charts based on actual values."""
+    y_floor, y_ceiling = (float(x) for x in y_range.split("-->"))
+    if not vals:
+        return y_floor, y_ceiling
+    lo, hi = min(vals), max(vals)
+    pad = max((hi - lo) * 0.1, (y_ceiling - y_floor) * 0.02)
+    axis_lo, axis_hi = max(y_floor, lo - pad), min(y_ceiling, hi + pad)
+    if axis_hi - axis_lo < 1e-6:
+        axis_lo, axis_hi = y_floor, y_ceiling
+    return axis_lo, axis_hi
+
+# Codec delay is a few thousand samples; a search wider than this lets a repeat
+# of periodic music outscore the true alignment when the decode is noisy.
+MAX_LAG_S = 0.25
+
+
+def lag_window(n_search, sr, max_lag_s=MAX_LAG_S):
+    """Lags (samples) of a full cross-correlation of n_search samples, and the mask of those within max_lag_s."""
+    lags = np.arange(2 * n_search - 1) - (n_search - 1)
+    return lags, np.abs(lags) <= int(max_lag_s * sr)
+
+
+def best_lag(corr, n_search, sr):
+    """The lag of the tallest correlation peak within the codec-delay window."""
+    lags, near = lag_window(n_search, sr)
+    return int(lags[near][np.argmax(corr[near])])
+
+
+def measure_delay_offset(ref_wav_path, cand_wav_path):
+    """Measures sample alignment timing offset (in ms) relative to reference WAV.
+
+    Returns (lag_samples, lag_ms) or (None, None) on failure.
+    Positive lag means decoded audio starts later than reference.
+    """
+    try:
+        import soundfile as sf
+        import scipy.signal
+
+        if os.path.exists(ref_wav_path) and os.path.exists(cand_wav_path):
+            if os.path.getsize(ref_wav_path) == os.path.getsize(cand_wav_path):
+                if get_file_hash(ref_wav_path) == get_file_hash(cand_wav_path):
+                    return 0, 0.0
+
+        r_data, r_sr = sf.read(ref_wav_path, dtype='float32', always_2d=True)
+        c_data, c_sr = sf.read(cand_wav_path, dtype='float32', always_2d=True)
+
+        if r_sr != c_sr:
+            return None, None
+
+        r_mono = r_data.mean(axis=1)
+        c_mono = c_data.mean(axis=1)
+
+        n_search = min(len(r_mono), len(c_mono), r_sr * 3)
+        if n_search == 0:
+            return None, None
+
+        r_norm = r_mono[:n_search] / (np.std(r_mono[:n_search]) + 1e-10)
+        c_norm = c_mono[:n_search] / (np.std(c_mono[:n_search]) + 1e-10)
+        corr = scipy.signal.correlate(r_norm, c_norm, mode='full')
+        lag = best_lag(corr, n_search, r_sr)
+        lag_ms = (lag / float(r_sr)) * 1000.0
+        return lag, float(lag_ms)
+    except Exception:
+        return None, None
+
+def measure_peak_ram(cmd, env=None, check=False, timeout=30):
+    """Runs a command in an isolated child process to accurately measure peak Resident Set Size (Max RSS in KB).
+
+    Returns (CompletedProcess, duration, max_rss_kb).
+    """
+    t_start = time.perf_counter()
+    try:
+        if sys.platform != "win32":
+            # Spawn a clean sub-runner python process so RUSAGE_CHILDREN measures only this single process
+            runner_script = (
+                "import subprocess, resource, sys, time\n"
+                "timeout_val = float(sys.argv[1]) if len(sys.argv) > 1 else None\n"
+                "cmd = sys.argv[2:]\n"
+                "t0 = time.perf_counter()\n"
+                "try:\n"
+                "    res = subprocess.run(cmd, capture_output=True, timeout=timeout_val)\n"
+                "    t1 = time.perf_counter()\n"
+                "    ret = res.returncode\n"
+                "    out, err = res.stdout, res.stderr\n"
+                "except subprocess.TimeoutExpired:\n"
+                "    t1 = time.perf_counter()\n"
+                "    ret = 124\n"
+                "    out, err = b'', b'Command timed out'\n"
+                "rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss\n"
+                "if sys.platform == 'darwin':\n"
+                "    rss = int(rss / 1024)\n"
+                "dur = t1 - t0\n"
+                "sys.stderr.buffer.write(f'__RSS__:{rss}\\n__DUR__:{dur:.8f}\\n__RET__:{ret}\\n'.encode())\n"
+                "sys.stderr.buffer.flush()\n"
+                "sys.stdout.buffer.write(out)\n"
+                "sys.stderr.buffer.write(err)\n"
+                "sys.exit(0)\n"
+            )
+            runner_cmd = [sys.executable, "-c", runner_script, str(timeout)] + cmd
+            proc = subprocess.run(runner_cmd, capture_output=True, env=env, timeout=timeout + 5)
+            t_end = time.perf_counter()
+            duration = t_end - t_start
+
+            rss = None
+            proc_dur = None
+            proc_ret = 0
+            stderr_clean = []
+            for line in proc.stderr.splitlines():
+                if line.startswith(b"__RSS__:"):
+                    try:
+                        rss = int(line.split(b":", 1)[1].strip())
+                    except Exception:
+                        pass
+                elif line.startswith(b"__DUR__:"):
+                    try:
+                        proc_dur = float(line.split(b":", 1)[1].strip())
+                    except Exception:
+                        pass
+                elif line.startswith(b"__RET__:"):
+                    try:
+                        proc_ret = int(line.split(b":", 1)[1].strip())
+                    except Exception:
+                        pass
+                else:
+                    stderr_clean.append(line)
+
+            if proc_dur is not None:
+                duration = proc_dur
+
+            clean_stderr = b"\n".join(stderr_clean)
+            res = subprocess.CompletedProcess(cmd, returncode=proc_ret, stdout=proc.stdout, stderr=clean_stderr)
+            if check and res.returncode != 0:
+                raise subprocess.CalledProcessError(res.returncode, cmd, output=res.stdout, stderr=res.stderr)
+            return res, duration, rss
+        else:
+            res = subprocess.run(cmd, capture_output=True, check=check, env=env)
+            t_end = time.perf_counter()
+            return res, t_end - t_start, None
+    except Exception as e:
+        t_end = time.perf_counter()
+        if check and isinstance(e, subprocess.CalledProcessError):
+            raise e
+        dummy_res = subprocess.CompletedProcess(cmd, returncode=-1, stdout=b"", stderr=str(e).encode())
+        return dummy_res, t_end - t_start, None
+
+def corrupt_adts_bitstream(input_path, output_path, seed=42):
+    """Deterministically corrupts an audio bitstream file (ADTS .aac or MP4 .m4a).
+
+    Emulates frame/packet drops (5% probability) and bit flips in audio payloads
+    using a fixed seed PRNG for 100% reproducible robustness tests.
+    """
+    import random
+    rng = random.Random(seed)
+
+    if not os.path.exists(input_path):
+        return False
+
+    with open(input_path, "rb") as f:
+        data = bytearray(f.read())
+
+    if len(data) < 14:
+        with open(output_path, "wb") as f:
+            f.write(data)
+        return False
+
+    out_data = bytearray()
+    i = 0
+    n = len(data)
+
+    # Check if file starts with ADTS syncword (0xFFF)
+    is_adts = (data[0] == 0xFF and (data[1] & 0xF6) == 0xF0)
+
+    if is_adts:
+        while i < n:
+            if i + 7 <= n and data[i] == 0xFF and (data[i + 1] & 0xF6) == 0xF0:
+                flen = ((data[i + 3] & 3) << 11) | (data[i + 4] << 3) | (data[i + 5] >> 5)
+                if flen <= 0 or i + flen > n:
+                    out_data.extend(data[i:])
+                    break
+
+                frame_data = bytearray(data[i:i + flen])
+
+                # Deterministic 5% frame drop rate
+                if rng.random() < 0.05:
+                    i += flen
+                    continue
+
+                # Deterministic bit flips in payload (beyond ADTS header)
+                header_len = 7 if (data[i + 1] & 1) else 9
+                if len(frame_data) > header_len:
+                    for idx in range(header_len, len(frame_data)):
+                        if rng.random() < 0.02:  # 2% byte corruption
+                            frame_data[idx] ^= rng.randint(1, 255)
+
+                out_data.extend(frame_data)
+                i += flen
+            else:
+                out_data.append(data[i])
+                i += 1
+    else:
+        # M4A / MP4 container or general bitstream: preserve container header offset (~512 bytes)
+        header_offset = min(512, n // 10)
+        out_data.extend(data[:header_offset])
+
+        # Apply deterministic bit flips and payload truncations
+        payload = bytearray(data[header_offset:])
+        chunk_size = 512
+        for offset in range(0, len(payload), chunk_size):
+            chunk = payload[offset:offset + chunk_size]
+            if rng.random() < 0.05:  # 5% chunk drop
+                continue
+            for idx in range(len(chunk)):
+                if rng.random() < 0.01:  # 1% byte corruption
+                    chunk[idx] ^= rng.randint(1, 255)
+            out_data.extend(chunk)
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    with open(output_path, "wb") as f:
+        f.write(out_data)
+
+    return True
+
+def compute_snr(ref_wav_path, cand_wav_path):
+    """Computes Signal-to-Noise Ratio (SNR in dB) between reference WAV and candidate decoded WAV.
+
+    Returns SNR in dB (or None on failure / sample mismatch).
+    Bit-exact decodes return float('inf').
+    """
+    try:
+        import soundfile as sf
+        import scipy.signal
+
+        r_data, r_sr = sf.read(ref_wav_path, dtype='float32', always_2d=True)
+        c_data, c_sr = sf.read(cand_wav_path, dtype='float32', always_2d=True)
+
+        if r_sr != c_sr:
+            # A decoder may emit a different rate (e.g. FAAD2 upsamples low-rate
+            # LC on an implicit-SBR guess); compare at the reference rate.
+            from math import gcd
+            g = gcd(r_sr, c_sr)
+            c_data = scipy.signal.resample_poly(c_data, r_sr // g, c_sr // g, axis=0).astype('float32')
+
+        # Cross-correlate mono downmix to align priming delay offsets
+        r_mono = r_data.mean(axis=1)
+        c_mono = c_data.mean(axis=1)
+
+        n_search = min(len(r_mono), len(c_mono), r_sr * 3)
+        if n_search == 0:
+            return None
+
+        r_norm = r_mono[:n_search] / (np.std(r_mono[:n_search]) + 1e-10)
+        c_norm = c_mono[:n_search] / (np.std(c_mono[:n_search]) + 1e-10)
+        corr = scipy.signal.correlate(r_norm, c_norm, mode='full')
+
+        def _align(lag):
+            if lag < 0:
+                return r_data[:len(r_data) + lag], c_data[-lag:]
+            if lag > 0:
+                return r_data[lag:], c_data[:len(c_data) - lag]
+            return r_data, c_data
+
+        # On loud periodic/tonal clips (e.g. the 5.1 channel-ID tones) the
+        # correlation has many near-equal peaks and the tallest is often a
+        # wrong lag, so pick among the top peaks by actual residual.
+        lags, near = lag_window(n_search, r_sr)
+        corr = np.where(near, corr, -np.inf)
+        n_peaks = min(32, len(corr))
+        best_lag, best_err = None, None
+        for idx in np.argpartition(corr, -n_peaks)[-n_peaks:]:
+            ra, ca = _align(int(idx) - (n_search - 1))
+            m = min(len(ra), len(ca))
+            if m <= 0:
+                continue
+            err = float(np.mean((ra[:m] - ca[:m]) ** 2))
+            if best_err is None or err < best_err:
+                best_lag, best_err = int(idx) - (n_search - 1), err
+        if best_lag is None:
+            return None
+
+        r_aligned, c_aligned = _align(best_lag)
+        n = min(len(r_aligned), len(c_aligned))
+        r_aligned = r_aligned[:n]
+        c_aligned = c_aligned[:n]
+
+        ref_power = float(np.mean(r_aligned ** 2))
+        err_power = float(np.mean((r_aligned - c_aligned) ** 2))
+
+        if err_power < 1e-12:
+            return float('inf')
+        if ref_power < 1e-12:
+            return 0.0
+
+        snr = 10.0 * math.log10(ref_power / err_power)
+        return float(snr)
+    except Exception:
+        return None
+
+def resolve_wrapper_target(path):
+    """If path is a shell wrapper script (e.g. one scripts/build_faac_matrix.sh
+    writes to fix up a dylib search path before exec'ing the real binary),
+    resolve to that real binary -- otherwise footprint measurement reads the
+    wrapper's own few-hundred-byte size instead of the thing it runs.
+    Anything that isn't such a wrapper is returned unchanged."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(4096)
+    except OSError:
+        return path
+    if not head.startswith(b"#!"):
+        return path
+    m = re.search(rb'exec\s+"([^"]+)"', head)
+    if m:
+        target = m.group(1).decode("utf-8", errors="replace")
+        if os.path.exists(target):
+            return target
+    return path
+
+def find_linked_lib(binary_path, name_substr):
+    """Resolve the on-disk path of a shared library linked into binary_path."""
+    try:
+        if sys.platform == "darwin":
+            res = subprocess.run(["otool", "-L", binary_path], capture_output=True, text=True, check=True)
+            for line in res.stdout.splitlines():
+                line = line.strip()
+                if name_substr in line:
+                    lib_path = line.split(" ")[0]
+                    if os.path.exists(lib_path):
+                        return lib_path
+        else:
+            res = subprocess.run(["ldd", binary_path], capture_output=True, text=True, check=True)
+            for line in res.stdout.splitlines():
+                if name_substr in line and "=>" in line:
+                    lib_path = line.split("=>")[1].strip().split(" ")[0]
+                    if lib_path and os.path.exists(lib_path):
+                        return lib_path
+    except Exception:
+        pass
+    return None
+
+def hosted_codec_ver(ff_bin, lib_substr, ffmpeg_ver):
+    """Version label for a third-party codec FFmpeg hosts (libopus,
+    libmp3lame, libfdk-aac, vo-aacenc): ffmpeg -version never reports it, so
+    prefer the real library version recovered from its on-disk path
+    (guess_lib_version_from_path), falling back to labeling the version as
+    ffmpeg's explicitly -- rather than a bare number that would otherwise
+    look like the codec's own -- when that's not recoverable (no Homebrew
+    Cellar segment, no dpkg)."""
+    real_ver = guess_lib_version_from_path(find_linked_lib(ff_bin, lib_substr))
+    return real_ver if real_ver else (f"(ffmpeg {ffmpeg_ver})" if ffmpeg_ver else None)
+
+def guess_lib_version_from_path(lib_path):
+    """Best-effort real version of a linked shared library.
+
+    macOS/Homebrew: resolving symlinks reveals a .../Cellar/<pkg>/<version>/
+    segment (find_linked_lib's path is typically the opt/ symlink, e.g.
+    /opt/homebrew/opt/opus/lib/libopus.0.dylib, not the versioned Cellar
+    path it points to). Debian/Ubuntu (this project's CI): no version in
+    the path itself, but dpkg knows which package installed the file and
+    that package's real version. None if neither applies."""
+    if not lib_path:
+        return None
+    real = os.path.realpath(lib_path)
+    m = re.search(r"/Cellar/[^/]+/([0-9][\w.\-]*)/", real)
+    if m:
+        return m.group(1)
+    try:
+        owner = subprocess.run(["dpkg", "-S", real], capture_output=True, text=True, timeout=5)
+        if owner.returncode == 0 and owner.stdout:
+            pkg = owner.stdout.split(":", 1)[0].strip()
+            if pkg:
+                ver = subprocess.run(["dpkg-query", "-W", "-f=${Version}", pkg], capture_output=True, text=True, timeout=5)
+                if ver.returncode == 0 and ver.stdout.strip():
+                    return ver.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+def is_faac_legacy(faac_path, lib_override=None):
+    """Check if faac binary is legacy 1.XX (lacks --object-type support)."""
+    if not faac_path:
+        return False
+    env = None
+    if lib_override:
+        env = dict(os.environ)
+        abs_lib = os.path.abspath(lib_override)
+        lib_dir = os.path.dirname(abs_lib)
+        if sys.platform == "darwin":
+            env["DYLD_LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("DYLD_LIBRARY_PATH", "")
+            env["DYLD_INSERT_LIBRARIES"] = abs_lib
+        else:
+            env["LD_LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("LD_LIBRARY_PATH", "")
+            env["LD_PRELOAD"] = (abs_lib + " " + env.get("LD_PRELOAD", "")).strip()
+
+    for help_flag in ["-H", "--help-advanced", "--help", "-h"]:
+        try:
+            res = safe_run([faac_path, help_flag], capture_output=True, check=False, env=env)
+            stdout_stderr = (res.stdout or "") + (res.stderr or "")
+            if "--object-type" in stdout_stderr:
+                return False
+        except Exception:
+            pass
+
+    lib_path = lib_override or find_linked_lib(faac_path, "libfaac")
+    if lib_path and "libfaac.so.0" in lib_path:
+        return True
+
+    return True
+
+def get_elf_section_sizes(path):
+    """.text/.rodata/.bss/.data, always four keys, zero when unreadable.
+
+    Thin wrapper over get_section_sizes so there is exactly one section reader.
+    The previous implementation was Linux-only and, whenever it could not read
+    sections -- macOS, a missing tool, a non-ELF file -- reported the whole file
+    size as "text". That is the number a section sum exists to avoid: it moves
+    with symbol tables and padding, so a caller comparing it would see phantom
+    changes and, worse, could not tell a real .text delta from one.
+
+    Now it reports zeros instead, and callers that need a number when sections
+    are unavailable fall back explicitly and visibly.
+    """
+    sizes = {"text": 0, "rodata": 0, "bss": 0, "data": 0}
+    if not path:
+        return sizes
+    sizes.update(get_section_sizes(path))
+    return sizes
+
+
+# Whole-file size moves for reasons unrelated to code: symbol tables, .eh_frame,
+# build IDs, section padding. Section sums do not, which is what makes them
+# gateable. .rodata is in the sum because the next footprint regression is as
+# likely to be a lookup table as a loop.
+_SECTION_ALIASES = {
+    "__text": "text", ".text": "text",
+    "__const": "rodata", ".rodata": "rodata", "__cstring": "rodata",
+    "__data": "data", ".data": "data",
+    "__bss": "bss", ".bss": "bss", "__common": "bss",
+}
+
+
+def get_section_sizes(path):
+    """Per-section byte counts, normalized across GNU and BSD size(1).
+
+    Returns {} when the sizes cannot be read -- a caller that gates on these
+    must treat an empty dict as "skip, loudly", never as "no change".
+    """
+    if not os.path.exists(path):
+        return {}
+
+    out = None
+    # GNU binutils (Linux CI). -A prints "section size addr" per line.
+    r = subprocess.run(["size", "-A", path], capture_output=True, text=True)
+    if r.returncode == 0:
+        out = [(f[0], f[1]) for f in
+               (ln.split() for ln in r.stdout.splitlines())
+               if len(f) >= 2 and f[1].isdigit()]
+    else:
+        # BSD size (macOS). -m prints "Section __text: 71800" for a linked
+        # image but "Section (__TEXT, __text): 8024" for a relocatable object.
+        r = subprocess.run(["size", "-m", path], capture_output=True, text=True)
+        if r.returncode != 0:
+            return {}
+        out = re.findall(r"Section\s+(?:\([^,]+,\s*)?(__\w+)\)?:\s+(\d+)",
+                         r.stdout)
+
+    sizes = {}
+    for name, size in out:
+        key = _SECTION_ALIASES.get(name)
+        if key:
+            sizes[key] = sizes.get(key, 0) + int(size)
+
+    if not sizes:
+        # Berkeley format: a "text data bss dec hex" header then one row. No
+        # .rodata column -- its bytes are folded into text -- so this is a
+        # last resort for toolchains whose size(1) understands neither -A nor -m.
+        r = subprocess.run(["size", path], capture_output=True, text=True)
+        if r.returncode == 0:
+            lines = r.stdout.splitlines()
+            if len(lines) >= 2:
+                parts = lines[1].split()
+                if len(parts) >= 3 and all(p.lstrip("-").isdigit() for p in parts[:3]):
+                    sizes = {"text": int(parts[0]), "data": int(parts[1]),
+                             "bss": int(parts[2])}
+    return sizes
+
+
+def get_object_sizes(build_dir, target="libfaac"):
+    """Per-object .text, so "the library grew" becomes "frame.c.o grew".
+
+    Ungated context only. Finding the +13.9% regression of f94a81a8 took a
+    manual bisection over nine commits; this is the one number that would have
+    named the file directly.
+    """
+    if not build_dir or not os.path.isdir(build_dir):
+        return {}
+
+    sizes = {}
+    for root, _, files in os.walk(build_dir):
+        stem = os.path.basename(root)
+        if target not in stem:
+            continue
+        for f in files:
+            if not f.endswith(".o"):
+                continue
+            sec = get_section_sizes(os.path.join(root, f))
+            if sec.get("text"):
+                # Keyed by target too: the shared library is LTO'd, so its .p
+                # holds a single fused lto.o and only the static archive's .p
+                # attributes .text to a source file.
+                sizes[f"{stem}/{f}"] = sec["text"]
+    return sizes
+
+
+def _boot_session():
+    """Something that changes when the machine or its boot changes.
+
+    Best effort: a degraded value costs a skipped gate, which is the safe
+    direction. Never let this raise -- it runs on every benchmark.
+
+    Linux and macOS get a real boot identifier. Anywhere else this degrades to
+    the hostname, which still separates two machines -- the case that actually
+    corrupted comparisons here -- but not two boots of one machine. Good enough
+    while CI is Linux; revisit if a Windows runner ever gates throughput.
+    """
+    import platform
+    try:
+        with open("/proc/sys/kernel/random/boot_id") as f:
+            return f.read().strip()
+    except Exception:
+        pass
+    try:
+        r = subprocess.run(["sysctl", "-n", "kern.boottime"],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return f"{platform.node()}:{r.stdout.strip()}"
+    except Exception:
+        pass
+    return platform.node() or "unknown"
+
+
+def get_host_fp():
+    """Identity of the machine *instance* that produced the timings.
+
+    CPU model is not enough. A hosted CI fleet runs many identical VMs, and the
+    baseline JSON -- timing samples included -- is restored from cache, so a
+    candidate measured now can be compared against a baseline measured days ago
+    on a different physical machine that merely shared a model name. That
+    comparison produced 3% deltas on encodes verified bit-identical.
+
+    So the fingerprint carries a boot session, which is unique per machine boot.
+    Two runs that did not happen on the same booted host will not match, and the
+    throughput gate skips rather than reporting the difference between two
+    machines as a code change.
+    """
+    import platform
+    fp = {
+        "system": platform.system(),
+        "machine": platform.machine(),
+        "cpus": str(os.cpu_count() or 0),
+        "session": _boot_session(),
+    }
+    try:
+        if platform.system() == "Darwin":
+            r = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
+                               capture_output=True, text=True)
+            if r.returncode == 0:
+                fp["cpu"] = r.stdout.strip()
+        else:
+            with open("/proc/cpuinfo") as f:
+                for line in f:
+                    if line.startswith("model name"):
+                        fp["cpu"] = line.split(":", 1)[1].strip()
+                        break
+    except Exception:
+        pass
+    return fp
+
+
+def get_toolchain_fp(build_dir=None):
+    """Identity of the toolchain that produced the binaries.
+
+    A compiler or runner-image bump changes both size and timing with zero
+    source change. Without this in the cache key, a stale baseline gets reused
+    across that bump and the diff is attributed to the PR.
+    """
+    fp = {}
+
+    cc = os.environ.get("CC") or "cc"
+    r = subprocess.run([cc, "--version"], capture_output=True, text=True)
+    if r.returncode == 0:
+        fp["cc"] = r.stdout.splitlines()[0].strip()
+    r = subprocess.run([cc, "-dumpmachine"], capture_output=True, text=True)
+    if r.returncode == 0:
+        fp["triple"] = r.stdout.strip()
+
+    if build_dir:
+        r = subprocess.run(["meson", "configure", build_dir],
+                           capture_output=True, text=True)
+        if r.returncode == 0:
+            for key in ("buildtype", "b_lto", "default_library", "optimization",
+                        "tuning"):
+                m = re.search(rf"^\s*{key}\s+(\S+)", r.stdout, re.M)
+                if m:
+                    fp[key] = m.group(1)
+
+    return fp
+
+def load_results(path):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_results(path, data):
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+def get_git_tag():
+    """Returns the current git tag if exactly on a tag, else None."""
+    try:
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--exact-match"],
+            capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+def get_git_version():
+    """Returns git tag/hash with UTC timestamp for report generation."""
+    import datetime
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+    tag = get_git_tag()
+    ver = tag if tag else "unknown"
+    if not tag:
+        try:
+            res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True)
+            ver = res.stdout.strip()
+        except Exception:
+            ver = "unknown"
+    return f"{ver} ({timestamp})"
+
+def get_ffmpeg_path():
+    return shutil.which("ffmpeg")
+
+def get_faad_path():
+    """Returns the path to faad binary if available, else None."""
+    env_faad = os.environ.get("FAAD_BIN")
+    if env_faad and os.path.exists(env_faad):
+        return env_faad
+    return shutil.which("faad")
+
+@lru_cache(maxsize=2048)
+def ffmpeg_probe(path):
+    """Basic probe using ffprobe, cached in memory."""
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return float(result.stdout.strip())
+    except Exception:
+        return None
+
+def get_audio_es_bytes(path):
+    """Calculates pure audio elementary stream payload size in bytes, excluding container metadata & padding.
+
+    MP4/M4A containers add 1.5KB-2KB of ftyp/moov atom overhead. On short benchmark clips,
+    container overhead distorts bitrate metrics. This uses ffprobe packet inspection
+    to sum the exact audio payload bytes. Returns None if inspection fails.
+    """
+    if not path or not os.path.exists(path):
+        return None
+
+    try:
+        cmd = [
+            "ffprobe", "-v", "error", "-select_streams", "a:0",
+            "-show_entries", "packet=size", "-of", "json", path
+        ]
+        res = safe_run(cmd)
+        data = json.loads(res.stdout)
+        packets = data.get("packets", [])
+        if packets:
+            es_bytes = sum(int(p["size"]) for p in packets if "size" in p)
+            if es_bytes > 0:
+                return es_bytes
+    except Exception:
+        pass
+
+    return None
+
+def decode_validate(path):
+    """Validates that an AAC file decodes cleanly with ffmpeg.
+
+    ffmpeg exits 0 even when the decoder logs hard errors (e.g. a corrupt SBR
+    payload prints "env_facs_q 255 is invalid" but the process still returns 0).
+    So a returncode check alone silently passes broken bitstreams. With
+    "-v error" ffmpeg only writes to stderr when something actually went wrong,
+    so we treat ANY non-empty stderr as a failure too.
+    """
+    cmd = ["ffmpeg", "-v", "error", "-i", path, "-f", "null", "-"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        err = (result.stderr or "").strip()
+        if result.returncode != 0 or err:
+            return False, err or f"ffmpeg exited {result.returncode}"
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+def _wav_conv_faad(input_path, output_path, rate=None, channels=None):
+    faad_bin = get_faad_path()
+    if not faad_bin:
+        return False
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp_wav = os.path.join(td, "faad_out.wav")
+        cmd = [faad_bin, "-q", "-o", tmp_wav, input_path]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0 or not os.path.exists(tmp_wav):
+                return False
+
+            try:
+                import soundfile as sf
+                import scipy.signal
+
+                data, sr = sf.read(tmp_wav, dtype='float32', always_2d=True)
+                needs_proc = False
+
+                if channels is not None and data.shape[1] != channels:
+                    needs_proc = True
+                    if channels == 1:
+                        data = data.mean(axis=1, keepdims=True)
+                    elif channels == 2 and data.shape[1] == 1:
+                        data = np.repeat(data, 2, axis=1)
+                    elif channels == 2 and data.shape[1] > 2:
+                        data = data[:, :2]
+
+                if rate is not None and sr != rate:
+                    needs_proc = True
+                    g = math.gcd(rate, sr)
+                    data = scipy.signal.resample_poly(data, rate // g, sr // g, axis=0)
+                    sr = rate
+
+                if needs_proc:
+                    sf.write(output_path, data, sr, subtype='PCM_16')
+                else:
+                    shutil.move(tmp_wav, output_path)
+                return True
+            except Exception:
+                if rate is None and channels is None:
+                    shutil.move(tmp_wav, output_path)
+                    return True
+                return False
+        except Exception:
+            return False
+
+def _wav_conv_ffmpeg(input_path, output_path, rate=None, channels=None):
+    cmd = ["ffmpeg", "-y", "-i", input_path]
+    if rate:
+        cmd.extend(["-ar", str(rate)])
+    if channels:
+        cmd.extend(["-ac", str(channels)])
+    cmd.extend(["-sample_fmt", "s16", output_path])
+
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"FFmpeg conversion failed for {input_path}: {e.stderr}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"FFmpeg conversion failed for {input_path}: {e}", file=sys.stderr)
+        return False
+
+def wav_conv(input_path, output_path, rate=None, channels=None):
+    """Converts audio to WAV using FFmpeg (with FAAD2 fallback for AAC/M4A/MP4 files)."""
+    if _wav_conv_ffmpeg(input_path, output_path, rate, channels):
+        return True
+
+    is_aac = input_path.lower().endswith((".aac", ".m4a", ".mp4"))
+    if is_aac:
+        if _wav_conv_faad(input_path, output_path, rate, channels):
+            return True
+
+    return False
+
+def get_cached_ref_wav(cache_dir, ref_input_path, v_rate, v_channels):
+    """Converts ref_input_path to a (v_rate, v_channels) WAV under cache_dir,
+    reusing a prior conversion for the same (path, rate, channels) key.
+    Safe under concurrent workers: conversion is written to a private temp
+    file and atomically renamed into place."""
+    key = hashlib.sha1(f"{ref_input_path}|{v_rate}|{v_channels}".encode()).hexdigest()
+    cached_path = os.path.join(cache_dir, f"{key}.wav")
+    if os.path.exists(cached_path):
+        return cached_path
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav", dir=cache_dir)
+    os.close(fd)
+    if not wav_conv(ref_input_path, tmp_path, v_rate, v_channels):
+        os.unlink(tmp_path)
+        return None
+    os.replace(tmp_path, cached_path)
+    return cached_path
+
+def encoder_env_signature(env=None):
+    """Stable signature of the FAAC_*-prefixed env vars that can change the
+    encode (used by --sweep ENV= runs). Both phase1 (encode) and phase2 (cache
+    check) must compute this from the same environment or every swept clip
+    would look stale; run_benchmark passes the run env to both phases."""
+    if env is None:
+        env = os.environ
+    items = sorted((k, v) for k, v in env.items() if k.startswith("FAAC_"))
+    return ";".join(f"{k}={v}" for k, v in items)
+
+def calculate_provenance_hash(faac_bin, libfaac_so, extra_args, input_path, env=None):
+    """Calculates a provenance hash for a specific encoding run."""
+    hasher = hashlib.sha256()
+
+    # Hash the binaries
+    hasher.update(get_file_hash(faac_bin, "sha256").encode())
+    hasher.update(get_file_hash(libfaac_so, "sha256").encode())
+
+    # Hash the arguments
+    if extra_args:
+        if isinstance(extra_args, list):
+            hasher.update(" ".join(extra_args).encode())
+        else:
+            hasher.update(extra_args.encode())
+
+    # Hash the FAAC_* env (env-var sweeps)
+    hasher.update(encoder_env_signature(env).encode())
+
+    # Hash the input file
+    hasher.update(get_file_hash(input_path, "sha256").encode())
+
+    return hasher.hexdigest()[:16]
+
+def _scenario_cfg(name_or_cfg):
+    """Accepts a scenario name or an already-resolved cfg dict.
+
+    A name absent from SCENARIOS (a retired scenario in an archived result
+    JSON, say) is reconstructed from the name itself, so reports of old runs
+    still show the right rate and channel count instead of the defaults.
+    """
+    if isinstance(name_or_cfg, dict):
+        return name_or_cfg
+    from config import SCENARIOS
+    cfg = SCENARIOS.get(name_or_cfg)
+    if cfg:
+        return cfg
+    rate, channels, bitrate = _parse_scenario_name(name_or_cfg or "")
+    if not rate:
+        return {}
+    return {"rate": rate, "channels": channels, "bitrate": bitrate}
+
+
+def get_corpus(cfg):
+    """The CORPORA entry a scenario reads its content from."""
+    from config import CORPORA
+    cfg = _scenario_cfg(cfg)
+    return CORPORA.get(cfg.get("corpus")) or {}
+
+
+def corpus_dir(cfg, external_data_dir=None):
+    """Absolute path of a scenario's reference-WAV directory.
+
+    This replaces the `"speech" if cfg["mode"] == "speech" else "audio"`
+    ternary that used to be repeated in every phase: sample rate and channel
+    count are properties of the corpus, and `mode` now only selects the metric
+    engine.
+    """
+    if external_data_dir is None:
+        external_data_dir = os.environ.get("EXTERNAL_DATA_DIR") or os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "data", "external")
+    subdir = get_corpus(cfg).get("dir", "audio")
+    return os.path.join(external_data_dir, subdir)
+
+
+def scenario_channels(cfg):
+    cfg = _scenario_cfg(cfg)
+    return cfg.get("channels") or get_corpus(cfg).get("channels", 2)
+
+
+def scenario_rate(cfg):
+    cfg = _scenario_cfg(cfg)
+    return cfg.get("rate") or get_corpus(cfg).get("rate", 48000)
+
+
+def scenario_family(name_or_cfg):
+    """The rate/channel family a scenario belongs to (e.g. "44k1_stereo").
+
+    Reports chart MOS against bitrate, which is only meaningful within one
+    family -- two scenarios at 48 kbps and different sample rates are not two
+    points on the same curve.
+    """
+    cfg = _scenario_cfg(name_or_cfg)
+    fam = get_corpus(cfg).get("family")
+    if fam:
+        return fam
+    # Unknown scenario (e.g. a stale result JSON): derive from the name.
+    rate, channels, _ = _parse_scenario_name(
+        name_or_cfg if isinstance(name_or_cfg, str) else "")
+    if not rate:
+        return "other"
+    label = f"{rate // 1000}k" if rate % 1000 == 0 else f"{rate // 1000}k{(rate % 1000) // 100}"
+    if channels == 6:
+        return f"{label}_51"
+    return f"{label}_{'mono' if channels == 1 else 'stereo'}"
+
+
+def scenario_axis_label(name, family):
+    """Chart x-axis label for a scenario: its name with the family prefix
+    stripped (e.g. "16k_mono_voip_24k" in family "16k_mono" -> "voip_24k").
+
+    Taking only the trailing "_"-token instead collapses "16k_mono_24k" and
+    "16k_mono_voip_24k" to the same "24k" label -- two indistinguishable
+    points on the same chart line.
+    """
+    prefix = family + "_"
+    if name.startswith(prefix):
+        return name[len(prefix):]
+    return name.rsplit("_", 1)[-1]
+
+
+def chart_line_label(name):
+    """Tool/decoder name for a mermaid xychart-beta `line "..."` legend entry.
+
+    Mermaid (confirmed against mermaid.live, v12.0.0) silently drops the
+    ENTIRE legend -- for every line, not just the long one -- if any single
+    line label is too wide, e.g. "FFmpeg AAC N-126229-gf101fce22d (NMR
+    experimental)" (52 chars). The identical chart regains its legend the
+    moment that one name is shortened. Strip a trailing parenthetical
+    qualifier (build hash, "(NMR experimental)", etc.) since it is
+    redundant with the detail tables right below the chart and is usually
+    what pushes a name over budget.
+    """
+    return re.sub(r"\s*\([^)]*\)\s*$", "", name)
+
+
+def family_label(family):
+    """Human label for a family, taken from whichever corpus declares it."""
+    from config import CORPORA
+    for c in CORPORA.values():
+        if c.get("family") == family:
+            # Strip the parenthetical qualifier so "16 kHz Mono Speech
+            # (VoIP-degraded)" and the clean corpus share one section heading.
+            return c.get("label", family).split(" (")[0]
+    return family
+
+
+def format_scenario_rate(cfg):
+    """Compact "48k/2ch" tag for report tables."""
+    rate = scenario_rate(cfg)
+    khz = rate / 1000.0
+    khz_s = f"{khz:g}k"
+    return f"{khz_s}/{scenario_channels(cfg)}ch"
+
+
+def select_corpus_clips(files, corpus):
+    """Deterministically cap a corpus to `max_clips`, balanced across strata.
+
+    The 400-clip TCD-VoIP set is 5 degradation types x ~20 conditions x 4
+    talkers describing ONE configuration; taking a prefix would silently drop
+    whole degradation types. Round-robin across the strata matched by the
+    corpus's `strata` regex (falling back to an even-spaced stride when a
+    filename doesn't match) keeps every stratum represented and the selection
+    reproducible.
+    """
+    files = sorted(files)
+    max_clips = (corpus or {}).get("max_clips")
+    if not max_clips or len(files) <= max_clips:
+        return files
+
+    pattern = (corpus or {}).get("strata")
+    if not pattern:
+        step = len(files) / max_clips
+        return [files[int(i * step)] for i in range(max_clips)]
+
+    groups = {}
+    rx = re.compile(pattern)
+    for f in files:
+        m = rx.search(f)
+        groups.setdefault(m.groups() if m else ("_",), []).append(f)
+
+    selected = []
+    keys = sorted(groups, key=lambda k: tuple("" if p is None else p for p in k))
+    idx = 0
+    while len(selected) < max_clips:
+        progressed = False
+        for k in keys:
+            if idx < len(groups[k]):
+                selected.append(groups[k][idx])
+                progressed = True
+                if len(selected) == max_clips:
+                    break
+        if not progressed:
+            break
+        idx += 1
+    return sorted(selected)
+
+
+def expand_scenario_list(spec):
+    """Parse a --scenarios value, expanding family names.
+
+    With five rate families in the matrix, "run just the 44.1 kHz family" is
+    the common iteration command, so a family name ("44k1_stereo") expands to
+    every scenario in it. Anything else is passed through untouched so an
+    unknown name still reaches the caller's own "not found" warning.
+    """
+    from config import SCENARIOS
+
+    out = []
+    for token in spec.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if token in SCENARIOS:
+            out.append(token)
+            continue
+        members = [n for n in SCENARIOS if scenario_family(n) == token]
+        if members:
+            out.extend(sorted(members, key=get_scenario_sort_key))
+        else:
+            out.append(token)
+    # Preserve order, drop duplicates (a family plus one of its members).
+    seen = set()
+    return [s for s in out if not (s in seen or seen.add(s))]
+
+
+def scenario_families(names):
+    """The families present in `names`, in report order."""
+    from config import FAMILY_ORDER
+    present = {scenario_family(n) for n in names}
+    ordered = [f for f in FAMILY_ORDER if f in present]
+    return ordered + sorted(present - set(ordered))
+
+
+def _parse_scenario_name(name):
+    """(rate, channels, bitrate) parsed from a scenario name.
+
+    Handles the decimal-rate form too: "44k1_stereo_128k" -> 44100 Hz. Used
+    only as a fallback for names absent from SCENARIOS.
+    """
+    rate = 0
+    channels = 0
+    bitrate = 0
+
+    m = re.match(r"^(\d+)k(\d)?_(mono|stereo|51|speech|audio)(?:_[a-z0-9]+)?_(\d+)k$", name)
+    if m:
+        rate = int(m.group(1)) * 1000 + (int(m.group(2)) * 100 if m.group(2) else 0)
+        ch_type = m.group(3)
+        if ch_type in ("mono", "speech"):
+            channels = 1
+        elif ch_type in ("stereo", "audio"):
+            channels = 2
+        elif ch_type == "51":
+            channels = 6
+        bitrate = int(m.group(4))
+        return rate, channels, bitrate
+
+    if "51" in name:
+        channels = 6
+    elif "mono" in name or "speech" in name:
+        channels = 1
+    elif "stereo" in name or "audio" in name:
+        channels = 2
+
+    # Bitrate: the last number before a 'k'.
+    m_br_list = re.findall(r"(\d+)k(?:$|_)", name)
+    if m_br_list:
+        bitrate = int(m_br_list[-1])
+
+    m_rate = re.match(r"^(\d+)k(\d)?", name)
+    if m_rate:
+        rate = int(m_rate.group(1)) * 1000 + (int(m_rate.group(2)) * 100 if m_rate.group(2) else 0)
+
+    return rate, channels, bitrate
+
+
+@lru_cache(maxsize=128)
+def get_scenario_sort_key(name):
+    """Sortable key for a scenario: (family_rank, rate, channels, bitrate, name).
+
+    Rate outranks bitrate deliberately. The old key sorted by bitrate first,
+    which interleaved rate families -- 32k_stereo_48k would land next to
+    48k_stereo_48k -- and made the scenario tables unscannable once more than
+    one sample rate existed. Families now stay contiguous and ascend by rate.
+    """
+    try:
+        from config import SCENARIOS, FAMILY_ORDER
+    except ImportError:
+        SCENARIOS = {}
+        FAMILY_ORDER = []
+
+    if name in SCENARIOS:
+        cfg = SCENARIOS[name]
+        rate = scenario_rate(cfg)
+        channels = scenario_channels(cfg)
+        bitrate = cfg.get("bitrate", 0)
+        family = scenario_family(cfg)
+    else:
+        rate, channels, bitrate = _parse_scenario_name(name)
+        family = scenario_family(name)
+
+    family_rank = FAMILY_ORDER.index(family) if family in FAMILY_ORDER else len(FAMILY_ORDER)
+    return (family_rank, rate, channels, bitrate, name)
+
+
+def get_aac_path(key, aac_dir, results_path, aac_files=None, entry=None):
+    # Preferred: the matrix entry records the exact .m4a/.mp4/.aac file phase1 produced for
+    # this run/tag (phase1 writes "{key}_{precision}.m4a", precision == the run
+    # tag). This is unambiguous and is essential for --compare/--sweep, where
+    # every tag shares aac_dir: a bare key-prefix match below would return the
+    # first matching file regardless of tag, silently scoring another variant's
+    # bitstream (e.g. an HE run getting the LC encode's MOS).
+    if entry:
+        recorded = entry.get("aac")
+        if recorded:
+            cand = os.path.join(aac_dir, recorded)
+            if os.path.exists(cand):
+                return cand
+
+    results_filename = os.path.basename(results_path)
+    precision_suffix = ""
+    if "_base.json" in results_filename:
+        precision_suffix = "_base"
+    elif "_cand.json" in results_filename:
+        precision_suffix = "_cand"
+
+    # Try exact match with preferred extensions (.m4a, .mp4, .aac, .opus, .mp3)
+    for ext in [".m4a", ".mp4", ".aac", ".opus", ".mp3"]:
+        target_filename = f"{key}{precision_suffix}{ext}"
+        aac_path = os.path.join(aac_dir, target_filename)
+        if os.path.exists(aac_path):
+            return aac_path
+
+    # Fallback to prefix matching (legacy results lacking a recorded "aac").
+    # Sort for determinism so repeated runs at least resolve identically.
+    if aac_files is None:
+        try:
+            aac_files = [f for f in os.listdir(aac_dir) if f.endswith((".m4a", ".mp4", ".aac", ".opus", ".mp3"))]
+        except FileNotFoundError:
+            return None
+
+    matching = sorted(f for f in aac_files if f.startswith(key))
+    if not matching:
+        return None
+    return os.path.join(aac_dir, matching[0])

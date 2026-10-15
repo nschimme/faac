@@ -1994,6 +1994,32 @@ The production patch is a one-file source change, `libfaac/sbr_analysis.c` (one 
 
 The implementation was published as independent [PR #70](https://github.com/nschimme/faac/pull/70), based on upstream/master with the fixed8 patch only. Build workflow run `38659018090` succeeded; benchmark workflow run `38659018069` remained active at the last status snapshot. The benchmark result is the only outstanding validation gate; no complete CI pass or merge-readiness claim is made.
 
+### PR #70 CI follow-up snapshot (2026-10-15 UTC)
+
+The [CI evidence package](results/s11-he-v1/ci-pr70/README.md) preserves
+workflow/source versions, completed build and footprint results, the ARM64
+CBR/VBR artifacts, and paired gapless cases. Build run `38659018090` passed
+all ten jobs. Native amd64 footprint reports 76,040 to 75,992 bytes of
+`.text + .rodata + .data` (-48 B); this is a separate measurement from the
+local emulated GCC13 result above.
+
+ARM64 CBR passed. ARM64 VBR passed MOS, BD-rate, throughput, footprint and
+haze gates but its report failed the absolute gapless gate. The three
+reported HE-v1/q1 cases have identical baseline/candidate lag estimates:
+Can't Wait -964, Shinsho pool -391, girl -89 samples; all have zero decoded
+frame error and both gapless tags. Their encoded file hashes differ. This
+establishes that the reported nonconformance predates the candidate; it does
+not establish actual PCM alignment or the cause of those lag estimates.
+The artifact contains reports/JSON, not AAC or decoded media. The original
+failure is retained verbatim, without weakening the gate or declaring CI
+fully green. The executed benchmark action was `bdce18f7123f51c31795afe9fb4571c18f507a77`.
+
+VBR's measured mean MOS delta was +0.002 over 1,341 clips, with no MOS-gate
+regressions; HE48 BD-rate was -0.167%. These CI scenarios and metric decoder
+differ from the local four-rate FDK study; do not mix their numerical deltas.
+amd64 ABR remains running in the same benchmark run `38659018069`; its
+terminal verdict is still pending.
+
 ### Reproduction and source-version notes
 
 Use the package's relative family paths and run manifests rather than the original cache absolute paths. Run configs record exact input hashes, encoder/source commits, profile, bitrate, decoder hashes, benchmark helper hashes, environment and command. Raw per-clip JSON keeps actual payload rate, MOS/BD-rate inputs, controls, and strict decoder result fields. For quality reproduction, retrieve the original `faac-benchmark` audio assets and verify their recorded hashes; the S11 package intentionally has no audio. The historical scripts are preserved, but many contain machine-specific absolute paths and require portability work before execution. Keep the fixed8 source patch isolated from the adaptive mode1 probe patch. Do not copy code from GPL encoders or any reference encoder; all archived changes are FAAC-side probes.

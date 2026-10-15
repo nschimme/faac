@@ -1,0 +1,5 @@
+GitHub Actions log access record
+
+An unauthenticated request to GET /repos/nschimme/faac/actions/jobs/116175562869/logs returned HTTP 403 with “Must have admin rights to Repository.” Root later retrieved the completed VBR job log through authenticated GitHub CLI access and provided a cleaned copy. The cleaned VBR log is archived at logs/arm64-vbr-job.log. A credential-pattern scan found no exposed token, key, or unmasked Authorization value. The raw log and credentials are not included.
+
+The benchmark API snapshot initially showed no artifacts because it preceded upload completion. A refreshed authenticated CLI API query later listed VBR artifact 11937824673 and CBR artifact 11937788387. Their JSON/Markdown report files are archived under artifacts/.

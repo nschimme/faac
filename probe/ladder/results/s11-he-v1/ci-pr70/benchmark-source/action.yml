@@ -1,0 +1,207 @@
+name: 'FAAC Benchmark Suite'
+description: 'Runs encoding benchmarks and computes MOS scores using ViSQOL.'
+inputs:
+  faac-bin:
+    description: 'Path to the faac binary'
+    required: true
+  faad-bin:
+    description: 'Candidate faad binary for the decoder output gate'
+    required: false
+    default: ''
+  faad-ref-bin:
+    description: 'Baseline faad binary for the decoder output gate'
+    required: false
+    default: ''
+  libfaac-so:
+    description: 'Path to the libfaac.so library'
+    required: false
+    default: ''
+  run-name:
+    description: 'Identifier for this benchmark run'
+    required: true
+  output-json:
+    description: 'Path where the result JSON should be saved'
+    required: true
+  coverage:
+    description: 'Percentage of dataset to cover (1-100)'
+    required: false
+    default: '100'
+  skip-mos:
+    description: 'Skip perceptual quality (MOS) computation'
+    required: false
+    default: 'false'
+  sha:
+    description: 'Commit SHA to associate with these results. Defaults to github.sha.'
+    required: false
+    default: '${{ github.sha }}'
+  scenarios:
+    description: 'Comma-separated list of scenarios to run'
+    required: false
+  include-tests:
+    description: 'Comma-separated list of test filename globs to include'
+    required: false
+  exclude-tests:
+    description: 'Comma-separated list of test filename globs to exclude'
+    required: false
+  throughput-only:
+    description: 'Re-measure only throughput and merge into an existing output JSON. Use to refresh a cached baseline on the machine that will measure the candidate.'
+    required: false
+    default: 'false'
+  gate:
+    description: 'Use the fast fixed gate subset (config.GATE_CLIPS) instead of the full corpus'
+    required: false
+    default: 'false'
+  rate-control:
+    description: 'Rate control mode (abr or vbr)'
+    required: false
+    default: 'abr'
+  build-dir:
+    description: 'Meson build directory, for per-object sizes and toolchain identity'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        pip install -r ${{ github.action_path }}/requirements.txt
+
+    # ffmpeg decodes and validates every encode; valgrind makes Throughput a
+    # Cachegrind instruction count rather than wall-clock time, which on a
+    # shared runner moves by a few percent between byte-identical builds.
+    # cmake builds the pinned FAAD2 that scores each run (scripts/build_faad2.sh,
+    # about ten seconds, on first use); the distro faad is never used.
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg valgrind cmake
+
+    # hashFiles() only resolves paths under GITHUB_WORKSPACE, and action_path
+    # is outside it, so the expression form of this key evaluated to the empty
+    # string -- giving a constant key that could never invalidate. The cache
+    # then outlived every change to the generator, which is why signals added
+    # to it never appeared and the gate kept measuring an old dataset. Hash the
+    # file in a step, where the path is real.
+    - name: Fingerprint Dataset Generator
+      id: ds-key
+      shell: bash
+      run: |
+        # Hashed in Python, not `sha256sum | cut`, and with no fallback on
+        # failure. Both matter, and for the same reason.
+        #
+        # A pipeline reports its LAST command's status, and cut exits 0 on empty
+        # input -- so `h=$(sha256sum ... | cut) || h=unhashed` can never take its
+        # fallback. A missing hasher would leave h empty and the key would read
+        # "Linux-datasets-": the constant this step exists to eliminate,
+        # reintroduced silently. Python also removes the portability question,
+        # since setup-python above guarantees it and sha256sum is coreutils-only.
+        #
+        # No `|| default` here at all: a key that cannot be computed must fail
+        # the run loudly. Degrading to any fixed string rebuilds the same
+        # never-expiring cache, and the failure would again be invisible.
+        h=$(python3 -c \
+          'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()[:16])' \
+          "${{ github.action_path }}/setup_datasets.py")
+        echo "hash=$h" >> $GITHUB_OUTPUT
+        echo "Dataset generator hash: $h"
+
+    - name: Restore Datasets
+      id: cache-datasets
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ github.action_path }}/data/external
+        key: ${{ runner.os }}-datasets-${{ steps.ds-key.outputs.hash }}
+
+    - name: Setup Datasets
+      if: steps.cache-datasets.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        python3 ${{ github.action_path }}/setup_datasets.py
+
+    - name: Save Datasets
+      if: steps.cache-datasets.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ github.action_path }}/data/external
+        key: ${{ runner.os }}-datasets-${{ steps.ds-key.outputs.hash }}
+
+    - name: Run Benchmark
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+      run: |
+        EXTRA_ARGS=""
+        if [ "${{ inputs.skip-mos }}" == "true" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --skip-mos"
+        fi
+
+        if [ -n "${{ inputs.sha }}" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --sha ${{ inputs.sha }}"
+        fi
+
+        if [ -n "${{ inputs.scenarios }}" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --scenarios ${{ inputs.scenarios }}"
+        fi
+
+        if [ -n "${{ inputs.include-tests }}" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --include-tests ${{ inputs.include-tests }}"
+        fi
+
+        if [ -n "${{ inputs.exclude-tests }}" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --exclude-tests ${{ inputs.exclude-tests }}"
+        fi
+
+        if [ "${{ inputs.gate }}" == "true" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --gate"
+        fi
+
+        if [ -n "${{ inputs.rate-control }}" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --rate-control ${{ inputs.rate-control }}"
+        fi
+
+        if [ "${{ inputs.throughput-only }}" == "true" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --throughput-only"
+        fi
+
+        if [ -n "${{ inputs.build-dir }}" ]; then
+          EXTRA_ARGS="$EXTRA_ARGS --build-dir ${{ inputs.build-dir }}"
+        fi
+
+        DEC_ARGS=()
+        if [ -n "${{ inputs.faad-bin }}" ]; then
+          DEC_ARGS+=(--decoder-bin "${{ inputs.faad-bin }}")
+        fi
+        if [ -n "${{ inputs.faad-ref-bin }}" ]; then
+          DEC_ARGS+=(--decoder-ref-bin "${{ inputs.faad-ref-bin }}")
+        fi
+
+        ENC_LIB_ARG=""
+        if [ -n "${{ inputs.libfaac-so }}" ]; then
+          ENC_LIB_ARG="--encoder-lib ${{ inputs.libfaac-so }}"
+        fi
+
+        python3 ${{ github.action_path }}/run_benchmark.py \
+          "${{ inputs.run-name }}" \
+          "${{ inputs.output-json }}" \
+          --encoder-bin "${{ inputs.faac-bin }}" \
+          "${DEC_ARGS[@]}" \
+          $ENC_LIB_ARG \
+          --coverage "${{ inputs.coverage }}" \
+          $EXTRA_ARGS
+
+    - name: Output Job Summary
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+      run: |
+        if [ -f "${{ inputs.output-json }}" ]; then
+          python3 ${{ github.action_path }}/render_job_summary.py "${{ inputs.output-json }}" --name "${{ inputs.run-name }}" >> $GITHUB_STEP_SUMMARY
+        fi

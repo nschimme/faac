@@ -1,0 +1,137 @@
+{
+  "sha": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+  "node_id": "C_kwDORetmitoAKGJkY2UxOGY3MTIzZjUxYzMxNzk1YWZlOWZiNDU3MWMxOGY1MDdhNzc",
+  "commit": {
+    "author": {
+      "name": "Nils Schimmelmann",
+      "email": "nschimme@users.noreply.github.com",
+      "date": "2026-10-14T20:04:16Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-10-14T20:04:16Z"
+    },
+    "message": "Pin FAAD2 to the SBR-delay flush; build fdkdec on libfaam (#106)\n\n* Pin FAAD2 to a commit that drains the SBR decoder delay\n\nThe gapless gate failed on 16 kHz mono LC streams whose tail padding is\nunder 481 samples, on a clean master as well. FAAD2 2.11.4 runs those\nstreams through the SBR upsampler and trims its delay from the start, but\nnever drains it at the end, so the decode ends 481 - padding samples short.\n\nBuild FAAD2 from FreewareAdvancedAudio/faad2 287c00c, which adds the\nflush (FreewareAdvancedAudio/faad2#16). Frame error and lag are 0 on 82\nstreams (16 kHz mono and stereo, 20 and 48 kbps); the pinned 2.11.4 was\ninexact on 38 of 84.\n\n* Build fdkdec on libfaam and pkg-config libfdk-aac\n\nfdkdec included the frontend's mp4read.c, which no longer exists. Read\nMP4 samples and gapless metadata through libfaam instead, free what the\nerror paths leaked, and find libfdk-aac with pkg-config before falling\nback to Homebrew.\n\n- build_fdkdec.sh takes libfaam.a from $FAAC_SRC/build/libfaam (or\n  $FAAM_LIB) and rebuilds each time rather than trusting a stale binary\n- decodes a 16 kHz LC stream to its exact source length (136091 frames)",
+    "tree": {
+      "sha": "69e3bdb23e744b39ddf59e9d0bf92895694494ad",
+      "url": "https://api.github.com/repos/nschimme/faac-benchmark/git/trees/69e3bdb23e744b39ddf59e9d0bf92895694494ad"
+    },
+    "url": "https://api.github.com/repos/nschimme/faac-benchmark/git/commits/bdce18f7123f51c31795afe9fb4571c18f507a77",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJqz+BACRC1aQ7uu5UhlAAAMkUQAE/FEr6SY9t/10m3qQMxumHW\nqA+dU2nUGYTh4XlODeJDQRqAaznUN3OWvUYSfUc4sj4Us3pcfokBYqzLg4q9FJE6\nmVGShBwii437y2XEHujaWBq0ThhBs+2DAH57osu9Tc1CmYBtT93CArlrOaMAeZvR\nz/N+LH94XEROUZp/VR7+1Stzyo6HnQ83xxZe8Od1wVCKjwTkmRs1CjrY2//eHVFc\nDh7XZZ2LE5DHWFLJBTu5QPqtC86s1BwYprgNJ6UoeNu+dnJX3dkZFhrA+s/2pzI+\nGs0yJg1JOkZl1SlXM9vmggI19vSOYPm5t1kieHSvJEJ4hKULWiOOBxLdClt6QXG1\n/M9/gXSNblCaF/7drhw/ugkAZCjK9v56HMj+1fhuDDkp7JANUqJqJLJHzTV/U6OT\n+ZZP0QGia55RGRy/2qgFTove7THHL3DN7pDcwMCJtzlXGLEbSOUGM20HCGBpIMBL\nXUl24rWKmJnCnbRvwoJ8iurADBrM+BQdias6dTXaKOv+lnqgYUNn6Iwf/l0DMpGu\nJOGPoCQG34hGPBcMEsdl1VHgjRj1Qa1lmcoJgoQ1LuVtqxyT+g2pcNcRyf7MA5+e\nJf8JYbQuKEiolowuFJ6xjIqoxM6eigY0E76aapWth2En/WhV6Ms+3+bdlKYEnZun\nAHTBd9d1Lag4TJC7jawg\n=C6fF\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 69e3bdb23e744b39ddf59e9d0bf92895694494ad\nparent adef778d6f96ea6ce24448fde962f73dc09d012f\nauthor Nils Schimmelmann <nschimme@users.noreply.github.com> 1792008256 -0700\ncommitter GitHub <noreply@github.com> 1792008256 -0500\n\nPin FAAD2 to the SBR-delay flush; build fdkdec on libfaam (#106)\n\n* Pin FAAD2 to a commit that drains the SBR decoder delay\n\nThe gapless gate failed on 16 kHz mono LC streams whose tail padding is\nunder 481 samples, on a clean master as well. FAAD2 2.11.4 runs those\nstreams through the SBR upsampler and trims its delay from the start, but\nnever drains it at the end, so the decode ends 481 - padding samples short.\n\nBuild FAAD2 from FreewareAdvancedAudio/faad2 287c00c, which adds the\nflush (FreewareAdvancedAudio/faad2#16). Frame error and lag are 0 on 82\nstreams (16 kHz mono and stereo, 20 and 48 kbps); the pinned 2.11.4 was\ninexact on 38 of 84.\n\n* Build fdkdec on libfaam and pkg-config libfdk-aac\n\nfdkdec included the frontend's mp4read.c, which no longer exists. Read\nMP4 samples and gapless metadata through libfaam instead, free what the\nerror paths leaked, and find libfdk-aac with pkg-config before falling\nback to Homebrew.\n\n- build_fdkdec.sh takes libfaam.a from $FAAC_SRC/build/libfaam (or\n  $FAAM_LIB) and rebuilds each time rather than trusting a stale binary\n- decodes a 16 kHz LC stream to its exact source length (136091 frames)",
+      "verified_at": "2026-10-14T20:04:16Z"
+    }
+  },
+  "url": "https://api.github.com/repos/nschimme/faac-benchmark/commits/bdce18f7123f51c31795afe9fb4571c18f507a77",
+  "html_url": "https://github.com/nschimme/faac-benchmark/commit/bdce18f7123f51c31795afe9fb4571c18f507a77",
+  "comments_url": "https://api.github.com/repos/nschimme/faac-benchmark/commits/bdce18f7123f51c31795afe9fb4571c18f507a77/comments",
+  "author": {
+    "login": "nschimme",
+    "id": 5505185,
+    "node_id": "MDQ6VXNlcjU1MDUxODU=",
+    "avatar_url": "https://avatars.githubusercontent.com/u/5505185?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/nschimme",
+    "html_url": "https://github.com/nschimme",
+    "followers_url": "https://api.github.com/users/nschimme/followers",
+    "following_url": "https://api.github.com/users/nschimme/following{/other_user}",
+    "gists_url": "https://api.github.com/users/nschimme/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/nschimme/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/nschimme/subscriptions",
+    "organizations_url": "https://api.github.com/users/nschimme/orgs",
+    "repos_url": "https://api.github.com/users/nschimme/repos",
+    "events_url": "https://api.github.com/users/nschimme/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/nschimme/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "adef778d6f96ea6ce24448fde962f73dc09d012f",
+      "url": "https://api.github.com/repos/nschimme/faac-benchmark/commits/adef778d6f96ea6ce24448fde962f73dc09d012f",
+      "html_url": "https://github.com/nschimme/faac-benchmark/commit/adef778d6f96ea6ce24448fde962f73dc09d012f"
+    }
+  ],
+  "stats": {
+    "total": 217,
+    "additions": 162,
+    "deletions": 55
+  },
+  "files": [
+    {
+      "sha": "6a9f325281f0e7f7804eeb6fc6b142fed0d45c78",
+      "filename": "docs/usage.md",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "changes": 4,
+      "blob_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/docs%2Fusage.md",
+      "raw_url": "https://github.com/nschimme/faac-benchmark/raw/bdce18f7123f51c31795afe9fb4571c18f507a77/docs%2Fusage.md",
+      "contents_url": "https://api.github.com/repos/nschimme/faac-benchmark/contents/docs%2Fusage.md?ref=bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "patch": "@@ -11,8 +11,8 @@ reflect your code and the provenance hashing stays meaningful.\n # System (Ubuntu/Debian)\n sudo apt-get update && sudo apt-get install -y meson ninja-build bc cmake ffmpeg\n \n-# FAAD2 reference decoder: built from the pinned release into bin/faad. The distro\n-# package lags upstream and lacks the gapless MP4 trimming (2.11.4).\n+# FAAD2 reference decoder: built from the pinned commit into bin/faad. The distro\n+# package lags upstream and lacks the gapless MP4 trimming (pinned FAAD2 commit).\n export FAAD_BIN=\"$(./scripts/build_faad2.sh)\"\n \n # Python"
+    },
+    {
+      "sha": "df9db6a8196122e3920f59219ca7c4e70eb7186e",
+      "filename": "scripts/build_faad2.sh",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 7,
+      "changes": 18,
+      "blob_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/scripts%2Fbuild_faad2.sh",
+      "raw_url": "https://github.com/nschimme/faac-benchmark/raw/bdce18f7123f51c31795afe9fb4571c18f507a77/scripts%2Fbuild_faad2.sh",
+      "contents_url": "https://api.github.com/repos/nschimme/faac-benchmark/contents/scripts%2Fbuild_faad2.sh?ref=bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "patch": "@@ -3,19 +3,23 @@\n # Build the reference FAAD2 decoder (faad) for the decoder gate and the\n # conformance reference.\n #\n-# Pinned to a release rather than the distro package: the Ubuntu package lags\n-# upstream, and 2.11.4 is the first release that trims the encoder delay and the\n-# SBR decoder delay from MP4 output using the elst atom and iTunSMPB (gapless),\n-# so decodes line up with the source without a search.\n+# Pinned to an upstream commit rather than the distro package: the Ubuntu\n+# package lags upstream. 2.11.4 is the first release that trims the encoder\n+# delay and the SBR decoder delay from MP4 output using the elst atom and\n+# iTunSMPB (gapless); the pinned commit also drains the SBR decoder delay at the\n+# end of the stream (FreewareAdvancedAudio/faad2#16), without which a stream\n+# whose padding is under 481 samples decodes short. Decodes line up with the\n+# source without a search.\n #\n # Prints the path of the built binary. Idempotent: reuses bin/faad when it was\n # built from this version.\n #\n \n set -euo pipefail\n \n-FAAD2_VERSION=\"2.11.4\"\n-FAAD2_SHA256=\"ee479ccbae4a8387ab696e6f21a481bd83fe3881471cafa81b4ae59d7d3aed43\"\n+FAAD2_COMMIT=\"287c00ccf20086db395869cfe8b09fc50a76e988\"\n+FAAD2_VERSION=\"2.11.4+${FAAD2_COMMIT:0:7}\"\n+FAAD2_SHA256=\"00fd5f6b898377d67d06a751f535669fe14de9bf3f620fb5921b70240608e5ff\"\n \n SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n BENCH_ROOT=\"$(cd \"$SCRIPT_DIR/..\" && pwd)\"\n@@ -35,7 +39,7 @@ TARBALL=\"$BUILD_DIR/faad2-$FAAD2_VERSION.tar.gz\"\n \n if [[ ! -f \"$TARBALL\" ]]; then\n     echo \"==> Downloading FAAD2 $FAAD2_VERSION...\" >&2\n-    curl -fsSL -o \"$TARBALL\" \"https://github.com/knik0/faad2/archive/refs/tags/$FAAD2_VERSION.tar.gz\" >&2\n+    curl -fsSL -o \"$TARBALL\" \"https://github.com/FreewareAdvancedAudio/faad2/archive/$FAAD2_COMMIT.tar.gz\" >&2\n fi\n \n if command -v sha256sum >/dev/null 2>&1; then"
+    },
+    {
+      "sha": "f454d44d5a55409eba164250e940b8a9925c191f",
+      "filename": "scripts/build_fdkdec.sh",
+      "status": "modified",
+      "additions": 23,
+      "deletions": 22,
+      "changes": 45,
+      "blob_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/scripts%2Fbuild_fdkdec.sh",
+      "raw_url": "https://github.com/nschimme/faac-benchmark/raw/bdce18f7123f51c31795afe9fb4571c18f507a77/scripts%2Fbuild_fdkdec.sh",
+      "contents_url": "https://api.github.com/repos/nschimme/faac-benchmark/contents/scripts%2Fbuild_fdkdec.sh?ref=bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "patch": "@@ -1,11 +1,10 @@\n #!/usr/bin/env bash\n #\n-# Build the fdkdec CLI (decodes MP4/M4A or raw ADTS AAC via Homebrew\n-# libfdk-aac) for compare_codecs.py.\n+# Build the fdkdec CLI (decodes MP4/M4A or raw ADTS AAC via libfdk-aac)\n+# for compare_codecs.py.\n #\n-# Requires: `brew install fdk-aac` and a FAAC checkout for\n-# frontend/mp4read.c (path via $FAAC_SRC, default ../faac next to this\n-# faac-benchmark checkout).\n+# Requires: libfdk-aac development files and a FAAC checkout (path via\n+# $FAAC_SRC, default ../faac next to this faac-benchmark checkout).\n #\n \n set -euo pipefail\n@@ -16,42 +15,44 @@ BENCH_ROOT=\"$(cd \"$SCRIPT_DIR/..\" && pwd)\"\n BIN_DIR=\"$BENCH_ROOT/bin\"\n TARGET_BIN=\"$BIN_DIR/fdkdec\"\n \n-if [[ -x \"$TARGET_BIN\" ]]; then\n-    echo \"$TARGET_BIN\"\n-    exit 0\n-fi\n-\n FAAC_SRC=\"${FAAC_SRC:-$BENCH_ROOT/../faac}\"\n-MP4READ=\"$FAAC_SRC/frontend/mp4read.c\"\n-if [[ ! -f \"$MP4READ\" ]]; then\n-    echo \"error: mp4read.c not found at $MP4READ (set FAAC_SRC to a faac checkout)\" >&2\n+if [[ ! -f \"$FAAC_SRC/include/faam.h\" ]]; then\n+    echo \"error: faam.h not found under $FAAC_SRC/include (set FAAC_SRC to a faac checkout)\" >&2\n     exit 1\n fi\n \n-# mp4read.c's HAVE_LIBFAAM path calls into libfaam (FAAC's MP4/gapless\n-# demuxer) rather than parsing boxes itself; find a built static lib from\n-# any of the FAAC checkout's build directories.\n+# fdkdec uses FAAM for MP4 sample and gapless metadata. Prefer the standard\n+# sibling build, while allowing callers to select another FAAC build with\n+# FAAM_LIB.\n FAAM_LIB=\"${FAAM_LIB:-}\"\n if [[ -z \"$FAAM_LIB\" ]]; then\n-    FAAM_LIB=\"$(find \"$FAAC_SRC\" -maxdepth 3 -name 'libfaam.a' -print -quit 2>/dev/null || true)\"\n+    FAAM_LIB=\"$FAAC_SRC/build/libfaam/libfaam.a\"\n fi\n if [[ -z \"$FAAM_LIB\" || ! -f \"$FAAM_LIB\" ]]; then\n-    echo \"error: libfaam.a not found under $FAAC_SRC (build FAAC first, or set FAAM_LIB)\" >&2\n+    echo \"error: libfaam.a not found at $FAAM_LIB (build FAAC in $FAAC_SRC/build, or set FAAM_LIB)\" >&2\n     exit 1\n fi\n \n-FDK_PREFIX=\"$(brew --prefix fdk-aac 2>/dev/null || echo /opt/homebrew)\"\n+if pkg-config --exists fdk-aac; then\n+    FDK_PREFIX=\"$(pkg-config --variable=prefix fdk-aac)\"\n+    read -r -a FDK_CFLAGS <<< \"$(pkg-config --cflags fdk-aac)\"\n+    read -r -a FDK_LIBS <<< \"$(pkg-config --libs fdk-aac)\"\n+else\n+    FDK_PREFIX=\"${FDK_PREFIX:-$(brew --prefix fdk-aac 2>/dev/null || echo /opt/homebrew)}\"\n+    FDK_CFLAGS=(-I \"$FDK_PREFIX/include\")\n+    FDK_LIBS=(-L \"$FDK_PREFIX/lib\" -lfdk-aac)\n+fi\n if [[ ! -f \"$FDK_PREFIX/include/fdk-aac/aacdecoder_lib.h\" ]]; then\n-    echo \"error: libfdk-aac headers not found under $FDK_PREFIX (brew install fdk-aac)\" >&2\n+    echo \"error: libfdk-aac headers not found under $FDK_PREFIX (install libfdk-aac development files)\" >&2\n     exit 1\n fi\n \n mkdir -p \"$BIN_DIR\"\n \n echo \"==> Compiling fdkdec...\" >&2\n gcc -O2 -o \"$TARGET_BIN\" \"$SCRIPT_DIR/fdkdec/fdkdec.c\" \\\n-    -I \"$FAAC_SRC/frontend\" -I \"$FAAC_SRC/include\" -I \"$FDK_PREFIX/include\" \\\n-    \"$FAAM_LIB\" -L \"$FDK_PREFIX/lib\" -lfdk-aac >&2\n+    -I \"$FAAC_SRC/include\" \"${FDK_CFLAGS[@]}\" \\\n+    \"$FAAM_LIB\" \"${FDK_LIBS[@]}\" >&2\n \n chmod +x \"$TARGET_BIN\"\n echo \"$TARGET_BIN\""
+    },
+    {
+      "sha": "84ff8a7fec09bd38f76294296c834bc0d1e21f7d",
+      "filename": "scripts/fdkdec/fdkdec.c",
+      "status": "modified",
+      "additions": 126,
+      "deletions": 24,
+      "changes": 150,
+      "blob_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/scripts%2Ffdkdec%2Ffdkdec.c",
+      "raw_url": "https://github.com/nschimme/faac-benchmark/raw/bdce18f7123f51c31795afe9fb4571c18f507a77/scripts%2Ffdkdec%2Ffdkdec.c",
+      "contents_url": "https://api.github.com/repos/nschimme/faac-benchmark/contents/scripts%2Ffdkdec%2Ffdkdec.c?ref=bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "patch": "@@ -1,19 +1,39 @@\n /* fdkdec: decode an MP4/M4A or raw ADTS AAC stream with libfdk-aac.\n- * Writes <out>_raw.wav (untrimmed decoder output) and <out>_gapless.wav\n- * (start trim = priming*rate_scale + outputDelay, length = source length\n- * derived from iTunSMPB/elst for MP4; ADTS input has no container gapless\n- * metadata, so only outputDelay is trimmed), and prints fdk's reported\n+ * MP4 samples and gapless metadata come from libfaam. Writes <out>_raw.wav\n+ * (untrimmed decoder output) and <out>.wav (trimmed by container priming,\n+ * padding, and decoder outputDelay; ADTS has no container gapless metadata),\n+ * and prints fdk's reported\n  * outputDelay. Also supports `fdkdec -v` / `--version` to print the\n  * linked libfdk-aac version for tool auto-detection. */\n-#define HAVE_LIBFAAM 1\n+#define _POSIX_C_SOURCE 200809L\n+#define _FILE_OFFSET_BITS 64\n #include <stdio.h>\n #include <stdlib.h>\n #include <string.h>\n+#include <strings.h>\n #include <stdint.h>\n #include <stdbool.h>\n-#include \"mp4read.c\"\n+#include <sys/types.h>\n+#include <faam.h>\n #include <fdk-aac/aacdecoder_lib.h>\n \n+static int32_t faam_read(void *user_data, void *buf, uint32_t bytes)\n+{\n+    size_t n = fread(buf, 1, bytes, (FILE *)user_data);\n+    return ferror((FILE *)user_data) || n > INT32_MAX ? -1 : (int32_t)n;\n+}\n+\n+static bool faam_seek(void *user_data, uint64_t offset)\n+{\n+    return offset <= INT64_MAX && fseeko((FILE *)user_data, (off_t)offset, SEEK_SET) == 0;\n+}\n+\n+static uint64_t faam_tell(void *user_data)\n+{\n+    off_t pos = ftello((FILE *)user_data);\n+    return pos < 0 ? UINT64_MAX : (uint64_t)pos;\n+}\n+\n static void wav_hdr(FILE *f, uint32_t sr, uint32_t ch, uint32_t frames) {\n     uint32_t data = frames * ch * 2, v;\n     uint16_t s;\n@@ -25,7 +45,7 @@ static void wav_hdr(FILE *f, uint32_t sr, uint32_t ch, uint32_t frames) {\n     fwrite(\"data\", 1, 4, f); fwrite(&data, 4, 1, f);\n }\n \n-static bool looks_like_adts(const uint8_t *buf, long len) {\n+static bool looks_like_adts(const uint8_t *buf, size_t len) {\n     return len >= 2 && buf[0] == 0xFF && (buf[1] & 0xF6) == 0xF0;\n }\n \n@@ -46,24 +66,75 @@ int main(int argc, char **argv) {\n     if (argc < 3) { fprintf(stderr, \"usage: fdkdec in.m4a|in.aac out.wav\\n\"); return 2; }\n     FILE *in = fopen(argv[1], \"rb\");\n     if (!in) return 1;\n-    fseek(in, 0, SEEK_END); long len = ftell(in); fseek(in, 0, SEEK_SET);\n+    if (fseeko(in, 0, SEEK_END) != 0) { fclose(in); return 1; }\n+    off_t file_len = ftello(in);\n+    if (file_len <= 0 || file_len > UINT32_MAX || fseeko(in, 0, SEEK_SET) != 0) { fclose(in); return 1; }\n+    size_t len = (size_t)file_len;\n     uint8_t *buf = malloc(len);\n-    if (fread(buf, 1, len, in) != (size_t)len) return 1;\n-    fclose(in);\n+    if (!buf || fread(buf, 1, len, in) != (size_t)len) { free(buf); fclose(in); return 1; }\n \n-    MP4Track tr;\n-    memset(&tr, 0, sizeof(tr));\n-    bool is_mp4 = mp4_read_track_buf(buf, len, &tr);\n+    faam_demuxer *demuxer = NULL;\n+    faam_track_info track = { .struct_size = sizeof(track) };\n+    faam_gapless_info gapless = { .struct_size = sizeof(gapless) };\n+    faam_io io = { .struct_size = sizeof(io), .user_data = in,\n+                   .read = faam_read, .seek = faam_seek, .tell = faam_tell };\n+    bool is_mp4 = faam_demuxer_open(NULL, &io, &demuxer) == FAAM_OK;\n+    if (is_mp4) {\n+        uint32_t count = 0;\n+        faam_demuxer_get_num_tracks(demuxer, &count, NULL);\n+        for (uint32_t i = 0; i < count; i++) {\n+            faam_track_info candidate = { .struct_size = sizeof(candidate) };\n+            if (faam_demuxer_get_track_info(demuxer, i, &candidate) == FAAM_OK &&\n+                candidate.track_type == FAAM_TRACK_AUDIO && candidate.codec_id == FAAM_CODEC_AAC) {\n+                track = candidate;\n+                break;\n+            }\n+        }\n+        if (!track.track_id) {\n+            /* libfaam also opens raw ADTS but exposes no AAC track: fall\n+             * through to the ADTS path unless this is not ADTS either. */\n+            faam_demuxer_close(&demuxer);\n+            demuxer = NULL;\n+            is_mp4 = false;\n+            if (!looks_like_adts(buf, len)) {\n+                fprintf(stderr, \"no AAC audio track in MP4\\n\");\n+                fclose(in);\n+                free(buf);\n+                return 1;\n+            }\n+        } else {\n+            faam_demuxer_get_track_gapless(demuxer, track.track_id, &gapless);\n+        }\n+    }\n     bool is_adts = !is_mp4 && looks_like_adts(buf, len);\n-    if (!is_mp4 && !is_adts) { fprintf(stderr, \"not mp4 or adts\\n\"); return 1; }\n+    if (!is_mp4 && !is_adts) { fprintf(stderr, \"not mp4 or adts\\n\"); fclose(in); free(buf); return 1; }\n \n     HANDLE_AACDECODER dec;\n     if (is_mp4) {\n         dec = aacDecoder_Open(TT_MP4_RAW, 1);\n-        UCHAR *asc = tr.asc_buf; UINT asc_len = tr.asc_len;\n-        if (aacDecoder_ConfigRaw(dec, &asc, &asc_len) != AAC_DEC_OK) { fprintf(stderr, \"ConfigRaw failed\\n\"); return 1; }\n+        if (!dec) { fprintf(stderr, \"cannot open libfdk-aac decoder\\n\"); faam_demuxer_close(&demuxer); fclose(in); free(buf); return 1; }\n+        uint8_t asc_buf[FAAM_CODEC_DATA_MAX];\n+        uint32_t asc_size = 0;\n+        if (faam_demuxer_get_codec_data(demuxer, track.track_id, asc_buf,\n+                                         sizeof(asc_buf), &asc_size) != FAAM_OK) {\n+            fprintf(stderr, \"cannot read AAC decoder configuration\\n\");\n+            faam_demuxer_close(&demuxer);\n+            fclose(in);\n+            free(buf);\n+            return 1;\n+        }\n+        UCHAR *asc = asc_buf; UINT asc_len = asc_size;\n+        if (aacDecoder_ConfigRaw(dec, &asc, &asc_len) != AAC_DEC_OK) {\n+            fprintf(stderr, \"ConfigRaw failed\\n\");\n+            aacDecoder_Close(dec);\n+            faam_demuxer_close(&demuxer);\n+            fclose(in);\n+            free(buf);\n+            return 1;\n+        }\n     } else {\n         dec = aacDecoder_Open(TT_MP4_ADTS, 1);\n+        if (!dec) { fprintf(stderr, \"cannot open libfdk-aac decoder\\n\"); fclose(in); free(buf); return 1; }\n     }\n     aacDecoder_SetParam(dec, AAC_PCM_LIMITER_ENABLE, 0);\n \n@@ -74,19 +145,39 @@ int main(int argc, char **argv) {\n     uint32_t core_rate = 0;\n \n     if (is_mp4) {\n-        for (uint32_t i = 0; i < tr.num_samples; i++) {\n-            UCHAR *p = buf + tr.samples[i].offset; UINT sz = tr.samples[i].size, valid = sz;\n+        uint32_t frame_cap = track.max_frame_bytes ? track.max_frame_bytes : 65536;\n+        UCHAR *frame = malloc(frame_cap);\n+        if (!frame) { fprintf(stderr, \"out of memory\\n\"); return 1; }\n+        uint32_t frame_index = 0, frame_bytes = 0;\n+        faam_frame_loc loc = { .struct_size = sizeof(loc) };\n+        while (faam_demuxer_next_frame_loc(demuxer, &loc) == FAAM_OK) {\n+            if (loc.track_id != track.track_id) {\n+                faam_demuxer_read_frame(demuxer, NULL, 0, &frame_bytes);\n+                continue;\n+            }\n+            faam_status fs = faam_demuxer_read_frame(demuxer, frame, frame_cap, &frame_bytes);\n+            if (fs == FAAM_ERR_OUTPUT_TOO_SMALL) {\n+                UCHAR *larger = realloc(frame, frame_bytes);\n+                if (!larger) { fprintf(stderr, \"out of memory\\n\"); free(frame); return 1; }\n+                frame = larger;\n+                frame_cap = frame_bytes;\n+                fs = faam_demuxer_read_frame(demuxer, frame, frame_cap, &frame_bytes);\n+            }\n+            if (fs != FAAM_OK) { fprintf(stderr, \"MP4 frame read failed: %s\\n\", faam_strerror(fs)); break; }\n+            UCHAR *p = frame; UINT sz = frame_bytes, valid = frame_bytes;\n             if (aacDecoder_Fill(dec, &p, &sz, &valid) != AAC_DEC_OK) break;\n             AAC_DECODER_ERROR e = aacDecoder_DecodeFrame(dec, out, sizeof(out) / sizeof(out[0]), 0);\n+            frame_index++;\n             if (e == AAC_DEC_NOT_ENOUGH_BITS) continue;\n-            if (e != AAC_DEC_OK) { fprintf(stderr, \"frame %u err 0x%x\\n\", i, e); continue; }\n+            if (e != AAC_DEC_OK) { fprintf(stderr, \"frame %u err 0x%x\\n\", frame_index, e); continue; }\n             si = aacDecoder_GetStreamInfo(dec);\n             if (!core_rate) core_rate = si->aacSampleRate;\n             size_t k = (size_t)si->frameSize * si->numChannels;\n             if (n + k > cap) { cap = (n + k) * 2; pcm = realloc(pcm, cap * sizeof(int16_t)); }\n             memcpy(pcm + n, out, k * sizeof(int16_t));\n             n += k;\n         }\n+        free(frame);\n     } else {\n         /* Raw ADTS: libfdk finds its own sync words inside the buffer we\n          * hand it, so we stream the whole file through Fill/DecodeFrame\n@@ -122,7 +213,15 @@ int main(int argc, char **argv) {\n             }\n         }\n     }\n-    if (!si) { fprintf(stderr, \"no output\\n\"); return 1; }\n+    if (!si) {\n+        fprintf(stderr, \"no output\\n\");\n+        faam_demuxer_close(&demuxer);\n+        aacDecoder_Close(dec);\n+        fclose(in);\n+        free(buf);\n+        free(pcm);\n+        return 1;\n+    }\n \n     /* Drain the decoder's internal delay so the tail is complete. */\n     for (UINT drained = 0; drained < si->outputDelay; ) {\n@@ -152,16 +251,19 @@ int main(int argc, char **argv) {\n     FILE *f = fopen(path, \"wb\"); wav_hdr(f, sr, ch, frames); fwrite(pcm, 2, n, f); fclose(f);\n \n     /* Container gapless counts are in the track timescale (the core rate).\n-     * ADTS input carries no such metadata, so tr.delay/tr.padding are 0\n+     * ADTS input carries no such metadata, so delay and padding are 0\n      * and only the decoder's own outputDelay is trimmed. */\n-    uint64_t skip = (uint64_t)tr.delay * scale + si->outputDelay;\n+    uint64_t skip = (uint64_t)gapless.encoder_delay * scale + si->outputDelay;\n     uint64_t media = (uint64_t)frames;\n-    uint64_t keep = media > skip + (uint64_t)tr.padding * scale ? media - skip - (uint64_t)tr.padding * scale : 0;\n+    uint64_t keep = media > skip + (uint64_t)gapless.end_padding * scale ? media - skip - (uint64_t)gapless.end_padding * scale : 0;\n     if (skip + keep > media) keep = media - skip;\n     f = fopen(out_path, \"wb\"); wav_hdr(f, sr, ch, (uint32_t)keep); fwrite(pcm + skip * ch, 2, keep * ch, f); fclose(f);\n \n     printf(\"aot=%d core=%u out=%u ch=%u scale=%u priming=%u padding=%u outputDelay=%u raw_frames=%u gapless_frames=%llu\\n\",\n-           si->aot, core_rate, sr, ch, scale, tr.delay, tr.padding, si->outputDelay, frames, (unsigned long long)keep);\n+           si->aot, core_rate, sr, ch, scale, gapless.encoder_delay, gapless.end_padding, si->outputDelay, frames, (unsigned long long)keep);\n+    faam_demuxer_close(&demuxer);\n     aacDecoder_Close(dec);\n+    fclose(in);\n+    free(buf);\n     return 0;\n }"
+    }
+  ]
+}

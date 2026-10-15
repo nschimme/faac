@@ -1,0 +1,614 @@
+"""
+ * FAAC Benchmark Suite
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""
+
+import os
+import re
+import subprocess
+import time
+import sys
+import json
+import hashlib
+import argparse
+import concurrent.futures
+import multiprocessing
+import fnmatch
+
+from utils import (WorkerPool, start_orphan_watchdog, corpus_dir, select_corpus_clips, expand_scenario_list,
+                   decode_validate, calculate_provenance_hash, get_binary_size,
+                   get_file_hash, get_elf_section_sizes, get_section_sizes,
+                   get_object_sizes, get_toolchain_fp, get_host_fp, is_faac_legacy,
+                   get_audio_es_bytes, ffmpeg_probe, measure_peak_ram, probe_version)
+
+# Ensure the current directory is in the path for config import
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config import SCENARIOS, CORPORA, GATE_CLIPS, GATE_FALLBACK_N
+
+
+# frontend/main.c prints "Object type: <name> (MPEG-n)[ + TNS][ + M/S][ + PNS]"
+# at its default verbosity, so no extra flag is needed to get this.
+_OBJECT_TYPE_RE = re.compile(rb"^Object type:\s*([^(]+?)\s*\(", re.MULTILINE)
+
+
+def _has_arg(cmd, flag):
+    return flag in cmd or any(arg.startswith(flag + "=") for arg in cmd)
+
+
+def validate_faac_cmd(cmd, rate_control, throughput_variant=None, legacy=False):
+    """Reject a benchmark argv that would measure a different mode."""
+    if throughput_variant is None and _has_arg(cmd, "--object-type"):
+        raise RuntimeError("scenario encode must not set --object-type")
+
+    if rate_control == "vbr":
+        if not _has_arg(cmd, "-q") or _has_arg(cmd, "-b"):
+            raise RuntimeError("VBR encode must use -q and not -b")
+    elif rate_control == "abr":
+        if (not _has_arg(cmd, "-b") or _has_arg(cmd, "--cbr") or
+                _has_arg(cmd, "-q")):
+            raise RuntimeError("ABR encode must use -b without --cbr or -q")
+    elif rate_control == "cbr":
+        if not _has_arg(cmd, "-b") or not _has_arg(cmd, "--cbr"):
+            raise RuntimeError("CBR encode must use -b and --cbr")
+
+    if throughput_variant and not legacy:
+        expected = "lc" if throughput_variant == "_lc" else "he-aac-v1"
+        try:
+            actual = cmd[cmd.index("--object-type") + 1]
+        except (ValueError, IndexError):
+            actual = None
+        if actual != expected:
+            raise RuntimeError(
+                f"throughput {throughput_variant} encode must use --object-type {expected}")
+
+
+def portable_cmd(cmd):
+    """Keep result JSON independent of the runner's directory layout."""
+    return [os.path.basename(arg) if os.path.isabs(arg) else arg for arg in cmd]
+
+
+def parse_object_type(stderr_bytes):
+    """Which object type AUTO actually resolved to for this encode.
+
+    Scenarios do not pass --object-type, so the codec at a given rung is the
+    encoder's own decision and can differ between two builds under test --
+    nschimme/faac#451 moves the HE/LC boundary, for one. Without this recorded
+    per encode, the only way to segment a rate-quality ladder by object type was
+    to re-encode a probe clip afterwards and read the banner, which is fragile
+    and silent when it is wrong. scripts/bd_rate.py needs the split because
+    fitting one curve across the 48k_stereo HE->LC switch halved the measured
+    loss (+0.401% pooled against +0.816% / +0.705% segmented).
+
+    None when the banner is absent, which is the case for legacy faac binaries;
+    consumers fall back to a pooled fit and say so.
+    """
+    if not stderr_bytes:
+        return None
+    m = _OBJECT_TYPE_RE.search(stderr_bytes)
+    if not m:
+        return None
+    try:
+        return m.group(1).decode("utf-8", "replace").strip() or None
+    except Exception:
+        return None
+
+
+def gate_filter(name, filtered_samples):
+    """Restrict a scenario's samples to its fixed gate subset (config.GATE_CLIPS),
+    intersected with what's on disk. Falls back to a deterministic even-spaced
+    slice when no curated list exists, so --gate works for any scenario."""
+    available = set(filtered_samples)
+    picked = [c for c in GATE_CLIPS.get(name, []) if c in available]
+    if picked:
+        return picked
+    n = min(GATE_FALLBACK_N, len(filtered_samples))
+    if n <= 0:
+        return []
+    step = len(filtered_samples) / n
+    return [filtered_samples[int(i * step)] for i in range(n)]
+
+# Paths relative to script directory
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+EXTERNAL_DATA_DIR = os.environ.get("EXTERNAL_DATA_DIR") or os.path.join(SCRIPT_DIR, "data", "external")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
+
+# Timed repetitions per throughput signal. Five is the smallest N that gives the
+# minimum a fair chance of landing on an uncontended run and still leaves enough
+# samples to bootstrap a confidence interval.
+TP_REPS = 5
+
+
+def get_short_throughput_wav(input_path, target_sec=5.0):
+    """Return path to a ~5s WAV slice of input_path for fast Cachegrind profiling."""
+    import shutil
+    valgrind_bin = shutil.which("valgrind")
+    if not valgrind_bin:
+        return input_path
+
+    out_dir = os.path.dirname(input_path)
+    stem = os.path.splitext(os.path.basename(input_path))[0]
+    out_path = os.path.join(out_dir, f"{stem}_5s.wav")
+    if os.path.exists(out_path):
+        return out_path
+
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if ffmpeg_bin:
+        cmd = [ffmpeg_bin, "-y", "-i", input_path, "-t", str(target_sec), "-c", "copy", out_path]
+        try:
+            subprocess.run(cmd, capture_output=True, check=True)
+            if os.path.exists(out_path):
+                return out_path
+        except Exception:
+            pass
+    return input_path
+
+
+def worker_init(cpu_id_queue):
+    """Pin the worker process to a specific CPU core for consistent benchmarks."""
+    start_orphan_watchdog()
+    cpu_id = cpu_id_queue.get()
+    if hasattr(os, "sched_setaffinity"):
+        try:
+            os.sched_setaffinity(0, [cpu_id])
+        except Exception as e:
+            print(f" Failed to pin process {os.getpid()} to CPU {cpu_id}: {e}")
+
+
+from codec_bench.encoders import FAACEncoder, get_encoder_instance, encoder_row_key
+
+def process_sample(encoder, name, cfg, sample, data_dir, precision, env, extra_args=None, rate_control="abr"):
+    input_path = os.path.join(data_dir, sample)
+    key = f"{name}_{sample}"
+    output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}{encoder.file_ext}")
+
+    sample_rate = cfg.get("rate", 44100)
+    channels = cfg.get("channels", 2)
+    bitrate_kbps = cfg.get("bitrate", 128)
+
+    if isinstance(encoder, FAACEncoder):
+        cmd = encoder.get_encode_cmd(
+            input_path, output_path, bitrate_kbps, channels, sample_rate,
+            rate_control=rate_control, vbr_q=cfg.get("vbr_q", 100))
+    else:
+        cmd = encoder.get_encode_cmd(input_path, output_path, bitrate_kbps, channels, sample_rate)
+    if extra_args:
+        cmd.extend(extra_args)
+
+    if isinstance(encoder, FAACEncoder):
+        validate_faac_cmd(cmd, rate_control, legacy=encoder.legacy)
+
+    try:
+        proc, t_duration, peak_ram_kb = measure_peak_ram(list(cmd), env=encoder.get_run_env() or env, check=True)
+        object_type = parse_object_type(proc.stderr)
+
+        mos = None
+        aac_size = os.path.getsize(output_path)
+        es_bytes = get_audio_es_bytes(output_path)
+        actual_bitrate = None
+
+        audio_duration = ffmpeg_probe(input_path)
+        if audio_duration and audio_duration > 0:
+            # kbps = (elementary_stream_bytes * 8) / (seconds * 1000)
+            actual_bitrate = (es_bytes * 8) / (audio_duration * 1000)
+
+        # Decode validation
+        valid, decode_err = decode_validate(output_path)
+        if not valid:
+            print(f"    [DECODE ERROR] {sample}: {decode_err}")
+
+        # Rate control bias & accuracy calculations per SOP
+        rc_mode = rate_control
+        expected_rate = cfg.get("bitrate")
+        bias_ratio = None
+        bias_percent = None
+        accuracy_score = None
+        bias_status = "Optimal"
+
+        if actual_bitrate is not None and expected_rate and expected_rate > 0:
+            bias_ratio = actual_bitrate / expected_rate
+            bias_percent = (bias_ratio - 1.0) * 100
+            accuracy_score = max(0.0, 1.0 - abs((actual_bitrate - expected_rate) / expected_rate))
+
+            if rc_mode in ("abr", "cbr"):
+                if bias_ratio > 1.05:
+                    bias_status = "Overshoot"
+                elif bias_ratio < 0.95:
+                    bias_status = "Undershoot"
+            else:
+                if bias_ratio > 1.15:
+                    bias_status = "Overshoot"
+                elif bias_ratio < 0.85:
+                    bias_status = "Undershoot"
+
+        # Provenance hash
+        prov_hash = calculate_provenance_hash(encoder.binary_path or "", encoder.lib_override or "", extra_args, input_path)
+
+        return key, {
+            "mos": mos,
+            "size": aac_size,
+            "bitrate": actual_bitrate,
+            "bitrate_target": cfg.get("bitrate"),
+            "expected_bitrate": expected_rate,
+            "rate_control_mode": rc_mode,
+            "bias_ratio": bias_ratio,
+            "bias_percent": bias_percent,
+            "accuracy_score": accuracy_score,
+            "bias_status": bias_status,
+            "time": t_duration,
+            "peak_ram_kb": peak_ram_kb,
+            "md5": get_file_hash(output_path),
+            "thresh": cfg["thresh"],
+            "scenario": name,
+            "object_type": object_type,
+            "cmd": portable_cmd(cmd),
+            "filename": sample,
+            "aac": os.path.basename(output_path),
+            "decode_error": decode_err if not valid else None,
+            "prov_hash": prov_hash
+        }
+    except Exception as e:
+        print(f" failed: {e}")
+        return None
+
+
+def run_benchmark(
+        precision,
+        coverage=100,
+        run_perceptual=True,
+        sha=None,
+        scenarios=None,
+        include_tests=None,
+        exclude_tests=None,
+        extra_args=None,
+        gate=False,
+        build_dir=None,
+        throughput_only=False,
+        rate_control="abr",
+        encoder_type="faac",
+        encoder_bin=None,
+        encoder_lib=None):
+    env = os.environ.copy()
+
+    encoder_inst = get_encoder_instance(
+        encoder_type=encoder_type,
+        binary_path=encoder_bin,
+        lib_override=encoder_lib,
+        profile="auto"
+    )
+    env = os.environ.copy()
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    lib_path_target = encoder_lib or (encoder_inst.binary_path if encoder_inst else None)
+    sec_sizes = get_elf_section_sizes(lib_path_target) if lib_path_target else {"text": 0, "rodata": 0, "bss": 0, "data": 0}
+    exact_rom_size = sec_sizes.get("text", 0) + sec_sizes.get("rodata", 0) + sec_sizes.get("data", 0)
+    if exact_rom_size == 0 and lib_path_target:
+        exact_rom_size = get_binary_size(lib_path_target)
+
+    bin_path_target = encoder_bin or (encoder_inst.binary_path if encoder_inst else None)
+    faac_ver = probe_version(bin_path_target, ["-H", "--help-advanced", "--help", "-h", "-v"],
+                             [r"FAAC\s+v?(\d+\.\d+(?:\.\d+)*[a-z0-9.]*(?:\s+\([^)]+\))?)",
+                              r"version\s+(\d+\.\d+(?:\.\d+)*[a-z0-9.]*)"]) if bin_path_target else None
+
+    results = {
+        "name": precision,
+        "sha": sha,
+        "faac_git_sha": os.environ.get("FAAC_GIT_SHA"),
+        "encoder_name": f"FAAC {faac_ver}" if faac_ver else "FAAC",
+        "encoder_version": faac_ver or "unknown",
+        "faac_args": " ".join(extra_args) if extra_args else "",
+        "rate_control": rate_control,
+        "matrix": {},
+        "throughput": {},
+        "throughput_samples": {},
+        "lib_size": exact_rom_size,
+        "lib_text_size": sec_sizes.get("text", 0),
+        "lib_rodata_size": sec_sizes.get("rodata", 0),
+        "lib_bss_size": sec_sizes.get("bss", 0),
+        "lib_data_size": sec_sizes.get("data", 0),
+        # Gate inputs. get_section_sizes is the portable reader: on macOS
+        # get_elf_section_sizes falls back to whole-file size as "text", which
+        # is the very number a section sum exists to avoid.
+        "lib_sections": get_section_sizes(lib_path_target) if lib_path_target else {},
+        "frontend_size": get_binary_size(bin_path_target) if bin_path_target else 0,
+        "object_text": get_object_sizes(build_dir) if build_dir else {},
+        "toolchain_fp": get_toolchain_fp(build_dir),
+        "host_fp": get_host_fp(),
+    }
+
+    if run_perceptual and not throughput_only:
+        print(f"Starting Phase 1 (Encoding) for {precision}...")
+        # Detect number of CPUs for parallelization
+        num_cpus = os.cpu_count() or 1
+        print(f"Parallelizing across {num_cpus} threads.")
+
+        scenario_list = SCENARIOS.keys()
+        if scenarios:
+            scenario_list = expand_scenario_list(scenarios)
+
+        for name in scenario_list:
+            if name not in SCENARIOS:
+                print(f"  [Scenario: {name}] Warning: Scenario not found in config, skipping.")
+                continue
+            cfg = SCENARIOS[name]
+            data_dir = corpus_dir(cfg, EXTERNAL_DATA_DIR)
+            if not os.path.exists(data_dir):
+                print(
+                    f"  [Scenario: {name}] Data directory {data_dir} not found, skipping.")
+                continue
+
+            # The corpus's own deterministic cap (stratified, so no
+            # degradation type or talker is dropped) is what bounds a full
+            # run, and it applies before --include/--exclude/--coverage.
+            # --gate does its own bounding from a curated list, so the cap is
+            # skipped there -- applying both would silently drop gate clips
+            # that the cap happened not to select.
+            wavs = [f for f in os.listdir(data_dir) if f.endswith(".wav")]
+            all_samples = sorted(wavs) if gate else select_corpus_clips(
+                wavs, CORPORA.get(cfg["corpus"], {}))
+
+            # Apply include/exclude filters
+            filtered_samples = []
+            includes = [i.strip() for i in include_tests.split(",")] if include_tests else ["*"]
+            excludes = [e.strip() for e in exclude_tests.split(",")] if exclude_tests else []
+
+            for sample in all_samples:
+                should_include = any(fnmatch.fnmatch(sample, i) for i in includes)
+                should_exclude = any(fnmatch.fnmatch(sample, e) for e in excludes)
+                if should_include and not should_exclude:
+                    filtered_samples.append(sample)
+
+            if len(filtered_samples) == 0:
+                print(f"  [Scenario: {name}] No samples found.")
+                continue
+
+            if gate:
+                samples = gate_filter(name, filtered_samples)
+                print(f"  [Scenario: {name}] Gate subset: {len(samples)} clip(s).")
+            else:
+                num_to_run = max(1, int(len(filtered_samples) * coverage / 100.0))
+                step = len(filtered_samples) / num_to_run if num_to_run > 0 else 1
+                samples = [filtered_samples[int(i * step)] for i in range(num_to_run)]
+
+            print(f"  [Scenario: {name}] Processing {len(samples)} samples (coverage {coverage}%)...")
+
+            # Pin each process to a unique CPU core (Linux only; macOS lacks sched_setaffinity)
+            if hasattr(os, "sched_setaffinity"):
+                manager = multiprocessing.Manager()
+                cpu_id_queue = manager.Queue()
+                for cpu_id in range(num_cpus):
+                    cpu_id_queue.put(cpu_id)
+                executor_kwargs = dict(initializer=worker_init, initargs=(cpu_id_queue,))
+            else:
+                manager = None
+                executor_kwargs = dict(initializer=start_orphan_watchdog)
+
+            with WorkerPool(
+                max_workers=num_cpus,
+                **executor_kwargs
+            ) as executor:
+                futures = {
+                    executor.submit(
+                        process_sample,
+                        encoder_inst,
+                        name,
+                        cfg,
+                        sample,
+                        data_dir,
+                        precision,
+                        env,
+                        extra_args,
+                        rate_control): sample for sample in samples}
+                for i, future in enumerate(
+                        concurrent.futures.as_completed(futures)):
+                    result = future.result()
+                    if result:
+                        key, data = result
+                        results["matrix"][key] = data
+                        print(
+                            f"    ({i + 1}/{len(samples)}) {data['filename']} done.")
+
+    print(f"Measuring throughput for {precision}...")
+    # Pin current process to a single core for accurate throughput measurement
+    if hasattr(os, "sched_setaffinity"):
+        try:
+            os.sched_setaffinity(0, [0])
+        except BaseException:
+            pass
+
+    import shutil
+    valgrind_bin = shutil.which("valgrind")
+    results["throughput_metric"] = "cachegrind" if valgrind_bin else "timing"
+
+    tp_dir = os.path.join(EXTERNAL_DATA_DIR, "throughput")
+    if os.path.exists(tp_dir):
+        tp_samples = sorted(
+            [f for f in os.listdir(tp_dir) if f.endswith(".wav") and not f.endswith("_5s.wav")])
+        if tp_samples:
+            overall_values = []
+            vbr_q_128k = SCENARIOS.get("48k_stereo_128k", {}).get("vbr_q", 203)
+            vbr_q_32k = SCENARIOS.get("48k_stereo_32k", {}).get("vbr_q", 50)
+            is_legacy = is_faac_legacy(bin_path_target, lib_override=lib_path_target) if bin_path_target else False
+
+            variants = []
+            # LC profile variant
+            lc_flags = ["-q", str(vbr_q_128k)] if rate_control == "vbr" else ["-b", "128"]
+            if rate_control == "cbr":
+                lc_flags.append("--cbr")
+            if not is_legacy:
+                lc_flags.extend(["--object-type", "lc"])
+            variants.append(("_lc", lc_flags))
+
+            # HE profile variant (if non-legacy)
+            if not is_legacy:
+                he_flags = ["-q", str(vbr_q_32k)] if rate_control == "vbr" else ["-b", "32"]
+                if rate_control == "cbr":
+                    he_flags.append("--cbr")
+                he_flags.extend(["--object-type", "he-aac-v1"])
+                variants.append(("_he", he_flags))
+
+            for sample in tp_samples:
+                input_path = os.path.join(tp_dir, sample)
+                sample_stem = os.path.splitext(sample)[0]
+
+                for var_suffix, extra_flags in variants:
+                    var_key = f"{sample_stem}{var_suffix}"
+                    output_path = os.path.join(
+                        OUTPUT_DIR, f"tp_{var_key}_{precision}.m4a")
+
+                    print(f"  Benchmarking throughput for {var_key}...")
+                    try:
+                        eff_input = get_short_throughput_wav(input_path) if valgrind_bin else input_path
+                        if isinstance(encoder_inst, FAACEncoder):
+                            bitrate = 32 if var_suffix == "_he" else 128
+                            vbr_q = vbr_q_32k if var_suffix == "_he" else vbr_q_128k
+                            tp_cmd = encoder_inst.get_encode_cmd(
+                                eff_input, output_path, bitrate, 2, 44100,
+                                rate_control=rate_control, vbr_q=vbr_q)
+                            if not encoder_inst.legacy:
+                                obj = "he-aac-v1" if var_suffix == "_he" else "lc"
+                                tp_cmd[-1:-1] = ["--object-type", obj]
+                        else:
+                            tp_cmd = encoder_inst.get_encode_cmd(eff_input, output_path, 128, 2, 44100) if encoder_inst else [bin_path_target]
+                            tp_cmd.extend(extra_flags)
+                        if extra_args:
+                            tp_cmd.extend(extra_args)
+                        if isinstance(encoder_inst, FAACEncoder):
+                            validate_faac_cmd(
+                                tp_cmd, rate_control, var_suffix,
+                                legacy=encoder_inst.legacy)
+
+                        if valgrind_bin:
+                            vg_cmd = [valgrind_bin, "--tool=cachegrind", "--cachegrind-out-file=/dev/null"] + tp_cmd
+                            res = subprocess.run(vg_cmd, env=env, capture_output=True, text=True)
+                            import re
+                            m = re.search(r"I\s+refs:\s*([\d,]+)", res.stderr or "")
+                            if not m:
+                                raise RuntimeError(f"Failed to parse Cachegrind instruction count from stderr: {res.stderr}")
+                            ir_count = int(m.group(1).replace(",", ""))
+                            results["throughput"][var_key] = ir_count
+                            results["throughput_samples"][var_key] = [ir_count]
+                            overall_values.append(ir_count)
+                        else:
+                            # Warmup
+                            measure_peak_ram(list(tp_cmd), env=env, check=True)
+
+                            durations = []
+                            peak_rams = []
+                            for _ in range(TP_REPS):
+                                proc, t_dur, ram_kb = measure_peak_ram(list(tp_cmd), env=env, check=True)
+                                durations.append(t_dur)
+                                if ram_kb is not None:
+                                    peak_rams.append(ram_kb)
+
+                            best = min(durations)
+                            results["throughput"][var_key] = best
+                            results["throughput_samples"][var_key] = durations
+                            if peak_rams:
+                                results.setdefault("peak_ram", {})[var_key] = max(peak_rams)
+                            overall_values.append(best)
+                    except BaseException as e:
+                        print(f"    Throughput benchmark failed for {var_key}: {e}")
+                        pass
+
+            if overall_values:
+                results["throughput"]["overall"] = sum(
+                    overall_values) / len(overall_values)
+            if "peak_ram" in results and results["peak_ram"]:
+                results["peak_ram"]["overall"] = max(results["peak_ram"].values())
+
+    return results
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Phase 1: Encoding and Basic Metrics")
+    parser.add_argument("precision", help="Precision name")
+    parser.add_argument("output", help="Output JSON path")
+    parser.add_argument("--encoder", default="faac", help="Encoder type")
+    parser.add_argument("--encoder-bin", help="Path to encoder binary")
+    parser.add_argument("--encoder-lib", help="Path to encoder shared library")
+    # Phase 1 does not compute MOS -- phase 2 does -- so what this actually
+    # controls is whether the corpus is encoded at all. --skip-encode says that;
+    # --skip-mos is kept as an alias because callers already pass it.
+    parser.add_argument("--skip-encode", "--skip-mos", dest="skip_encode",
+                        action="store_true",
+                        help="Skip the encode matrix (footprint- or throughput-only runs)")
+    parser.add_argument("--coverage", type=int, default=100, help="Coverage percentage (1-100)")
+    parser.add_argument("--sha", help="Commit SHA")
+    parser.add_argument("--scenarios", help="Comma-separated scenarios")
+    parser.add_argument("--include-tests", help="Comma-separated include globs")
+    parser.add_argument("--exclude-tests", help="Comma-separated exclude globs")
+    parser.add_argument("--extra-args", nargs="*", help="Extra arguments to pass to faac encoder (e.g. '--tns')")
+    parser.add_argument("--gate", action="store_true", help="Use the fast fixed gate subset (config.GATE_CLIPS)")
+    parser.add_argument("--rate-control", choices=["abr", "vbr", "cbr"], default="abr",
+                        help="Rate control mode: abr (-b), vbr (-q), or cbr (-b --cbr: bit reservoir, exact rate)")
+    parser.add_argument("--build-dir", help="Meson build directory, for per-object sizes and toolchain identity")
+    parser.add_argument("--throughput-only", action="store_true",
+                        help="Measure only throughput and merge it into an existing output JSON. "
+                             "For refreshing a cached baseline's timings on the machine that will "
+                             "measure the candidate, so the two are comparable.")
+
+    args, unknown = parser.parse_known_args()
+
+    # Combine explicit extra args and any unknown args
+    extra_args_list = []
+    if args.extra_args:
+        # If passed via --extra-args="--flag1 --flag2", it might be a single string in the list
+        for arg in args.extra_args:
+            extra_args_list.extend(arg.split())
+    if unknown:
+        for arg in unknown:
+            extra_args_list.extend(arg.split())
+
+    extra_args = extra_args_list if extra_args_list else None
+    data = run_benchmark(
+        args.precision,
+        coverage=args.coverage,
+        run_perceptual=not args.skip_encode,
+        sha=args.sha,
+        scenarios=args.scenarios,
+        include_tests=args.include_tests,
+        exclude_tests=args.exclude_tests,
+        extra_args=extra_args,
+        gate=args.gate,
+        build_dir=args.build_dir,
+        throughput_only=args.throughput_only,
+        rate_control=args.rate_control,
+        encoder_type=args.encoder,
+        encoder_bin=args.encoder_bin,
+        encoder_lib=args.encoder_lib)
+
+    # Ensure results directory exists
+    output_json = os.path.abspath(args.output)
+    os.makedirs(os.path.dirname(output_json), exist_ok=True)
+
+    # Refreshing timings must not discard the MOS matrix the cached run paid
+    # for. Rather than list the keys to refresh -- a list that goes stale the
+    # moment a field is added, silently leaving it cached -- keep the matrix and
+    # let everything measured this run overwrite its cached counterpart.
+    # Falsy values do not overwrite, so a field this run did not produce (an
+    # unset --sha, say) keeps what the cached run recorded.
+    if args.throughput_only and os.path.exists(output_json):
+        with open(output_json) as f:
+            merged = json.load(f)
+        for key, value in data.items():
+            if key == "matrix" or not value:
+                continue
+            merged[key] = value
+        data = merged
+
+    with open(output_json, "w") as f:
+        json.dump(data, f, indent=2)

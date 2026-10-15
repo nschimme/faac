@@ -1,0 +1,98 @@
+{
+  "schema": "faac-pr70-ci-report-source-versions-v1",
+  "footprint_workflow": {
+    "repository": "nschimme/faac",
+    "path": ".github/workflows/benchmark.yml",
+    "base_commit": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+    "source_file": "workflows/benchmark.yml",
+    "hash_semantics": "raw bytes fetched from raw.githubusercontent.com at the base SHA"
+  },
+  "build_workflow": {
+    "repository": "nschimme/faac",
+    "path": ".github/workflows/master.yml",
+    "base_commit": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+    "source_file": "workflows/master.yml"
+  },
+  "footprint_comparator": {
+    "repository": "nschimme/faac-benchmark",
+    "workflow_ref": "master",
+    "resolved_commit_at_retrieval": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+    "commit_date": "2026-10-14T20:04:16Z",
+    "api_commit_window_result": "zero commits after resolved master head through footprint-job completion",
+    "actual_job_checkout_sha": "not exposed in unauthenticated job metadata; same checkout is inferred from commit window and workflow ref"
+  },
+  "captured_files": [
+    {
+      "path": "workflows/benchmark.yml",
+      "repository": "nschimme/faac",
+      "ref": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+      "source_url": "https://raw.githubusercontent.com/nschimme/faac/d7a6effe22e0dd86d30c9147649542b937021c7d/.github/workflows/benchmark.yml",
+      "bytes": 12549,
+      "sha256": "801d50ead5b82c66b5ef6655cfc8888da7362ae69a362df53778000bdeb4e80b"
+    },
+    {
+      "path": "workflows/master.yml",
+      "repository": "nschimme/faac",
+      "ref": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+      "source_url": "https://raw.githubusercontent.com/nschimme/faac/d7a6effe22e0dd86d30c9147649542b937021c7d/.github/workflows/master.yml",
+      "bytes": 7665,
+      "sha256": "a53c8635fb5297f29b01610d189acbc1bf788ec850c38ebea0809716f6c4e6f7"
+    },
+    {
+      "path": "benchmark-source/action.yml",
+      "repository": "nschimme/faac-benchmark",
+      "ref": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "source_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/action.yml",
+      "bytes": 7505,
+      "sha256": "bd0e40ab4731a5d503e369857c312350307758be502467b48946e5c19cf9b50d"
+    },
+    {
+      "path": "benchmark-source/codec_bench/encoders.py",
+      "repository": "nschimme/faac-benchmark",
+      "ref": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "source_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/codec_bench/encoders.py",
+      "bytes": 35278,
+      "sha256": "7da9fbce6262bd6501f2692966ae96cf39a7d582835fa6228bd9a03eabc4af17"
+    },
+    {
+      "path": "benchmark-source/compare_results.py",
+      "repository": "nschimme/faac-benchmark",
+      "ref": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "source_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/compare_results.py",
+      "bytes": 93530,
+      "sha256": "53b9175b4610e504aee1e291483295e1a7fc713ef2b0d7a559b71be8b9c3e2f3"
+    },
+    {
+      "path": "benchmark-source/config.py",
+      "repository": "nschimme/faac-benchmark",
+      "ref": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "source_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/config.py",
+      "bytes": 20401,
+      "sha256": "2f287da6da6e5aa1b8782d2469bb2f6432742edb81026cc92b9b80ed53d9b3af"
+    },
+    {
+      "path": "benchmark-source/phase1_encode.py",
+      "repository": "nschimme/faac-benchmark",
+      "ref": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "source_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/phase1_encode.py",
+      "bytes": 27402,
+      "sha256": "9c2c031468911633f13944d0fb4fb1a792a81e4729da26b9c9829c438a11b8a9"
+    },
+    {
+      "path": "benchmark-source/transient.py",
+      "repository": "nschimme/faac-benchmark",
+      "ref": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "source_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/transient.py",
+      "bytes": 10812,
+      "sha256": "9fb51eb63f812920b54e39e5f70529839b77a2df615748d7a1c0577b4c5ce1b6"
+    },
+    {
+      "path": "benchmark-source/utils.py",
+      "repository": "nschimme/faac-benchmark",
+      "ref": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+      "source_url": "https://github.com/nschimme/faac-benchmark/blob/bdce18f7123f51c31795afe9fb4571c18f507a77/utils.py",
+      "bytes": 51624,
+      "sha256": "a1705af219e01c21e760f6b9530768149de50c9ca7e7b0cbd731f506dc851022"
+    }
+  ]
+}

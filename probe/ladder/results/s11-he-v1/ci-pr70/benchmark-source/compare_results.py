@@ -1,0 +1,1934 @@
+"""
+ * FAAC Benchmark Suite
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""
+
+import json
+import sys
+import os
+import argparse
+import re
+from collections import defaultdict
+from utils import (get_scenario_sort_key, scenario_family, scenario_families,
+                   family_label, format_scenario_rate)
+import transient
+
+
+# Minimum pooled onset count before the transient-fidelity (attack-centroid-
+# shift) row is even shown -- a sanity floor, not a promise of resolving
+# power. A 128k-vs-96k bitrate-ladder sensitivity check (a ~25% bitrate cut,
+# a plausibly PR-sized effect) found the metric mostly INCONCLUSIVE at
+# single-clip scale (n=28-57 onsets, 3 of 4 clips) but resolved cleanly once
+# pooled across all 4 gate clips of that one scenario pair (n=148, CI
+# [+0.013, +0.045]ms, sign-test p=0.006) -- see docs/metrics.md. So this
+# floor alone does not guarantee a real effect resolves; what does is
+# pooling at the whole-suite level (this row, not the per-scenario table
+# cells), which a default `--gate` run (all scenarios, not `--scenarios`-
+# narrowed) comfortably exceeds. Below this floor the row is omitted
+# entirely rather than shown as a number the data can't support.
+MIN_CENTROID_ONSETS = 30
+
+
+# Set from main()'s --strict-decode. When False (default), a candidate that
+# failed decode validation is counted and reported but does NOT fail the run,
+# so the long-reliable LC benchmark can't be red-walled by a benign ffmpeg
+# stderr quirk before the strict check is proven clean on the LC corpus.
+STRICT_DECODE = False
+
+
+# Footprint gate. Section sums are deterministic for a fixed source and
+# toolchain, so the only question is how large a legitimate commit-to-commit
+# step is. Replaying 30 commits put routine work at or below +1556 bytes and
+# notable work at or above +3416, so 2048 sits in an empty band. It does not
+# separate wanted from unwanted growth -- four feature commits are larger than
+# the regression that motivated this -- so growth is acknowledged, not
+# thresholded away. See docs/footprint-gate.md.
+FOOTPRINT_FAIL_BYTES = 2048
+FOOTPRINT_FAIL_FRAC = 0.005
+FOOTPRINT_WARN_BYTES = 512
+
+# Bytes of growth the author has explicitly accepted (--footprint-allow).
+FOOTPRINT_ALLOW = 0
+
+# BD-rate thresholds, in percent of bitrate needed for equal quality.
+# Positive is worse. Anchored on measurements, not taste: a run scored against
+# itself is exactly 0.000%, and nschimme/faac#454 -- rejected on this metric --
+# measured +0.816% (HE) and +0.705% (LC), so a fail at +0.50% catches it on
+# either segment while leaving room for fit noise on a genuinely neutral change.
+BD_RATE_WARN_PCT = 0.25
+BD_RATE_FAIL_PCT = 0.50
+
+# Gate names allowed to fail the run (--gates). None means all of them. A
+# footprint-only job measures no MOS, and a run that cannot measure a gate must
+# not fail on it -- but the gate still appears in the report, as a skip.
+ENABLED_GATES = None
+
+
+def _suite_rate_control(name):
+    m = re.match(r"(.+)_(abr|vbr|cbr)(?:_|$)", name)
+    return (m.group(1), m.group(2)) if m else (None, None)
+
+
+def _cmd_matches_rate_control(cmd, rate_control):
+    has_b = "-b" in cmd
+    has_q = "-q" in cmd
+    has_cbr = "--cbr" in cmd
+    if rate_control == "vbr":
+        return has_q and not has_b
+    if rate_control == "abr":
+        return has_b and not has_q and not has_cbr
+    return has_b and has_cbr
+
+
+def _legacy_faac(results):
+    return str(results.get("encoder_version", "")).startswith("1.")
+
+
+def harness_sanity_errors(suites):
+    """Return result-layout errors that would otherwise make a green report meaningless."""
+    errors = []
+    candidate_runs = {}
+    for name, pair in suites.items():
+        arch, expected_rate = _suite_rate_control(name)
+        if not expected_rate:
+            continue
+        for side, results in zip(("base", "cand"), pair):
+            actual_rate = results.get("rate_control")
+            if actual_rate != expected_rate:
+                errors.append(
+                    f"{name} {side} rate_control is {actual_rate!r}, expected {expected_rate!r}")
+            matrix = results.get("matrix") or {}
+            for key, clip in matrix.items():
+                cmd = clip.get("cmd")
+                if not isinstance(cmd, list) or not _cmd_matches_rate_control(cmd, expected_rate):
+                    errors.append(f"{name} {side} {key} argv disagrees with {expected_rate}")
+                    break
+                if any(arg == "--object-type" or arg.startswith("--object-type=")
+                       for arg in cmd):
+                    errors.append(f"{name} {side} {key} scenario argv sets --object-type")
+                    break
+            if (not _legacy_faac(results) and
+                    any(c.get("scenario") == "48k_stereo_32k" for c in matrix.values()) and
+                    not any(str(c.get("object_type", "")).startswith("HE-AAC")
+                            for c in matrix.values())):
+                errors.append(f"{name} {side} 48k_stereo_32k has no HE-AAC result")
+            if side == "cand" and arch:
+                candidate_runs[(arch, expected_rate)] = matrix
+
+    for arch in sorted({a for a, _ in candidate_runs}):
+        modes = sorted(m for a, m in candidate_runs if a == arch)
+        for i, first in enumerate(modes):
+            for second in modes[i + 1:]:
+                a = candidate_runs[(arch, first)]
+                b = candidate_runs[(arch, second)]
+                shared = set(a) & set(b)
+                if shared:
+                    same = sum(a[k].get("md5") == b[k].get("md5")
+                               for k in shared if a[k].get("md5") and b[k].get("md5"))
+                    if same / len(shared) > 0.90:
+                        errors.append(
+                            f"{arch} {first}/{second} have identical md5 for "
+                            f"{same}/{len(shared)} shared clips")
+    return errors
+
+
+def bootstrap_mean_ci(values, n=2000, seed=0):
+    """Percentile bootstrap CI for a mean, and a sign count.
+
+    The block-switch retune (+0.0215) and the START/STOP tightening (+0.0124)
+    were both below the per-scenario MDE and were trusted because nearly every
+    clip moved the same way. That evidence has to be visible in the report, not
+    reconstructed by hand afterwards.
+    """
+    import random
+
+    vals = [v for v in values if v is not None]
+    if len(vals) < 3:
+        return None
+    rng = random.Random(seed)
+    n_v = len(vals)
+    draws = sorted(sum(rng.choice(vals) for _ in range(n_v)) / n_v
+                   for _ in range(n))
+    wins = sum(1 for v in vals if v > 0.005)
+    losses = sum(1 for v in vals if v < -0.005)
+    return {
+        "mean": sum(vals) / n_v,
+        "lo": draws[int(0.025 * n)],
+        "hi": draws[min(int(0.975 * n), n - 1)],
+        "n": n_v,
+        "wins": wins,
+        "losses": losses,
+    }
+
+
+def add_gate(suite_results, name, status, detail):
+    """Record one gate decision. "fail" is the only thing that fails the run.
+
+    Every axis of the goal -- quality, footprint, throughput -- reports through
+    here, so the verdict is a list of named decisions rather than a single
+    boolean set from several places. "skip" exists because a gate that cannot
+    be evaluated (no data, mismatched toolchain) must be visible in the report:
+    a silently skipped gate reads exactly like a passing one, which is how a
+    +13.9% library regression survived nine commits.
+    """
+    if ENABLED_GATES is not None and name not in ENABLED_GATES:
+        if status in ("fail", "warn"):
+            status = "skip"
+            detail = f"not selected by --gates; would have been: {detail}"
+    suite_results["gates"].append(
+        {"name": name, "status": status, "detail": detail})
+    if status == "fail":
+        suite_results["has_regression"] = True
+
+
+def check_bd_rate(suite_results, base, cand):
+    """Gate the rate-quality curve rather than MOS at a fixed target bitrate.
+
+    The MOS gate compares two builds at the same requested `-b`, where the
+    bitrate actually delivered is free to differ -- so a build that overshoots
+    is credited with quality it bought rather than earned, and a rate-control
+    fix that removes the overshoot is charged for it. Master overshoots ~4.6%,
+    which is enough to decide a close call on its own. BD-rate holds quality
+    fixed instead and asks for the bitrate, so accuracy work can be judged.
+
+    Reported for every run; select it with --gates for rate-control work, where
+    it is the verdict and raw MOS is context.
+    """
+    try:
+        sys.path.insert(
+            0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts"))
+        import bd_rate as bdr
+    except Exception as e:
+        add_gate(suite_results, "bd_rate", "skip", f"unavailable: {e}")
+        return
+
+    try:
+        analysis = bdr.analyze(base.get("matrix", {}), cand.get("matrix", {}))
+    except Exception as e:
+        add_gate(suite_results, "bd_rate", "skip", f"failed: {e}")
+        return
+
+    scored = [seg for seg in analysis["segments"] if seg.get("stats")]
+    suite_results["bd_rate_segments"] = scored
+    suite_results["bd_rate_notes"] = analysis["notes"]
+    if not scored:
+        add_gate(suite_results, "bd_rate", "skip",
+                 "no ladder with enough rungs at one object type")
+        return
+
+    parts = []
+    for seg in scored:
+        ot = seg["object_type"] or "pooled"
+        parts.append(f"{seg['corpus']}/{ot} {seg['stats']['mean']:+.3f}%")
+    detail = ", ".join(parts)
+
+    worst = max(seg["stats"]["mean"] for seg in scored)
+    if worst > BD_RATE_FAIL_PCT:
+        add_gate(suite_results, "bd_rate", "fail", detail)
+    elif worst > BD_RATE_WARN_PCT:
+        add_gate(suite_results, "bd_rate", "warn", detail)
+    else:
+        add_gate(suite_results, "bd_rate", "pass", detail)
+
+
+def check_footprint(suite_results, base, cand):
+    """Gate .text + .rodata + .data of the release shared library.
+
+    Whole-file size moves with symbol tables, build IDs and section padding for
+    reasons unrelated to code, which is why lib_size stayed display-only. The
+    section sum does not move for those reasons, so it can carry a gate.
+    Including .data along with .text and .rodata reflects total Flash/ROM code
+    footprint in embedded targets, ensuring constant table relocations between
+    .data and .rodata evaluate as net-zero Flash change.
+    """
+    b_sec = base.get("lib_sections") or {}
+    c_sec = cand.get("lib_sections") or {}
+    if not b_sec or not c_sec:
+        add_gate(suite_results, "footprint", "skip",
+                 "no section sizes in results (pre-dates the metric?)")
+        return
+
+    b_fp = get_toolchain_fp_key(base)
+    c_fp = get_toolchain_fp_key(cand)
+    if b_fp != c_fp:
+        add_gate(suite_results, "footprint", "skip",
+                 f"toolchain differs: base {b_fp or 'unknown'} vs cand {c_fp or 'unknown'}")
+        return
+
+    b_code = b_sec.get("text", 0) + b_sec.get("rodata", 0) + b_sec.get("data", 0)
+    c_code = c_sec.get("text", 0) + c_sec.get("rodata", 0) + c_sec.get("data", 0)
+    if b_code <= 0:
+        add_gate(suite_results, "footprint", "skip", "baseline code size is zero")
+        return
+
+    delta = c_code - b_code
+    frac = delta / b_code
+    suite_results["footprint_delta"] = delta
+    suite_results["footprint_frac"] = frac * 100
+    detail = (f".text+.rodata+.data {b_code} -> {c_code} "
+              f"({delta:+d} bytes, {frac * 100:+.2f}%)")
+
+    if delta > FOOTPRINT_FAIL_BYTES and frac > FOOTPRINT_FAIL_FRAC:
+        if delta <= FOOTPRINT_ALLOW:
+            add_gate(suite_results, "footprint", "warn",
+                     f"{detail}; accepted via --footprint-allow {FOOTPRINT_ALLOW}")
+        else:
+            add_gate(suite_results, "footprint", "fail",
+                     f"{detail}; if intended, re-run with "
+                     f"--footprint-allow {delta}")
+    elif delta > FOOTPRINT_WARN_BYTES:
+        add_gate(suite_results, "footprint", "warn", detail)
+    else:
+        add_gate(suite_results, "footprint", "pass", detail)
+
+    # Ungated attribution: turn "the library grew" into "frame.c.o grew".
+    b_obj = base.get("object_text") or {}
+    c_obj = cand.get("object_text") or {}
+    movers = sorted(
+        ((c_obj.get(k, 0) - b_obj.get(k, 0), k)
+         for k in set(b_obj) | set(c_obj)),
+        key=lambda kv: -abs(kv[0]))
+    suite_results["object_movers"] = [m for m in movers if m[0]][:8]
+
+
+# Throughput gate. Requiring the whole confidence interval past the line, not
+# just the point estimate, is what stops a noisy runner failing a clean PR.
+TP_FAIL_RATIO = 1.05
+TP_WARN_RATIO = 1.02
+TP_BOOTSTRAP_N = 2000
+
+
+def _bootstrap_tp_ratio(base_s, cand_s, rng):
+    """95% CI for candidate/baseline encode time, pooled over signals.
+
+    Resamples within each signal to carry timing noise, takes the minimum --
+    the same estimator phase1 reports, since interference is one-sided -- and
+    averages log-ratios across signals so no single slow signal dominates.
+    """
+    import math
+
+    signals = [k for k in cand_s if k in base_s
+               and base_s[k] and cand_s[k]]
+    if not signals:
+        return None
+
+    draws = []
+    for _ in range(TP_BOOTSTRAP_N):
+        logs = []
+        for k in signals:
+            b = base_s[k]
+            c = cand_s[k]
+            bm = min(rng.choice(b) for _ in b)
+            cm = min(rng.choice(c) for _ in c)
+            if bm > 0 and cm > 0:
+                logs.append(math.log(cm / bm))
+        if logs:
+            draws.append(math.exp(sum(logs) / len(logs)))
+
+    if not draws:
+        return None
+    draws.sort()
+    lo = draws[int(0.025 * len(draws))]
+    hi = draws[min(int(0.975 * len(draws)), len(draws) - 1)]
+    point = draws[len(draws) // 2]
+    return point, lo, hi, len(signals)
+
+
+def check_throughput(suite_results, base, cand):
+    """Gate encode time on the lower bound of the cand/base ratio."""
+    import random
+
+    base_s = base.get("throughput_samples") or {}
+    cand_s = cand.get("throughput_samples") or {}
+    if not base_s or not cand_s:
+        add_gate(suite_results, "throughput", "skip",
+                 "no per-run timing samples (pre-dates the metric?)")
+        return
+
+    # Same machine, same boot, or the comparison is between two hosts rather
+    # than two builds. A cached baseline carries the timings of whatever runner
+    # produced it, which is why this is checked rather than assumed.
+    b_host = get_fp_key(base, "host_fp")
+    c_host = get_fp_key(cand, "host_fp")
+    if b_host != c_host:
+        add_gate(suite_results, "throughput", "skip",
+                 "baseline timings came from a different machine or boot "
+                 "(stale cache?); re-run the baseline with --throughput-only "
+                 "on this host to gate")
+        return
+
+    res = _bootstrap_tp_ratio(base_s, cand_s, random.Random(0))
+    if res is None:
+        add_gate(suite_results, "throughput", "skip",
+                 "no signal measured on both sides")
+        return
+
+    tp_metric = cand.get("throughput_metric") or base.get("throughput_metric") or "timing"
+    metric_label = "instruction count" if tp_metric == "cachegrind" else "encode time"
+
+    point, lo, hi, n = res
+    detail = (f"{metric_label} x{point:.3f} (95% CI {lo:.3f}-{hi:.3f}) "
+              f"over {n} signal(s)")
+    suite_results["tp_ratio"] = point
+
+    # The CI must clear the line entirely, so an ambiguous result warns rather
+    # than fails.
+    if lo > TP_FAIL_RATIO:
+        add_gate(suite_results, "throughput", "fail", detail)
+    elif lo > TP_WARN_RATIO:
+        add_gate(suite_results, "throughput", "warn", detail)
+    else:
+        add_gate(suite_results, "throughput", "pass", detail)
+
+
+# Haze gate (phase4_haze.py). The clips are a loud bass playing alone, the same
+# bass under quiet treble (a known answer: no haze to remove) and kicks over
+# silence. Everything is read from the decoded audio and judged against the
+# baseline run, never against an absolute level, so a change that lowers the
+# haze passes and one that raises it fails.
+HAZE_FAIL_DB = 3.0              # decoded 1.2-8 kHz power above the baseline's
+PRE_ONSET_MEAN_DB = 1.3         # mean rise of the error before the kicks
+PRE_ONSET_MAX_DB = 6.0          # rise at any single kick
+
+
+def _haze_regressions(role, b, c):
+    """What got worse between two cases of one role, as short phrases."""
+    if role == "attack":
+        rises = [cv - bv for bv, cv in zip(b["pre_db"], c["pre_db"])]
+        out = []
+        if sum(rises) / len(rises) > PRE_ONSET_MEAN_DB:
+            out.append("attacks smeared (mean)")
+        if max(rises) > PRE_ONSET_MAX_DB:
+            out.append("attacks smeared (one kick)")
+        return out
+    return ["more haze"] if c["haze_db"] - b["haze_db"] > HAZE_FAIL_DB else []
+
+
+def _haze_measure(role, m):
+    """The measurement a role is judged on, or None if the case lacks it."""
+    if role == "attack":
+        pre = m.get("pre_db")
+        return pre if pre and all(v is not None for v in pre) else None
+    return m.get("haze_db")
+
+
+def check_haze(suite_results, base, cand):
+    """Gate the bass-haze metrics against the baseline run.
+
+    "bass": the haze must not grow by more than HAZE_FAIL_DB. "control" (the
+    same bass under quiet treble) is judged the same way; it is a known answer
+    that reads about 0 dB. "attack" (kicks over silence): the error in the
+    20 ms before each kick must not rise by more than PRE_ONSET_MEAN_DB on
+    average or PRE_ONSET_MAX_DB at any kick, so a rule that lets bass go long
+    does not smear real attacks. That catches an all-long regression, not a
+    mild one. The share of short windows is not gated: it moves with
+    block-switching changes that leave the audio no worse.
+
+    A case the baseline measured but the candidate did not (a crashed encode, a
+    missing block) fails: a gate that quietly drops the cases it cannot read
+    passes exactly when something broke. Only a baseline without the metric
+    (for example a cached result) skips.
+    """
+    b_cases = (base.get("haze") or {}).get("cases") or {}
+    c_cases = (cand.get("haze") or {}).get("cases") or {}
+    if not b_cases:
+        add_gate(suite_results, "haze", "skip",
+                 "no haze cases in the baseline (produced without the metric?)")
+        return
+
+    parts, worse = [], []
+    for name in sorted(b_cases):
+        b, c = b_cases[name], c_cases.get(name)
+        role = (c or {}).get("role") or b.get("role") or "bass"
+        b_val = _haze_measure(role, b)
+        if b_val is None:
+            continue                        # the baseline could not measure it either
+        c_val = _haze_measure(role, c) if c else None
+        if c_val is None:
+            worse.append(f"{name} (candidate produced no measurement)")
+            continue
+        if role == "attack":
+            rises = [cv - bv for bv, cv in zip(b_val, c_val)]
+            parts.append(f"{name} pre-onset error {sum(rises) / len(rises):+.1f} dB mean, "
+                         f"{max(rises):+.1f} dB worst kick")
+        else:
+            parts.append(f"{name} haze {b_val:+.1f}->{c_val:+.1f} dB")
+        bad = _haze_regressions(role, {**b, "haze_db": b.get("haze_db"), "pre_db": b.get("pre_db")}, c)
+        if bad:
+            worse.append(f"{name} ({', '.join(bad)})")
+    if not parts and not worse:
+        add_gate(suite_results, "haze", "skip", "haze cases carry no measurements")
+        return
+    detail = "; ".join(parts)
+    if worse:
+        add_gate(suite_results, "haze", "fail", f"{detail}; regressed: {', '.join(worse)}")
+    else:
+        add_gate(suite_results, "haze", "pass", detail)
+
+# Gapless gate (gapless.py). A stream that carries an elst or an
+# iTunSMPB tag claims sample-accurate playback, so a gapless-aware decode of it
+# must match the source in length and alignment. Builds that predate the tags
+# write neither and land wherever their muxer put them, so an untagged stream is
+# never asked to be exact; a stream that loses its tags is the regression.
+GAPLESS_FRAME_TOL = 4           # decoded minus source frames, at the source rate
+GAPLESS_LAG_TOL = 8             # samples of offset against the source
+
+
+def _gapless_tagged(case):
+    return bool(case and (case.get("elst") or case.get("itunsmpb")))
+
+
+# Gates that earn a report line only when something is wrong. The decision stays
+# in the gates list of the results either way.
+QUIET_GATES = {"gapless"}
+
+
+def gate_is_reported(gate):
+    """Whether the report prints this gate: always, except quiet gates that passed or skipped."""
+    return gate["name"] not in QUIET_GATES or gate["status"] in ("fail", "warn")
+
+
+def check_gapless(suite_results, base, cand):
+    """Gate gapless playback of the candidate's streams against the baseline's."""
+    block = cand.get("gapless")
+    if block is not None and "error" in block:
+        add_gate(suite_results, "gapless", "fail", f"gapless check did not run: {block['error']}")
+        return
+    if not block or "skipped" in block:
+        add_gate(suite_results, "gapless", "skip",
+                 (block or {}).get("skipped", "no gapless block in the candidate (check not run)"))
+        return
+    base_cases = (base.get("gapless") or {}).get("cases") or {}
+    inexact, lost, tagged = [], [], 0
+    for key, case in sorted(block["cases"].items()):
+        if _gapless_tagged(case):
+            tagged += 1
+            if abs(case["frame_error"]) > GAPLESS_FRAME_TOL or abs(case["lag"]) > GAPLESS_LAG_TOL:
+                inexact.append(f"{key} ({case['frame_error']:+d} frames, lag {case['lag']:+d})")
+        elif _gapless_tagged(base_cases.get(key)):
+            lost.append(key)
+    total = len(block["cases"])
+    if not tagged and not lost:
+        add_gate(suite_results, "gapless", "skip",
+                 f"no gapless metadata in the candidate's {total} streams, and none to lose")
+        return
+    base_tagged = sum(1 for c in base_cases.values() if _gapless_tagged(c))
+    detail = f"{tagged} of {total} streams tagged ({base_tagged} in the baseline)"
+    problems = []
+    if inexact:
+        problems.append(f"{len(inexact)} tagged stream(s) not sample-exact: " + ", ".join(inexact[:5]))
+    if lost:
+        problems.append(f"{len(lost)} stream(s) lost the baseline's gapless tags: " + ", ".join(lost[:5]))
+    add_gate(suite_results, "gapless", "fail" if problems else "pass",
+             detail + ("; " + "; ".join(problems) if problems else ", all exact"))
+
+
+def check_decoder(suite_results, base, cand):
+    """Exact output gate; the candidate block already compares both binaries."""
+    block = cand.get("decoder_diff")
+    if block is not None and "error" in block:
+        add_gate(suite_results, "decoder", "fail", f"decoder diff did not run: {block['error']}")
+        return
+    if block is not None and "skipped" in block:
+        add_gate(suite_results, "decoder", "skip", block["skipped"])
+        return
+    if not block:
+        baseline = base.get("decoder_diff")
+        if baseline is not None and "skipped" not in baseline:
+            add_gate(suite_results, "decoder", "fail", "candidate produced no decoder diff")
+        else:
+            add_gate(suite_results, "decoder", "skip", "no candidate decoder_diff block; baseline faad unavailable or phase not run")
+        return
+    base_failed = {x["file"] for x in block["failed"] if x["side"] == "base"}
+    regressions = [x["file"] for x in block["failed"]
+                   if x["side"] == "cand" and x["file"] not in base_failed]
+    regressions.extend(x["file"] for x in block["changed"])
+    from phase5_decoder_diff import summary
+    detail = summary(block)
+    if regressions:
+        detail += "; " + ", ".join(sorted(set(regressions)))
+    add_gate(suite_results, "decoder", "fail" if regressions else "pass", detail)
+    suite_results["decoder_diff"] = block
+
+
+def get_fp_key(results, field):
+    """Stable string identity from a fingerprint dict in a results file."""
+    fp = results.get(field) or {}
+    if not fp:
+        return ""
+    return "|".join(f"{k}={fp[k]}" for k in sorted(fp))
+
+
+def get_toolchain_fp_key(results):
+    """Stable string identity of the toolchain that produced a results file."""
+    return get_fp_key(results, "toolchain_fp")
+
+
+def analyze_pair(base_file, cand_file):
+    try:
+        with open(base_file, "r") as f:
+            base = json.load(f)
+    except Exception as e:
+        sys.stderr.write(
+            f"  Warning: Could not load baseline file {base_file}: {e}\n")
+        base = {}
+
+    try:
+        with open(cand_file, "r") as f:
+            cand = json.load(f)
+    except Exception as e:
+        sys.stderr.write(
+            f"  Error: Could not load candidate file {cand_file}: {e}\n")
+        return None
+
+    base_m = base.get("matrix", {})
+    cand_m = cand.get("matrix", {})
+
+    rc_mode = next((o.get("rate_control_mode") for o in cand_m.values() if o.get("rate_control_mode")), "abr")
+    suite_results = {
+        "gates": [],
+        "bd_rate_segments": [],
+        "bd_rate_notes": [],
+        "has_regression": False,
+        "decode_error_count": 0,
+        "missing_data": False,
+        "mos_delta_sum": 0,
+        "mos_count": 0,
+        "missing_mos_count": 0,
+        "mos_deltas": [],
+        "clip_wins": 0,
+        "clip_losses": 0,
+        "ic_delta_sum": 0,
+        "ic_count": 0,
+        "worst_ic_regression": (0, "N/A"),
+        "centroid_deltas": [],
+        "centroid_o_abs": [],
+        "centroid_b_abs": [],
+        "worst_centroid_regression": (0, "N/A"),
+        "tp_reduction": 0,
+        "lib_size_chg": 0,
+        "lib_text_chg": 0,
+        "lib_rodata_chg": 0,
+        "bitrate_chg_sum": 0,
+        "bitrate_count": 0,
+        "bitrate_acc_sum": 0,
+        "bitrate_acc_count": 0,
+        "bitrate_bias_sum": 0,
+        "vbr_bitrate_chg_sum": 0,
+        "vbr_bitrate_chg_count": 0,
+        "vbr_anomalies": [],
+        "regressions": [],
+        "reg_critical": [],
+        "reg_significant": [],
+        "reg_minor": [],
+        "new_wins": [],
+        "significant_wins": [],
+        "opportunities": [],
+        "bit_exact_count": 0,
+        "total_cases": 0,
+        "all_cases": [],
+        "worst_mos_drop": (0, "N/A"),
+        "worst_bitrate_err": (0, "N/A"),
+        "scenario_stats": defaultdict(
+            lambda: {
+                "tp_sum_cand": 0,
+                "tp_sum_base": 0,
+                "mos_delta_sum": 0,
+                "mos_count": 0,
+                "ic_delta_sum": 0,
+                "ic_count": 0,
+                "bitrate_acc_sum": 0,
+                "bitrate_acc_count": 0,
+                "vbr_bitrate_chg_sum": 0,
+                "vbr_bitrate_chg_count": 0,
+                "mos_deltas": [],
+                "centroid_deltas": [],
+                "centroid_o_abs": [],
+                "centroid_b_abs": [],
+                "count": 0}),
+        "base_tp": base.get("throughput", {}),
+        "cand_tp": cand.get("throughput", {}),
+        "base_sha": base.get("sha"),
+        "cand_sha": cand.get("sha"),
+        "rate_control_mode": rc_mode,
+        "mos_backend": next((o.get("mos_backend") or o.get("mos_provider") for o in cand_m.values() if o.get("mos_backend") or o.get("mos_provider")), "zimtohrli")
+    }
+
+    if cand_m:
+        suite_results["total_cases"] = len(cand_m)
+        # Sort by dataset/bitrate, then filename. Precompute keys for performance.
+        decorated = []
+        for k, o in cand_m.items():
+            scen_key = get_scenario_sort_key(o.get("scenario", ""))
+            filename = o.get("filename", k)
+            decorated.append(((scen_key, filename), k))
+
+        decorated.sort()
+        for _, k in decorated:
+            o = cand_m[k]
+            b = base_m.get(k, {})
+
+            filename = o.get("filename", k)
+            scenario = o.get("scenario", "")
+            display_name = f"{scenario}: {filename}"
+
+            o_mos = o.get("mos")
+            b_mos = b.get("mos")
+            thresh = o.get("thresh", 1.0)
+
+            o_size = o.get("size")
+            b_size = b.get("size")
+
+            o_bitrate = o.get("bitrate")
+            o_target = o.get("bitrate_target")
+
+            acc = None
+            bitrate_err = None
+            b_bitrate = b.get("bitrate")
+
+            if rc_mode == "vbr":
+                # In VBR mode, bitrate naturally varies per clip complexity.
+                # Measure bitrate change relative to baseline for the same -q setting.
+                if o_bitrate is not None and b_bitrate is not None and b_bitrate > 0:
+                    vbr_chg = (o_bitrate - b_bitrate) / b_bitrate * 100
+                    suite_results["vbr_bitrate_chg_sum"] += vbr_chg
+                    suite_results["vbr_bitrate_chg_count"] += 1
+                    suite_results["scenario_stats"][scenario]["vbr_bitrate_chg_sum"] += vbr_chg
+                    suite_results["scenario_stats"][scenario]["vbr_bitrate_chg_count"] += 1
+
+                    # Bug detection / anomaly flag: clip bitrate drifting >= 15% from baseline
+                    if abs(vbr_chg) >= 15.0:
+                        suite_results["vbr_anomalies"].append((display_name, vbr_chg))
+            else:
+                # ABR mode: target-bitrate accuracy and bias relative to cfg["bitrate"]
+                if o_bitrate is not None and o_target is not None and o_target > 0:
+                    bitrate_err = (o_bitrate - o_target) / o_target * 100
+                    acc = (1.0 - abs(o_bitrate - o_target) / o_target) * 100
+                    suite_results["bitrate_acc_sum"] += acc
+                    suite_results["bitrate_acc_count"] += 1
+                    suite_results["bitrate_bias_sum"] += bitrate_err
+                    suite_results["scenario_stats"][scenario]["bitrate_acc_sum"] += acc
+                    suite_results["scenario_stats"][scenario]["bitrate_acc_count"] += 1
+
+                    if abs(bitrate_err) > abs(suite_results["worst_bitrate_err"][0]):
+                        suite_results["worst_bitrate_err"] = (bitrate_err, display_name)
+
+            o_time = o.get("time")
+            b_time = b.get("time")
+            speed_delta = None
+
+            if o_time is not None and b_time is not None and b_time > 0:
+                suite_results["scenario_stats"][scenario]["tp_sum_cand"] += o_time
+                suite_results["scenario_stats"][scenario]["tp_sum_base"] += b_time
+                suite_results["scenario_stats"][scenario]["count"] += 1
+                speed_delta = (1 - o_time / b_time) * 100
+
+
+            # Stereo image fidelity (Phase 3). ic_err = inter-channel coherence
+            # error, lower = truer stereo image. Sign matches MOS: a positive
+            # delta means the candidate improved fidelity (reduced the error).
+            o_ic = o.get("ic_err")
+            b_ic = b.get("ic_err")
+            if o_ic is not None and b_ic is not None:
+                ic_delta = b_ic - o_ic
+                suite_results["ic_delta_sum"] += ic_delta
+                suite_results["ic_count"] += 1
+                suite_results["scenario_stats"][scenario]["ic_delta_sum"] += ic_delta
+                suite_results["scenario_stats"][scenario]["ic_count"] += 1
+                if ic_delta < suite_results["worst_ic_regression"][0]:
+                    suite_results["worst_ic_regression"] = (ic_delta, display_name)
+
+            # Transient fidelity (Phase 3 fold-in, see phase3_stereo.py).
+            # attack_centroid_ms is itself a per-onset "decoded vs reference"
+            # delta (ms); comparing |cand| against |base| per onset shows
+            # whether the candidate smears attacks more or less than
+            # baseline. Sign convention: negative == the candidate's onset
+            # moved closer to 0 (the reference) == improvement, matching
+            # docs/metrics.md. Paired positionally per onset -- lengths
+            # match in the near-100% yield case Stage 1 validated; a clip
+            # where they don't (a dropped onset on one side) is skipped
+            # rather than guessed at.
+            o_centroid = o.get("attack_centroid_ms")
+            b_centroid = b.get("attack_centroid_ms")
+            if o_centroid and b_centroid and len(o_centroid) == len(b_centroid):
+                clip_deltas = [abs(ov) - abs(bv) for ov, bv in zip(o_centroid, b_centroid)]
+                suite_results["centroid_deltas"].extend(clip_deltas)
+                suite_results["scenario_stats"][scenario]["centroid_deltas"].extend(clip_deltas)
+                # Raw |ms| pooled separately (not just the paired delta) so a
+                # significant verdict can be paired with the same 0-1
+                # fidelity number compare_codecs.py's leaderboard reports
+                # (1 / (1 + mean|ms|)), for a maintainer to read as "how much".
+                o_abs_list = [abs(v) for v in o_centroid]
+                b_abs_list = [abs(v) for v in b_centroid]
+                suite_results["centroid_o_abs"].extend(o_abs_list)
+                suite_results["centroid_b_abs"].extend(b_abs_list)
+                suite_results["scenario_stats"][scenario]["centroid_o_abs"].extend(o_abs_list)
+                suite_results["scenario_stats"][scenario]["centroid_b_abs"].extend(b_abs_list)
+                clip_mean = sum(clip_deltas) / len(clip_deltas)
+                if clip_mean > suite_results["worst_centroid_regression"][0]:
+                    suite_results["worst_centroid_regression"] = (clip_mean, display_name)
+
+            o_md5 = o.get("md5", "")
+            b_md5 = b.get("md5", "")
+
+            if o_md5 and b_md5 and o_md5 == b_md5:
+                suite_results["bit_exact_count"] += 1
+
+            size_chg = "N/A"
+            if o_size is not None and b_size is not None and b_size > 0:
+                size_chg_val = (o_size - b_size) / b_size * 100
+                size_chg = f"{size_chg_val:+.2f}%"
+                suite_results["bitrate_chg_sum"] += size_chg_val
+                suite_results["bitrate_count"] += 1
+            elif o_size is None:
+                suite_results["missing_data"] = True
+
+            status = "✅"
+            delta = 0
+            bit_exact = "MATCH" if o_md5 and b_md5 and o_md5 == b_md5 else "❌"
+
+            if o_mos is not None:
+                if b_mos is not None:
+                    delta = o_mos - b_mos
+                    suite_results["mos_delta_sum"] += delta
+                    suite_results["mos_count"] += 1
+                    suite_results["mos_deltas"].append(delta)
+                    if delta > 0.005:
+                        suite_results["clip_wins"] += 1
+                    elif delta < -0.005:
+                        suite_results["clip_losses"] += 1
+                    suite_results["scenario_stats"][scenario]["mos_delta_sum"] += delta
+                    # Retained so a scenario mean can carry a CI and a sign
+                    # count. A mean of +0.02 built from 49 consistent small
+                    # wins and one built from 3 large ones against 46 losses
+                    # print identically without this.
+                    suite_results["scenario_stats"][scenario]["mos_deltas"].append(delta)
+                    suite_results["scenario_stats"][scenario]["mos_count"] += 1
+
+                    if delta < suite_results["worst_mos_drop"][0]:
+                        suite_results["worst_mos_drop"] = (delta, display_name)
+
+                if o_mos < (thresh - 0.5):
+                    status = "🤮"  # Awful
+                elif o_mos < thresh:
+                    status = "📉"  # Bad/Poor
+
+                if b_mos is not None:
+                    if b_mos >= thresh and o_mos < thresh:
+                        status = "💀" # Critical Regression
+                        suite_results["has_regression"] = True
+                    elif delta < -0.1:
+                        status = "❌"  # Significant Regression
+                        suite_results["has_regression"] = True
+                    elif delta < -0.05:
+                        status = "⚠️"  # Minor Regression
+                    elif delta > 0.1:
+                        status = "🌟"  # Significant Win
+
+                # Check for New Win (Baseline failed, Candidate passed)
+                if b_mos is not None and b_mos < thresh and o_mos >= thresh:
+                    suite_results["new_wins"].append({
+                        "display_name": display_name,
+                        "mos": o_mos,
+                        "b_mos": b_mos,
+                        "delta": delta
+                    })
+
+            if o_mos is None:
+                status = "❌"  # Missing MOS is a failure
+                suite_results["missing_mos_count"] += 1
+                if ENABLED_GATES is None or "mos" in ENABLED_GATES:
+                    suite_results["has_regression"] = True
+                suite_results["missing_data"] = True
+                delta = -10.0  # Force to top of regressions
+
+            # Decode validation (phase1). A candidate that fails to decode is a
+            # broken bitstream regardless of MOS. Always count it; only hard-fail
+            # the run when --strict-decode is set (see STRICT_DECODE note above).
+            if o.get("decode_error"):
+                suite_results["decode_error_count"] += 1
+                if STRICT_DECODE:
+                    status = "💀"
+                    suite_results["has_regression"] = True
+                    delta = min(delta, -9.0)  # sort near the top of regressions
+
+            mos_str = f"{o_mos:.2f}" if o_mos is not None else "N/A"
+            b_mos_str = f"{b_mos:.2f}" if b_mos is not None else "N/A"
+            delta_mos = f"{(o_mos - b_mos):+.2f}" if (
+                o_mos is not None and b_mos is not None) else "N/A"
+            target_str = f"{o_target}k" if o_target else "N/A"
+            actual_str = f"{o_bitrate:.1f}k" if o_bitrate else "N/A"
+            acc_str = f"{acc:.1f}%" if acc is not None else "N/A"
+            speed_str = f"{speed_delta:+.1f}%" if speed_delta is not None else "N/A"
+
+            case_data = {
+                "display_name": display_name,
+                "status": status,
+                "mos": o_mos,
+                "b_mos": b_mos,
+                "delta": delta,
+                "size_chg": size_chg,
+                "line": f"| {display_name} | {status} | {mos_str} ({b_mos_str}) | {delta_mos} | {target_str} | {actual_str} | {acc_str} | {speed_str} | {bit_exact} |"
+            }
+
+            suite_results["all_cases"].append(case_data)
+            if status == "💀":
+                suite_results["reg_critical"].append(case_data)
+                suite_results["regressions"].append(case_data)
+            elif status == "❌":
+                suite_results["reg_significant"].append(case_data)
+                suite_results["regressions"].append(case_data)
+            elif status == "⚠️":
+                suite_results["reg_minor"].append(case_data)
+                suite_results["regressions"].append(case_data)
+            elif status == "🌟":
+                suite_results["significant_wins"].append(case_data)
+            elif status in ["🤮", "📉"]:
+                suite_results["opportunities"].append(case_data)
+    else:
+        suite_results["missing_data"] = True
+
+    # Sorts
+    suite_results["reg_critical"].sort(key=lambda x: x["delta"])
+    suite_results["reg_significant"].sort(key=lambda x: x["delta"])
+    suite_results["reg_minor"].sort(key=lambda x: x["delta"])
+    suite_results["regressions"].sort(key=lambda x: x["delta"])
+    suite_results["new_wins"].sort(key=lambda x: x["delta"], reverse=True)
+    suite_results["significant_wins"].sort(
+        key=lambda x: x["delta"], reverse=True)
+    suite_results["opportunities"].sort(
+        key=lambda x: x["mos"] if x["mos"] is not None else 6.0)
+
+    # Record the per-clip MOS verdict as a named gate too, so the gate list is
+    # the whole story and not just the axes added later.
+    n_crit = len(suite_results["reg_critical"])
+    n_sig = len(suite_results["reg_significant"])
+    n_min = len(suite_results["reg_minor"])
+    if n_crit or n_sig:
+        add_gate(suite_results, "mos", "fail",
+                 f"{n_crit} critical, {n_sig} past -0.10, {n_min} past -0.05")
+    elif n_min:
+        add_gate(suite_results, "mos", "warn", f"{n_min} clip(s) past -0.05")
+    elif suite_results["mos_count"]:
+        add_gate(suite_results, "mos", "pass",
+                 f"no clip past -0.05 over {suite_results['mos_count']} clips")
+    else:
+        add_gate(suite_results, "mos", "skip", "no MOS data in results")
+
+    # Throughput
+    base_tp = base.get("throughput", {})
+    cand_tp = cand.get("throughput", {})
+    # Exclude "overall" to avoid double-counting in manual summation
+    total_base_t = sum(v for k, v in base_tp.items() if k != "overall")
+    total_cand_t = sum(v for k, v in cand_tp.items() if k != "overall")
+    if total_cand_t > 0 and total_base_t > 0:
+        suite_results["tp_reduction"] = (1 - total_cand_t / total_base_t) * 100
+    else:
+        # If overall throughput is missing, try to aggregate from scenarios
+        cand_t_sum = sum(s["tp_sum_cand"]
+                         for s in suite_results["scenario_stats"].values())
+        base_t_sum = sum(s["tp_sum_base"]
+                         for s in suite_results["scenario_stats"].values())
+        if cand_t_sum > 0 and base_t_sum > 0:
+            suite_results["tp_reduction"] = (1 - cand_t_sum / base_t_sum) * 100
+        else:
+            suite_results["missing_data"] = True
+
+    # Binary Size
+    base_lib = base.get("lib_size", 0)
+    cand_lib = cand.get("lib_size", 0)
+    if cand_lib > 0 and base_lib > 0:
+        suite_results["lib_size_chg"] = ((cand_lib / base_lib) - 1) * 100
+    else:
+        suite_results["missing_data"] = True
+
+    # Granular Section Sizes (.text, .rodata)
+    base_text = base.get("lib_text_size", 0)
+    cand_text = cand.get("lib_text_size", 0)
+    if cand_text > 0 and base_text > 0:
+        suite_results["lib_text_chg"] = ((cand_text / base_text) - 1) * 100
+    else:
+        suite_results["lib_text_chg"] = 0.0
+
+    base_rodata = base.get("lib_rodata_size", 0)
+    cand_rodata = cand.get("lib_rodata_size", 0)
+    if cand_rodata > 0 and base_rodata > 0:
+        suite_results["lib_rodata_chg"] = ((cand_rodata / base_rodata) - 1) * 100
+    else:
+        suite_results["lib_rodata_chg"] = 0.0
+
+    check_footprint(suite_results, base, cand)
+    check_throughput(suite_results, base, cand)
+    check_bd_rate(suite_results, base, cand)
+    check_haze(suite_results, base, cand)
+    check_decoder(suite_results, base, cand)
+    check_gapless(suite_results, base, cand)
+
+    return suite_results
+
+
+def aggregate_suite_metrics(items):
+    """Pool the per-suite dicts from analyze_pair() into one set of averages.
+
+    Called once over every suite for the pass/fail headline, and again per
+    rate-control mode for the Summary table -- ABR and VBR runs must never be
+    averaged together into a single "Bitrate Accuracy" number, since ABR's
+    target-bitrate semantics and VBR's allocation semantics aren't the same
+    quantity.
+    """
+    total_mos_delta = total_mos_count = total_missing_mos = total_decode_errors = 0
+    total_clip_wins = total_clip_losses = 0
+    total_ic_delta = total_ic_count = 0
+    worst_ic_regression = (0, "N/A")
+    total_centroid_deltas = []
+    total_centroid_o_abs = []
+    total_centroid_b_abs = []
+    worst_centroid_regression = (0, "N/A")
+    total_tp_reduction = total_lib_chg = total_lib_text_chg = total_lib_rodata_chg = 0
+    total_bitrate_chg = total_bitrate_count = 0
+    total_bitrate_acc_sum = total_bitrate_acc_count = total_bitrate_bias_sum = 0
+    total_vbr_bitrate_chg_sum = total_vbr_bitrate_chg_count = 0
+    total_vbr_anomalies = []
+    total_regressions = total_reg_critical = total_reg_significant = total_reg_minor = 0
+    total_new_wins = total_significant_wins = 0
+    total_bit_exact = total_cases_all = 0
+    worst_mos_drop = (0, "N/A")
+    worst_bitrate_err = (0, "N/A")
+    scenario_tp_deltas = []
+    n_suites = 0
+
+    for name, data in items:
+        n_suites += 1
+        total_mos_delta += data["mos_delta_sum"]
+        total_mos_count += data["mos_count"]
+        total_clip_wins += data.get("clip_wins", 0)
+        total_clip_losses += data.get("clip_losses", 0)
+        total_missing_mos += data["missing_mos_count"]
+        total_decode_errors += data["decode_error_count"]
+        total_ic_delta += data["ic_delta_sum"]
+        total_ic_count += data["ic_count"]
+        if data["worst_ic_regression"][0] < worst_ic_regression[0]:
+            worst_ic_regression = data["worst_ic_regression"]
+        total_centroid_deltas.extend(data.get("centroid_deltas", []))
+        total_centroid_o_abs.extend(data.get("centroid_o_abs", []))
+        total_centroid_b_abs.extend(data.get("centroid_b_abs", []))
+        if data.get("worst_centroid_regression", (0, "N/A"))[0] > worst_centroid_regression[0]:
+            worst_centroid_regression = data["worst_centroid_regression"]
+        total_tp_reduction += data["tp_reduction"]
+        total_lib_chg += data["lib_size_chg"]
+        total_lib_text_chg += data.get("lib_text_chg", 0)
+        total_lib_rodata_chg += data.get("lib_rodata_chg", 0)
+        total_bitrate_chg += data["bitrate_chg_sum"]
+        total_bitrate_count += data["bitrate_count"]
+        total_bitrate_acc_sum += data["bitrate_acc_sum"]
+        total_bitrate_acc_count += data["bitrate_acc_count"]
+        total_bitrate_bias_sum += data["bitrate_bias_sum"]
+        total_vbr_bitrate_chg_sum += data.get("vbr_bitrate_chg_sum", 0)
+        total_vbr_bitrate_chg_count += data.get("vbr_bitrate_chg_count", 0)
+        total_vbr_anomalies.extend(data.get("vbr_anomalies", []))
+
+        total_regressions += len(data["regressions"])
+        total_reg_critical += len(data["reg_critical"])
+        total_reg_significant += len(data["reg_significant"])
+        total_reg_minor += len(data["reg_minor"])
+
+        total_new_wins += len(data["new_wins"])
+        total_significant_wins += len(data["significant_wins"])
+        total_bit_exact += data["bit_exact_count"]
+        total_cases_all += data["total_cases"]
+
+        if data["worst_mos_drop"][0] < worst_mos_drop[0]:
+            worst_mos_drop = data["worst_mos_drop"]
+        if abs(data["worst_bitrate_err"][0]) > abs(worst_bitrate_err[0]):
+            worst_bitrate_err = data["worst_bitrate_err"]
+
+        for sc_name, sc_data in data["scenario_stats"].items():
+            if sc_data["tp_sum_base"] > 0:
+                delta = (1 - sc_data["tp_sum_cand"] /
+                         sc_data["tp_sum_base"]) * 100
+                scenario_tp_deltas.append((f"{name} / {sc_name}", delta))
+
+    avg_mos_delta_str = f"{(total_mos_delta / total_mos_count):+.3f}" if total_mos_count > 0 else "N/A"
+    avg_tp_reduction = total_tp_reduction / n_suites if n_suites else 0
+    avg_lib_chg = total_lib_chg / n_suites if n_suites else 0
+    avg_lib_text_chg = total_lib_text_chg / n_suites if n_suites else 0
+    avg_lib_rodata_chg = total_lib_rodata_chg / n_suites if n_suites else 0
+    avg_bitrate_chg = total_bitrate_chg / total_bitrate_count if total_bitrate_count > 0 else 0
+    avg_bitrate_acc = total_bitrate_acc_sum / total_bitrate_acc_count if total_bitrate_acc_count > 0 else 0
+    avg_bitrate_bias = total_bitrate_bias_sum / total_bitrate_acc_count if total_bitrate_acc_count > 0 else 0
+    avg_vbr_bitrate_chg = total_vbr_bitrate_chg_sum / total_vbr_bitrate_chg_count if total_vbr_bitrate_chg_count > 0 else 0
+    bit_exact_percent = (total_bit_exact / total_cases_all * 100) if total_cases_all > 0 else 0
+
+    worst_tp_scen, worst_tp_delta = (None, 0)
+    if scenario_tp_deltas:
+        worst_tp_scen, worst_tp_delta = min(scenario_tp_deltas, key=lambda x: x[1])
+
+    return {
+        "avg_mos_delta_str": avg_mos_delta_str,
+        "total_mos_delta": total_mos_delta, "total_mos_count": total_mos_count,
+        "total_clip_wins": total_clip_wins, "total_clip_losses": total_clip_losses,
+        "total_missing_mos": total_missing_mos,
+        "total_decode_errors": total_decode_errors,
+        "total_ic_delta": total_ic_delta, "total_ic_count": total_ic_count,
+        "worst_ic_regression": worst_ic_regression,
+        "centroid_deltas": total_centroid_deltas,
+        "centroid_o_abs": total_centroid_o_abs,
+        "centroid_b_abs": total_centroid_b_abs,
+        "worst_centroid_regression": worst_centroid_regression,
+        "avg_tp_reduction": avg_tp_reduction,
+        "avg_lib_chg": avg_lib_chg, "avg_lib_text_chg": avg_lib_text_chg,
+        "avg_lib_rodata_chg": avg_lib_rodata_chg,
+        "avg_bitrate_chg": avg_bitrate_chg,
+        "avg_bitrate_acc": avg_bitrate_acc, "avg_bitrate_bias": avg_bitrate_bias,
+        "total_bitrate_acc_count": total_bitrate_acc_count,
+        "avg_vbr_bitrate_chg": avg_vbr_bitrate_chg,
+        "total_vbr_bitrate_chg_count": total_vbr_bitrate_chg_count,
+        "vbr_anomalies": total_vbr_anomalies,
+        "bit_exact_percent": bit_exact_percent,
+        "total_regressions": total_regressions, "total_reg_critical": total_reg_critical,
+        "total_reg_significant": total_reg_significant, "total_reg_minor": total_reg_minor,
+        "total_new_wins": total_new_wins, "total_significant_wins": total_significant_wins,
+        "worst_mos_drop": worst_mos_drop, "worst_bitrate_err": worst_bitrate_err,
+        "worst_tp_scen": worst_tp_scen, "worst_tp_delta": worst_tp_delta,
+        "tp_details_source": items,
+    }
+
+
+def render_summary_table(metrics, mos_label, rc_mode):
+    """Render the '| Metric | Value |' rows for one metrics dict.
+
+    Shared by the single-mode summary and by each per-mode (ABR/VBR)
+    subsection, so the two paths can never drift apart in formatting.
+    """
+    lines = ["| Metric | Value |", "| :--- | :--- |"]
+
+    if metrics["total_regressions"] == 0:
+        lines.append("| **Regressions** | 0 ✅ |")
+    else:
+        reg_parts = []
+        if metrics["total_reg_critical"]:
+            reg_parts.append(f"{metrics['total_reg_critical']} 💀")
+        if metrics["total_reg_significant"]:
+            reg_parts.append(f"{metrics['total_reg_significant']} ❌")
+        if metrics["total_reg_minor"]:
+            reg_parts.append(f"{metrics['total_reg_minor']} ⚠️")
+        lines.append(f"| **Regressions** | {', '.join(reg_parts)} |")
+
+    if metrics["worst_mos_drop"][0] < -0.01:
+        lines.append(f"| **Worst {mos_label} Drop** | {metrics['worst_mos_drop'][0]:.2f} ({metrics['worst_mos_drop'][1]}) |")
+
+    if abs(metrics["worst_bitrate_err"][0]) > 1.0 and rc_mode != "VBR":
+        err_icon = "📈" if metrics["worst_bitrate_err"][0] > 0 else "📉"
+        lines.append(f"| **Max Bitrate Err** | {metrics['worst_bitrate_err'][0]:+.1f}% ({metrics['worst_bitrate_err'][1]}) {err_icon} |")
+
+    if metrics["total_new_wins"] > 0:
+        lines.append(f"| **New Wins** | {metrics['total_new_wins']} 🆕 |")
+
+    if metrics["total_significant_wins"] > 0:
+        lines.append(f"| **Significant Wins** | {metrics['total_significant_wins']} 🌟 |")
+
+    consist_status = f"{metrics['bit_exact_percent']:.1f}%"
+    if metrics["bit_exact_percent"] == 100.0:
+        consist_status += " (MD5 Match)"
+    lines.append(f"| **Consistency** | {consist_status} |")
+
+    # High-SNR Throughput Summary
+    tp_details_lc = []
+    tp_details_he = []
+    items = metrics["tp_details_source"]
+    if items:
+        _, first_data = items[0]
+        base_tp = first_data.get("base_tp", {})
+        cand_tp = first_data.get("cand_tp", {})
+        for signal in sorted(cand_tp.keys()):
+            if signal == "overall":
+                continue
+            if signal in base_tp and base_tp[signal] > 0:
+                delta = (1 - cand_tp[signal] / base_tp[signal]) * 100
+                if signal.endswith("_lc"):
+                    tp_details_lc.append(delta)
+                elif signal.endswith("_he"):
+                    tp_details_he.append(delta)
+
+    if abs(metrics["avg_tp_reduction"]) > 0.1 or tp_details_lc or tp_details_he:
+        tp_icon = "🚀" if metrics["avg_tp_reduction"] > 1.0 else "📉" if metrics["avg_tp_reduction"] < -1.0 else ""
+        tp_sub = []
+        if tp_details_lc:
+            avg_lc = sum(tp_details_lc) / len(tp_details_lc)
+            tp_sub.append(f"LC: {avg_lc:+.1f}%")
+        if tp_details_he:
+            avg_he = sum(tp_details_he) / len(tp_details_he)
+            tp_sub.append(f"HE: {avg_he:+.1f}%")
+        sub_str = f" ({', '.join(tp_sub)})" if tp_sub else ""
+        lines.append(f"| **Throughput Δ** | {metrics['avg_tp_reduction']:+.1f}% {tp_icon}{sub_str} |")
+
+    if metrics["worst_tp_delta"] < -1.0:
+        lines.append(f"| **Worst-case TP Δ** | {metrics['worst_tp_delta']:.1f}% ({metrics['worst_tp_scen']}) ⚠️ |")
+
+    if abs(metrics["avg_lib_chg"]) > 0.001:
+        size_icon = "📉" if metrics["avg_lib_chg"] < -0.1 else "📈" if metrics["avg_lib_chg"] > 0.1 else ""
+        lines.append(f"| **Library Size** | {metrics['avg_lib_chg']:+.2f}% {size_icon} |")
+
+    if abs(metrics["avg_bitrate_chg"]) > 0.1:
+        bitrate_icon = "📉" if metrics["avg_bitrate_chg"] < -1.0 else "📈" if metrics["avg_bitrate_chg"] > 1.0 else ""
+        lines.append(f"| **Bitrate Δ** | {metrics['avg_bitrate_chg']:+.2f}% {bitrate_icon} |")
+
+    if rc_mode == "VBR":
+        if metrics.get("total_vbr_bitrate_chg_count", 0) > 0 and abs(metrics["avg_vbr_bitrate_chg"]) > 0.1:
+            vbr_delta = metrics["avg_vbr_bitrate_chg"]
+            vbr_icon = "📈" if vbr_delta > 1.0 else "📉" if vbr_delta < -1.0 else "🎯"
+            lines.append(f"| **VBR Bitrate Δ (vs Base)** | {vbr_delta:+.2f}% {vbr_icon} |")
+
+        anomalies = metrics.get("vbr_anomalies", [])
+        if anomalies:
+            anom_str = f"{len(anomalies)} clip(s) drifted ≥15% vs Base"
+            lines.append(f"| **VBR Bitrate Anomalies** | ⚠️ {anom_str} |")
+    else:
+        # ABR mode: fixed target accuracy and bias
+        if metrics["total_bitrate_acc_count"] > 0:
+            acc_icon = "🎯" if metrics["avg_bitrate_acc"] > 95 else "⚠️" if metrics["avg_bitrate_acc"] < 80 else ""
+            lines.append(f"| **Bitrate Accuracy** | {metrics['avg_bitrate_acc']:.1f}% {acc_icon} |")
+
+            if abs(metrics["avg_bitrate_bias"]) > 0.5:
+                bias_icon = "📈" if metrics["avg_bitrate_bias"] > 2.0 else "📉" if metrics["avg_bitrate_bias"] < -2.0 else "🎯"
+                bias_desc = "Overshooting" if metrics["avg_bitrate_bias"] > 0.5 else "Undershooting"
+                lines.append(f"| **Bitrate Bias** | {metrics['avg_bitrate_bias']:+.1f}% ({bias_desc}) {bias_icon} |")
+
+    mos_count = metrics["total_mos_count"]
+    total_wins = metrics.get("total_clip_wins", 0)
+    total_losses = metrics.get("total_clip_losses", 0)
+    if mos_count > 0:
+        avg_delta = metrics["total_mos_delta"] / mos_count
+        if total_wins > 0 or total_losses > 0 or abs(avg_delta) > 0.001:
+            if total_wins > 0 and total_losses > 0:
+                if abs(avg_delta) <= 0.005:
+                    icon = "⚠️"
+                    clip_str = f" Quality Churn ({total_wins} clip{'s' if total_wins != 1 else ''} improved, {total_losses} degraded)"
+                elif avg_delta > 0.005:
+                    icon = "🚀"
+                    clip_str = f" ({total_wins} clip{'s' if total_wins != 1 else ''} improved, {total_losses} degraded)"
+                else:
+                    icon = "📉"
+                    clip_str = f" ({total_wins} clip{'s' if total_wins != 1 else ''} improved, {total_losses} degraded)"
+            elif total_wins > 0:
+                icon = "🚀"
+                clip_str = f" ({total_wins} clip{'s' if total_wins != 1 else ''} improved)"
+            elif total_losses > 0:
+                icon = "📉"
+                clip_str = f" ({total_losses} clip{'s' if total_losses != 1 else ''} degraded)"
+            else:
+                icon = "🚀" if avg_delta > 0.001 else "📉" if avg_delta < -0.001 else ""
+                clip_str = ""
+
+            val_str = f"{avg_delta:+.3f} {icon}{clip_str}".strip()
+            lines.append(f"| **Avg {mos_label} Δ** | {val_str} |")
+
+    if metrics["total_ic_count"] > 0:
+        avg_ic_delta = metrics["total_ic_delta"] / metrics["total_ic_count"]
+        if abs(avg_ic_delta) > 0.0005:
+            ic_icon = "🎧" if avg_ic_delta > 0.002 else "📉" if avg_ic_delta < -0.002 else ""
+            lines.append(f"| **Stereo Fidelity Δ** | {avg_ic_delta:+.4f} {ic_icon} |")
+        if metrics["worst_ic_regression"][0] < -0.005:
+            lines.append(f"| **Worst Stereo Drop** | {metrics['worst_ic_regression'][0]:+.4f} ({metrics['worst_ic_regression'][1]}) |")
+
+    # Transient fidelity (attack-centroid-shift). Diagnostic-only, no gate --
+    # report a verdict, never a bare number, and omit the row entirely below
+    # MIN_CENTROID_ONSETS (see its comment for why).
+    centroid_deltas = metrics.get("centroid_deltas", [])
+    if len(centroid_deltas) >= MIN_CENTROID_ONSETS:
+        lo, hi = transient.bootstrap_ci(centroid_deltas)
+        p, _neg, n = transient.sign_test_p(centroid_deltas)
+        verdict = transient.ci_signtest_verdict(
+            lo, hi, p, label_decrease="improved", label_increase="regression")
+        if verdict in ("regression", "improved"):
+            icon = "📉" if verdict == "regression" else "📈"
+            o_abs = metrics.get("centroid_o_abs", [])
+            b_abs = metrics.get("centroid_b_abs", [])
+            if o_abs and b_abs:
+                fid_o = 1.0 / (1.0 + sum(o_abs) / len(o_abs))
+                fid_b = 1.0 / (1.0 + sum(b_abs) / len(b_abs))
+                fid_delta = fid_o - fid_b
+                fid_str = f"{fid_delta:+.4f} {icon} (n={n}, fidelity {fid_b:.3f} → {fid_o:.3f})"
+            else:
+                fid_str = f"{icon} (n={n})"
+            lines.append(f"| **Transient Fidelity Δ** | {fid_str} |")
+        if metrics["worst_centroid_regression"][0] > 0.5:
+            lines.append(
+                f"| **Worst Transient Regression** | "
+                f"{metrics['worst_centroid_regression'][0]:+.3f}ms "
+                f"({metrics['worst_centroid_regression'][1]}) |")
+
+    if metrics["total_decode_errors"] > 0:
+        gate = "hard-failed" if STRICT_DECODE else "warning only — pass --strict-decode to gate"
+        lines.append(f"| **Decode Errors** | {metrics['total_decode_errors']} 🧨 ({gate}) |")
+
+    if metrics["total_missing_mos"] > 0:
+        lines.append(f"\n⚠️ **Warning**: {metrics['total_missing_mos']} MOS scores were missing/failed (treated as ❌).")
+
+    return lines
+
+
+def find_result_pairs(inputs):
+    """Find (base, cand) file pairs from positional CLI inputs or directories."""
+    if not inputs:
+        return {}
+
+    if len(inputs) == 2 and all(os.path.isfile(p) for p in inputs):
+        p1, p2 = inputs[0], inputs[1]
+        p1_base = os.path.basename(p1).lower()
+        p2_base = os.path.basename(p2).lower()
+        if ("base" in p2_base or "baseline" in p2_base) or ("cand" in p1_base or "candidate" in p1_base):
+            return {"pair": (p2, p1)}
+        return {"pair": (p1, p2)}
+
+    suites = {}
+    dirs_to_scan = []
+    for inp in inputs:
+        if os.path.isdir(inp):
+            dirs_to_scan.append(inp)
+        elif os.path.isfile(inp):
+            dirs_to_scan.append(os.path.dirname(inp) or ".")
+
+    cand_suffixes = [
+        "_cand.json", "-cand.json", ".cand.json",
+        "_candidate.json", "-candidate.json",
+        "cand.json", "candidate.json"
+    ]
+    base_suffixes = [
+        "_base.json", "-base.json", ".base.json",
+        "_baseline.json", "-baseline.json",
+        "base.json", "baseline.json"
+    ]
+
+    all_json_files = []
+
+    for results_dir in dirs_to_scan:
+        if not os.path.exists(results_dir):
+            continue
+        for root, _, files in os.walk(results_dir):
+            json_files = [f for f in sorted(files) if f.endswith(".json")]
+            for jf in json_files:
+                all_json_files.append(os.path.join(root, jf))
+            file_set = set(files)
+            for f in json_files:
+                for cand_suf in cand_suffixes:
+                    if f.endswith(cand_suf):
+                        prefix = f[:-len(cand_suf)]
+                        for base_suf in base_suffixes:
+                            base_f = prefix + base_suf
+                            if base_f in file_set:
+                                suite_name = prefix.strip("_-.") or "default"
+                                if suite_name not in suites:
+                                    suites[suite_name] = (
+                                        os.path.join(root, base_f),
+                                        os.path.join(root, f)
+                                    )
+                                break
+                        if any(os.path.join(root, f) == cand for _, cand in suites.values()):
+                            break
+
+            # Fallback: if no suite found in this directory, check for single candidate/baseline pair
+            if not suites and json_files:
+                cand_candidates = []
+                base_candidates = []
+                for f in json_files:
+                    f_lower = f.lower()
+                    is_cand = any(f_lower.endswith(s) for s in cand_suffixes) or "cand" in f_lower
+                    is_base = any(f_lower.endswith(s) for s in base_suffixes) or "base" in f_lower
+                    if is_cand and not is_base:
+                        cand_candidates.append(f)
+                    elif is_base and not is_cand:
+                        base_candidates.append(f)
+
+                if len(cand_candidates) == 1 and len(base_candidates) == 1:
+                    suites["default"] = (
+                        os.path.join(root, base_candidates[0]),
+                        os.path.join(root, cand_candidates[0])
+                    )
+
+    if not suites:
+        if all_json_files:
+            sys.stderr.write("No result pairs found in directory.\n")
+            sys.stderr.write(f"  Scanned directory contained JSON file(s): {', '.join(all_json_files)}\n")
+            sys.stderr.write("  Expected matching pair suffixes (e.g. '<prefix>_base.json' and '<prefix>_cand.json').\n")
+        else:
+            sys.stderr.write("No result pairs found in directory.\n")
+            sys.stderr.write("  No .json files were found in the scanned directory.\n")
+
+    return suites
+
+
+def main():
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    parser = argparse.ArgumentParser(description="Consolidate FAAC benchmark results.")
+    parser.add_argument("results_dir", nargs="*", default=None,
+                        help="Path to directory containing result JSON files, or explicit result JSON files")
+    parser.add_argument("--base-sha", help="Baseline commit SHA")
+    parser.add_argument("--cand-sha", help="Candidate commit SHA")
+    parser.add_argument("--summary-only", action="store_true", help="Generate only the high-signal summary")
+    parser.add_argument("--output", help="Path to write the Markdown report file")
+    parser.add_argument("--summary-output", help="Path to write the Markdown summary file")
+    parser.add_argument("--cases-output", help="Path to write the individual test cases Markdown file")
+    parser.add_argument("--strict-decode", action="store_true",
+                        help="Treat candidate decode-validation failures as hard regressions "
+                             "(default: report only, do not fail the run)")
+    parser.add_argument("--gates", metavar="NAMES",
+                        help="Comma-separated gate names allowed to fail "
+                             "(mos, footprint, throughput, bd_rate, haze, decoder, gapless). Default: all. "
+                             "Unselected gates are reported as skips.")
+    parser.add_argument("--footprint-allow", type=int, default=0, metavar="BYTES",
+                        help="Accept up to BYTES of .text+.rodata+.data growth without failing. "
+                             "For changes whose size cost is intended and stated in the PR.")
+    parser.add_argument("--skip-graphs", action="store_true",
+                        help="Skip generating Mermaid.js charts in the report.")
+
+    args = parser.parse_args()
+    skip_graphs = args.skip_graphs
+
+    global STRICT_DECODE
+    STRICT_DECODE = args.strict_decode
+    global FOOTPRINT_ALLOW
+    FOOTPRINT_ALLOW = args.footprint_allow
+    global ENABLED_GATES
+    if args.gates:
+        ENABLED_GATES = {g.strip() for g in args.gates.split(",") if g.strip()}
+
+    raw_inputs = args.results_dir
+    if not raw_inputs:
+        raw_inputs = [os.path.join(SCRIPT_DIR, "results")]
+    elif isinstance(raw_inputs, str):
+        raw_inputs = [raw_inputs]
+
+    summary_only = args.summary_only
+    base_sha = args.base_sha
+    cand_sha = args.cand_sha
+
+    suites = find_result_pairs(raw_inputs)
+
+    if not suites:
+        sys.exit(1)
+
+    sanity_inputs = {}
+    for name, (base_file, cand_file) in suites.items():
+        try:
+            with open(base_file) as f:
+                base = json.load(f)
+            with open(cand_file) as f:
+                cand = json.load(f)
+        except Exception as e:
+            sys.stderr.write(f"HARNESS ERROR: could not read {name}: {e}\n")
+            sys.exit(1)
+        sanity_inputs[name] = (base, cand)
+    sanity_errors = harness_sanity_errors(sanity_inputs)
+    for error in sanity_errors:
+        sys.stderr.write(f"HARNESS ERROR: {error}\n")
+    if sanity_errors:
+        sys.exit(1)
+
+    all_suite_data = {}
+    overall_regression = False
+    overall_missing = False
+    final_base_sha = base_sha
+    final_cand_sha = cand_sha
+
+    for name, (base, cand) in sorted(suites.items()):
+        data = analyze_pair(base, cand)
+        if data:
+            all_suite_data[name] = data
+            if data["has_regression"]:
+                overall_regression = True
+            if data["missing_data"]:
+                overall_missing = True
+            if not final_base_sha and data["base_sha"]:
+                final_base_sha = data["base_sha"]
+            if not final_cand_sha and data["cand_sha"]:
+                final_cand_sha = data["cand_sha"]
+
+    # Pooled across every suite: drives the pass/fail headline, which must
+    # reflect a regression in ANY mode, not an average across modes.
+    global_metrics = aggregate_suite_metrics(sorted(all_suite_data.items()))
+    avg_tp_reduction = global_metrics["avg_tp_reduction"]
+    bit_exact_percent = global_metrics["bit_exact_percent"]
+    total_new_wins = global_metrics["total_new_wins"]
+    total_significant_wins = global_metrics["total_significant_wins"]
+    total_mos_count = global_metrics["total_mos_count"]
+    total_mos_delta = global_metrics["total_mos_delta"]
+    worst_tp_delta = global_metrics["worst_tp_delta"]
+
+    # Rate-control modes present in this report. When both ABR and VBR ran
+    # (the common case per docs/ci.md's matrix), the Summary and Scenario
+    # Performance tables below are split per mode -- pooling ABR's bitrate
+    # accuracy with VBR's allocation accuracy into one averaged number would
+    # hide a regression confined to a single mode.
+    modes_present = sorted({d.get("rate_control_mode", "abr")
+                            for d in all_suite_data.values()}) or ["abr"]
+
+    # Name the gates that failed rather than always saying "Quality": the
+    # verdict now covers footprint and throughput too, and a footprint failure
+    # reported as a quality failure sends the reader to the wrong table.
+    failed_gates = sorted({g["name"] for d in all_suite_data.values()
+                           for g in d.get("gates", []) if g["status"] == "fail"})
+
+    has_failed_or_warned = overall_regression or worst_tp_delta < -5.0 or (overall_missing and ENABLED_GATES is None)
+
+    summary_lines = []
+    if overall_regression:
+        what = ", ".join(g.capitalize() for g in failed_gates) or "Quality"
+        summary_lines.append(f"## ❌ {what} Regression Detected")
+    elif worst_tp_delta < -5.0:
+        summary_lines.append("## ⚠️ Performance Regression Detected")
+    elif overall_missing and ENABLED_GATES is None:
+        summary_lines.append("## ❌ Incomplete/Missing Data Detected")
+    elif overall_missing:
+        # Narrowed run: the absent numbers are absent on purpose, and the job
+        # exits 0, so the headline must not read like a failure.
+        summary_lines.append(
+            f"## ✅ Gates Passed ({', '.join(sorted(ENABLED_GATES))})")
+    elif bit_exact_percent == 100.0:
+        summary_lines.append("## ✅ Refactor Verified (Bit-Identical)")
+    elif total_new_wins > 0 or total_significant_wins > 0 or (total_mos_count > 0 and (total_mos_delta / total_mos_count) > 0.01) or avg_tp_reduction > 5:
+        summary_lines.append("## 🚀 Perceptual & Efficiency Improvement")
+    else:
+        summary_lines.append("## 📊 Benchmark Summary")
+
+    mos_label = "MOS"
+
+    # Executive 3-Pillar Balance View (Quality, Performance, Footprint)
+    summary_lines.append("\n### Executive 3-Pillar Balance")
+
+    avg_mos_delta_val = (global_metrics["total_mos_delta"] / global_metrics["total_mos_count"]) if global_metrics["total_mos_count"] > 0 else 0.0
+    mos_status = "✅ Pass" if avg_mos_delta_val >= -0.005 else "❌ Fail" if avg_mos_delta_val < -0.05 else "⚠️ Minor Drop"
+    tp_status = "✅ Pass" if global_metrics["avg_tp_reduction"] >= -1.0 else "⚠️ Slowdown"
+    lib_status = "✅ Pass" if global_metrics["avg_lib_chg"] <= 0.5 else "⚠️ Growth"
+
+    if bit_exact_percent == 100.0:
+        quality_metric_label = "Bitstream Consistency"
+        mos_str_val = "100.0% (MD5 Match)"
+        mos_status = "✅ Pass"
+    else:
+        quality_metric_label = "Perceptual MOS Δ"
+        mos_str_val = f"{avg_mos_delta_val:+.3f} MOS" if global_metrics["total_mos_count"] > 0 else "N/A"
+
+    tp_str_val = f"{global_metrics['avg_tp_reduction']:+.1f}%"
+    lib_str_val = f"{global_metrics['avg_lib_chg']:+.2f}%"
+
+    summary_lines.append("| Pillar | Metric | Change vs Baseline | Status |")
+    summary_lines.append("| :--- | :--- | :---: | :---: |")
+    summary_lines.append(f"| 🎧 **Quality** | {quality_metric_label} | `{mos_str_val}` | {mos_status} |")
+    summary_lines.append(f"| ⚡ **Performance** | Speed (Throughput Δ) | `{tp_str_val}` | {tp_status} |")
+    summary_lines.append(f"| 📦 **Footprint** | Code Footprint Δ | `{lib_str_val}` | {lib_status} |")
+
+    summary_lines.append("\n### Summary Details")
+    if len(modes_present) > 1:
+        # Both ABR and VBR ran: one table per mode
+        for mode in modes_present:
+            mode_items = sorted((n, d) for n, d in all_suite_data.items()
+                                 if d.get("rate_control_mode", "abr") == mode)
+            mode_metrics = aggregate_suite_metrics(mode_items)
+            summary_lines.append(f"\n#### {mode.upper()}")
+            summary_lines.extend(render_summary_table(mode_metrics, mos_label, mode.upper()))
+    else:
+        summary_lines.extend(render_summary_table(global_metrics, mos_label, modes_present[0].upper()))
+
+    # Per-family MOS rollup
+    family_deltas = defaultdict(list)
+    for suite_data in all_suite_data.values():
+        for sc_name, sc_stats in suite_data["scenario_stats"].items():
+            family_deltas[scenario_family(sc_name)] += sc_stats.get("mos_deltas", [])
+
+    families_with_data = [f for f in scenario_families(family_deltas.keys())
+                          if family_deltas[f]]
+    if len(families_with_data) > 1 and bit_exact_percent < 100.0:
+        summary_lines.append(f"\n#### {mos_label} Δ by Rate Family")
+        if not skip_graphs:
+            fam_labels = [f'"{family_label(fam)}"' for fam in families_with_data]
+            fam_means = [(sum(family_deltas[fam]) / len(family_deltas[fam])) for fam in families_with_data]
+            fam_vals = [f"{m:.3f}" for m in fam_means]
+            max_fam_m = max(abs(m) for m in fam_means) if fam_means else 0.1
+            f_bound = max(round(max_fam_m * 1.5, 2), 0.05)
+
+            summary_lines.append("```mermaid")
+            summary_lines.append("xychart-beta")
+            summary_lines.append(f'    title "MOS Δ by Rate Family"')
+            summary_lines.append(f"    x-axis [{', '.join(fam_labels)}]")
+            summary_lines.append(f'    y-axis "MOS Δ" {-f_bound:.2f} --> {f_bound:.2f}')
+            summary_lines.append(f'    bar "MOS Δ" [{", ".join(fam_vals)}]')
+            summary_lines.append("```\n")
+
+        summary_lines.append(f"| Family | {mos_label} Δ | 95% Conf. Interval | Clips |")
+        summary_lines.append("| :--- | :---: | :---: | :---: |")
+        for fam in families_with_data:
+            deltas = family_deltas[fam]
+            mean = sum(deltas) / len(deltas)
+            ci = bootstrap_mean_ci(deltas)
+            ci_str = f"[{ci['lo']:+.3f}, {ci['hi']:+.3f}]" if ci else "N/A"
+            if ci and not (ci["lo"] <= 0 <= ci["hi"]):
+                ci_str += " ✳"
+            summary_lines.append(
+                f"| {family_label(fam)} | {mean:+.3f} | {ci_str} | {len(deltas)} |")
+
+    # Smart Adaptive Visibility: If a failure or regression exists, surface
+    # regression details and failed gates directly in the top view!
+    if has_failed_or_warned:
+        total_regressions = global_metrics["total_regressions"]
+        if total_regressions > 0:
+            summary_lines.append(f"\n### ❌ Top Regression Details (Top 3 of {total_regressions})")
+            for name, data in sorted(all_suite_data.items()):
+                if data["regressions"]:
+                    summary_lines.append(f"\n#### {name}")
+                    summary_lines.append(
+                        f"| Test Case | Status | {mos_label} (Base) | Delta | Target | Actual | Acc % | Speed Δ | Bit-Exact |")
+                    summary_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+                    displayed_regs = data["regressions"][:3]
+                    for r in displayed_regs:
+                        summary_lines.append(r["line"])
+                    if len(data["regressions"]) > 3:
+                        summary_lines.append(f"\n_...and {len(data['regressions']) - 3} additional regressed clips collapsed below._\n")
+
+    # Build the full report
+    from phase5_decoder_diff import summary as decoder_summary
+    decoder_blocks = [c.get("decoder_diff") for b, c in sanity_inputs.values()]
+    measured = [b for b in decoder_blocks if b and "skipped" not in b]
+    errors = [b["error"] for b in decoder_blocks if b and "error" in b]
+    if errors:
+        summary_lines.append("\n" + decoder_summary({"error": "; ".join(errors)}))
+    elif measured:
+        combined = {"streams": sum(b["streams"] for b in measured),
+                    "unchanged": sum(b["unchanged"] for b in measured),
+                    "changed": [x for b in measured for x in b["changed"]],
+                    "failed": [x for b in measured for x in b["failed"]]}
+        summary_lines.append("\n" + decoder_summary(combined))
+    else:
+        summary_lines.append("\n" + decoder_summary(next((b for b in decoder_blocks if b), None)))
+
+    report = list(summary_lines)
+
+    if not summary_only and (final_base_sha or final_cand_sha):
+        report.insert(1, "\n### Environment")
+        if final_base_sha:
+            report.insert(2, f"- **Baseline SHA**: `{final_base_sha}`")
+        if final_cand_sha:
+            report.insert(3, f"- **Candidate SHA**: `{final_cand_sha}`")
+
+    if not summary_only:
+        # Scenario Performance Tables separated per rate control mode
+        if len(modes_present) == 1:
+            report.append("\n<details><summary><b>📋 View Scenario Performance Details</b></summary>\n")
+            report.append("### Scenario Performance")
+            has_sig_mark = False
+
+            for mode in modes_present:
+                if len(modes_present) > 1:
+                    report.append(f"\n#### {mode.upper()} Scenario Performance")
+
+                bitrate_header = "Bitrate Δ (vs Base)" if mode == "vbr" else "Bitrate Acc"
+                report.append(f"| Scenario | Rate | {mos_label} Δ | 95% Conf. Interval | Wins / Losses | Stereo Fid. Δ | Transient | Throughput Δ | {bitrate_header} |")
+                report.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+
+                mode_scenario_stats = defaultdict(lambda: {"mos_delta": 0, "mos_count": 0, "ic_delta": 0, "ic_count": 0, "tp_cand": 0, "tp_base": 0, "acc_sum": 0, "acc_count": 0, "vbr_chg_sum": 0, "vbr_chg_count": 0, "mos_deltas": [], "centroid_deltas": [], "centroid_o_abs": [], "centroid_b_abs": []})
+                for suite_data in all_suite_data.values():
+                    if suite_data.get("rate_control_mode", "abr") != mode:
+                        continue
+                    for sc_name, sc_stats in suite_data["scenario_stats"].items():
+                        mode_scenario_stats[sc_name]["mos_delta"] += sc_stats["mos_delta_sum"]
+                        mode_scenario_stats[sc_name]["mos_count"] += sc_stats["mos_count"]
+                        mode_scenario_stats[sc_name]["ic_delta"] += sc_stats["ic_delta_sum"]
+                        mode_scenario_stats[sc_name]["ic_count"] += sc_stats["ic_count"]
+                        mode_scenario_stats[sc_name]["tp_cand"] += sc_stats["tp_sum_cand"]
+                        mode_scenario_stats[sc_name]["tp_base"] += sc_stats["tp_sum_base"]
+                        mode_scenario_stats[sc_name]["acc_sum"] += sc_stats["bitrate_acc_sum"]
+                        mode_scenario_stats[sc_name]["acc_count"] += sc_stats["bitrate_acc_count"]
+                        mode_scenario_stats[sc_name]["vbr_chg_sum"] += sc_stats.get("vbr_bitrate_chg_sum", 0)
+                        mode_scenario_stats[sc_name]["vbr_chg_count"] += sc_stats.get("vbr_bitrate_chg_count", 0)
+                        mode_scenario_stats[sc_name]["mos_deltas"] += sc_stats.get("mos_deltas", [])
+                        mode_scenario_stats[sc_name]["centroid_deltas"] += sc_stats.get("centroid_deltas", [])
+                        mode_scenario_stats[sc_name]["centroid_o_abs"] += sc_stats.get("centroid_o_abs", [])
+                        mode_scenario_stats[sc_name]["centroid_b_abs"] += sc_stats.get("centroid_b_abs", [])
+
+                # One table, not one per family: in CI the job here is "scan for a
+                # regressed row", and five tables means five places to look. The
+                # sort key keeps families contiguous; a bold separator row renders
+                # as a subhead inside the single table.
+                current_family = None
+                for sc_name in sorted(mode_scenario_stats.keys(), key=get_scenario_sort_key):
+                    fam = scenario_family(sc_name)
+                    if fam != current_family:
+                        current_family = fam
+                        report.append(f"| **{family_label(fam)}** | | | | | | | | |")
+                    gs = mode_scenario_stats[sc_name]
+                    sc_mos_delta = f"{(gs['mos_delta'] / gs['mos_count']):+.3f}" if gs['mos_count'] > 0 else "N/A"
+                    sc_ic_delta = f"{(gs['ic_delta'] / gs['ic_count']):+.4f}" if gs['ic_count'] > 0 else "N/A"
+                    sc_tp_delta = f"{(1 - gs['tp_cand'] / gs['tp_base']) * 100:+.1f}%" if gs['tp_base'] > 0 else "N/A"
+
+                    if mode == "vbr":
+                        sc_bitrate_val = f"{(gs['vbr_chg_sum'] / gs['vbr_chg_count']):+.2f}%" if gs['vbr_chg_count'] > 0 else "N/A"
+                    else:
+                        sc_bitrate_val = f"{(gs['acc_sum'] / gs['acc_count']):.1f}%" if gs['acc_count'] > 0 else "N/A"
+
+                    sc_centroid_deltas = gs.get("centroid_deltas", [])
+                    n_c_total = len(sc_centroid_deltas)
+                    if n_c_total >= MIN_CENTROID_ONSETS:
+                        lo_c, hi_c = transient.bootstrap_ci(sc_centroid_deltas)
+                        p_c, _neg_c, n_c = transient.sign_test_p(sc_centroid_deltas)
+                        v_c = transient.ci_signtest_verdict(
+                            lo_c, hi_c, p_c, label_decrease="improved", label_increase="regression")
+                        if v_c in ("regression", "improved"):
+                            icon = "📉" if v_c == "regression" else "📈"
+                            sc_o_abs = gs.get("centroid_o_abs", [])
+                            sc_b_abs = gs.get("centroid_b_abs", [])
+                            if sc_o_abs and sc_b_abs:
+                                fid_o = 1.0 / (1.0 + sum(sc_o_abs) / len(sc_o_abs))
+                                fid_b = 1.0 / (1.0 + sum(sc_b_abs) / len(sc_b_abs))
+                                sc_fid_delta = fid_o - fid_b
+                                sc_transient = f"{sc_fid_delta:+.4f} {icon} (n={n_c})"
+                            else:
+                                sc_transient = f"{icon} (n={n_c})"
+                        else:
+                            sc_transient = f"➖ (n={n_c})"
+                    else:
+                        sc_transient = f"➖ (n={n_c_total})"
+
+                    ci = bootstrap_mean_ci(gs["mos_deltas"])
+                    if ci:
+                        if ci["lo"] <= 0 <= ci["hi"]:
+                            sig = ""
+                        else:
+                            sig = " ✳"
+                            has_sig_mark = True
+                        sc_ci = f"[{ci['lo']:+.3f}, {ci['hi']:+.3f}]{sig}"
+                        sc_wl = f"{ci['wins']}/{ci['losses']}"
+                    else:
+                        sc_ci, sc_wl = "N/A", "N/A"
+
+                    report.append(
+                        f"| {sc_name} | {format_scenario_rate(sc_name)} | {sc_mos_delta} | {sc_ci} | {sc_wl} | "
+                        f"{sc_ic_delta} | {sc_transient} | {sc_tp_delta} | {sc_bitrate_val} |")
+
+            report.append("\n_Transient fidelity measures attack centroid shift (smearing/delay of transient attacks, in ms). 📈 = improved, 📉 = regression, ➖ = neutral/insufficient onsets (<30)._")
+            if has_sig_mark:
+                report.append("_✳ Statistically significant change (95% confidence interval excludes 0)_")
+            report.append("\n</details>")
+
+        # 1. Collapsible Details: Regressions
+        total_regressions = global_metrics["total_regressions"]
+        if total_regressions > 0:
+            report.append(
+                "\n<details><summary><b>❌ View Regression Details ({})</b></summary>\n".format(total_regressions))
+            for name, data in sorted(all_suite_data.items()):
+                if data["regressions"]:
+                    report.append(f"\n#### {name}")
+                    report.append(
+                        f"| Test Case | Status | {mos_label} (Base) | Delta | Target | Actual | Acc % | Speed Δ | Bit-Exact |")
+                    report.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+                    for r in data["regressions"]:
+                        report.append(r["line"])
+            report.append("\n</details>")
+
+        # 2. Collapsible Additional Details
+        if len(modes_present) == 1:
+            report.append(
+                "\n<details><summary><b>View Additional Suite Details</b></summary>\n")
+
+            rendered_object_movers = False
+            seen_footprint_details = set()
+
+            for name, data in sorted(all_suite_data.items()):
+                status_icon = "✅"
+                if data["has_regression"]:
+                    status_icon = "❌"
+                elif data["missing_data"]:
+                    status_icon = "❌"
+
+                avg_mos_suite = f"{(data['mos_delta_sum'] /
+                                    data['mos_count']):+.3f}" if data["mos_count"] > 0 else "N/A"
+                suite_bit_exact_percent = (
+                    data["bit_exact_count"] /
+                    data["total_cases"] *
+                    100) if data["total_cases"] > 0 else 0
+
+                report.append(f"\n#### {status_icon} {name}")
+                report.append(
+                    f"- MOS Δ: {avg_mos_suite}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
+                report.append(
+                    f"- Bitstream Consistency: {suite_bit_exact_percent:.1f}%")
+
+                # Named gate decisions. Deduplicate footprint gate if identical across suites.
+                if data.get("gates"):
+                    icons = {"pass": "✅", "warn": "⚠️", "fail": "❌", "skip": "⏭️"}
+                    report.append("\n**Gates**")
+                    for g in data["gates"]:
+                        if not gate_is_reported(g):
+                            continue
+                        if g["name"] == "decoder":
+                            continue  # one summary line; stream details belong only in cases
+                        if g["name"] == "footprint":
+                            fp_key = f"{g['status']}:{g['detail']}"
+                            if fp_key in seen_footprint_details and len(all_suite_data) > 1:
+                                continue
+                            seen_footprint_details.add(fp_key)
+                        report.append(
+                            f"- {icons.get(g['status'], '?')} `{g['name']}`: {g['detail']}")
+
+                # The rate-quality curve, per object type. Pooling these two
+                # segments reports a smaller number than either of them, so they
+                # are printed apart and never summed.
+                if data.get("bd_rate_segments"):
+                    report.append("\n**BD-rate** (positive = more bits for equal "
+                                  "quality = worse)")
+                    report.append("| Ladder | Rungs | Clips | Mean | Median |")
+                    report.append("| :--- | :---: | :---: | :---: | :---: |")
+                    for seg in data["bd_rate_segments"]:
+                        st = seg["stats"]
+                        ot = seg["object_type"] or "pooled (object type unrecorded)"
+                        report.append(
+                            f"| {seg['corpus']} / {ot} | {len(seg['rungs'])} | "
+                            f"{st['n']} | {st['mean']:+.3f}% | {st['median']:+.3f}% |")
+                    for note in data.get("bd_rate_notes", []):
+                        report.append(f"- {note}")
+
+                if data.get("object_movers") and not rendered_object_movers:
+                    rendered_object_movers = True
+                    report.append("\n**Object .text movers**")
+                    if not skip_graphs and data["object_movers"]:
+                        objs = [f'"{obj}"' for _, obj in data["object_movers"][:6]]
+                        diffs = [f"{d}" for d, _ in data["object_movers"][:6]]
+                        max_d = max(abs(d) for d, _ in data["object_movers"][:6]) if data["object_movers"] else 100
+                        d_bound = max(int(max_d * 1.25) + 1, 10)
+                        report.append("```mermaid")
+                        report.append("xychart-beta")
+                        report.append('    title "Object File .text Size Movers (Bytes)"')
+                        report.append(f"    x-axis [{', '.join(objs)}]")
+                        report.append(f'    y-axis "Byte Change" {-d_bound} --> {d_bound}')
+                        report.append(f'    bar "Byte Change" [{", ".join(diffs)}]')
+                        report.append("```\n")
+                    report.append(", ".join(
+                        f"`{obj}` {d:+d}" for d, obj in data["object_movers"]))
+
+            report.append("\n</details>")
+
+    # Build individual test cases document
+    cases_lines = ["<details><summary><b>📋 View Individual Test Cases</b></summary>\n", "# Individual Test Cases Report\n"]
+    for name, (base, cand) in sorted(sanity_inputs.items()):
+        block = cand.get("decoder_diff") or {}
+        if block.get("changed") or block.get("failed"):
+            cases_lines.append(f"\n### Decoder output: {name}\n")
+            for case in block.get("changed", []):
+                cases_lines.append("- " + json.dumps(case, ensure_ascii=False))
+            for case in block.get("failed", []):
+                cases_lines.append("- " + json.dumps(case, ensure_ascii=False))
+
+    total_cases_count = sum(len(d["all_cases"]) for d in all_suite_data.values())
+    cases_filename = args.cases_output
+
+    if cases_filename:
+        for name, data in sorted(all_suite_data.items()):
+            if data["all_cases"]:
+                cases_lines.append(f"### {name} ({len(data['all_cases'])} test cases)\n")
+
+                if data["new_wins"]:
+                    cases_lines.append("**🆕 New Wins**")
+                    cases_lines.append(f"| Test Case | {mos_label} (Base) | Delta |")
+                    cases_lines.append("| :--- | :---: | :---: |")
+                    for w in data["new_wins"]:
+                        cases_lines.append("| {} | {:.2f} ({:.2f}) | {:+.2f} |".format(
+                            w["display_name"], w["mos"], w["b_mos"], w["delta"]))
+                    cases_lines.append("")
+
+                if data["significant_wins"]:
+                    cases_lines.append("**🌟 Significant Wins**")
+                    cases_lines.append(
+                        f"| Test Case | Status | {mos_label} (Base) | Delta | Target | Actual | Acc % | Speed Δ | Bit-Exact |")
+                    cases_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+                    for w in data["significant_wins"]:
+                        cases_lines.append(w["line"])
+                    cases_lines.append("")
+
+                if data["opportunities"]:
+                    cases_lines.append("**💡 Opportunities**")
+                    cases_lines.append(
+                        f"| Test Case | Status | {mos_label} (Base) | Delta | Target | Actual | Acc % | Speed Δ | Bit-Exact |")
+                    cases_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+                    for o in data["opportunities"]:
+                        cases_lines.append(o["line"])
+                    cases_lines.append("")
+
+                cases_lines.append("**All Test Cases**")
+                cases_lines.append(
+                    f"| Test Case | Status | {mos_label} (Base) | Delta | Target | Actual | Acc % | Speed Δ | Bit-Exact |")
+                cases_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+                for c in data["all_cases"]:
+                    cases_lines.append(c["line"])
+                cases_lines.append("")
+
+        cases_lines.append("</details>")
+
+        if total_cases_count > 0:
+            report.append(f"\n_Full per-clip test cases ({total_cases_count} total) exported to `{os.path.basename(cases_filename)}`._\n")
+
+    # Prepare outputs
+    full_output = "\n".join(report) + "\n"
+    cases_output = "\n".join(cases_lines) + "\n"
+
+    # Add link to full report in summary if requested
+    github_server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    github_repository = os.environ.get("GITHUB_REPOSITORY", "")
+    github_run_id = os.environ.get("GITHUB_RUN_ID", "")
+
+    if github_repository and github_run_id:
+        full_report_url = f"{github_server_url}/{github_repository}/actions/runs/{github_run_id}"
+        summary_lines.append(f"\n[View Full Report]({full_report_url})")
+
+    summary_output = "\n".join(summary_lines) + "\n"
+
+    # Write to stdout
+    if summary_only:
+        sys.stdout.write(summary_output)
+    else:
+        sys.stdout.write(full_output)
+
+    # Write to files
+    if args.output:
+        try:
+            with open(args.output, "w") as f:
+                f.write(full_output)
+        except Exception as e:
+            sys.stderr.write(f"Error: Could not write report to {args.output}: {e}\n")
+
+    if args.summary_output:
+        try:
+            with open(args.summary_output, "w") as f:
+                f.write(summary_output)
+        except Exception as e:
+            sys.stderr.write(f"Error: Could not write summary to {args.summary_output}: {e}\n")
+
+    if args.cases_output:
+        try:
+            with open(args.cases_output, "w") as f:
+                f.write(cases_output)
+        except Exception as e:
+            sys.stderr.write(f"Error: Could not write test cases report to {args.cases_output}: {e}\n")
+
+    # overall_missing means "a number we expected is absent". When --gates
+    # narrows the run, absence of the unselected numbers is the point, not a
+    # failure.
+    if overall_regression or (overall_missing and ENABLED_GATES is None):
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

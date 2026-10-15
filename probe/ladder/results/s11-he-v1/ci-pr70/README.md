@@ -1,0 +1,13 @@
+# PR70 CI and footprint evidence
+
+This directory records GitHub Actions evidence for PR #70 at head `c50b66aab79f754fc17e2550159a861d26403b65`.
+
+The build run [38659018090](https://github.com/nschimme/faac/actions/runs/38659018090) completed successfully; all ten jobs reported `completed/success`. Raw run and jobs API JSON are in [`api/`](api/).
+
+The benchmark run [38659018069](https://github.com/nschimme/faac/actions/runs/38659018069) has a successful Footprint job and a successful arm64 CBR job. Arm64 VBR completed with the artifact gate marked failure; its report lists MOS Δ +0.002, HE-AAC v1 48 kHz BD-rate −0.167%, throughput +0.0%, and footprint −0.12%. The report failure is isolated to the three gapless lag rows described below. Arm64 CBR completed successfully; amd64 ABR was still running in the latest retrieved job snapshot. VBR and CBR report artifacts are archived under [`artifacts/`](artifacts/) as JSON/Markdown only. The VBR job log, retrieved through authenticated GitHub CLI access and scanned for exposed credentials, is under [`logs/`](logs/). The earlier unauthenticated log request returned 403; see [`log-access.txt`](log-access.txt).
+
+The VBR artifact compares baseline and candidate: each contains 1,341 matrix rows. Three 48 kHz stereo 16 kb/s HE-AAC v1 streams have nonzero gapless lag in both baseline and candidate: −964, −391, and −89 samples. All three have `elst` and `itunsmpb` metadata and `frame_error: 0`; their lag values match exactly across baseline/candidate. The baseline report has the same three lag values, so these rows do not show a candidate-only lag change. The artifact’s VBR gate still reports failure; this report-level match does not establish decoded PCM alignment or the underlying cause. See [`vbr-gapless-paired-cases.json`](vbr-gapless-paired-cases.json) for exact paired rows and artifact/report hashes. The quality agent owns detailed repro assets and further attribution.
+
+The footprint annotation reports `.text+.rodata+.data 76040 -> 75992 (-48 bytes, -0.06%)`. The local GCC 13.3/LTO `size` measurement recorded in [`summary.json`](summary.json) is 76,072 to 76,056 bytes (-16 bytes). The measurements use different runner/toolchain/build settings and are kept separate.
+
+Exact source versions are under [`workflows/`](workflows/), with hashes and refs in [`source-versions.json`](source-versions.json), and benchmark comparator sources under [`benchmark-source/`](benchmark-source/). [`file-manifest.json`](file-manifest.json) records byte counts and SHA-256 hashes for package files. No audio, encoded streams, build products, or credentials are included.

@@ -1,0 +1,26 @@
+[
+  {
+    "path": ".github",
+    "blob_href": "https://github.com/nschimme/faac/blob/c50b66aab79f754fc17e2550159a861d26403b65/.github",
+    "start_line": 2,
+    "start_column": null,
+    "end_line": 2,
+    "end_column": null,
+    "annotation_level": "warning",
+    "title": "",
+    "message": "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+    "raw_details": ""
+  },
+  {
+    "path": ".github",
+    "blob_href": "https://github.com/nschimme/faac/blob/c50b66aab79f754fc17e2550159a861d26403b65/.github",
+    "start_line": 28,
+    "start_column": null,
+    "end_line": 28,
+    "end_column": null,
+    "annotation_level": "notice",
+    "title": "Code Footprint Status (pass)",
+    "message": ".text+.rodata+.data 76040 -> 75992 (-48 bytes, -0.06%)",
+    "raw_details": ""
+  }
+]

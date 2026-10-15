@@ -1,0 +1,1914 @@
+{
+  "schema": "faac-pr70-vbr-gapless-paired-report-v1",
+  "artifact": {
+    "id": 11937824673,
+    "name": "results-arm64-vbr",
+    "sha256": "05adb51216b4355458bc7ca80e68eefbaa57d9fb2d9f206060bc7007499559e2"
+  },
+  "baseline_sha": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+  "candidate_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+  "baseline_report_sha256": "0dd384d31979ebf982e827774395e265f7aef0da23fae9f262f9e3846f7fd0d2",
+  "candidate_report_sha256": "7de2f1031bbc745b4e984dda5c48725acd961cc4a10b71d84b5bae88707736b4",
+  "gate": {
+    "baseline": {
+      "streams": 96,
+      "cases": {
+        "16k_mono_20k_R_01_CHOP_FA.wav": {
+          "file": "16k_mono_20k_R_01_CHOP_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_20k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_20k_R_01_ECHO_MK.wav": {
+          "file": "16k_mono_20k_R_01_ECHO_MK.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_20k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_20k_R_02_COMPSPKR_FA.wav": {
+          "file": "16k_mono_20k_R_02_COMPSPKR_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_20k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_24k_R_01_CHOP_MK.wav": {
+          "file": "16k_mono_24k_R_01_CHOP_MK.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_24k_R_01_NOISE_FA.wav": {
+          "file": "16k_mono_24k_R_01_NOISE_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_24k_R_02_COMPSPKR_MK.wav": {
+          "file": "16k_mono_24k_R_02_COMPSPKR_MK.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_01_CLIP_FA.wav": {
+          "file": "16k_mono_voip_24k_C_01_CLIP_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_01_NOISE_MK.wav": {
+          "file": "16k_mono_voip_24k_C_01_NOISE_MK.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_02_ECHO_FA.wav": {
+          "file": "16k_mono_voip_24k_C_02_ECHO_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_03_CLIP_MK.wav": {
+          "file": "16k_mono_voip_24k_C_03_CLIP_MK.wav_arm64_vbr_base.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_28k_R_01_ECHO_FA.wav": {
+          "file": "24k_mono_28k_R_01_ECHO_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "24k_mono_28k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_28k_R_02_CLIP_MK.wav": {
+          "file": "24k_mono_28k_R_02_CLIP_MK.wav_arm64_vbr_base.m4a",
+          "scenario": "24k_mono_28k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_32k_R_01_CHOP_FA.wav": {
+          "file": "24k_mono_32k_R_01_CHOP_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "24k_mono_32k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_32k_R_01_ECHO_MK.wav": {
+          "file": "24k_mono_32k_R_01_ECHO_MK.wav_arm64_vbr_base.m4a",
+          "scenario": "24k_mono_32k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_32k_R_02_COMPSPKR_FA.wav": {
+          "file": "24k_mono_32k_R_02_COMPSPKR_FA.wav_arm64_vbr_base.m4a",
+          "scenario": "24k_mono_32k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_21-classic.441.16b48k.wav": {
+          "file": "32k_stereo_16k_21-classic.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_Hey Tonight.16b48k.wav": {
+          "file": "32k_stereo_16k_Hey Tonight.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_Waiting.16b48k.wav": {
+          "file": "32k_stereo_16k_Waiting.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_qrt.wav": {
+          "file": "32k_stereo_16k_qrt.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_48k_Asleep__4.11-4.31_.16b48k.wav": {
+          "file": "32k_stereo_48k_Asleep__4.11-4.31_.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_48k_Severance__1.31-1.51_.16b48k.wav": {
+          "file": "32k_stereo_48k_Severance__1.31-1.51_.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_48k_fms.wav": {
+          "file": "32k_stereo_48k_fms.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_21-classic.441.16b48k.wav": {
+          "file": "32k_stereo_64k_21-classic.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_Hey Tonight.16b48k.wav": {
+          "file": "32k_stereo_64k_Hey Tonight.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_Waiting.16b48k.wav": {
+          "file": "32k_stereo_64k_Waiting.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_qrt.wav": {
+          "file": "32k_stereo_64k_qrt.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_80k_Asleep__4.11-4.31_.16b48k.wav": {
+          "file": "32k_stereo_80k_Asleep__4.11-4.31_.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_80k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_80k_Severance__1.31-1.51_.16b48k.wav": {
+          "file": "32k_stereo_80k_Severance__1.31-1.51_.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_80k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_80k_fms.wav": {
+          "file": "32k_stereo_80k_fms.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_80k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_21-classic.441.16b48k.wav": {
+          "file": "32k_stereo_96k_21-classic.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_Hey Tonight.16b48k.wav": {
+          "file": "32k_stereo_96k_Hey Tonight.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_Waiting.16b48k.wav": {
+          "file": "32k_stereo_96k_Waiting.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_qrt.wav": {
+          "file": "32k_stereo_96k_qrt.wav_arm64_vbr_base.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "44k1_stereo_128k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_Hotel California.16b48k.wav": {
+          "file": "44k1_stereo_128k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_With Love (Outro).16b48k.wav": {
+          "file": "44k1_stereo_128k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_sandman.16b48k.wav": {
+          "file": "44k1_stereo_128k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_160k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "44k1_stereo_160k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_160k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "44k1_stereo_160k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_160k_girl.16b48k.wav": {
+          "file": "44k1_stereo_160k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "44k1_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_Hotel California.16b48k.wav": {
+          "file": "44k1_stereo_192k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_With Love (Outro).16b48k.wav": {
+          "file": "44k1_stereo_192k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_sandman.16b48k.wav": {
+          "file": "44k1_stereo_192k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_256k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "44k1_stereo_256k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_256k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "44k1_stereo_256k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_256k_girl.16b48k.wav": {
+          "file": "44k1_stereo_256k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "44k1_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_Hotel California.16b48k.wav": {
+          "file": "44k1_stereo_64k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_With Love (Outro).16b48k.wav": {
+          "file": "44k1_stereo_64k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_sandman.16b48k.wav": {
+          "file": "44k1_stereo_64k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_128k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_128k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_128k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_128k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_128k_girl.16b48k.wav": {
+          "file": "48k_stereo_128k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_160k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_160k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_160k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_sandman.16b48k.wav": {
+          "file": "48k_stereo_160k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -964
+        },
+        "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -391
+        },
+        "48k_stereo_16k_girl.16b48k.wav": {
+          "file": "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -89
+        },
+        "48k_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_192k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_192k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_192k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_192k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_192k_sandman.16b48k.wav": {
+          "file": "48k_stereo_192k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_24k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_24k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_24k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_24k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_24k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_24k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_24k_girl.16b48k.wav": {
+          "file": "48k_stereo_24k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_24k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_256k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_256k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_256k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_sandman.16b48k.wav": {
+          "file": "48k_stereo_256k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_320k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_320k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_320k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_320k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_320k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_320k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_320k_girl.16b48k.wav": {
+          "file": "48k_stereo_320k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_320k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_32k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_32k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_32k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_sandman.16b48k.wav": {
+          "file": "48k_stereo_32k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_40k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_40k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_40k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_40k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_40k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_40k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_40k_girl.16b48k.wav": {
+          "file": "48k_stereo_40k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_40k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_48k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_48k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_48k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_sandman.16b48k.wav": {
+          "file": "48k_stereo_48k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_56k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_56k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_56k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_56k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_56k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_56k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_56k_girl.16b48k.wav": {
+          "file": "48k_stereo_56k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_56k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_64k_Hotel California.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_64k_With Love (Outro).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_sandman.16b48k.wav": {
+          "file": "48k_stereo_64k_sandman.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_96k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_96k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_96k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_96k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_96k_girl.16b48k.wav": {
+          "file": "48k_stereo_96k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        }
+      },
+      "failed": []
+    },
+    "candidate": {
+      "streams": 96,
+      "cases": {
+        "16k_mono_20k_R_01_CHOP_FA.wav": {
+          "file": "16k_mono_20k_R_01_CHOP_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_20k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_20k_R_01_ECHO_MK.wav": {
+          "file": "16k_mono_20k_R_01_ECHO_MK.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_20k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_20k_R_02_COMPSPKR_FA.wav": {
+          "file": "16k_mono_20k_R_02_COMPSPKR_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_20k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_24k_R_01_CHOP_MK.wav": {
+          "file": "16k_mono_24k_R_01_CHOP_MK.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_24k_R_01_NOISE_FA.wav": {
+          "file": "16k_mono_24k_R_01_NOISE_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_24k_R_02_COMPSPKR_MK.wav": {
+          "file": "16k_mono_24k_R_02_COMPSPKR_MK.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_01_CLIP_FA.wav": {
+          "file": "16k_mono_voip_24k_C_01_CLIP_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_01_NOISE_MK.wav": {
+          "file": "16k_mono_voip_24k_C_01_NOISE_MK.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_02_ECHO_FA.wav": {
+          "file": "16k_mono_voip_24k_C_02_ECHO_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "16k_mono_voip_24k_C_03_CLIP_MK.wav": {
+          "file": "16k_mono_voip_24k_C_03_CLIP_MK.wav_arm64_vbr_cand.m4a",
+          "scenario": "16k_mono_voip_24k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_28k_R_01_ECHO_FA.wav": {
+          "file": "24k_mono_28k_R_01_ECHO_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "24k_mono_28k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_28k_R_02_CLIP_MK.wav": {
+          "file": "24k_mono_28k_R_02_CLIP_MK.wav_arm64_vbr_cand.m4a",
+          "scenario": "24k_mono_28k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_32k_R_01_CHOP_FA.wav": {
+          "file": "24k_mono_32k_R_01_CHOP_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "24k_mono_32k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_32k_R_01_ECHO_MK.wav": {
+          "file": "24k_mono_32k_R_01_ECHO_MK.wav_arm64_vbr_cand.m4a",
+          "scenario": "24k_mono_32k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "24k_mono_32k_R_02_COMPSPKR_FA.wav": {
+          "file": "24k_mono_32k_R_02_COMPSPKR_FA.wav_arm64_vbr_cand.m4a",
+          "scenario": "24k_mono_32k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_21-classic.441.16b48k.wav": {
+          "file": "32k_stereo_16k_21-classic.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_Hey Tonight.16b48k.wav": {
+          "file": "32k_stereo_16k_Hey Tonight.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_Waiting.16b48k.wav": {
+          "file": "32k_stereo_16k_Waiting.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_16k_qrt.wav": {
+          "file": "32k_stereo_16k_qrt.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_48k_Asleep__4.11-4.31_.16b48k.wav": {
+          "file": "32k_stereo_48k_Asleep__4.11-4.31_.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_48k_Severance__1.31-1.51_.16b48k.wav": {
+          "file": "32k_stereo_48k_Severance__1.31-1.51_.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_48k_fms.wav": {
+          "file": "32k_stereo_48k_fms.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_21-classic.441.16b48k.wav": {
+          "file": "32k_stereo_64k_21-classic.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_Hey Tonight.16b48k.wav": {
+          "file": "32k_stereo_64k_Hey Tonight.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_Waiting.16b48k.wav": {
+          "file": "32k_stereo_64k_Waiting.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_64k_qrt.wav": {
+          "file": "32k_stereo_64k_qrt.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_80k_Asleep__4.11-4.31_.16b48k.wav": {
+          "file": "32k_stereo_80k_Asleep__4.11-4.31_.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_80k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_80k_Severance__1.31-1.51_.16b48k.wav": {
+          "file": "32k_stereo_80k_Severance__1.31-1.51_.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_80k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_80k_fms.wav": {
+          "file": "32k_stereo_80k_fms.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_80k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_21-classic.441.16b48k.wav": {
+          "file": "32k_stereo_96k_21-classic.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_Hey Tonight.16b48k.wav": {
+          "file": "32k_stereo_96k_Hey Tonight.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_Waiting.16b48k.wav": {
+          "file": "32k_stereo_96k_Waiting.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "32k_stereo_96k_qrt.wav": {
+          "file": "32k_stereo_96k_qrt.wav_arm64_vbr_cand.m4a",
+          "scenario": "32k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "44k1_stereo_128k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_Hotel California.16b48k.wav": {
+          "file": "44k1_stereo_128k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_With Love (Outro).16b48k.wav": {
+          "file": "44k1_stereo_128k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_128k_sandman.16b48k.wav": {
+          "file": "44k1_stereo_128k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_160k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "44k1_stereo_160k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_160k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "44k1_stereo_160k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_160k_girl.16b48k.wav": {
+          "file": "44k1_stereo_160k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "44k1_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_Hotel California.16b48k.wav": {
+          "file": "44k1_stereo_192k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_With Love (Outro).16b48k.wav": {
+          "file": "44k1_stereo_192k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_192k_sandman.16b48k.wav": {
+          "file": "44k1_stereo_192k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_256k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "44k1_stereo_256k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_256k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "44k1_stereo_256k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_256k_girl.16b48k.wav": {
+          "file": "44k1_stereo_256k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "44k1_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_Hotel California.16b48k.wav": {
+          "file": "44k1_stereo_64k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_With Love (Outro).16b48k.wav": {
+          "file": "44k1_stereo_64k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "44k1_stereo_64k_sandman.16b48k.wav": {
+          "file": "44k1_stereo_64k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "44k1_stereo_64k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_128k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_128k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_128k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_128k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_128k_girl.16b48k.wav": {
+          "file": "48k_stereo_128k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_128k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_160k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_160k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_160k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_160k_sandman.16b48k.wav": {
+          "file": "48k_stereo_160k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_160k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -964
+        },
+        "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -391
+        },
+        "48k_stereo_16k_girl.16b48k.wav": {
+          "file": "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -89
+        },
+        "48k_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_192k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_192k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_192k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_192k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_192k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_192k_sandman.16b48k.wav": {
+          "file": "48k_stereo_192k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_192k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_24k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_24k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_24k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_24k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_24k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_24k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_24k_girl.16b48k.wav": {
+          "file": "48k_stereo_24k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_24k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_256k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_256k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_256k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_256k_sandman.16b48k.wav": {
+          "file": "48k_stereo_256k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_256k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_320k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_320k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_320k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_320k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_320k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_320k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_320k_girl.16b48k.wav": {
+          "file": "48k_stereo_320k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_320k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_32k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_32k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_32k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_32k_sandman.16b48k.wav": {
+          "file": "48k_stereo_32k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_32k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_40k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_40k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_40k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_40k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_40k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_40k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_40k_girl.16b48k.wav": {
+          "file": "48k_stereo_40k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_40k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_48k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_48k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_48k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_48k_sandman.16b48k.wav": {
+          "file": "48k_stereo_48k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_48k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_56k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_56k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_56k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_56k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_56k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_56k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_56k_girl.16b48k.wav": {
+          "file": "48k_stereo_56k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_56k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+          "file": "48k_stereo_64k_24-Greensleeves-Korean-male-speech.441.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_Hotel California.16b48k.wav": {
+          "file": "48k_stereo_64k_Hotel California.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_With Love (Outro).16b48k.wav": {
+          "file": "48k_stereo_64k_With Love (Outro).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_64k_sandman.16b48k.wav": {
+          "file": "48k_stereo_64k_sandman.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_64k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_96k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "file": "48k_stereo_96k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_96k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "file": "48k_stereo_96k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        },
+        "48k_stereo_96k_girl.16b48k.wav": {
+          "file": "48k_stereo_96k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_96k",
+          "profile": "Low Complexity",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": 0
+        }
+      },
+      "failed": []
+    },
+    "candidate_gate_failure_preserved": true
+  },
+  "cases": [
+    {
+      "case_key": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+      "scenario": "48k_stereo_16k",
+      "baseline": {
+        "gapless": {
+          "file": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -964
+        },
+        "mos": 1.6734899282455444,
+        "bitrate_kbps": 12.8864,
+        "decode_error": null,
+        "encode_command": [
+          "./baseline/build_base/frontend/faac",
+          "-q",
+          "1",
+          "--overwrite",
+          "-o",
+          "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+          "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        ],
+        "reported_md5": "4921e7d251d72662280f74c326588f50"
+      },
+      "candidate": {
+        "gapless": {
+          "file": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -964
+        },
+        "mos": 1.6736371517181396,
+        "bitrate_kbps": 12.8824,
+        "decode_error": null,
+        "encode_command": [
+          "./candidate/build_cand/frontend/faac",
+          "-q",
+          "1",
+          "--overwrite",
+          "-o",
+          "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+          "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+        ],
+        "reported_md5": "c3b4da2ae5c9754054208964e81a5484"
+      }
+    },
+    {
+      "case_key": "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav",
+      "scenario": "48k_stereo_16k",
+      "baseline": {
+        "gapless": {
+          "file": "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -391
+        },
+        "mos": 1.7722666263580322,
+        "bitrate_kbps": 10.8056,
+        "decode_error": null,
+        "encode_command": [
+          "./baseline/build_base/frontend/faac",
+          "-q",
+          "1",
+          "--overwrite",
+          "-o",
+          "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+          "Shinsho_pool_3min45_4min4.16b48k.wav"
+        ],
+        "reported_md5": "b6f4eb00bb6194605dc06e90d7aa6c62"
+      },
+      "candidate": {
+        "gapless": {
+          "file": "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -391
+        },
+        "mos": 1.7724828720092773,
+        "bitrate_kbps": 10.7832,
+        "decode_error": null,
+        "encode_command": [
+          "./candidate/build_cand/frontend/faac",
+          "-q",
+          "1",
+          "--overwrite",
+          "-o",
+          "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+          "Shinsho_pool_3min45_4min4.16b48k.wav"
+        ],
+        "reported_md5": "934de687bf2a67558661b075dcd005c9"
+      }
+    },
+    {
+      "case_key": "48k_stereo_16k_girl.16b48k.wav",
+      "scenario": "48k_stereo_16k",
+      "baseline": {
+        "gapless": {
+          "file": "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -89
+        },
+        "mos": 1.8875895738601685,
+        "bitrate_kbps": 10.724,
+        "decode_error": null,
+        "encode_command": [
+          "./baseline/build_base/frontend/faac",
+          "-q",
+          "1",
+          "--overwrite",
+          "-o",
+          "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_base.m4a",
+          "girl.16b48k.wav"
+        ],
+        "reported_md5": "bd5c53f01f9e6d23459d5462f98c5d9b"
+      },
+      "candidate": {
+        "gapless": {
+          "file": "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "scenario": "48k_stereo_16k",
+          "profile": "HE-AAC v1",
+          "elst": true,
+          "itunsmpb": true,
+          "frame_error": 0,
+          "lag": -89
+        },
+        "mos": 1.8861331939697266,
+        "bitrate_kbps": 10.716,
+        "decode_error": null,
+        "encode_command": [
+          "./candidate/build_cand/frontend/faac",
+          "-q",
+          "1",
+          "--overwrite",
+          "-o",
+          "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+          "girl.16b48k.wav"
+        ],
+        "reported_md5": "da457b9b7868cbc995e71a4e3739be1d"
+      }
+    }
+  ],
+  "limits": "The artifact reports paired lag and metadata values, plus MOS results; it does not include encoded AAC or decoded PCM, so this establishes report-level equality, not PCM alignment or underlying cause."
+}

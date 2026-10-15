@@ -1,0 +1,340 @@
+{
+  "schema": "faac-pr70-ci-evidence-v1",
+  "retrieved_at_utc": "2026-10-15T00:30:15Z",
+  "pull_request": 70,
+  "head_commit": "c50b66aab79f754fc17e2550159a861d26403b65",
+  "build_run": {
+    "id": 38659018090,
+    "name": "Continuous Integration",
+    "run_number": 410,
+    "workflow_path": ".github/workflows/master.yml",
+    "workflow_id": 372372792,
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "he-v1-transient-midpoint",
+    "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+    "created_at": "2026-10-15T00:15:50Z",
+    "updated_at": "2026-10-15T00:18:15Z",
+    "url": "https://github.com/nschimme/faac/actions/runs/38659018090",
+    "jobs": [
+      {
+        "id": 116175562402,
+        "name": "Linux GCC (Big-endian)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:54Z",
+        "completed_at": "2026-10-15T00:16:27Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562402"
+      },
+      {
+        "id": 116175562631,
+        "name": "Cppcheck",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:54Z",
+        "completed_at": "2026-10-15T00:17:00Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562631"
+      },
+      {
+        "id": 116175562750,
+        "name": "Linux GCC (libfaam only)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:54Z",
+        "completed_at": "2026-10-15T00:16:21Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562750"
+      },
+      {
+        "id": 116175562752,
+        "name": "MSYS2 UCRT64",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:53Z",
+        "completed_at": "2026-10-15T00:16:55Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562752"
+      },
+      {
+        "id": 116175562776,
+        "name": "Linux GCC (lean muxer)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:54Z",
+        "completed_at": "2026-10-15T00:16:18Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562776"
+      },
+      {
+        "id": 116175562787,
+        "name": "Linux GCC (SBR Decimation)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:54Z",
+        "completed_at": "2026-10-15T00:16:28Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562787"
+      },
+      {
+        "id": 116175562828,
+        "name": "Linux GCC",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:54Z",
+        "completed_at": "2026-10-15T00:16:19Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562828"
+      },
+      {
+        "id": 116175562869,
+        "name": "macOS Clang",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:16:00Z",
+        "completed_at": "2026-10-15T00:18:14Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562869"
+      },
+      {
+        "id": 116175562933,
+        "name": "Windows MSVC",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:53Z",
+        "completed_at": "2026-10-15T00:16:45Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562933"
+      },
+      {
+        "id": 116175562987,
+        "name": "Linux GCC (32-bit)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-15T00:15:54Z",
+        "completed_at": "2026-10-15T00:16:31Z",
+        "url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562987"
+      }
+    ]
+  },
+  "footprint_run_snapshot": {
+    "id": 38659018069,
+    "workflow_path": ".github/workflows/benchmark.yml",
+    "status_at_retrieval": "in_progress",
+    "conclusion_at_retrieval": null,
+    "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+    "pull_request": 70,
+    "base_sha": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+    "url": "https://github.com/nschimme/faac/actions/runs/38659018069",
+    "footprint_job": {
+      "id": 116175563102,
+      "name": "Footprint",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:16:38Z",
+      "url": "https://github.com/nschimme/faac/actions/runs/38659018069/job/116175563102"
+    },
+    "other_jobs_at_retrieval": [
+      {
+        "id": 116175562819,
+        "name": "Benchmark amd64 (abr)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 116175562874,
+        "name": "Benchmark arm64 (cbr)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 116175562888,
+        "name": "Benchmark arm64 (vbr)",
+        "status": "in_progress",
+        "conclusion": null
+      }
+    ]
+  },
+  "footprint_annotation": {
+    "source_check_run_id": 116175563102,
+    "status": "completed",
+    "conclusion": "success",
+    "annotation_level": "notice",
+    "title": "Code Footprint Status (pass)",
+    "message": ".text+.rodata+.data 76040 -> 75992 (-48 bytes, -0.06%)",
+    "runner_label": "ubuntu-24.04 per benchmark workflow",
+    "workflow_build_options": "release build; workflow does not explicitly set b_lto"
+  },
+  "local_gcc13_lto_comparison": {
+    "source": "../raw/transient-border/upstream098-fixed8-gate-v2/validation-build/gcc13-lto-footprint.json",
+    "measurement": "GNU size text+data",
+    "baseline_bytes": 76072,
+    "fixed8_bytes": 76056,
+    "delta_bytes": -16,
+    "toolchain": "GCC 13.3.0, Linux amd64 image under arm64 emulation, release + LTO",
+    "comparison_note": "CI and local figures use different runner/toolchain/build settings; report both separately rather than treating the difference between deltas as a controlled comparison."
+  },
+  "report_version_sources": {
+    "faac_workflow_base_sha": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+    "benchmark_suite_default_branch_resolved_sha": "bdce18f7123f51c31795afe9fb4571c18f507a77",
+    "benchmark_suite_commit_date": "2026-10-14T20:04:16Z",
+    "benchmark_suite_commit_message": "Pin FAAD2 to the SBR-delay flush; build fdkdec on libfaam (#106)",
+    "benchmark_suite_commit_url": "https://github.com/nschimme/faac-benchmark/commit/bdce18f7123f51c31795afe9fb4571c18f507a77",
+    "benchmark_suite_commit_window_query": "api/faac-benchmark-commits-through-footprint.json has zero commits after this master head through footprint-job completion; actual checkout SHA is not directly exposed by the job metadata, so this is a bounded inference."
+  },
+  "artifact_status": {
+    "api_total_count": 2,
+    "checked_at_utc": "2026-10-15T00:30:15Z",
+    "artifacts": [
+      {
+        "id": 11937824673,
+        "name": "results-arm64-vbr",
+        "size_in_bytes": 1224193,
+        "digest": "sha256:05adb51216b4355458bc7ca80e68eefbaa57d9fb2d9f206060bc7007499559e2",
+        "expired": false
+      },
+      {
+        "id": 11937788387,
+        "name": "results-arm64-cbr",
+        "size_in_bytes": 1191289,
+        "digest": "sha256:f4339e62e35415542937834385883bc7d31dc471a5b588a1fd4f33186534e65b",
+        "expired": false
+      }
+    ],
+    "downloads": "Both completed artifacts were downloaded through authenticated gh CLI to /private/tmp; only Markdown and JSON reports were copied into this evidence package. No audio, AAC, binaries, or credentials were copied."
+  },
+  "job_logs": {
+    "status": "authenticated VBR log archived",
+    "public_unauthenticated_attempt": {
+      "endpoint": "GET /repos/nschimme/faac/actions/jobs/116175562869/logs",
+      "http_status": 403,
+      "response": "Must have admin rights to Repository."
+    },
+    "authenticated_retrieval": "Root-provided cleaned log from authenticated GitHub CLI retrieval; archived as logs/arm64-vbr-job.log. Secret-pattern scan found no exposed credentials.",
+    "note": "The unauthenticated 403 does not describe authenticated access. The VBR job log is complete; no raw VBR log or credentials were copied."
+  },
+  "benchmark_run_latest": {
+    "id": 38659018069,
+    "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+    "jobs": {
+      "Benchmark amd64 (abr)": {
+        "id": 116175562819,
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "Benchmark arm64 (cbr)": {
+        "id": 116175562874,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "Benchmark arm64 (vbr)": {
+        "id": 116175562888,
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      "Footprint": {
+        "id": 116175563102,
+        "status": "completed",
+        "conclusion": "success"
+      }
+    },
+    "url": "https://github.com/nschimme/faac/actions/runs/38659018069"
+  },
+  "artifact_comparison": {
+    "vbr": {
+      "artifact_id": 11937824673,
+      "base_sha": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+      "candidate_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "base_cases": 1341,
+      "candidate_cases": 1341,
+      "gapless_nonzero_or_error_cases": {
+        "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+          "baseline": {
+            "file": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_base.m4a",
+            "scenario": "48k_stereo_16k",
+            "profile": "HE-AAC v1",
+            "elst": true,
+            "itunsmpb": true,
+            "frame_error": 0,
+            "lag": -964
+          },
+          "candidate": {
+            "file": "48k_stereo_16k_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav_arm64_vbr_cand.m4a",
+            "scenario": "48k_stereo_16k",
+            "profile": "HE-AAC v1",
+            "elst": true,
+            "itunsmpb": true,
+            "frame_error": 0,
+            "lag": -964
+          }
+        },
+        "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav": {
+          "baseline": {
+            "file": "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_base.m4a",
+            "scenario": "48k_stereo_16k",
+            "profile": "HE-AAC v1",
+            "elst": true,
+            "itunsmpb": true,
+            "frame_error": 0,
+            "lag": -391
+          },
+          "candidate": {
+            "file": "48k_stereo_16k_Shinsho_pool_3min45_4min4.16b48k.wav_arm64_vbr_cand.m4a",
+            "scenario": "48k_stereo_16k",
+            "profile": "HE-AAC v1",
+            "elst": true,
+            "itunsmpb": true,
+            "frame_error": 0,
+            "lag": -391
+          }
+        },
+        "48k_stereo_16k_girl.16b48k.wav": {
+          "baseline": {
+            "file": "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_base.m4a",
+            "scenario": "48k_stereo_16k",
+            "profile": "HE-AAC v1",
+            "elst": true,
+            "itunsmpb": true,
+            "frame_error": 0,
+            "lag": -89
+          },
+          "candidate": {
+            "file": "48k_stereo_16k_girl.16b48k.wav_arm64_vbr_cand.m4a",
+            "scenario": "48k_stereo_16k",
+            "profile": "HE-AAC v1",
+            "elst": true,
+            "itunsmpb": true,
+            "frame_error": 0,
+            "lag": -89
+          }
+        }
+      },
+      "base_lib_sections": {
+        "text": 58548,
+        "rodata": 9236,
+        "data": 1160,
+        "bss": 20520
+      },
+      "candidate_lib_sections": {
+        "text": 58452,
+        "rodata": 9252,
+        "data": 1160,
+        "bss": 20520
+      }
+    },
+    "cbr": {
+      "artifact_id": 11937788387,
+      "base_sha": "d7a6effe22e0dd86d30c9147649542b937021c7d",
+      "candidate_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "base_cases": 1341,
+      "candidate_cases": 1341,
+      "gapless_nonzero_or_error_cases": {},
+      "base_lib_sections": {
+        "text": 58548,
+        "rodata": 9236,
+        "data": 1160,
+        "bss": 20520
+      },
+      "candidate_lib_sections": {
+        "text": 58452,
+        "rodata": 9252,
+        "data": 1160,
+        "bss": 20520
+      }
+    }
+  }
+}

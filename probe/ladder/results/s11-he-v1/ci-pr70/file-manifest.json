@@ -1,0 +1,175 @@
+{
+  "schema": "faac-pr70-ci-package-files-v1",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2644,
+      "sha256": "1ba6596a2be0a92f28cea564d62db01014bb0fb13a21b2f65e50ca41751f9790"
+    },
+    {
+      "path": "api/benchmark-artifacts-38659018069-latest.json",
+      "bytes": 1417,
+      "sha256": "a992232710d3b52e7edef0d53cd0be37809bcf287b52d1a089f129d50fb8e68b"
+    },
+    {
+      "path": "api/benchmark-artifacts-38659018069.json",
+      "bytes": 46,
+      "sha256": "cfd00a1615b82ab7c160002bdf84b7ff009ce8da119b4ec0385a7a382e09e7e3"
+    },
+    {
+      "path": "api/benchmark-jobs-38659018069-latest.json",
+      "bytes": 16516,
+      "sha256": "eea04be0c89790a7f10f2b69ce44509e9c12448270813c8629e046e75ccbe926"
+    },
+    {
+      "path": "api/benchmark-jobs-38659018069.json",
+      "bytes": 23061,
+      "sha256": "60afb9d8bb19f620ea9b17f6464ff977a1c364f115247ee76caec2002cd74d3b"
+    },
+    {
+      "path": "api/benchmark-run-38659018069.json",
+      "bytes": 13771,
+      "sha256": "e3e29198305c815aefdb6e1568a7916dc10bbb46b36581597e241ff1b8e88af8"
+    },
+    {
+      "path": "api/build-jobs-38659018090.json",
+      "bytes": 41136,
+      "sha256": "0492433cf6b5d8722e7ad519b6f3cd586ee4b48b97b08be203016cdc720df422"
+    },
+    {
+      "path": "api/build-run-38659018090.json",
+      "bytes": 13771,
+      "sha256": "3b9fcb3c0541fec38e6dfd0dce96aca2fe4d4e1138491e4d359f9ca580caa497"
+    },
+    {
+      "path": "api/faac-benchmark-commits-through-footprint.json",
+      "bytes": 5,
+      "sha256": "2ba33ca0557f1bb5b7ba88d67f9d0093c7185a36ec51fe2b7bd9372d3e001d6d"
+    },
+    {
+      "path": "api/faac-benchmark-master.json",
+      "bytes": 26569,
+      "sha256": "db78de71d4459de6d1dbd1c1fa728b36cdee382cca770bbaf30d6c82b33d4e79"
+    },
+    {
+      "path": "api/footprint-annotations-116175563102.json",
+      "bytes": 976,
+      "sha256": "cf7c42b1c70400f493c7b9ad8f0849ce5df4bbf5b8eb5a0ea2c363fa3dc7c252"
+    },
+    {
+      "path": "api/footprint-check-116175563102.json",
+      "bytes": 4431,
+      "sha256": "f20af040e6cc241472eaef5c5ec8a744747fd7948dadb924be84c9ed11f8c1c6"
+    },
+    {
+      "path": "artifacts/cbr/cases_cbr.md",
+      "bytes": 150072,
+      "sha256": "1efc5dc024b872cfe20e220aca47bd3024a8dfb68bd04309f761ac34ef961f00"
+    },
+    {
+      "path": "artifacts/cbr/report_cbr.md",
+      "bytes": 9274,
+      "sha256": "641adf4342d5ccc580451c587fbbafa707ebad2c9704b77affa5b079d1ed42dc"
+    },
+    {
+      "path": "artifacts/cbr/results/arm64_cbr_base.json",
+      "bytes": 2733635,
+      "sha256": "70cbb4033b1105873224fb3a1b06f3ea49c56eddb221260bb6df6cd2a07facb8"
+    },
+    {
+      "path": "artifacts/cbr/results/arm64_cbr_cand.json",
+      "bytes": 2736589,
+      "sha256": "7e22cde7fd00dbd9c55d203650820465f935b42a0499837accf4b51dd8d81c73"
+    },
+    {
+      "path": "artifacts/vbr/cases_vbr.md",
+      "bytes": 149377,
+      "sha256": "9922f5d620caaf54ea619d4f05d1e3fe51b14eca35cb2b7042159dd83253ee48"
+    },
+    {
+      "path": "artifacts/vbr/report_vbr.md",
+      "bytes": 8192,
+      "sha256": "aa08ef756dd1cb4541ed2a94bd1ae44b0042175adadd2e1d32dc88e2e1e590e4"
+    },
+    {
+      "path": "artifacts/vbr/results/arm64_vbr_base.json",
+      "bytes": 2707497,
+      "sha256": "0dd384d31979ebf982e827774395e265f7aef0da23fae9f262f9e3846f7fd0d2"
+    },
+    {
+      "path": "artifacts/vbr/results/arm64_vbr_cand.json",
+      "bytes": 2701830,
+      "sha256": "7de2f1031bbc745b4e984dda5c48725acd961cc4a10b71d84b5bae88707736b4"
+    },
+    {
+      "path": "benchmark-source/action.yml",
+      "bytes": 7505,
+      "sha256": "bd0e40ab4731a5d503e369857c312350307758be502467b48946e5c19cf9b50d"
+    },
+    {
+      "path": "benchmark-source/codec_bench/encoders.py",
+      "bytes": 35278,
+      "sha256": "7da9fbce6262bd6501f2692966ae96cf39a7d582835fa6228bd9a03eabc4af17"
+    },
+    {
+      "path": "benchmark-source/compare_results.py",
+      "bytes": 93530,
+      "sha256": "53b9175b4610e504aee1e291483295e1a7fc713ef2b0d7a559b71be8b9c3e2f3"
+    },
+    {
+      "path": "benchmark-source/config.py",
+      "bytes": 20401,
+      "sha256": "2f287da6da6e5aa1b8782d2469bb2f6432742edb81026cc92b9b80ed53d9b3af"
+    },
+    {
+      "path": "benchmark-source/phase1_encode.py",
+      "bytes": 27402,
+      "sha256": "9c2c031468911633f13944d0fb4fb1a792a81e4729da26b9c9829c438a11b8a9"
+    },
+    {
+      "path": "benchmark-source/transient.py",
+      "bytes": 10812,
+      "sha256": "9fb51eb63f812920b54e39e5f70529839b77a2df615748d7a1c0577b4c5ce1b6"
+    },
+    {
+      "path": "benchmark-source/utils.py",
+      "bytes": 51624,
+      "sha256": "a1705af219e01c21e760f6b9530768149de50c9ca7e7b0cbd731f506dc851022"
+    },
+    {
+      "path": "log-access.txt",
+      "bytes": 765,
+      "sha256": "93240a2b482197538d38620dc13feda583c9d2dbf14dfdb41561c2c98a948b0c"
+    },
+    {
+      "path": "logs/arm64-vbr-job.log",
+      "bytes": 539560,
+      "sha256": "6b4b6bc85b7cf4f4c86052d36d56524f3a0c74d3b2a3eed7aada574b2b5a4451"
+    },
+    {
+      "path": "source-versions.json",
+      "bytes": 4652,
+      "sha256": "5abb2765b4778e1ad3df61cf60edd3fbbcc2647428d50e4e9b569efd39191527"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 12410,
+      "sha256": "223b0bc3f1d642d9c8d6316e4c584ce6cf28fb3392e03587e263ba242743e19a"
+    },
+    {
+      "path": "vbr-gapless-paired-cases.json",
+      "bytes": 69220,
+      "sha256": "34f8b0ea8b2f7b99e8a6f6c499664ed9700503a6d100ed38e8618fca437b1c45"
+    },
+    {
+      "path": "workflows/benchmark.yml",
+      "bytes": 12549,
+      "sha256": "801d50ead5b82c66b5ef6655cfc8888da7362ae69a362df53778000bdeb4e80b"
+    },
+    {
+      "path": "workflows/master.yml",
+      "bytes": 7665,
+      "sha256": "a53c8635fb5297f29b01610d189acbc1bf788ec850c38ebea0809716f6c4e6f7"
+    }
+  ]
+}

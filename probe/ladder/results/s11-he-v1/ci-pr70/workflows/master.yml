@@ -1,0 +1,250 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ "master" ]
+    tags-ignore: ['*']
+    paths-ignore: ['**.md']
+  pull_request:
+    branches: [ "**" ]
+    paths-ignore: ['**.md']
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.config.shell }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+              name: Linux GCC,
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+            }
+          - {
+              name: Linux GCC (SBR Decimation),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dsbr-decimation=4,
+            }
+          - {
+              name: Linux GCC (lean muxer),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dmuxer-video=false -Dmuxer-fragmented=false,
+            }
+          - {
+              name: Linux GCC (libfaam only),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dencoder=false,
+            }
+          - {
+              name: Linux GCC (32-bit),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              packages: gcc-multilib,
+              options: -Dc_args=-m32 -Dc_link_args=-m32,
+            }
+          - {
+              name: macOS Clang,
+              os: macos-latest,
+              compiler: clang,
+              shell: bash,
+            }
+          - {
+              name: MSYS2 UCRT64,
+              os: windows-latest,
+              compiler: gcc,
+              shell: 'msys2 {0}',
+              msystem: ucrt64,
+              msys-env: mingw-w64-ucrt-x86_64,
+              options: -Dfrontend-static=true,
+            }
+          - {
+              name: Windows MSVC,
+              os: windows-latest,
+              compiler: cl,
+              shell: pwsh,
+              options: -Dfrontend-static=true,
+            }
+
+    steps:
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ${{ matrix.config.packages }}
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+        run: |
+          brew update || true
+          brew install \
+            meson
+
+      - name: Install dependencies (MSYS2)
+        if: matrix.config.shell == 'msys2 {0}'
+        uses: msys2/setup-msys2@v2.33.0
+        with:
+          msystem: ${{ matrix.config.msystem }}
+          update: false
+          install: >-
+            ${{ matrix.config.msys-env }}-meson
+            ${{ matrix.config.msys-env }}-gcc
+
+      - name: Install dependencies (MSVC)
+        if: matrix.config.compiler == 'cl'
+        run: |
+          pip install meson ninja
+
+      - name: Set up MSVC
+        if: matrix.config.compiler == 'cl'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - uses: actions/checkout@v7
+
+      - name: Build (MSYS2)
+        if: matrix.config.shell == 'msys2 {0}'
+        env:
+          CC: ${{ matrix.config.compiler }}
+        run: |
+          mkdir -p build temp
+          cd build
+          meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
+          meson install
+
+          for exe in ../temp/bin/faac.exe ../temp/bin/faacgui.exe ../temp/bin/faam.exe; do
+            test -f "$exe"
+            if objdump -p "$exe" | grep -iE 'DLL Name:.*fa(ac|am).*\.dll'; then
+              echo "Unexpected FAAC/FAAM DLL dependency in $exe" >&2
+              exit 1
+            fi
+          done
+          # Keep the shared library in the package for applications that link to libfaac.
+          compgen -G '../temp/bin/*faac*.dll' > /dev/null
+
+      - name: Build (General)
+        if: matrix.config.shell != 'msys2 {0}' && matrix.config.compiler != 'cl'
+        env:
+          CC: ${{ matrix.config.compiler }}
+        run: |
+          meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
+          meson install -C build
+
+      - name: Build (MSVC)
+        if: matrix.config.compiler == 'cl'
+        run: |
+          meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
+          meson install -C build
+
+          foreach ($exe in @('faac.exe', 'faacgui.exe', 'faam.exe')) {
+            $imports = dumpbin /DEPENDENTS "temp/bin/$exe"
+            if ($LASTEXITCODE -ne 0) { throw "Cannot inspect $exe imports" }
+            if ($imports -match 'fa(ac|am).*\.dll') { throw "$exe imports a FAAC/FAAM DLL" }
+          }
+          if (-not (Get-ChildItem 'temp/bin/*faac*.dll')) { throw 'FAAC DLL is missing from the package' }
+
+      - name: Upload artifacts (Windows)
+        uses: actions/upload-artifact@v7
+        if: runner.os == 'Windows'
+        with:
+          name: faac-${{ github.sha }}-${{ matrix.config.name }}
+          path: temp/*
+
+  cppcheck:
+    name: Cppcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install cppcheck
+
+      - uses: actions/checkout@v7
+
+      - name: Run cppcheck
+        shell: bash
+        run: |
+          cppcheck --version
+          cppcheck --error-exitcode=1 -j4 -q --check-level=exhaustive -Iinclude/ libfaac/ frontend/
+
+  big-endian:
+    name: Linux GCC (Big-endian)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson gcc-s390x-linux-gnu qemu-user
+
+      - name: Generate test input
+        run: |
+          python3 - <<'PY'
+          import math, struct, wave
+          rate, secs = 44100, 3
+          seed = 12345
+          w = wave.open('input.wav', 'wb')
+          w.setnchannels(2); w.setsampwidth(2); w.setframerate(rate)
+          out = bytearray()
+          for i in range(rate * secs):
+              seed = (seed * 1103515245 + 12345) & 0x7fffffff
+              noise = ((seed >> 16) & 0x3ff) - 512
+              t = i / rate
+              l = int(9000 * math.sin(2 * math.pi * 440 * t) + 3000 * math.sin(2 * math.pi * 3520 * t) + noise)
+              r = int(8000 * math.sin(2 * math.pi * 660 * t) + noise)
+              out += struct.pack('<hh', l, r)
+          w.writeframes(bytes(out)); w.close()
+          PY
+
+      - name: Build native reference
+        run: |
+          meson setup build-native -Ddefault_library=static
+          ninja -C build-native
+
+      - name: Build s390x (big-endian)
+        run: |
+          cat > s390x.txt <<'EOF'
+          [binaries]
+          c = 's390x-linux-gnu-gcc'
+          ar = 's390x-linux-gnu-ar'
+          strip = 's390x-linux-gnu-strip'
+
+          [host_machine]
+          system = 'linux'
+          cpu_family = 's390x'
+          cpu = 's390x'
+          endian = 'big'
+
+          [properties]
+          needs_exe_wrapper = true
+          EOF
+          meson setup build-s390x --cross-file s390x.txt -Ddefault_library=static -Dc_link_args=-static
+          grep WORDS_BIGENDIAN build-s390x/config.h
+          ninja -C build-s390x
+
+      - name: Encode natively and under qemu, compare
+        run: |
+          for fmt in aac m4a; do
+            build-native/frontend/faac -o native.$fmt input.wav
+            qemu-s390x build-s390x/frontend/faac -o s390x.$fmt input.wav
+            ls -l native.$fmt s390x.$fmt
+            cmp native.$fmt s390x.$fmt
+          done

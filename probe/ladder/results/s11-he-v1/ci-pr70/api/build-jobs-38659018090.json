@@ -1,0 +1,1237 @@
+{
+  "total_count": 10,
+  "jobs": [
+    {
+      "id": 116175562402,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpmog",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562402",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562402",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:16:27Z",
+      "name": "Linux GCC (Big-endian)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:55Z",
+          "completed_at": "2026-10-15T00:15:55Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:55Z",
+          "completed_at": "2026-10-15T00:15:57Z"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-15T00:15:57Z",
+          "completed_at": "2026-10-15T00:16:13Z"
+        },
+        {
+          "name": "Generate test input",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-15T00:16:13Z",
+          "completed_at": "2026-10-15T00:16:13Z"
+        },
+        {
+          "name": "Build native reference",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-15T00:16:13Z",
+          "completed_at": "2026-10-15T00:16:19Z"
+        },
+        {
+          "name": "Build s390x (big-endian)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:19Z",
+          "completed_at": "2026-10-15T00:16:24Z"
+        },
+        {
+          "name": "Encode natively and under qemu, compare",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:24Z",
+          "completed_at": "2026-10-15T00:16:25Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-15T00:16:25Z",
+          "completed_at": "2026-10-15T00:16:25Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-15T00:16:25Z",
+          "completed_at": "2026-10-15T00:16:25Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562402",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000107674,
+      "runner_name": "GitHub Actions 1000107674",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562631,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpnhw",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562631",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562631",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:17:00Z",
+      "name": "Cppcheck",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:55Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:16:04Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-15T00:16:04Z",
+          "completed_at": "2026-10-15T00:16:05Z"
+        },
+        {
+          "name": "Run cppcheck",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-15T00:16:05Z",
+          "completed_at": "2026-10-15T00:16:57Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:57Z",
+          "completed_at": "2026-10-15T00:16:58Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:58Z",
+          "completed_at": "2026-10-15T00:16:58Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562631",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000107677,
+      "runner_name": "GitHub Actions 1000107677",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562750,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpn_g",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562750",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562750",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:16:21Z",
+      "name": "Linux GCC (libfaam only)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:54Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:16:05Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-10-15T00:16:05Z",
+          "completed_at": "2026-10-15T00:16:05Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T00:16:05Z",
+          "completed_at": "2026-10-15T00:16:05Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T00:16:05Z",
+          "completed_at": "2026-10-15T00:16:05Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:05Z",
+          "completed_at": "2026-10-15T00:16:05Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:05Z",
+          "completed_at": "2026-10-15T00:16:06Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:06Z",
+          "completed_at": "2026-10-15T00:16:06Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:06Z",
+          "completed_at": "2026-10-15T00:16:19Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-15T00:16:19Z",
+          "completed_at": "2026-10-15T00:16:19Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-15T00:16:19Z",
+          "completed_at": "2026-10-15T00:16:19Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:16:19Z",
+          "completed_at": "2026-10-15T00:16:20Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:16:20Z",
+          "completed_at": "2026-10-15T00:16:20Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562750",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000107681,
+      "runner_name": "GitHub Actions 1000107681",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562752,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpoAA",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562752",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562752",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:53Z",
+      "completed_at": "2026-10-15T00:16:55Z",
+      "name": "MSYS2 UCRT64",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:54Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:16:30Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T00:16:30Z",
+          "completed_at": "2026-10-15T00:16:30Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:30Z",
+          "completed_at": "2026-10-15T00:16:30Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:30Z",
+          "completed_at": "2026-10-15T00:16:37Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:37Z",
+          "completed_at": "2026-10-15T00:16:48Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:48Z",
+          "completed_at": "2026-10-15T00:16:48Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-15T00:16:48Z",
+          "completed_at": "2026-10-15T00:16:48Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-15T00:16:48Z",
+          "completed_at": "2026-10-15T00:16:49Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:16:49Z",
+          "completed_at": "2026-10-15T00:16:52Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:16:52Z",
+          "completed_at": "2026-10-15T00:16:52Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562752",
+      "labels": [
+        "windows-latest"
+      ],
+      "runner_id": 1000107683,
+      "runner_name": "GitHub Actions 1000107683",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562776,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpoGA",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562776",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562776",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:16:18Z",
+      "name": "Linux GCC (lean muxer)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:55Z",
+          "completed_at": "2026-10-15T00:15:57Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:57Z",
+          "completed_at": "2026-10-15T00:16:07Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-10-15T00:16:07Z",
+          "completed_at": "2026-10-15T00:16:07Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T00:16:07Z",
+          "completed_at": "2026-10-15T00:16:07Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T00:16:07Z",
+          "completed_at": "2026-10-15T00:16:07Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:07Z",
+          "completed_at": "2026-10-15T00:16:07Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:07Z",
+          "completed_at": "2026-10-15T00:16:09Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:09Z",
+          "completed_at": "2026-10-15T00:16:09Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:09Z",
+          "completed_at": "2026-10-15T00:16:15Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-15T00:16:15Z",
+          "completed_at": "2026-10-15T00:16:15Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-15T00:16:15Z",
+          "completed_at": "2026-10-15T00:16:15Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:16:15Z",
+          "completed_at": "2026-10-15T00:16:16Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:16:16Z",
+          "completed_at": "2026-10-15T00:16:16Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562776",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000107680,
+      "runner_name": "GitHub Actions 1000107680",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562787,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpoIw",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562787",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562787",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:16:28Z",
+      "name": "Linux GCC (SBR Decimation)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:55Z",
+          "completed_at": "2026-10-15T00:15:57Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:57Z",
+          "completed_at": "2026-10-15T00:16:11Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-10-15T00:16:11Z",
+          "completed_at": "2026-10-15T00:16:11Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T00:16:11Z",
+          "completed_at": "2026-10-15T00:16:12Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T00:16:12Z",
+          "completed_at": "2026-10-15T00:16:12Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:12Z",
+          "completed_at": "2026-10-15T00:16:12Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:12Z",
+          "completed_at": "2026-10-15T00:16:13Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:13Z",
+          "completed_at": "2026-10-15T00:16:13Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:13Z",
+          "completed_at": "2026-10-15T00:16:27Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-15T00:16:27Z",
+          "completed_at": "2026-10-15T00:16:27Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-15T00:16:27Z",
+          "completed_at": "2026-10-15T00:16:27Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:16:27Z",
+          "completed_at": "2026-10-15T00:16:27Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:16:27Z",
+          "completed_at": "2026-10-15T00:16:27Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562787",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000107679,
+      "runner_name": "GitHub Actions 1000107679",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562828,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpoTA",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562828",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562828",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:16:19Z",
+      "name": "Linux GCC",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:54Z",
+          "completed_at": "2026-10-15T00:15:55Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:55Z",
+          "completed_at": "2026-10-15T00:16:10Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-10-15T00:16:10Z",
+          "completed_at": "2026-10-15T00:16:10Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T00:16:10Z",
+          "completed_at": "2026-10-15T00:16:10Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T00:16:10Z",
+          "completed_at": "2026-10-15T00:16:10Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:10Z",
+          "completed_at": "2026-10-15T00:16:10Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:10Z",
+          "completed_at": "2026-10-15T00:16:12Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:12Z",
+          "completed_at": "2026-10-15T00:16:12Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:12Z",
+          "completed_at": "2026-10-15T00:16:18Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-15T00:16:18Z",
+          "completed_at": "2026-10-15T00:16:18Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-15T00:16:18Z",
+          "completed_at": "2026-10-15T00:16:18Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:16:18Z",
+          "completed_at": "2026-10-15T00:16:18Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:16:18Z",
+          "completed_at": "2026-10-15T00:16:18Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562828",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000107678,
+      "runner_name": "GitHub Actions 1000107678",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562869,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpodQ",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562869",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562869",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:16:00Z",
+      "completed_at": "2026-10-15T00:18:14Z",
+      "name": "macOS Clang",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:16:00Z",
+          "completed_at": "2026-10-15T00:16:03Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 2,
+          "started_at": "2026-10-15T00:16:03Z",
+          "completed_at": "2026-10-15T00:16:03Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-15T00:16:03Z",
+          "completed_at": "2026-10-15T00:17:49Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T00:17:49Z",
+          "completed_at": "2026-10-15T00:17:49Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T00:17:49Z",
+          "completed_at": "2026-10-15T00:17:49Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T00:17:49Z",
+          "completed_at": "2026-10-15T00:17:49Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:17:49Z",
+          "completed_at": "2026-10-15T00:17:51Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T00:17:51Z",
+          "completed_at": "2026-10-15T00:17:51Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-15T00:17:51Z",
+          "completed_at": "2026-10-15T00:18:10Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-15T00:18:10Z",
+          "completed_at": "2026-10-15T00:18:10Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-15T00:18:10Z",
+          "completed_at": "2026-10-15T00:18:10Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:18:10Z",
+          "completed_at": "2026-10-15T00:18:11Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:18:11Z",
+          "completed_at": "2026-10-15T00:18:13Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562869",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 1000107685,
+      "runner_name": "GitHub Actions 1000107685",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562933,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpotQ",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562933",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562933",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:53Z",
+      "completed_at": "2026-10-15T00:16:45Z",
+      "name": "Windows MSVC",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:54Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:15:56Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-15T00:15:56Z",
+          "completed_at": "2026-10-15T00:16:05Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:05Z",
+          "completed_at": "2026-10-15T00:16:10Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:10Z",
+          "completed_at": "2026-10-15T00:16:15Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:15Z",
+          "completed_at": "2026-10-15T00:16:15Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:15Z",
+          "completed_at": "2026-10-15T00:16:15Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-15T00:16:15Z",
+          "completed_at": "2026-10-15T00:16:40Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-15T00:16:40Z",
+          "completed_at": "2026-10-15T00:16:41Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:16:41Z",
+          "completed_at": "2026-10-15T00:16:44Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:16:44Z",
+          "completed_at": "2026-10-15T00:16:44Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562933",
+      "labels": [
+        "windows-latest"
+      ],
+      "runner_id": 1000107684,
+      "runner_name": "GitHub Actions 1000107684",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116175562987,
+      "run_id": 38659018090,
+      "workflow_name": "Continuous Integration",
+      "head_branch": "he-v1-transient-midpoint",
+      "run_url": "https://api.github.com/repos/nschimme/faac/actions/runs/38659018090",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU1ZaOs8AAAAbDJpo6w",
+      "head_sha": "c50b66aab79f754fc17e2550159a861d26403b65",
+      "url": "https://api.github.com/repos/nschimme/faac/actions/jobs/116175562987",
+      "html_url": "https://github.com/nschimme/faac/actions/runs/38659018090/job/116175562987",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T00:15:51Z",
+      "started_at": "2026-10-15T00:15:54Z",
+      "completed_at": "2026-10-15T00:16:31Z",
+      "name": "Linux GCC (32-bit)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T00:15:55Z",
+          "completed_at": "2026-10-15T00:15:58Z"
+        },
+        {
+          "name": "Install dependencies (Ubuntu)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T00:15:58Z",
+          "completed_at": "2026-10-15T00:16:20Z"
+        },
+        {
+          "name": "Install dependencies (macOS)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 3,
+          "started_at": "2026-10-15T00:16:20Z",
+          "completed_at": "2026-10-15T00:16:20Z"
+        },
+        {
+          "name": "Install dependencies (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T00:16:20Z",
+          "completed_at": "2026-10-15T00:16:20Z"
+        },
+        {
+          "name": "Install dependencies (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T00:16:20Z",
+          "completed_at": "2026-10-15T00:16:20Z"
+        },
+        {
+          "name": "Set up MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T00:16:20Z",
+          "completed_at": "2026-10-15T00:16:20Z"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T00:16:20Z",
+          "completed_at": "2026-10-15T00:16:21Z"
+        },
+        {
+          "name": "Build (MSYS2)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T00:16:21Z",
+          "completed_at": "2026-10-15T00:16:21Z"
+        },
+        {
+          "name": "Build (General)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-15T00:16:21Z",
+          "completed_at": "2026-10-15T00:16:29Z"
+        },
+        {
+          "name": "Build (MSVC)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-15T00:16:29Z",
+          "completed_at": "2026-10-15T00:16:29Z"
+        },
+        {
+          "name": "Upload artifacts (Windows)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-15T00:16:29Z",
+          "completed_at": "2026-10-15T00:16:29Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-15T00:16:29Z",
+          "completed_at": "2026-10-15T00:16:29Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-15T00:16:29Z",
+          "completed_at": "2026-10-15T00:16:29Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/nschimme/faac/check-runs/116175562987",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000107682,
+      "runner_name": "GitHub Actions 1000107682",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}
