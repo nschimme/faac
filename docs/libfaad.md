@@ -30,11 +30,11 @@ in separate blocks through overridable allocators.
 
 ## Interface description
 
-Include `<faad3.h>` and link against `libfaad`. Installed builds provide the
-`faad3` pkg-config module.
+Include `<faad3.h>` and link against `libfaad3` (`-lfaad3`). Installed builds
+provide the `faad3` pkg-config module.
 
-The shared library is `libfaad` (`libfaad.so.3` on Linux,
-`libfaad.3.dylib` on macOS, or `libfaad.dll` on Windows). The default build
+The shared library is `libfaad3` (`libfaad3.so.3` on Linux,
+`libfaad3.3.dylib` on macOS, or `libfaad3.dll` on Windows). The default build
 also produces a static archive. The `faad` command-line decoder in
 `frontend/` is an example of using the API.
 
@@ -486,11 +486,12 @@ Reopen the decoder for a different stream configuration.
 
 ## Porting from the legacy NeAACDec* API
 
-The header is named `faad3.h` and the pkg-config module `faad3` so they can be
-installed next to the legacy FAAD2 `faad.h`, which keeps its name.
+The header (`faad3.h`), the library (`libfaad3`) and the pkg-config module
+(`faad3`) are named so that every installed file differs from the legacy FAAD2
+files, which keep their names, and both can be installed side by side.
 
 Replace legacy `<neaacdec.h>` / `<faad.h>` with this project's `<faad3.h>` and
-rebuild against `libfaad` (ABI 3). Remove old include/library paths. There is
+rebuild against `libfaad3` (ABI 3). Remove old include/library paths. There is
 no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
 
 - **Open and initialization.** Replace `NeAACDecHandle` with
