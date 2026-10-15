@@ -71,6 +71,8 @@
  * treble of some material. */
 #define TREBLE_SLOPE_BITRATE  56000
 #define TREBLE_SLOPE_RICH     3.0f
+/* Per-channel rate below which the HE-v1 coarser-scalefactor pass runs. */
+#define COARSEN_BITRATE       80000
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -315,6 +317,11 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
      * de-emphasis in Hz as 44.1 kHz. */
     if (hEncoder->sampleRate > 48000)
         hEncoder->aacquantCfg.treble_slope *= ((float)hEncoder->sampleRate / 44100.0f);
+
+    /* The extra band scan costs LC throughput, so reserve coarsening for
+     * bitrate-limited HE-v1; richer HE rates skip the pass. */
+    hEncoder->aacquantCfg.coarsen = hEncoder->config.aacObjectType == HE_V1
+        && hEncoder->config.bitRate && hEncoder->config.bitRate < COARSEN_BITRATE;
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
