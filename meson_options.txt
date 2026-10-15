@@ -82,3 +82,6 @@ option('stats',
     description: 'Enable optional end-of-stream statistics banners (encoder and decoder)',
     type: 'boolean',
     value: false)
+
+option('decoder-drc', type: 'boolean', value: true,
+    description: 'Enable decoder dynamic range control')

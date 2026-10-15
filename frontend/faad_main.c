@@ -582,6 +582,9 @@ enum {
     OPT_STRICT,
     OPT_OVERWRITE,
     OPT_LICENSE,
+    OPT_DRC_CUT,
+    OPT_DRC_BOOST,
+    OPT_DRC_TARGET,
     HELP_IO,
     HELP_PROCESSING,
     HELP_INFO
@@ -602,6 +605,8 @@ static const help_t help_io[] = {
 };
 
 static const help_t help_processing[] = {
+    {"--drc-cut N, --drc-boost N", "DRC strength 0..127 (default: 0)", NULL},
+    {"--drc-target N", "Normalise: 0 off, 40..127 quarter-dB below FS (96 = -24 dBFS)", NULL},
     {"-d, --downmix [mode]",
      "Downmix audio (mono/1 or stereo/2, default: mono)", NULL},
     {"-j, --jump <seconds>",
@@ -680,6 +685,7 @@ int main(int argc, char **argv)
     uint32_t bit_depth = 16;
     bool is_float = false;
     enum faad_downmix_mode downmix = FAAD_DOWNMIX_NONE;
+    uint8_t drc_cut = 0, drc_boost = 0, drc_target = 0;
     bool gapless = true;
     bool info_only = false;
     uint32_t want_track = 0;
@@ -704,6 +710,9 @@ int main(int argc, char **argv)
         {"format", required_argument, 0, 'f'},
         {"bits", required_argument, 0, 'b'},
         {"adts", required_argument, 0, 'a'},
+        {"drc-cut", required_argument, 0, OPT_DRC_CUT},
+        {"drc-boost", required_argument, 0, OPT_DRC_BOOST},
+        {"drc-target", required_argument, 0, OPT_DRC_TARGET},
         {"downmix", optional_argument, 0, 'd'},
         {"jump", required_argument, 0, 'j'},
         {"no-gapless", no_argument, 0, 'g'},
@@ -725,6 +734,21 @@ int main(int argc, char **argv)
     int option_index = 0;
     while ((opt = getopt_long(argc, argv, "o:wf:b:a:d::j:giqhH", long_options, &option_index)) != -1) {
         switch (opt) {
+        case OPT_DRC_CUT:
+        case OPT_DRC_BOOST:
+        case OPT_DRC_TARGET: {
+            char *end;
+            long value = strtol(optarg, &end, 10);
+            if (!*optarg || *end || value < 0 || value > 127
+                || (opt == OPT_DRC_TARGET && value && value < 40)) {
+                fprintf(stderr, "Invalid DRC value '%s'\n", optarg);
+                return 1;
+            }
+            if (opt == OPT_DRC_CUT) drc_cut = (uint8_t)value;
+            else if (opt == OPT_DRC_BOOST) drc_boost = (uint8_t)value;
+            else drc_target = (uint8_t)value;
+            break;
+        }
         case 'o': outfile = optarg; break;
         case 'w': write_stdout = true; break;
         case 'f':
@@ -937,6 +961,9 @@ int main(int argc, char **argv)
     cfg.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
     cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : bit_depth == 32 ? FAAD_OUTPUT_32BIT : bit_depth == 24 ? FAAD_OUTPUT_24BIT : FAAD_OUTPUT_16BIT;
     cfg.downmix_mode = downmix;
+    cfg.drc_cut = drc_cut;
+    cfg.drc_boost = drc_boost;
+    cfg.drc_target_level = drc_target;
 
     st = faad_decoder_open(&cfg, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);
     if (st != FAAD_OK) {

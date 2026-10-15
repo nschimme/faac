@@ -17,6 +17,9 @@ if get_option('decoder-sbr')
 endif
 
 faad_c_args = c_args + ['-DCOMMON_PREFIX=faad_']
+if not get_option('decoder-drc')
+    faad_c_args += ['-DFAAD_DISABLE_DRC']
+endif
 if not get_option('decoder-sbr')
     faad_c_args += ['-DFAAD_DISABLE_SBR']
 endif
