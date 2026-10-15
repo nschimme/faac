@@ -53,8 +53,10 @@ def main():
             assert b > 1e-8
             db = 10 * math.log10(a / b)
             assert abs(db - expected) < tolerance, (db, expected)
-        def flags(records, active):
-            assert all(bool(r[3] & 32) == (active and enabled) for r, _ in records)
+        def flags(records, active, info=None):
+            # bit 5: gain applied; bit 6: the frame carried dynamic_range_info
+            info = active if info is None else info
+            assert all(bool(r[3] & 32) == (active and enabled) and bool(r[3] & 64) == info for r, _ in records)
         reference = decode(original)
         if case == 'oversized':
             # A fill that claims more bytes than the frame holds is malformed whatever it
@@ -79,7 +81,7 @@ def main():
                     assert [p for _, p in result] == [p for _, p in reference]
             print('known gain and frame flags: PASS')
         if selected('flags'):
-            flags(decode(inject(original, drc(ctl=0)), cut=127), False)
+            flags(decode(inject(original, drc(ctl=0)), cut=127), False, True)
             flags(decode(inject(original, drc()), cut=127), True)
             first_end = ((original[3]&3)<<11) | original[4]<<3 | original[5]>>5
             isolated = inject(original[:first_end], drc()) + original[first_end:]
@@ -94,7 +96,7 @@ def main():
             for sign, cut, boost in ((1,0,127), (0,127,0)):
                 result = decode(inject(original, drc(sign)), cut, boost)
                 assert [p for _, p in result] == [p for _, p in reference]
-                flags(result, False)
+                flags(result, False, True)
             print('compress/boost routing: PASS')
         if selected('excluded'):
             result = decode(inject(original, drc(exclude=True)), 127)
