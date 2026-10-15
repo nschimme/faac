@@ -200,6 +200,7 @@ enum faad_frame_flag {
     FAAD_FRAME_CONCEALED      = 1u << 3, /* Replacement audio for corrupt core data */
     FAAD_FRAME_DEGRADED       = 1u << 4, /* Recovered audio, e.g. damaged SBR with intact core */
     FAAD_FRAME_DRC            = 1u << 5, /* Compression or normalisation applied */
+    FAAD_FRAME_DRC_INFO       = 1u << 6, /* The frame carried dynamic_range_info, applied or not */
     FAAD_FRAME_FLAG_MAX       = 0x7fffffff
 };
 
