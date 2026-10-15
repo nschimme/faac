@@ -170,10 +170,11 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     int sampleRate = sbr->sampleRate;
     unsigned long rate_per_ch = bitRate / sbr->numChannels;
     sbr->numEnvFixFix = (rate_per_ch >= SBR_FOUR_ENV_BITRATE_BPS) ? 4 : 1;
-    /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
-     * Higher-order parametric reconstruction below 10 kHz is audible and
-     * generally inferior to the bit-starved LC core. */
-    sbr->bs_start_freq = 15;
+    /* A crossover near the core ceiling (~11.6 kHz) maximizes MOS while the
+     * core is bit-starved: parametric reconstruction below 10 kHz is audible
+     * and generally inferior to that core. Once it is richer, a lower
+     * crossover wins. */
+    sbr->bs_start_freq = (rate_per_ch >= SBR_LOW_XOVER_BPS) ? SBR_START_FREQ_LOW_XOVER : SBR_START_FREQ_DEFAULT;
     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
@@ -185,7 +186,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     /* Where the reconstruction stops. Aim at hearing rather than k2's ceiling:
      * bands above the target cost the same envelope bits as the ones below, so
      * there's no reason to stop short of what's audible. */
-    sbr->bs_stop_freq = pick_stop_freq(sampleRate, sbr->kx, SBR_STOP_FREQ_TARGET_HZ);
+    sbr->bs_stop_freq = pick_stop_freq(sampleRate, sbr->kx,
+                                       (rate_per_ch < SBR_NARROW_STOP_BPS) ? SBR_STOP_FREQ_TARGET_NARROW_HZ : SBR_STOP_FREQ_TARGET_HZ);
     sbr->k2 = compute_k2(sampleRate, sbr->bs_stop_freq);
 
     build_freq_table(sbr);
