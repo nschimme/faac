@@ -1,15 +1,3 @@
-quantize_simd_libs = []
-
-if config_h.get('HAVE_SSE2')
-    sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
-    quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
-        include_directories: ['..', '../include'],
-        c_args: c_args + sse2_flag,
-        gnu_symbol_visibility: 'hidden'
-    )
-    quantize_simd_libs += quantize_sse
-endif
-
 common_src = [
     'bitstream.c',
     'bitstream.h',
@@ -18,8 +6,6 @@ common_src = [
     'channels.c',
     'channels.h',
     'coder.h',
-    'cpu_compute.c',
-    'cpu_compute.h',
     'faac.c',
     'faac_internal.h',
     'filtbank.c',
@@ -60,7 +46,6 @@ common_args = {
     'include_directories' : ['..', '../include'],
     'c_args' : c_args,
     'dependencies' : [libm],
-    'link_with' : quantize_simd_libs,
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
 }
