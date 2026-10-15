@@ -363,11 +363,17 @@ typedef struct faac_drc_info {
     bool  enabled;                 /* true to enable DRC fill element for subsequent frames */
     float dynamic_range_gain;      /* gain in dB (-31.75 to +31.75 dB; negative = cut, positive = boost) */
     bool  prog_ref_level_present;   /* true if program reference level is present */
-    float prog_ref_level;          /* program reference level in dBFS (0.0 to -31.75 dB) */
+    float prog_ref_level;          /* program reference level in dBFS (-31.75 to 0.0 dBFS) */
 } faac_drc_info;
 
 /*
  * Set or update Dynamic Range Control (DRC) metadata for subsequent frames.
+ * Valid ranges:
+ *   - dynamic_range_gain: [-31.75, +31.75] dB (finite value)
+ *   - prog_ref_level: [-31.75, 0.0] dBFS (finite value; must be <= 0.0)
+ *
+ * Returns FAAC_OK on success, or FAAC_ERR_INVALID_ARGUMENT if parameters are
+ * non-finite, out of range, or if prog_ref_level is positive.
  * Pass drc = NULL or drc->enabled = false to disable DRC emission.
  * Default is DRC disabled.
  */

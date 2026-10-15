@@ -23,6 +23,7 @@
  */
 
 #include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -418,6 +419,16 @@ FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info 
     if (!drc || !drc->enabled) {
         memset(&h->drcInfo, 0, sizeof(h->drcInfo));
         return FAAC_OK;
+    }
+
+    if (!isfinite(drc->dynamic_range_gain)
+        || drc->dynamic_range_gain < -31.75f || drc->dynamic_range_gain > 31.75f)
+        return FAAC_ERR_INVALID_ARGUMENT;
+
+    if (drc->prog_ref_level_present) {
+        if (!isfinite(drc->prog_ref_level)
+            || drc->prog_ref_level < -31.75f || drc->prog_ref_level > 0.0f)
+            return FAAC_ERR_INVALID_ARGUMENT;
     }
 
     h->drcInfo.enabled = true;
