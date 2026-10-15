@@ -17,6 +17,7 @@
 #include "huff2.h"
 #include "frame.h"
 #include "sbr.h"
+#include "drc.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -253,15 +254,19 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
         bits = ADTS_HEADER_SIZE * 8;
         bs->currentBit += bits;
     }
+    /* DRC fill element is emitted once per frame before syntax elements. */
+    int drcBits = DrcGetBits(&hEncoder->drcInfo, bs);
+    bits += drcBits;
+
     /* SBR follows each SCE/CPE in a fill element; rate control charges only
-     * the core, so its total is kept aside. */
+     * the core, so non-core fill overhead (DRC + SBR) is kept aside. */
     int sbrBits = 0;
     for (int i = 0; i < nElems; i++) {
         bits += WriteElement(bs, &elems[i], coder);
         sbrBits += SbrContextGetBits(hEncoder->sbrContext, bs,
                                      &elems[i], (int)hEncoder->config.aacObjectType);
     }
-    hEncoder->rc.sbrBits = sbrBits;
+    hEncoder->rc.fillBits = drcBits + sbrBits;
     bits += sbrBits;
     int f = (bits < (8 - LEN_SE_ID)) ? (8 - LEN_SE_ID - bits) : 0;
     f += 6;

@@ -19,6 +19,8 @@ common_src = [
     'channels.h',
     'coder.h',
     'cpu_compute.c',
+    'drc.c',
+    'drc.h',
     'cpu_compute.h',
     'faac.c',
     'faac_internal.h',
@@ -106,3 +108,12 @@ pkgconfig.generate(
     version: meson.project_version(),
     filebase: 'faac'
 )
+
+test_drc_exe = executable(
+    'test_drc',
+    'test_drc.c',
+    include_directories: ['..', '../include'],
+    link_with: [libfaac_static],
+    dependencies: [libm],
+)
+test('test_drc', test_drc_exe)

@@ -42,6 +42,7 @@ extern "C" {
 #include "stats.h"
 #include "ratecontrol.h"
 #include "stereo.h"
+#include "drc.h"
 
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
@@ -109,6 +110,9 @@ typedef struct faacEncStruct {
     unsigned char *peakSnap[MAX_CHANNELS];
 
     RateControl rc;
+
+    /* Dynamic Range Control (DRC) frame state */
+    DRCInfo drcInfo;
 
     /* Keep frame controls before the large coder state, sized at open to
        omit unused channels. */

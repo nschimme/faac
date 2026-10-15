@@ -407,6 +407,27 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
     return FAAC_OK;
 }
 
+FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info *drc)
+{
+    faacEncStruct *h;
+
+    if (!enc)
+        return FAAC_ERR_INVALID_ARGUMENT;
+    h = unwrap(enc);
+
+    if (!drc || !drc->enabled) {
+        memset(&h->drcInfo, 0, sizeof(h->drcInfo));
+        return FAAC_OK;
+    }
+
+    h->drcInfo.enabled = true;
+    h->drcInfo.gain_db = drc->dynamic_range_gain;
+    h->drcInfo.prog_ref_level_present = drc->prog_ref_level_present;
+    h->drcInfo.prog_ref_level_db = drc->prog_ref_level;
+
+    return FAAC_OK;
+}
+
 FAACAPI const char *faac_strerror(faac_status status)
 {
     switch (status) {

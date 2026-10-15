@@ -355,6 +355,24 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
                                         uint8_t *out, uint32_t out_cap,
                                         uint32_t *bytes_written);
 
+/*
+ * Dynamic Range Control (DRC) parameters (ISO/IEC 14496-3 §4.5.2.1).
+ * Used with faac_encoder_set_drc() to configure DRC metadata per frame.
+ */
+typedef struct faac_drc_info {
+    bool  enabled;                 /* true to enable DRC fill element for subsequent frames */
+    float dynamic_range_gain;      /* gain in dB (-31.75 to +31.75 dB; negative = cut, positive = boost) */
+    bool  prog_ref_level_present;   /* true if program reference level is present */
+    float prog_ref_level;          /* program reference level in dBFS (0.0 to -31.75 dB) */
+} faac_drc_info;
+
+/*
+ * Set or update Dynamic Range Control (DRC) metadata for subsequent frames.
+ * Pass drc = NULL or drc->enabled = false to disable DRC emission.
+ * Default is DRC disabled.
+ */
+FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info *drc);
+
 /* Human-readable, static description of a status code. Never returns NULL. */
 FAACAPI const char *faac_strerror(faac_status status);
 
