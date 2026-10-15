@@ -147,12 +147,14 @@ faad_status adts_decode_header(BitReader *bs, AudioSpecificConfig *asc, uint32_t
     }
 
     uint32_t min_hdr = (protection_absent == 0) ? 9 : 7;
-    if (profile != 1 || raw_blocks != 0) {
-        return FAAD_ERR_UNSUPPORTED;
-    }
-
+    /* A malformed header is reported before an unsupported profile: only a
+     * well-formed header can be trusted to describe a frame worth skipping. */
     if (sr_idx >= 12 || asc_codec_sample_rates[sr_idx] == 0 || flen < min_hdr) {
         return FAAD_ERR_DECODE_FAILED;
+    }
+
+    if (profile != 1 || raw_blocks != 0) {
+        return FAAD_ERR_UNSUPPORTED;
     }
 
     if (asc) {
