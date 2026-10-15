@@ -72,3 +72,25 @@ efficiency dominates), but it is four clips and a proxy: it neither proves the c
 covers SBR parameter quality below 12 kHz. Caveat from the rows: Apple spends up to 73 kbps on
 Girl_In_The_Fire at the "64" rung (vs 64 for FAAC), so its +45 % BD-rate on that clip partly
 reflects curve extrapolation.
+
+## LC diagnostic 96/128/160/192 kbps (48 kHz stereo, same baseline/decoder/scorer)
+`PROFILE=lc ladder.py faac,fdk,apple`, `bd3.py rows_lc_faac_fdk_apple.json <apple|fdk>`;
+FAAC `--object-type lc`, `fdkaac -p 2`, packaged Apple LC streams. 49 clips x 4 rungs x 3
+arms, 0 invalid, 49 valid curves each. Stream headers were asserted for HE only; the LC
+Apple rows come from the manifest's header validation (48 kHz stereo LC).
+
+- FAAC vs Apple: mean **+3.79 %**, median +3.95 %, 95 % CI [+0.16, +7.34].
+- FAAC vs FDK: mean **-7.43 %**, median -7.12 %, 95 % CI [-10.80, -4.20] (FAAC better).
+- Mean MOS @kbps (FAAC / FDK / Apple): 96k 4.722@95.4 / 4.729@97.0 / 4.734@97.3;
+  128k 4.851@127.0 / 4.833@129.0 / 4.867@129.4; 160k 4.916 / 4.885 / 4.930; 192k 4.949 / 4.930 / 4.963.
+  FAAC lands ~1.5-2 % below the nominal rate on average, FDK/Apple ~0.5-1 % above it, which
+  the BD-rate charges correctly but a fixed-rung MOS comparison would not.
+
+Interpretation (a comparison across two ladders, not a controlled decomposition): the same
+FAAC core coder is ahead of FDK and within ~4 % of Apple at LC, but ~6.5 % behind FDK and ~5 %
+behind Apple at HE 40-64k. So the HE gap is unlikely to be a generic quantizer/entropy-coding
+deficiency; it points at something that only exists in HE mode: the half-rate/narrow-band core
+operating point (bandwidth, rate split between core and SBR, bit allocation at 20-32 kbps/ch)
+or SBR quality. The band-split above (core band below 8 kHz worse than FDK at 48k) still
+stands, so the candidate causes are the HE core's operating point rather than LC-style
+quantization. This narrows, but does not prove, the cause.
