@@ -861,7 +861,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         AudioSpecificConfig asc;
         faad_status st = adts_decode_header(&bs, &asc, &adts_frame_len);
         if (st != FAAD_OK || config_channels(asc.num_channels) > MAX_CHANNELS) {
-            *bytes_consumed = adts_frame_len;
+            /* An invalid header is a false sync, so its length field cannot be
+             * trusted to skip over real frames behind it. */
+            *bytes_consumed = st == FAAD_ERR_DECODE_FAILED ? 1 : adts_frame_len;
             return st != FAAD_OK ? st : FAAD_ERR_UNSUPPORTED;
         }
         dec->asc = asc;
