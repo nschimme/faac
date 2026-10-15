@@ -17,7 +17,7 @@ def main():
     enabled, sbr, dab = sys.argv[3:6]
     enabled = enabled == 'true'
     case = sys.argv[6] if len(sys.argv) > 6 else 'all'
-    if (case == 'he' and sbr != 'true') or (case == 'dab' and dab != 'true'):
+    if (case in ('he', 'hetilt') and sbr != 'true') or (case == 'dab' and dab != 'true'):
         return sys.exit(77)
     def selected(name):
         return case in ('all', name)
@@ -172,6 +172,39 @@ def main():
                 assert abs(db - (20*math.log10(gain) if enabled else 0)) < .1, (frequency, db)
             print('multiband and above-top unity: PASS')
             assert all(not r[6] for r, _ in decode(multitone)[3:]), 'spectral fixture must use long windows'
+        if selected('limiter') and enabled:
+            with wave.open(src, 'wb') as w:
+                w.setparams((2, 2, 44100, 0, 'NONE', ''))
+                w.writeframes(b''.join(struct.pack('<hh', *([int(30000*math.sin(2*math.pi*500*i/44100))]*2)) for i in range(22050)))
+            os.unlink(aac)
+            subprocess.run([faac, '-a', '--object-type', 'lc', '-o', aac, src], check=True, capture_output=True)
+            loud = inject(open(aac, 'rb').read(), drc(sign=0))
+            # Float peaks prove the integer path must compress rather than merely stay quiet.
+            assert max(abs(x) for x in samples(decode(loud, boost=127))) > 1.0
+            data = b''.join(p for _, p in decode(loud, boost=127, floating=False)[3:])
+            pcm = struct.unpack('=' + 'h' * (len(data) // 2), data)
+            assert min(pcm) > -32768 and max(pcm) < 32767, (min(pcm), max(pcm))
+            assert max(abs(x) for x in pcm) > .89*32768
+            print('integer soft-knee limiter: PASS')
+        if selected('hetilt') and sbr == 'true':
+            # A longer projection reduces SBR startup history's effect on the HF level.
+            tones = (500, 14000)
+            with wave.open(src, 'wb') as w:
+                w.setparams((2, 2, 44100, 0, 'NONE', ''))
+                w.writeframes(b''.join(struct.pack('<hh', *([int(sum(6000*math.sin(2*math.pi*f*i/44100) for f in tones))]*2)) for i in range(88200)))
+            os.unlink(aac)
+            subprocess.run([faac, '-a', '--object-type', 'he-aac-v1', '-b', '64', '-o', aac, src], check=True, capture_output=True)
+            he = open(aac, 'rb').read()
+            base = samples(decode(he), 0)
+            changed = samples(decode(inject(he, drc()), cut=127), 0)
+            def energy(v, frequency):
+                # Separate core and reconstructed HF levels so core energy cannot hide missing SBR gain.
+                return sum(x*math.cos(2*math.pi*frequency*i/44100) for i,x in enumerate(v))**2 + sum(x*math.sin(2*math.pi*frequency*i/44100) for i,x in enumerate(v))**2
+            for frequency in tones:
+                assert energy(base, frequency) > 1e-8
+                db = 10*math.log10(energy(changed, frequency)/energy(base, frequency))
+                assert abs(db - (-20*math.log10(2) if enabled else 0)) < .5, (frequency, db)
+            print('HE core and HF gain: PASS')
         if selected('short'):
             # An isolated burst forces the encoder's transient detector into short blocks.
             with wave.open(src, 'wb') as w:
