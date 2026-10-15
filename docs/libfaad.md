@@ -7,7 +7,7 @@
 - [Building and linking](#building-and-linking)
 - [Supported streams](#supported-streams)
   - [Reading MP4 and M4A](#reading-mp4-and-m4a)
-- [API (faad.h)](#api-faadh)
+- [API (faad3.h)](#api-faad3h)
   - [Calling sequence](#calling-sequence)
   - [Error handling](#error-handling)
   - [Function reference](#function-reference)
@@ -30,8 +30,8 @@ in separate blocks through overridable allocators.
 
 ## Interface description
 
-Include `<faad.h>` and link against `libfaad`. Installed builds provide the
-`faad` pkg-config module.
+Include `<faad3.h>` and link against `libfaad`. Installed builds provide the
+`faad3` pkg-config module.
 
 The shared library is `libfaad` (`libfaad.so.3` on Linux,
 `libfaad.3.dylib` on macOS, or `libfaad.dll` on Windows). The default build
@@ -105,7 +105,7 @@ AudioSpecificConfig and encoded access units for RAW decoding. See
 [Reading MP4 for the FAAD decoder](libfaam.md#reading-mp4-for-the-faad-decoder)
 for the calling sequence, legacy mp4ff mapping and a complete example.
 
-## API (faad.h)
+## API (faad3.h)
 
 Supply configuration once, when opening the decoder. The PCM buffer capacity
 is queryable immediately, even when the stream's sample rate and channel count
@@ -183,7 +183,7 @@ The loop retains partial input, skips consumed rejected packets, and accepts
 concealed/degraded audio. It treats an incomplete final frame as an error.
 
 ```c
-#include <faad.h>
+#include <faad3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -486,7 +486,10 @@ Reopen the decoder for a different stream configuration.
 
 ## Porting from the legacy NeAACDec* API
 
-Replace legacy `<neaacdec.h>` / `<faad.h>` with this project's `<faad.h>` and
+The header is named `faad3.h` and the pkg-config module `faad3` so they can be
+installed next to the legacy FAAD2 `faad.h`, which keeps its name.
+
+Replace legacy `<neaacdec.h>` / `<faad.h>` with this project's `<faad3.h>` and
 rebuild against `libfaad` (ABI 3). Remove old include/library paths. There is
 no `NeAACDec*` or `faacDec*` compatibility shim; both require migration.
 

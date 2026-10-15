@@ -35,8 +35,8 @@
  *     one thread at a time. Instrumented stats builds are process-global.
  */
 
-#ifndef FAAD_H
-#define FAAD_H
+#ifndef FAAD3_H
+#define FAAD3_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -279,4 +279,4 @@ FAADAPI const char *faad_strerror(faad_status status);
 }
 #endif /* __cplusplus */
 
-#endif /* FAAD_H */
+#endif /* FAAD3_H */

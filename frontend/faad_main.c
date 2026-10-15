@@ -36,7 +36,7 @@
 # include "getopt.c"
 #endif
 
-#include "faad.h"
+#include "faad3.h"
 #include "adts.h"
 #include "charset.h"
 #include "cli_io.h"

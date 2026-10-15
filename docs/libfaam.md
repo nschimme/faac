@@ -575,7 +575,7 @@ gapless trimming. It stops on demux/decode errors and accepts recovered PCM.
 ```c
 /* m4a_decode.c */
 #include "stdio_io.h"
-#include <faad.h>
+#include <faad3.h>
 #include <stdlib.h>
 
 int main(int argc, char **argv)
