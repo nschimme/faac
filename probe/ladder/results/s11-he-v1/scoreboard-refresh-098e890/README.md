@@ -34,3 +34,17 @@ Per-clip values: `bd_per_clip.json`; raw rows: `rows.json`.
 - Scored in this Linux env with a freshly built FAAD2; not the historical macOS decoder.
 - 4 clips lacked overlapping curves (45 of 49 valid), as in the historical run.
 - No FDK arm (no fdkaac encoder here) and no LC/other rungs yet.
+
+## FDK arm (added)
+Encoder: fdkaac 1.0.9 (nu774 `586bfb1`) + libfdk-aac 2.0.0 (`v2.0.0`, static), built from source;
+command `fdkaac -p 5 -b N000 -o out.m4a in.wav` (the faac-benchmark HE v1 form). Streams
+asserted HE-AAC, 48 kHz, 2 ch. Same FAAD2 decoder, scorer and BD method; `rows_fdk.json`,
+`bd_per_clip_fdk.json`, `bd2.py <ref>`.
+
+FAAC vs FDK: n=47 curves, mean **+6.46 %**, median +6.95 %, 95 % CI [+2.70, +10.23].
+Historical: +6.933 % [3.119, 11.181], 47 clips. Mean MOS (FAAC / FDK): 40k 4.072/4.147,
+48k 4.235/4.265, 56k 4.366/4.440, 64k 4.470/4.527. Worst for FAAC: SinceAlways +44.6 %,
+trumpet +37.0 %, cst +29.8 %, Girl_In_The_Fire +27.3 %. Best: glk -30.3 %, Robots_old -15.4 %.
+(The MOS lines printed by bd2.py label the reference arm "apple"; for this run it is FDK.)
+FDK is therefore not an easier target at HE 40-64k here: the gap is slightly larger than Apple's.
+Baseline for all arms: FreewareAdvancedAudio/faac master = 098e8900 (verified with ls-remote).

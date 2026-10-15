@@ -4,6 +4,7 @@ S='/tmp/claude-0/-home-user-faac/bc9c8615-9277-5565-96c9-f1ff39d121b8/scratchpad
 sys.path.insert(0,S+'/fb')
 from phase2_mos import score_wav_pair
 FAAC=S+'/base/build/frontend/faac'; FAAD=S+'/fb/bin/faad'
+FDK=S+'/fdkprefix/bin/fdkaac'
 AUD=S+'/fb/data/external/audio'
 APPLE='/home/user/faac/probe/ladder/ref/apple-s11-367cf8dc/he'
 OUT=S+'/run/out'; os.makedirs(OUT,exist_ok=True)
@@ -18,6 +19,9 @@ def job(a):
     if arm=='faac':
         enc=f'{d}/{clip}.m4a'
         subprocess.run([FAAC,'--object-type','he-aac-v1','--overwrite','-b',str(rate),'-o',enc,ref],check=True,capture_output=True)
+    elif arm=='fdk':
+        enc=f'{d}/{clip}.m4a'
+        subprocess.run([FDK,'-p','5','-b',str(rate*1000),'-o',enc,ref],check=True,capture_output=True)
     else:
         enc=f'{APPLE}/{rate}k/{clip}.m4a'
     dec=f'{d}/{clip}.dec.wav'
@@ -36,4 +40,4 @@ if __name__=='__main__':
         for i,x in enumerate(p.imap_unordered(job,jobs)):
             res.append(x)
             if i%40==0: print(i,flush=True)
-    json.dump(res,open(f'{S}/run/rows_{sys.argv[1]}.json','w'))
+    json.dump(res,open(f'{S}/run/rows_{sys.argv[1].replace(',','_')}.json','w'))
