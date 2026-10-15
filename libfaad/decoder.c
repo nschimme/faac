@@ -264,12 +264,128 @@ static uint32_t channel_mask(const faad_decoder *dec, uint32_t channels)
         && config_channels(dec->asc.num_channels) == channels)) ? masks[channels] : 0;
 }
 
+#ifndef FAAD_DISABLE_DRC
+/* A private cursor makes truncated metadata harmless to the audio parser. */
+static void read_drc(faad_decoder *dec, BitReader input, uint32_t end)
+{
+    uint8_t top[16], ctl[16], sign[16];
+    bool excluded[MAX_CHANNELS] = { false };
+    unsigned bands = 1, ref = 0;
+    bool has_ref;
+#define DRC_READ(n) (bits_get_consumed(&input) <= end && (n) <= end - bits_get_consumed(&input) ? bits_get(&input, (n)) : (bad = true, 0u))
+    bool bad = false;
+    if (DRC_READ(1)) { (void)DRC_READ(4); (void)DRC_READ(4); }
+    if (DRC_READ(1)) {
+        unsigned channel = 0;
+        bool more;
+        do {
+            for (unsigned i = 0; i < 7; i++, channel++) {
+                bool omit = DRC_READ(1) != 0;
+                if (channel < MAX_CHANNELS) excluded[channel] = omit;
+            }
+            more = DRC_READ(1) != 0;
+        } while (more && !bad);
+    }
+    bool banded = DRC_READ(1) != 0;
+    if (banded) {
+        bands += DRC_READ(4);
+        (void)DRC_READ(4);
+        for (unsigned b = 0; b < bands; b++) {
+            top[b] = (uint8_t)DRC_READ(8);
+            if (b && top[b] <= top[b - 1]) bad = true;
+        }
+    } else top[0] = 255;
+    has_ref = DRC_READ(1) != 0;
+    if (has_ref) { ref = DRC_READ(7); (void)DRC_READ(1); }
+    for (unsigned b = 0; b < bands; b++) {
+        sign[b] = (uint8_t)DRC_READ(1);
+        ctl[b] = (uint8_t)DRC_READ(7);
+    }
+#undef DRC_READ
+    if (bad) return;
+    dec->drc.present = true;
+    dec->drc.bands = (uint8_t)bands;
+    memcpy(dec->drc.top, top, bands);
+    memcpy(dec->drc.ctl, ctl, bands);
+    memcpy(dec->drc.sign, sign, bands);
+    memcpy(dec->drc.excluded, excluded, sizeof(excluded));
+    if (has_ref) { dec->drc.ref = (uint8_t)ref; dec->drc.ref_present = true; }
+}
+
+static void apply_drc(faad_decoder *dec)
+{
+    float gain[16];
+    for (unsigned c = 0; c < MAX_CHANNELS; c++) dec->drc.sbr_gain[c] = 1.0f;
+    for (unsigned b = 0; b < dec->drc.bands; b++) {
+        float scale = dec->drc.sign[b] ? -(float)dec->config.drc_cut : (float)dec->config.drc_boost;
+        /* One control step is 1/24 octave, the step the encoders that emit
+         * these gains assume; plain 0.25 dB would drift by 0.3 %. */
+        gain[b] = exp2f(dec->drc.ctl[b] * scale / (127.0f * 24.0f));
+    }
+    for (unsigned c = 0; c < dec->num_channels; c++) {
+        if (dec->drc.excluded[c]) continue;
+        unsigned windows = dec->win_seq[c] == EIGHT_SHORT_SEQUENCE ? 8 : 1;
+        unsigned length = (FRAME_IS_960(dec) ? 960 : 1024) / windows;
+        unsigned start = 0;
+        for (unsigned b = 0; b < dec->drc.bands; b++) {
+            unsigned end = 4u * (dec->drc.top[b] + 1u) / windows;
+            if (end > length) end = length;
+            if (gain[b] != 1.0f && end > start) {
+                dec->drc.applied = true;
+                if (gain[b] > 1.0f) dec->drc.boost = true;
+                for (unsigned w = 0; w < windows; w++)
+                    for (unsigned i = start; i < end; i++) dec->spec[c][w * length + i] *= gain[b];
+            }
+            start = end;
+        }
+        /* The HF envelope is absolute energy, independent of core amplitude. */
+        dec->drc.sbr_gain[c] = gain[dec->drc.bands - 1] * gain[dec->drc.bands - 1];
+    }
+}
+
+/* Keep all PCM arithmetic out of the disabled path. */
+static bool drc_output(faad_decoder *dec, const float *src[], uint32_t num_chs,
+                       uint32_t frame_samples, void *out_pcm)
+{
+    float target_gain = dec->config.drc_target_level && dec->drc.ref_present
+        ? exp2f(((float)dec->drc.ref - dec->config.drc_target_level) / 24.0f) : 1.0f;
+    float previous_gain = dec->drc.previous_norm ? dec->drc.previous_norm : 1.0f;
+    if (target_gain != 1.0f || previous_gain != 1.0f || (dec->drc.boost && dec->config.output_format != FAAD_OUTPUT_FLOAT)) {
+        bool floating = dec->config.output_format == FAAD_OUTPUT_FLOAT;
+        bool limit = target_gain > 1.0f || previous_gain > 1.0f || dec->drc.boost;
+        float norm = target_gain / 32768.0f;
+        float ramp = (target_gain - previous_gain) / frame_samples;
+        for (uint32_t i = 0; i < frame_samples; i++) {
+            float gain = ramp == 0.0f ? norm : (previous_gain + ramp * (i + 1)) / 32768.0f;
+            for (uint32_t c = 0; c < num_chs; c++) {
+                float sample = src[c][i] * gain;
+                if (floating) ((float *)out_pcm)[i * num_chs + c] = sample;
+                else {
+                    float magnitude = fabsf(sample);
+                    if (limit && magnitude > 0.89f)
+                        sample = copysignf(0.89f + 0.11f * (1.0f - 1.0f / (1.0f + (magnitude - 0.89f) / 0.11f)), sample);
+                    ((float *)src[c])[i] = sample * 32768.0f;
+                }
+            }
+        }
+        if (target_gain != 1.0f || previous_gain != 1.0f) dec->drc.applied = true;
+        if (floating) {
+            dec->drc.previous_norm = target_gain;
+            return true;
+        }
+    }
+    dec->drc.previous_norm = target_gain;
+    return false;
+}
+
+#endif
+
 static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
 {
     faad_config_init(resolved, sizeof(*resolved));
     if (!cfg) return FAAD_OK;
     if (cfg->struct_size < CONFIG_BASELINE_SIZE) return FAAD_ERR_INVALID_ARGUMENT;
-    /* Add future fields here: absent or partially supplied fields keep defaults.
+    /* Absent or partially supplied fields keep defaults.
      * Never memcpy a partially supplied scalar or read beyond the caller. */
 #define COPY_CONFIG_FIELD(field) \
     if (cfg->struct_size >= offsetof(faad_config, field) + sizeof(cfg->field)) \
@@ -277,6 +393,14 @@ static faad_status resolve_config(const faad_config *cfg, faad_config *resolved)
     COPY_CONFIG_FIELD(stream_format);
     COPY_CONFIG_FIELD(output_format);
     COPY_CONFIG_FIELD(downmix_mode);
+#ifndef FAAD_DISABLE_DRC
+    COPY_CONFIG_FIELD(drc_cut);
+    COPY_CONFIG_FIELD(drc_boost);
+    COPY_CONFIG_FIELD(drc_target_level);
+    if (resolved->drc_cut > 127 || resolved->drc_boost > 127
+        || (resolved->drc_target_level && (resolved->drc_target_level < 40 || resolved->drc_target_level > 127)))
+        return FAAD_ERR_INVALID_ARGUMENT;
+#endif
 #undef COPY_CONFIG_FIELD
     return (resolved->stream_format == FAAD_STREAM_RAW || resolved->stream_format == FAAD_STREAM_ADTS)
         && (resolved->output_format == FAAD_OUTPUT_16BIT || resolved->output_format == FAAD_OUTPUT_24BIT
@@ -537,6 +661,10 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
     info.struct_size = bounded_size(out_info->struct_size, sizeof(info));
     info.max_output_bytes = dec->max_output_bytes;
     info.format_known = dec->format_known;
+#ifndef FAAD_DISABLE_DRC
+    info.prog_ref_level = dec->drc.ref;
+    info.prog_ref_level_present = dec->drc.ref_present;
+#endif
     if (!info.format_known) {
         memcpy(out_info, &info, info.struct_size);
         return FAAD_OK;
@@ -587,6 +715,9 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
     dec->spectral_downmix_active = false;
     dec->spectral_downmix_channels = 0;
     dec->spectral_downmix_layout = 0;
+#ifndef FAAD_DISABLE_DRC
+    memset(&dec->drc, 0, sizeof(dec->drc));
+#endif
     dec->consecutive_errors = 0;
     dec->pns_seed = 0x12345678;
 #ifndef FAAD_DISABLE_SBR
@@ -740,6 +871,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     }
     *bytes_consumed = adts_frame_len;
     dec->num_channels = dec->core_channels;
+#ifndef FAAD_DISABLE_DRC
+    dec->drc.present = false;
+#endif
     bool decode_success = true;
     bool degraded = false;
 #ifdef FAAD_STATS
@@ -884,6 +1018,13 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #endif
                         }
                     } else {
+#ifndef FAAD_DISABLE_DRC
+                        if (ext_type == 11) {
+                            uint32_t end = fill_end;
+                            if (end > bs.len * 8) end = bs.len * 8;
+                            read_drc(dec, bs, end);
+                        }
+#endif
                         bits_skip(&bs, (count - 1) * 8 + 4);
                     }
                 }
@@ -963,6 +1104,11 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #endif
     uint32_t core_samples = FRAME_IS_960(dec) ? 960 : 1024;
     dec->frame_samples = sbr_frame ? (core_samples * 2) : core_samples;
+#ifndef FAAD_DISABLE_DRC
+    dec->drc.applied = dec->drc.boost = false;
+    if (decode_success && dec->drc.present && (dec->config.drc_cut || dec->config.drc_boost))
+        apply_drc(dec);
+#endif
     float *pcm_final = dec->pcm;
     uint32_t num_chs = dec->num_channels;
     bool spectral_downmixed = false;
@@ -1028,6 +1174,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
      * error after synthesis has already consumed the packet. */
     if (required_bytes > dec->max_output_bytes) return FAAD_ERR_DECODE_FAILED;
 
+#ifndef FAAD_DISABLE_DRC
+    if ((dec->config.drc_target_level || dec->drc.boost)
+        && drc_output(dec, src, num_chs, frame_samples, out_pcm)) goto output_done;
+#endif
     if (dec->config.output_format == FAAD_OUTPUT_16BIT) {
         int16_t * restrict out_int16 = (int16_t *)out_pcm;
         if (num_chs == 2) {
@@ -1079,6 +1229,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         }
     }
 
+#ifndef FAAD_DISABLE_DRC
+output_done:
+    ;
+#endif
     *bytes_consumed = adts_frame_len;
     *bytes_written = required_bytes;
 
@@ -1095,6 +1249,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     uint32_t mask = channel_mask(dec, num_chs);
     uint32_t delay = sbr_active ? 2 * FAAD_SBR_CORE_DELAY : 0;
     uint32_t flags = 0;
+#ifndef FAAD_DISABLE_DRC
+    if (dec->drc.applied) flags |= FAAD_FRAME_DRC;
+#endif
     if (!dec->pcm_emitted || dec->emitted_format.sample_rate != dec->sample_rate
         || dec->emitted_format.channels != num_chs
         || dec->emitted_format.frame_samples != frame_samples

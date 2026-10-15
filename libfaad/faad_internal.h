@@ -396,6 +396,14 @@ _Static_assert(sizeof(FrameScratch) <= sizeof(float[MAX_CHANNELS * FRAME_LEN_LON
 #endif
 
 struct faad_decoder {
+#ifndef FAAD_DISABLE_DRC
+    struct {
+        bool present, ref_present, applied, boost;
+        uint8_t ref, bands, top[16], ctl[16], sign[16];
+        bool excluded[MAX_CHANNELS];
+        float previous_norm, sbr_gain[MAX_CHANNELS];
+    } drc;
+#endif
     faad_config config;
     AudioSpecificConfig asc;
     bool asc_parsed;
