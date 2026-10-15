@@ -23,6 +23,9 @@ case $(uname -m) in x86_64|i?86|amd64) sse=-msse2 ;; *) sse= ;; esac
 build_target() {
     name=$1
     shift
+    if [ -n "$targets" ]; then
+        case " $targets " in *" $name "*) ;; *) return ;; esac
+    fi
     echo "Building harness: $name"
     clang -g -O1 -fsanitize=$san -fno-sanitize-recover=undefined $sse "$@" -o "$out/$name"
 }
@@ -62,6 +65,11 @@ build_target "fuzz_wav" \
 build_target "fuzz_faad_adts" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faad_ -I"$root/include" -I"$root/common" -I"$root/libfaad" \
     "$root/tests/fuzz/fuzz_faad_adts.c" $faad_src $(ls "$root"/common/*.c 2>/dev/null) -lm
+
+# RAW 960-sample (DAB+) frames
+build_target "fuzz_faad_raw960" \
+    -include "$bd/config.h" -DCOMMON_PREFIX=faad_ -I"$root/include" -I"$root/common" -I"$root/libfaad" \
+    "$root/tests/fuzz/fuzz_faad_raw960.c" $faad_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
 # 4. fuzz_faad_mp4 (with and without FAAM flags)
 build_target "fuzz_faad_mp4" \
@@ -113,7 +121,7 @@ fi
 
 cd "$out"
 
-all_targets="fuzz_encode fuzz_wav fuzz_faad_adts fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_adts_header"
+all_targets="fuzz_encode fuzz_wav fuzz_faad_adts fuzz_faad_raw960 fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_adts_header"
 
 if [ -z "$targets" ]; then
     run_list="$all_targets"
@@ -134,6 +142,9 @@ for t in $run_list; do
         exit 1
     fi
     mkdir -p "corpus_$t"
+    if [ "$t" = fuzz_faad_raw960 ]; then
+        cp "$root"/tests/fuzz/corpus_raw960/* "corpus_$t/"
+    fi
     if [ -f "$seed_m4a" ]; then
         case $t in
             fuzz_faam_tags) { printf '\000'; cat "$seed_m4a"; } > "corpus_$t/seed_m4a" ;;
