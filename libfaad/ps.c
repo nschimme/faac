@@ -219,6 +219,7 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
     int num_env = ps_num_env_tab[ps->frame_class & 1][bits_get(bs, 2) & 3];
     ps->num_env = (uint8_t)num_env;
     ps->border[0] = -1;
+    int num_qmf_slots = dec->asc.frame_length_flag ? 30 : 32;
     if (ps->frame_class) {
         for (int e = 1; e <= num_env && e < PS_MAX_ENV; e++) {
             ps->border[e] = (int8_t)bits_get(bs, 5);
@@ -227,7 +228,7 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
     } else {
         for (int e = 1; e <= num_env && e < PS_MAX_ENV; e++) {
             int shift = (ps->num_env == 4) ? 2 : (ps->num_env == 2) ? 1 : 0;
-            ps->border[e] = (int8_t)(((e * 32) >> shift) - 1);
+            ps->border[e] = (int8_t)(((e * num_qmf_slots) >> shift) - 1);
         }
     }
 
@@ -290,11 +291,11 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
         if (ps->num_env == 0) {
             if (ps->num_env_old > 1) ps_copy_envelope(ps, 0, ps->num_env_old - 1);
             ps->num_env = 1;
-            ps->border[1] = 31;
-        } else if (ps->border[ps->num_env] < 31) {
+            ps->border[1] = (int8_t)(num_qmf_slots - 1);
+        } else if (ps->border[ps->num_env] < num_qmf_slots - 1) {
             ps_copy_envelope(ps, ps->num_env, ps->num_env - 1);
             ps->num_env++;
-            ps->border[ps->num_env] = 31;
+            ps->border[ps->num_env] = (int8_t)(num_qmf_slots - 1);
         }
         ps->is34_old = ps->is34;
         if (ps->enable_iid || ps->enable_icc)
@@ -764,9 +765,10 @@ void ps_slot(struct faad_decoder *dec, int n, float X[64][2], float L[64][2], fl
     ps_mix_slot(ps, n, l, r);
     ps_hybrid_synthesis_slot(l, L, ps->is34);
     ps_hybrid_synthesis_slot(r, R, ps->is34);
-    if (n == PS_QMF_SLOTS - 1) {
+    int num_qmf_slots = dec->asc.frame_length_flag ? 30 : 32;
+    if (n == num_qmf_slots - 1) {
         for (int i = 0; i < 5; i++)
-            memmove(ps->in_buf[i], ps->in_buf[i] + PS_QMF_SLOTS, 6 * sizeof(ps->in_buf[i][0]));
+            memmove(ps->in_buf[i], ps->in_buf[i] + num_qmf_slots, 6 * sizeof(ps->in_buf[i][0]));
         ps->is34_old = ps->is34;
     }
 }
