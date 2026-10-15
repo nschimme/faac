@@ -133,6 +133,11 @@ test_faad_asc = executable('test_faad_asc', 'test_faad_asc.c',
     include_directories: ['..', '../include', common_inc], link_with: [libfaad])
 test('faad_asc_test', test_faad_asc)
 
+test_faad_tns_order = executable('test_faad_tns_order', 'test_faad_tns_order.c',
+    c_args: faad_c_args + test_static_args,
+    include_directories: ['..', '../include', common_inc], link_with: [libfaad])
+test('faad_tns_order_test', test_faad_tns_order)
+
 if get_option('decoder-dab')
     test_faad_dab = executable('test_faad_dab', 'test_faad_dab.c',
         c_args : faad_c_args + test_static_args,
