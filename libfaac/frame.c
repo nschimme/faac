@@ -73,13 +73,6 @@
 #define TREBLE_SLOPE_RICH     3.0f
 /* Per-channel rate below which the HE-v1 coarser-scalefactor pass runs. */
 #define COARSEN_BITRATE       80000
-/* Masking-target shape for HE-AAC v1: its core is the bit-starved one, and a
- * flatter loudness curve with less weight on peaks suits it. LC keeps the
- * defaults (changing them moves the -q to bitrate curve). */
-#define HE_LOUDNESS_EXPONENT  0.32f
-#define HE_PEAK_WEIGHT        0.35f
-#define LC_LOUDNESS_EXPONENT  0.4f
-#define LC_PEAK_WEIGHT        0.45f
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -324,9 +317,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
      * de-emphasis in Hz as 44.1 kHz. */
     if (hEncoder->sampleRate > 48000)
         hEncoder->aacquantCfg.treble_slope *= ((float)hEncoder->sampleRate / 44100.0f);
-
-    hEncoder->aacquantCfg.loudness_exp = hEncoder->config.aacObjectType == HE_V1 ? HE_LOUDNESS_EXPONENT : LC_LOUDNESS_EXPONENT;
-    hEncoder->aacquantCfg.peak_weight = hEncoder->config.aacObjectType == HE_V1 ? HE_PEAK_WEIGHT : LC_PEAK_WEIGHT;
 
     /* The extra band scan costs LC throughput, so reserve coarsening for
      * bitrate-limited HE-v1; richer HE rates skip the pass. */

@@ -65,9 +65,8 @@ struct BitStream;
 #define SBR_EXT_TYPE_SBR     0xd
 #define SBR_EXT_TYPE_SBR_CRC 0xe
 
-/* Transient detection threshold (peak-to-mean power ratio). Short envelopes
- * cost more than they buy except on clear attacks. */
-#define SBR_TRANSIENT_THRESH_DEFAULT    (8.0f)
+/* Transient detection threshold (peak-to-mean power ratio). */
+#define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */
@@ -77,9 +76,8 @@ struct BitStream;
  * 2^(6 - level) relative to the patched signal; a higher level lowers
  * synthesized noise in the patched bands. */
 #define SBR_NOISE_LEVEL_DEFAULT         18
-/* Inverse filtering mode, written for every channel (ISO 14496-3 §4.6.18.6.4).
- * Light filtering: the strong modes smear tonal patches. */
-#define SBR_INVF_MODE                   1
+/* Inverse filtering mode, written for every channel (ISO 14496-3 §4.6.18.6.4). */
+#define SBR_INVF_MODE                   3
 /* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
 #define SBR_ENV_LEVEL_LOG2_OFFSET       (6.0f)
 /* Envelope level step, 1 = 3 dB. The finer 1.5 dB grid costs more than it
@@ -100,16 +98,6 @@ struct BitStream;
  * the same band. */
 #define SBR_STOP_FREQ_MIN               0
 #define SBR_STOP_FREQ_MAX               13
-/* From this rate (bps per channel) the core is rich enough that a lower
- * crossover pays: SBR rebuilds more of the top while the core spends its bits
- * below it. Under it a lower crossover costs more than it saves. */
-#define SBR_LOW_XOVER_BPS               20000u
-#define SBR_START_FREQ_DEFAULT          15
-#define SBR_START_FREQ_LOW_XOVER        11
-/* Below this rate the core is too starved to cover much, so the envelope
- * stops short of 20 kHz rather than spend bits on the last, quietest bands. */
-#define SBR_NARROW_STOP_BPS             13000u
-#define SBR_STOP_FREQ_TARGET_NARROW_HZ  14000
 /* Where widening aims. Past this the bands are inaudible to essentially every
  * listener while costing exactly as much as the ones below. */
 #define SBR_STOP_FREQ_TARGET_HZ         20000
