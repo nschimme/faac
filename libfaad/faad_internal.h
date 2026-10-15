@@ -42,7 +42,7 @@
 #define FreeMemory(block) free(block)
 #endif
 
-#include "faad.h"
+#include "faad3.h"
 _Static_assert(sizeof(bool) == 1, "public ABI requires one-byte flags");
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,
                "PCM requires IEEE binary32 floats");
