@@ -1028,6 +1028,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     }
 
     uint32_t frame_samples = dec->frame_samples;
+    /* Channel runs sit at a fixed stride: the IMDCT and SBR buffers are sized
+     * for 1024- and 2048-sample frames whatever the core frame length. */
+    uint32_t pcm_stride = sbr_frame ? 2 * FRAME_LEN_LONG : FRAME_LEN_LONG;
 
     /* Output in the WAV / SMPTE order (FL FR FC LFE BL BR SL SR), taken
      * from the element order the channel configuration implies. */
@@ -1036,12 +1039,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         num_chs = dec->num_channels;
         const uint8_t *map = output_channel_map(dec->asc.num_channels, num_chs);
         for (uint32_t c = 0; c < num_chs; c++)
-            src[c] = pcm_final + (map ? map[c] : c) * frame_samples;
-        float *dst[2] = { pcm_final, pcm_final + frame_samples };
+            src[c] = pcm_final + (map ? map[c] : c) * pcm_stride;
+        float *dst[2] = { pcm_final, pcm_final + pcm_stride };
         num_chs = downmix_pcm(dec->config.downmix_mode, src, num_chs, frame_samples, dst);
     }
     if (num_chs <= 2)
-        for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * frame_samples;
+        for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * pcm_stride;
 
     uint32_t required_bytes = frame_samples * num_chs * output_sample_bytes(dec->config.output_format);
     /* The entry check guarantees capacity before any history advances. A
