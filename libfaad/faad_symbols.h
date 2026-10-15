@@ -1,6 +1,7 @@
 #ifndef FAAD_SYMBOLS_H
 #define FAAD_SYMBOLS_H
 
+#define adif_decode_header faad_adif_decode_header
 #define adts_decode_header faad_adts_decode_header
 #define apply_is_stereo faad_apply_is_stereo
 #define apply_ms_stereo faad_apply_ms_stereo
