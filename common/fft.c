@@ -253,7 +253,7 @@ static inline void dft3(float r0, float i0, float r1, float i1, float r2, float 
                         float *or, float *oi)
 {
     float a_r = r1 + r2, a_i = i1 + i2;
-    float b_r = (i2 - i1) * 0.8660254037844386f, b_i = (r1 - r2) * 0.8660254037844386f;
+    float b_r = (i1 - i2) * 0.8660254037844386f, b_i = (r2 - r1) * 0.8660254037844386f;
     or[0] = r0 + a_r;
     oi[0] = i0 + a_i;
     float m_r = r0 - 0.5f * a_r, m_i = i0 - 0.5f * a_i;
