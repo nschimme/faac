@@ -59,6 +59,11 @@ option('stats',
     type: 'boolean',
     value: false)
 
+option('drc',
+    description: 'Enable AAC dynamic range control metadata output support',
+    type: 'boolean',
+    value: false)
+
 option('tests',
     description: 'Build test executables',
     type: 'boolean',

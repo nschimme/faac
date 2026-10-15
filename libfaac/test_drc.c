@@ -164,6 +164,7 @@ static void test_drc_adts_parsing(void)
 
     faac_drc_info drc;
     memset(&drc, 0, sizeof(drc));
+    drc.struct_size = sizeof(drc);
     drc.enabled = true;
     drc.dynamic_range_gain = -6.0f; /* cut -6.0 dB: sgn=1, ctl=24 */
     drc.prog_ref_level_present = false;
@@ -226,8 +227,16 @@ static void test_drc_invalid_inputs(void)
 
     faac_drc_info drc;
 
+    /* Too small struct_size */
+    memset(&drc, 0, sizeof(drc));
+    drc.struct_size = 4;
+    drc.enabled = true;
+    st = faac_encoder_set_drc(enc, &drc);
+    assert(st == FAAC_ERR_INVALID_ARGUMENT);
+
     /* Out of range gain (> +31.75 dB) */
     memset(&drc, 0, sizeof(drc));
+    drc.struct_size = sizeof(drc);
     drc.enabled = true;
     drc.dynamic_range_gain = 32.0f;
     st = faac_encoder_set_drc(enc, &drc);
@@ -252,6 +261,11 @@ static void test_drc_invalid_inputs(void)
 
     /* Valid prog_ref_level (-20.0 dBFS) */
     drc.prog_ref_level = -20.0f;
+    st = faac_encoder_set_drc(enc, &drc);
+    assert(st == FAAC_OK);
+
+    /* Larger struct_size (future ABI growth compatibility) */
+    drc.struct_size = sizeof(drc) + 16;
     st = faac_encoder_set_drc(enc, &drc);
     assert(st == FAAC_OK);
 

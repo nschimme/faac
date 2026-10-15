@@ -254,9 +254,12 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
         bits = ADTS_HEADER_SIZE * 8;
         bs->currentBit += bits;
     }
+    int drcBits = 0;
+#if FAAC_DRC
     /* DRC fill element is emitted once per frame before syntax elements. */
-    int drcBits = DrcGetBits(&hEncoder->drcInfo, bs);
+    drcBits = DrcGetBits(&hEncoder->drcInfo, bs);
     bits += drcBits;
+#endif
 
     /* SBR follows each SCE/CPE in a fill element; rate control charges only
      * the core, so non-core fill overhead (DRC + SBR) is kept aside. */

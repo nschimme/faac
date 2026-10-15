@@ -71,6 +71,8 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
     ((uint32_t)(offsetof(faac_library_info, sbr_decimation) + sizeof(uint32_t)))
 #define ENCODER_INFO_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_encoder_info, rate_control) + sizeof(enum faac_rate_control)))
+#define DRC_INFO_BASELINE_SIZE \
+    ((uint32_t)(offsetof(faac_drc_info, prog_ref_level) + sizeof(float)))
 
 /* faac_encoder* and faacEncHandle are the same underlying object. */
 static inline faacEncStruct *unwrap(faac_encoder *enc) { return (faacEncStruct *)enc; }
@@ -416,7 +418,19 @@ FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info 
         return FAAC_ERR_INVALID_ARGUMENT;
     h = unwrap(enc);
 
-    if (!drc || !drc->enabled) {
+#if !FAAC_DRC
+    (void)drc;
+    return FAAC_ERR_UNSUPPORTED;
+#else
+    if (!drc) {
+        memset(&h->drcInfo, 0, sizeof(h->drcInfo));
+        return FAAC_OK;
+    }
+
+    if (drc->struct_size < DRC_INFO_BASELINE_SIZE)
+        return FAAC_ERR_INVALID_ARGUMENT;
+
+    if (!drc->enabled) {
         memset(&h->drcInfo, 0, sizeof(h->drcInfo));
         return FAAC_OK;
     }
@@ -437,6 +451,7 @@ FAACAPI faac_status faac_encoder_set_drc(faac_encoder *enc, const faac_drc_info 
     h->drcInfo.prog_ref_level_db = drc->prog_ref_level;
 
     return FAAC_OK;
+#endif
 }
 
 FAACAPI const char *faac_strerror(faac_status status)

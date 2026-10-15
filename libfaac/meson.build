@@ -19,8 +19,6 @@ common_src = [
     'channels.h',
     'coder.h',
     'cpu_compute.c',
-    'drc.c',
-    'drc.h',
     'cpu_compute.h',
     'faac.c',
     'faac_internal.h',
@@ -55,6 +53,10 @@ common_src = [
     'util.c',
     'util.h',
 ]
+
+if get_option('drc')
+    common_src += ['drc.c', 'drc.h']
+endif
 
 libfaac = disabler()
 
@@ -109,7 +111,7 @@ pkgconfig.generate(
     filebase: 'faac'
 )
 
-if get_option('tests')
+if get_option('drc') and get_option('tests')
     test_drc_exe = executable(
         'test_drc',
         'test_drc.c',
