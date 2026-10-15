@@ -71,6 +71,9 @@ subdir('libfaam')
 
 if get_option('decoder')
     subdir('libfaad')
+    # Compile the harness in ordinary CI builds without requiring libFuzzer's main.
+    static_library('fuzz_faad_raw960', 'tests/fuzz/fuzz_faad_raw960.c',
+        include_directories : ['include'], install : false)
 endif
 
 if get_option('frontend')
