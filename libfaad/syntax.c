@@ -152,6 +152,7 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     g_faadStats.icsCount++;
 #endif
 
+    ics->frame_len_long = dec->asc.frame_length_flag ? 960 : 1024;
     ics->global_gain = bits_get(bs, 8);
 
     if (!common_window) {
@@ -198,7 +199,7 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
         uint32_t pos = ics->sfb_offsets[pulse_start_sfb];
         for (uint32_t i = 0; i <= number_pulse; i++) {
             pos += bits_get(bs, 5); /* pulse_offset */
-            if (pos >= FRAME_LEN_LONG) return FAAD_ERR_DECODE_FAILED;
+            if (pos >= ics->frame_len_long) return FAAD_ERR_DECODE_FAILED;
             ics->pulse_pos[i] = (uint16_t)pos;
             ics->pulse_amp[i] = (uint8_t)bits_get(bs, 4);
         }

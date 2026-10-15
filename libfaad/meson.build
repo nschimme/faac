@@ -23,6 +23,9 @@ endif
 if not get_option('decoder-ps') or not get_option('decoder-sbr') or get_option('max-channels') < 2
     faad_c_args += ['-DFAAD_DISABLE_PS']
 endif
+if not get_option('decoder-dab')
+    faad_c_args += ['-DFAAD_DISABLE_DAB']
+endif
 
 project_ver = meson.project_version()
 
@@ -72,3 +75,13 @@ pkgconfig.generate(
     version: '3.0.0',
     filebase: 'faad3'
 )
+
+test_dab = executable(
+    'test_dab_dec',
+    'test_dab_dec.c',
+    include_directories : ['..', '../include', common_inc],
+    c_args : faad_c_args,
+    link_with : libfaad,
+    dependencies : [libm, codec_dep],
+)
+test('test_dab_dec', test_dab)

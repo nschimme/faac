@@ -190,15 +190,20 @@ typedef struct {
     bool is_sbr;
     bool is_ps;
     uint32_t sbr_sample_rate;
+    bool frame_length_flag; /* false = 1024, true = 960 */
 } AudioSpecificConfig;
 
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc);
 faad_status adts_decode_header(BitReader *bs, AudioSpecificConfig *asc, uint32_t *frame_length);
+#ifndef FAAD_DISABLE_DAB
+faad_status adif_decode_header(BitReader *bs, AudioSpecificConfig *asc);
+#endif
 
 #define MAX_SFB       52 /* long blocks reach 51 bands, short ones 8 x 15 */
 #define TNS_MAX_ORDER 12 /* AAC-LC: 12 for long blocks, 7 for short */
 
 typedef struct {
+    uint16_t frame_len_long; /* 1024 or 960 */
     uint8_t window_sequence;
     uint8_t window_shape;
     uint8_t max_sfb;

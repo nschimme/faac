@@ -24,7 +24,17 @@
 extern const uint16_t * const sfb_offsets_1024[12];
 extern const uint8_t num_sfbs_1024[12];
 
+#ifndef FAAD_DISABLE_DAB
+extern const uint16_t * const sfb_offsets_960[12];
+extern const uint8_t num_sfbs_960[12];
+#endif
+
 extern const uint16_t * const sfb_offsets_128[12];
 extern const uint8_t num_sfbs_128[12];
+
+#ifndef FAAD_DISABLE_DAB
+extern const uint16_t * const sfb_offsets_120[12];
+extern const uint8_t num_sfbs_120[12];
+#endif
 
 #endif /* SFB_TABLES_H */
