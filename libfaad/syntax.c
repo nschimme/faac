@@ -227,17 +227,17 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
                         ics->tns_direction[w][f] = bits_get(bs, 1);
                         uint32_t coef_compress = bits_get(bs, 1);
                         int bits_per_coef = (coef_res ? 4 : 3) - (int)coef_compress;
-                        /* every coefficient is in the stream; only the LC
-                         * order is kept and filtered */
+                        /* Only LC decodes, and its profile stops at 12; a longer filter
+                         * cannot be applied as signalled, so the stream is not valid. */
+                        if (ics->tns_order[w][f] > TNS_MAX_ORDER) return FAAD_ERR_DECODE_FAILED;
                         for (int c = 0; c < ics->tns_order[w][f]; c++) {
                             uint32_t val = bits_get(bs, bits_per_coef);
                             int32_t sval = (int32_t)val;
                             if (sval & (1 << (bits_per_coef - 1))) {
                                 sval |= ~((1 << bits_per_coef) - 1);
                             }
-                            if (c < TNS_MAX_ORDER) ics->tns_coef[w][f][c] = (int8_t)sval;
+                            ics->tns_coef[w][f][c] = (int8_t)sval;
                         }
-                        if (ics->tns_order[w][f] > TNS_MAX_ORDER) ics->tns_order[w][f] = TNS_MAX_ORDER;
                     }
                 }
             }
