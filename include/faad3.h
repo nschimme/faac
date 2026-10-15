@@ -159,6 +159,10 @@ typedef struct faad_config {
     enum faad_stream_format stream_format; /* RAW or ADTS                   */
     enum faad_output_format output_format; /* PCM sample format             */
     enum faad_downmix_mode  downmix_mode;  /* channel downmixing strategy   */
+    uint8_t                 drc_cut;          /* attenuation scale, 0..127 */
+    uint8_t                 drc_boost;        /* boost scale, 0..127 */
+    uint8_t                 drc_target_level; /* 0 off, else 40..127 quarter-dB below FS */
+    uint8_t                 reserved[1];     /* always zero, never reuse */
 } faad_config;
 
 /*
@@ -183,6 +187,9 @@ typedef struct faad_stream_info {
     uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
     bool                    format_known;     /* Usable rate/channel snapshot; later frames may change it */
     uint8_t                 reserved[3];      /* explicit tail padding; always zero, never reuse */
+    uint8_t                 prog_ref_level;  /* quarter-dB below full scale */
+    bool                    prog_ref_level_present;
+    uint8_t                 reserved_drc[2]; /* always zero, never reuse */
 } faad_stream_info;
 
 enum faad_frame_flag {
@@ -192,6 +199,7 @@ enum faad_frame_flag {
     FAAD_FRAME_PS             = 1u << 2, /* Parametric Stereo applied */
     FAAD_FRAME_CONCEALED      = 1u << 3, /* Replacement audio for corrupt core data */
     FAAD_FRAME_DEGRADED       = 1u << 4, /* Recovered audio, e.g. damaged SBR with intact core */
+    FAAD_FRAME_DRC            = 1u << 5, /* Compression or normalisation applied */
     FAAD_FRAME_FLAG_MAX       = 0x7fffffff
 };
 
