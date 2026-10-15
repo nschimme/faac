@@ -494,7 +494,7 @@ files, which keep their names, and both can be installed side by side.
 Replace legacy `<neaacdec.h>` / `<faad.h>` with this project's `<faad3.h>` and
 rebuild against `libfaad3` (ABI 3). Remove old include/library paths. There is
 no `NeAACDec*` or `faacDec*` compatibility code in this library. The FAAD2
-repository (nschimme/faad2) ships a thin `libfaad.so.2` shim over libfaad3 for
+repository (FreewareAdvancedAudio/faad2) ships a thin `libfaad.so.2` shim over libfaad3 for
 programs that cannot be rebuilt; it reproduces the behaviours listed under
 [What the legacy API did that you may be working around](#what-the-legacy-api-did-that-you-may-be-working-around),
 and new code should use libfaad3 directly.
