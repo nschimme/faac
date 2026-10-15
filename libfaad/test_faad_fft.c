@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include "fft.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 static int check(const char *name, int n, void (*f)(float *, float *), int logm)
 {
     float *x = malloc(sizeof(float) * 4 * n), *y = x + 2 * n, *ref = malloc(sizeof(float) * 2 * n);

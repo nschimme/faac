@@ -56,7 +56,7 @@ def main():
         def flags(records, active, info=None):
             # bit 5: gain applied; bit 6: the frame carried dynamic_range_info
             info = active if info is None else info
-            assert all(bool(r[3] & 32) == (active and enabled) and bool(r[3] & 64) == info for r, _ in records)
+            assert all(bool(r[3] & 32) == (active and enabled) and bool(r[3] & 64) == (info and enabled) for r, _ in records)
         reference = decode(original)
         if case == 'oversized':
             # A fill that claims more bytes than the frame holds is malformed whatever it
