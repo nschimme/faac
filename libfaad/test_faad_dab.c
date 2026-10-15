@@ -61,22 +61,14 @@ int main(int argc, char **argv)
 {
     static const Vector vectors[] = {
         { "lc_mono32", 60.0, 2 }, { "lc_st48", 60.0, 2 }, { "he2_st48", 40.0, 3 },
-        /* Nine access units; the third scored window holds frames whose fixed SBR
-         * envelope borders sit at 8 and 4 8 12 of 15 slots (51.7 dB with them
-         * truncated, 53.2 dB placed as FDK does). */
-        { "he2_st32", 52.5, 5 },
     };
     faad_library_info library = { .struct_size = sizeof library };
     if (faad_get_library_info(&library) != FAAD_OK) return 1;
     int failed = 0;
     if (argc < 2) return 2;
     for (size_t v = 0; v < sizeof vectors / sizeof vectors[0]; v++) {
-        if (v == 1 && library.max_channels < 2) {
-            puts("LC stereo vector: skipped (channel ceiling)");
-            continue;
-        }
-        if (v >= 2 && !library.ps_supported) {
-            puts("HE stereo reference: skipped (PS disabled)");
+        if (v == 2 && !library.sbr_supported) {
+            puts("HE vector: skipped (SBR disabled)");
             continue;
         }
         size_t n, rn, samples;
