@@ -169,7 +169,8 @@ static void test_struct_sizes_and_enums(void)
 {
     struct { faad_config cfg; uint32_t guard; } c;
     memset(&c, 0xa5, sizeof(c));
-    assert(faad_config_init(&c.cfg, sizeof(c.cfg) - 1) == FAAD_ERR_INVALID_ARGUMENT);
+    const uint32_t baseline = offsetof(faad_config, downmix_mode) + sizeof(c.cfg.downmix_mode);
+    assert(faad_config_init(&c.cfg, baseline - 1) == FAAD_ERR_INVALID_ARGUMENT);
     assert(c.cfg.struct_size == 0xa5a5a5a5u);
     assert(faad_config_init(&c.cfg, sizeof(c)) == FAAD_OK);
     assert(c.cfg.struct_size == sizeof(c.cfg));
@@ -189,7 +190,7 @@ static void test_struct_sizes_and_enums(void)
     assert(faad_decoder_close(&dec) == FAAD_OK && dec == NULL);
     for (int i = 0; i < 4; i++) {
         faad_config_init(&c.cfg, sizeof(c.cfg));
-        if (i == 0) c.cfg.struct_size--;
+        if (i == 0) c.cfg.struct_size = baseline - 1;
         if (i == 1) c.cfg.stream_format = FAAD_STREAM_MAX;
         if (i == 2) c.cfg.output_format = FAAD_OUTPUT_MAX;
         if (i == 3) c.cfg.downmix_mode = FAAD_DOWNMIX_MAX;

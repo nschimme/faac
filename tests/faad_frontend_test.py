@@ -2,7 +2,7 @@
 """Round-trip the faad frontend through faac: ADTS and MP4 input, WAV to a
 file and to stdout.
 
-Usage: faad_frontend_test.py <faac> <faad> <faam> <max-channels> <decoder-sbr>
+Usage: faad_frontend_test.py <faac> <faad> <faam> <max-channels> <decoder-sbr> <decoder-drc>
 """
 
 import math
@@ -62,6 +62,28 @@ def main():
                                            input=stream.read(), check=True,
                                            capture_output=True).stdout
             assert stdin_pcm == piped, f"{ext}: stdin changed the decoded WAV"
+
+        from faad_drc_stream import drc, inject
+        drc_path = os.path.join(d, 'drc.aac')
+        with open(drc_path, 'wb') as f:
+            f.write(inject(open(os.path.join(d, 't.aac'), 'rb').read(), drc(ref=124)))
+        def drc_pcm(*options):
+            return subprocess.run([faad, '-q', '-w', '-f', 'raw', '-b', '32f',
+                                   *options, drc_path], check=True, capture_output=True).stdout
+        baseline = drc_pcm()
+        enabled = sys.argv[6] == 'true'
+        assert (drc_pcm('--drc-cut', '127') != baseline) == enabled
+        assert (drc_pcm('--drc-target', '92') != baseline) == enabled
+        assert drc_pcm('--drc-boost', '127') == baseline
+        with open(drc_path, 'wb') as f:
+            f.write(inject(open(os.path.join(d, 't.aac'), 'rb').read(), drc(sign=0)))
+        assert (drc_pcm('--drc-boost', '127') != baseline) == enabled
+        for option, values in (('--drc-cut', ('-1', '128', 'x')),
+                               ('--drc-boost', ('-1', '128', 'x')),
+                               ('--drc-target', ('1', '39', '128', 'x'))):
+            for value in values:
+                result = subprocess.run([faad, '-q', '-w', option, value, drc_path], capture_output=True)
+                assert result.returncode == 1, (option, value, result.returncode)
 
         # Track IDs select the matching AAC stream; ADTS ignores selection.
         second = os.path.join(d, "second.wav")
