@@ -70,5 +70,5 @@ pkgconfig.generate(
     name: 'FAAD',
     description: 'Freeware Advanced Audio Decoder',
     version: '3.0.0',
-    filebase: 'faad'
+    filebase: 'faad3'
 )
