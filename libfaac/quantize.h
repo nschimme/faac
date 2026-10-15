@@ -26,6 +26,8 @@ typedef struct
     int max_l;
     int pnslevel;
     float treble_slope;
+    float loudness_exp;  /* masking-target loudness compression */
+    float peak_weight;   /* tonal share of the masking target */
     int coarsen;       /* try one scalefactor step coarser per band */
 } AACQuantCfg;
 
