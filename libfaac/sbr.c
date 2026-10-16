@@ -43,6 +43,22 @@ static int compute_kx(int sampleRate, int bs_start_freq)
     return clamp_int(start_min + sbr_offset[row][bs_start_freq & 15], 1, 63);
 }
 
+/* The start index whose crossover, kx * Fs / 128, lies nearest targetHz. */
+static int pick_start_freq(int sampleRate, int targetHz)
+{
+    int best = SBR_START_FREQ_DEFAULT;
+    long best_err = -1;
+    for (int i = 0; i < 16; i++) {
+        long err = (long)compute_kx(sampleRate, i) * sampleRate / (2 * SBR_QMF_BANDS_64) - targetHz;
+        if (err < 0) err = -err;
+        if (best_err < 0 || err < best_err) {
+            best_err = err;
+            best = i;
+        }
+    }
+    return best;
+}
+
 static int cmp_int16(const void *a, const void *b) { return (int)(*(const short *)a) - (int)(*(const short *)b); }
 static int cmp_int(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }
 
@@ -79,12 +95,11 @@ static int pick_stop_freq(int sampleRate, int kx, int targetHz, int *k2_out)
     stop_dk[12] = (short)(64 - prev);
     qsort(stop_dk, 13, sizeof(short), cmp_int16);
 
+    int xover_range = sampleRate >= SBR_RICH_XOVER_MIN_RATE && sampleRate <= SBR_RICH_XOVER_MAX_RATE;
     int best = SBR_STOP_FREQ_MIN, best_k2 = stop_min, k2 = stop_min;
     for (int sf = SBR_STOP_FREQ_MIN; sf <= SBR_STOP_FREQ_MAX; sf++) {
         if (sf > 0) k2 += stop_dk[sf - 1];
-        /* Past this ratio the decoder builds a two-region master table, so its
-         * envelope band edges would differ from the ones written. */
-        if (k2 * SBR_ONE_REGION_DEN > SBR_ONE_REGION_NUM * kx || k2 - kx > max_sbr_span(sampleRate)) break;
+        if ((!xover_range && k2 * SBR_ONE_REGION_DEN > SBR_ONE_REGION_NUM * kx) || k2 - kx > max_sbr_span(sampleRate)) break;
         best = sf;
         best_k2 = k2;
         if (k2 - kx >= SBR_MIN_SPAN && (long)k2 * sampleRate / (2 * SBR_QMF_BANDS_64) >= targetHz) break;
@@ -198,8 +213,10 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     /* A crossover near the core ceiling (~11.6 kHz) maximizes MOS while the
      * core is bit-starved: parametric reconstruction below 10 kHz is audible
      * and generally inferior to that core. A rich core can afford SBR from
-     * about 8 kHz (SBR_RICH_BPS). */
-    sbr->bs_start_freq = sbr->rich ? SBR_START_FREQ_RICH : SBR_START_FREQ_DEFAULT;
+     * about 6.3 kHz (SBR_RICH_BPS, SBR_RICH_XOVER_HZ). */
+    sbr->bs_start_freq = !sbr->rich ? SBR_START_FREQ_DEFAULT
+                       : (sampleRate >= SBR_RICH_XOVER_MIN_RATE && sampleRate <= SBR_RICH_XOVER_MAX_RATE) ? pick_start_freq(sampleRate, SBR_RICH_XOVER_HZ)
+                       : SBR_START_FREQ_RICH;
     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
