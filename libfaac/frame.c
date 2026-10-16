@@ -307,9 +307,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         unsigned long outputRate = hEncoder->sampleRate;
         if (hEncoder->config.aacObjectType == HE_V1)
             outputRate *= 2;
-        bool isHighBitRate = config->bitRate ?
-            (config->bitRate * hEncoder->numChannels >= 192000) :
-            (config->quantqual >= 340);
+        bool isHighBitRate = config->bitRate && (config->bitRate * hEncoder->numChannels >= 192000);
         hEncoder->aacquantCfg.pnslevel = !config->usePns ? 0 :
             (outputRate <= 16000 && hEncoder->numChannels == 1)
                 ? PNSLEVEL_NARROWBAND_MONO :
