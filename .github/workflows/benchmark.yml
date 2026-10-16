@@ -9,7 +9,7 @@ on:
       - ".github/workflows/benchmark.yml"
       - "meson.build"
   pull_request:
-    branches: [ "*" ]
+    branches: [ "**" ]
     paths:
       - "frontend/**"
       - "libfaac/**"
