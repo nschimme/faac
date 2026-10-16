@@ -14,11 +14,13 @@ import math
 import os
 import random
 import re
+import select
 import shutil
 import struct
 import subprocess
 import sys
 import tempfile
+import time
 import wave
 
 failures = []
@@ -56,12 +58,12 @@ class Tools:
     def __init__(self, faac, faam, faad):
         self.faac, self.faam, self.faad = faac, faam, faad
 
-    def run(self, exe, args, cwd, env=None):
+    def run(self, exe, args, cwd, env=None, input_data=None):
         e = dict(os.environ)
         e.pop("SOURCE_DATE_EPOCH", None)
         if env:
             e.update(env)
-        r = subprocess.run([exe] + list(args), cwd=cwd, env=e, capture_output=True)
+        r = subprocess.run([exe] + list(args), cwd=cwd, env=e, input=input_data, capture_output=True)
         # a sanitizer build reports through stderr; an expected-failure exit code would hide it
         if re.search(rb"AddressSanitizer|runtime error:|LeakSanitizer", r.stderr):
             check(False, f"sanitizer report from {os.path.basename(exe)} {' '.join(args)}")
@@ -288,6 +290,78 @@ def run_all(t, d):
     r = t.faam_run(["-i", "lc.aac", "-o", "plain.m4a"], d)
     check(r.returncode == 0 and smpb(read(os.path.join(d, "plain.m4a"))) is None, "no delay/padding: no iTunSMPB")
 
+    # Stream input and output independently against the named-file mux.
+    expected_mp4 = read(os.path.join(d, "plain.m4a"))
+    piped = t.run(t.faam, ["-i", "-", "-o", "pipe_input.m4a"], d,
+                  input_data=read(os.path.join(d, "lc.aac")))
+    check(piped.returncode == 0 and read(os.path.join(d, "pipe_input.m4a")) == expected_mp4,
+          "mux reads stdin byte-identically to a named input")
+    piped = t.faam_run(["-i", "lc.aac", "-o", "-"], d)
+    check(piped.returncode == 0 and piped.stdout.startswith(b"\0\0\0\x20ftyp") and
+          b"Successfully muxed" in piped.stderr,
+          "mux writes an uncontaminated MP4 to stdout by default")
+    branded_pipe = t.faam_run(["-i", "lc.aac", "-o", "-", "--brand", "m4b"], d)
+    check(branded_pipe.returncode == 0 and b"M4B " in branded_pipe.stdout[:40],
+          "stdout preserves requested M4B branding using progressive output")
+    gapless_pipe = t.faam_run(["-i", "lc.aac", "-o", "-", "--encoder-delay", "1024"], d)
+    check(gapless_pipe.returncode == 0 and smpb(gapless_pipe.stdout) is not None and b"moof" not in gapless_pipe.stdout,
+          "stdout preserves gapless metadata using progressive output")
+    faststart_pipe = t.faam_run(["-i", "lc.aac", "-o", "-", "--faststart"], d)
+    check(faststart_pipe.returncode == 0 and faststart_pipe.stdout[4:8] == b"ftyp" and
+          b"moof" not in faststart_pipe.stdout,
+          f"--faststart keeps progressive output on stdout ({faststart_pipe.returncode}, {faststart_pipe.stderr!r}, {faststart_pipe.stdout[:16]!r})")
+    for command in ("info", "dump"):
+        piped = t.run(t.faam, [command, "-"], d, input_data=read(os.path.join(d, "plain.m4a")))
+        check(piped.returncode == 0 and len(piped.stdout) > 0,
+              f"{command} reads an MP4 from stdin")
+
+    # Stdout uses fragmented MP4 automatically and emits its init segment and
+    # completed fragments while stdin remains open.
+    fragment_args = ["-i", "-", "-o", "-"]
+    fragmented = t.run(t.faam, fragment_args, d, input_data=read(os.path.join(d, "lc.aac")))
+    if b"not built" in fragmented.stderr.lower():
+        pass
+    else:
+        check(fragmented.returncode == 0 and fragmented.stdout.startswith(b"\0\0\0\x20ftyp"),
+              "fragmented mux writes a valid MP4 stream to stdout")
+        frag_info = t.run(t.faam, ["info", "-"], d, input_data=fragmented.stdout)
+        if b"moof" in fragmented.stdout:
+            check(frag_info.returncode == 0 and b"Total Frames: 0 (unknown for fragmented files)" in frag_info.stdout,
+                  "fragmented stdout output can be read from stdin")
+        else:
+            check(frag_info.returncode == 0 and b"Total Frames: 236" in frag_info.stdout,
+                  "progressive stdout fallback can be read from stdin")
+        ref_decode = t.run(t.faad, ["-q", "--overwrite", "-o", "fragment_ref.wav", "plain.m4a"], d)
+        frag_decode = t.run(t.faad, ["-q", "--overwrite", "-o", "fragment_stream.wav", "-"], d,
+                            input_data=fragmented.stdout)
+        check(ref_decode.returncode == 0 and frag_decode.returncode == 0 and
+              read(os.path.join(d, "fragment_ref.wav")) == read(os.path.join(d, "fragment_stream.wav")),
+              "fragmented stdout decodes to the same PCM as progressive MP4")
+        if os.name != "nt" and b"moof" in fragmented.stdout:
+            env = dict(os.environ)
+            env.pop("SOURCE_DATE_EPOCH", None)
+            proc = subprocess.Popen([t.faam] + fragment_args, cwd=d, env=env,
+                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc.stdin.write(read(os.path.join(d, "lc.aac")))
+            proc.stdin.flush()
+            early = bytearray()
+            deadline = time.monotonic() + 3
+            while b"moof" not in early and time.monotonic() < deadline:
+                ready, _, _ = select.select([proc.stdout], [], [], deadline - time.monotonic())
+                if not ready:
+                    break
+                chunk = os.read(proc.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                early.extend(chunk)
+            proc.stdin.close()
+            rest = proc.stdout.read()
+            err = proc.stderr.read()
+            code = proc.wait()
+            check(code == 0 and early.startswith(b"\0\0\0\x20ftyp") and b"moof" in early and
+                  bytes(early) + rest == fragmented.stdout,
+                  f"fragmented mux emits a complete fragment before stdin reaches EOF ({err!r})")
+
     test_abi_track_count(t, d)
 
     # 2. strict values: exit 1, a message on stderr, nothing left behind
@@ -354,6 +428,10 @@ def run_all(t, d):
     r = t.faam_run(["-i", "id3.aac", "-o", "id3.m4a"], d)
     check(r.returncode == 0, "ID3v2 prefix skipped")
     check(t.faam_run(["info", "id3.m4a"], d).stdout.count(b"Total Frames: 236") == 1, "ID3v2 input muxes every frame")
+    piped_id3 = t.run(t.faam, ["-i", "-", "-o", "id3_stdin.m4a"], d,
+                      input_data=read(os.path.join(d, "id3.aac")))
+    check(piped_id3.returncode == 0 and read(os.path.join(d, "id3_stdin.m4a")) == read(os.path.join(d, "id3.m4a")),
+          "streaming stdin mux handles an ID3v2 prefix byte-identically")
 
     # language and creation time land in the file
     t.faam_run(["-i", "lc.aac", "-o", "lang.m4a", "--language", "DEU", "--creation-time", "1700000000"], d)
@@ -402,6 +480,18 @@ def run_all(t, d):
     os.makedirs(work)
     r = t.faam_run(["demux", "../lc.m4a", "-o", "out.aac"], work)
     check(r.returncode == 0, "demux -o")
+    r = t.faam_run(["demux", "../lc.m4a", "-o", "expected.raw"], work)
+    check(r.returncode == 0, "demux raw output reference")
+    piped = t.run(t.faam, ["demux", "-", "-o", "-"], work,
+                  input_data=read(os.path.join(d, "lc.m4a")))
+    check(piped.returncode == 0 and piped.stdout == read(os.path.join(work, "expected.raw")) and
+          b"Successfully demuxed" in piped.stderr,
+          "demux reads stdin and writes an uncontaminated raw stream to stdout")
+    piped = t.run(t.faam, ["demux", "-", "-o", "-", "--format", "adts"], work,
+                  input_data=read(os.path.join(d, "lc.m4a")))
+    check(piped.returncode == 0 and piped.stdout == read(os.path.join(work, "out.aac")) and
+          b"Successfully demuxed" in piped.stderr,
+          "demux explicitly writes ADTS to stdout")
     r = t.faam_run(["demux", "../lc.m4a", "-o", "out.aac"], work)
     check(r.returncode == 1 and b"already exists (use --overwrite)" in r.stderr, "demux -o refuses to overwrite")
     r = t.faam_run(["demux", "../lc.m4a", "-o", "out.aac", "--overwrite"], work)
@@ -417,7 +507,7 @@ def run_all(t, d):
           "--export-asc is protected and nothing else is written")
     r = t.faam_run(["demux", "../lc.m4a", "--export-asc", "asc.bin", "-o", "o4.aac", "--overwrite"], work)
     check(r.returncode == 0, "demux --export-asc --overwrite")
-    for args in (["-t", "99"], ["-t", "abc"], ["-t", "0"]):
+    for args in (["-t", "99"], ["-t", "abc"], ["-t", "0"], ["--format", "bogus"]):
         r = t.faam_run(["demux", "../lc.m4a", "-o", "o5.aac"] + args, work)
         check(r.returncode == 1 and no_output(work, "o5.aac"), f"demux {args} rejected")
     # the demuxed stream decodes to the same audio as the original ADTS
@@ -547,6 +637,21 @@ def run_all(t, d):
         check(inf.count("Chapter #") == n and f"({n} entries)" in inf, f"info lists all {n} chapters")
         r = t.faam_run(["chapter", "export", f"cc{n}.m4a", "-o", f"exp{n}.txt"], d)
         check(r.returncode == 0 and read(os.path.join(d, f"exp{n}.txt")) == read(os.path.join(d, f"ch{n}.txt")), f"export {n} chapters round trips")
+        if n == 64:
+            stream_export = t.faam_run(["chapter", "export", f"cc{n}.m4a", "-o", "-"], d)
+            check(stream_export.returncode == 0 and stream_export.stdout == read(os.path.join(d, f"ch{n}.txt")) and
+                  b"Successfully exported" in stream_export.stderr,
+                  "chapter export writes an uncontaminated chapter list to stdout")
+            stream_export = t.run(t.faam, ["chapter", "export", "-", "-o", "-"], d,
+                                  input_data=read(os.path.join(d, f"cc{n}.m4a")))
+            check(stream_export.returncode == 0 and stream_export.stdout == read(os.path.join(d, f"ch{n}.txt")),
+                  "chapter export reads MP4 from stdin")
+            shutil_copy(os.path.join(d, f"cc{n}.m4a"), os.path.join(d, "stream_chapters.m4a"))
+            stream_import = t.run(t.faam, ["chapter", "import", "stream_chapters.m4a", "--chapters", "-"], d,
+                                  input_data=read(os.path.join(d, f"ch{n}.txt")))
+            stream_info = t.faam_run(["info", "stream_chapters.m4a"], d).stdout
+            check(stream_import.returncode == 0 and stream_info.count(b"Chapter #") == n,
+                  "chapter import reads its chapter list from stdin")
         check(t.run(t.faad, ["-q", "--overwrite", "-o", f"cc{n}.wav", f"cc{n}.m4a"], d).returncode == 0, f"{n}-chapter file decodes")
     with open(os.path.join(d, "ch256.txt"), "w") as f:
         for i in range(256):
