@@ -395,6 +395,16 @@ static void sflog_row(const float *f)
         fwrite(f, sizeof(float), SFL_NF, g_sflog);
 }
 
+static int g_lo = -2, g_hi = 2, g_env;
+static double g_chain = 1.0;
+static void sfenv(void)
+{
+    const char *e;
+    g_env = 1;
+    if ((e = getenv("SF_LO"))) g_lo = atoi(e);
+    if ((e = getenv("SF_HI"))) g_hi = atoi(e);
+    if ((e = getenv("SF_CHAIN"))) g_chain = atof(e);
+}
 #define FFMAX_F(a, b) ((a) > (b) ? (a) : (b))
 #define SFV_RANGE 2
 #ifndef SFV_EPS
@@ -505,6 +515,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * near tie and make the bitstream differ between platforms. */
         double cost[NC], ncost[NC];
         double lam = SFV_LAMBDA;
+        if (!g_env) sfenv();
         int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
         double dp[MAX_SCFAC_BANDS][NC];
         float lf[MAX_SCFAC_BANDS][SFL_NF];
@@ -560,7 +571,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             {
                 int sc = sfac + (c - SFV_RANGE), win, k;
                 double d = a2;
-                if (SF_OFFSET - sc < SF_MIN)
+                if (SF_OFFSET - sc < SF_MIN || (c - SFV_RANGE) < g_lo || (c - SFV_RANGE) > g_hi)
                 {
                     dp[nb][c] = INFINITY;
                     lf[nb][35 + c] = -1;
@@ -615,7 +626,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 {
                     best = (*p_last_abs == SF_CHAIN_UNSET) ? 0.0f
                          : (abs(absf[b][c] - *p_last_abs) > SF_DELTA ? INFINITY
-                            : lam * (double)sf_delta_bits(absf[b][c] - *p_last_abs));
+                            : g_chain * lam * (double)sf_delta_bits(absf[b][c] - *p_last_abs));
                 }
                 else
                 {
@@ -630,7 +641,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                         double v;
                         if (!isfinite(dp[b - 1][pc]) || abs(dd) > SF_DELTA)
                             continue;
-                        v = dp[b - 1][pc] + lam * (double)sf_delta_bits(dd);
+                        v = dp[b - 1][pc] + g_chain * lam * (double)sf_delta_bits(dd);
                         if (!isfinite(best) || v < best - SFV_EPS * (1.0 + fabs(best))) { best = v; arg = pc; }
                     }
                 }
