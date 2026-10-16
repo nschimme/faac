@@ -1,3 +1,7 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 /*
  * FAAD - Freeware Advanced Audio Decoder
  * Copyright (C) 2026 Nils Schimmelmann

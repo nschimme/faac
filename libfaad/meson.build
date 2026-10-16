@@ -138,6 +138,13 @@ test_faad_tns_order = executable('test_faad_tns_order', 'test_faad_tns_order.c',
     include_directories: ['..', '../include', common_inc], link_with: [libfaad])
 test('faad_tns_order_test', test_faad_tns_order)
 
+test_faad_coupling = executable('test_faad_coupling', 'test_faad_coupling.c',
+    c_args: faad_c_args + test_static_args,
+    include_directories: ['..', '../include', common_inc],
+    link_with: [libfaad], dependencies: [libm])
+test('faad_coupling_test', test_faad_coupling)
+
+
 if get_option('decoder-dab')
     test_faad_dab = executable('test_faad_dab', 'test_faad_dab.c',
         c_args : faad_c_args + test_static_args,

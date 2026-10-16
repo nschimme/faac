@@ -1,3 +1,7 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include "faad_internal.h"
 #include <assert.h>
 #include <stdio.h>
@@ -81,8 +85,34 @@ static void test_lazy_allocations(bool ps)
 }
 #endif
 
+static void test_coupling_allocation(void)
+{
+    faad_config cfg;
+    assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
+    calls = live = total = largest = fail_at = 0;
+    faad_decoder *dec = NULL;
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    assert(!dec->coupling);
+    const uint8_t zero_cce[8] = {0}; /* tag 0, one SCE target, empty ICS */
+    BitReader bs;
+    bits_init(&bs, zero_cce, sizeof(zero_cce));
+    fail_at = calls + 1;
+    assert(decode_cce(&bs, dec) == FAAD_ERR_INSUFFICIENT_MEM);
+    assert(!dec->coupling);
+    fail_at = 0;
+    bits_init(&bs, zero_cce, sizeof(zero_cce));
+    assert(decode_cce(&bs, dec) == FAAD_OK);
+    assert(dec->coupling && dec->allocated_bytes == total);
+    size_t before = calls;
+    assert(faad_decoder_flush(dec) == FAAD_OK);
+    bits_init(&bs, zero_cce, sizeof(zero_cce));
+    assert(decode_cce(&bs, dec) == FAAD_OK && calls == before);
+    assert(faad_decoder_close(&dec) == FAAD_OK && !live);
+}
+
 int main(void)
 {
+    test_coupling_allocation();
 #ifndef FAAD_DISABLE_SBR
     test_lazy_allocations(false);
 #ifndef FAAD_DISABLE_PS

@@ -1,3 +1,7 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 /*
  * FAAD - Freeware Advanced Audio Decoder
  * Unit test for DAB+ 960-sample frame size
