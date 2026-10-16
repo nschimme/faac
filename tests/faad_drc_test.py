@@ -191,9 +191,9 @@ def main():
             print('integer soft-knee limiter: PASS')
         if selected('hetilt') and sbr == 'true':
             # A longer projection reduces SBR startup history's effect on the HF level.
-            # Keep the mono HF tone above the 11.025 kHz core but below
+            # Keep the HF tone above the 11.025 kHz core but below
             # the less stable top SBR bands.
-            tones = (500, 14000 if channels == 2 else 12000)
+            tones = (500, 12000)
             with wave.open(src, 'wb') as w:
                 w.setparams((channels, 2, 44100, 0, 'NONE', ''))
                 w.writeframes(b''.join(struct.pack('<' + 'h'*channels, *([int(sum(6000*math.sin(2*math.pi*f*i/44100) for f in tones))]*channels)) for i in range(88200)))
