@@ -75,3 +75,12 @@ capped arms agree in all decoders at every start; cap-lifted arms break FAAD2 (M
 (cap-lifted 12/9 decoded correctly everywhere in the scan), control = capped 12 (= base). Corpus/rungs/scorers as in the main screen
 (49 clips, 48 kHz, 40/48/56/64, scored with FAAD2, FFmpeg and fdkdec). Decision rules unchanged; the claim "lifting the cap helps" requires
 cap-lifted S to beat capped S with CI excluding 0 under the FDK decoder as well. Follow-ups at 44.1 and 32 kHz only for arms that pass at 48 kHz.
+
+## Amendment 5 (44.1 / 32 kHz on he-v1-retune 217f913 + table fix; written before scoring)
+Crossover in Hz, kx*Fs/128: 48 kHz idx 9/12/15 = 6.4/8.25/11.6 kHz; 44.1 kHz idx 9/12/15 = 6.2/7.9/11.0 kHz (kx 18/23/32);
+32 kHz idx 9/11/12/13/15 = 5.25/5.75/6.25/6.75/8.0 kHz (kx 21/23/25/27/32). The 48 kHz winner (lifted 9) is ~6.4 kHz, so the Hz-matched
+indices are 9 at 44.1 kHz and 12-13 at 32 kHz. Arms (same corpora/rungs/decoders as Amendment 2; rich-only override, so the 32 kbps rung at
+32 kHz [16 kbps/ch] is unchanged by construction): 44.1 kHz control capped12, lifted12, lifted9, lifted13; 32 kHz control capped12, lifted12,
+lifted13, lifted9. Decision: an arm "passes" at a rate if BD-rate vs that rate's control has a CI excluding 0 favourably under FAAD2,
+FFmpeg and the FDK decoder. Rungs 44.1 kHz 40/48/56/64, 32 kHz 32/40/48/56. These are resampled copies of the same 49 clips (tests the rate-dependent kx and
+table path, not new material).

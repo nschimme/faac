@@ -144,3 +144,15 @@ Starts 9 and 12 decode correctly in unpatched FAAD2, starts 10/11 do not (see th
 compatible with the pinned decoder. Limits: same 49 clips that selected 9 in the earlier screen (not independent), 48 kHz only. 44.1/32 kHz
 need a start chosen in Hz (index 9 is 5.25 kHz at 32 kHz, where lower crossovers lost); no held-out music; VBR/CBR and mono untested.
 Production sketch (not implemented): table fix 51c589e + remove the k2/kx cap + SBR_START_FREQ_RICH 12 -> 9 at 44.1/48 kHz, with a unit test of the table.
+
+## Amendment 5 results: 44.1 / 32 kHz on he-v1-retune 217f913 + table fix (BD-rate vs capped start 12; [95 % CI]; FAAD2 / FFmpeg / FDK decoder)
+| rate | arm (crossover) | FAAD2 | FFmpeg | FDK decoder |
+|---|---|---|---|---|
+| 44.1 | lifted 12 (7.9 kHz) | +0.07 [-0.79,+0.99] | -0.03 [-0.84,+0.85] | +0.07 [-0.73,+0.96] |
+| 44.1 | **lifted 9 (6.2 kHz)** | **-2.63 [-4.15,-1.43]** | **-2.71 [-4.40,-1.36]** | -0.41 [-1.68,+1.08] |
+| 44.1 | lifted 13 (8.6 kHz) | +3.13 [+1.67,+4.37] | +3.31 [+1.81,+4.71] | +4.29 [+2.57,+6.79] |
+| 32 | lifted 12 (6.25 kHz) | +0.57 [-0.20,+1.60] | +0.45 [-0.24,+1.33] | +1.39 [+0.38,+2.82] |
+| 32 | lifted 13 (6.75 kHz) | +1.30 [+0.49,+2.23] | +1.21 [+0.39,+2.19] | +1.28 [+0.35,+2.50] |
+| 32 | lifted 9 (5.25 kHz) | +1.61 [-0.17,+3.66] | +1.39 [-0.36,+3.48] | +1.52 [+0.05,+3.18] |
+Reading: the winners cluster at 6.2-6.4 kHz (48 kHz idx 9, 44.1 kHz idx 9); 32 kHz already sits at 6.25 kHz and lifting the cap there costs bits, so the production
+change (nschimme/faac#78) applies only to 44.1-48 kHz. 44.1 kHz is decoder-dependent (FDK decoder CI includes 0). Resampled copies of the same 49 clips; no VBR/CBR/mono.
