@@ -35,6 +35,12 @@
  * instead of intensity stereo; below it the bits that full-band intensity
  * stereo saves still buy more quality than the image they cost. */
 #define MS_SHORT_BITRATE  80000
+/* From this rate (bps per channel) a band takes M/S somewhat more readily
+ * than the plain mid*side < left*right test: the side channel then costs
+ * fewer bits than the L/R image it replaces. Beyond 1.5 times that test the
+ * extra M/S bands lose quality. */
+#define MS_BIAS_BITRATE  64000
+#define MS_BIAS          1.5f
 /* Starved rates (bps per channel) from which long windows take real M/S
  * instead of intensity stereo; below them the side channel's bits cost more
  * quality than the image gains. Between the HE tiers only the low band takes
@@ -81,6 +87,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
      * L/R between. Without M/S, intensity covers every band past the lowest
      * except short windows from MS_SHORT_BITRATE, which take M/S on every band. */
     cfg->mode = mode;
+    cfg->msBias = (mode == JOINT_MIXED && bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f;
     for (int w = 0; w < 2; w++) {
         int n = sfbn[w], n2 = 2 * (w ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG);
         int ms = band_at(sfbOffset[w], n, msHz[w], n2, sampleRate);
@@ -177,7 +184,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                AACElement * restrict element,
                                float * restrict sl0, float * restrict sr0,
                                int * restrict sfcnt, int g, int wstart, int wend,
-                               float inv_isthr, int is_start, int ms_end)
+                               float inv_isthr, int is_start, int ms_end, float ms_bias)
 {
     int sfb, msused = 0;
     const int * restrict sfb_offset = cl->sfb_offset;
@@ -205,7 +212,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
         if (sfb < ms_end) {
             /* es and ed are 4x the mid and side energies. */
-            if (es * ed < 4.0f * el * er) {
+            if (es * ed < 4.0f * ms_bias * el * er) {
                 apply_ms_full(sl0, sr0, start, len, wstart, wend);
                 element->msInfo.ms_used[band] = 1;
                 cl->msEl[band] = el;
@@ -314,7 +321,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];
             msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
-                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end);
+                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end, cfg->msBias);
             start = end;
         }
         elem->msInfo.is_present = msused;

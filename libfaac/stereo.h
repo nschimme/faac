@@ -26,6 +26,7 @@ typedef struct {
     JointMode mode;
     int isStart[2];       /* indexed by window type: 0 long, 1 short */
     int msEnd[2];         /* bands below may take M/S; 0 = none */
+    float msBias;         /* a band takes M/S when mid*side < msBias * left*right (energies) */
 } StereoConfig;
 
 void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned int bandWidth,
