@@ -114,9 +114,13 @@ struct BitStream;
 #define SBR_RICH_BPS                    20000u
 #define SBR_START_FREQ_DEFAULT          15
 #define SBR_START_FREQ_RICH             12
-/* Above k2/kx = 2.2449 (NUM/DEN) ISO 14496-3 §4.6.18.3.2.1 builds the master
- * table in two regions; build_freq_table makes only one, so the stop
- * frequency is kept under it. */
+/* The stop frequency may pass k2/kx = 2.2449 (NUM/DEN), where ISO 14496-3
+ * §4.6.18.3.2.1 builds the master table in two regions, at these sample rates:
+ * a rich core then keeps SBR up to 20 kHz. Measured at 44.1 and 48 kHz only. At
+ * 32 kHz the wider range cost bits and above 48 kHz nothing was measured, so
+ * those rates keep the stop frequency under the ratio. */
+#define SBR_TWO_REGION_MIN_RATE         44100
+#define SBR_TWO_REGION_MAX_RATE         48000
 #define SBR_ONE_REGION_NUM              22449
 #define SBR_ONE_REGION_DEN              10000
 /* Below this per-channel rate the core is too starved to cover much, so the

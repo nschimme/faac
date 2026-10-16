@@ -79,12 +79,11 @@ static int pick_stop_freq(int sampleRate, int kx, int targetHz, int *k2_out)
     stop_dk[12] = (short)(64 - prev);
     qsort(stop_dk, 13, sizeof(short), cmp_int16);
 
+    int two_region = sampleRate >= SBR_TWO_REGION_MIN_RATE && sampleRate <= SBR_TWO_REGION_MAX_RATE;
     int best = SBR_STOP_FREQ_MIN, best_k2 = stop_min, k2 = stop_min;
     for (int sf = SBR_STOP_FREQ_MIN; sf <= SBR_STOP_FREQ_MAX; sf++) {
         if (sf > 0) k2 += stop_dk[sf - 1];
-        /* Past this ratio the decoder builds a two-region master table, so its
-         * envelope band edges would differ from the ones written. */
-        if (k2 * SBR_ONE_REGION_DEN > SBR_ONE_REGION_NUM * kx || k2 - kx > max_sbr_span(sampleRate)) break;
+        if ((!two_region && k2 * SBR_ONE_REGION_DEN > SBR_ONE_REGION_NUM * kx) || k2 - kx > max_sbr_span(sampleRate)) break;
         best = sf;
         best_k2 = k2;
         if (k2 - kx >= SBR_MIN_SPAN && (long)k2 * sampleRate / (2 * SBR_QMF_BANDS_64) >= targetHz) break;
@@ -93,30 +92,63 @@ static int pick_stop_freq(int sampleRate, int kx, int targetHz, int *k2_out)
     return best;
 }
 
+static int sbr_round_f(float v) { return (int)floorf(v + 0.5f); }
+
+static int build_log_band_widths(int k_start, int k_end, int bands_per_octave, float warp, int *vdk)
+{
+    int nb = 2 * sbr_round_f(bands_per_octave * log2f((float)k_end / (float)k_start) / (2.0f * warp));
+    nb = clamp_int(nb, 1, SBR_MAX_BANDS);
+    int prev = k_start;
+    for (int i = 0; i < nb; i++) {
+        int cur = sbr_round_f(k_start * powf((float)k_end / (float)k_start, (float)(i + 1) / (float)nb));
+        vdk[i] = cur - prev;
+        prev = cur;
+    }
+    qsort(vdk, nb, sizeof(int), cmp_int);
+    return nb;
+}
+
 /* Master table (ISO 14496-3 §4.6.18.3.2.1). bs_freq_scale 0: uniform
  * dk-spacing, residual bands merged into the first/last pairs. 1/2/3:
  * log-spaced with 12/10/8 bands per octave, widths of a geometric series
- * rounded and sorted so the narrow bands sit at the bottom. Only the
- * one-region case exists here: pick_stop_freq keeps k2/kx under the 2.2449
- * split, which a low crossover would otherwise reach. */
-static int build_freq_table(SBRInfo *sbr)
+ * rounded and sorted so the narrow bands sit at the bottom. When k2/kx
+ * exceeds 2.2449, the table splits at k1 = 2*kx into lower and upper regions,
+ * warped by bs_alter_scale and re-sorted. */
+int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2;
     int *edges = sbr->bandEdges;
+    int bands_per_octave = 14 - 2 * sbr->bs_freq_scale; /* 12, 10, 8 for bs_freq_scale 1, 2, 3 */
     int n_master;
 
-    int prev = kx;
-    int bands_per_octave = 14 - 2 * sbr->bs_freq_scale; /* 12, 10, 8 for bs_freq_scale 1, 2, 3 */
-    n_master = 2 * (int)(bands_per_octave * log2f((float)k2 / (float)kx) / 2.0f + 0.5f);
-    n_master = clamp_int(n_master, 1, SBR_MAX_BANDS);
-    for (int k = 0; k < n_master; k++) {
-        int edge = (int)(kx * powf((float)k2 / (float)kx, (float)(k + 1) / (float)n_master) + 0.5f);
-        edges[1 + k] = edge - prev;
-        prev = edge;
+    if ((float)k2 / (float)kx > 2.2449f) {
+        int k1 = 2 * kx;
+        int dk0[SBR_MAX_BANDS] = { 0 }, dk1[SBR_MAX_BANDS] = { 0 };
+        int nb0 = build_log_band_widths(kx, k1, bands_per_octave, 1.0f, dk0);
+        float warp = sbr->bs_alter_scale ? 1.3f : 1.0f;
+        int nb1 = build_log_band_widths(k1, k2, bands_per_octave, warp, dk1);
+
+        if (dk1[0] < dk0[nb0 - 1]) {
+            int change = dk0[nb0 - 1] - dk1[0];
+            int half = (dk1[nb1 - 1] - dk1[0]) / 2;
+            if (change > half) change = half;
+            dk1[0] += change;
+            dk1[nb1 - 1] -= change;
+            qsort(dk1, nb1, sizeof(int), cmp_int);
+        }
+
+        n_master = nb0 + nb1;
+        edges[0] = kx;
+        int k = 0;
+        for (int i = 0; i < nb0; i++, k++) edges[k + 1] = edges[k] + dk0[i];
+        for (int i = 0; i < nb1; i++, k++) edges[k + 1] = edges[k] + dk1[i];
+    } else {
+        int dk0[SBR_MAX_BANDS] = { 0 };
+        n_master = build_log_band_widths(kx, k2, bands_per_octave, 1.0f, dk0);
+        edges[0] = kx;
+        for (int i = 0; i < n_master; i++) edges[i + 1] = edges[i] + dk0[i];
     }
-    qsort(edges + 1, n_master, sizeof(int), cmp_int);
-    edges[0] = kx;
-    for (int k = 1; k <= n_master; k++) edges[k] += edges[k - 1];
+
     sbr->numBands = n_master;
 
     /* Low-res table (ISO 14496-3 §4.6.18.3.2.2): every other high-res edge,

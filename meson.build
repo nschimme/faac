@@ -65,3 +65,21 @@ subdir('libfaam')
 if get_option('frontend')
     subdir('frontend')
 endif
+
+if get_option('encoder')
+    bitstream_test = executable('bitstream_test',
+        'tests/bitstream_test.c',
+        include_directories: ['include', 'libfaac'],
+        link_with: libfaac_static,
+        dependencies: [libm]
+    )
+    test('bitstream_test', bitstream_test)
+
+    sbr_master_table_test = executable('sbr_master_table_test',
+        'tests/sbr_master_table.c',
+        include_directories: ['include', 'libfaac'],
+        link_with: libfaac_static,
+        dependencies: [libm]
+    )
+    test('sbr_master_table_test', sbr_master_table_test)
+endif

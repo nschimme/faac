@@ -235,14 +235,14 @@ static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
     int payloadBits = 0, coupled = 0;
     int fillBytes = 0;
     /* Room for 2 channels of 4 envelopes of 64 bands at 20 bits plus fields. */
-    uint8_t scratch[2048];
+    enum { SBR_DRY_RUN_CAPACITY = 2048 };
     BitStream dry;
 
     if (nch == 2) couple_envelopes(sbr, fd, ch0);
 
     /* The fill_element's cnt field must precede the payload in the bitstream,
      * so its size is needed before anything is written: each layout is sized
-     * by writing it to scratch (a pair is coupled when that codes smaller,
+     * through the bounded counting stream (a pair is coupled when smaller,
      * ties favor coupled) and the last pass writes the winner. One call site
      * in a loop, so -O3 has no constant nch to clone on. */
     for (int pass = 0; pass <= nch; pass++) {
@@ -264,7 +264,7 @@ static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
             PutBit(bs, fillBytes < 15 ? fillBytes : 15, 4);
             if (fillBytes >= 15) PutBit(bs, fillBytes - 14, 8);
         } else {
-            InitBitStream(&dry, scratch, sizeof scratch);
+            InitBitStream(&dry, NULL, SBR_DRY_RUN_CAPACITY);
             out = &dry;
         }
         int bits = put_payload(sbr, fd, out, nch, ch0, sendHeader, write ? coupled : pass);

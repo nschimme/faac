@@ -139,6 +139,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
 /* Recompute the bitrate-dependent band config without reallocating; lets
  * SetConfiguration adjust an existing handle. */
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
+int build_freq_table(SBRInfo *sbr);
 void SbrEnd(SBRInfo *sbr);
 
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
