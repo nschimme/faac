@@ -458,10 +458,10 @@ static inline int sf_delta_cost(int diff)
 }
 
 static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int base, int smooth,
-                               int last_abs, int *sel)
+                               int last_abs, int run_dp, int *sel)
 {
     /* state 0: one step coarser, state 1: as wanted */
-    int a0[MAX_SCFAC_BANDS], order[MAX_SCFAC_BANDS];
+    int order[MAX_SCFAC_BANDS];
     unsigned char bp[MAX_SCFAC_BANDS];
     int cost0 = 0, cost1 = 0, nb = 0, b, c;
 
@@ -472,24 +472,25 @@ static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int 
             continue;
         sfac = smoothed_sfac(want, sb, n, ci->sf[base + sb], smooth);
         sel[sb] = sfac;
-        a0[nb] = ci->sf[base + sb] + SF_OFFSET - sfac;
         order[nb++] = sb;
     }
-    if (nb < 2 && last_abs == SF_CHAIN_UNSET)
+    if (!run_dp || (nb < 2 && last_abs == SF_CHAIN_UNSET))
         return;  /* nothing to chain */
+    int prev_a0 = 0;
     for (b = 0; b < nb; b++)
     {
-        int n0, n1;
+        int n0, n1, sb = order[b];
         /* absolute scalefactor of state s is a0 + 1 - s */
+        int a0 = ci->sf[base + sb] + SF_OFFSET - sel[sb];
         if (!b)
         {
-            n0 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0[0] + 1 - last_abs);
-            n1 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0[0] - last_abs);
+            n0 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0 + 1 - last_abs);
+            n1 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0 - last_abs);
             bp[0] = 0;
         }
         else
         {
-            int d0 = a0[b] - a0[b - 1];
+            int d0 = a0 - prev_a0;
             int l_m = 4 * sf_delta_cost(d0 - 1), l_0 = 4 * sf_delta_cost(d0), l_p = 4 * sf_delta_cost(d0 + 1);
             /* to state 1 (diff d0 + p - 1): from p=1 costs l_0, from p=0 costs l_m */
             int v1 = cost1 + l_0, v0 = cost0 + l_m;
@@ -503,8 +504,9 @@ static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int 
         }
         n0 += SF_NUDGE_COST;
         /* a step that would turn the band into a zero band is not offered */
-        if (SF_OFFSET - (sel[order[b]] - 1) < SF_MIN) n0 = INT_MAX / 2;
+        if (SF_OFFSET - (sel[sb] - 1) < SF_MIN) n0 = INT_MAX / 2;
         cost0 = n0; cost1 = n1;
+        prev_a0 = a0;
     }
     c = cost0 < cost1 ? 0 : 1;  /* final state */
     for (b = nb - 1; b >= 0; b--)
@@ -597,11 +599,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         want[sb] = ci->sf[band] - sfac;
     }
 
+    /* the scalefactor each coded band takes, possibly nudged */
     int sel[MAX_SCFAC_BANDS];
-    for (sb = 0; sb < n; sb++)
-        sel[sb] = INT_MIN;
-    if (sf_nudge)
-        nudge_scalefactors(ci, want, n, base, smooth, *p_last_abs, sel);
+    nudge_scalefactors(ci, want, n, base, smooth, *p_last_abs, sf_nudge, sel);
 
     /* Pass 2: quantize the coded bands. Long blocks first pull each
      * scalefactor most of the way towards the mean of its coded neighbours:
@@ -615,7 +615,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
 
         int sf_bias = ci->sf[band];
-        int sfac = sel[sb] != INT_MIN ? sel[sb] : smoothed_sfac(want, sb, n, sf_bias, smooth);
+        int sfac = sel[sb];
 
         int lo = ci->sfb_offset[sb];
         int width = ci->sfb_offset[sb + 1] - lo;
