@@ -326,7 +326,7 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
 }
 
 #define FFMAX_F(a, b) ((a) > (b) ? (a) : (b))
-#define SFV_RANGE 2
+#define SFV_STEPS 3
 #ifndef SFV_EPS
 #define SFV_EPS 1e-6
 #endif
@@ -335,6 +335,50 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
 #define SFV_LAMBDA 0.08f
 #endif
 #endif
+
+/* Squared error of a band at scalefactor *sc against the allowed noise,
+ * plus lambda times its spectral Huffman bits. Doubles throughout: a fused
+ * multiply-add on one target and not on another moves a float by one part in
+ * 1e7, enough to flip a near tie and make the bitstream differ by platform. */
+static double sfv_cost(const float * __restrict xr0, int lo, int width, int gsize, int *sc,
+                       float peak, double allowed, double *dist)
+{
+    int tmp[2 * FRAME_LEN / 8 + 1024];
+    static const double pow43[64] = {
+        0.0, 1.0, 2.5198420997897464, 4.3267487109222245,
+        6.3496042078727974, 8.549879733383484, 10.902723556992836, 13.390518279406722,
+        15.999999999999998, 18.720754407467133, 21.544346900318832, 24.463780996262468,
+        27.47314182127996, 30.567350940369842, 33.74199169845321, 36.993181114957046,
+        40.317473596635935, 43.71178704118999, 47.173345095760126, 50.69963132571694,
+        54.28835233189812, 57.93740770400352, 61.6448652744185, 65.40894053658599,
+        69.22797937475559, 73.10044345532164, 77.02489777859161, 80.99999999999999,
+        85.02449121251853, 89.09718794488955, 93.21697517861574, 97.38280022413316,
+        101.59366732596474, 105.84863288986224, 110.14680124343441, 114.4873208566006,
+        118.86938096020653, 123.29220851090024, 127.75506545836058, 132.25724627755247,
+        136.79807573413572, 141.3769068556919, 145.99311908523086, 150.6461165966291,
+        155.33532675434674, 160.0601987020528, 164.8202020667335, 169.6148257665186,
+        174.44357691188534, 179.30597979112557, 184.20157493201927, 189.12991823257562,
+        194.09058015449685, 199.08314497371677, 204.1072100829694, 209.16238534187647,
+        214.24829247050752, 219.36456448277784, 224.51084515641213, 229.6867885365223,
+        234.89205847013176, 240.1263281692325, 245.38927980018505, 250.6806040974726
+    };
+    float gain = gain_with_overflow_clamp(sc, peak);
+    double d = 0.0;
+    int win, k;
+
+    for (win = 0; win < gsize; win++)
+        qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, tmp + win * width, width >> 2, gain);
+    for (win = 0; win < gsize; win++)
+        for (k = 0; k < width; k++)
+        {
+            double a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
+            int q = abs(tmp[win * width + k]);
+            double e = a - (q < 64 ? pow43[q] : (double)q * cbrt((double)q)) / (double)gain;
+            d += e * e;
+        }
+    *dist = d / FFMAX_F(allowed, 1e-12);
+    return *dist + SFV_LAMBDA * (double)band_spectral_bits(tmp, gsize * width);
+}
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
@@ -420,139 +464,54 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     }
 
 #ifdef SFV_LAMBDA
-    /* Experiment: pick every coded band's scalefactor jointly. Each band
-     * offers a few candidates around the wanted one; a Viterbi pass over the
-     * group minimizes distortion against the band's allowed noise plus lambda
-     * times the real Huffman bits, including the scalefactor-delta bits. */
+    /* Pick each coded band's scalefactor by a short greedy walk from the
+     * wanted one: step towards finer or coarser, as the band's error against
+     * its allowed noise says, while distortion plus lambda times the real
+     * Huffman bits (scalefactor-delta bits included) keeps falling. */
     int sel[MAX_SCFAC_BANDS];
     for (sb = 0; sb < n; sb++)
         sel[sb] = INT_MIN;
     if (sf_search)
     {
-        enum { NC = 2 * SFV_RANGE + 1 };
-        /* Doubles throughout: a fused multiply-add on one target and not on
-         * another moves a float cost by one part in 1e7, enough to flip a
-         * near tie and make the bitstream differ between platforms. */
-        double cost[NC], ncost[NC];
-        double lam = SFV_LAMBDA;
-        int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
-        double dp[MAX_SCFAC_BANDS][NC];
-        int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi;
-        /* q^(4/3) for small q */
-        static const double pow43[64] = {
-            0.0, 1.0, 2.5198420997897464, 4.3267487109222245, 6.3496042078727974, 8.549879733383484, 10.902723556992836, 13.390518279406722, 15.999999999999998, 18.720754407467133, 21.544346900318832, 24.463780996262468, 27.47314182127996, 30.567350940369842, 33.74199169845321, 36.993181114957046, 40.317473596635935, 43.71178704118999, 47.173345095760126, 50.69963132571694, 54.28835233189812, 57.93740770400352, 61.6448652744185, 65.40894053658599, 69.22797937475559, 73.10044345532164, 77.02489777859161, 80.99999999999999, 85.02449121251853, 89.09718794488955, 93.21697517861574, 97.38280022413316, 101.59366732596474, 105.84863288986224, 110.14680124343441, 114.4873208566006, 118.86938096020653, 123.29220851090024, 127.75506545836058, 132.25724627755247, 136.79807573413572, 141.3769068556919, 145.99311908523086, 150.6461165966291, 155.33532675434674, 160.0601987020528, 164.8202020667335, 169.6148257665186, 174.44357691188534, 179.30597979112557, 184.20157493201927, 189.12991823257562, 194.09058015449685, 199.08314497371677, 204.1072100829694, 209.16238534187647, 214.24829247050752, 219.36456448277784, 224.51084515641213, 229.6867885365223, 234.89205847013176, 240.1263281692325, 245.38927980018505, 250.6806040974726
-        };
-        /* candidates by distance from the formula's value */
-        static const signed char scan[NC] = { 2, 1, 3, 0, 4 };
-
+        int prev = *p_last_abs;
         for (sb = 0; sb < n; sb++)
         {
             int band = base + sb;
-            sel[sb] = INT_MIN;
             if (want[sb] == INT_MIN)
                 continue;
             int sf_bias = ci->sf[band];
             int sfac = smoothed_sfac(want, sb, n, sf_bias, smooth);
-            sel[sb] = sfac;
-
             int lo = ci->sfb_offset[sb];
             int width = ci->sfb_offset[sb + 1] - lo;
             double allowed = (double)target[sb] * target[sb] * be[sb].sum / (double)(gsize * width);
             float peak = sqrtf(be[sb].peak_energy);
-            int tmp[2 * FRAME_LEN / 8 + 1024];
-            /* energy of the band: what a candidate leaves as error when it
-             * quantizes a line to zero */
-            double a2 = 0.0;
-            for (int w = 0; w < gsize; w++)
-                for (int k = 0; k < width; k++)
-                {
-                    double a = xr0[w * BLOCK_LEN_SHORT + lo + k];
-                    a2 += a * a;
-                }
-            for (c = 0; c < NC; c++)
-            {
-                int sc = sfac + (c - SFV_RANGE), win, k;
-                double d = a2;
-                if (SF_OFFSET - sc < SF_MIN)
-                {
-                    dp[nb][c] = INFINITY;
-                    absf[nb][c] = 0;
-                    sfc[nb][c] = sc;
-                    continue;
-                }
-                float gain = gain_with_overflow_clamp(&sc, peak);
-                for (win = 0; win < gsize; win++)
-                    qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, tmp + win * width, width >> 2, gain);
-                for (win = 0; win < gsize; win++)
-                    for (k = 0; k < width; k++)
-                    {
-                        int q = abs(tmp[win * width + k]);
-                        if (q)
-                        {
-                            double a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
-                            double e = a - (q < 64 ? pow43[q] : (double)q * cbrt((double)q)) / (double)gain;
-                            d += e * e - a * a;
-                        }
-                    }
-                cost[c] = d / FFMAX_F(allowed, 1e-12) + lam * (double)band_spectral_bits(tmp, gsize * width);
-                sfc[nb][c] = sc;
-                absf[nb][c] = sf_bias + (SF_OFFSET - sc);
-                dp[nb][c] = cost[c];
-            }
-            order[nb++] = sb;
-        }
-        /* Viterbi; the chain starts from the previous group's last band */
-        for (b = 0; b < nb; b++)
-        {
-            for (c = 0; c < NC; c++)
-            {
-                double best = INFINITY;
-                int arg = 0;
-                if (!isfinite(dp[b][c])) { bp[b][c] = 0; ncost[c] = INFINITY; continue; }
-                if (b == 0)
-                {
-                    best = (*p_last_abs == SF_CHAIN_UNSET) ? 0.0f
-                         : (abs(absf[b][c] - *p_last_abs) > SF_DELTA ? INFINITY
-                            : lam * (double)sf_delta_bits(absf[b][c] - *p_last_abs));
-                }
-                else
-                {
-                    /* Costs within SFV_EPS of each other are ties and go to the
-                     * candidate nearest the formula's value: the float spectrum
-                     * differs in its last bits between platforms, and a tie
-                     * broken by that noise would change the bitstream. */
-                    for (pi = 0; pi < NC; pi++)
-                    {
-                        pc = scan[pi];
-                        int dd = absf[b][c] - absf[b - 1][pc];
-                        double v;
-                        if (!isfinite(dp[b - 1][pc]) || abs(dd) > SF_DELTA)
-                            continue;
-                        v = dp[b - 1][pc] + lam * (double)sf_delta_bits(dd);
-                        if (!isfinite(best) || v < best - SFV_EPS * (1.0 + fabs(best))) { best = v; arg = pc; }
-                    }
-                }
-                bp[b][c] = arg;
-                ncost[c] = best + dp[b][c];
-            }
-            for (c = 0; c < NC; c++)
-                dp[b][c] = ncost[c];
-        }
-        if (nb)
-        {
+            int dir = 0, step, best_sc = sfac, best_abs = 0;
             double best = INFINITY;
-            int arg = SFV_RANGE;
-            for (pi = 0; pi < NC; pi++)
+
+            for (step = 0; step < SFV_STEPS; step++)
             {
-                c = scan[pi];
-                if (!isfinite(best) || dp[nb - 1][c] < best - SFV_EPS * (1.0 + fabs(best))) { best = dp[nb - 1][c]; arg = c; }
-            }
-            if (isfinite(best))
-                for (b = nb - 1; b >= 0; b--)
+                int sc = sfac + dir * step, abs_sf;
+                double d, v;
+                if (SF_OFFSET - sc < SF_MIN)
+                    break;
+                v = sfv_cost(xr0, lo, width, gsize, &sc, peak, allowed, &d);
+                abs_sf = sf_bias + (SF_OFFSET - sc);
+                if (prev != SF_CHAIN_UNSET)
                 {
-                    sel[order[b]] = sfc[b][arg];
-                    arg = bp[b][arg];
+                    if (abs(abs_sf - prev) > SF_DELTA)
+                        break;
+                    v += SFV_LAMBDA * (double)sf_delta_bits(abs_sf - prev);
                 }
+                if (step == 0)
+                    dir = d > allowed ? 1 : -1;
+                if (step && !(v < best - SFV_EPS * (1.0 + fabs(best))))
+                    break;
+                best = v;
+                best_sc = sc;
+                best_abs = abs_sf;
+            }
+            sel[sb] = best_sc;
+            prev = best_abs;
         }
     }
 #endif
