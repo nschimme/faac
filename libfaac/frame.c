@@ -304,14 +304,16 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         /* sampleRate is the core rate, halved above for HE-AAC. Narrowband mono
          * has few bands above the substitution threshold, and coding them
          * outright beats the noise the default level puts there. */
-        unsigned long totalBitRate = config->bitRate ? (config->bitRate * hEncoder->numChannels) : ((unsigned long)config->quantqual * 1280);
         unsigned long outputRate = hEncoder->sampleRate;
         if (hEncoder->config.aacObjectType == HE_V1)
             outputRate *= 2;
+        bool isHighBitRate = config->bitRate ?
+            (config->bitRate * hEncoder->numChannels >= 192000) :
+            (config->quantqual >= 340);
         hEncoder->aacquantCfg.pnslevel = !config->usePns ? 0 :
             (outputRate <= 16000 && hEncoder->numChannels == 1)
                 ? PNSLEVEL_NARROWBAND_MONO :
-            (totalBitRate >= 192000)
+            isHighBitRate
                 ? PNSLEVEL_HIGH_BITRATE : PNSLEVEL_DEFAULT;
     }
     /* set quantization quality */
