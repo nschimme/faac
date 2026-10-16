@@ -64,6 +64,22 @@ def main():
                                            capture_output=True).stdout
             assert stdin_pcm == piped, f"{ext}: stdin changed the decoded WAV"
 
+        # Default names use only the basename's extension. A leading dot
+        # alone is part of a hidden filename, and directory dots stay intact.
+        dotted = os.path.join(d, "audio.v1")
+        os.mkdir(dotted)
+        for name in ("track", ".track", ".track.aac", "track.aac"):
+            source = os.path.join(dotted, name)
+            with open(source, "wb") as f:
+                f.write(open(os.path.join(d, "t.aac"), "rb").read())
+            stem = name.rsplit(".", 1)[0] if "." in name[1:] else name
+            for options, suffix in (([], ".wav"), (["-f", "raw"], ".raw")):
+                expected = os.path.join(dotted, stem + suffix)
+                subprocess.run([faad, "-q", "--overwrite", *options, source], check=True)
+                assert os.path.getsize(expected) > 0, expected
+                os.unlink(expected)
+                assert os.path.isfile(source), source
+
         # A partial final payload or header must fail in strict mode, including
         # stdin and both information-only paths. Lenient decoding stays usable.
         complete = open(os.path.join(d, "t.aac"), "rb").read()
