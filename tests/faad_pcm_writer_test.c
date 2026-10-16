@@ -79,7 +79,7 @@ static int check_headers(const char *path)
                 if (!f) return 1;
                 uint64_t bytes = ((UINT64_C(1) << 32) / (channels[c] * (bits[b] / 8)) + 1) *
                                  channels[c] * (bits[b] / 8);
-                bool ok = write_wav_header(f, 48000, channels[c], bytes, bits[b], floating);
+                bool ok = write_wav_header(f, 48000, channels[c], bytes, bits[b], floating, 0);
                 uint8_t header[104];
                 size_t length = channels[c] > 2 ? 104 : 80;
                 ok = ok && cli_fseek(f, 0) && fread(header, 1, length, f) == length;
@@ -92,11 +92,49 @@ static int check_headers(const char *path)
                      le64toh(sizes[1]) == bytes &&
                      le64toh(sizes[2]) == bytes / (channels[c] * (bits[b] / 8)) &&
                      le16toh(tag) == (channels[c] > 2 ? 0xfffe : floating ? 3 : 1);
-                if (channels[c] > 2) ok = ok && header[80] == (floating ? 3 : 1);
+                if (channels[c] > 2) {
+                    uint32_t mask;
+                    memcpy(&mask, header + 76, 4);
+                    ok = ok && mask == 0 && header[80] == (floating ? 3 : 1);
+                }
                 fclose(f);
                 if (!ok) return 1;
             }
         }
+    }
+    return 0;
+}
+
+/* A PCE keeps element order and reports no speaker mask. Exercise the
+ * writer boundary with that decoder metadata and with standard layouts. */
+static int check_channel_masks(const char *path)
+{
+    const uint32_t masks[] = { 0, 0x3f, 0x60f };
+    for (size_t i = 0; i < sizeof(masks) / sizeof(masks[0]); i++) {
+        PCMWriter w;
+        if (!pcm_writer_open(&w, path, false, false, 16, false, false, false, 0, 0)) return 1;
+        uint32_t rate = 48000, channels = 6;
+        enum faad_object_type object = FAAD_OBJ_LC;
+        faad_stream_info info = { .struct_size = sizeof(info), .sample_rate = rate,
+                                  .channels = channels, .channel_mask = masks[i] };
+        MP4Track track = {0};
+        uint8_t pcm[12] = {1, 2, 3, 4};
+        bool ok = pcm_writer_write_frame(&w, NULL, &info, &track, 0, pcm, sizeof(pcm),
+                                          &rate, &channels, &object);
+        for (unsigned finalized = 0; ok && finalized < 2; finalized++) {
+            if (finalized) ok = pcm_writer_finish(&w, rate, channels);
+            else ok = fflush(w.fout) == 0;
+            FILE *f = cli_fopen(path, "rb");
+            uint32_t mask = UINT32_MAX;
+            uint8_t actual[sizeof(pcm)];
+            ok = ok && f && cli_fseek(f, 76) && fread(&mask, 4, 1, f) == 1 &&
+                 le32toh(mask) == masks[i] && cli_fseek(f, 104) &&
+                 fread(actual, 1, sizeof(actual), f) == sizeof(actual) &&
+                 !memcmp(actual, pcm, sizeof(pcm));
+            if (f) fclose(f);
+        }
+        pcm_writer_close(&w);
+        if (!ok) return 1;
     }
     return 0;
 }
@@ -116,5 +154,5 @@ int main(int argc, char **argv)
             if (status) return status;
         }
     }
-    return check_headers(argv[1]);
+    return check_headers(argv[1]) || check_channel_masks(argv[1]);
 }
