@@ -142,27 +142,50 @@ typedef struct
     MaskingTiltKnot tilt[MASKING_TILT_KNOTS];
 } MaskingModel;
 
-/* Keep fitted values together so a masking change can be evaluated as one
- * model. Rates are per channel; the fitted profile applies to stereo LC. */
+/* Masking-model parameters, not AAC syntax constants or an absolute hearing
+ * threshold. The default balance and fitted stereo profile share these
+ * controls; changing them redistributes quantization error between bands. */
 static const MaskingModel masking_model = {
+    /* Time-domain RMS in 16-bit PCM units; silence_energy() converts it to
+     * this MDCT's energy scale so the gate is independent of block length. */
     .silence_rms = 0.4f,
-    .peak_weight = 0.45f,
+    .peak_weight = 0.45f,    /* tonal contribution after the average-energy share */
+    /* Fractions of uniform-energy baselines: average uses the group reference,
+     * peak uses the per-window reference (about -30 and -23 dB respectively).
+     * Floors keep weak bands' power-law terms from collapsing to zero. */
     .avg_floor = 0.0010f,
     .peak_floor = 0.0050f,
+    /* Below about -35 dB relative to that reference, taper the target again
+     * so the floors do not spend bits on bands masked by the rest of the frame. */
     .quiet_band = 0.0003f,
+    /* Pull coded long-block scalefactors 0.6 of the way toward the mean of
+     * their coded neighbours, reducing abrupt changes between bands. */
     .sf_smooth = 0.6f,
-    /* At higher bitrates, spend more of the treble margin on the low bands. */
+    /* Steeper treble de-emphasis leaves more bits for lower bands. Its rate
+     * threshold avoids starving treble when the available budget is small. */
     .rich_slope = 3.0f,
-    .tune_min_rate = 32000,
-    .rich_min_rate = 56000,
-    /* Above this rate, scale the per-line slope to retain its Hz response. */
+    .tune_min_rate = 32000, /* fitted profile's lower bound, bits/s per channel */
+    .rich_min_rate = 56000, /* steep-slope threshold, bits/s per channel */
+    /* Empirical sample-rate policy, in Hz: above 48 kHz scale the per-line
+     * slope relative to 44.1 kHz. These are not the tilt's frequency units. */
     .slope_rate_threshold = 48000,
     .slope_reference_rate = 44100.0f,
-    .tilt_nyquist_khz = 24.0f,
+    .tilt_nyquist_khz = 24.0f, /* 48 kHz reference rate / 2, not stream Nyquist */
     .profiles = {
-        { 0.2f, 0.4f, 1.0f },
-        { 0.15f, 0.35f, 1.5f },
+        /* Average-energy share, power-law loudness exponent, slope multiplier.
+         * The exponent compresses band/reference energy ratios; both weights
+         * balance noise-like average energy against tonal peak energy. */
+        { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f },
+        /* Calibrated for rate-limited stereo LC. Keep other stream types on
+         * the default balance; this fit does not establish their quality. */
+        { .avg_weight = 0.15f, .loud_exponent = 0.35f, .slope_scale = 1.5f },
     },
+    /* Empirical target offsets: finer at 1.5-3 kHz and above 14 kHz, coarser
+     * around 11 kHz. Positions are kHz at a 48 kHz reference, so they follow
+     * the same normalized bin position at other rates (physical kHz changes
+     * with sample rate). Interpolate in dB and hold the end values outside
+     * the table; negative offsets code more finely.
+     * gain_db uses 20*log10(target multiplier), matching tilt_gain(). */
     .tilt = {
         { 0.5f, 0.0f }, { 1.5f, -1.5f }, { 3.0f, -1.5f }, { 5.0f, 0.0f },
         { 8.0f, 0.0f }, { 11.0f, 3.0f }, { 14.0f, 0.0f }, { 18.0f, -3.0f },
