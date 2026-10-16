@@ -78,6 +78,10 @@
 #define TREBLE_SLOPE_BITRATE  56000
 #define TREBLE_SLOPE_RICH     3.0f
 
+/* From this rate (bps per channel) the stereo masking target takes the tuned
+ * shape (see QuantizeSetMaskTune). */
+#define MASK_TUNE_BITRATE     32000
+
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
 #endif
@@ -373,6 +377,15 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
               &hEncoder->aacquantCfg,
               hEncoder->sfbOffsetShort,
               hEncoder->sfbOffsetLong);
+
+    /* The retuned masking target was fitted on plain stereo LC at a set rate
+     * (ABR/CBR). VBR (no rate), HE-AAC, mono and multichannel keep the
+     * original formula. */
+    QuantizeSetMaskTune(&hEncoder->aacquantCfg,
+                        hEncoder->config.bitRate >= MASK_TUNE_BITRATE
+                        && hEncoder->numChannels == 2
+                        && hEncoder->config.aacObjectType != HE_V1,
+                        hEncoder->sfbOffsetLong, hEncoder->sfbOffsetShort);
 
     {
         const int *sfbOffset[2] = { hEncoder->sfbOffsetLong, hEncoder->sfbOffsetShort };
