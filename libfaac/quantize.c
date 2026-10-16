@@ -306,8 +306,11 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
                    && channels == 2 && !is_he;
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
     cfg->mask_tuned = tuned;
-    /* The scalefactor nudge runs with the tuned masking model and also for mono at a set rate. */
-    cfg->sf_nudge = tuned || (bitrate_per_ch >= masking_model.tune_min_rate && channels == 1 && !is_he);
+    /* The scalefactor nudge runs with the tuned masking model, for mono at a
+     * set rate, and for HE-AAC stereo at 16 kbps per channel or more. */
+    cfg->sf_nudge = tuned
+                 || (bitrate_per_ch >= masking_model.tune_min_rate && channels == 1 && !is_he)
+                 || (bitrate_per_ch >= 16000 && channels == 2 && is_he);
     cfg->treble_slope = (bitrate_per_ch >= masking_model.rich_min_rate)
         ? masking_model.rich_slope : 1.0f;
     if (sample_rate > masking_model.slope_rate_threshold)
