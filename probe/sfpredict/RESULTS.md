@@ -35,5 +35,23 @@ Constant shifts -1/0/+1 are +0.13 / 0 / +0.64%. Every predictor loses to doing n
 ## Cost of the search (callgrind, 6 s clip, -b 160)
 base 96.9M Ir, search (±2) 333M Ir (+244%). `size_books` 103M (31%), `BlocQuant` self +104M (distortion loops), `quantize_sse2` 3.0M -> 18.5M (205k calls). One quantizer pass over everything is about +3%, so the +5% gate allows roughly one extra quantization and no exact per-candidate distortion or Huffman sizing.
 
+## Cost decomposition of the ±1 search (SF_WD/SF_WB/SF_PEN, search binary)
+| cost terms (±1 window, scalefactor-delta chain always on) | BD vs #89 |
+|---|---|
+| all terms (distortion + spectral bits) | -3.26% |
+| distortion only | -3.00% |
+| spectral bits only | -0.67% |
+| chain only, deviation penalty 0 / 0.25 / 0.5 / 1 / 2 / 4 bits per step | -1.19 / -1.27 / -1.28 / -1.23 / -1.04 / -0.55% |
+Distortion is the lever; the chain alone is worth -1.2% with no measurement at all.
+
+## What landed as a candidate: scalefactor nudge (`sfnudge_on_89.patch`, branch `claude/sfnudge-on-89`, local)
+Each coded band may move its scalefactor one step either way; a 3-state Viterbi over the group minimizes the real Huffman bits of the scalefactor deltas plus a quarter bit per step. Integer costs (table lookup of `book12` lengths), no extra quantizer call, no float compare added. Gated like the masking target (set-rate stereo LC, non-HE, >= 32 kbps per channel).
+- 48 kHz 96-192: **-1.27%** [-1.43,-1.11], worst cell -0.007; 4-clip CI subset -1.29%; dMOS +0.0072/+0.0049/+0.0021/+0.0010.
+- 44.1 kHz 128-256: -1.05% [-1.23,-0.89], worst -0.024. 48 kHz 192-320: -0.80%, worst -0.001.
+- Instructions (callgrind, 6 s clip, -b 160): 96.92M -> 100.08M (+3.3%, inside the 1.05 gate, above the 1.02 warning).
+- Footprint (`size`): text +1142 B, data -16 B vs #89 (gate +2048 B).
+- VBR (-q 100, -q 200), mono, 5.1, HE-AAC v1 and a 20 kbps stereo stream decode to identical md5 vs #89.
+- Not yet run: the actual CI gate, s390x.
+
 ## Verdict
-Per-band feature predictors that replace the search: dead end (+0.3 to +2.5% vs #89, no instruction or footprint cost measured because they do not pay). The exact search at ±1 is the best quality found (-3.26%) but is far outside the throughput gate. Untested lead: an approximate search (table-based bit estimate, cheaper distortion, ±1, one-sided) to get under +5%; the profile suggests 5-10x is needed.
+Per-band feature predictors that replace the search: dead end; the sf-delta nudge above is the part of the search that fits the gates. Remaining lead: add a cheap distortion term (distortion only is -3.00%) within the ~1.7% instruction headroom (+0.3 to +2.5% vs #89, no instruction or footprint cost measured because they do not pay). The exact search at ±1 is the best quality found (-3.26%) but is far outside the throughput gate. Untested lead: an approximate search (table-based bit estimate, cheaper distortion, ±1, one-sided) to get under +5%; the profile suggests 5-10x is needed.
