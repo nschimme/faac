@@ -32,6 +32,7 @@ typedef struct
     float loud_exponent;
     float tilt_long[NSFB_LONG];
     float tilt_short[NSFB_SHORT];
+    int sf_nudge;
 } AACQuantCfg;
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054f minimizes average

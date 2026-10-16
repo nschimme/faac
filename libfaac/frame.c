@@ -381,6 +381,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     /* The retuned masking target was fitted on plain stereo LC at a set rate
      * (ABR/CBR). VBR (no rate), HE-AAC, mono and multichannel keep the
      * original formula. */
+    /* Stereo LC at a set rate only, like the masking target. */
+    hEncoder->aacquantCfg.sf_nudge = hEncoder->config.bitRate >= MASK_TUNE_BITRATE
+                                     && hEncoder->numChannels == 2
+                                     && hEncoder->config.aacObjectType != HE_V1;
     QuantizeSetMaskTune(&hEncoder->aacquantCfg,
                         hEncoder->config.bitRate >= MASK_TUNE_BITRATE
                         && hEncoder->numChannels == 2
