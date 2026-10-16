@@ -396,7 +396,7 @@ static void sflog_row(const float *f)
 }
 
 static int g_lo = -2, g_hi = 2, g_env;
-static int g_x;
+static int g_x, g_w = 9999;
 static double g_xk = 0.0;
 static double g_chain = 1.0, g_wd = 1.0, g_wb = 1.0, g_pen = 0.0;
 static void sfenv(void)
@@ -408,6 +408,7 @@ static void sfenv(void)
     if ((e = getenv("SF_CHAIN"))) g_chain = atof(e);
     if ((e = getenv("SF_WD"))) g_wd = atof(e);
     if ((e = getenv("SF_X"))) g_x = atoi(e);
+    if ((e = getenv("SF_W"))) g_w = atoi(e);
     if ((e = getenv("SF_XK"))) g_xk = atof(e);
     if ((e = getenv("SF_WB"))) g_wb = atof(e);
     if ((e = getenv("SF_PEN"))) g_pen = atof(e);
@@ -640,7 +641,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                     lf[nb][35 + c] = (float)bb;
                     lf[nb][40 + c] = (float)(d / FFMAX_F(allowed, 1e-12));
                 }
-                cost[c] = g_wd * d / FFMAX_F(allowed, 1e-12) + lam * (g_wb * (double)bb + g_pen * abs(c - SFV_RANGE));
+                cost[c] = (width <= g_w ? g_wd : 0.0) * d / FFMAX_F(allowed, 1e-12) + lam * (g_wb * (double)bb + g_pen * abs(c - SFV_RANGE));
                 sfc[nb][c] = sc;
                 absf[nb][c] = sf_bias + (SF_OFFSET - sc);
                 dp[nb][c] = cost[c];
