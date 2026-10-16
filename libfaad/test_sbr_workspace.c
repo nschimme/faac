@@ -197,8 +197,32 @@ static void check_ps_streaming(void)
 #endif
 #endif
 
+static void test_truncated_history(void)
+{
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    faad_decoder *dec;
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    assert(faad_ensure_sbr(dec) == FAAD_OK);
+    SBRChannel *saved = malloc(sizeof(*saved));
+    assert(saved);
+    memset(&dec->sbr[0], 0x35, sizeof(*saved));
+    memcpy(saved, &dec->sbr[0], sizeof(*saved));
+    SBRElement el = dec->sbr_el[0];
+    /* A header starts but cannot fit. No reset or parsed data may survive. */
+    const uint8_t payload[] = {0x80};
+    BitReader bs;
+    bits_init(&bs, payload, sizeof(payload));
+    assert(sbr_decode_extension(dec, &bs, 0, ID_SCE, false) == FAAD_ERR_DECODE_FAILED);
+    assert(memcmp(saved, &dec->sbr[0], sizeof(*saved)) == 0);
+    assert(memcmp(&el, &dec->sbr_el[0], sizeof(el)) == 0);
+    free(saved);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+}
+
 int main(void)
 {
+    test_truncated_history();
 #ifndef FAAD_DISABLE_PS
     check_hybrid_input();
 #if MAX_CHANNELS >= 2
