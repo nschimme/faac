@@ -42,13 +42,6 @@ if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL']
 endif
 
-# The encoder's output must not depend on whether the target fuses a multiply
-# and an add: the spectrum then differs in its last bits between platforms, and
-# a coefficient on a rounding boundary quantizes differently.
-if cc.get_argument_syntax() != 'msvc'
-    c_args += cc.get_supported_arguments('-ffp-contract=off')
-endif
-
 configure_file(
     output: 'config.h',
     configuration: config_h
