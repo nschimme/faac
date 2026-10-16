@@ -341,6 +341,7 @@ typedef struct {
     int16_t E_prev[SBR_MAX_BANDS];
     int16_t Q_prev[SBR_MAX_NQ];
     uint8_t freq_res_prev;
+    /* Synthesis history is committed only after a complete fill. */
     float   bw_array[SBR_MAX_NQ];
     float   g_hist[4][SBR_MAX_BANDS]; /* gains of the four previous envelopes, a ring */
     float   q_hist[4][SBR_MAX_BANDS];
@@ -394,7 +395,8 @@ typedef struct CouplingChannel {
     struct { uint8_t tag, pair, select, gain, ch; } target[8];
     ICSInfo ics;
     float gain[16][128];
-    float spec[FRAME_LEN_LONG], pcm[FRAME_LEN_LONG], overlap[FRAME_LEN_LONG];
+    float spec[FRAME_LEN_LONG];
+    float *overlap;
     uint8_t prev_shape;
 } CouplingChannel;
 

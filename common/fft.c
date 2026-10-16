@@ -362,7 +362,7 @@ void fft60(float * restrict x, float * restrict y)
         }
     }
 
-    float t2_r[15][4], t2_i[15][4];
+    /* Each column is consumed before its results replace it. */
     for (int n2 = 0; n2 < 4; n2++) {
         float in_r[15], in_i[15], out_r[15], out_i[15];
         for (int n1 = 0; n1 < 15; n1++) {
@@ -371,8 +371,8 @@ void fft60(float * restrict x, float * restrict y)
         }
         dft15(in_r, in_i, out_r, out_i);
         for (int n1 = 0; n1 < 15; n1++) {
-            t2_r[n1][n2] = out_r[n1];
-            t2_i[n1][n2] = out_i[n1];
+            t1_r[n1][n2] = out_r[n1];
+            t1_i[n1][n2] = out_i[n1];
         }
     }
 
@@ -380,8 +380,8 @@ void fft60(float * restrict x, float * restrict y)
     for (int k1 = 0; k1 < 15; k1++) {
         for (int k2 = 0; k2 < 4; k2++) {
             int out_idx = (16 * k1 + 45 * k2) % 60;
-            yr[out_idx] = t2_r[k1][k2];
-            yi[out_idx] = t2_i[k1][k2];
+            yr[out_idx] = t1_r[k1][k2];
+            yi[out_idx] = t1_i[k1][k2];
         }
     }
 }
@@ -405,7 +405,7 @@ void fft480(float * restrict x, float * restrict y)
         }
     }
 
-    float t2_r[15][32], t2_i[15][32];
+    /* Each column is consumed before its results replace it. */
     for (int n2 = 0; n2 < 32; n2++) {
         float in_r[15], in_i[15], out_r[15], out_i[15];
         for (int n1 = 0; n1 < 15; n1++) {
@@ -414,8 +414,8 @@ void fft480(float * restrict x, float * restrict y)
         }
         dft15(in_r, in_i, out_r, out_i);
         for (int n1 = 0; n1 < 15; n1++) {
-            t2_r[n1][n2] = out_r[n1];
-            t2_i[n1][n2] = out_i[n1];
+            t1_r[n1][n2] = out_r[n1];
+            t1_i[n1][n2] = out_i[n1];
         }
     }
 
@@ -423,8 +423,8 @@ void fft480(float * restrict x, float * restrict y)
     for (int k1 = 0; k1 < 15; k1++) {
         for (int k2 = 0; k2 < 32; k2++) {
             int out_idx = (256 * k1 + 225 * k2) % 480;
-            yr[out_idx] = t2_r[k1][k2];
-            yi[out_idx] = t2_i[k1][k2];
+            yr[out_idx] = t1_r[k1][k2];
+            yi[out_idx] = t1_i[k1][k2];
         }
     }
 }

@@ -494,6 +494,7 @@ static void free_split_state(faad_decoder *dec)
 #if MAX_CHANNELS >= 3
     while (dec->coupling) {
         CouplingChannel *next = dec->coupling->next;
+        if (dec->coupling->overlap) FreeMemory(dec->coupling->overlap);
         FreeMemory(dec->coupling);
         dec->coupling = next;
     }
@@ -734,7 +735,7 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
     dec->pns_seed = 0x12345678;
 #if MAX_CHANNELS >= 3
     for (CouplingChannel *cc = dec->coupling; cc; cc = cc->next) {
-        memset(cc->overlap, 0, sizeof(cc->overlap));
+        if (cc->overlap) memset(cc->overlap, 0, sizeof(float[FRAME_LEN_LONG]));
         cc->prev_shape = 0;
         cc->present = false;
     }
