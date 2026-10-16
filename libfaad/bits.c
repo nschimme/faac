@@ -21,6 +21,7 @@ void bits_init(BitReader *bs, const uint8_t *buffer, uint32_t len)
     bs->len = len;
     bs->byte_pos = 0;
     bs->bit_pos = 0;
+    bs->overread = false;
 }
 
 uint32_t bits_get(BitReader *bs, uint32_t nbits)
@@ -43,6 +44,7 @@ uint32_t bits_get(BitReader *bs, uint32_t nbits)
     uint32_t val = 0;
     while (nbits > 0) {
         if (bs->byte_pos >= bs->len) {
+            bs->overread = true;
             return nbits < 32 ? val << nbits : 0;
         }
         uint32_t bits_left_in_byte = 8 - bs->bit_pos;
@@ -74,6 +76,7 @@ uint32_t bits_show(BitReader *bs, uint32_t nbits)
 void bits_skip(BitReader *bs, uint32_t nbits)
 {
     uint64_t total_bits = (uint64_t)bs->byte_pos * 8 + bs->bit_pos + nbits;
+    if (total_bits > (uint64_t)bs->len * 8) bs->overread = true;
     uint64_t byte_pos = total_bits / 8;
     bs->bit_pos = (uint32_t)(total_bits % 8);
     if (byte_pos >= (uint64_t)bs->len) {

@@ -976,8 +976,12 @@ int main(int argc, char **argv)
         if (!write_stdout && !outfile) {
             char *out_path = (char *)malloc(strlen(infile) + 8);
             strcpy(out_path, infile);
-            char *dot = strrchr(out_path, '.');
-            if (dot) strcpy(dot, raw_format ? ".raw" : ".wav");
+            char *base = out_path;
+            for (char *c = out_path; *c; c++) {
+                if (*c == '/' || *c == '\\') base = c + 1;
+            }
+            char *dot = strrchr(base, '.');
+            if (dot && dot != base) strcpy(dot, raw_format ? ".raw" : ".wav");
             else strcat(out_path, raw_format ? ".raw" : ".wav");
             outfile = out_path;
         }
