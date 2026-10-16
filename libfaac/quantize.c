@@ -357,8 +357,9 @@ typedef struct { int n; float x, x2; } SfvAcc;
 #ifndef SFV_MINW
 #define SFV_MINW 16
 #endif
+#define SFV_GREEDY
 #ifndef SFV_STRIDE
-#define SFV_STRIDE 1
+#define SFV_STRIDE 4
 #endif
 #define SFV_NSLOT 14
 #define SFV_ORIGIN 3    /* slot of the middle candidate's zero threshold */
