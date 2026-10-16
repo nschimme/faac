@@ -603,8 +603,8 @@ static const help_t help_io[] = {
 };
 
 static const help_t help_processing[] = {
-    {"--drc-cut N, --drc-boost N", "DRC strength 0..127 (default: 0)", NULL},
-    {"--drc-target N", "Normalise: 0 off, 40..127 quarter-dB below FS (96 = -24 dBFS)", NULL},
+    {"--drc-cut N, --drc-boost N", "Dynamic Range Control (DRC) strength 0..127 (default: 0)", NULL},
+    {"--drc-target N", "Dynamic Range Control target: 0 off, 40..127 quarter-dB below FS (96 = -24 dBFS)", NULL},
     {"-d, --downmix [mode]",
      "Downmix audio (mono/1 or stereo/2, default: mono)", NULL},
     {"-j, --jump <seconds>",
