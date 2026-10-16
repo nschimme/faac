@@ -23,6 +23,9 @@ Calibration: at 128-192 kbps MOS rises only about 0.0016 per +1 % bitrate, so -5
 | Mid-band target tilt 2.5-10 kHz (+-1.5..4.5 dB, peak 3.4-7 kHz) | local | +0.31 % to +2.87 % one way, +1.10 % the other | **Dead end** |
 | LC block-switch thresholds (level ratio, drop ratio) | local | best -0.69 % [-1.60, +0.06], worst cell -0.046 | **Dead end** (small, spans 0) |
 | Stereo gates/bias on the measured LC stereo rungs (bias from 48 kbps/ch, short M/S from 48/64 kbps/ch, k 1.25/1.75) | local, on #81+#88 | best -0.13 % at 48 kHz only; fails gate at 44.1 kHz | **Dead end** |
+| Masking-target retune (loudness 0.35, avg weight 0.15, slope x1.5, tilt table) for stereo LC ABR/CBR >= 32 kbps/ch | #89 | 48 kHz 96-192: -3.38 % [-3.93, -2.80], worst -0.019; 44.1 kHz 128-192: -3.41 % [-4.09, -2.80], worst -0.007; 192-320: -3.06 %; 48-80: -1.20 %. +1.3 % instr, +1344 B text | **Candidate, CI pending** |
+| Global rounding offset (MAGIC_NUMBER) 0.35/0.38/0.43/0.47 (was 0.4054) | local | -0.30 % / -0.47 % / +0.76 % / +2.92 % | Small win at 0.38 only; not taken |
+| `-c 16000` / `-c 17500` on the 8 weakest clips, 96/128 | local | 16000 worse (+6 %/+21 % est.); 17500 +0.0067 MOS at 96, neutral at 128 | Not pursued |
 | `--no-pns`, `--no-tns`, `-c 20000` | CLI screen | +5.25 %, -0.05 %, -0.61 % (CI spans 0) | PNS is worth ~5 %; TNS and cutoff neutral |
 
 ## Merged-candidate work
@@ -105,3 +108,11 @@ Tools in `scripts/band_cost/`. Master `-b 160`, 10 s clips, long windows unless 
 ## Measurement setup
 Pitfall: the `faac` CLI refuses to overwrite an existing output (`Output file ... already exists (use --overwrite)`, exit status non-zero, stderr only), so a re-run into the same filename silently scores the previous encode. Use fresh directories per variant (the harness does) or pass `--overwrite`.
 Local run: clone nschimme/faac-benchmark, PMLT2014 and SoundExpert with git (music is there, ~2 GB); venv with zimtohrli, soundfile, scipy; see HANDOFF s6. Speed: callgrind instruction counts; s390x CI compares decoded audio with a tolerance and FMA is kept (no `-ffp-contract=off`).
+
+## Masking-target retune (PR #89, base = upstream master abcc332 + benchmark workflow)
+- Gates are tighter than the budget noted above: `compare_results.py` fails throughput when the 95 % CI lower bound of candidate/baseline instructions exceeds 1.05 (warns at 1.02) and fails footprint at +2048 bytes (and +0.5 %) of `.text+.rodata+.data` unless `--footprint-allow`.
+- CI table (gist 6c2ae3fe) is the `--gate` run: 4 clips (sandman, velvet, 21-classic, fms), not 49. On those 4 the gap to Apple is far larger than on the 49-clip average (BD +12 % vs +3.4 % before this change).
+- Finding: on fms at 96/128 kbps Apple has 4-6 dB MORE waveform noise than FAAC in every band and still scores higher (Zimtohrli). SNR is not the lever; noise shape is. Apple also lowpasses at ~16 kHz (96k) / ~17.5 kHz (128k).
+- Method: env-driven scratch hook over the quantizer's target (loudness exponent, average/peak weights, floors, smoothing, slope, 8-knot dB tilt over 0.5-18 kHz at 48 kHz), coordinate descent on 25 of 49 clips x 96/128/160/192 against m48. Accepted steps: t1 -1.5, t2 -1.5, t5 +3, t7 -3 dB, avgw 0.15, loud 0.35, slope x1.5 (-3.8 % in sample, -3.38 % on all 49 incl. 24 held out, -3.41 % at 44.1 kHz).
+- Not in the final: PEAK weight, smoothing, floors and quiet-band constants were scanned in round 0 only and did not move.
+- Scope: stereo LC, ABR/CBR, >= 32 kbps/ch. VBR, HE, mono and the 24 kbps stereo case verified bit-identical by decoded md5.
