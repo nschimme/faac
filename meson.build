@@ -59,6 +59,10 @@ subdir('docs')
 subdir('include')
 if get_option('encoder')
     subdir('libfaac')
+    bitstream_test = executable('bitstream_test',
+        'tests/bitstream_test.c', 'libfaac/bitstream.c',
+        include_directories: include_directories('libfaac'))
+    test('bitstream_test', bitstream_test)
 endif
 subdir('libfaam')
 

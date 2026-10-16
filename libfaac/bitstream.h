@@ -50,7 +50,8 @@ int CloseBitStream(BitStream *bs);
  * reused/persistent buffer (e.g. a cache rebuilt once per frame) -- PutBit
  * ORs bits into place and never zeroes them itself, so any such buffer must
  * be zeroed before (re)use or stale bits from a prior, longer write leak
- * through. */
+ * through. Passing NULL selects bounded PutBit-only count mode; it advances
+ * currentBit without storing. BitAccumulator requires a real output buffer. */
 void InitBitStream(BitStream *bs, uint8_t *buffer, uint32_t size);
 
 int PutBit(BitStream *bs, uint32_t data, int numBits);

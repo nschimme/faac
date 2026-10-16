@@ -63,6 +63,10 @@ int PutBit(BitStream *bs, uint32_t data, int numBits)
 
     bs->currentBit = end;
 
+    /* A NULL buffer is used for bounded dry runs that need only the bit count. */
+    if (!bs->data)
+        return 0;
+
     if (numBits < 32)
         data &= (1U << numBits) - 1;
 
