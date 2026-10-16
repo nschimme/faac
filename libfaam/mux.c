@@ -1310,17 +1310,18 @@ static faam_status muxer_faststart(faam_muxer *m, uint64_t moov_start, uint64_t 
     /* The shifted offsets only change moov's size by crossing 4 GiB, where stco entries become
      * co64; below that the moov just written already has its final size. */
     m->faststart_shift = moov_size;
+    faam_status st;
     for (unsigned pass = 0; moov_start + moov_size > UINT32_MAX; pass++) {
         uint64_t size;
-        faam_status st = write_moov_at(m, moov_start, &size);
+        st = write_moov_at(m, moov_start, &size);
         if (st != FAAM_OK) return st;
         if (size == moov_size) break;
         if (size < moov_size || size > UINT32_MAX || pass == 3) return FAAM_ERR_UNSUPPORTED;
         m->faststart_shift = moov_size = size;
     }
 
-    faam_status st = faam_io_move_forward(&m->io, m->faststart_buf, FAAM_FASTSTART_COPY_BYTES,
-                                          mdat_start, moov_start - mdat_start, moov_size);
+    st = faam_io_move_forward(&m->io, m->faststart_buf, FAAM_FASTSTART_COPY_BYTES,
+                              mdat_start, moov_start - mdat_start, moov_size);
     if (st != FAAM_OK) return st;
 
     /* The copy ran over the moov written at the end; write the final one in front. */

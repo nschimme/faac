@@ -61,6 +61,12 @@ int win32_mtime_utf8(const char *utf8_path, time_t *mtime);
    still check the returned NULL and report the error themselves. */
 FILE *cli_fopen(const char *path, const char *mode);
 
+/* Open a seekable input. The path "-" reads stdin into a temporary file. */
+FILE *cli_open_seekable_input(const char *path);
+
+/* Copy a stream and flush the destination. */
+bool cli_copy_stream(FILE *src, FILE *dst);
+
 /* True if path can be opened for reading, i.e. writing there would overwrite. */
 bool cli_file_exists(const char *path);
 

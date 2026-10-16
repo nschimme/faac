@@ -26,6 +26,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <io.h>
+#include <fcntl.h>
 #define strcasecmp _stricmp
 #else
 #include <strings.h>
@@ -59,13 +61,13 @@ enum {
 
 static const help_t help_commands[] = {
     {"-i <file> ... -o <out>",
-     "Mux elementary streams into an MP4 (no subcommand word)", NULL},
+     "Mux elementary streams into an MP4 (no subcommand word); '-' selects stdin/stdout", NULL},
     {"info <file>",
-     "Print container, track, tag, chapter and gapless summaries", NULL},
+     "Print container, track, tag, chapter and gapless summaries; '-' reads stdin", NULL},
     {"dump <file>",
-     "Print the MP4 atom tree", NULL},
+     "Print the MP4 atom tree; '-' reads stdin", NULL},
     {"demux <file>",
-     "Extract one track's elementary stream", NULL},
+     "Extract one track's elementary stream; '-' reads stdin and -o - writes stdout", NULL},
     {"tag <file>",
      "Edit iTunes metadata tags in place", NULL},
     {"chapter import|export <file>",
@@ -77,10 +79,10 @@ static const help_t help_mux[] = {
     {"-i, --input <file>",
      "Elementary stream to mux: ADTS AAC, or Annex-B H.264 or H.265 (video needs a build with -Dmuxer-video). "
      "Video is muxed one picture per sample in stream order, and B-frames are not supported: no composition "
-     "time offsets are written, so reordered pictures would play out of order. "
+     "time offsets are written, so reordered pictures would play out of order. Use - for stdin. "
      "Repeat for more tracks (max 8)", NULL},
     {"-o, --output <file>",
-     "Output MP4 file (required)", NULL},
+     "Output MP4 file (required); - streams fragmented MP4 when supported; --faststart, --brand m4b or gapless options use progressive MP4", NULL},
     {"--overwrite",
      "Overwrite an existing output file", NULL},
     {"--codec:N <codec>",
@@ -121,8 +123,10 @@ static const help_t help_mux[] = {
 
 static const help_t help_inspect[] = {
     {"-o, --output <file>",
-     "demux: output file (default: output.raw). A name containing .aac or .adts gets ADTS headers; "
+     "demux: output file (default: output.raw); - writes to stdout. A name containing .aac or .adts gets ADTS headers; "
      "video is written as Annex-B", NULL},
+    {"--format <raw|adts>",
+     "demux: choose AAC output format explicitly; default is inferred from the output filename (raw for stdout)", NULL},
     {"-t, --track <id>",
      "demux: track ID to extract (default: the first track)", NULL},
     {"--export-asc <file>",
@@ -164,14 +168,14 @@ static const help_t help_tag[] = {
 
 static const help_t help_chapter[] = {
     {"import <file>",
-     "Replace the chapters of an MP4 with those of the --chapters file", NULL},
+     "Replace the chapters of an MP4 with those of the --chapters file; --chapters - reads stdin", NULL},
     {"export <file>",
-     "Write the chapters of an MP4 to the -o file; a file without chapters is an error", NULL},
+     "Write chapters from an MP4 (input - reads stdin); -o - writes stdout", NULL},
     {"--chapters <file>",
      "Chapter list to import: one \"HH:MM:SS.mmm<TAB>Title\" line per chapter (max 255); the fraction "
      "is 1 to 3 digits, .5 being 500 ms", NULL},
     {"-o, --output <file>",
-     "Chapter list to write, in the same format", NULL},
+     "Chapter list to write, in the same format; - writes stdout", NULL},
     {"--overwrite",
      "export: overwrite an existing chapter list", NULL},
     {NULL, NULL, NULL}
@@ -185,6 +189,82 @@ static const help_group_t g_help[] = {
     {HELP_CHAPTER, "Chapter options", "--help-chapter", help_chapter, 1},
     {0, NULL, NULL, NULL, 0}
 };
+
+typedef struct {
+    FILE *spool;
+    FILE *output;
+    uint64_t emitted;
+    uint64_t position;
+    uint64_t pending;
+} mux_stream_output;
+
+static int32_t mux_stream_write(void *user, const void *data, uint32_t bytes)
+{
+    mux_stream_output *s = (mux_stream_output *)user;
+    uint32_t total = bytes;
+    if (s->position < s->emitted) {
+        uint64_t ignored = s->emitted - s->position;
+        if (ignored >= bytes) { s->position += bytes; return (int32_t)total; }
+        data = (const uint8_t *)data + ignored;
+        bytes -= (uint32_t)ignored;
+        s->position = s->emitted;
+    }
+    uint64_t at = s->position - s->emitted;
+    if (!cli_fseek(s->spool, at) || fwrite(data, 1, bytes, s->spool) != bytes)
+        return -1;
+    s->position += bytes;
+    uint64_t pending_end = s->position - s->emitted;
+    if (pending_end > s->pending) s->pending = pending_end;
+    return (int32_t)total;
+}
+
+static bool mux_stream_seek(void *user, uint64_t position)
+{
+    ((mux_stream_output *)user)->position = position;
+    return true;
+}
+
+static uint64_t mux_stream_tell(void *user)
+{
+    return ((mux_stream_output *)user)->position;
+}
+
+static bool mux_stream_flush(void *user)
+{
+    mux_stream_output *s = (mux_stream_output *)user;
+    if (fflush(s->spool) != 0) return false;
+    if (s->pending) {
+        if (!cli_fseek(s->spool, 0)) return false;
+        uint8_t buf[65536];
+        uint64_t left = s->pending;
+        while (left) {
+            size_t n = left < sizeof(buf) ? (size_t)left : sizeof(buf);
+            if (fread(buf, 1, n, s->spool) != n || fwrite(buf, 1, n, s->output) != n)
+                return false;
+            left -= n;
+        }
+        s->emitted += s->pending;
+        s->pending = 0;
+        FILE *old_spool = s->spool;
+        s->spool = NULL;
+        if (fclose(old_spool) != 0) return false;
+        s->spool = tmpfile();
+        if (!s->spool) return false;
+    }
+    return fflush(s->output) == 0;
+}
+
+static faam_io mux_stream_io(mux_stream_output *s)
+{
+    faam_io io = {0};
+    io.struct_size = sizeof(io);
+    io.user_data = s;
+    io.write = mux_stream_write;
+    io.seek = mux_stream_seek;
+    io.tell = mux_stream_tell;
+    io.flush = mux_stream_flush;
+    return io;
+}
 
 static void print_usage(int mode)
 {
@@ -215,6 +295,7 @@ enum {
     OPT_LANGUAGE,
     OPT_CREATION_TIME,
     OPT_OVERWRITE,
+    OPT_FORMAT,
     OPT_REMOVE,
     OPT_CLEAR,
     OPT_CHAPTERS,
@@ -502,7 +583,7 @@ static int cmd_info(int argc, char **argv)
         return 1;
     }
 
-    FILE *f = cli_fopen(filepath, "rb");
+    FILE *f = cli_open_seekable_input(filepath);
     if (!f) {
         fprintf(stderr, "Error opening %s\n", filepath);
         return 1;
@@ -709,7 +790,7 @@ static int cmd_dump(int argc, char **argv)
         return 1;
     }
 
-    FILE *f = cli_fopen(filepath, "rb");
+    FILE *f = cli_open_seekable_input(filepath);
     if (!f) {
         fprintf(stderr, "Error opening %s\n", filepath);
         return 1;
@@ -811,6 +892,8 @@ static uint8_t *read_whole_file(FILE *f, size_t *out_len, const char **why)
 typedef struct {
     adts_params params;
     uint64_t start; /* offset of the first frame, past any ID3v2 tag */
+    uint8_t prefix[10];
+    uint8_t prefix_len;
 } adts_info;
 
 /* Validates the first ADTS header of f and leaves the position unspecified.
@@ -820,16 +903,33 @@ static const char *adts_probe(FILE *f, adts_info *out)
     uint8_t h[10];
     uint64_t start = 0;
     size_t got;
+    bool streaming = f == stdin;
 
-    if (!cli_fseek(f, 0)) return "cannot seek";
+    out->prefix_len = 0;
+    if (!streaming && !cli_fseek(f, 0)) return "cannot seek";
     got = fread(h, 1, sizeof(h), f);
     if (got == 0) return "empty input";
     if (got == sizeof(h) && !memcmp(h, "ID3", 3)) {
         /* An ID3v2 tag some players prepend to ADTS files: synchsafe size, optional footer. */
         start = 10 + (((uint64_t)(h[6] & 0x7F) << 21) | ((uint64_t)(h[7] & 0x7F) << 14) |
                       ((uint64_t)(h[8] & 0x7F) << 7) | (h[9] & 0x7F)) + ((h[5] & 0x10) ? 10 : 0);
-        if (!cli_fseek(f, start)) return "not an ADTS stream";
+        if (streaming) {
+            uint64_t skip = start - sizeof(h);
+            uint8_t discard[4096];
+            while (skip) {
+                size_t n = skip < sizeof(discard) ? (size_t)skip : sizeof(discard);
+                if (fread(discard, 1, n, f) != n) return "not an ADTS stream";
+                skip -= n;
+            }
+        } else if (!cli_fseek(f, start)) return "not an ADTS stream";
         got = fread(h, 1, 7, f);
+        if (streaming && got) {
+            memcpy(out->prefix, h, got);
+            out->prefix_len = (uint8_t)got;
+        }
+    } else if (streaming) {
+        memcpy(out->prefix, h, got);
+        out->prefix_len = (uint8_t)got;
     }
     if (got < 7 || !adts_header_ok(h)) return "not an ADTS stream (no valid frame header at the start)";
 
@@ -849,13 +949,30 @@ static const char *adts_probe(FILE *f, adts_info *out)
  * matching header that announces more than one raw data block is a frame this tool cannot mux
  * as one sample, so it ends the run: *multi_block is set. */
 static faam_status mux_adts_frames(faam_muxer *m, uint32_t track_id, FILE *f, const adts_params *first,
+                                   const uint8_t *prefix, size_t prefix_len,
                                    uint32_t *frames, bool *multi_block)
 {
     uint8_t buf[65536];
-    size_t buf_len = 0;
+    size_t buf_len = prefix_len;
+    if (buf_len) memcpy(buf, prefix, buf_len);
 
     for (;;) {
-        size_t n = fread(buf + buf_len, 1, sizeof(buf) - buf_len, f);
+        /* Read only enough for the next header or complete frame. A large fread
+         * on a pipe waits for the whole request, delaying completed fragments
+         * until the input closes or the buffer fills. */
+        size_t read_target = 7;
+        if (buf_len >= 7 && adts_header_ok(buf)) {
+            adts_params p;
+            adts_parse_header(buf, &p);
+            uint32_t len = adts_frame_length(buf);
+            uint32_t hlen = adts_header_length(buf);
+            if (p.profile == first->profile && p.sr_idx == first->sr_idx &&
+                p.channel_cfg == first->channel_cfg && p.raw_blocks == 0 && len >= hlen)
+                read_target = len;
+        }
+        if (read_target > sizeof(buf)) return FAAM_ERR_INVALID_ARG;
+        bool attempted_read = read_target > buf_len;
+        size_t n = attempted_read ? fread(buf + buf_len, 1, read_target - buf_len, f) : 0;
         buf_len += n;
 
         size_t off = 0;
@@ -882,7 +999,7 @@ static faam_status mux_adts_frames(faam_muxer *m, uint32_t track_id, FILE *f, co
         memmove(buf, buf + off, buf_len - off);
         buf_len -= off;
         if (ferror(f)) return FAAM_ERR_IO_READ;
-        if (n == 0) break;
+        if (n == 0 && attempted_read) break;
     }
     return FAAM_OK;
 }
@@ -951,10 +1068,13 @@ static int cmd_mux(int argc, char **argv)
     FILE *fin[FAAM_MUX_MAX_TRACKS] = {0};
     FILE *fout = NULL;
     bool out_created = false;
+    bool mux_stdout = false;
+    bool mux_stream = false;
     faam_muxer *m = NULL;
     faam_muxer_config cfg;
     faam_track_config tc[FAAM_MUX_MAX_TRACKS];
     faam_io io;
+    mux_stream_output stream_output = {0};
     uint32_t track_id[FAAM_MUX_MAX_TRACKS] = {0};
     uint32_t frames[FAAM_MUX_MAX_TRACKS] = {0};
     adts_info adts[FAAM_MUX_MAX_TRACKS];
@@ -1123,14 +1243,32 @@ static int cmd_mux(int argc, char **argv)
     /* Opening the output truncates it, which --overwrite allows, so this is checked first and
        on its own: the same file reached through a link or another spelling is still an input. */
     for (int i = 0; i < num_inputs; i++) {
-        if (cli_same_file(input_files[i], output_file)) {
+        if (strcmp(input_files[i], "-") == 0) {
+            for (int j = i + 1; j < num_inputs; j++) {
+                if (strcmp(input_files[j], "-") == 0) {
+                    fprintf(stderr, "Error: stdin can be used for only one input track\n");
+                    goto done;
+                }
+            }
+        }
+        if (strcmp(output_file, "-") != 0 && strcmp(input_files[i], "-") != 0 &&
+            cli_same_file(input_files[i], output_file)) {
             fprintf(stderr, "Error: the output %s is the same file as the input %s\n", output_file, input_files[i]);
             goto done;
         }
     }
 
     for (int i = 0; i < num_inputs; i++) {
-        fin[i] = cli_fopen(input_files[i], "rb");
+        const char *codec_str = codec_override[i] ? codec_override[i] : mux_infer_codec_from_ext(input_files[i]);
+        bool streaming_aac = !strcmp(input_files[i], "-") && strcmp(codec_str, "aac") == 0;
+        if (streaming_aac) {
+#ifdef _WIN32
+            _setmode(_fileno(stdin), _O_BINARY);
+#endif
+            fin[i] = stdin;
+        } else {
+            fin[i] = cli_open_seekable_input(input_files[i]);
+        }
         if (!fin[i]) {
             fprintf(stderr, "Error opening %s\n", input_files[i]);
             goto done;
@@ -1250,16 +1388,37 @@ static int cmd_mux(int argc, char **argv)
     cfg.tracks = tc;
     cfg.num_tracks = (uint32_t)num_inputs;
 
-    if (output_refused(output_file, overwrite)) goto done;
+    if (strcmp(output_file, "-") != 0 && output_refused(output_file, overwrite)) goto done;
     /* Faststart reads back what it wrote to move it. */
-    fout = cli_fopen(output_file, faststart ? "w+b" : "wb");
-    if (!fout) {
+    mux_stdout = strcmp(output_file, "-") == 0;
+    /* Stdout is intended for pipelines. Use a fixed one-second fragment
+     * interval automatically when this build supports it. Fragmented MP4
+     * cannot preserve M4B branding or the CLI's late-known gapless duration,
+     * so those requests retain progressive output. */
+    faam_library_info library_info = {0};
+    library_info.struct_size = sizeof(library_info);
+    bool can_fragment = faam_get_library_info(&library_info) == FAAM_OK &&
+                        (library_info.features & FAAM_FEATURE_FRAGMENTED) != 0;
+    mux_stream = mux_stdout && !faststart && !is_m4b && !gapless_given && can_fragment;
+    if (mux_stream) cfg.fragment_ms = 1000;
+#ifdef _WIN32
+    if (mux_stdout) _setmode(_fileno(stdout), _O_BINARY);
+#endif
+    if (mux_stream) {
+        stream_output.spool = tmpfile();
+        stream_output.output = stdout;
+    } else {
+        fout = mux_stdout ? tmpfile() : cli_fopen(output_file, faststart ? "w+b" : "wb");
+    }
+    if ((mux_stream && !stream_output.spool) || (!mux_stream && !fout)) {
         fprintf(stderr, "Error creating %s\n", output_file);
         goto done;
     }
-    out_created = true;
+    out_created = !mux_stdout;
 
-    io = cli_faam_io(fout);
+    if (mux_stream) {
+        io = mux_stream_io(&stream_output);
+    } else io = cli_faam_io(fout);
 
     st = faam_muxer_open(&cfg, &io, &m);
     if (st != FAAM_OK) {
@@ -1270,12 +1429,14 @@ static int cmd_mux(int argc, char **argv)
 
     for (int i = 0; i < num_inputs; i++) {
         if (tc[i].track_type == FAAM_TRACK_AUDIO) {
-            if (!cli_fseek(fin[i], adts[i].start)) {
+            if (fin[i] != stdin && !cli_fseek(fin[i], adts[i].start)) {
                 fprintf(stderr, "Error reading %s\n", input_files[i]);
                 goto done;
             }
             bool multi_block = false;
-            st = mux_adts_frames(m, track_id[i], fin[i], &adts[i].params, &frames[i], &multi_block);
+            st = mux_adts_frames(m, track_id[i], fin[i], &adts[i].params,
+                                 adts[i].prefix, adts[i].prefix_len,
+                                 &frames[i], &multi_block);
             if (multi_block) {
                 fprintf(stderr, "Error: %s: a frame has more than one raw data block, which is not supported "
                         "(each frame is muxed as one 1024-sample unit)\n", input_files[i]);
@@ -1311,23 +1472,39 @@ static int cmd_mux(int argc, char **argv)
         goto done;
     }
     faam_muxer_close(&m);
-    if (fclose(fout) != 0) {
+    if (mux_stdout && !mux_stream && (!cli_fseek(fout, 0) || !cli_copy_stream(fout, stdout))) {
+        fclose(fout);
         fout = NULL;
         fprintf(stderr, "Error writing %s\n", output_file);
         goto done;
     }
-    fout = NULL;
+    if (mux_stream) {
+        if (!stream_output.spool || fclose(stream_output.spool) != 0) {
+            stream_output.spool = NULL;
+            fprintf(stderr, "Error writing %s\n", output_file);
+            goto done;
+        }
+        stream_output.spool = NULL;
+    } else {
+        if (fclose(fout) != 0) {
+            fout = NULL;
+            fprintf(stderr, "Error writing %s\n", output_file);
+            goto done;
+        }
+        fout = NULL;
+    }
 
-    printf("Successfully muxed %d input(s) -> %s\n", num_inputs, output_file);
+    fprintf(mux_stdout ? stderr : stdout, "Successfully muxed %d input(s) -> %s\n", num_inputs, output_file);
     ret = 0;
 
 done:
     if (m) faam_muxer_close(&m);
     for (int i = 0; i < FAAM_MUX_MAX_TRACKS; i++) {
-        if (fin[i]) fclose(fin[i]);
+        if (fin[i] && fin[i] != stdin) fclose(fin[i]);
         free(vbuf_store[i]);
     }
-    if (fout) fclose(fout);
+    if (mux_stream && stream_output.spool) fclose(stream_output.spool);
+    else if (fout) fclose(fout);
     if (ret != 0 && out_created) cli_remove(output_file);
     tag_free(&tags);
     free(filtered);
@@ -1341,11 +1518,14 @@ static int cmd_demux(int argc, char **argv)
     const char *export_asc = NULL;
     uint32_t selected_track_id = 0;
     bool overwrite = false;
+    bool demux_stdout = false;
+    int output_format = 0; /* 0: infer from filename, 1: raw AAC, 2: ADTS */
 
     static struct option long_options[] = {
         {"output", required_argument, 0, 'o'},
         {"track", required_argument, 0, 't'},
         {"export-asc", required_argument, 0, OPT_EXPORT_ASC},
+        {"format", required_argument, 0, OPT_FORMAT},
         {"overwrite", no_argument, 0, OPT_OVERWRITE},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
@@ -1365,6 +1545,14 @@ static int cmd_demux(int argc, char **argv)
             selected_track_id = (uint32_t)v;
             break;
         case OPT_EXPORT_ASC: export_asc = optarg; break;
+        case OPT_FORMAT:
+            if (!strcmp(optarg, "raw")) output_format = 1;
+            else if (!strcmp(optarg, "adts")) output_format = 2;
+            else {
+                fprintf(stderr, "Error: invalid --format value \"%s\" (use raw or adts)\n", optarg);
+                return 1;
+            }
+            break;
         case OPT_OVERWRITE: overwrite = true; break;
         case 'h': print_usage(HELP_INSPECT); return 0;
         case 'H': print_usage('H'); return 0;
@@ -1378,8 +1566,9 @@ static int cmd_demux(int argc, char **argv)
         print_usage(HELP_INSPECT);
         return 1;
     }
+    demux_stdout = strcmp(output_file, "-") == 0;
 
-    FILE *fin = cli_fopen(input_file, "rb");
+    FILE *fin = cli_open_seekable_input(input_file);
     if (!fin) {
         fprintf(stderr, "Error opening %s\n", input_file);
         return 1;
@@ -1427,10 +1616,15 @@ static int cmd_demux(int argc, char **argv)
         else fprintf(stderr, "Error: %s has no tracks\n", input_file);
         goto done;
     }
+    if (output_format == 2 && (ti.track_type != FAAM_TRACK_AUDIO || ti.codec_id != FAAM_CODEC_AAC)) {
+        fprintf(stderr, "Error: --format adts requires an AAC audio track\n");
+        goto done;
+    }
 
     /* Opening an output truncates it, which --overwrite allows: an output that is the input, or
      * each other, would destroy what is still to be read. Checked on its own, ahead of --overwrite. */
-    if (cli_same_file(input_file, output_file) || (export_asc && cli_same_file(input_file, export_asc))) {
+    if ((strcmp(input_file, "-") != 0 && strcmp(output_file, "-") != 0 && cli_same_file(input_file, output_file)) ||
+        (export_asc && strcmp(input_file, "-") != 0 && cli_same_file(input_file, export_asc))) {
         fprintf(stderr, "Error: an output file is the same file as the input %s\n", input_file);
         goto done;
     }
@@ -1440,10 +1634,12 @@ static int cmd_demux(int argc, char **argv)
     }
 
     /* Both files are checked before either is written, so a refusal leaves nothing behind. */
-    if (output_refused(output_file, overwrite) || (export_asc && output_refused(export_asc, overwrite)))
+    if ((strcmp(output_file, "-") != 0 && output_refused(output_file, overwrite)) ||
+        (export_asc && output_refused(export_asc, overwrite)))
         goto done;
 
-    bool is_adts_out = (strstr(output_file, ".aac") != NULL || strstr(output_file, ".adts") != NULL);
+    bool is_adts_out = output_format == 2 ||
+        (output_format == 0 && (strstr(output_file, ".aac") != NULL || strstr(output_file, ".adts") != NULL));
     adts_params adts_p = {0};
     if (is_adts_out && ti.track_type == FAAM_TRACK_AUDIO && ti.codec_id == FAAM_CODEC_AAC) {
         uint8_t cdata[FAAM_CODEC_DATA_MAX];
@@ -1481,15 +1677,18 @@ static int cmd_demux(int argc, char **argv)
             fprintf(stderr, "Error writing %s\n", export_asc);
             goto done;
         }
-        printf("Exported codec extradata (%u bytes) to %s\n", cdata_len, export_asc);
+        fprintf(demux_stdout ? stderr : stdout, "Exported codec extradata (%u bytes) to %s\n", cdata_len, export_asc);
     }
 
-    fout = cli_fopen(output_file, "wb");
+#ifdef _WIN32
+    if (demux_stdout) _setmode(_fileno(stdout), _O_BINARY);
+#endif
+    fout = demux_stdout ? stdout : cli_fopen(output_file, "wb");
     if (!fout) {
         fprintf(stderr, "Error opening output %s\n", output_file);
         goto done;
     }
-    out_created = true;
+    out_created = !demux_stdout;
 
     uint32_t frame_cap = 65536;
     uint32_t frame_bytes = 0;
@@ -1549,18 +1748,19 @@ static int cmd_demux(int argc, char **argv)
         if (write_failed) break;
     }
 
-    if (fclose(fout) != 0) write_failed = true;
+    if (demux_stdout) write_failed |= fflush(fout) != 0;
+    else if (fclose(fout) != 0) write_failed = true;
     fout = NULL;
     if (write_failed) {
         fprintf(stderr, "Error writing %s\n", output_file);
         goto done;
     }
 
-    printf("Successfully demuxed %s -> %s\n", input_file, output_file);
+    fprintf(demux_stdout ? stderr : stdout, "Successfully demuxed %s -> %s\n", input_file, output_file);
     ret = 0;
 
 done:
-    if (fout) fclose(fout);
+    if (fout && fout != stdout) fclose(fout);
     if (ret != 0) {
         if (out_created) cli_remove(output_file);
         if (asc_created) cli_remove(export_asc);
@@ -1761,7 +1961,7 @@ static bool parse_chapter_line(const char *line, faam_chapter *out, char *title)
 
 static int cmd_chapter_import(const char *filepath, const char *chapters_path)
 {
-    FILE *cf = cli_fopen(chapters_path, "r");
+    FILE *cf = strcmp(chapters_path, "-") == 0 ? stdin : cli_fopen(chapters_path, "r");
     if (!cf) {
         fprintf(stderr, "Error opening chapter file %s\n", chapters_path);
         return 1;
@@ -1791,7 +1991,7 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
         chapters[count].struct_size = sizeof(chapters[count]);
         count++;
     }
-    fclose(cf);
+    if (cf != stdin) fclose(cf);
 
     if (bad) return 1;
     if (count == 0) {
@@ -1820,7 +2020,7 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
 
 static int cmd_chapter_export(const char *filepath, const char *output_path, bool overwrite)
 {
-    FILE *f = cli_fopen(filepath, "rb");
+    FILE *f = cli_open_seekable_input(filepath);
     if (!f) {
         fprintf(stderr, "Error opening %s\n", filepath);
         return 1;
@@ -1846,14 +2046,15 @@ static int cmd_chapter_export(const char *filepath, const char *output_path, boo
         fprintf(stderr, "No chapters in %s\n", filepath);
         goto done;
     }
-    if (cli_same_file(filepath, output_path)) {
+    bool to_stdout = strcmp(output_path, "-") == 0;
+    if (strcmp(filepath, "-") != 0 && !to_stdout && cli_same_file(filepath, output_path)) {
         fprintf(stderr, "Error: the output %s is the same file as the input %s\n", output_path, filepath);
         goto done;
     }
-    if (output_refused(output_path, overwrite)) goto done;
+    if (!to_stdout && output_refused(output_path, overwrite)) goto done;
 
     /* Chapter titles are borrowed from the demuxer; keep it open while writing. */
-    of = cli_fopen(output_path, "w");
+    of = to_stdout ? stdout : cli_fopen(output_path, "w");
     if (!of) {
         fprintf(stderr, "Error creating %s\n", output_path);
         goto done;
@@ -1873,15 +2074,16 @@ static int cmd_chapter_export(const char *filepath, const char *output_path, boo
         write_failed |= fprintf(of, "%02u:%02u:%02u.%03u\t%s\n", hh, mm, ss, mmm,
                                 ch.title ? ch.title : "") < 0;
     }
-    if (fclose(of) != 0) write_failed = true;
+    if (to_stdout) write_failed |= fflush(of) != 0;
+    else if (fclose(of) != 0) write_failed = true;
     of = NULL;
     if (write_failed) {
         fprintf(stderr, "Error writing %s\n", output_path);
-        cli_remove(output_path);
+        if (!to_stdout) cli_remove(output_path);
         goto done;
     }
 
-    printf("Successfully exported %u chapters from %s to %s\n", count, filepath, output_path);
+    fprintf(to_stdout ? stderr : stdout, "Successfully exported %u chapters from %s to %s\n", count, filepath, output_path);
     ret = 0;
 
 done:

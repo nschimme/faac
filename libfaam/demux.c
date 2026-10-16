@@ -36,6 +36,7 @@ typedef struct {
     uint32_t  num_stts[FAAM_MAX_TRACKS];
     const uint8_t *stss[FAAM_MAX_TRACKS];
     uint32_t  num_stss[FAAM_MAX_TRACKS];
+    bool has_stss[FAAM_MAX_TRACKS];
     const uint8_t *ctts[FAAM_MAX_TRACKS];
     uint32_t  num_ctts[FAAM_MAX_TRACKS];
     bool co64[FAAM_MAX_TRACKS];
@@ -106,7 +107,7 @@ static bool esds_decoder_specific_info(const uint8_t *p, uint32_t n,
 
 static const char *own_string(faam_demuxer *d, const uint8_t *text, uint32_t len) {
     if (!text) return NULL;
-    if ((size_t)len > SIZE_MAX - sizeof(faam_owned_string) - 1) {
+    if (len > UINT32_MAX - sizeof(faam_owned_string) - 1) {
         d->error = FAAM_ERR_INSUFFICIENT_MEM;
         return NULL;
     }
@@ -168,7 +169,7 @@ static void parse_ilst_children(const uint8_t *buf, long offset, long end, struc
                     d->has_gapless = true;
             } else if (tagname_len && tval) {
                 uint32_t count = meta->num_custom_tags;
-                if ((size_t)count >= SIZE_MAX / sizeof(faam_custom_tag) - 1) {
+                if (count >= UINT32_MAX / sizeof(faam_custom_tag) - 1) {
                     d->error = FAAM_ERR_INSUFFICIENT_MEM;
                 } else {
                     faam_custom_tag *tags = d->custom_tags;
@@ -515,9 +516,10 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
 #ifdef FAAM_MUXER_VIDEO
         } else if (memcmp(type, "stss", 4) == 0 && current_trak_idx >= 0 && !tb->stss[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
-            if (entries > 0 && entries <= (uint64_t)(payload_end - payload_offset - 8) / 4) {
+            if (entries <= (uint64_t)(payload_end - payload_offset - 8) / 4) {
                 tb->num_stss[current_trak_idx] = entries;
                 tb->stss[current_trak_idx] = buf + payload_offset + 8;
+                tb->has_stss[current_trak_idx] = true;
             }
         } else if (memcmp(type, "ctts", 4) == 0 && current_trak_idx >= 0 && !tb->ctts[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
@@ -532,7 +534,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
             uint32_t entry_count = read_u32_be(buf + p);
             p += 4;
             uint32_t entry_size = version == 1 ? 20 : 12;
-            for (uint32_t e = 0; e < entry_count && p + entry_size <= payload_end; e++, p += entry_size) {
+            for (uint32_t e = 0; e < entry_count && p + (long)entry_size <= payload_end; e++, p += (long)entry_size) {
                 uint64_t seg_dur, media_time_raw, empty_edit_sentinel;
                 if (version == 1) {
                     seg_dur = read_u64_be(buf + p);
@@ -688,9 +690,10 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
                         }
                     }
 
-                    bool is_keyframe = (tr->info.track_type == FAAM_TRACK_AUDIO);
+                    /* Without stss every sample is a sync sample. */
+                    bool is_keyframe = true;
 #ifdef FAAM_MUXER_VIDEO
-                    if (tb->num_stss[t] > 0 && tb->stss[t]) {
+                    if (tb->has_stss[t]) {
                         is_keyframe = false;
                         while (sync_idx < tb->num_stss[t] && read_u32_be(tb->stss[t] + (uint64_t)sync_idx * 4) < sample_idx + 1)
                             sync_idx++;
@@ -838,7 +841,7 @@ static faam_status load_fragment(faam_demuxer *d)
         if (got < 0) { d->error = FAAM_ERR_IO_READ; break; }
         uint64_t size = got >= 8 ? read_u32_be(hdr) : 0;
         if (size == 1 && got == 16) size = read_u64_be(hdr + 8);
-        if (size < 8) break;
+        if (size < 8 || size > UINT64_MAX - d->frag_pos) break;
         if (memcmp(hdr + 4, "moof", 4)) { d->frag_pos += size; continue; }
         if (size > MOOF_MAX_BYTES) break;
         uint8_t *buf = (uint8_t *)AllocMemory((size_t)size);
@@ -904,7 +907,7 @@ faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
         uint64_t size = read_u32_be(hdr);
         uint32_t header = 8;
         if (size == 1 && got == 16) { size = read_u64_be(hdr + 8); header = 16; }
-        if (size < header) break;
+        if (size < header || size > UINT64_MAX - pos) break;
         if (!memcmp(hdr + 4, "ftyp", 4) && size >= header + 4 && got >= (int32_t)header + 4)
             memcpy(d->major_brand, hdr + header, 4);
         if (!memcmp(hdr + 4, "moov", 4)) {

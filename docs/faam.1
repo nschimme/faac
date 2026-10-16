@@ -58,13 +58,25 @@ Edit iTunes metadata tags in place.
 .B chapter
 Import or export the chapters of an audiobook.
 .PP
-Each subcommand prints a result line to stdout on success and an error
-message to stderr on failure.
+Text output and success messages go to stdout; errors go to stderr. When a
+command writes media or a chapter list to stdout, its status messages go to
+stderr.
+Use
+.B -
+as an input or output path to read stdin or write stdout. Inputs that need
+seeking are spooled to a temporary file; AAC mux input is read as a stream.
 H.264 and H.265 need a build with the
 .B muxer-video
 option (enabled by default); without it muxing video fails with an error.
 .B faam
-writes progressive files only.
+writes progressive files by default. When the output is
+.BR - ,
+it streams fragmented MP4 to stdout in one-second fragments when the build
+supports fragmented MP4. For stdout muxing, the
+.B \-\-faststart
+option, M4B branding, and gapless delay or padding select progressive output.
+Progressive stdout is written after muxing finishes. Builds without fragmented
+MP4 support also use progressive output.
 Fragmented MP4 files can be read by
 .BR info ,
 .B dump
@@ -94,18 +106,23 @@ Display copyright and license information.
 .TP
 .BR \-i ,\  \-\-input\ <\fIfile\fP>
 Elementary stream to mux: ADTS AAC, or Annex-B H.264 or H.265.
-Repeat for more tracks, up to 8.
+Repeat for more tracks, up to 8. The path
+.B -
+reads one input track from stdin.
 .TP
 .BR \-o ,\  \-\-output\ <\fIfile\fP>
 Output MP4 file.
 Required.
+The path
+.B -
+writes MP4 to stdout; see the streaming behavior above.
 An output that exists is refused unless
 .B \-\-overwrite
 is given.
 An output that is one of the inputs, spelled another way or reached through a
 link, is refused even with
 .BR \-\-overwrite .
-A failed mux removes the partial output.
+A failed mux removes a partial file; data already written to stdout cannot be recalled.
 .TP
 .BR \-\-overwrite
 Overwrite an existing output file.
@@ -276,6 +293,9 @@ accepts:
 .TP
 .BR \-o ,\  \-\-output\ <\fIfile\fP>
 Output file, output.raw by default.
+The path
+.B -
+writes the extracted stream to stdout.
 A name containing
 .B .aac
 or
@@ -285,7 +305,16 @@ video is written as Annex-B.
 An output that exists is refused unless
 .B \-\-overwrite
 is given; an output that is the input is always refused.
-A failed run removes the partial output.
+A failed run removes a partial file; data already written to stdout cannot be recalled.
+.TP
+.BR \-\-format\ <\fIraw|adts\fP>
+Choose raw AAC or ADTS output explicitly. By default, output names containing
+.B .aac
+or
+.B .adts
+select ADTS; other names, including
+.BR - ,
+select raw AAC. ADTS output requires an AAC audio track.
 .TP
 .BR \-t ,\  \-\-track\ <\fIid\fP>
 Track ID to extract, the first track by default.
@@ -373,14 +402,20 @@ Write the chapters of
 .I file
 to the
 .B \-o
-file.
+file; the path
+.B -
+reads the MP4 from stdin.
 A file without chapters is an error.
 .TP
 .BR \-\-chapters\ <\fIfile\fP>
-Chapter list to import.
+Chapter list to import; the path
+.B -
+reads the list from stdin.
 .TP
 .BR \-o ,\  \-\-output\ <\fIfile\fP>
-Chapter list to write.
+Chapter list to write; the path
+.B -
+writes it to stdout.
 An output that exists is refused unless
 .B \-\-overwrite
 is given; the input file is always refused.

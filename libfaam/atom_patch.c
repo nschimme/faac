@@ -63,6 +63,7 @@ faam_status faam_atom_scan_top(const faam_io *io, faam_atom_ref *moov, faam_atom
         int r = read_atom_hdr(io, pos, type, &size, &wide);
         if (r < 0) return FAAM_ERR_IO_READ;
         if (!r || size < 8) break;
+        if (size < (wide ? 16u : 8u) || size > UINT64_MAX - pos) return FAAM_ERR_BAD_CONTAINER;
         if (memcmp(type, "moov", 4) == 0) {
             /* Growing moov rewrites its 32-bit size field, which a wide header does not have. */
             if (wide) return FAAM_ERR_UNSUPPORTED;
@@ -77,13 +78,13 @@ faam_status faam_atom_scan_top(const faam_io *io, faam_atom_ref *moov, faam_atom
 
 int faam_atom_find_child(const faam_io *io, uint64_t range_start, uint64_t range_end, const char name[4], faam_atom_ref *out) {
     uint64_t pos = range_start;
-    while (pos + 8 <= range_end) {
+    while (pos <= range_end && range_end - pos >= 8) {
         char type[4];
         uint64_t size;
         bool wide;
         int r = read_atom_hdr(io, pos, type, &size, &wide);
         if (r < 0) return -1;
-        if (!r || size < 8 || pos + size > range_end) break;
+        if (!r || size < 8 || size > range_end - pos) break;
         if (memcmp(type, name, 4) == 0) {
             if (wide) return -2;
             out->offset = pos;
@@ -106,16 +107,21 @@ static bool is_offset_table_container(const char type[4]) {
     return false;
 }
 
-static bool shift_chunk_offsets(const faam_io *io, uint64_t box_offset, uint32_t entry_size, int64_t delta) {
+static bool shift_chunk_offsets(const faam_io *io, uint64_t box_offset, uint64_t box_size,
+                               uint32_t header_size, uint32_t entry_size, int64_t delta,
+                               bool apply) {
+    if (box_size < header_size + 8) return false;
     uint8_t hdr[8];
-    if (!io->seek(io->user_data, box_offset + 8) || faam_io_read_full(io, hdr, 8) != 8) return false;
+    if (!io->seek(io->user_data, box_offset + header_size) || faam_io_read_full(io, hdr, 8) != 8) return false;
     uint32_t count = read_u32_be(hdr + 4);
-    uint64_t entries_off = box_offset + 16;
+    if (count > (box_size - header_size - 8) / entry_size) return false;
+    uint64_t entries_off = box_offset + header_size + 8;
 
     for (uint32_t i = 0; i < count; i++) {
         uint8_t buf[8];
         uint64_t off = entries_off + (uint64_t)i * entry_size;
         if (!io->seek(io->user_data, off) || faam_io_read_full(io, buf, entry_size) != (int32_t)entry_size) return false;
+        if (!apply) continue;
         uint64_t val = (entry_size == 8) ? read_u64_be(buf) : read_u32_be(buf);
         /* Chunk offsets wrap modulo 2^64 like the rest of the file arithmetic; a signed add
          * on a corrupt offset would be undefined behavior. */
@@ -126,20 +132,23 @@ static bool shift_chunk_offsets(const faam_io *io, uint64_t box_offset, uint32_t
     return true;
 }
 
-static bool fixup_chunk_offsets(const faam_io *io, uint64_t start, uint64_t end, int64_t delta) {
+static bool fixup_chunk_offsets(const faam_io *io, uint64_t start, uint64_t end,
+                                int64_t delta, bool apply) {
     uint64_t pos = start;
-    while (pos + 8 <= end) {
+    while (pos <= end && end - pos >= 8) {
         char type[4];
         uint64_t size;
         bool wide;
-        if (read_atom_hdr(io, pos, type, &size, &wide) != 1 || size < 8 || pos + size > end) break;
+        if (read_atom_hdr(io, pos, type, &size, &wide) != 1 ||
+            size < (wide ? 16u : 8u) || size > end - pos) return false;
+        uint32_t header_size = wide ? 16u : 8u;
 
         if (memcmp(type, "stco", 4) == 0) {
-            if (!shift_chunk_offsets(io, pos, 4, delta)) return false;
+            if (!shift_chunk_offsets(io, pos, size, header_size, 4, delta, apply)) return false;
         } else if (memcmp(type, "co64", 4) == 0) {
-            if (!shift_chunk_offsets(io, pos, 8, delta)) return false;
+            if (!shift_chunk_offsets(io, pos, size, header_size, 8, delta, apply)) return false;
         } else if (is_offset_table_container(type)) {
-            if (!fixup_chunk_offsets(io, pos + 8, pos + size, delta)) return false;
+            if (!fixup_chunk_offsets(io, pos + header_size, pos + size, delta, apply)) return false;
         }
         pos += size;
     }
@@ -197,7 +206,12 @@ faam_status faam_atom_resize(const faam_io *io,
      * comes first (the common non-faststart layout this project's own muxer
      * produces), nothing in moov's sample tables is affected. */
     if (mdat && mdat->size > 0 && mdat->offset >= atom_offset && moov && moov->size > 0) {
-        if (!fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size, (int64_t)delta))
+        /* Validate every table and box before writing any offset, so a later bad
+         * layout cannot leave earlier chunk offsets partially adjusted. */
+        if (!fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size,
+                                 (int64_t)delta, false) ||
+            !fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size,
+                                 (int64_t)delta, true))
             return FAAM_ERR_IO_WRITE;
     }
 

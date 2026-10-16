@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #ifdef _WIN32
 #include <io.h>
+#include <fcntl.h>
 #include <windows.h>
 #endif
 
@@ -385,4 +386,33 @@ FILE *cli_fopen(const char *path, const char *mode) {
 #else
     return fopen(path, mode);
 #endif
+}
+
+FILE *cli_open_seekable_input(const char *path)
+{
+    if (strcmp(path, "-") != 0)
+        return cli_fopen(path, "rb");
+#ifdef _WIN32
+    _setmode(_fileno(stdin), _O_BINARY);
+#endif
+    FILE *spool = tmpfile();
+    if (!spool) return NULL;
+    uint8_t buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), stdin)) != 0)
+        if (fwrite(buf, 1, n, spool) != n) { fclose(spool); return NULL; }
+    if (ferror(stdin) || fflush(spool) != 0 || !cli_fseek(spool, 0)) {
+        fclose(spool);
+        return NULL;
+    }
+    return spool;
+}
+
+bool cli_copy_stream(FILE *src, FILE *dst)
+{
+    uint8_t buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), src)) != 0)
+        if (fwrite(buf, 1, n, dst) != n) return false;
+    return !ferror(src) && fflush(dst) == 0;
 }

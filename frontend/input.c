@@ -125,9 +125,15 @@ typedef struct {
 
 static bool seekcur(FILE *f, uint64_t ofs)
 {
-    uint64_t pos = cli_ftell(f);
-    if (pos != UINT64_MAX && ofs <= INT64_MAX && pos <= INT64_MAX - ofs &&
-        cli_fseek(f, pos + ofs)) return true;
+    /* A failed seek on a pipe can leave the CRT stream in an error state,
+       preventing the read-and-discard fallback from consuming the chunk.
+       stdin is a stream even when it happens to be redirected from a file;
+       skip its chunks sequentially. */
+    if (f != stdin) {
+        uint64_t pos = cli_ftell(f);
+        if (pos != UINT64_MAX && ofs <= INT64_MAX && pos <= INT64_MAX - ofs &&
+            cli_fseek(f, pos + ofs)) return true;
+    }
     uint8_t discard[16384];
     while (ofs) {
         size_t n = ofs < sizeof(discard) ? (size_t)ofs : sizeof(discard);
