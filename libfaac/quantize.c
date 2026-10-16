@@ -109,15 +109,88 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
     return gain;
 }
 
-// masking target per scalefactor band: 0 marks a band inaudible
-#define SILENCE_RMS            0.4f     // time-domain RMS, in 16-bit PCM units
-#define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
-#define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
-#define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
-#define AVG_ENERGY_FLOOR_FRAC  0.0010f  // -30 dB floor, keeps quiet bands from collapsing the target
-#define SF_SMOOTH              0.6f     // long-block pull of each scalefactor towards its neighbours
-#define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
-#define QUIET_BAND_FRAC        0.0003f  // ~-35 dB below the frame mean: masked by the frame as a whole
+enum { MASKING_TILT_KNOTS = 8, MASKING_PROFILE_DEFAULT = 0, MASKING_PROFILE_TUNED = 1 };
+
+typedef struct
+{
+    float frequency_khz;
+    float gain;
+} MaskingTiltKnot;
+
+typedef struct
+{
+    float avg_weight;
+    float loud_exponent;
+    float slope_scale;
+} MaskingProfile;
+
+typedef struct
+{
+    float silence_rms;      /* 16-bit PCM units */
+    float peak_weight;
+    float avg_floor;
+    float peak_floor;
+    float quiet_band;
+    float sf_smooth;
+    float rich_slope;
+    unsigned tune_min_rate; /* bits/s per channel */
+    unsigned rich_min_rate;
+    unsigned slope_rate_threshold;
+    float slope_reference_rate;
+    float tilt_nyquist_khz;
+    MaskingProfile profiles[2];
+    MaskingTiltKnot tilt[MASKING_TILT_KNOTS];
+} MaskingModel;
+
+/* Masking-model parameters, not AAC syntax constants or an absolute hearing
+ * threshold. The default balance and fitted stereo profile share these
+ * controls; changing them redistributes quantization error between bands. */
+static const MaskingModel masking_model = {
+    /* Time-domain RMS in 16-bit PCM units; silence_energy() converts it to
+     * this MDCT's energy scale so the gate is independent of block length. */
+    .silence_rms = 0.4f,
+    .peak_weight = 0.45f,    /* tonal contribution after the average-energy share */
+    /* Fractions of uniform-energy baselines: average uses the group reference,
+     * peak uses the per-window reference (about -30 and -23 dB respectively).
+     * Floors keep weak bands' power-law terms from collapsing to zero. */
+    .avg_floor = 0.0010f,
+    .peak_floor = 0.0050f,
+    /* Below about -35 dB relative to that reference, taper the target again
+     * so the floors do not spend bits on bands masked by the rest of the frame. */
+    .quiet_band = 0.0003f,
+    /* Pull coded long-block scalefactors 0.6 of the way toward the mean of
+     * their coded neighbours, reducing abrupt changes between bands. */
+    .sf_smooth = 0.6f,
+    /* Steeper treble de-emphasis leaves more bits for lower bands. Its rate
+     * threshold avoids starving treble when the available budget is small. */
+    .rich_slope = 3.0f,
+    .tune_min_rate = 32000, /* fitted profile's lower bound, bits/s per channel */
+    .rich_min_rate = 56000, /* steep-slope threshold, bits/s per channel */
+    /* Empirical sample-rate policy, in Hz: above 48 kHz scale the per-line
+     * slope relative to 44.1 kHz. These are not the tilt's frequency units. */
+    .slope_rate_threshold = 48000,
+    .slope_reference_rate = 44100.0f,
+    .tilt_nyquist_khz = 24.0f, /* 48 kHz reference rate / 2, not stream Nyquist */
+    .profiles = {
+        /* Average-energy share, power-law loudness exponent, slope multiplier.
+         * The exponent compresses band/reference energy ratios; both weights
+         * balance noise-like average energy against tonal peak energy. */
+        { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f },
+        /* Calibrated for rate-limited stereo LC. Keep other stream types on
+         * the default balance; this fit does not establish their quality. */
+        { .avg_weight = 0.15f, .loud_exponent = 0.35f, .slope_scale = 1.5f },
+    },
+    /* Empirical target offsets converted to linear multipliers at the knots.
+     * Positions are kHz at a 48 kHz reference, so they follow the same
+     * normalized bin position at other rates (physical kHz changes with rate).
+     * Interpolate gains between knots rather than dB, so
+     * intermediate targets differ from a dB-linear curve. Each stored gain is
+     * 10^(offset_dB/20): -1.5 dB, +3 dB and -3 dB retain the fitted anchors. */
+    .tilt = {
+        { 0.5f, 1.0f }, { 1.5f, 0.84139514f }, { 3.0f, 0.84139514f }, { 5.0f, 1.0f },
+        { 8.0f, 1.0f }, { 11.0f, 1.41253754f }, { 14.0f, 1.0f }, { 18.0f, 0.70794578f },
+    },
+};
 
 typedef struct
 {
@@ -131,7 +204,7 @@ static float silence_energy(const CoderInfo *ci)
     /* The unnormalised, doubled MDCT has 2*len times the input mean-square
      * energy for a sine-windowed stationary signal. Keep the silence floor
      * in sample units rather than making it depend on the transform length. */
-    return (2.0f * len) * (SILENCE_RMS * SILENCE_RMS);
+    return (2.0f * len) * (masking_model.silence_rms * masking_model.silence_rms);
 }
 
 static float measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict xr0,
@@ -201,9 +274,46 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
     return group_total;
 }
 
-static float loudness(float energy_ratio)
+static float loudness(float energy_ratio, float exponent)
 {
-    return powf(energy_ratio, LOUDNESS_EXPONENT);
+    return powf(energy_ratio, exponent);
+}
+
+/* Frequency is normalized to a 48 kHz rate. Interpolate the empirical knot
+ * gains directly; this is a lower-cost approximation to dB interpolation. */
+static float tilt_gain(float khz)
+{
+    float gain = masking_model.tilt[MASKING_TILT_KNOTS - 1].gain;
+    int k;
+    if (khz <= masking_model.tilt[0].frequency_khz)
+        gain = masking_model.tilt[0].gain;
+    else if (khz < masking_model.tilt[MASKING_TILT_KNOTS - 1].frequency_khz)
+    {
+        for (k = 0; khz > masking_model.tilt[k + 1].frequency_khz; k++) ;
+        gain = masking_model.tilt[k].gain
+           + (masking_model.tilt[k + 1].gain - masking_model.tilt[k].gain)
+           * (khz - masking_model.tilt[k].frequency_khz)
+           / (masking_model.tilt[k + 1].frequency_khz - masking_model.tilt[k].frequency_khz);
+    }
+    return gain;
+}
+
+void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
+                           unsigned long bitrate_per_ch, unsigned channels, int is_he)
+{
+    const int tuned = bitrate_per_ch >= masking_model.tune_min_rate
+                   && channels == 2 && !is_he;
+    const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
+    cfg->mask_tuned = tuned;
+    cfg->treble_slope = (bitrate_per_ch >= masking_model.rich_min_rate)
+        ? masking_model.rich_slope : 1.0f;
+    if (sample_rate > masking_model.slope_rate_threshold)
+        cfg->treble_slope *= ((float)sample_rate / masking_model.slope_reference_rate);
+
+    cfg->avg_weight = masking_model.profiles[profile].avg_weight;
+    cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
+    if (tuned)
+        cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
 }
 
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
@@ -213,9 +323,12 @@ static float treble_rolloff(int lo, int hi, float slope_per_line)
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
-                                    float treble_slope, const BandEnergy * __restrict be, float group_total,
+                                    const AACQuantCfg * __restrict cfg, const BandEnergy * __restrict be, float group_total,
                                     float * __restrict target_out)
 {
+    const float treble_slope = cfg->treble_slope;
+    const float avg_weight = cfg->avg_weight;
+    const float loud_exp = cfg->loud_exponent;
     int gsize = ci->groups.len[gnum];
     int total_len = ci->sfb_offset[ci->sfbn];
     int sfb;
@@ -247,17 +360,24 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         float target;
 
         // floor before pow(): formula is monotonic, so this floors the output too
-        if (avg < ref * AVG_ENERGY_FLOOR_FRAC) avg = ref * AVG_ENERGY_FLOOR_FRAC;
-        if (peak < ref_win * PEAK_ENERGY_FLOOR_FRAC) peak = ref_win * PEAK_ENERGY_FLOOR_FRAC;
+        if (avg < ref * masking_model.avg_floor) avg = ref * masking_model.avg_floor;
+        if (peak < ref_win * masking_model.peak_floor) peak = ref_win * masking_model.peak_floor;
 
-        target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
-               + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win);
-        target *= treble_rolloff(lo, hi, slope_per_line);
+        target = avg_weight * loudness(avg / ref, loud_exp)
+               + (1.0f - avg_weight) * masking_model.peak_weight * loudness(peak / ref_win, loud_exp);
+        if (cfg->mask_tuned)
+        {
+            float centre = (float)(lo + hi);
+            float tilt = tilt_gain(0.5f * centre * (masking_model.tilt_nyquist_khz * inv_block_len));
+            target *= treble_rolloff(lo, hi, slope_per_line) * tilt;
+        }
+        else
+            target *= treble_rolloff(lo, hi, slope_per_line);
         /* A band this far under the frame is masked by it; the floors above
          * would otherwise pin its target at the floor. Falls at half the
          * loudness exponent. */
-        if (be[sfb].sum < ref * QUIET_BAND_FRAC)
-            target *= sqrtf(loudness(be[sfb].sum / (ref * QUIET_BAND_FRAC)));
+        if (be[sfb].sum < ref * masking_model.quiet_band)
+            target *= sqrtf(loudness(be[sfb].sum / (ref * masking_model.quiet_band), loud_exp));
 
         target_out[sfb] = target * quality;
     }
@@ -407,7 +527,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             if (sb > 0 && want[sb - 1] != INT_MIN) { sum += want[sb - 1]; cnt++; }
             if (sb + 1 < n && want[sb + 1] != INT_MIN) { sum += want[sb + 1]; cnt++; }
             if (cnt)
-                sfac += lrintf(SF_SMOOTH * ((float)want[sb] - (float)sum / (float)cnt));
+                sfac += lrintf(masking_model.sf_smooth * ((float)want[sb] - (float)sum / (float)cnt));
             /* smoothing must not turn a coded band into a zero band */
             if (SF_OFFSET - sfac < SF_MIN)
                 sfac = SF_OFFSET - SF_MIN;
@@ -498,7 +618,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         if (coder->useRef)
             group_total = coder->refTotal[i];
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg, be, group_total, target);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
