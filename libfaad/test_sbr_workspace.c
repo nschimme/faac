@@ -201,6 +201,97 @@ static void check_ps_streaming(void)
 #endif
 #endif
 
+
+static void put_bits(uint8_t *out, unsigned *pos, unsigned value, unsigned count)
+{
+    for (unsigned i = 0; i < count; i++) {
+        unsigned bit = (value >> (count - 1 - i)) & 1u;
+        out[*pos >> 3] |= (uint8_t)(bit << (7 - (*pos & 7)));
+        ++*pos;
+    }
+}
+
+static void test_valid_header_reset_then_invalid_grid(void)
+{
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    faad_decoder *dec = NULL;
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    assert(faad_ensure_sbr(dec) == FAAD_OK);
+    dec->core_sample_rate = 24000;
+    dec->asc.sbr_sample_rate = 48000;
+
+    SBRElement initial = {0}, changed = {0};
+    initial.freq_scale = changed.freq_scale = 2;
+    initial.alter_scale = changed.alter_scale = 1;
+    initial.noise_bands = changed.noise_bands = 2;
+    initial.limiter_bands = changed.limiter_bands = 2;
+    initial.limiter_gains = changed.limiter_gains = 2;
+    initial.interpol_freq = changed.interpol_freq = 1;
+    initial.smoothing_mode = changed.smoothing_mode = 1;
+    bool found = false;
+    for (int a = 0; a < 16 && !found; a++)
+    for (int b = 0; b < 16 && !found; b++) {
+        initial.start_freq = (uint8_t)a;
+        initial.stop_freq = (uint8_t)b;
+        if (!sbr_build_tables(&initial, 48000)) continue;
+        for (int c = 0; c < 16 && !found; c++)
+        for (int d = 0; d < 16 && !found; d++) {
+            if (c == a) continue;
+            changed = initial;
+            changed.start_freq = (uint8_t)c;
+            changed.stop_freq = (uint8_t)d;
+            if (sbr_build_tables(&changed, 48000)) found = true;
+        }
+    }
+    assert(found);
+    initial.header_present = true;
+    dec->sbr_el[0] = initial;
+    memset(&dec->sbr[0], 0x35, sizeof(dec->sbr[0]));
+    dec->sbr[0].have_frame = true;
+    dec->sbr[0].E_prev[0] = 123;
+    dec->sbr[0].Q_prev[0] = 456;
+    SBRChannel *saved_ch = malloc(sizeof(*saved_ch));
+    SBRElement saved_el = dec->sbr_el[0];
+    assert(saved_ch);
+    memcpy(saved_ch, &dec->sbr[0], sizeof(*saved_ch));
+
+    uint8_t payload[4] = {0};
+    unsigned pos = 0;
+    put_bits(payload, &pos, 1, 1); /* header_flag */
+    put_bits(payload, &pos, 0, 1); /* amp_res */
+    put_bits(payload, &pos, changed.start_freq, 4);
+    put_bits(payload, &pos, changed.stop_freq, 4);
+    put_bits(payload, &pos, 0, 3); /* xover_band */
+    put_bits(payload, &pos, 0, 2); /* reserved */
+    put_bits(payload, &pos, 0, 1); /* extra1 */
+    put_bits(payload, &pos, 0, 1); /* extra2 */
+    put_bits(payload, &pos, 0, 1); /* data_extra */
+    put_bits(payload, &pos, 0, 2); /* FIXFIX */
+    put_bits(payload, &pos, 3, 2); /* invalid 8-envelope count */
+    assert(pos == 22);
+
+    /* Direct parser call proves a valid header was applied and synthesis
+     * reset was staged before the deliberately invalid grid was rejected. */
+    BitReader direct;
+    bits_init(&direct, payload, sizeof(payload));
+    assert(sbr_read_extension(dec, &direct, 0, ID_SCE, false) == FAAD_ERR_DECODE_FAILED);
+    assert(dec->sbr_el[0].start_freq == changed.start_freq);
+    assert(dec->sbr_el[0].stop_freq == changed.stop_freq);
+    assert(dec->sbr[0].E_prev[0] == 0 && dec->sbr[0].Q_prev[0] == 0);
+
+    /* The public transactional wrapper must roll back the entire failed fill. */
+    dec->sbr_el[0] = saved_el;
+    memcpy(&dec->sbr[0], saved_ch, sizeof(*saved_ch));
+    BitReader wrapped;
+    bits_init(&wrapped, payload, sizeof(payload));
+    assert(sbr_decode_extension(dec, &wrapped, 0, ID_SCE, false) == FAAD_ERR_DECODE_FAILED);
+    assert(memcmp(saved_ch, &dec->sbr[0], sizeof(*saved_ch)) == 0);
+    assert(memcmp(&saved_el, &dec->sbr_el[0], sizeof(saved_el)) == 0);
+    free(saved_ch);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+}
+
 static void test_truncated_history(void)
 {
     faad_config cfg;
@@ -227,6 +318,7 @@ static void test_truncated_history(void)
 int main(void)
 {
     test_truncated_history();
+    test_valid_header_reset_then_invalid_grid();
 #ifndef FAAD_DISABLE_PS
     check_hybrid_input();
 #if MAX_CHANNELS >= 2
