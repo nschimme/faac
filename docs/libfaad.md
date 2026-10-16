@@ -88,7 +88,7 @@ to the include path. Define `FAAD_BUILDING` when building a Windows DLL.
 | ADTS | Always built | No capability field; select `FAAD_STREAM_ADTS` | Pass headers and payload; one raw data block per ADTS frame. |
 | RAW AAC | Always built | No capability field; select `FAAD_STREAM_RAW` | Supply valid ASC at open; pass one complete access unit per call. |
 | MP4/M4A | External demuxer | No container capability field | libfaad does not parse containers. Use [libfaam](libfaam.md) to supply track ASC and RAW access units; see [Reading MP4 for the FAAD decoder](libfaam.md#reading-mp4-for-the-faad-decoder). |
-| Channel capacity | `max-channels` (8), range 1–8 | `faad_library_info.max_channels` | Streams beyond the compiled ceiling cannot be decoded; downmix does not raise it. |
+| Channel capacity | `max-channels` (8), range 1–8 | `faad_library_info.max_channels` | Streams beyond the compiled ceiling cannot be decoded; downmix does not raise it. Builds below 3 channels omit AAC coupling channel elements (CCE) and reject them as unsupported. |
 | PCM output | Always built | No capability field; select `faad_config.output_format` | Interleaved signed 16-bit, packed 24-bit, 24-bit integer in 32 bits, or 32-bit float; no build switch. |
 | ADIF, LATM, DRM and legacy AAC profiles | Unsupported | No capability field | See [Configuration field mapping](#configuration-field-mapping). |
 | 960-sample AAC frames | Unsupported | No capability field | The AAC core uses 1024-sample frames. |

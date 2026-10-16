@@ -4,7 +4,6 @@ faad_src = [
     'asc.c',
     'huffman.c',
     'syntax.c',
-    'coupling.c',
     'dequant.c',
     'stereo.c',
     'tns.c',
@@ -12,6 +11,11 @@ faad_src = [
     'sbr.c',
     'ps.c',
 ]
+
+# Small mono/stereo builds omit the rarely used AAC coupling tool.
+if get_option('max-channels') >= 3
+    faad_src += ['coupling.c']
+endif
 
 if get_option('decoder-sbr')
     faad_src += ['sbr_dec_tables.c']
