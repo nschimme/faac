@@ -33,8 +33,9 @@ def check(cond, what):
         print("FAIL:", what)
 
 
-def make_wav(path, rate=48000, secs=5, channels=2, sine=False):
+def make_wav(path, rate=48000, secs=5, channels=None, sine=False):
     rnd = random.Random(1)
+    channels = CHANNELS if channels is None else channels
     with wave.open(path, "wb") as w:
         w.setnchannels(channels)
         w.setsampwidth(2)
@@ -154,6 +155,9 @@ def info_tags(out):
 
 
 def main():
+    global CHANNELS, MAX_CHANNELS
+    MAX_CHANNELS = int(sys.argv[4])
+    CHANNELS = min(2, MAX_CHANNELS)
     tools = Tools(*[os.path.abspath(p) for p in sys.argv[1:4]])
     with tempfile.TemporaryDirectory() as d:
         run_all(tools, d)
@@ -274,8 +278,9 @@ def run_all(t, d):
         check(wav_data_len(os.path.join(d, f"{name}_faac.wav")) == wav_data_len(os.path.join(d, f"{name}_faam.wav")) > 0,
               f"{name}: faad decoded length of faam file equals faac file")
         if subprocess.run(["which", "ffmpeg"], capture_output=True).returncode == 0:
-            pcm_ref = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(d, f"{name}.m4a"), "-f", "s16le", "-"], capture_output=True)
-            pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(d, out), "-f", "s16le", "-"], capture_output=True)
+            # Normalize output channels: FFmpeg may infer PS for implicit mono SBR.
+            pcm_ref = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(d, f"{name}.m4a"), "-ac", str(CHANNELS), "-f", "s16le", "-"], capture_output=True)
+            pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(d, out), "-ac", str(CHANNELS), "-f", "s16le", "-"], capture_output=True)
             check(pcm_ref.returncode == 0 and pcm.returncode == 0 and len(pcm.stdout) == len(pcm_ref.stdout),
                   f"{name}: ffmpeg decoded length of faam file equals faac file")
 
@@ -406,7 +411,7 @@ def run_all(t, d):
     r = t.faam_run(["demux", "../lc.m4a"], work)
     check(r.returncode == 1 and b"output.raw already exists" in r.stderr, "demux default output.raw is protected")
     r = t.faam_run(["demux", "../lc.m4a", "--export-asc", "asc.bin", "-o", "o2.aac"], work)
-    check(r.returncode == 0 and read(os.path.join(work, "asc.bin")) == bytes.fromhex("1190"), "demux --export-asc (48 kHz LC stereo ASC)")
+    check(r.returncode == 0 and read(os.path.join(work, "asc.bin")) == bytes((0x11, 0x80 | CHANNELS << 3)), "demux --export-asc (48 kHz LC ASC)")
     r = t.faam_run(["demux", "../lc.m4a", "--export-asc", "asc.bin", "-o", "o3.aac"], work)
     check(r.returncode == 1 and b"asc.bin already exists" in r.stderr and no_output(work, "o3.aac"),
           "--export-asc is protected and nothing else is written")
@@ -691,18 +696,19 @@ def run_demux_header(t, d):
     make_wav(os.path.join(d, "mono.wav"), channels=1)
     r = t.run(t.faac, ["-v0", "-q", "100", "--object-type", "lc", "-a", "-o", "mono.aac", "mono.wav"], d)
     check(r.returncode == 0, "faac mono.aac")
-    rnd = random.Random(7)
-    with open(os.path.join(d, "c8.raw"), "wb") as f:
-        f.write(b"".join(struct.pack("<h", int(6000 * math.sin(i * (0.02 + 0.013 * (i % 8))) + rnd.randint(-900, 900)))
-                         for i in range(48000 * 8)))
-    r = t.run(t.faac, ["-v0", "-P", "-R", "48000", "-B", "16", "-C", "8", "--object-type", "lc", "-q", "100", "-a",
-                       "-o", "c8.aac", "c8.raw"], d)
-    check(r.returncode == 0 and adts_frames(os.path.join(d, "c8.aac"))[0][2] == 7, "faac 7.1 ADTS has channel configuration 7")
+    if MAX_CHANNELS >= 8:
+        rnd = random.Random(7)
+        with open(os.path.join(d, "c8.raw"), "wb") as f:
+            f.write(b"".join(struct.pack("<h", int(6000 * math.sin(i * (0.02 + 0.013 * (i % 8))) + rnd.randint(-900, 900)))
+                             for i in range(48000 * 8)))
+        r = t.run(t.faac, ["-v0", "-P", "-R", "48000", "-B", "16", "-C", "8", "--object-type", "lc", "-q", "100", "-a",
+                           "-o", "c8.aac", "c8.raw"], d)
+        check(r.returncode == 0 and adts_frames(os.path.join(d, "c8.aac"))[0][2] == 7, "faac 7.1 ADTS has channel configuration 7")
 
     cases = [("lc.aac", m) for m in ("none", "compatible", "explicit")] + \
             [("he.aac", m) for m in ("none", "compatible", "explicit")] + \
             [("mono.aac", m) for m in ("none", "ps", "ps-explicit")] + \
-            [("c8.aac", m) for m in ("none", "compatible", "explicit")]
+            [("c8.aac", m) for m in ("none", "compatible", "explicit") if MAX_CHANNELS >= 8]
     for src, mode in cases:
         tag = f"{src}/{mode}"
         base = f"rt_{src[:-4]}_{mode}"
@@ -731,7 +737,7 @@ def run_demux_header(t, d):
 
     # a configuration an ADTS header cannot carry is an error, not a corrupted header
     lc = bytearray(read(os.path.join(d, "lc.m4a")))
-    esds = b"\x02\x11\x90\x06"  # end of the DecoderSpecificInfo (AAC-LC, 48 kHz, stereo) and the SLConfig tag
+    esds = bytes((2, 0x11, 0x80 | CHANNELS << 3, 6))  # end of the DecoderSpecificInfo (AAC-LC, 48 kHz) and the SLConfig tag
     check(lc.count(esds) == 1, "lc.m4a carries its ASC once")
     for what, asc in (("object type 17", b"\x02\x89\x90\x06"), ("reserved rate index 13", b"\x02\x16\x90\x06")):
         bad = bytes(lc).replace(esds, asc)
@@ -772,16 +778,17 @@ def run_adts_validation(t, d):
     other_profile = [bytearray(c) for c in frames[10:15]]
     for c in other_profile:
         c[2] &= 0x3F  # Main profile
-    stream("mixed.aac", frames[:10] + other_profile + frames[15:25] + he_frames[:10] + mono_frames[:10])
+    stream("mixed.aac", frames[:10] + other_profile + frames[15:25] + he_frames[:10] + (mono_frames[:10] if CHANNELS == 2 else []))
     r = t.faam_run(["-i", "mixed.aac", "-o", "mixed.m4a"], d)
     info = t.faam_run(["info", "mixed.m4a"], d).stdout
-    check(r.returncode == 0 and b"Total Frames: 20\n" in info and b"Channels: 2" in info,
+    check(r.returncode == 0 and b"Total Frames: 20\n" in info and f"Channels: {CHANNELS}".encode() in info,
           f"frames whose profile, rate or channels differ from the first are skipped:\n{info.decode()}")
 
     # HE-AAC v2 has a mono core
     for mode in ("ps", "ps-explicit"):
-        r = t.faam_run(["-i", "lc.aac", "-o", "ps_stereo.m4a", "--sbr-signaling", mode, "--overwrite"], d)
-        check(r.returncode == 1 and r.stderr and b"mono" in r.stderr, f"{mode} on a stereo core is rejected ({r.stderr!r})")
+        if CHANNELS == 2:
+            r = t.faam_run(["-i", "lc.aac", "-o", "ps_stereo.m4a", "--sbr-signaling", mode, "--overwrite"], d)
+            check(r.returncode == 1 and r.stderr and b"mono" in r.stderr, f"{mode} on a stereo core is rejected ({r.stderr!r})")
         r = t.faam_run(["-i", "mono.aac", "-o", f"ps_{mode}.m4a", "--sbr-signaling", mode, "--overwrite"], d)
         check(r.returncode == 0, f"{mode} on a mono core is accepted")
 
@@ -820,7 +827,7 @@ def run_info_and_chapters(t, d, have_video):
         check("HE-AAC v1" in line and "v2" not in line, f"{mode} SBR is labelled HE-AAC v1: {line}")
     t.faam_run(["-i", "mono.aac", "-o", "ps_label.m4a", "--sbr-signaling", "ps", "--overwrite"], d)
     check("HE-AAC v2" in info_line("ps_label.m4a", "AAC Object Type"), "PS is labelled HE-AAC v2")
-    odd = bytes(read(os.path.join(d, "lc.m4a"))).replace(b"\x02\x11\x90\x06", b"\x02\x89\x90\x06")
+    odd = bytes(read(os.path.join(d, "lc.m4a"))).replace(bytes((2, 0x11, 0x80 | CHANNELS << 3, 6)), b"\x02\x89\x90\x06")
     open(os.path.join(d, "odd.m4a"), "wb").write(odd)
     line = info_line("odd.m4a", "AAC Object Type")
     check("17" in line and "HE-AAC" not in line and "AAC-LC" not in line, "an unknown object type shows its number only: " + line)

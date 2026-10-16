@@ -117,7 +117,7 @@ if get_option('muxer')
     )
     if get_option('encoder') and get_option('decoder') and not meson.is_cross_build()
         test('faam_cli_test', find_program('python3'),
-            args: [files('../tests/faam_cli_test.py'), faac, faam, faad], timeout: 300)
+            args: [files('../tests/faam_cli_test.py'), faac, faam, faad, get_option('max-channels').to_string()], timeout: 300)
         drc_probe = executable('faad_drc_probe', '../tests/faad_drc_probe.c',
             include_directories: ['..', '../include', '../libfaad', common_inc],
             c_args: faad_c_args, link_with: libfaad)
@@ -126,12 +126,12 @@ if get_option('muxer')
             test('faad_drc_' + case + '_test', find_program('python3'),
                 args: [files('../tests/faad_drc_test.py'), faac, drc_probe,
                        get_option('decoder-drc').to_string(), get_option('decoder-sbr').to_string(),
-                       get_option('decoder-dab').to_string(), case])
+                       get_option('decoder-dab').to_string(), case, get_option('max-channels').to_string()])
         endforeach
         test('faad_drc_oversized_fill_test', find_program('python3'),
             args: [files('../tests/faad_drc_test.py'), faac, drc_probe,
                    get_option('decoder-drc').to_string(), get_option('decoder-sbr').to_string(),
-                   get_option('decoder-dab').to_string(), 'oversized'])
+                   get_option('decoder-dab').to_string(), 'oversized', get_option('max-channels').to_string()])
         test('faad_frontend_test', find_program('python3'),
             args: [files('../tests/faad_frontend_test.py'), faac, faad, faam,
                    get_option('max-channels').to_string(), get_option('decoder-sbr').to_string(),
