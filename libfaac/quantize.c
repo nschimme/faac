@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "quantize.h"
@@ -377,6 +378,23 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
     return sfac;
 }
 
+/* ---- experiment: training-data logger (env SFLOG=path), not for merge ---- */
+int g_sflog_rate;
+static FILE *g_sflog;
+static int g_sflog_init;
+#define SFL_NF 48
+static void sflog_row(const float *f)
+{
+    if (!g_sflog_init)
+    {
+        const char *e = getenv("SFLOG");
+        g_sflog_init = 1;
+        if (e) g_sflog = fopen(e, "wb");
+    }
+    if (g_sflog)
+        fwrite(f, sizeof(float), SFL_NF, g_sflog);
+}
+
 #define FFMAX_F(a, b) ((a) > (b) ? (a) : (b))
 #define SFV_RANGE 2
 #ifndef SFV_EPS
@@ -489,6 +507,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         double lam = SFV_LAMBDA;
         int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
         double dp[MAX_SCFAC_BANDS][NC];
+        float lf[MAX_SCFAC_BANDS][SFL_NF];
+        int lsfac[MAX_SCFAC_BANDS];
         int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi;
         /* q^(4/3) for small q */
         static const double pow43[64] = {
@@ -521,6 +541,21 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                     double a = xr0[w * BLOCK_LEN_SHORT + lo + k];
                     a2 += a * a;
                 }
+            lsfac[nb] = sfac;
+            memset(lf[nb], 0, sizeof(lf[nb]));
+            {
+                float *f = lf[nb];
+                f[0] = ci->block_type; f[1] = sb; f[2] = width; f[3] = gsize; f[4] = g_sflog_rate;
+                f[5] = n; f[6] = (float)(log10((double)target[sb]) * 20.0);
+                f[7] = (float)(log10(be[sb].sum / (double)(gsize * width) + 1e-9) * 10.0);
+                f[8] = (float)(log10(be[sb].peak_energy + 1e-9) * 10.0);
+                f[9] = sfac; f[10] = want[sb] - 0; f[11] = sf_bias;
+                f[12] = (sb > 0 && want[sb - 1] != INT_MIN) ? want[sb] - want[sb - 1] : 99;
+                f[13] = (sb + 1 < n && want[sb + 1] != INT_MIN) ? want[sb] - want[sb + 1] : 99;
+                f[14] = (float)(log10(allowed + 1e-12) * 10.0);
+                f[15] = (float)(log10(a2 + 1e-12) * 10.0);
+                f[16] = (float)*p_last_abs;
+            }
             for (c = 0; c < NC; c++)
             {
                 int sc = sfac + (c - SFV_RANGE), win, k;
@@ -528,6 +563,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 if (SF_OFFSET - sc < SF_MIN)
                 {
                     dp[nb][c] = INFINITY;
+                    lf[nb][35 + c] = -1;
                     absf[nb][c] = 0;
                     sfc[nb][c] = sc;
                     continue;
@@ -546,7 +582,21 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                             d += e * e - a * a;
                         }
                     }
-                cost[c] = d / FFMAX_F(allowed, 1e-12) + lam * (double)band_spectral_bits(tmp, gsize * width);
+                int bb = band_spectral_bits(tmp, gsize * width);
+                {
+                    int qmx = 0, nz = 0, cmx = 0;
+                    for (k = 0; k < gsize * width; k++)
+                    {
+                        int q = abs(tmp[k]);
+                        if (q > qmx) { qmx = q; cmx = 0; }
+                        if (q == qmx) cmx++;
+                        if (q) nz++;
+                    }
+                    lf[nb][20 + c] = qmx; lf[nb][25 + c] = nz; lf[nb][30 + c] = cmx;
+                    lf[nb][35 + c] = (float)bb;
+                    lf[nb][40 + c] = (float)(d / FFMAX_F(allowed, 1e-12));
+                }
+                cost[c] = d / FFMAX_F(allowed, 1e-12) + lam * (double)bb;
                 sfc[nb][c] = sc;
                 absf[nb][c] = sf_bias + (SF_OFFSET - sc);
                 dp[nb][c] = cost[c];
@@ -603,7 +653,14 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 for (b = nb - 1; b >= 0; b--)
                 {
                     sel[order[b]] = sfc[b][arg];
+                    lf[b][17] = arg - SFV_RANGE;
                     arg = bp[b][arg];
+                }
+            if (isfinite(best))
+                for (b = 0; b < nb; b++)
+                {
+                    lf[b][18] = b > 0 ? lf[b - 1][17] : 99;
+                    sflog_row(lf[b]);
                 }
         }
     }

@@ -320,6 +320,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    { extern int g_sflog_rate; g_sflog_rate = hEncoder->config.bitRate; }
     hEncoder->aacquantCfg.sf_search = hEncoder->config.bitRate >= SF_SEARCH_BITRATE;
     /* A rate that already codes the treble well spends its margin better on
      * the low bands, where the de-emphasis leaves the most audible error. */
