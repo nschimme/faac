@@ -630,7 +630,7 @@ static bool sbr_read_noise(BitReader *bs, const SBRElement *el, SBRChannel *ch, 
     return true;
 }
 
-faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
+static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
 {
     int nch = (syntax_id == ID_CPE) ? 2 : 1;
     if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
@@ -782,9 +782,38 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         if (consumed < end) bits_skip(bs, end - consumed);
     }
 
+    if (bs->overread) return FAAD_ERR_DECODE_FAILED;
     for (int c = 0; c < nch; c++) chs[c]->have_frame = true;
     dec->sbr_present = true;
     return FAAD_OK;
+}
+
+/* Only parsing/reset state needs a transaction; QMF delay lines are not
+ * touched until synthesis. Failed fills must not replace valid history. */
+faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
+{
+    uint32_t nch = syntax_id == ID_CPE ? 2 : 1;
+    if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
+    if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
+    SBRElement saved_el = dec->sbr_el[ch0];
+    uint8_t saved_ch[2][offsetof(SBRChannel, qmf_x)];
+    for (uint32_t c = 0; c < nch; c++) memcpy(saved_ch[c], &dec->sbr[ch0 + c], sizeof(saved_ch[c]));
+#ifndef FAAD_DISABLE_PS
+    uint8_t saved_ps[offsetof(PSState, in_buf)] = {0};
+    bool ps_present = dec->ps_present;
+    if (dec->ps) memcpy(saved_ps, dec->ps, sizeof(saved_ps));
+#endif
+    faad_status st = sbr_read_extension(dec, bs, ch0, syntax_id, crc);
+    if (bs->overread && st == FAAD_OK) st = FAAD_ERR_DECODE_FAILED;
+    if (st != FAAD_OK) {
+        dec->sbr_el[ch0] = saved_el;
+        for (uint32_t c = 0; c < nch; c++) memcpy(&dec->sbr[ch0 + c], saved_ch[c], sizeof(saved_ch[c]));
+#ifndef FAAD_DISABLE_PS
+        if (dec->ps) memcpy(dec->ps, saved_ps, sizeof(saved_ps));
+        dec->ps_present = ps_present;
+#endif
+    }
+    return st;
 }
 
 /* HF generation (§4.6.18.6) */

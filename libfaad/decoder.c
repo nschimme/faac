@@ -993,7 +993,21 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                         unsigned sbr_mark = bits_get_consumed(&bs);
                         unsigned ps_mark = g_faadStats.framePsBits;
 #endif
-                        faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
+                        /* Repack the unaligned fill into a reader whose last bit
+                         * is exactly the declared payload boundary. */
+                        uint8_t payload[269]; /* maximum fill count: 15 + 255 - 1 */
+                        BitReader source = bs, fill;
+                        source.byte_pos = (fill_end - count * 8) / 8;
+                        source.bit_pos = (fill_end - count * 8) % 8;
+                        for (uint32_t i = 0; i < count; i++) payload[i] = (uint8_t)bits_get(&source, 8);
+                        if (source.overread) {
+                            decode_success = false;
+                            break;
+                        }
+                        bits_init(&fill, payload, count);
+                        bits_skip(&fill, 4); /* extension type already read */
+                        faad_status sbr_st = sbr_decode_extension(dec, &fill, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
+                        bits_skip(&bs, bits_get_consumed(&fill) - 4);
 #ifndef FAAD_DISABLE_SBR
                         if (sbr_st == FAAD_ERR_INSUFFICIENT_MEM) return sbr_st;
                         if (sbr_st != FAAD_OK) {

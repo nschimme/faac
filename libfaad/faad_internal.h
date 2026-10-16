@@ -137,6 +137,7 @@ typedef struct {
     uint32_t len;
     uint32_t byte_pos;
     uint32_t bit_pos;    /* 0..7 within the byte, MSB first */
+    bool overread;
 } BitReader;
 
 void bits_init(BitReader *bs, const uint8_t *buffer, uint32_t len);
@@ -153,6 +154,7 @@ static inline uint32_t bits_get_1(BitReader *bs)
         bs->bit_pos = next_bit & 7;
         return bit;
     }
+    bs->overread = true;
     return 0;
 }
 
