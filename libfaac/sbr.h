@@ -79,7 +79,7 @@ struct BitStream;
  * envelope (ISO 14496-3 §4.6.18.6.4). The decoder adds noise at
  * 2^(6 - level) relative to the patched signal; a higher level lowers
  * synthesized noise in the patched bands. */
-#define SBR_NOISE_LEVEL_DEFAULT         18
+#define SBR_NOISE_LEVEL_DEFAULT         16
 /* Inverse filtering mode, written for every channel (ISO 14496-3 §4.6.18.6.4).
  * The heavier modes whiten the patched band; a rich core leaves tonal
  * structure in the copied-up low band worth keeping, so it gets the lightest
