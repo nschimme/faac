@@ -51,6 +51,7 @@ static int quantize_scalar(const float * __restrict xr, int * __restrict xi, int
 
 static QuantizeFunc qfunc = quantize_scalar;
 static float sfstep;
+static signed char sf_delta_cost[2 * SF_DELTA + 1];
 static float max_quant_limit;
 
 #define GAIN_LUT_SIZE 512
@@ -81,6 +82,9 @@ void QuantizeInit(void)
     /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) */
     for (i = 1; i < 128; i++)
         log10_width_sf_lut[i] = log10f((float)i) * SF_STEP_ENRG;
+
+    for (i = -SF_DELTA; i <= SF_DELTA; i++)
+        sf_delta_cost[SF_DELTA + i] = (signed char)sf_delta_bits(i);
 
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
@@ -326,7 +330,13 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
 }
 
 #define FFMAX_F(a, b) ((a) > (b) ? (a) : (b))
-#define SFV_RANGE 2
+#define SFV_RANGE 1
+/* log-spaced magnitude histogram: 4 bins per octave from the float bit pattern */
+#define HIST_SHIFT 21
+#define HIST_BASE (100 << 2)
+#define HIST_N (61 << 2)
+#define HIST_XA 0.4985f  /* magnitude times gain below which a line quantizes to 0 */
+#define HIST_XB 1.8636f  /* ... and above which it quantizes to 2 or more */
 #ifndef SFV_EPS
 #define SFV_EPS 1e-6
 #endif
@@ -335,6 +345,111 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
 #define SFV_LAMBDA 0.08f
 #endif
 #endif
+
+/* A band's lines are summarized in log-spaced magnitude slots, four an
+ * octave, read from the float's exponent and top mantissa bits, and placed
+ * relative to where the middle candidate's zero threshold falls: the few
+ * slots around it are what separates the candidates, and everything far
+ * below or above them counts the same for all. Each slot keeps the number of
+ * lines, their sum and their sum of squares. */
+typedef struct { double n, x, x2; } SfvSlot;
+typedef struct { int n; float x, x2; } SfvAcc;
+#define SFV_NSLOT 14
+#define SFV_ORIGIN 3    /* slot of the middle candidate's zero threshold */
+#define SFV_SHIFT 21
+/* x*gain below which a line quantizes to 0: (1-MAGIC)^(4/3), and from which
+ * to 2 or more: (2-MAGIC)^(4/3) */
+#define SFV_XA 0.5000f
+#define SFV_XB 1.8630f
+
+static inline int sfv_bin(float x)
+{
+    uint32_t u;
+    memcpy(&u, &x, sizeof u);
+    return (int)(u >> SFV_SHIFT);
+}
+
+static int sfv_origin(float gain)
+{
+    return sfv_bin(SFV_XA / gain) - SFV_ORIGIN;
+}
+
+static void sfv_summarize(const float * __restrict xr, int gsize, int width, int origin,
+                          SfvSlot * __restrict pre, float *p_max)
+{
+    float mx = 0.0f;
+    SfvAcc acc[SFV_NSLOT] = { { 0 } };
+    int w, k, j;
+
+    for (w = 0; w < gsize; w++)
+        for (k = 0; k < width; k++)
+        {
+            float ax = fabsf(xr[w * BLOCK_LEN_SHORT + k]);
+            int h = sfv_bin(ax) - origin;
+            mx = ax > mx ? ax : mx;
+            h = h < 0 ? 0 : h >= SFV_NSLOT ? SFV_NSLOT - 1 : h;
+            acc[h].n++;
+            acc[h].x += ax;
+            acc[h].x2 += ax * ax;
+        }
+    *p_max = mx;
+    pre[0].n = pre[0].x = pre[0].x2 = 0.0;
+    for (j = 0; j < SFV_NSLOT; j++)
+    {
+        pre[j + 1].n = pre[j].n + (double)acc[j].n;
+        pre[j + 1].x = pre[j].x + (double)acc[j].x;
+        pre[j + 1].x2 = pre[j].x2 + (double)acc[j].x2;
+    }
+}
+
+/* Price of coding the summarized band at this gain: squared error over the
+ * allowed noise, plus lambda times an estimate of its Huffman bits. Lines
+ * below XA/gain quantize to 0, those below XB/gain to 1, the rest to larger
+ * values whose error follows the uniform-noise step (4/27)sqrt(x)/gain^1.5.
+ * Bits per line were fitted to the real codebooks: 0.43 for a zero, 2.79 for
+ * a one, about 2.55 + 1.2*log2(x^(3/4)*gain^(3/4)) above. The larger lines
+ * are taken at their mean magnitude. */
+static double sfv_price(const SfvSlot * __restrict pre, int origin, float xmax, float gain,
+                        double allowed, double lam)
+{
+    /* x*gain from which the band's largest value needs the next codebook:
+     * (q-MAGIC)^(4/3) for q = 1, 2, 3, 5, 8, 13, and the fitted bits per line
+     * for a zero, a one, a larger value and per doubling of a larger value */
+    static const float cut[6] = { 0.5000f, 1.8630f, 3.5653f, 7.6383f, 14.9282f, 29.3030f };
+    static const float rate[6][4] = {
+        { 0.46f, 2.65f, 0.00f, 0.00f }, { 0.89f, 2.33f, 4.21f, 0.00f }, { 1.43f, 2.40f, 2.09f, 1.48f },
+        { 2.24f, 2.78f, 1.82f, 1.42f }, { 2.87f, 3.24f, 1.73f, 1.43f }, { 3.72f, 3.81f, 1.94f, 1.41f }
+    };
+    float t = xmax * gain;
+    int cl = 0;
+    const float *r;
+
+    double ginv = 1.0 / (double)gain, g15 = ginv * sqrt(ginv), c1, n2, x2, m, d, bits;
+    uint32_t ug, um;
+    float xa = SFV_XA / gain, xb = SFV_XB / gain, mf;
+    int ja = sfv_bin(xa) - origin, jb = sfv_bin(xb) - origin;
+
+    while (cl < 6 && t >= cut[cl])
+        cl++;
+    if (!cl)
+        return pre[SFV_NSLOT].x2 / FFMAX_F(allowed, 1e-12);
+    r = rate[cl - 1];
+
+    ja = ja < 0 ? 0 : ja > SFV_NSLOT ? SFV_NSLOT : ja;
+    jb = jb < ja ? ja : jb > SFV_NSLOT ? SFV_NSLOT : jb;
+    c1 = pre[jb].n - pre[ja].n;
+    n2 = pre[SFV_NSLOT].n - pre[jb].n;
+    x2 = pre[SFV_NSLOT].x - pre[jb].x;
+    m = n2 > 0.0 ? x2 / n2 : 1.0;
+    mf = (float)m;
+    memcpy(&ug, &gain, sizeof ug);
+    memcpy(&um, &mf, sizeof um);
+    d = pre[jb].x2 - 2.0 * ginv * (pre[jb].x - pre[ja].x) + c1 * ginv * ginv
+      + (4.0 / 27.0) * g15 * n2 * sqrt(m);
+    bits = r[0] * pre[ja].n + r[1] * c1
+         + n2 * (r[2] + 0.75 * r[3] * ((double)ug * (1.0 / 8388608.0) - 127.0 + (double)um * (1.0 / 8388608.0) - 127.0 - 0.13));
+    return d / FFMAX_F(allowed, 1e-12) + lam * bits;
+}
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
@@ -420,10 +535,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     }
 
 #ifdef SFV_LAMBDA
-    /* Experiment: pick every coded band's scalefactor jointly. Each band
-     * offers a few candidates around the wanted one; a Viterbi pass over the
-     * group minimizes distortion against the band's allowed noise plus lambda
-     * times the real Huffman bits, including the scalefactor-delta bits. */
+    /* Pick every coded band's scalefactor jointly. Each band offers a few
+     * candidates around the wanted one, priced from a summary of its lines
+     * (sfv_summarize/sfv_price); a Viterbi pass over the group then minimizes
+     * that price plus lambda times the scalefactor-delta bits. */
     int sel[MAX_SCFAC_BANDS];
     for (sb = 0; sb < n; sb++)
         sel[sb] = INT_MIN;
@@ -433,22 +548,17 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         /* Doubles throughout: a fused multiply-add on one target and not on
          * another moves a float cost by one part in 1e7, enough to flip a
          * near tie and make the bitstream differ between platforms. */
-        double cost[NC], ncost[NC];
-        double lam = SFV_LAMBDA;
+        double ncost[NC], lam = SFV_LAMBDA;
         int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
         double dp[MAX_SCFAC_BANDS][NC];
+        SfvSlot pre[SFV_NSLOT + 1];
         int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi;
-        /* q^(4/3) for small q */
-        static const double pow43[64] = {
-            0.0, 1.0, 2.5198420997897464, 4.3267487109222245, 6.3496042078727974, 8.549879733383484, 10.902723556992836, 13.390518279406722, 15.999999999999998, 18.720754407467133, 21.544346900318832, 24.463780996262468, 27.47314182127996, 30.567350940369842, 33.74199169845321, 36.993181114957046, 40.317473596635935, 43.71178704118999, 47.173345095760126, 50.69963132571694, 54.28835233189812, 57.93740770400352, 61.6448652744185, 65.40894053658599, 69.22797937475559, 73.10044345532164, 77.02489777859161, 80.99999999999999, 85.02449121251853, 89.09718794488955, 93.21697517861574, 97.38280022413316, 101.59366732596474, 105.84863288986224, 110.14680124343441, 114.4873208566006, 118.86938096020653, 123.29220851090024, 127.75506545836058, 132.25724627755247, 136.79807573413572, 141.3769068556919, 145.99311908523086, 150.6461165966291, 155.33532675434674, 160.0601987020528, 164.8202020667335, 169.6148257665186, 174.44357691188534, 179.30597979112557, 184.20157493201927, 189.12991823257562, 194.09058015449685, 199.08314497371677, 204.1072100829694, 209.16238534187647, 214.24829247050752, 219.36456448277784, 224.51084515641213, 229.6867885365223, 234.89205847013176, 240.1263281692325, 245.38927980018505, 250.6806040974726
-        };
         /* candidates by distance from the formula's value */
-        static const signed char scan[NC] = { 2, 1, 3, 0, 4 };
+        static const signed char scan[NC] = { 1, 0, 2 };
 
         for (sb = 0; sb < n; sb++)
         {
             int band = base + sb;
-            sel[sb] = INT_MIN;
             if (want[sb] == INT_MIN)
                 continue;
             int sf_bias = ci->sf[band];
@@ -459,20 +569,12 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             int width = ci->sfb_offset[sb + 1] - lo;
             double allowed = (double)target[sb] * target[sb] * be[sb].sum / (double)(gsize * width);
             float peak = sqrtf(be[sb].peak_energy);
-            int tmp[2 * FRAME_LEN / 8 + 1024];
-            /* energy of the band: what a candidate leaves as error when it
-             * quantizes a line to zero */
-            double a2 = 0.0;
-            for (int w = 0; w < gsize; w++)
-                for (int k = 0; k < width; k++)
-                {
-                    double a = xr0[w * BLOCK_LEN_SHORT + lo + k];
-                    a2 += a * a;
-                }
+            int origin = sfv_origin(gain_with_overflow_clamp(&(int){ sfac }, peak));
+            float xmax;
+            sfv_summarize(xr0 + lo, gsize, width, origin, pre, &xmax);
             for (c = 0; c < NC; c++)
             {
-                int sc = sfac + (c - SFV_RANGE), win, k;
-                double d = a2;
+                int sc = sfac + (c - SFV_RANGE);
                 if (SF_OFFSET - sc < SF_MIN)
                 {
                     dp[nb][c] = INFINITY;
@@ -481,23 +583,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                     continue;
                 }
                 float gain = gain_with_overflow_clamp(&sc, peak);
-                for (win = 0; win < gsize; win++)
-                    qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, tmp + win * width, width >> 2, gain);
-                for (win = 0; win < gsize; win++)
-                    for (k = 0; k < width; k++)
-                    {
-                        int q = abs(tmp[win * width + k]);
-                        if (q)
-                        {
-                            double a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
-                            double e = a - (q < 64 ? pow43[q] : (double)q * cbrt((double)q)) / (double)gain;
-                            d += e * e - a * a;
-                        }
-                    }
-                cost[c] = d / FFMAX_F(allowed, 1e-12) + lam * (double)band_spectral_bits(tmp, gsize * width);
+                dp[nb][c] = sfv_price(pre, origin, xmax, gain, allowed, lam);
                 sfc[nb][c] = sc;
                 absf[nb][c] = sf_bias + (SF_OFFSET - sc);
-                dp[nb][c] = cost[c];
             }
             order[nb++] = sb;
         }
@@ -513,7 +601,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 {
                     best = (*p_last_abs == SF_CHAIN_UNSET) ? 0.0f
                          : (abs(absf[b][c] - *p_last_abs) > SF_DELTA ? INFINITY
-                            : lam * (double)sf_delta_bits(absf[b][c] - *p_last_abs));
+                            : lam * (double)sf_delta_cost[SF_DELTA + absf[b][c] - *p_last_abs]);
                 }
                 else
                 {
@@ -528,7 +616,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                         double v;
                         if (!isfinite(dp[b - 1][pc]) || abs(dd) > SF_DELTA)
                             continue;
-                        v = dp[b - 1][pc] + lam * (double)sf_delta_bits(dd);
+                        v = dp[b - 1][pc] + lam * (double)sf_delta_cost[SF_DELTA + dd];
                         if (!isfinite(best) || v < best - SFV_EPS * (1.0 + fabs(best))) { best = v; arg = pc; }
                     }
                 }
