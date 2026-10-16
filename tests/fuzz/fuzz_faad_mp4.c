@@ -19,7 +19,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     MP4Track track;
     memset(&track, 0, sizeof(track));
 
-    if (!mp4_read_track_buf(data, (long)size, &track)) {
+    if (!mp4_read_track_buf(data, size, 0, &track)) {
         mp4_free_track(&track);
         return 0;
     }
