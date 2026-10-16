@@ -360,7 +360,18 @@ int writebooks(CoderInfo *coder, BitStream *stream)
 }
 
 /* Encode scalefactor deltas using HCB_DELTA (book12). */
+long sfstat_bits, sfstat_calls;
+static void sfstat_report(void) { fprintf(stderr, "SFSTAT sfbits=%ld\n", sfstat_bits); }
+int writesf_inner(CoderInfo *coder, BitStream *stream);
 int writesf(CoderInfo *coder, BitStream *stream)
+{
+    static int reg;
+    int b = writesf_inner(coder, stream);
+    if (!reg) { reg = 1; if (getenv("SFSTAT")) atexit(sfstat_report); }
+    sfstat_bits += b;
+    return b;
+}
+int writesf_inner(CoderInfo *coder, BitStream *stream)
 {
     int i, bits = 0;
     int lastsf = coder->global_gain;
