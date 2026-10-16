@@ -2,7 +2,8 @@
 
 **Scope: LC only.** HE-AAC is at parity with Apple and FDK on the maintainer's base and is handled elsewhere (nschimme/faac#78 is being finished in the session that wrote this; do not pick it up from here).
 This probe branch records research. **Never merge it.** Production changes go to `nschimme/faac` as small separate PRs from the base branch (`he-v1-retune`, which moves; LC output on it is bit-identical to master).
-Read `results/s11-he-v1/lc-high-bitrate-vs-apple/` (PREREG.md, RESULTS.md) first.
+**Read [EXPERIMENTS.md](EXPERIMENTS.md) first: every experiment tried so far, with results and verdicts, so you don't repeat dead ends.**
+Then read `results/s11-he-v1/lc-high-bitrate-vs-apple/` (PREREG.md, RESULTS.md).
 
 ## 1. Target and current gap
 Beat Apple AAC at LC, high bitrates. 49 clips, 48 kHz stereo, ABR, packaged Apple LC references 96/128/160/192 kbps (no 256/320 Apple streams exist).
