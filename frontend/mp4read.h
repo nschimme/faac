@@ -51,6 +51,7 @@ typedef struct {
     uint32_t timescale;
     MP4Sample *samples;
     uint32_t num_samples;
+    bool sample_error; /* sample collection failed before end of stream */
     char major_brand[16];
     MP4Tag *tags;
     uint32_t num_tags;

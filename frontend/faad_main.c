@@ -884,6 +884,12 @@ int main(int argc, char **argv)
         file_len = input_fill;
     }
 
+    if (is_mp4 && track.sample_error) {
+        fprintf(stderr, "%s: failed to collect complete MP4 sample table\n", infile);
+        ret_status = 1;
+        goto cleanup;
+    }
+
     if (is_mp4 && (!track.asc_buf || track.num_samples == 0)) {
         fprintf(stderr, "%s: no supported AAC audio track found in MP4 file\n", infile);
         ret_status = 1;

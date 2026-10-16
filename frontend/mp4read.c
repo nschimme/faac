@@ -120,23 +120,24 @@ static void add_tags(MP4Track *out, faam_demuxer *d, const faam_metadata *m)
     out->cover_bytes = m->cover_bytes;
 }
 
-/* Samples of the chosen track, stopping at the first one outside the file so
- * a corrupt table can't point the decoder off-buffer. */
+/* Collect every sample of the chosen track, or report an incomplete index. */
 static void collect_samples(faam_demuxer *d, uint32_t track_id, uint64_t file_size, MP4Track *out)
 {
     uint32_t cap = 0;
     faam_frame_loc loc = { .struct_size = sizeof(loc) };
-    while (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
+    faam_status status;
+    out->sample_error = true;
+    while ((status = faam_demuxer_next_frame_loc(d, &loc)) == FAAM_OK) {
         uint32_t skipped;
-        if (faam_demuxer_read_frame(d, NULL, 0, &skipped) != FAAM_OK) break;
+        if (faam_demuxer_read_frame(d, NULL, 0, &skipped) != FAAM_OK) return;
         if (loc.track_id != track_id) continue;
-        if (loc.file_offset > file_size || loc.frame_bytes > file_size - loc.file_offset) break;
+        if (loc.file_offset > file_size || loc.frame_bytes > file_size - loc.file_offset) return;
         if (out->num_samples == cap) {
-            if (cap > UINT32_MAX / 2) break;
+            if (cap > UINT32_MAX / 2) return;
             uint32_t ncap = cap ? cap * 2 : 1024;
-            if ((uint64_t)ncap * sizeof(MP4Sample) > SIZE_MAX) break;
+            if ((uint64_t)ncap * sizeof(MP4Sample) > SIZE_MAX) return;
             MP4Sample *p = (MP4Sample *)realloc(out->samples, (size_t)ncap * sizeof(*p));
-            if (!p) break;
+            if (!p) return;
             out->samples = p;
             cap = ncap;
         }
@@ -144,6 +145,7 @@ static void collect_samples(faam_demuxer *d, uint32_t track_id, uint64_t file_si
         out->samples[out->num_samples].size = loc.frame_bytes;
         out->num_samples++;
     }
+    out->sample_error = status != FAAM_END_OF_STREAM;
 }
 
 static bool read_track_io(faam_io *io, const uint8_t *prefix, uint64_t file_size,

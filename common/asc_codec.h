@@ -126,10 +126,10 @@ static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *ou
         uint32_t real_aot = asc_br_get(&br, 5);
         if (real_aot == 31) real_aot = 32 + asc_br_get(&br, 6);
         out->object_type = (uint8_t)real_aot;
-        return;
+        aot = real_aot;
+    } else {
+        out->sbr_sample_rate = out->sample_rate * 2;
     }
-
-    out->sbr_sample_rate = out->sample_rate * 2;
 
     if (aot != 2) return; /* GASpecificConfig only walked here for AAC-LC */
 
