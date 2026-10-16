@@ -65,5 +65,12 @@ Sibling PRs read (#80 +34% Ir/-2.3% BD, #85 +87%/-1.6%, #86 +17%/-1.4%, #87 +11%
 - Generalization (3-state numbers then 2-state): mono 48 kHz -1.50%, mono 24 kHz -2.24%, HE-AAC stereo -0.82% (worst cell -0.131 on velvet at 48, erratic base curve; 3-state HE was -1.22% worst -0.048); HE at `-b 24` loses (worst -0.144) so the HE gate starts at 16 kbps per channel.
 - CI cells checked locally before CI: 32 kHz stereo -2.01%, CBR -1.29%, mono 24 kHz -2.24%.
 
+## Round 4 (advisor): CI triage, like-for-like checks, two-state distortion, knobs
+- The red benchmark on #94 (head 010461b) was my own doing: pushing the two-state commit triggered `cancel-in-progress`, the amd64 ABR candidate run was cancelled (job 117189494827 concluded `cancelled`), and the report counted the missing MOS scores as regressions. Not a result for the change. The run on the current head is the one to read.
+- HE like-for-like (40/48/56/64): two-state -1.14% vs three-state -1.22%; velvet at 48 is -0.131 in both HE comparisons' worst cell.
+- LC edge `-b 64 --object-type lc`, two-state: mean dMOS +0.011, worst -0.070 (bah).
+- Two-state (coarser only) with exact distortion on narrow bands (WB=0, pen 0.25): W=8 -1.50%, W=16 -1.80%, vs chain-only two-state -1.20%. Estimated extra cost with the centre quantization reused: about +2% (W=8) and +3% (W=16) Ir on top of the nudge's ~3%, so W=8 sits at the +5% gate and W=16 is over. Not built.
+- Knobs on the two-state nudge (vs `codex/lc-mask-compact`): nudge cost 0/1/2/4 quarter bits = -1.15/-1.15/-1.09/-1.00%; `sf_smooth` 0.4/0.6/0.8 = -0.93/-1.15/-0.81%. Current values are the optimum. PNS-delta nudge not tried.
+
 ## Verdict
 Per-band feature predictors that replace the search: dead end; the sf-delta nudge above is the part of the search that fits the gates. Remaining lead: add a cheap distortion term (distortion only is -3.00%) within the ~1.7% instruction headroom (+0.3 to +2.5% vs #89, no instruction or footprint cost measured because they do not pay). The exact search at ±1 is the best quality found (-3.26%) but is far outside the throughput gate. Untested lead: an approximate search (table-based bit estimate, cheaper distortion, ±1, one-sided) to get under +5%; the profile suggests 5-10x is needed.
