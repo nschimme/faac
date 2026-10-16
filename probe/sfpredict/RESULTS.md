@@ -53,5 +53,9 @@ Each coded band may move its scalefactor one step either way; a 3-state Viterbi 
 - VBR (-q 100, -q 200), mono, 5.1, HE-AAC v1 and a 20 kbps stereo stream decode to identical md5 vs #89.
 - Not yet run: the actual CI gate, s390x.
 
+## Rebased onto `codex/lc-mask-compact` (PR nschimme/faac#94, supersedes #93)
+Compact base vs #89 head: -0.04% BD (equivalent), text 81125 B vs 82355 B. Nudge on compact (gate = `cfg->mask_tuned`, no new field): 48 kHz 96-192 **-1.18%** (worst -0.008), 44.1 kHz -1.10% (worst -0.024), instructions +3.0/+3.1/+3.5/+3.3% on sandman/velvet/21-classic/fms, text +1484 B. VBR/mono/5.1/HE/20 kbps md5-identical. `-b` is the total rate: `-b 64` auto-selects HE, so the LC edge needs `--object-type lc` (mean dMOS +0.013; one outlier clip, bah, -0.130 at 64 but +0.083 at 68, noise).
+Generalization (temporary env override forcing the gate on, same binary otherwise): **mono** (49 clips downmixed, 48/64/80/96) -1.36% [-1.68,-1.07], worst -0.016; **HE-AAC v1 stereo** (40/48/56/64) -1.22% [-1.50,-0.97], worst -0.048. Both would need a separate PR since the brief keeps them unchanged.
+
 ## Verdict
 Per-band feature predictors that replace the search: dead end; the sf-delta nudge above is the part of the search that fits the gates. Remaining lead: add a cheap distortion term (distortion only is -3.00%) within the ~1.7% instruction headroom (+0.3 to +2.5% vs #89, no instruction or footprint cost measured because they do not pay). The exact search at ±1 is the best quality found (-3.26%) but is far outside the throughput gate. Untested lead: an approximate search (table-based bit estimate, cheaper distortion, ±1, one-sided) to get under +5%; the profile suggests 5-10x is needed.
