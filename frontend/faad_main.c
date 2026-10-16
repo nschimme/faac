@@ -906,30 +906,39 @@ int main(int argc, char **argv)
             ret_status = 1;
             goto cleanup;
         }
-        FILE *fadts = cli_fopen(adts_outfile, "wb");
-        if (!fadts) {
-            fprintf(stderr, "Error opening ADTS output file %s\n", adts_outfile);
-            ret_status = 1;
-            goto cleanup;
-        }
         /* ADTS carries the core layer: for HE the SBR/PS data rides
          * implicitly inside each frame, so the header names the core
          * object type and the core sampling rate. */
         AscInfo asc;
         adts_params adts;
         asc_codec_parse(track.asc_buf, track.asc_len, &asc);
+        if (asc.frame_length_flag) {
+            fprintf(stderr, "%s: ADTS cannot represent 960-sample frames\n", infile);
+            ret_status = 1;
+            goto cleanup;
+        }
         if (adts_params_from_asc(&asc, true, &adts)) {
             fprintf(stderr, "%s: core sample rate %u Hz has no ADTS sampling frequency index\n",
                     infile, (unsigned)asc.sample_rate);
-            fclose(fadts);
-            remove(adts_outfile);
+            ret_status = 1;
+            goto cleanup;
+        }
+        FILE *fadts = cli_fopen(adts_outfile, "wb");
+        if (!fadts) {
+            fprintf(stderr, "Error opening ADTS output file %s\n", adts_outfile);
             ret_status = 1;
             goto cleanup;
         }
         for (uint32_t s = 0; s < track.num_samples; s++) {
             uint64_t offset = track.samples[s].offset;
             uint32_t size = track.samples[s].size;
-            if (offset > 0 && offset <= file_len && size <= file_len - offset && size <= ADTS_MAX_FRAME - ADTS_HEADER_SIZE) {
+            if (size > ADTS_MAX_FRAME - ADTS_HEADER_SIZE) {
+                fprintf(stderr, "%s: sample %u (%u bytes) exceeds the ADTS payload limit\n",
+                        infile, (unsigned)s, (unsigned)size);
+                ret_status = 1;
+                break;
+            }
+            if (offset > 0 && offset <= file_len && size <= file_len - offset) {
                 uint8_t adts_hdr[ADTS_HEADER_SIZE];
                 adts_write_header(&adts, size, adts_hdr);
                 fwrite(adts_hdr, 1, sizeof(adts_hdr), fadts);
