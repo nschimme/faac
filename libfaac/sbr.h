@@ -65,8 +65,12 @@ struct BitStream;
 #define SBR_EXT_TYPE_SBR     0xd
 #define SBR_EXT_TYPE_SBR_CRC 0xe
 
-/* Transient detection threshold (peak-to-mean power ratio). */
+/* Transient detection threshold (peak-to-mean power ratio). A flagged frame
+ * is coded as two variable-border envelopes instead of the four-envelope
+ * fixed grid. At rich rates the finer fixed grid is worth more than splitting
+ * on a weak peak, so only strong attacks switch. */
 #define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
+#define SBR_TRANSIENT_THRESH_RICH       (8.0f)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */
@@ -76,8 +80,12 @@ struct BitStream;
  * 2^(6 - level) relative to the patched signal; a higher level lowers
  * synthesized noise in the patched bands. */
 #define SBR_NOISE_LEVEL_DEFAULT         18
-/* Inverse filtering mode, written for every channel (ISO 14496-3 §4.6.18.6.4). */
+/* Inverse filtering mode, written for every channel (ISO 14496-3 §4.6.18.6.4).
+ * The heavier modes whiten the patched band; a rich core leaves tonal
+ * structure in the copied-up low band worth keeping, so it gets the lightest
+ * mode. */
 #define SBR_INVF_MODE                   3
+#define SBR_INVF_MODE_RICH              1
 /* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
 #define SBR_ENV_LEVEL_LOG2_OFFSET       (6.0f)
 /* Envelope level step, 1 = 3 dB. The finer 1.5 dB grid costs more than it
@@ -98,6 +106,26 @@ struct BitStream;
  * the same band. */
 #define SBR_STOP_FREQ_MIN               0
 #define SBR_STOP_FREQ_MAX               13
+/* From this per-channel rate the core spends bits better below the crossover
+ * than above it, so SBR takes over from about 8 kHz instead of 11.6 kHz. Under
+ * it the core needs the bandwidth: a patch that low is audibly worse than a
+ * starved core. The _RICH inverse filtering and transient settings are gated
+ * on the same rate. */
+#define SBR_RICH_BPS                    20000u
+#define SBR_START_FREQ_DEFAULT          15
+#define SBR_START_FREQ_RICH             12
+/* Above k2/kx = 2.2449 (NUM/DEN) ISO 14496-3 §4.6.18.3.2.1 builds the master
+ * table in two regions; build_freq_table makes only one, so the stop
+ * frequency is kept under it. */
+#define SBR_ONE_REGION_NUM              22449
+#define SBR_ONE_REGION_DEN              10000
+/* Below this per-channel rate the core is too starved to cover much, so the
+ * envelope stops short of 20 kHz instead of spending bits on the quietest top
+ * bands. Not at 32 kHz or below: Nyquist is 16 kHz there, so a 14 kHz stop
+ * saves little and cuts bright programme material. */
+#define SBR_NARROW_STOP_BPS             10000u
+#define SBR_NARROW_STOP_MIN_RATE        32000
+#define SBR_STOP_FREQ_TARGET_NARROW_HZ  14000
 /* Where widening aims. Past this the bands are inaudible to essentially every
  * listener while costing exactly as much as the ones below. */
 #define SBR_STOP_FREQ_TARGET_HZ         20000
