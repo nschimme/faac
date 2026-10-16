@@ -78,6 +78,9 @@
 #define TREBLE_SLOPE_BITRATE  56000
 #define TREBLE_SLOPE_RICH     3.0f
 
+/* Scalefactor search / predictor logging runs from this rate (bps per channel). */
+#define SF_SEARCH_BITRATE     48000
+
 /* From this rate (bps per channel) the stereo masking target takes the tuned
  * shape (see QuantizeSetMaskTune). */
 #define MASK_TUNE_BITRATE     32000
@@ -317,6 +320,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.sf_search = hEncoder->config.bitRate >= SF_SEARCH_BITRATE;
     /* A rate that already codes the treble well spends its margin better on
      * the low bands, where the de-emphasis leaves the most audible error. */
     hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)

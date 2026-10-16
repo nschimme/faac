@@ -131,6 +131,32 @@ static void size_books(const int * __restrict qs, int len, int lo, int * __restr
     }
 }
 
+int band_spectral_bits(const int *qs, int len)
+{
+    int c[HCB_ESC + 1] = { 0 }, peak = 0, i, lo, best;
+
+    for (i = 0; i < len; i++)
+        if (abs(qs[i]) > peak)
+            peak = abs(qs[i]);
+    if (!peak)
+        return 0;
+    if (peak > MAX_HUFF_ESC_VAL)
+        return 1 << 20;
+    lo = peak <= LAV_1 ? HCB_1 : peak <= LAV_2 ? HCB_3 : peak <= LAV_4 ? HCB_5
+       : peak <= LAV_7 ? HCB_7 : peak <= LAV_12 ? HCB_9 : HCB_ESC;
+    size_books(qs, len, lo, c);
+    best = c[lo];
+    for (i = lo + 1; i <= HCB_ESC; i++)
+        if (c[i] < best)
+            best = c[i];
+    return best;
+}
+
+int sf_delta_bits(int diff)
+{
+    return book12[SF_DELTA + clamp_sf_diff(diff)].len;
+}
+
 /* Appends the band's codewords to coder->s. */
 static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
 {
