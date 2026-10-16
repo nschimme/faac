@@ -402,6 +402,51 @@ static void test_channel_history_rotation(void)
 }
 #endif
 
+static void test_short_sbr_fill(void)
+{
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    cfg.stream_format = FAAD_STREAM_RAW;
+    const uint8_t asc[] = { 0x12, 0x08 };
+    for (unsigned crc = 0; crc < 2; crc++) {
+        uint8_t packet[32] = {0};
+        uint32_t pos = 0;
+        put_bits(packet, &pos, 0, 3); /* silent SCE */
+        put_bits(packet, &pos, 0, 4);
+        put_bits(packet, &pos, 100, 8);
+        put_bits(packet, &pos, 0, 11);
+        put_bits(packet, &pos, 0, 3);
+        put_bits(packet, &pos, 6, 3); /* FIL */
+        put_bits(packet, &pos, 1, 4); /* only one byte */
+        put_bits(packet, &pos, crc ? 14 : 13, 4);
+        put_bits(packet, &pos, crc ? 0 : 8, 4); /* truncated CRC/header */
+        put_bits(packet, &pos, 4, 3); /* following DSE must remain readable */
+        put_bits(packet, &pos, 0, 4);
+        put_bits(packet, &pos, 0, 1);
+        put_bits(packet, &pos, 16, 8);
+        for (unsigned j = 0; j < 16; j++) put_bits(packet, &pos, 0xff, 8);
+        put_bits(packet, &pos, 7, 3); /* END */
+        faad_decoder *dec;
+        assert(faad_decoder_open(&cfg, asc, sizeof(asc), &dec) == FAAD_OK);
+        faad_stream_info info = { .struct_size = sizeof(info) };
+        assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+        void *pcm = malloc(info.max_output_bytes);
+        assert(pcm);
+        uint32_t used, written, flags;
+        assert(faad_decode_frame(dec, packet, (pos + 7) / 8, &used, pcm,
+            info.max_output_bytes, &written, &flags) == FAAD_OK);
+        assert(used == (pos + 7) / 8 && written > 0);
+        assert(!(flags & FAAD_FRAME_CONCEALED));
+#ifndef FAAD_DISABLE_SBR
+        assert(flags & FAAD_FRAME_DEGRADED);
+        assert(!dec->sbr_el[0].header_present);
+        assert(!dec->sbr[0].have_frame);
+#endif
+        free(pcm);
+        assert(faad_decoder_close(&dec) == FAAD_OK);
+    }
+}
+
 static void test_degraded(void)
 {
     /* Valid silent SCE, followed by an SBR header whose stop band is below
@@ -565,7 +610,7 @@ static void test_ps_mono_downmix(void)
 
 int main(void)
 {
-    test_layouts(); test_boundaries(); test_raw_init(); test_endian_helpers(); test_degraded();
+    test_layouts(); test_boundaries(); test_raw_init(); test_endian_helpers(); test_short_sbr_fill(); test_degraded();
 #if MAX_CHANNELS >= 2
     test_channel_history_rotation();
 #endif
