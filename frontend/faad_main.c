@@ -71,6 +71,7 @@ typedef struct {
     bool is_float;
     uint32_t bit_depth;
     uint16_t header_channels;
+    uint32_t header_channel_mask;
     uint32_t header_sample_rate;
     bool header_pending;
     uint64_t total_pcm_bytes;
@@ -228,22 +229,9 @@ static void pcm_to_little_endian(uint8_t *buf, uint32_t bytes, uint32_t sample_b
 #endif
 }
 
-/* dwChannelMask for the WAV order libfaad outputs (FL FR FC LFE BL BR SL SR). */
-static uint32_t wav_channel_mask(uint16_t num_channels)
-{
-    switch (num_channels) {
-    case 3: return 0x007;  /* FL FR FC */
-    case 4: return 0x107;  /* FL FR FC BC */
-    case 5: return 0x037;  /* FL FR FC BL BR */
-    case 6: return 0x03F;  /* FL FR FC LFE BL BR */
-    case 8: return 0x63F;  /* FL FR FC LFE BL BR SL SR */
-    default: return 0;
-    }
-}
-
 /* Plain PCM/float up to two channels; WAVE_FORMAT_EXTENSIBLE with a
  * channel mask above that, so players place the surround channels. */
-static bool write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint64_t total_pcm_bytes, uint16_t bits_per_sample, bool is_float)
+static bool write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint64_t total_pcm_bytes, uint16_t bits_per_sample, bool is_float, uint32_t channel_mask)
 {
     /* stdout cannot be patched afterwards: declare an unknown length (all ones)
      * the way streaming writers do, so readers consume to EOF */
@@ -287,7 +275,7 @@ static bool write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
     if (extensible) {
         uint16_t cb_size = htole16(22);
         uint16_t valid_bits = htole16(bits_per_sample);
-        uint32_t mask = htole32(wav_channel_mask(num_channels));
+        uint32_t mask = htole32(channel_mask);
         /* KSDATAFORMAT_SUBTYPE_PCM / _IEEE_FLOAT: {0000000X-0000-0010-8000-00AA00389B71} */
         uint8_t guid[16] = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
                              0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71 };
@@ -418,8 +406,9 @@ static bool pcm_writer_write_frame(PCMWriter *w, faad_decoder *dec, faad_stream_
     }
 
     if (w->header_pending && w->fout) {
-        if (!write_wav_header(w->fout, *sample_rate, (uint16_t)*num_channels, 0, w->bit_depth, w->is_float)) return false;
+        if (!write_wav_header(w->fout, *sample_rate, (uint16_t)*num_channels, 0, w->bit_depth, w->is_float, sinfo->channel_mask)) return false;
         w->header_channels = (uint16_t)*num_channels;
+        w->header_channel_mask = sinfo->channel_mask;
         w->header_sample_rate = *sample_rate;
         w->header_pending = false;
         if (w->trim_file) w->data_offset = cli_ftell(w->fout);
@@ -555,7 +544,7 @@ static bool pcm_writer_finish(PCMWriter *w, uint32_t sample_rate, uint32_t num_c
                     fputc(0, w->fout) == EOF) return false;
             }
             if (!write_wav_header(w->fout, sample_rate, (uint16_t)num_channels,
-                                  w->total_pcm_bytes, w->bit_depth, w->is_float)) return false;
+                                  w->total_pcm_bytes, w->bit_depth, w->is_float, w->header_channel_mask)) return false;
         }
         int result = fclose(w->fout);
         w->fout = NULL;
