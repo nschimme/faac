@@ -156,3 +156,9 @@ Production sketch (not implemented): table fix 51c589e + remove the k2/kx cap + 
 | 32 | lifted 9 (5.25 kHz) | +1.61 [-0.17,+3.66] | +1.39 [-0.36,+3.48] | +1.52 [+0.05,+3.18] |
 Reading: the winners cluster at 6.2-6.4 kHz (48 kHz idx 9, 44.1 kHz idx 9); 32 kHz already sits at 6.25 kHz and lifting the cap there costs bits, so the production
 change (nschimme/faac#78) applies only to 44.1-48 kHz. 44.1 kHz is decoder-dependent (FDK decoder CI includes 0). Resampled copies of the same 49 clips; no VBR/CBR/mono.
+
+## Final #78 variant vs master f640c62 (lifted stop-frequency cap at 44.1-48 kHz, start index unchanged; merged tree bf3119d)
+`gate_mst.py`, rows `rows_mst48_mst_prm.json`, `rows_mst441_mst_prm.json` (arms `mst` = master build, `prm` = merged PR tree). 49 clips x 4 rungs, FAAD2 / FFmpeg.
+- 48 kHz: cells below -0.10: 0/196 (worst -0.053); mean dMOS +0.0056 / +0.0069; BD-rate -0.55 % [-1.24, +0.23] / -0.65 % [-1.34, +0.10].
+- 44.1 kHz: cells below -0.10: 0/196 (worst -0.084, Severance at three rungs); mean dMOS +0.0005 / +0.0011; BD-rate +0.15 % [-0.72, +1.13] / +0.09 % [-0.79, +1.10].
+- The earlier crossover variant (start 9) tripped the CI per-clip gate (glk -0.19, velvet -0.15, 9-Have-big-expensive-car -0.13); mean BD-rate had hidden it.
