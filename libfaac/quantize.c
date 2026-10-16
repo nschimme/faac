@@ -16,7 +16,6 @@
 #include <limits.h>
 #include <assert.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "quantize.h"
@@ -309,6 +308,9 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 #ifndef SFV_RANGE
 #define SFV_RANGE 2
 #endif
+#ifndef SFV_EPS
+#define SFV_EPS 1e-6
+#endif
 #ifndef SFV_OFF
 #ifndef SFV_LAMBDA
 #define SFV_LAMBDA 0.08f
@@ -406,12 +408,20 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int sel[MAX_SCFAC_BANDS];
     {
         enum { NC = 2 * SFV_RANGE + 1 };
-        float cost[NC], ncost[NC];
-        float lam = SFV_LAMBDA;
+        /* Doubles throughout: a fused multiply-add on one target and not on
+         * another moves a float cost by one part in 1e7, enough to flip a
+         * near tie and make the bitstream differ between platforms. */
+        double cost[NC], ncost[NC];
+        double lam = SFV_LAMBDA;
         int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
-        float dp[MAX_SCFAC_BANDS][NC];
-        int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc;
+        double dp[MAX_SCFAC_BANDS][NC];
+        int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi, scan[NC];
 
+        /* candidates in order of distance from the formula's value */
+        for (pi = 0, c = 0; c < NC; c++)
+            if (c == 0) scan[pi++] = SFV_RANGE;
+            else if (c & 1) scan[pi++] = SFV_RANGE - (c + 1) / 2 >= 0 ? SFV_RANGE - (c + 1) / 2 : 0;
+            else scan[pi++] = SFV_RANGE + c / 2;
         for (sb = 0; sb < n; sb++)
         {
             int band = base + sb;
@@ -434,13 +444,13 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
             int lo = ci->sfb_offset[sb];
             int width = ci->sfb_offset[sb + 1] - lo;
-            float allowed = target[sb] * target[sb] * be[sb].sum / (float)(gsize * width);
+            double allowed = (double)target[sb] * target[sb] * be[sb].sum / (double)(gsize * width);
             float peak = sqrtf(be[sb].peak_energy);
             int tmp[2 * FRAME_LEN / 8 + 1024];
             for (c = 0; c < NC; c++)
             {
                 int sc = sfac + (c - SFV_RANGE), win, k;
-                float d = 0.0f;
+                double d = 0.0;
                 if (SF_OFFSET - sc < SF_MIN)
                 {
                     dp[nb][c] = INFINITY;
@@ -454,12 +464,12 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 for (win = 0; win < gsize; win++)
                     for (k = 0; k < width; k++)
                     {
-                        float a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
+                        double a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
                         int q = abs(tmp[win * width + k]);
-                        float e = a - powf((float)q, 4.0f / 3.0f) / gain;
+                        double e = a - pow((double)q, 4.0 / 3.0) / (double)gain;
                         d += e * e;
                     }
-                cost[c] = d / FFMAX_F(allowed, 1e-12f) + lam * (float)band_spectral_bits(tmp, gsize * width);
+                cost[c] = d / FFMAX_F(allowed, 1e-12) + lam * (double)band_spectral_bits(tmp, gsize * width);
                 sfc[nb][c] = sc;
                 absf[nb][c] = sf_bias + (SF_OFFSET - sc);
                 dp[nb][c] = cost[c];
@@ -471,25 +481,30 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         {
             for (c = 0; c < NC; c++)
             {
-                float best = INFINITY;
+                double best = INFINITY;
                 int arg = 0;
                 if (!isfinite(dp[b][c])) { bp[b][c] = 0; ncost[c] = INFINITY; continue; }
                 if (b == 0)
                 {
                     best = (*p_last_abs == SF_CHAIN_UNSET) ? 0.0f
                          : (abs(absf[b][c] - *p_last_abs) > SF_DELTA ? INFINITY
-                            : lam * (float)sf_delta_bits(absf[b][c] - *p_last_abs));
+                            : lam * (double)sf_delta_bits(absf[b][c] - *p_last_abs));
                 }
                 else
                 {
-                    for (pc = 0; pc < NC; pc++)
+                    /* Costs within SFV_EPS of each other are ties and go to the
+                     * candidate nearest the formula's value: the float spectrum
+                     * differs in its last bits between platforms, and a tie
+                     * broken by that noise would change the bitstream. */
+                    for (pi = 0; pi < NC; pi++)
                     {
+                        pc = scan[pi];
                         int dd = absf[b][c] - absf[b - 1][pc];
-                        float v;
+                        double v;
                         if (!isfinite(dp[b - 1][pc]) || abs(dd) > SF_DELTA)
                             continue;
-                        v = dp[b - 1][pc] + lam * (float)sf_delta_bits(dd);
-                        if (v < best) { best = v; arg = pc; }
+                        v = dp[b - 1][pc] + lam * (double)sf_delta_bits(dd);
+                        if (!isfinite(best) || v < best - SFV_EPS * (1.0 + fabs(best))) { best = v; arg = pc; }
                     }
                 }
                 bp[b][c] = arg;
@@ -500,10 +515,13 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         }
         if (nb)
         {
-            float best = INFINITY;
+            double best = INFINITY;
             int arg = SFV_RANGE;
-            for (c = 0; c < NC; c++)
-                if (dp[nb - 1][c] < best) { best = dp[nb - 1][c]; arg = c; }
+            for (pi = 0; pi < NC; pi++)
+            {
+                c = scan[pi];
+                if (!isfinite(best) || dp[nb - 1][c] < best - SFV_EPS * (1.0 + fabs(best))) { best = dp[nb - 1][c]; arg = c; }
+            }
             if (isfinite(best))
                 for (b = nb - 1; b >= 0; b--)
                 {
