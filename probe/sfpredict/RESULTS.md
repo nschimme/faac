@@ -29,7 +29,7 @@ Constant shifts -1/0/+1 are +0.13 / 0 / +0.64%. Every predictor loses to doing n
 
 ## Why
 - Frame bits (`SFSTAT=1`, -b 128, 3 clips): scalefactor bits base 120.8k/101.0k/117.8k, search ±1 110.2k/95.1k/105.9k (-8%), regression tree 125.3k/106.0k/121.7k (+4%). Independent per-band choices add scalefactor-delta bits; the search's Viterbi removes them.
-- Offline accuracy is misleading: 74% agreement with the search label (57% for the constant), and a Pareto metric (distortion/allowed at equal bits, now including delta bits in `tools/pareto2.py` equivalent) credits trees with ~24 of the search's 28 points. That metric does not reproduce the encoder ranking and must not be used for selection.
+- Offline accuracy is misleading: 74% agreement with the search label (57% for the constant), and a Pareto metric (distortion/allowed at equal bits, with delta bits, `tools/pareto2.py`) credits trees with ~24 of the search's 28 points. That metric does not reproduce the encoder ranking and must not be used for selection.
 - The local costs themselves are poorly predictable: gradient-boosted regression of the bit change to ±1 reaches R^2 0.44 (pre-quantization features) / 0.50-0.54 (with q0, nz0, bits0); of log2 distortion change R^2 0.01 / 0.30. The search gains from measuring actual quantization error, which cheap features do not see.
 
 ## Cost of the search (callgrind, 6 s clip, -b 160)
