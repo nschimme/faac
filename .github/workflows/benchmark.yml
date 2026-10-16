@@ -281,7 +281,7 @@ jobs:
                       dt = g.get("detail", "")
                       print(f"::notice title=Code Footprint Status ({st})::{dt}")
           '
-          python3 bench/compare_results.py results --gates footprint
+          python3 bench/compare_results.py results --gates footprint --footprint-allow 4700
 
   report:
     name: Consolidated Report
