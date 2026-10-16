@@ -384,6 +384,11 @@ static inline uint32_t huff_decode(BitReader *bs, int book)
 
 #define DECODE_HUFF_SF(bs) ((int)huff_decode((bs), 12))
 
+int decode_coupling_gain(BitReader *bs)
+{
+    return DECODE_HUFF_SF(bs) - 60;
+}
+
 static inline void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 {
     /* Quad books (1..4) are bounded to {-1,0,1}; there is no escape path to
