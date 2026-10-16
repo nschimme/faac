@@ -146,6 +146,17 @@ static void check_video_roundtrip(memfile *f, const int32_t *cts, unsigned n) {
     faam_demuxer_close(&d);
 }
 
+/* An absent stss declares every video sample to be a sync sample. */
+static void test_absent_stss(void) {
+    memfile f = {0};
+    mux_video(&f, NULL, 1);
+    const uint8_t *stss = find_box(&f, "stss", 0);
+    CHECK(stss);
+    memcpy(f.buf + (stss - f.buf), "free", 4);
+    check_video_roundtrip(&f, NULL, 1);
+    free(f.buf);
+}
+
 static void test_ctts(void) {
     memfile f = {0};
 
@@ -685,6 +696,7 @@ int main(int argc, char **argv) {
     (void)argc; (void)argv;
 #endif
 #ifdef FAAM_MUXER_VIDEO
+    test_absent_stss();
     test_ctts();
     test_annexb();
 #endif
