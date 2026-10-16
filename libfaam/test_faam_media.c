@@ -69,6 +69,13 @@ static uint32_t be32(const uint8_t *b) {
     return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3];
 }
 
+static void test_write_be32(uint8_t *b, uint32_t value) {
+    b[0] = (uint8_t)(value >> 24);
+    b[1] = (uint8_t)(value >> 16);
+    b[2] = (uint8_t)(value >> 8);
+    b[3] = (uint8_t)value;
+}
+
 #ifdef FAAM_MUXER_VIDEO
 /* First occurrence of a four-character code at or after `from`; the tests
  * only look for box names that cannot occur in the synthetic payloads. */
@@ -154,6 +161,39 @@ static void test_absent_stss(void) {
     CHECK(stss);
     memcpy(f.buf + (stss - f.buf), "free", 4);
     check_video_roundtrip(&f, NULL, 1);
+    free(f.buf);
+}
+
+/* An explicitly empty stss means that none of the video samples are sync samples. */
+static void test_empty_stss(void) {
+    memfile f = {0};
+    mux_video(&f, NULL, 1);
+    const uint8_t *stss = find_box(&f, "stss", 0);
+    CHECK(stss);
+    uint8_t *mutable_stss = f.buf + (stss - f.buf) - 4;
+    uint32_t size = be32(mutable_stss);
+    CHECK(size == 20);
+    /* Remove the sole sync sample, keeping the containing MP4 well-formed. */
+    const char *parents[] = { "stbl", "minf", "mdia", "trak", "moov" };
+    for (size_t i = 0; i < sizeof(parents) / sizeof(parents[0]); i++) {
+        const uint8_t *parent = find_box(&f, parents[i], 0);
+        CHECK(parent);
+        uint8_t *mutable_parent = f.buf + (parent - f.buf) - 4;
+        test_write_be32(mutable_parent, be32(mutable_parent) - 4);
+    }
+    test_write_be32(mutable_stss, 16);
+    test_write_be32(mutable_stss + 12, 0);
+    size_t tail = (size_t)(mutable_stss - f.buf) + size;
+    size_t remove = size - 16;
+    memmove(mutable_stss + 16, f.buf + tail, f.len - tail);
+    f.len -= remove;
+    faam_io io = mem_io(&f);
+    faam_demuxer *d;
+    CHECK(faam_demuxer_open(NULL, &io, &d) == FAAM_OK);
+    faam_frame_loc loc = { .struct_size = sizeof(loc) };
+    CHECK(faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK);
+    CHECK(!loc.is_keyframe);
+    faam_demuxer_close(&d);
     free(f.buf);
 }
 
@@ -697,6 +737,7 @@ int main(int argc, char **argv) {
 #endif
 #ifdef FAAM_MUXER_VIDEO
     test_absent_stss();
+    test_empty_stss();
     test_ctts();
     test_annexb();
 #endif
