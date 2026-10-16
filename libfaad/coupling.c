@@ -31,6 +31,14 @@ faad_status decode_cce(BitReader *bs, struct faad_decoder *dec)
     }
     unsigned domain = bits_get(bs, 1);
     cc->point = independent ? 2 : (uint8_t)domain;
+    if (independent && !cc->overlap) {
+        cc->overlap = AllocMemory(sizeof(float[FRAME_LEN_LONG]));
+        if (!cc->overlap) return FAAD_ERR_INSUFFICIENT_MEM;
+        memset(cc->overlap, 0, sizeof(float[FRAME_LEN_LONG]));
+        dec->allocated_bytes += sizeof(float[FRAME_LEN_LONG]);
+        if (sizeof(float[FRAME_LEN_LONG]) > dec->largest_allocation)
+            dec->largest_allocation = sizeof(float[FRAME_LEN_LONG]);
+    }
     bool sign = bits_get(bs, 1);
     float step = (float)(1u << bits_get(bs, 2)) / 8.0f;
     memset(&cc->ics, 0, sizeof(cc->ics));
@@ -79,24 +87,28 @@ static void add_spectrum(const CouplingChannel *cc, unsigned list, float *dst)
     }
 }
 
-static void couple_channel(struct faad_decoder *dec, unsigned ch, unsigned point, float *dst)
+static void couple_channel(const CouplingChannel *cc, unsigned ch, float *dst, const float *pcm)
 {
-    for (CouplingChannel *cc = dec->coupling; cc; cc = cc->next) {
-        if (!cc->present || cc->point != point) continue;
-        for (unsigned t = 0; t < cc->targets; t++) {
-            unsigned base = cc->target[t].ch, select = cc->target[t].select;
-            unsigned list = cc->target[t].gain;
-            bool left = ch == base && select != 1;
-            bool right = cc->target[t].pair && ch == base + 1 && select != 2;
-            if (!left && !right) continue;
-            if (right && select == 3) list++;
-            if (point < 2) add_spectrum(cc, list, dst);
-            else {
-                float gain = cc->gain[list][0];
-                for (unsigned i = 0; i < cc->ics.frame_len_long; i++) dst[i] += gain * cc->pcm[i];
-            }
+    for (unsigned t = 0; t < cc->targets; t++) {
+        unsigned base = cc->target[t].ch, select = cc->target[t].select;
+        unsigned list = cc->target[t].gain;
+        bool left = ch == base && select != 1;
+        bool right = cc->target[t].pair && ch == base + 1 && select != 2;
+        if (!left && !right) continue;
+        if (right && select == 3) list++;
+        if (cc->point < 2) add_spectrum(cc, list, dst);
+        else {
+            float gain = cc->gain[list][0];
+            for (unsigned i = 0; i < cc->ics.frame_len_long; i++) dst[i] += gain * pcm[i];
         }
     }
+}
+
+static void couple_spectrum(struct faad_decoder *dec, unsigned ch, unsigned point)
+{
+    for (CouplingChannel *cc = dec->coupling; cc; cc = cc->next)
+        if (cc->present && cc->point == point)
+            couple_channel(cc, ch, dec->spec[ch], NULL);
 }
 
 faad_status coupling_spectrum(struct faad_decoder *dec, CouplingTarget *targets, unsigned count)
@@ -150,9 +162,9 @@ faad_status coupling_spectrum(struct faad_decoder *dec, CouplingTarget *targets,
                     }
                 }
             }
-            couple_channel(dec, ch + c, 0, dec->spec[ch + c]);
+            couple_spectrum(dec, ch + c, 0);
             apply_tns(ics, dec->spec[ch + c]);
-            couple_channel(dec, ch + c, 1, dec->spec[ch + c]);
+            couple_spectrum(dec, ch + c, 1);
         }
     }
 done:
@@ -167,14 +179,17 @@ void coupling_pcm(struct faad_decoder *dec)
 {
     for (CouplingChannel *cc = dec->coupling; cc; cc = cc->next) {
         if (!cc->present || cc->point != 2) {
-            memset(cc->overlap, 0, sizeof(cc->overlap));
+            if (cc->overlap) memset(cc->overlap, 0, sizeof(float[FRAME_LEN_LONG]));
             cc->prev_shape = 0;
             continue;
         }
+        /* Core synthesis and concealment history have consumed spec already;
+         * SBR has not started, so one channel holds temporary coupling PCM. */
+        float *pcm = dec->spec[0];
         imdct_window(dec, cc->ics.window_sequence, cc->ics.window_shape,
-                     cc->prev_shape, cc->overlap, cc->spec, cc->pcm);
+                     cc->prev_shape, cc->overlap, cc->spec, pcm);
         cc->prev_shape = cc->ics.window_shape;
+        for (unsigned ch = 0; ch < dec->num_channels; ch++)
+            couple_channel(cc, ch, dec->pcm + ch * FRAME_LEN_LONG, pcm);
     }
-    for (unsigned ch = 0; ch < dec->num_channels; ch++)
-        couple_channel(dec, ch, 2, dec->pcm + ch * FRAME_LEN_LONG);
 }

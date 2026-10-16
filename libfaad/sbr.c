@@ -411,18 +411,15 @@ static bool sbr_build_tables(SBRElement *el, uint32_t sr)
     return sbr_build_limiter(el);
 }
 
-static void sbr_reset_channel(SBRChannel *ch)
+static void sbr_reset_synthesis(SBRChannel *ch)
 {
     memset(ch->x_low_tail, 0, sizeof(ch->x_low_tail));
     memset(ch->y_tail, 0, sizeof(ch->y_tail));
     memset(ch->bw_array, 0, sizeof(ch->bw_array));
     memset(ch->invf_mode_prev, 0, sizeof(ch->invf_mode_prev));
-    memset(ch->E_prev, 0, sizeof(ch->E_prev));
-    memset(ch->Q_prev, 0, sizeof(ch->Q_prev));
     memset(ch->s_index_prev, 0, sizeof(ch->s_index_prev));
     memset(ch->g_hist, 0, sizeof(ch->g_hist));
     memset(ch->q_hist, 0, sizeof(ch->q_hist));
-    ch->freq_res_prev = 1;
     ch->l_A_prev = -1;
     ch->L_E_prev = 0;
     ch->t_E_end_prev = 0;
@@ -636,6 +633,7 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
     if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
     if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
     SBRElement *el = &dec->sbr_el[ch0];
+    bool reset_synthesis = false;
     if (crc) bits_skip(bs, 10); /* bs_sbr_crc_bits, not verified */
     uint32_t sbr_sr = dec->asc.sbr_sample_rate > 0 ? dec->asc.sbr_sample_rate : 2 * dec->core_sample_rate;
 
@@ -677,7 +675,13 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
                 el->header_present = false;
                 return FAAD_ERR_DECODE_FAILED;
             }
-            for (int c = 0; c < nch; c++) sbr_reset_channel(&dec->sbr[ch0 + c]);
+            for (int c = 0; c < nch; c++) {
+                SBRChannel *ch = &dec->sbr[ch0 + c];
+                memset(ch->E_prev, 0, sizeof(ch->E_prev));
+                memset(ch->Q_prev, 0, sizeof(ch->Q_prev));
+                ch->freq_res_prev = 1;
+            }
+            reset_synthesis = true;
         }
 #ifdef FAAD_STATS
         {
@@ -697,9 +701,6 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
 
     SBRChannel *chs[2] = { &dec->sbr[ch0], &dec->sbr[ch0 + (nch > 1 ? 1 : 0)] };
     el->nch = (uint8_t)nch;
-    /* a frame that fails part-way has half-written grids, so it must not reach HF */
-    for (int c = 0; c < nch; c++) chs[c]->have_frame = false;
-
     /* sbr_single_channel_element / sbr_channel_pair_element (§4.6.18.3.4) */
     bool data_extra = bits_get(bs, 1);
     if (data_extra) bits_skip(bs, 4 * (uint32_t)nch); /* bs_reserved, ahead of bs_coupling */
@@ -783,20 +784,25 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
     }
 
     if (bs->overread) return FAAD_ERR_DECODE_FAILED;
-    for (int c = 0; c < nch; c++) chs[c]->have_frame = true;
+    /* Synthesis history is not read by the parser. Commit its reset only
+     * after a valid fill, keeping it out of the rollback snapshot. */
+    for (int c = 0; c < nch; c++) {
+        if (reset_synthesis) sbr_reset_synthesis(chs[c]);
+        chs[c]->have_frame = true;
+    }
     dec->sbr_present = true;
     return FAAD_OK;
 }
 
-/* Only parsing/reset state needs a transaction; QMF delay lines are not
- * touched until synthesis. Failed fills must not replace valid history. */
+/* Only parsing state needs a transaction; synthesis history is unchanged
+ * until the fill succeeds. Failed fills must not replace valid history. */
 faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
 {
     uint32_t nch = syntax_id == ID_CPE ? 2 : 1;
     if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
     if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
     SBRElement saved_el = dec->sbr_el[ch0];
-    uint8_t saved_ch[2][offsetof(SBRChannel, qmf_x)];
+    uint8_t saved_ch[2][offsetof(SBRChannel, bw_array)];
     for (uint32_t c = 0; c < nch; c++) memcpy(saved_ch[c], &dec->sbr[ch0 + c], sizeof(saved_ch[c]));
 #ifndef FAAD_DISABLE_PS
     uint8_t saved_ps[offsetof(PSState, in_buf)] = {0};
