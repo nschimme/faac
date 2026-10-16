@@ -178,7 +178,8 @@ endif
 
 if get_option('encoder') and (default_lib == 'static' or default_lib == 'both') and not meson.is_cross_build()
     test('static_archives_test', find_program('python3'),
-        args: [files('../tests/static_archives_test.py'), libfaac_static.full_path(), libfaad_static.full_path()])
+        args: [files('../tests/static_archives_test.py'), libfaac_static.full_path(), libfaad_static.full_path()],
+        depends: [libfaac_static, libfaad_static])
 endif
 
 if get_option('decoder-sbr') and (default_lib == 'static' or default_lib == 'both')

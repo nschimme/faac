@@ -71,8 +71,12 @@ int main(int argc, char **argv)
     int failed = 0;
     if (argc < 2) return 2;
     for (size_t v = 0; v < sizeof vectors / sizeof vectors[0]; v++) {
-        if (v == 2 && !library.sbr_supported) {
-            puts("HE vector: skipped (SBR disabled)");
+        if (v == 1 && library.max_channels < 2) {
+            puts("LC stereo vector: skipped (channel ceiling)");
+            continue;
+        }
+        if (v >= 2 && !library.ps_supported) {
+            puts("HE stereo reference: skipped (PS disabled)");
             continue;
         }
         size_t n, rn, samples;
