@@ -304,10 +304,29 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
+/* The scalefactor a coded band wants. Long blocks pull it most of the way
+ * towards the mean of its coded neighbours: the masking target tracks local
+ * band energy too steeply, which quantizes peaks too coarsely and the bands
+ * beside them too finely. */
+static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth)
+{
+    int sfac = sf_bias - want[sb];
+    if (smooth)
+    {
+        int cnt = 0, sum = 0;
+        if (sb > 0 && want[sb - 1] != INT_MIN) { sum += want[sb - 1]; cnt++; }
+        if (sb + 1 < n && want[sb + 1] != INT_MIN) { sum += want[sb + 1]; cnt++; }
+        if (cnt)
+            sfac += lrintf(SF_SMOOTH * ((float)want[sb] - (float)sum / (float)cnt));
+        /* smoothing must not turn a coded band into a zero band */
+        if (SF_OFFSET - sfac < SF_MIN)
+            sfac = SF_OFFSET - SF_MIN;
+    }
+    return sfac;
+}
+
 #define FFMAX_F(a, b) ((a) > (b) ? (a) : (b))
-#ifndef SFV_RANGE
 #define SFV_RANGE 2
-#endif
 #ifndef SFV_EPS
 #define SFV_EPS 1e-6
 #endif
@@ -415,13 +434,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         double lam = SFV_LAMBDA;
         int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
         double dp[MAX_SCFAC_BANDS][NC];
-        int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi, scan[NC];
+        int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi;
+        /* candidates by distance from the formula's value */
+        static const signed char scan[NC] = { 2, 1, 3, 0, 4 };
 
-        /* candidates in order of distance from the formula's value */
-        for (pi = 0, c = 0; c < NC; c++)
-            if (c == 0) scan[pi++] = SFV_RANGE;
-            else if (c & 1) scan[pi++] = SFV_RANGE - (c + 1) / 2 >= 0 ? SFV_RANGE - (c + 1) / 2 : 0;
-            else scan[pi++] = SFV_RANGE + c / 2;
         for (sb = 0; sb < n; sb++)
         {
             int band = base + sb;
@@ -429,17 +445,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             if (want[sb] == INT_MIN)
                 continue;
             int sf_bias = ci->sf[band];
-            int sfac = sf_bias - want[sb];
-            if (smooth)
-            {
-                int cnt = 0, sum = 0;
-                if (sb > 0 && want[sb - 1] != INT_MIN) { sum += want[sb - 1]; cnt++; }
-                if (sb + 1 < n && want[sb + 1] != INT_MIN) { sum += want[sb + 1]; cnt++; }
-                if (cnt)
-                    sfac += lrintf(SF_SMOOTH * ((float)want[sb] - (float)sum / (float)cnt));
-                if (SF_OFFSET - sfac < SF_MIN)
-                    sfac = SF_OFFSET - SF_MIN;
-            }
+            int sfac = smoothed_sfac(want, sb, n, sf_bias, smooth);
             sel[sb] = sfac;
 
             int lo = ci->sfb_offset[sb];
@@ -544,18 +550,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
 
         int sf_bias = ci->sf[band];
-        int sfac = sf_bias - want[sb];
-        if (smooth)
-        {
-            int cnt = 0, sum = 0;
-            if (sb > 0 && want[sb - 1] != INT_MIN) { sum += want[sb - 1]; cnt++; }
-            if (sb + 1 < n && want[sb + 1] != INT_MIN) { sum += want[sb + 1]; cnt++; }
-            if (cnt)
-                sfac += lrintf(SF_SMOOTH * ((float)want[sb] - (float)sum / (float)cnt));
-            /* smoothing must not turn a coded band into a zero band */
-            if (SF_OFFSET - sfac < SF_MIN)
-                sfac = SF_OFFSET - SF_MIN;
-        }
+        int sfac = smoothed_sfac(want, sb, n, sf_bias, smooth);
 #ifdef SFV_LAMBDA
         if (sel[sb] != INT_MIN)
             sfac = sel[sb];

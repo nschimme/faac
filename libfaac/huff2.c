@@ -144,18 +144,6 @@ int band_spectral_bits(const int *qs, int len)
         return 1 << 20;
     lo = peak <= LAV_1 ? HCB_1 : peak <= LAV_2 ? HCB_3 : peak <= LAV_4 ? HCB_5
        : peak <= LAV_7 ? HCB_7 : peak <= LAV_12 ? HCB_9 : HCB_ESC;
-    if (lo == HCB_ESC) {
-        int nnz = 0;
-        for (i = 0; i < len; i += 2) {
-            int x0 = abs(qs[i]), x1 = abs(qs[i + 1]);
-            int ie = DIM_ESC * ((x0 > LAV_ESC) ? LAV_ESC : x0) + ((x1 > LAV_ESC) ? LAV_ESC : x1);
-            c[HCB_ESC] += book11[ie].len + ((x0 >= LAV_ESC) ? escape(x0, NULL) : 0)
-                        + ((x1 >= LAV_ESC) ? escape(x1, NULL) : 0);
-        }
-        for (i = 0; i < len; i++)
-            nnz += qs[i] != 0;
-        return c[HCB_ESC] + nnz;
-    }
     size_books(qs, len, lo, c);
     best = c[lo];
     for (i = lo + 1; i <= HCB_ESC; i++)
