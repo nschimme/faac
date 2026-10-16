@@ -20,6 +20,7 @@ Calibration: at 128-192 kbps MOS rises only about 0.0016 per +1 % bitrate, so -5
 | PNS gated by band peak/mean | local | +0.71 % to +2.24 % (worse) | **Dead end** |
 | PNS level change | #83 (Jules), earlier screen | default 4 optimal | **Dead end** |
 | Coarser target above 8 kHz (FFmpeg-inspired) | local | +2.2 % to +14.8 % (worse) | **Dead end** |
+| Mid-band target tilt 2.5-10 kHz (+-1.5..4.5 dB, peak 3.4-7 kHz) | local | +0.31 % to +2.87 % one way, +1.10 % the other | **Dead end** |
 | `--no-pns`, `--no-tns`, `-c 20000` | CLI screen | +5.25 %, -0.05 %, -0.61 % (CI spans 0) | PNS is worth ~5 %; TNS and cutoff neutral |
 
 ## Merged-candidate work
@@ -55,6 +56,14 @@ Finding at 160 kbps on velvet and take_your_finger: Apple uses 0 % PNS and wavef
 ### PNS level / restriction
 Default PNS level 4 is optimal; restricting PNS or changing the level did not help. #83 (Jules, PNS level 6 at >= 192 kbps) is an unmeasured automatic PR; treat as the same dead end unless CI proves otherwise.
 
+### Mid-band target tilt, 3.4-7 kHz hump (motivated by the take_your_finger scalefactor comparison)
+Opt-in scratch change (`scripts/band_cost/tilt_experiment.patch`, env `TILT_DB`): multiplies the masking target by a raised bump, full strength 3.4-7 kHz, ramps 2.5-3.4 and 7-10 kHz, long and short windows, all rungs. Sign check on the decoded scalefactors: negative dB = coarser in the bump. 49 clips, ABR 128/160/192, ffmpeg decode, Zimtohrli, own harness (`score_ladder.py`, `compare_bd.py`), vs the same build with the tilt off:
+- -1.5 dB: BD-rate +0.31 % [+0.00, +0.62], worst cell -0.013 (Robots_old @128)
+- -3 dB: +1.21 % [+0.60, +1.83], worst -0.030
+- -4.5 dB: +2.87 % [+1.92, +3.86], worst -0.052
+- +3 dB (finer in the bump, control): +1.10 % [+0.57, +1.60], worst -0.042 (Girl_In_The_Fire @128)
+Worse in both directions, so master's mid-band allocation sits at a local optimum for a hump-shaped tilt. The take_your_finger scalefactor difference is not a general tilt that Apple exploits; do not retry it. A per-clip adaptive tilt is a different idea and is not covered.
+
 ### Coarser HF target above 8 kHz (inspired by FFmpeg's NMR coder; FFmpeg is LGPL so its source may be read)
 FFmpeg `aaccoder_nmr.h` is a Viterbi scalefactor search with lambda bisected to the bit budget; a comment claims Apple codes 7.5-12.6 kHz ~6 dB and 12.6 kHz+ ~28 dB coarser. In FAAC a quadratic target rise above 8 kHz: +0.04 dB/kHz^2 -> +2.2 %, +0.08 -> +7.2 %, +0.16 -> +14.8 %; opposite sign (-0.04/-0.08) -> -0.2 % (CI spans 0). HF allocation tilt is flat; not the lever.
 
@@ -64,7 +73,7 @@ Tools in `scripts/band_cost/`. Master `-b 160`, 10 s clips, long windows unless 
 - **The difference is which bands are waveform-coded.** Apple codes 99-100 % of 6-16 kHz bands with real codebooks (velvet) and 55-65 % zero bands above 16 kHz with no PNS. FAAC makes 34 % (6-12 kHz) and 41 % (12-16 kHz) of velvet bands PNS, and on take_your_finger 67 % of 12-16 kHz and 96 % of 16-24 kHz. Apple spends 3-4x the spectral bits in 12-16 kHz on take_your_finger (203 vs 58 bits per channel-frame) and 776 vs 530 bits in 6-16 kHz on velvet. Gating PNS by tonality did not recover this (see dead ends), so the open question is when waveform coding of those bands pays, not whether.
 - **Noise shaping tilt differs and is clip dependent.** Mean scalefactor, FAAC minus Apple (1 step = 1.5 dB, lower = finer; coded long bands, ch0/ch1): take_your_finger 0-3 kHz -5.2/-5.1, 3-7 kHz -5.3/-5.6, 7-12 kHz +1.3/+1.5, 12-16 kHz +4.5/+5.5. FAAC is about 8 dB finer than Apple below 7 kHz and about 7 dB coarser at 12-16 kHz (survivor bias: only 31 % of those bands are coded). Velvet does not show it (0-3 kHz +4.1/+3.1, 3-7 kHz -0.5/-3.8, 12-16 kHz about 0), partly M/S confounded. The earlier HF-only coarsening test did not test the opposite tilt over 3-7 kHz.
 - **Block switching differs on velvet.** Short blocks: FAAC 404 of 940 ICS (43 %) vs Apple 240 (26 %); take_your_finger 140 (15 %) vs 162 (17 %). Short windows cost more per frame at this rate, so velvet's gap may partly be window decisions.
-- Caveats: two clips, one rung, master not #81, Apple overshoots the nominal rate so absolute scalefactors are not strictly comparable.
+- Re-checked on the benchmark's own 10 s centred clips (my first pass used the first 10 s): the numbers moved by under 1 % and every statement here holds. Caveats: two clips, one rung, master not #81, Apple overshoots the nominal rate so absolute scalefactors are not strictly comparable.
 
 ## Open leads
 - Remaining worst clips vs Apple: velvet and take_your_finger at 128/160 kbps (~0.08 MOS, 25-30 kbps equivalent gap at equal rate; Apple overshoots nominal ABR on velvet ~10 %).
