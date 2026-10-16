@@ -135,6 +135,7 @@ typedef struct
     float sf_smooth;
     float rich_slope;
     unsigned tune_min_rate; /* bits/s per channel */
+    unsigned nudge_min_rate;
     unsigned rich_min_rate;
     unsigned slope_rate_threshold;
     float slope_reference_rate;
@@ -167,6 +168,9 @@ static const MaskingModel masking_model = {
     .rich_slope = 3.0f,
     .tune_min_rate = 32000, /* fitted profile's lower bound, bits/s per channel */
     .rich_min_rate = 56000, /* steep-slope threshold, bits/s per channel */
+    /* Scalefactor nudge: measured on stereo and mono, LC and HE-AAC, and 5.1 at
+     * a set rate; below this rate a few clips lose more than 0.1 MOS. */
+    .nudge_min_rate = 24000, /* bits/s per channel */
     /* Empirical sample-rate policy, in Hz: above 48 kHz scale the per-line
      * slope relative to 44.1 kHz. These are not the tilt's frequency units. */
     .slope_rate_threshold = 48000,
@@ -306,11 +310,6 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
                    && channels == 2 && !is_he;
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
     cfg->mask_tuned = tuned;
-    /* The scalefactor nudge runs with the tuned masking model, for mono at a
-     * set rate, and for HE-AAC stereo at 16 kbps per channel or more. */
-    cfg->sf_nudge = tuned
-                 || (bitrate_per_ch >= masking_model.tune_min_rate && channels == 1 && !is_he)
-                 || (bitrate_per_ch >= 16000 && channels == 2 && is_he);
     cfg->treble_slope = (bitrate_per_ch >= masking_model.rich_min_rate)
         ? masking_model.rich_slope : 1.0f;
     if (sample_rate > masking_model.slope_rate_threshold)
@@ -320,6 +319,8 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
     if (tuned)
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
+    /* Any set rate (VBR has none) at or above the nudge's measured floor. */
+    cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate;
 }
 
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
@@ -466,32 +467,25 @@ static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int 
                                int last_abs, int run_dp, int *sel)
 {
     /* state 0: one step coarser, state 1: as wanted */
-    int order[MAX_SCFAC_BANDS];
     unsigned char bp[MAX_SCFAC_BANDS];
-    int cost0 = 0, cost1 = 0, nb = 0, b, c;
+    int cost0 = 0, cost1 = 0, prev_a0 = 0, first = 1, sb, c;
 
-    for (int sb = 0; sb < n; sb++)
+    for (sb = 0; sb < n; sb++)
     {
-        int sfac;
+        int n0, n1, a0;
         if (want[sb] == INT_MIN)
             continue;
-        sfac = smoothed_sfac(want, sb, n, ci->sf[base + sb], smooth);
-        sel[sb] = sfac;
-        order[nb++] = sb;
-    }
-    if (!run_dp || (nb < 2 && last_abs == SF_CHAIN_UNSET))
-        return;  /* nothing to chain */
-    int prev_a0 = 0;
-    for (b = 0; b < nb; b++)
-    {
-        int n0, n1, sb = order[b];
+        sel[sb] = smoothed_sfac(want, sb, n, ci->sf[base + sb], smooth);
+        if (!run_dp)
+            continue;
         /* absolute scalefactor of state s is a0 + 1 - s */
-        int a0 = ci->sf[base + sb] + SF_OFFSET - sel[sb];
-        if (!b)
+        a0 = ci->sf[base + sb] + SF_OFFSET - sel[sb];
+        if (first)
         {
+            first = 0;
             n0 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0 + 1 - last_abs);
             n1 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0 - last_abs);
-            bp[0] = 0;
+            bp[sb] = 0;
         }
         else
         {
@@ -503,9 +497,9 @@ static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int 
             if (v0 < v1) { n1 = v0; c = 0; }
             /* to state 0 (diff d0 + p): from p=1 costs l_p, from p=0 costs l_0 */
             v1 = cost1 + l_p; v0 = cost0 + l_0;
-            n0 = v1; bp[b] = 1;
-            if (v0 < v1) { n0 = v0; bp[b] = 0; }
-            bp[b] |= (unsigned char)(c << 1);
+            n0 = v1; bp[sb] = 1;
+            if (v0 < v1) { n0 = v0; bp[sb] = 0; }
+            bp[sb] |= (unsigned char)(c << 1);
         }
         n0 += SF_NUDGE_COST;
         /* a step that would turn the band into a zero band is not offered */
@@ -513,11 +507,15 @@ static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int 
         cost0 = n0; cost1 = n1;
         prev_a0 = a0;
     }
+    if (!run_dp)
+        return;
     c = cost0 < cost1 ? 0 : 1;  /* final state */
-    for (b = nb - 1; b >= 0; b--)
+    for (sb = n - 1; sb >= 0; sb--)
     {
-        sel[order[b]] -= 1 - c;
-        c = c ? (bp[b] >> 1) & 1 : bp[b] & 1;
+        if (want[sb] == INT_MIN)
+            continue;
+        sel[sb] -= 1 - c;
+        c = c ? (bp[sb] >> 1) & 1 : bp[sb] & 1;
     }
 }
 
