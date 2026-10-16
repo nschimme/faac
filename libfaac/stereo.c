@@ -33,13 +33,16 @@
 #define IS_ONLY_BITRATE  40000
 /* From this rate (bps per channel) a short window takes M/S like a long one
  * instead of intensity stereo; below it the bits that full-band intensity
- * stereo saves still buy more quality than the image they cost. */
+ * stereo saves still buy more quality than the image they cost. VBR has no
+ * rate, so it gates on -q (about 120 kbps stereo on average) instead. */
 #define MS_SHORT_BITRATE  80000
+#define MS_SHORT_QUANTQUAL  150
 /* From this rate (bps per channel) a band takes M/S somewhat more readily
  * than the plain mid*side < left*right test: the side channel then costs
  * fewer bits than the L/R image it replaces. Beyond 1.5 times that test the
- * extra M/S bands lose quality. */
+ * extra M/S bands lose quality. VBR gates on -q like MS_SHORT_QUANTQUAL. */
 #define MS_BIAS_BITRATE  64000
+#define MS_BIAS_QUANTQUAL  200
 #define MS_BIAS          1.5f
 /* Starved rates (bps per channel) from which long windows take real M/S
  * instead of intensity stereo; below them the side channel's bits cost more
@@ -59,12 +62,10 @@ static int band_at(const int *sfbOffset, int sfbn, int hz, int n2, int sampleRat
     return sfb;
 }
 
-void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned int bandWidth,
-                     unsigned long bitRatePerCh, int sbr, const int *sfbOffset[2], const int sfbn[2])
+void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
+                     unsigned long bitRatePerCh, unsigned long quantQual, int sbr, const int *sfbOffset[2], const int sfbn[2])
 {
     int starved = bitRatePerCh && bitRatePerCh < IS_ONLY_BITRATE;
-
-    (void)bandWidth;
 
     /* Highest M/S frequency per window type (0 long, 1 short); sampleRate
      * means every band. */
@@ -74,7 +75,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
     } else if (mode == JOINT_MIXED) {
         if (!starved) {
             msHz[0] = sampleRate;
-            if (bitRatePerCh >= MS_SHORT_BITRATE)
+            if (bitRatePerCh ? bitRatePerCh >= MS_SHORT_BITRATE : quantQual >= MS_SHORT_QUANTQUAL)
                 msHz[1] = sampleRate;
         }
         else if (sbr ? bitRatePerCh >= MS_SPLIT_HE_HIGH_BITRATE : bitRatePerCh >= MS_SPLIT_LC_BITRATE)
@@ -87,7 +88,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
      * L/R between. Without M/S, intensity covers every band past the lowest
      * except short windows from MS_SHORT_BITRATE, which take M/S on every band. */
     cfg->mode = mode;
-    cfg->msBias = (mode == JOINT_MIXED && bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f;
+    cfg->msBias = (mode == JOINT_MIXED && (bitRatePerCh ? bitRatePerCh >= MS_BIAS_BITRATE : quantQual >= MS_BIAS_QUANTQUAL)) ? MS_BIAS : 1.0f;
     for (int w = 0; w < 2; w++) {
         int n = sfbn[w], n2 = 2 * (w ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG);
         int ms = band_at(sfbOffset[w], n, msHz[w], n2, sampleRate);
