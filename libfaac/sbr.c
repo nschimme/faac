@@ -139,7 +139,7 @@ static int build_freq_table(SBRInfo *sbr)
 
     if ((float)k2 / (float)kx > 2.2449f) {
         int k1 = 2 * kx;
-        int dk0[SBR_MAX_BANDS], dk1[SBR_MAX_BANDS];
+        int dk0[SBR_MAX_BANDS] = { 0 }, dk1[SBR_MAX_BANDS] = { 0 };
         int nb0 = build_log_band_widths(kx, k1, bands_per_octave, 1.0f, dk0);
         float warp = sbr->bs_alter_scale ? 1.3f : 1.0f;
         int nb1 = build_log_band_widths(k1, k2, bands_per_octave, warp, dk1);
@@ -159,7 +159,7 @@ static int build_freq_table(SBRInfo *sbr)
         for (int i = 0; i < nb0; i++, k++) edges[k + 1] = edges[k] + dk0[i];
         for (int i = 0; i < nb1; i++, k++) edges[k + 1] = edges[k] + dk1[i];
     } else {
-        int dk0[SBR_MAX_BANDS];
+        int dk0[SBR_MAX_BANDS] = { 0 };
         n_master = build_log_band_widths(kx, k2, bands_per_octave, 1.0f, dk0);
         edges[0] = kx;
         for (int i = 0; i < n_master; i++) edges[i + 1] = edges[i] + dk0[i];
