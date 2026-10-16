@@ -35,7 +35,7 @@ typedef struct {
     int frameBudget;   /* bits per frame at the target rate; 0 = VBR */
 
     int balance;       /* signed: banked bits positive, owed bits negative */
-    int sbrBitsAcc;    /* EWMA of the SBR payload, scaled by 1<<RC_SBR_EWMA_SHIFT */
+    int fillBitsAcc;   /* EWMA of non-core fill payload bits (DRC, SBR), scaled by 1<<RC_FILL_EWMA_SHIFT */
 
     /* Bit reservoir, AAC_MAX_BITS_PER_CH per channel. resMean == 0 outside
        CBR switches cap, floor and header declaration off together. */
@@ -44,7 +44,7 @@ typedef struct {
     int resFill;       /* fill after the last frame, [0, resCap] */
     int resMinBits;    /* floor BuildFrame stuffs this frame up to; 0 = none */
     int stuffedBits;   /* what BuildFrame stuffed into the last frame */
-    int sbrBits;       /* SBR payload BuildFrame wrote into the last frame */
+    int fillBits;      /* non-core fill payload bits (DRC, SBR) BuildFrame wrote into the last frame */
     int prevWant;      /* previous frame's core bits if it was stuffed, else 0 */
 } RateControl;
 

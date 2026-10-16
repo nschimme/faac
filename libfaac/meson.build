@@ -54,6 +54,10 @@ common_src = [
     'util.h',
 ]
 
+if get_option('drc')
+    common_src += ['drc.c', 'drc.h']
+endif
+
 libfaac = disabler()
 
 common_args = {
@@ -106,3 +110,14 @@ pkgconfig.generate(
     version: meson.project_version(),
     filebase: 'faac'
 )
+
+if get_option('drc') and get_option('tests')
+    test_drc_exe = executable(
+        'test_drc',
+        'test_drc.c',
+        include_directories: ['..', '../include'],
+        link_with: [libfaac_static],
+        dependencies: [libm],
+    )
+    test('test_drc', test_drc_exe)
+endif

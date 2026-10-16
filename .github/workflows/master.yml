@@ -27,6 +27,13 @@ jobs:
               shell: bash,
             }
           - {
+              name: Linux GCC (DRC & Tests),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Ddrc=true -Dtests=true,
+            }
+          - {
               name: Linux GCC (SBR Decimation),
               os: ubuntu-latest,
               compiler: gcc,
@@ -144,6 +151,9 @@ jobs:
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
+          if [[ "${{ matrix.config.options }}" == *"-Dtests=true"* ]]; then
+            meson test -C build --print-errorlogs
+          fi
 
       - name: Build (MSVC)
         if: matrix.config.compiler == 'cl'

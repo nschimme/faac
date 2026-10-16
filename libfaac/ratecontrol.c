@@ -36,10 +36,10 @@
  * tighter leaves the arm biased toward the side it still remembers. */
 #define RC_BALANCE_FRAMES      4
 
-/* Time constant of the SBR payload average, as a right shift: 1/16 per frame,
+/* Time constant of the non-core fill payload average (DRC, SBR), as a right shift: 1/16 per frame,
    so ~16 frames (0.37 s at 48 kHz). Long enough to average out the payload's
    frame-to-frame swing, short enough to follow a real change in content. */
-#define RC_SBR_EWMA_SHIFT      4
+#define RC_FILL_EWMA_SHIFT     4
 
 /* Opening fill of the reservoir, as a fraction of capacity: full lets a stream
    end that many bits over budget, empty caps the first frame at the mean. */
@@ -55,7 +55,7 @@ void RateControlReset(RateControl *rc, unsigned int numChannels,
     rc->balance = 0;
     /* Negative means "no frame seen yet"; the first frame seeds the average
        rather than dragging it up from zero over the whole time constant. */
-    rc->sbrBitsAcc = -1;
+    rc->fillBitsAcc = -1;
 
     /* The reservoir is the decoder buffer (AAC_MAX_BITS_PER_CH per channel)
        refilled at the mean rate. ABR/VBR leave resMean 0: no cap, no floor,
@@ -73,7 +73,7 @@ void RateControlReset(RateControl *rc, unsigned int numChannels,
     }
     rc->resMinBits = 0;
     rc->stuffedBits = 0;
-    rc->sbrBits = 0;
+    rc->fillBits = 0;
     rc->prevWant = 0;
 }
 
@@ -112,14 +112,14 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
                         float quality, float maxqual)
 {
     int desbits = rc->frameBudget;
-    int sbrBits = rc->sbrBits;
+    int fillBits = rc->fillBits;
     /* The reservoir is charged every bit sent; the controller only the bits
        the coder chose, or a stuffed frame reads as on budget and quality
        never rises to replace the stuffing with signal. */
     int sentBits = payloadBits;
     int totalBits = payloadBits - rc->stuffedBits;
     int reservoir = (rc->resMean > 0);
-    int sbrCharge;
+    int fillCharge;
     float fix;
 
     if (reservoir)
@@ -139,27 +139,27 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
         rc->resFill = RateControlReservoirAfter(rc, sentBits);
     }
 
-    /* SBR payload is not fixed overhead: at 48 kHz it runs 135-255 bits against
-       a 2048-bit budget. Charging the frame's own `sbrBits` makes the
-       controller answer for a quantity it does not control -- a payload spike
-       enters the ledger as core debt, and `lend` squeezes core quality to
-       repay it. Charging the running average lets the spike reach the output
-       rate instead. On LC `sbrBits` is 0. */
+    /* Non-core fill payload (DRC, SBR) is not fixed overhead: e.g. SBR at 48 kHz
+       runs 135-255 bits against a 2048-bit budget. Charging the frame's own `fillBits`
+       makes the controller answer for a quantity it does not control -- a payload spike
+       enters the ledger as core debt, and `lend` squeezes core quality to repay it.
+       Charging the running average lets the spike reach the output rate instead.
+       When neither DRC nor SBR is present, `fillBits` is 0. */
     {
-        int prev = rc->sbrBitsAcc;
-        rc->sbrBitsAcc = (prev < 0)
-            ? (sbrBits << RC_SBR_EWMA_SHIFT)
-            : (prev + sbrBits - (prev >> RC_SBR_EWMA_SHIFT));
+        int prev = rc->fillBitsAcc;
+        rc->fillBitsAcc = (prev < 0)
+            ? (fillBits << RC_FILL_EWMA_SHIFT)
+            : (prev + fillBits - (prev >> RC_FILL_EWMA_SHIFT));
     }
-    sbrCharge = rc->sbrBitsAcc >> RC_SBR_EWMA_SHIFT;
+    fillCharge = rc->fillBitsAcc >> RC_FILL_EWMA_SHIFT;
 
     /* Settle the frame against the account. The balance is signed and both
        directions are kept: forgiving credit but not debt biases the loop by
        however much each clip drew. One CORE setpoint serves the account and
-       `fix` alike -- the frame's budget less what SBR was charged, against
-       what the core actually spent. */
-    int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
-    int coreBits = totalBits - sbrBits;
+       `fix` alike -- the frame's budget less what non-core fill overhead was charged,
+       against what the core actually spent. */
+    int coreTarget = (int)(desbits * RC_BALANCE_AIM) - fillCharge;
+    int coreBits = totalBits - fillBits;
     int lend;
     int bound = RC_BALANCE_FRAMES * desbits;
     int diff = coreTarget - coreBits;
@@ -184,9 +184,9 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
            frame aimed under the cap fits without a retry. */
         if (reservoir)
         {
-            /* resFill is post-frame: the next frame's window, net of SBR. */
-            int coreFloor = rc->resMean + rc->resFill - rc->resCap - sbrCharge;
-            int coreCap = rc->resMean + rc->resFill - sbrCharge;
+            /* resFill is post-frame: the next frame's window, net of fill overhead. */
+            int coreFloor = rc->resMean + rc->resFill - rc->resCap - fillCharge;
+            int coreCap = rc->resMean + rc->resFill - fillCharge;
             if (aim < coreFloor)
             {
                 aim = coreFloor;
