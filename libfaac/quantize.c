@@ -396,6 +396,8 @@ static void sflog_row(const float *f)
 }
 
 static int g_lo = -2, g_hi = 2, g_env;
+static int g_x;
+static double g_xk = 0.0;
 static double g_chain = 1.0, g_wd = 1.0, g_wb = 1.0, g_pen = 0.0;
 static void sfenv(void)
 {
@@ -405,6 +407,8 @@ static void sfenv(void)
     if ((e = getenv("SF_HI"))) g_hi = atoi(e);
     if ((e = getenv("SF_CHAIN"))) g_chain = atof(e);
     if ((e = getenv("SF_WD"))) g_wd = atof(e);
+    if ((e = getenv("SF_X"))) g_x = atoi(e);
+    if ((e = getenv("SF_XK"))) g_xk = atof(e);
     if ((e = getenv("SF_WB"))) g_wb = atof(e);
     if ((e = getenv("SF_PEN"))) g_pen = atof(e);
 }
@@ -570,8 +574,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 f[15] = (float)(log10(a2 + 1e-12) * 10.0);
                 f[16] = (float)*p_last_abs;
             }
-            for (c = 0; c < NC; c++)
+            double d0v = 0.0;
+            for (int cc = 0; cc < NC; cc++)
             {
+                static const int cord[NC] = { 2, 0, 1, 3, 4 };
+                c = cord[cc];
                 int sc = sfac + (c - SFV_RANGE), win, k;
                 double d = a2;
                 if (SF_OFFSET - sc < SF_MIN || (c - SFV_RANGE) < g_lo || (c - SFV_RANGE) > g_hi)
@@ -583,6 +590,15 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                     continue;
                 }
                 float gain = gain_with_overflow_clamp(&sc, peak);
+                if (g_x && c != SFV_RANGE)
+                {
+                    double dd = d0v * pow(2.0, -0.5 * (c - SFV_RANGE));
+                    cost[c] = g_wd * dd / FFMAX_F(allowed, 1e-12) + lam * (g_pen * abs(c - SFV_RANGE));
+                    sfc[nb][c] = sc;
+                    absf[nb][c] = sf_bias + (SF_OFFSET - sc);
+                    dp[nb][c] = cost[c];
+                    continue;
+                }
                 for (win = 0; win < gsize; win++)
                     qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, tmp + win * width, width >> 2, gain);
                 for (win = 0; win < gsize; win++)
@@ -596,6 +612,20 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                             d += e * e - a * a;
                         }
                     }
+                if (g_x == 3)
+                {
+                    double zs = 0.0;
+                    for (win = 0; win < gsize; win++)
+                        for (k = 0; k < width; k++)
+                            if (!tmp[win * width + k])
+                            {
+                                double a = xr0[win * BLOCK_LEN_SHORT + lo + k];
+                                zs += a * a;
+                            }
+                    d0v = zs + g_xk * (double)(gsize * width) / ((double)gain * gain);
+                }
+                else
+                    d0v = d;
                 int bb = band_spectral_bits(tmp, gsize * width);
                 {
                     int qmx = 0, nz = 0, cmx = 0;
