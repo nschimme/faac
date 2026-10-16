@@ -197,6 +197,44 @@ def main():
         def u32(*values):
             return struct.pack(">" + "I" * len(values), *values)
 
+        # Minimal MP4 samples exercise extraction without decoding the payload.
+        def extraction_mp4(asc, units):
+            esds = box("esds", u32(0) + bytes((3, 20 + len(asc))) + b"\x00\x01\x00" +
+                       bytes((4, 15 + len(asc))) + b"\x40\x15" + bytes(11) +
+                       bytes((5, len(asc))) + asc)
+            entry = box("mp4a", bytes(6) + struct.pack(">H", 1) + bytes(8) +
+                        struct.pack(">HHHHI", 2, 16, 0, 0, 44100 << 16) + esds)
+            prefix = box("ftyp", b"M4A " + u32(0) + b"M4A ")
+            stbl = box("stbl", box("stsd", u32(0, 1) + entry) +
+                       box("stsz", u32(0, 0, len(units), *map(len, units))) +
+                       box("stsc", u32(0, 1, 1, len(units), 1)) +
+                       box("stco", u32(0, 1, len(prefix) + 8)) +
+                       box("stts", u32(0, 1, len(units), 1024)))
+            mdia = box("mdia", box("mdhd", u32(0, 0, 0, 44100, len(units) * 1024, 0)) +
+                       box("hdlr", u32(0, 0) + b"soun" + bytes(12)) + box("minf", stbl))
+            return prefix + box("mdat", b"".join(units)) + box("moov", box("trak", mdia))
+
+        for asc, size, diagnostic in ((b"\x12\x14", 1, b"960-sample"),
+                                       (b"\x12\x10", 8185, b"ADTS payload limit"),
+                                       (b"\x12\x10", 8184, None)):
+            data = extraction_mp4(asc, [bytes(size)])
+            path = os.path.join(d, "extract.m4a")
+            with open(path, "wb") as f:
+                f.write(data)
+            for source in (path, "-"):
+                out = os.path.join(d, "extract.aac")
+                result = subprocess.run([faad, "-q", "--overwrite", "-a", out, source],
+                                        input=data if source == "-" else None, capture_output=True)
+                if diagnostic:
+                    assert result.returncode == 1 and diagnostic in result.stderr, result.stderr
+                    assert not os.path.exists(out) or os.path.getsize(out) == 0
+                else:
+                    assert result.returncode == 0, result.stderr
+                    extracted = open(out, "rb").read()
+                    assert len(extracted) == 8191 and extracted[7:] == bytes(size)
+                if os.path.exists(out):
+                    os.unlink(out)
+
         dab_vectors = (("lc_st48", 48000, 960),
                                            ("he2_st48", 48000 if sbr else 24000,
                                             1920 if sbr else 960))
