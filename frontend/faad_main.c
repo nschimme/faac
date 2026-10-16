@@ -1011,15 +1011,13 @@ int main(int argc, char **argv)
     faad_stream_info sinfo = { .struct_size = sizeof(sinfo) };
 
     uint32_t start_frame = 0;
-    if (jump_seconds > 0.0) {
+    if (is_mp4 && jump_seconds > 0.0) {
         faad_stream_info sinfo = { .struct_size = sizeof(faad_stream_info) };
         uint32_t sr = 44100;
         uint32_t fl = 1024;
         if (faad_decoder_get_info(dec, &sinfo) == FAAD_OK) {
             if (sinfo.sample_rate > 0) sr = sinfo.sample_rate;
-            if (sinfo.object_type == FAAD_OBJ_HE_AAC_V1 || sinfo.object_type == FAAD_OBJ_HE_AAC_V2) {
-                fl = 2048;
-            }
+            if (sinfo.frame_samples > 0) fl = sinfo.frame_samples;
         }
         start_frame = (uint32_t)((jump_seconds * (double)sr) / (double)fl);
     }
@@ -1125,9 +1123,12 @@ int main(int argc, char **argv)
                 offset += bytes_consumed;
                 continue;
             }
-            if (info_only) {
-                update_stream_info(dec, &sinfo, flags, &sample_rate, &num_channels, &obj_type);
-            } else {
+            /* Decode skipped ADTS frames to preserve synthesis history. Use
+             * each frame's output duration so rate/SBR changes stay accurate. */
+            update_stream_info(dec, &sinfo, flags, &sample_rate, &num_channels, &obj_type);
+            double frame_duration = (double)bytes_written /
+                ((is_float ? 4 : bit_depth / 8) * num_channels) / sample_rate;
+            if (!info_only && duration_sec + frame_duration > jump_seconds) {
                 if (!pcm_writer_write_frame(&writer, dec, &sinfo, &track, flags, outbuf, bytes_written,
                                             &sample_rate, &num_channels, &obj_type)) {
                     fprintf(stderr, "Error processing frame or allocating memory\n");
