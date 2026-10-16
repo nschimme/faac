@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
@@ -70,6 +71,7 @@ typedef struct {
     bool is_float;
     uint32_t bit_depth;
     uint16_t header_channels;
+    uint32_t header_sample_rate;
     bool header_pending;
     uint64_t total_pcm_bytes;
 
@@ -409,9 +411,16 @@ static bool pcm_writer_write_frame(PCMWriter *w, faad_decoder *dec, faad_stream_
         }
     }
 
+    if (!w->raw_format && !w->header_pending && w->fout &&
+        (*sample_rate != w->header_sample_rate || *num_channels != w->header_channels)) {
+        fprintf(stderr, "WAV output cannot change sample rate or channel count\n");
+        return false;
+    }
+
     if (w->header_pending && w->fout) {
         if (!write_wav_header(w->fout, *sample_rate, (uint16_t)*num_channels, 0, w->bit_depth, w->is_float)) return false;
         w->header_channels = (uint16_t)*num_channels;
+        w->header_sample_rate = *sample_rate;
         w->header_pending = false;
         if (w->trim_file) w->data_offset = cli_ftell(w->fout);
     }
@@ -852,6 +861,8 @@ int main(int argc, char **argv)
     } else {
         inbuf = malloc(INPUT_BUFFER_SIZE);
         if (!inbuf) { ret_status = 1; goto cleanup; }
+        /* Descriptor reads below must not bypass bytes buffered by stdio. */
+        setvbuf(fin, NULL, _IONBF, 0);
         input_fill = fread(inbuf, 1, 32, fin);
         if (ferror(fin)) { ret_status = 1; goto cleanup; }
     }
@@ -1083,16 +1094,25 @@ int main(int argc, char **argv)
         }
     } else {
         uint64_t offset = 0;
+        bool need_input = false;
         while (true) {
-            if (!input_eof && input_fill - input_pos < ADTS_MAX_FRAME) {
+            if (!input_eof && (input_pos == input_fill || need_input)) {
                 memmove(inbuf, inbuf + input_pos, input_fill - input_pos);
                 input_fill -= input_pos;
                 input_pos = 0;
-                size_t n = fread(inbuf + input_fill, 1, INPUT_BUFFER_SIZE - input_fill, fin);
-                if (ferror(fin)) { fprintf(stderr, "Error reading input\n"); ret_status = 1; goto cleanup; }
+                int n;
+                do {
+#ifdef _WIN32
+                    n = _read(_fileno(fin), inbuf + input_fill, INPUT_BUFFER_SIZE - input_fill);
+#else
+                    n = (int)read(fileno(fin), inbuf + input_fill, INPUT_BUFFER_SIZE - input_fill);
+#endif
+                } while (n < 0 && errno == EINTR);
+                if (n < 0) { fprintf(stderr, "Error reading input\n"); ret_status = 1; goto cleanup; }
+                need_input = false;
                 input_fill += n;
                 file_len += n;
-                input_eof = feof(fin);
+                input_eof = n == 0;
             }
             if (input_pos == input_fill) break;
             uint32_t bytes_consumed = 0;
@@ -1101,6 +1121,11 @@ int main(int argc, char **argv)
             uint32_t flags;
             st = faad_decode_frame(dec, inbuf + input_pos, (uint32_t)(input_fill - input_pos),
                                    &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &flags);
+
+            if (st == FAAD_ERR_NEED_MORE_DATA && !input_eof) {
+                need_input = true;
+                continue;
+            }
 
             if (st == FAAD_OK && strict_mode && (flags & (FAAD_FRAME_CONCEALED | FAAD_FRAME_DEGRADED)))
                 st = FAAD_ERR_DECODE_FAILED;
@@ -1160,7 +1185,11 @@ int main(int argc, char **argv)
         printf("  \"file\": ");
         json_str(infile);
         printf(",\n  \"container\": \"%s\",\n", is_mp4 ? "MP4 / M4A" : "ADTS Bitstream");
-        if (is_mp4) printf("  \"major_brand\": \"%s\",\n", brand);
+        if (is_mp4) {
+            printf("  \"major_brand\": ");
+            json_str(brand);
+            printf(",\n");
+        }
         printf("  \"duration_seconds\": %.2f,\n", duration_sec);
         printf("  \"audio\": {\n");
         printf("    \"profile\": \"%s\",\n", object_type_name(obj_type));
