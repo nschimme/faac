@@ -112,8 +112,10 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 // masking target per scalefactor band: 0 marks a band inaudible
 #define SILENCE_RMS            0.4f     // time-domain RMS, in 16-bit PCM units
 #define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
+#define AVG_ENERGY_WEIGHT_TUNED 0.15f   // the same, for tuned streams
 #define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
 #define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
+#define LOUDNESS_EXPONENT_TUNED 0.35f   // the same, for tuned streams
 #define AVG_ENERGY_FLOOR_FRAC  0.0010f  // -30 dB floor, keeps quiet bands from collapsing the target
 #define SF_SMOOTH              0.6f     // long-block pull of each scalefactor towards its neighbours
 #define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
@@ -201,9 +203,55 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
     return group_total;
 }
 
-static float loudness(float energy_ratio)
+static float loudness(float energy_ratio, float exponent)
 {
-    return powf(energy_ratio, LOUDNESS_EXPONENT);
+    return powf(energy_ratio, exponent);
+}
+
+/* Target multiplier, in dB, by frequency in kHz at a 48 kHz rate (position
+ * scales with the rate). Negative codes finer, positive coarser. Found by
+ * coordinate search on the benchmark's LC stereo ladder against Zimtohrli;
+ * the 1.5-3 kHz region gets finer and 11 kHz coarser, which moves noise
+ * towards where Apple's encoder puts it. */
+#define TILT_KNOTS 8
+static const float tilt_khz[TILT_KNOTS] = { 0.5f, 1.5f, 3.0f, 5.0f, 8.0f, 11.0f, 14.0f, 18.0f };
+static const float tilt_db[TILT_KNOTS]  = { 0.0f, -1.5f, -1.5f, 0.0f, 0.0f, 3.0f, 0.0f, -3.0f };
+#define TUNED_SLOPE_MUL 1.5f
+
+static float tilt_gain(float khz)
+{
+    float db = tilt_db[TILT_KNOTS - 1];
+    int k;
+    if (khz <= tilt_khz[0])
+        db = tilt_db[0];
+    else if (khz < tilt_khz[TILT_KNOTS - 1])
+    {
+        for (k = 0; khz > tilt_khz[k + 1]; k++) ;
+        db = tilt_db[k] + (tilt_db[k + 1] - tilt_db[k]) * (khz - tilt_khz[k]) / (tilt_khz[k + 1] - tilt_khz[k]);
+    }
+    return powf(10.0f, db / 20.0f);
+}
+
+void QuantizeSetMaskTune(AACQuantCfg *cfg, int tuned, const int *sfbOffsetLong,
+                         const int *sfbOffsetShort)
+{
+    int i;
+    cfg->avg_weight = tuned ? AVG_ENERGY_WEIGHT_TUNED : AVG_ENERGY_WEIGHT;
+    cfg->loud_exponent = tuned ? LOUDNESS_EXPONENT_TUNED : LOUDNESS_EXPONENT;
+    for (i = 0; i < NSFB_LONG; i++)
+        cfg->tilt_long[i] = 1.0f;
+    for (i = 0; i < NSFB_SHORT; i++)
+        cfg->tilt_short[i] = 1.0f;
+    if (!tuned)
+        return;
+    cfg->treble_slope *= TUNED_SLOPE_MUL;
+    /* band centre as a share of Nyquist, read at 48 kHz (24 kHz wide) */
+    for (i = 0; i < cfg->max_cbl; i++)
+        cfg->tilt_long[i] = tilt_gain(0.5f * (float)(sfbOffsetLong[i] + sfbOffsetLong[i + 1])
+                                      * (24.0f / (float)BLOCK_LEN_LONG));
+    for (i = 0; i < cfg->max_cbs; i++)
+        cfg->tilt_short[i] = tilt_gain(0.5f * (float)(sfbOffsetShort[i] + sfbOffsetShort[i + 1])
+                                       * (24.0f / (float)BLOCK_LEN_SHORT));
 }
 
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
@@ -213,9 +261,13 @@ static float treble_rolloff(int lo, int hi, float slope_per_line)
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
-                                    float treble_slope, const BandEnergy * __restrict be, float group_total,
+                                    const AACQuantCfg * __restrict cfg, const BandEnergy * __restrict be, float group_total,
                                     float * __restrict target_out)
 {
+    const float treble_slope = cfg->treble_slope;
+    const float avg_weight = cfg->avg_weight;
+    const float loud_exp = cfg->loud_exponent;
+    const float *tilt = (ci->block_type == ONLY_SHORT_WINDOW) ? cfg->tilt_short : cfg->tilt_long;
     int gsize = ci->groups.len[gnum];
     int total_len = ci->sfb_offset[ci->sfbn];
     int sfb;
@@ -250,14 +302,14 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         if (avg < ref * AVG_ENERGY_FLOOR_FRAC) avg = ref * AVG_ENERGY_FLOOR_FRAC;
         if (peak < ref_win * PEAK_ENERGY_FLOOR_FRAC) peak = ref_win * PEAK_ENERGY_FLOOR_FRAC;
 
-        target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
-               + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win);
-        target *= treble_rolloff(lo, hi, slope_per_line);
+        target = avg_weight * loudness(avg / ref, loud_exp)
+               + (1.0f - avg_weight) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win, loud_exp);
+        target *= treble_rolloff(lo, hi, slope_per_line) * tilt[sfb];
         /* A band this far under the frame is masked by it; the floors above
          * would otherwise pin its target at the floor. Falls at half the
          * loudness exponent. */
         if (be[sfb].sum < ref * QUIET_BAND_FRAC)
-            target *= sqrtf(loudness(be[sfb].sum / (ref * QUIET_BAND_FRAC)));
+            target *= sqrtf(loudness(be[sfb].sum / (ref * QUIET_BAND_FRAC), loud_exp));
 
         target_out[sfb] = target * quality;
     }
@@ -498,7 +550,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         if (coder->useRef)
             group_total = coder->refTotal[i];
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg, be, group_total, target);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
