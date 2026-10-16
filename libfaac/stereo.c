@@ -33,10 +33,8 @@
 #define IS_ONLY_BITRATE  40000
 /* From this rate (bps per channel) a short window takes M/S like a long one
  * instead of intensity stereo; below it the bits that full-band intensity
- * stereo saves still buy more quality than the image they cost. VBR has no
- * rate, so it gates on -q (about 120 kbps stereo on average) instead. */
+ * stereo saves still buy more quality than the image they cost. */
 #define MS_SHORT_BITRATE  80000
-#define MS_SHORT_QUANTQUAL  150
 /* Starved rates (bps per channel) from which long windows take real M/S
  * instead of intensity stereo; below them the side channel's bits cost more
  * quality than the image gains. Between the HE tiers only the low band takes
@@ -56,7 +54,7 @@ static int band_at(const int *sfbOffset, int sfbn, int hz, int n2, int sampleRat
 }
 
 void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
-                     unsigned long bitRatePerCh, unsigned long quantQual, int sbr, const int *sfbOffset[2], const int sfbn[2])
+                     unsigned long bitRatePerCh, int sbr, const int *sfbOffset[2], const int sfbn[2])
 {
     int starved = bitRatePerCh && bitRatePerCh < IS_ONLY_BITRATE;
 
@@ -68,7 +66,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
     } else if (mode == JOINT_MIXED) {
         if (!starved) {
             msHz[0] = sampleRate;
-            if (bitRatePerCh ? bitRatePerCh >= MS_SHORT_BITRATE : quantQual >= MS_SHORT_QUANTQUAL)
+            if (bitRatePerCh >= MS_SHORT_BITRATE)
                 msHz[1] = sampleRate;
         }
         else if (sbr ? bitRatePerCh >= MS_SPLIT_HE_HIGH_BITRATE : bitRatePerCh >= MS_SPLIT_LC_BITRATE)

@@ -29,7 +29,7 @@ typedef struct {
 } StereoConfig;
 
 void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
-                     unsigned long bitRatePerCh, unsigned long quantQual, int sbr, const int *sfbOffset[2], const int sfbn[2]);
+                     unsigned long bitRatePerCh, int sbr, const int *sfbOffset[2], const int sfbn[2]);
 
 void AACstereo(CoderInfo *coder,
                AACElement *elements,
