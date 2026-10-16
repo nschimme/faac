@@ -384,12 +384,30 @@ typedef struct {
     float (*y)[SBR_BUF_SLOTS][2]; /* shared QMF workspace: generated HF replaces unused low bands */
 } SBRScratch;
 
+/* CCE state is allocated by tag only when a stream uses coupling. Gains
+ * follow the CCE's window groups, at most 8 * 15 short-window bands. */
+typedef struct CouplingChannel {
+    struct CouplingChannel *next;
+    uint8_t tag, point, targets;
+    bool present;
+    struct { uint8_t tag, pair, select, gain, ch; } target[8];
+    ICSInfo ics;
+    float gain[16][128];
+    float spec[FRAME_LEN_LONG], pcm[FRAME_LEN_LONG], overlap[FRAME_LEN_LONG];
+    uint8_t prev_shape;
+} CouplingChannel;
+
+typedef struct {
+    BitReader bits;
+    uint32_t seed;
+    uint8_t type, tag, ch;
+} CouplingTarget;
+
 /* Working memory of one frame's decode phases, which never overlap: the
- * element being parsed (and a coupling element's discarded payload), the IMDCT
+ * element being parsed, the IMDCT
  * temporaries, then the SBR/PS buffers. */
 typedef union {
     CPEInfo cpe;
-    struct { ICSInfo ics; float spec[FRAME_LEN_LONG]; } cce;
     float work[2 * FRAME_LEN_LONG];
 } FrameScratch;
 #if !defined(FAAD_DISABLE_SBR) && MAX_CHANNELS >= 2
@@ -450,6 +468,7 @@ struct faad_decoder {
     uint32_t consecutive_errors;
     float (*prev_spec)[FRAME_LEN_LONG];
 
+    CouplingChannel *coupling;
     FrameScratch *scratch;
 #ifndef FAAD_DISABLE_SBR
     SBRScratch sbr_scratch;
@@ -483,6 +502,11 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequ
 
 faad_status decode_pce(BitReader *bs, struct faad_decoder *dec);
 faad_status decode_cce(BitReader *bs, struct faad_decoder *dec);
+int decode_coupling_gain(BitReader *bs);
+faad_status coupling_spectrum(struct faad_decoder *dec, CouplingTarget *targets, unsigned count);
+void coupling_pcm(struct faad_decoder *dec);
+void imdct_window(struct faad_decoder *dec, uint8_t sequence, uint8_t shape,
+                  uint8_t previous_shape, float *overlap, float *spec, float *pcm);
 faad_status decode_dse(BitReader *bs);
 faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, float *spec, bool common_window);
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch);
