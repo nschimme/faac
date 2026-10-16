@@ -72,12 +72,6 @@
  * after its scaling, so anything beyond it is not audio. */
 #define FLOAT_INPUT_LIMIT     8388608.0f
 
-/* From this rate (bps per channel) the quantizer's treble de-emphasis is
- * steepened by TREBLE_SLOPE_RICH; below it the steeper slope starves the
- * treble of some material. */
-#define TREBLE_SLOPE_BITRATE  56000
-#define TREBLE_SLOPE_RICH     3.0f
-
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
 #endif
@@ -313,15 +307,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
-    /* A rate that already codes the treble well spends its margin better on
-     * the low bands, where the de-emphasis leaves the most audible error. */
-    hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)
-        ? TREBLE_SLOPE_RICH : 1.0f;
-    /* The slope is per line, so it scales with the rate to keep the same
-     * de-emphasis in Hz as 44.1 kHz. */
-    if (hEncoder->sampleRate > 48000)
-        hEncoder->aacquantCfg.treble_slope *= ((float)hEncoder->sampleRate / 44100.0f);
-
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
         unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
@@ -377,6 +362,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     {
         const int *sfbOffset[2] = { hEncoder->sfbOffsetLong, hEncoder->sfbOffsetShort };
         const int  sfbn[2]      = { hEncoder->aacquantCfg.max_cbl, hEncoder->aacquantCfg.max_cbs };
+        QuantizeConfigureMask(&hEncoder->aacquantCfg, hEncoder->sampleRate,
+                              hEncoder->config.bitRate, hEncoder->numChannels,
+                              hEncoder->config.aacObjectType == HE_V1);
         StereoConfigure(&hEncoder->stereoCfg, (JointMode)hEncoder->config.jointmode, hEncoder->sampleRate,
                         hEncoder->config.bitRate, hEncoder->numChannels,
                         hEncoder->config.aacObjectType == HE_V1, sfbOffset, sfbn);
