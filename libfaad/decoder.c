@@ -491,11 +491,13 @@ static void free_split_state(faad_decoder *dec)
 {
     if (!dec) return;
 #define FREE_PART(field) do { if (dec->field) FreeMemory(dec->field); } while (0)
+#if MAX_CHANNELS >= 3
     while (dec->coupling) {
         CouplingChannel *next = dec->coupling->next;
         FreeMemory(dec->coupling);
         dec->coupling = next;
     }
+#endif
     FREE_PART(spec);
     FREE_PART(overlap);
     FREE_PART(prev_spec);
@@ -730,11 +732,13 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
 #endif
     dec->consecutive_errors = 0;
     dec->pns_seed = 0x12345678;
+#if MAX_CHANNELS >= 3
     for (CouplingChannel *cc = dec->coupling; cc; cc = cc->next) {
         memset(cc->overlap, 0, sizeof(cc->overlap));
         cc->prev_shape = 0;
         cc->present = false;
     }
+#endif
 #ifndef FAAD_DISABLE_SBR
     if (dec->sbr) memset(dec->sbr, 0, sizeof(SBRChannel[MAX_CHANNELS]));
     if (dec->sbr_el) memset(dec->sbr_el, 0, sizeof(SBRElement[MAX_CHANNELS]));
@@ -909,10 +913,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     g_faadStats.frameFillBits = 0;
     unsigned frame_hdr_bits = bits_get_consumed(&bs);
 #endif
+#if MAX_CHANNELS >= 3
     CouplingTarget coupling_targets[MAX_CHANNELS];
     unsigned coupling_target_count = 0;
-    bool have_coupling = false;
     for (CouplingChannel *cc = dec->coupling; cc; cc = cc->next) cc->present = false;
+#endif
+    bool have_coupling = false;
     uint32_t ch_idx = 0;
     uint32_t last_elem_type = ID_SCE;
 
@@ -930,8 +936,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                 break;
             } else if (syntax_id == ID_SCE || syntax_id == ID_LFE) {
                 if (ch_idx >= MAX_CHANNELS) { decode_success = false; break; }
+#if MAX_CHANNELS >= 3
                 coupling_targets[coupling_target_count++] = (CouplingTarget){
                     bs, dec->pns_seed, (uint8_t)syntax_id, (uint8_t)bits_show(&bs, 4), (uint8_t)ch_idx };
+#endif
                 last_elem_type = syntax_id;
 #ifdef FAAD_STATS
                 unsigned b0 = bits_get_consumed(&bs);
@@ -952,8 +960,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                 ch_idx += 1;
             } else if (syntax_id == ID_CPE) {
                 if (ch_idx + 1 >= MAX_CHANNELS) { decode_success = false; break; }
+#if MAX_CHANNELS >= 3
                 coupling_targets[coupling_target_count++] = (CouplingTarget){
                     bs, dec->pns_seed, ID_CPE, (uint8_t)bits_show(&bs, 4), (uint8_t)ch_idx };
+#endif
                 last_elem_type = ID_CPE;
                 CPEInfo *cpe = &dec->scratch->cpe;
                 memset(cpe, 0, sizeof(*cpe));
@@ -989,10 +999,14 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 
                 ch_idx += 2;
             } else if (syntax_id == ID_CCE) {
+#if MAX_CHANNELS >= 3
                 faad_status st = decode_cce(&bs, dec);
                 if (st == FAAD_ERR_INSUFFICIENT_MEM) return st;
                 if (st != FAAD_OK) { decode_success = false; break; }
                 have_coupling = true;
+#else
+                return FAAD_ERR_UNSUPPORTED;
+#endif
             } else if (syntax_id == ID_DSE) {
                 decode_dse(&bs);
             } else if (syntax_id == ID_PCE) {
@@ -1087,11 +1101,13 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     }
 
     if (!saw_end || bs.overread) decode_success = false;
+#if MAX_CHANNELS >= 3
     if (decode_success && have_coupling
         && coupling_spectrum(dec, coupling_targets, coupling_target_count) != FAAD_OK)
         decode_success = false;
     if (!decode_success)
         for (CouplingChannel *cc = dec->coupling; cc; cc = cc->next) cc->present = false;
+#endif
     /* A fixed RAW layout also fixes the lifetime output capacity. */
     if (dec->config.stream_format == FAAD_STREAM_RAW && dec->asc.num_channels
         && ch_idx > config_channels(dec->asc.num_channels))
@@ -1188,7 +1204,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
             memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * ch_idx);
         }
     }
+#if MAX_CHANNELS >= 3
     if (dec->coupling) coupling_pcm(dec);
+#endif
     if (sbr_frame) {
         /* Move backwards after IMDCT scratch is dead, making room for each
          * channel's doubled output without overwriting another core frame. */
