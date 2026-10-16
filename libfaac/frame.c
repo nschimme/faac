@@ -78,6 +78,11 @@
 #define TREBLE_SLOPE_BITRATE  56000
 #define TREBLE_SLOPE_RICH     3.0f
 
+/* The joint scalefactor search costs several quantizer passes per band and
+ * only pays off where the bands are coded finely: from this rate (bps per
+ * channel). VBR is left as it was. */
+#define SF_SEARCH_BITRATE     48000
+
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
 #endif
@@ -313,6 +318,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.sf_search = hEncoder->config.bitRate >= SF_SEARCH_BITRATE;
     /* A rate that already codes the treble well spends its margin better on
      * the low bands, where the de-emphasis leaves the most audible error. */
     hEncoder->aacquantCfg.treble_slope = (hEncoder->config.bitRate >= TREBLE_SLOPE_BITRATE)

@@ -339,7 +339,7 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
-                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
+                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen, int sf_search)
 {
     int gsize = ci->groups.len[gnum];
     float silence = silence_energy(ci);
@@ -425,6 +425,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
      * group minimizes distortion against the band's allowed noise plus lambda
      * times the real Huffman bits, including the scalefactor-delta bits. */
     int sel[MAX_SCFAC_BANDS];
+    for (sb = 0; sb < n; sb++)
+        sel[sb] = INT_MIN;
+    if (sf_search)
     {
         enum { NC = 2 * SFV_RANGE + 1 };
         /* Doubles throughout: a fused multiply-add on one target and not on
@@ -435,6 +438,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
         double dp[MAX_SCFAC_BANDS][NC];
         int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi;
+        /* q^(4/3) for small q */
+        static const double pow43[64] = {
+            0.0, 1.0, 2.5198420997897464, 4.3267487109222245, 6.3496042078727974, 8.549879733383484, 10.902723556992836, 13.390518279406722, 15.999999999999998, 18.720754407467133, 21.544346900318832, 24.463780996262468, 27.47314182127996, 30.567350940369842, 33.74199169845321, 36.993181114957046, 40.317473596635935, 43.71178704118999, 47.173345095760126, 50.69963132571694, 54.28835233189812, 57.93740770400352, 61.6448652744185, 65.40894053658599, 69.22797937475559, 73.10044345532164, 77.02489777859161, 80.99999999999999, 85.02449121251853, 89.09718794488955, 93.21697517861574, 97.38280022413316, 101.59366732596474, 105.84863288986224, 110.14680124343441, 114.4873208566006, 118.86938096020653, 123.29220851090024, 127.75506545836058, 132.25724627755247, 136.79807573413572, 141.3769068556919, 145.99311908523086, 150.6461165966291, 155.33532675434674, 160.0601987020528, 164.8202020667335, 169.6148257665186, 174.44357691188534, 179.30597979112557, 184.20157493201927, 189.12991823257562, 194.09058015449685, 199.08314497371677, 204.1072100829694, 209.16238534187647, 214.24829247050752, 219.36456448277784, 224.51084515641213, 229.6867885365223, 234.89205847013176, 240.1263281692325, 245.38927980018505, 250.6806040974726
+        };
         /* candidates by distance from the formula's value */
         static const signed char scan[NC] = { 2, 1, 3, 0, 4 };
 
@@ -453,10 +460,19 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             double allowed = (double)target[sb] * target[sb] * be[sb].sum / (double)(gsize * width);
             float peak = sqrtf(be[sb].peak_energy);
             int tmp[2 * FRAME_LEN / 8 + 1024];
+            /* energy of the band: what a candidate leaves as error when it
+             * quantizes a line to zero */
+            double a2 = 0.0;
+            for (int w = 0; w < gsize; w++)
+                for (int k = 0; k < width; k++)
+                {
+                    double a = xr0[w * BLOCK_LEN_SHORT + lo + k];
+                    a2 += a * a;
+                }
             for (c = 0; c < NC; c++)
             {
                 int sc = sfac + (c - SFV_RANGE), win, k;
-                double d = 0.0;
+                double d = a2;
                 if (SF_OFFSET - sc < SF_MIN)
                 {
                     dp[nb][c] = INFINITY;
@@ -470,10 +486,13 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 for (win = 0; win < gsize; win++)
                     for (k = 0; k < width; k++)
                     {
-                        double a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
                         int q = abs(tmp[win * width + k]);
-                        double e = a - pow((double)q, 4.0 / 3.0) / (double)gain;
-                        d += e * e;
+                        if (q)
+                        {
+                            double a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
+                            double e = a - (q < 64 ? pow43[q] : (double)q * cbrt((double)q)) / (double)gain;
+                            d += e * e - a * a;
+                        }
                     }
                 cost[c] = d / FFMAX_F(allowed, 1e-12) + lam * (double)band_spectral_bits(tmp, gsize * width);
                 sfc[nb][c] = sc;
@@ -642,7 +661,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen, aacquantCfg->sf_search);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);
