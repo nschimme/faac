@@ -1003,6 +1003,7 @@ int main(int argc, char **argv)
     uint32_t num_channels = 2;
     enum faad_object_type obj_type = FAAD_OBJ_LC;
     uint64_t frames_decoded = 0;
+    double duration_sec = 0.0;
     faad_stream_info sinfo = { .struct_size = sizeof(sinfo) };
 
     uint32_t start_frame = 0;
@@ -1073,6 +1074,8 @@ int main(int argc, char **argv)
                         goto cleanup;
                     }
                 }
+                duration_sec += (double)bytes_written /
+                    ((is_float ? 4 : bit_depth / 8) * num_channels) / sample_rate;
                 frames_decoded++;
             }
         }
@@ -1100,13 +1103,13 @@ int main(int argc, char **argv)
             if (st == FAAD_OK && strict_mode && (flags & (FAAD_FRAME_CONCEALED | FAAD_FRAME_DEGRADED)))
                 st = FAAD_ERR_DECODE_FAILED;
             if (st != FAAD_OK) {
-                if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
-                    break;
-                }
                 if (strict_mode) {
                     print_strict_error(infile, offset, frames_decoded, st);
                     ret_status = 1;
                     goto cleanup;
+                }
+                if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
+                    break;
                 }
                 input_pos += bytes_consumed;
                 offset += bytes_consumed; /* resync distance on SYNC_LOST */
@@ -1128,6 +1131,8 @@ int main(int argc, char **argv)
                     goto cleanup;
                 }
             }
+            duration_sec += (double)bytes_written /
+                ((is_float ? 4 : bit_depth / 8) * num_channels) / sample_rate;
             frames_decoded++;
             input_pos += bytes_consumed;
             offset += bytes_consumed;
@@ -1142,7 +1147,6 @@ int main(int argc, char **argv)
         }
     }
 
-    double duration_sec = ((double)frames_decoded * (obj_type == FAAD_OBJ_HE_AAC_V1 ? 2048 : 1024)) / (sample_rate ? sample_rate : 44100);
     double avg_bitrate_kbps = (file_len * 8.0) / (duration_sec > 0 ? duration_sec * 1000.0 : 1.0);
 
     const char *brand = track.major_brand[0] ? track.major_brand : "M4A";
