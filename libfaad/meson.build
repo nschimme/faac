@@ -168,7 +168,7 @@ endif
 if get_option('encoder')
     test_faad_robust = executable('test_faad_robust',
         'test_faad_robust.c',
-        c_args: test_static_args,
+        c_args: faad_c_args + test_static_args,
         include_directories: ['..', '../include', common_inc],
         link_with: [libfaad, libfaac],
         dependencies: [libm],
