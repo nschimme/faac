@@ -1025,7 +1025,9 @@ int main(int argc, char **argv)
     if (is_mp4) {
         uint64_t cache_offset = UINT64_MAX;
         size_t cache_bytes = 0;
-        for (uint32_t s = start_frame; s < track.num_samples; s++) {
+        /* Reconstruct overlap and SBR/PS state from all preceding packets.
+         * A packet at the seek target need not carry an SBR/PS header. */
+        for (uint32_t s = 0; s < track.num_samples; s++) {
             uint64_t offset = track.samples[s].offset;
             uint32_t size = track.samples[s].size;
             if (offset == 0 || offset > file_len || size > file_len - offset) continue;
@@ -1066,6 +1068,10 @@ int main(int argc, char **argv)
                     goto cleanup;
                 }
             } else if (bytes_written > 0) {
+                if (s < start_frame) {
+                    update_stream_info(dec, &sinfo, flags, &sample_rate, &num_channels, &obj_type);
+                    continue;
+                }
                 if (info_only) {
                     update_stream_info(dec, &sinfo, flags, &sample_rate, &num_channels, &obj_type);
                 } else {
