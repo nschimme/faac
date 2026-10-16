@@ -105,16 +105,6 @@ int main(void)
         }
     }
 
-    /* The rich-rate crossover is set in Hz, so the start index differs by rate. */
-    static const struct { int rate, idx; } xover[] = { { 32000, 12 }, { 44100, 9 }, { 48000, 9 } };
-    for (size_t i = 0; i < sizeof(xover) / sizeof(xover[0]); i++) {
-        int got = pick_start_freq(xover[i].rate, SBR_RICH_XOVER_HZ);
-        if (got != xover[i].idx) {
-            fprintf(stderr, "FAIL crossover at %d Hz: start index %d, expected %d\n", xover[i].rate, got, xover[i].idx);
-            failures++;
-        }
-    }
-
     printf("sbr master table: %d cases (%d two-region), %d failures\n", cases, two_region, failures);
     return failures ? 1 : 0;
 }

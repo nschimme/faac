@@ -113,18 +113,14 @@ struct BitStream;
  * on the same rate. */
 #define SBR_RICH_BPS                    20000u
 #define SBR_START_FREQ_DEFAULT          15
-/* Crossover of a rich core, in Hz rather than as a start index: the index to
- * frequency mapping differs per sample rate (48 kHz idx 9 = 6.4 kHz, 44.1 kHz
- * idx 9 = 6.2 kHz). Within the sample rates below, a rich core gets this
- * crossover and a stop frequency that may pass k2/kx = 2.2449 (the
- * two-region master table of ISO 14496-3 §4.6.18.3.2.1, which build_freq_table
- * writes). Measured at 44.1 and 48 kHz only: at 32 kHz the wider stop range
- * cost bits and above 48 kHz nothing was measured, so those rates keep the
- * earlier fixed index and keep the stop frequency under the ratio. */
-#define SBR_RICH_XOVER_HZ               6300
-#define SBR_RICH_XOVER_MIN_RATE         44100
-#define SBR_RICH_XOVER_MAX_RATE         48000
 #define SBR_START_FREQ_RICH             12
+/* The stop frequency may pass k2/kx = 2.2449 (NUM/DEN), where ISO 14496-3
+ * §4.6.18.3.2.1 builds the master table in two regions, at these sample rates:
+ * a rich core then keeps SBR up to 20 kHz. Measured at 44.1 and 48 kHz only. At
+ * 32 kHz the wider range cost bits and above 48 kHz nothing was measured, so
+ * those rates keep the stop frequency under the ratio. */
+#define SBR_TWO_REGION_MIN_RATE         44100
+#define SBR_TWO_REGION_MAX_RATE         48000
 #define SBR_ONE_REGION_NUM              22449
 #define SBR_ONE_REGION_DEN              10000
 /* Below this per-channel rate the core is too starved to cover much, so the
