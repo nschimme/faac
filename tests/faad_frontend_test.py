@@ -214,7 +214,18 @@ def main():
                        box("hdlr", u32(0, 0) + b"soun" + bytes(12)) + box("minf", stbl))
             return prefix + box("mdat", b"".join(units)) + box("moov", box("trak", mdia))
 
+        # Explicit SBR and PS wrap the core GASpecificConfig, including its
+        # frameLengthFlag. Check both 960 rejection and 1024 acceptance.
+        def explicit_asc(aot, short):
+            bits = f"{aot:05b}{6:04b}{2:04b}{3:04b}{2:05b}{int(short)}00"
+            bits += "0" * (-len(bits) % 8)
+            return int(bits, 2).to_bytes(len(bits) // 8, "big")
+
         for asc, size, diagnostic in ((b"\x12\x14", 1, b"960-sample"),
+                                       (explicit_asc(5, True), 1, b"960-sample"),
+                                       (explicit_asc(29, True), 1, b"960-sample"),
+                                       (explicit_asc(5, False), 8184, None),
+                                       (explicit_asc(29, False), 8184, None),
                                        (b"\x12\x10", 8185, b"ADTS payload limit"),
                                        (b"\x12\x10", 8184, None)):
             data = extraction_mp4(asc, [bytes(size)])
@@ -234,6 +245,21 @@ def main():
                     assert len(extracted) == 8191 and extracted[7:] == bytes(size)
                 if os.path.exists(out):
                     os.unlink(out)
+
+        # A corrupt later sample must not turn extraction into a successful
+        # conversion of just the valid prefix.
+        data = bytearray(extraction_mp4(b"\x12\x10", [b"\0", b"\0"]))
+        stsz = data.index(b"stsz")
+        struct.pack_into(">I", data, stsz + 20, len(data) + 1)
+        path = os.path.join(d, "incomplete_samples.m4a")
+        with open(path, "wb") as f:
+            f.write(data)
+        for source in (path, "-"):
+            out = os.path.join(d, "incomplete_samples.aac")
+            result = subprocess.run([faad, "-q", "-a", out, source],
+                                    input=data if source == "-" else None, capture_output=True)
+            assert result.returncode == 1 and b"sample table" in result.stderr, result.stderr
+            assert not os.path.exists(out)
 
         dab_vectors = (("lc_st48", 48000, 960),
                                            ("he2_st48", 48000 if sbr else 24000,
