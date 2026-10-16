@@ -7,6 +7,7 @@
 #include <string.h>
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "line %d: %s\n", __LINE__, #x); exit(1); } } while (0)
+#if MAX_CHANNELS >= 3
 typedef struct { uint8_t data[2048]; unsigned bits; } Bits;
 static void put(Bits *b, unsigned v, unsigned n)
 {
@@ -273,3 +274,43 @@ int main(void)
 #endif
     puts("AAC coupling: PASS"); return 0;
 }
+
+#else
+/* Small builds omit CCE code, but must reject a CCE without emitting PCM
+ * and remain usable for ordinary mono packets afterward. */
+int main(void)
+{
+    const uint8_t asc[] = {0x12, 0x08};
+    const uint8_t silence[] = {0x00, 0xc8, 0x00, 0x07};
+    const uint8_t cce_first[] = {0x40, 0};
+    const uint8_t cce_last[] = {0x00, 0xc8, 0x00, 0x02, 0};
+    faad_config cfg;
+    CHECK(faad_config_init(&cfg, sizeof cfg) == FAAD_OK);
+    cfg.stream_format = FAAD_STREAM_RAW;
+    cfg.output_format = FAAD_OUTPUT_FLOAT;
+    faad_decoder *dec = NULL;
+    CHECK(faad_decoder_open(&cfg, asc, sizeof asc, &dec) == FAAD_OK);
+    faad_stream_info info = {.struct_size = sizeof info};
+    CHECK(faad_decoder_get_info(dec, &info) == FAAD_OK);
+    float *pcm = malloc(info.max_output_bytes);
+    CHECK(pcm);
+    for (unsigned last = 0; last < 2; last++) {
+        const uint8_t *packet = last ? cce_last : cce_first;
+        uint32_t len = last ? sizeof cce_last : sizeof cce_first;
+        uint32_t used = 99, wrote = 99, flags = UINT32_MAX;
+        CHECK(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+                               &wrote, &flags) == FAAD_ERR_UNSUPPORTED);
+        CHECK(used == len && wrote == 0 && flags == 0);
+        CHECK(faad_decode_frame(dec, silence, sizeof silence, &used, pcm,
+                               info.max_output_bytes, &wrote, &flags) == FAAD_OK);
+        CHECK(used == sizeof silence && wrote == 1024 * sizeof(float));
+        CHECK(!(flags & FAAD_FRAME_CONCEALED));
+        for (unsigned i = 0; i < wrote / sizeof(float); i++) CHECK(pcm[i] == 0);
+        CHECK(faad_decoder_flush(dec) == FAAD_OK);
+    }
+    free(pcm);
+    CHECK(faad_decoder_close(&dec) == FAAD_OK);
+    puts("AAC coupling rejection: PASS");
+    return 0;
+}
+#endif
