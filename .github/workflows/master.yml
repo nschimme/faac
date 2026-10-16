@@ -193,7 +193,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson gcc-s390x-linux-gnu qemu-user
+          sudo apt-get install -y meson gcc-s390x-linux-gnu qemu-user ffmpeg
 
       - name: Generate test input
         run: |
@@ -246,5 +246,25 @@ jobs:
             build-native/frontend/faac -o native.$fmt input.wav
             qemu-s390x build-s390x/frontend/faac -o s390x.$fmt input.wav
             ls -l native.$fmt s390x.$fmt
-            cmp native.$fmt s390x.$fmt
+            if cmp -s native.$fmt s390x.$fmt; then
+              echo "$fmt: byte-identical"
+              continue
+            fi
+            # s390x fuses multiply-adds, so the spectrum can differ in its last
+            # bits and a coefficient on a rounding boundary quantizes the other
+            # way. Accept that if the decoded audio is the same to 60 dB.
+            ffmpeg -loglevel error -y -i native.$fmt -f s16le native.$fmt.pcm
+            ffmpeg -loglevel error -y -i s390x.$fmt -f s16le s390x.$fmt.pcm
+            python3 - native.$fmt.pcm s390x.$fmt.pcm <<'PY'
+          import array, math, sys
+          a, b = array.array('h'), array.array('h')
+          a.frombytes(open(sys.argv[1], 'rb').read())
+          b.frombytes(open(sys.argv[2], 'rb').read())
+          assert len(a) == len(b) > 0, (len(a), len(b))
+          sig = sum(x * x for x in a)
+          err = sum((x - y) ** 2 for x, y in zip(a, b))
+          snr = 10 * math.log10(sig / err) if err else float('inf')
+          print(f"native vs s390x decoded: {snr:.1f} dB, max diff {max(abs(x - y) for x, y in zip(a, b))}")
+          sys.exit(0 if snr >= 60 else 1)
+          PY
           done
