@@ -29,6 +29,7 @@
 
 #include "faac.h"
 #include "faad3.h"
+#include "faad_internal.h"
 #include "endian.h"
 
 #define RATE     44100
@@ -362,6 +363,60 @@ static void decode_hang_case(const hang_case *hc)
     faad_decoder_close(&dec);
 }
 
+/* Compare the spectral path with channel synthesis followed by a PCM mix.
+ * ID_END alone conceals a frame; invalidating the cached layout exercises
+ * source overlap restoration on the following good frame. */
+static int test_downmix_history(const uint8_t *stream, enum faad_downmix_mode mode)
+{
+    faad_config cfg;
+    faad_decoder *full = NULL, *mixed = NULL;
+    const uint8_t asc[] = { 0x12, 0x30 }; /* LC, 44.1 kHz, 5.1 */
+    faad_config_init(&cfg, sizeof cfg);
+    cfg.stream_format = FAAD_STREAM_RAW;
+    cfg.output_format = FAAD_OUTPUT_FLOAT;
+    if (faad_decoder_open(&cfg, asc, sizeof asc, &full) != FAAD_OK)
+        return fail("history reference open");
+    cfg.downmix_mode = mode;
+    if (faad_decoder_open(&cfg, asc, sizeof asc, &mixed) != FAAD_OK)
+        return fail("history downmix open");
+    float a[FRAME * 6 * 2], b[FRAME * 2 * 2];
+    uint32_t pos = 0;
+    int active = 0;
+    for (int f = 0; f < 16; f++) {
+        uint32_t packet = ((stream[pos + 3] & 3) << 11) | (stream[pos + 4] << 3) | (stream[pos + 5] >> 5);
+        const uint8_t end = 0xe0;
+        bool conceal = f == 8 || f == 9;
+        const uint8_t *in = conceal ? &end : stream + pos + 7;
+        uint32_t len = conceal ? 1 : packet - 7;
+        uint32_t used, wa, wb, fa, fb;
+        if (f == 10) mixed->spectral_downmix_layout = UINT32_MAX;
+        if (faad_decode_frame(full, in, len, &used, a, sizeof a, &wa, &fa) != FAAD_OK
+            || faad_decode_frame(mixed, in, len, &used, b, sizeof b, &wb, &fb) != FAAD_OK)
+            return fail("history decode");
+        if (!!(fa & FAAD_FRAME_CONCEALED) != conceal || fa != fb)
+            return fail("history concealment flags");
+        active += mixed->spectral_downmix_active;
+        if (memcmp(full->prev_spec, mixed->prev_spec, sizeof(float) * FRAME * 6))
+            return fail("downmix changed source spectral history");
+        unsigned out_channels = mode == FAAD_DOWNMIX_MONO ? 1 : 2;
+        if (wa != FRAME * 6 * sizeof(float) || wb != FRAME * out_channels * sizeof(float))
+            return fail("history output size");
+        const float k = 0.70710678f, gain = 1.0f / (1.0f + k + k);
+        for (unsigned i = 0; i < FRAME; i++) {
+            float l = (a[6*i] + k*a[6*i+2] + k*a[6*i+4]) * gain;
+            float r = (a[6*i+1] + k*a[6*i+2] + k*a[6*i+5]) * gain;
+            if (out_channels == 1) l = 0.5f * (l + r);
+            if (fabsf(b[out_channels*i] - l) > 2e-6f
+                || (out_channels == 2 && fabsf(b[2*i+1] - r) > 2e-6f))
+                return fail("downmix recovery PCM differs from channel synthesis");
+        }
+        if (!conceal) pos += packet;
+    }
+    faad_decoder_close(&full);
+    faad_decoder_close(&mixed);
+    return active ? 0 : fail("spectral downmix was not exercised");
+}
+
 int main(void)
 {
     static uint8_t intact[1 << 20], damaged[1 << 20];
@@ -375,6 +430,8 @@ int main(void)
         uint32_t len = encode(obj, channels, intact, sizeof(intact));
         if (len == 0) return fail("encode");
         if (test_pcm_formats(intact)) return 1;
+        if (channels == 6 && (test_downmix_history(intact, FAAD_DOWNMIX_STEREO)
+            || test_downmix_history(intact, FAAD_DOWNMIX_MONO))) return 1;
         uint32_t frames_intact = 0;
         for (uint32_t i = 0; i + 7 <= len; ) {
             uint32_t flen = ((intact[i + 3] & 3) << 11) | (intact[i + 4] << 3) | (intact[i + 5] >> 5);
