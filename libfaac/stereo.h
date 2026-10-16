@@ -29,8 +29,8 @@ typedef struct {
     float msBias;         /* a band takes M/S when mid*side < msBias * left*right (energies) */
 } StereoConfig;
 
-void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
-                     unsigned long bitRatePerCh, int sbr, const int *sfbOffset[2], const int sfbn[2]);
+void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned int bandWidth,
+                     unsigned long bitRatePerCh, unsigned int channels, int sbr, const int *sfbOffset[2], const int sfbn[2]);
 
 void AACstereo(CoderInfo *coder,
                AACElement *elements,

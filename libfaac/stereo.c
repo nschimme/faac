@@ -22,6 +22,13 @@
 #include "faac_internal.h"
 #include "stats.h"
 
+/* Intensity stereo crossover scales with core bandwidth (3.5-7 kHz) to save low-band phase bits at low rates. */
+#define IS_BW_RATIO              0.35f
+#define IS_START_FREQ_MIN        3500
+#define IS_START_FREQ_MAX        7000
+/* Upper bound on crossover (0.35*Fs) so IS stays well inside coded spectrum. */
+#define IS_FREQ_CAP_NUM  7
+#define IS_FREQ_CAP_DEN  20
 /* Pan, in SF_STEP_ENRG steps, beyond which the quieter channel is inaudible
  * and is dropped to HCB_ZERO rather than intensity-coded. */
 #define IS_PAN_LIMIT     30
@@ -31,14 +38,19 @@
  * configured rate like PSY_SHORT_ONLY_BITRATE; the running quality gates
  * fewer frames and gains less. */
 #define IS_ONLY_BITRATE  40000
-/* From this rate (bps per channel) a short window takes M/S like a long one
- * instead of intensity stereo; below it the bits that full-band intensity
- * stereo saves still buy more quality than the image they cost. */
+/* From this rate (bps per channel) a short window keeps L/R below the
+ * intensity crossover like a long one; below it the bits that full-band
+ * intensity stereo saves still buy more quality than the image they cost. */
+#define IS_SHORT_CROSSOVER_BITRATE  80000
+/* From this rate (bps per channel) a two-channel LC short window takes M/S
+ * on every band like a long one, instead of the intensity crossover above;
+ * measured at 160 and 192 kbps stereo, where the intensity bands cost
+ * quality at equal bitrate. */
 #define MS_SHORT_BITRATE  80000
-/* From this rate (bps per channel) a band takes M/S somewhat more readily
- * than the plain mid*side < left*right test: the side channel then costs
- * fewer bits than the L/R image it replaces. Beyond 1.5 times that test the
- * extra M/S bands lose quality. */
+/* From this rate (bps per channel) a two-channel LC band takes M/S somewhat
+ * more readily than the plain mid*side < left*right test: the side channel
+ * then costs fewer bits than the L/R image it replaces. Beyond 1.5 times
+ * that test the extra M/S bands lose quality. */
 #define MS_BIAS_BITRATE  64000
 #define MS_BIAS          1.5f
 /* Starved rates (bps per channel) from which long windows take real M/S
@@ -59,10 +71,17 @@ static int band_at(const int *sfbOffset, int sfbn, int hz, int n2, int sampleRat
     return sfb;
 }
 
-void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
-                     unsigned long bitRatePerCh, int sbr, const int *sfbOffset[2], const int sfbn[2])
+void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned int bandWidth,
+                     unsigned long bitRatePerCh, unsigned int channels, int sbr, const int *sfbOffset[2], const int sfbn[2])
 {
     int starved = bitRatePerCh && bitRatePerCh < IS_ONLY_BITRATE;
+    /* The two M/S changes were measured on two-channel LC only. */
+    int plainStereo = channels == 2 && !sbr;
+
+    /* Scale IS crossover with bandwidth (0.35 * bw, 3.5-7 kHz) to save phase bits. */
+    int cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
+    int max_freq = min(IS_START_FREQ_MAX, cap);
+    int ifreq = (max_freq < IS_START_FREQ_MIN) ? max_freq : clamp_int((int)((float)bandWidth * IS_BW_RATIO), IS_START_FREQ_MIN, max_freq);
 
     /* Highest M/S frequency per window type (0 long, 1 short); sampleRate
      * means every band. */
@@ -72,7 +91,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
     } else if (mode == JOINT_MIXED) {
         if (!starved) {
             msHz[0] = sampleRate;
-            if (bitRatePerCh >= MS_SHORT_BITRATE)
+            if (plainStereo && bitRatePerCh >= MS_SHORT_BITRATE)
                 msHz[1] = sampleRate;
         }
         else if (sbr ? bitRatePerCh >= MS_SPLIT_HE_HIGH_BITRATE : bitRatePerCh >= MS_SPLIT_LC_BITRATE)
@@ -83,13 +102,16 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate,
 
     /* Each window type takes M/S below msEnd, intensity from isStart and plain
      * L/R between. Without M/S, intensity covers every band past the lowest
-     * except short windows from MS_SHORT_BITRATE, which take M/S on every band. */
+     * except on short windows from IS_SHORT_CROSSOVER_BITRATE, which keep L/R
+     * below the crossover. */
     cfg->mode = mode;
-    cfg->msBias = (mode == JOINT_MIXED && bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f;
+    cfg->msBias = (mode == JOINT_MIXED && plainStereo && bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f;
     for (int w = 0; w < 2; w++) {
         int n = sfbn[w], n2 = 2 * (w ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG);
         int ms = band_at(sfbOffset[w], n, msHz[w], n2, sampleRate);
         int is = ms ? ms : w ? 1 : 8;
+        if (!ms && w && mode == JOINT_MIXED && bitRatePerCh >= IS_SHORT_CROSSOVER_BITRATE)
+            is = band_at(sfbOffset[w], n, ifreq, n2, sampleRate);
         cfg->msEnd[w] = ms;
         cfg->isStart[w] = is;
     }

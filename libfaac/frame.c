@@ -378,7 +378,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         const int *sfbOffset[2] = { hEncoder->sfbOffsetLong, hEncoder->sfbOffsetShort };
         const int  sfbn[2]      = { hEncoder->aacquantCfg.max_cbl, hEncoder->aacquantCfg.max_cbs };
         StereoConfigure(&hEncoder->stereoCfg, (JointMode)hEncoder->config.jointmode, hEncoder->sampleRate,
-                        hEncoder->config.bitRate,
+                        hEncoder->config.bandWidth, hEncoder->config.bitRate, hEncoder->numChannels,
                         hEncoder->config.aacObjectType == HE_V1, sfbOffset, sfbn);
     }
 
