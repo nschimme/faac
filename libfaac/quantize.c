@@ -118,11 +118,14 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 #define SF_SMOOTH              0.6f     // long-block pull of each scalefactor towards its neighbours
 #define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
 #define QUIET_BAND_FRAC        0.0003f  // ~-35 dB below the frame mean: masked by the frame as a whole
+#define FLAT_REF               (-2.2f)  // log10 flatness of typical music; flatter groups get a coarser target
+#define FLAT_FLOOR             0.5f     // deepest cut, reached by the flattest groups
 
 typedef struct
 {
     float sum;      /* energy summed across group windows */
     float peak_energy; /* mean of the per-window peak energies */
+    float lg;       /* log10 of the per-window energy, shared by the scalefactor and the flatness measure */
 } BandEnergy;
 
 static float silence_energy(const CoderInfo *ci)
@@ -155,6 +158,7 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
         {
             out[sfb].sum = 0.0f;
             out[sfb].peak_energy = 0.0f;
+            out[sfb].lg = 0.0f;
             continue;
         }
 
@@ -195,6 +199,7 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
 
         out[sfb].sum = sum;
         out[sfb].peak_energy = peak;
+        out[sfb].lg = sum > 0.0f ? log10f(sum / (float)gsize) : 0.0f;
         group_total += sum;
     }
 
@@ -210,6 +215,43 @@ static float loudness(float energy_ratio)
 static float treble_rolloff(int lo, int hi, float slope_per_line)
 {
     return 10.0f / (1.0f + (float)(lo + hi) * slope_per_line);
+}
+
+/* A constant quality setting holds every band the same distance below its own
+ * level, so a noise-like group, whose bands all sit near the group mean, costs
+ * far more bits than a tonal one while its noise masks the quantization error
+ * better. Scaling the target down by the group's log-flatness spends those bits
+ * where the setting buys more. It only ever lowers a target: raising tonal
+ * groups costs bits on tonal material for no gain in quality per bit. Bands
+ * above the VBR bandwidth ceiling are left out, or the near-empty spectrum
+ * that high sample rates code up there would read as tonality. */
+static float flatness_factor(const CoderInfo * __restrict ci, int gnum,
+                             const BandEnergy * __restrict be, float strength, int lines)
+{
+    if (strength == 0.0f)
+        return 1.0f;
+
+    int gsize = ci->groups.len[gnum];
+    int limit = (ci->block_type == ONLY_SHORT_WINDOW) ? lines / 8 : lines;
+    float sumlog = 0.0f, sum = 0.0f;
+    int n = 0;
+
+    for (int sfb = 0; sfb < ci->sfbn; sfb++)
+    {
+        if (be[sfb].sum <= 0.0f || ci->sfb_offset[sfb] >= limit)
+            continue;
+        int width = ci->sfb_offset[sfb + 1] - ci->sfb_offset[sfb];
+        float lw = (width < 128) ? log10_width_sf_lut[width] * (1.0f / SF_STEP_ENRG) : log10f((float)width);
+        sumlog += be[sfb].lg - lw;
+        sum += be[sfb].sum / (float)(gsize * width);
+        n++;
+    }
+    if (n < 4)
+        return 1.0f;
+
+    float flatness = sumlog / (float)n - log10f(sum / (float)n);
+    float f = powf(10.0f, strength * (FLAT_REF - flatness));
+    return f < FLAT_FLOOR ? FLAT_FLOOR : (f > 1.0f ? 1.0f : f);
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
@@ -307,7 +349,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
-                                   const BandEnergy * __restrict be, int gnum, int pnslevel,
+                                   const BandEnergy * __restrict be, int gnum, int pnslevel, int sf_cap,
                                    int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
 {
     int gsize = ci->groups.len[gnum];
@@ -346,7 +388,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         /* Log-domain identity: log10(target/rms) = log10(target) - 0.5*log10(avg) + 0.5*log10(width).
          * Reuses sf_enrg_avg (log10(avg) * SF_STEP_ENRG) shared with PNS to avoid division and sqrtf. */
-        float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
+        float sf_enrg_avg = be[sb].lg * SF_STEP_ENRG;
 
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse
          * TNS filter shapes the substituted noise too. Decoders skip M/S on a
@@ -379,6 +421,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         float log10_w_sf = (width < 128) ? log10_width_sf_lut[width] : log10f((float)width) * SF_STEP_ENRG;
         int sfac = lrintf(log10f(target[sb]) * sfstep - sf_enrg_avg + log10_w_sf);
+        if (sfac > sf_cap)
+            sfac = sf_cap;
         if (SF_OFFSET - sfac < SF_MIN)
         {
             ci->book[band] = HCB_ZERO;
@@ -498,8 +542,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         if (coder->useRef)
             group_total = coder->refTotal[i];
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL * flatness_factor(coder, i, be, aacquantCfg->flat_exp, aacquantCfg->flat_lines),
+                               aacquantCfg->treble_slope, be, group_total, target);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel,
+                               coder->block_type == ONLY_SHORT_WINDOW ? aacquantCfg->sf_cap_short : aacquantCfg->sf_cap, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);
