@@ -4,6 +4,11 @@ option('encoder',
     type: 'boolean',
     value: true)
 
+option('decoder',
+    description: 'Build the FAAD decoder library (libfaad) and the faad frontend',
+    type: 'boolean',
+    value: true)
+
 option('frontend',
     description: 'Build the command-line tools',
     type: 'boolean',
@@ -13,6 +18,22 @@ option('frontend-static',
     description: 'Link the frontend executables to the static libraries',
     type: 'boolean',
     value: false)
+
+# Decoder tuning
+option('decoder-sbr',
+    description: 'Enable SBR (HE-AAC v1) support in libfaad',
+    type: 'boolean',
+    value: true)
+
+option('decoder-ps',
+    description: 'Enable Parametric Stereo (HE-AAC v2) support in libfaad',
+    type: 'boolean',
+    value: true)
+
+option('decoder-dab',
+    description: 'Enable DAB+ (960/120 frame length) support in libfaad',
+    type: 'boolean',
+    value: true)
 
 # Muxer (libfaam)
 option('muxer',
@@ -30,6 +51,7 @@ option('muxer-fragmented',
     type: 'boolean',
     value: true)
 
+# Encoder tuning
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.
@@ -39,22 +61,27 @@ option('muxer-fragmented',
 #   4: every 4th   -- ~26% faster HE-AAC encode; MOS d: -0.010
 #   8: every 8th   -- ~30% faster HE-AAC encode; MOS d: -0.038
 option('sbr-decimation',
-    description: 'SBR spectral analysis density: analyse every Nth slot (1=full quality, max=8)',
+    description: 'Encoder SBR spectral analysis density: analyse every Nth slot (1=full quality, max=8)',
     type: 'integer',
     min: 1,
     max: 8,
     value: 1)
 
+# Shared
 option('max-channels',
-    description: 'Maximum number of channels',
+    description: 'Maximum number of channels (encoder and decoder)',
     type: 'integer',
     min: 1,
     max: 8,
     value: 8)
 
-# End-of-encode diagnostics banner (Qavg, transient/tool-usage %, rate-control
-# health, etc), printed to stderr on faacEncClose().
+# End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
+# Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();
+# the decoder (FAAD_STATS) prints its own on close.
 option('stats',
-    description: 'Enable optional end-of-encode statistics banner',
+    description: 'Enable optional end-of-stream statistics banners (encoder and decoder)',
     type: 'boolean',
     value: false)
+
+option('decoder-drc', type: 'boolean', value: true,
+    description: 'Enable decoder dynamic range control')
