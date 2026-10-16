@@ -146,7 +146,7 @@ static void restore_channel_overlaps(struct faad_decoder *dec, uint32_t channels
  * window state. The two output overlap slots then hold the downmixed history;
  * callers restore channel overlaps before a window mismatch or SBR frame. */
 static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs,
-                                 uint32_t *out_num_chs, float *pcm)
+                                 uint32_t *out_num_chs, float *pcm, bool save_history)
 {
     enum faad_downmix_mode mode = dec->config.downmix_mode;
     if (mode == FAAD_DOWNMIX_NONE || num_chs <= 2 || !spectral_downmix_windows_match(dec, num_chs))
@@ -165,6 +165,11 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs,
         if (out_channels == 2)
             memcpy(dec->overlap[nr], dst[1], FRAME_LEN_LONG * sizeof(float));
     }
+
+    /* Preserve source spectra for concealment and overlap restoration before
+     * the in-place mix replaces the left/right channel spectra. */
+    if (save_history)
+        memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec[0]) * num_chs);
 
     const float *src[MAX_CHANNELS];
     float *dst[2] = { dec->spec[nl], dec->spec[nr] };
@@ -1123,7 +1128,8 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         dec->spectral_downmix_active = false;
     }
     if (!sbr_frame)
-        spectral_downmixed = try_spectral_downmix(dec, dec->num_channels, &num_chs, pcm_final);
+        spectral_downmixed = try_spectral_downmix(dec, dec->num_channels, &num_chs, pcm_final,
+                                                     decode_success && ch_idx > 0);
     if (!spectral_downmixed) {
         uint32_t lfe_channel = faad_downmix_lfe_channel(dec, dec->num_channels);
         for (uint32_t c = 0; c < dec->num_channels; c++) {
@@ -1131,7 +1137,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
                 imdct_and_window(dec, c, dec->win_seq[c], dec->win_shape[c], dec->spec[c], pcm_final + c * FRAME_LEN_LONG);
         }
     }
-    if (decode_success && ch_idx > 0) {
+    if (!spectral_downmixed && decode_success && ch_idx > 0) {
         if (ch_idx == MAX_CHANNELS) {
             /* IMDCT has consumed this spectrum; rotate before SBR reuses spec[0]. */
             float (*tmp)[FRAME_LEN_LONG] = dec->prev_spec;
