@@ -16,7 +16,6 @@
 #include <limits.h>
 #include <assert.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "quantize.h"
@@ -305,10 +304,86 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
+/* The scalefactor a coded band wants. Long blocks pull it most of the way
+ * towards the mean of its coded neighbours: the masking target tracks local
+ * band energy too steeply, which quantizes peaks too coarsely and the bands
+ * beside them too finely. */
+static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth)
+{
+    int sfac = sf_bias - want[sb];
+    if (smooth)
+    {
+        int cnt = 0, sum = 0;
+        if (sb > 0 && want[sb - 1] != INT_MIN) { sum += want[sb - 1]; cnt++; }
+        if (sb + 1 < n && want[sb + 1] != INT_MIN) { sum += want[sb + 1]; cnt++; }
+        if (cnt)
+            sfac += lrintf(SF_SMOOTH * ((float)want[sb] - (float)sum / (float)cnt));
+        /* smoothing must not turn a coded band into a zero band */
+        if (SF_OFFSET - sfac < SF_MIN)
+            sfac = SF_OFFSET - SF_MIN;
+    }
+    return sfac;
+}
+
+#define FFMAX_F(a, b) ((a) > (b) ? (a) : (b))
+#define SFV_STEPS 3
+#ifndef SFV_EPS
+#define SFV_EPS 1e-6
+#endif
+#ifndef SFV_OFF
+#ifndef SFV_LAMBDA
+#define SFV_LAMBDA 0.08f
+#endif
+#endif
+
+/* Squared error of a band at scalefactor *sc against the allowed noise,
+ * plus lambda times its spectral Huffman bits. Doubles throughout: a fused
+ * multiply-add on one target and not on another moves a float by one part in
+ * 1e7, enough to flip a near tie and make the bitstream differ by platform. */
+static double sfv_cost(const float * __restrict xr0, int lo, int width, int gsize, int *sc,
+                       float peak, double allowed, double *dist)
+{
+    int tmp[2 * FRAME_LEN / 8 + 1024];
+    static const double pow43[64] = {
+        0.0, 1.0, 2.5198420997897464, 4.3267487109222245,
+        6.3496042078727974, 8.549879733383484, 10.902723556992836, 13.390518279406722,
+        15.999999999999998, 18.720754407467133, 21.544346900318832, 24.463780996262468,
+        27.47314182127996, 30.567350940369842, 33.74199169845321, 36.993181114957046,
+        40.317473596635935, 43.71178704118999, 47.173345095760126, 50.69963132571694,
+        54.28835233189812, 57.93740770400352, 61.6448652744185, 65.40894053658599,
+        69.22797937475559, 73.10044345532164, 77.02489777859161, 80.99999999999999,
+        85.02449121251853, 89.09718794488955, 93.21697517861574, 97.38280022413316,
+        101.59366732596474, 105.84863288986224, 110.14680124343441, 114.4873208566006,
+        118.86938096020653, 123.29220851090024, 127.75506545836058, 132.25724627755247,
+        136.79807573413572, 141.3769068556919, 145.99311908523086, 150.6461165966291,
+        155.33532675434674, 160.0601987020528, 164.8202020667335, 169.6148257665186,
+        174.44357691188534, 179.30597979112557, 184.20157493201927, 189.12991823257562,
+        194.09058015449685, 199.08314497371677, 204.1072100829694, 209.16238534187647,
+        214.24829247050752, 219.36456448277784, 224.51084515641213, 229.6867885365223,
+        234.89205847013176, 240.1263281692325, 245.38927980018505, 250.6806040974726
+    };
+    float gain = gain_with_overflow_clamp(sc, peak);
+    double d = 0.0;
+    int win, k;
+
+    for (win = 0; win < gsize; win++)
+        qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, tmp + win * width, width >> 2, gain);
+    for (win = 0; win < gsize; win++)
+        for (k = 0; k < width; k++)
+        {
+            double a = fabsf(xr0[win * BLOCK_LEN_SHORT + lo + k]);
+            int q = abs(tmp[win * width + k]);
+            double e = a - (q < 64 ? pow43[q] : (double)q * cbrt((double)q)) / (double)gain;
+            d += e * e;
+        }
+    *dist = d / FFMAX_F(allowed, 1e-12);
+    return *dist + SFV_LAMBDA * (double)band_spectral_bits(tmp, gsize * width);
+}
+
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
-                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
+                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen, int sf_search)
 {
     int gsize = ci->groups.len[gnum];
     float silence = silence_energy(ci);
@@ -388,6 +463,59 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         want[sb] = ci->sf[band] - sfac;
     }
 
+#ifdef SFV_LAMBDA
+    /* Pick each coded band's scalefactor by a short greedy walk from the
+     * wanted one: step towards finer or coarser, as the band's error against
+     * its allowed noise says, while distortion plus lambda times the real
+     * Huffman bits (scalefactor-delta bits included) keeps falling. */
+    int sel[MAX_SCFAC_BANDS];
+    for (sb = 0; sb < n; sb++)
+        sel[sb] = INT_MIN;
+    if (sf_search)
+    {
+        int prev = *p_last_abs;
+        for (sb = 0; sb < n; sb++)
+        {
+            int band = base + sb;
+            if (want[sb] == INT_MIN)
+                continue;
+            int sf_bias = ci->sf[band];
+            int sfac = smoothed_sfac(want, sb, n, sf_bias, smooth);
+            int lo = ci->sfb_offset[sb];
+            int width = ci->sfb_offset[sb + 1] - lo;
+            double allowed = (double)target[sb] * target[sb] * be[sb].sum / (double)(gsize * width);
+            float peak = sqrtf(be[sb].peak_energy);
+            int dir = 0, step, best_sc = sfac, best_abs = 0;
+            double best = INFINITY;
+
+            for (step = 0; step < SFV_STEPS; step++)
+            {
+                int sc = sfac + dir * step, abs_sf;
+                double d, v;
+                if (SF_OFFSET - sc < SF_MIN)
+                    break;
+                v = sfv_cost(xr0, lo, width, gsize, &sc, peak, allowed, &d);
+                abs_sf = sf_bias + (SF_OFFSET - sc);
+                if (prev != SF_CHAIN_UNSET)
+                {
+                    if (abs(abs_sf - prev) > SF_DELTA)
+                        break;
+                    v += SFV_LAMBDA * (double)sf_delta_bits(abs_sf - prev);
+                }
+                if (step == 0)
+                    dir = d > allowed ? 1 : -1;
+                if (step && !(v < best - SFV_EPS * (1.0 + fabs(best))))
+                    break;
+                best = v;
+                best_sc = sc;
+                best_abs = abs_sf;
+            }
+            sel[sb] = best_sc;
+            prev = best_abs;
+        }
+    }
+#endif
+
     /* Pass 2: quantize the coded bands. Long blocks first pull each
      * scalefactor most of the way towards the mean of its coded neighbours:
      * the masking target tracks local band energy too steeply, which
@@ -400,18 +528,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
 
         int sf_bias = ci->sf[band];
-        int sfac = sf_bias - want[sb];
-        if (smooth)
-        {
-            int cnt = 0, sum = 0;
-            if (sb > 0 && want[sb - 1] != INT_MIN) { sum += want[sb - 1]; cnt++; }
-            if (sb + 1 < n && want[sb + 1] != INT_MIN) { sum += want[sb + 1]; cnt++; }
-            if (cnt)
-                sfac += lrintf(SF_SMOOTH * ((float)want[sb] - (float)sum / (float)cnt));
-            /* smoothing must not turn a coded band into a zero band */
-            if (SF_OFFSET - sfac < SF_MIN)
-                sfac = SF_OFFSET - SF_MIN;
-        }
+        int sfac = smoothed_sfac(want, sb, n, sf_bias, smooth);
+#ifdef SFV_LAMBDA
+        if (sel[sb] != INT_MIN)
+            sfac = sel[sb];
+#endif
 
         int lo = ci->sfb_offset[sb];
         int width = ci->sfb_offset[sb + 1] - lo;
@@ -499,7 +620,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen, aacquantCfg->sf_search);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);

@@ -98,4 +98,9 @@ void huffbook(struct CoderInfo *coder, const int *qs);
 int writebooks(struct CoderInfo *coder, BitStream *stream);
 int writesf(struct CoderInfo *coder, BitStream *bitStream);
 
+/* Experiment: bits of one band in its cheapest book (no section overhead),
+ * or a large number if its peak is beyond the escape range. */
+int band_spectral_bits(const int *qs, int len);
+int sf_delta_bits(int diff);
+
 #endif /* HUFF2_H */
