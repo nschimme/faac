@@ -13,6 +13,10 @@
 #define bits_init faad_bits_init
 #define bits_show faad_bits_show
 #define bits_skip faad_bits_skip
+#define decode_coupling_gain faad_decode_coupling_gain
+#define coupling_spectrum faad_coupling_spectrum
+#define coupling_pcm faad_coupling_pcm
+#define imdct_window faad_imdct_window
 #define decode_cce faad_decode_cce
 #define decode_cpe faad_decode_cpe
 #define decode_dse faad_decode_dse

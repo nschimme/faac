@@ -4,6 +4,7 @@ faad_src = [
     'asc.c',
     'huffman.c',
     'syntax.c',
+    'coupling.c',
     'dequant.c',
     'stereo.c',
     'tns.c',
