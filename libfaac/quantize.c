@@ -354,6 +354,12 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
  * lines, their sum and their sum of squares. */
 typedef struct { double n, x, x2; } SfvSlot;
 typedef struct { int n; float x, x2; } SfvAcc;
+#ifndef SFV_MINW
+#define SFV_MINW 16
+#endif
+#ifndef SFV_STRIDE
+#define SFV_STRIDE 1
+#endif
 #define SFV_NSLOT 14
 #define SFV_ORIGIN 3    /* slot of the middle candidate's zero threshold */
 #define SFV_SHIFT 21
@@ -381,8 +387,10 @@ static void sfv_summarize(const float * __restrict xr, int gsize, int width, int
     SfvAcc acc[SFV_NSLOT] = { { 0 } };
     int w, k, j;
 
+    int stride = width >= 16 ? SFV_STRIDE : 1;
+
     for (w = 0; w < gsize; w++)
-        for (k = 0; k < width; k++)
+        for (k = 0; k < width; k += stride)
         {
             float ax = fabsf(xr[w * BLOCK_LEN_SHORT + k]);
             int h = sfv_bin(ax) - origin;
@@ -396,9 +404,9 @@ static void sfv_summarize(const float * __restrict xr, int gsize, int width, int
     pre[0].n = pre[0].x = pre[0].x2 = 0.0;
     for (j = 0; j < SFV_NSLOT; j++)
     {
-        pre[j + 1].n = pre[j].n + (double)acc[j].n;
-        pre[j + 1].x = pre[j].x + (double)acc[j].x;
-        pre[j + 1].x2 = pre[j].x2 + (double)acc[j].x2;
+        pre[j + 1].n = pre[j].n + (double)stride * acc[j].n;
+        pre[j + 1].x = pre[j].x + (double)stride * acc[j].x;
+        pre[j + 1].x2 = pre[j].x2 + (double)stride * acc[j].x2;
     }
 }
 
@@ -552,7 +560,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         int absf[MAX_SCFAC_BANDS][NC], sfc[MAX_SCFAC_BANDS][NC], bp[MAX_SCFAC_BANDS][NC];
         double dp[MAX_SCFAC_BANDS][NC];
         SfvSlot pre[SFV_NSLOT + 1];
-        int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi;
+        int order[MAX_SCFAC_BANDS], nb = 0, b, c, pc, pi, prev = *p_last_abs;
         /* candidates by distance from the formula's value */
         static const signed char scan[NC] = { 1, 0, 2 };
 
@@ -567,6 +575,12 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
             int lo = ci->sfb_offset[sb];
             int width = ci->sfb_offset[sb + 1] - lo;
+            if (width < SFV_MINW)
+            {
+                /* too few lines to be worth pricing; the chain still follows it */
+                prev = sf_bias + (SF_OFFSET - sfac);
+                continue;
+            }
             double allowed = (double)target[sb] * target[sb] * be[sb].sum / (double)(gsize * width);
             float peak = sqrtf(be[sb].peak_energy);
             int origin = sfv_origin(gain_with_overflow_clamp(&(int){ sfac }, peak));
@@ -587,8 +601,33 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 sfc[nb][c] = sc;
                 absf[nb][c] = sf_bias + (SF_OFFSET - sc);
             }
+#ifdef SFV_GREEDY
+            {
+                double best = INFINITY;
+                int arg = SFV_RANGE;
+                for (pi = 0; pi < NC; pi++)
+                {
+                    double v;
+                    c = scan[pi];
+                    v = dp[nb][c];
+                    if (!isfinite(v))
+                        continue;
+                    if (prev != SF_CHAIN_UNSET)
+                    {
+                        int dd = absf[nb][c] - prev;
+                        if (abs(dd) > SF_DELTA)
+                            continue;
+                        v += lam * (double)sf_delta_cost[SF_DELTA + dd];
+                    }
+                    if (!isfinite(best) || v < best - SFV_EPS * (1.0 + fabs(best))) { best = v; arg = c; }
+                }
+                sel[sb] = sfc[nb][arg];
+                prev = absf[nb][arg];
+            }
+#endif
             order[nb++] = sb;
         }
+#ifndef SFV_GREEDY
         /* Viterbi; the chain starts from the previous group's last band */
         for (b = 0; b < nb; b++)
         {
@@ -642,6 +681,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                     arg = bp[b][arg];
                 }
         }
+#endif
     }
 #endif
 
