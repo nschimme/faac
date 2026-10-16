@@ -26,6 +26,12 @@ typedef struct
     int max_l;
     int pnslevel;
     float treble_slope;
+    /* Masking-target shape, set by QuantizeSetMaskTune(). Untuned (VBR, HE-AAC,
+     * mono, multichannel and low rates) keeps the original formula. */
+    float avg_weight;
+    float loud_exponent;
+    float tilt_long[NSFB_LONG];
+    float tilt_short[NSFB_SHORT];
 } AACQuantCfg;
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054f minimizes average
@@ -49,5 +55,9 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
             int *sfbOffsetShort, int *sfbOffsetLong);
 void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AACQuantCfg *cfg);
 void QuantizeInit(void);
+/* Choose the masking-target shape for a stream. Call once the band offsets
+ * (see CalcBW) are known. */
+void QuantizeSetMaskTune(AACQuantCfg *cfg, int tuned, const int *sfbOffsetLong,
+                         const int *sfbOffsetShort);
 
 #endif
