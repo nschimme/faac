@@ -106,3 +106,23 @@ pkgconfig.generate(
     version: meson.project_version(),
     filebase: 'faac'
 )
+
+# Unit test for the SBR master table: it includes sbr.c to reach the static
+# table builder, so it takes every other source rather than linking the library.
+if not meson.is_cross_build() and get_option('encoder')
+    sbr_test_src = ['../tests/sbr_master_table.c']
+    foreach f : common_src
+        if f.endswith('.c') and f != 'sbr.c'
+            sbr_test_src += f
+        endif
+    endforeach
+    sbr_master_table = executable(
+        'sbr_master_table',
+        sbr_test_src,
+        include_directories : ['.', '..', '../include'],
+        c_args : c_args,
+        dependencies : [libm],
+        link_with : quantize_simd_libs,
+    )
+    test('sbr master table', sbr_master_table)
+endif
