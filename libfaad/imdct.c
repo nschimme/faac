@@ -217,10 +217,19 @@ static void imdct_emit_long(float * restrict out_pcm, float * restrict overlap, 
     for (int i = 1536; i < 2048; i++)  overlap[i - 1024] = -u[i - 1536] * scale * wr[2047 - i];
 }
 
-void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequence, uint8_t window_shape, float * restrict spec, float * restrict out_pcm)
+void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t sequence, uint8_t shape,
+                      float * restrict spec, float * restrict pcm)
+{
+    imdct_window(dec, sequence, shape, dec->prev_window_shape[ch], dec->overlap[ch], spec, pcm);
+    dec->prev_window_shape[ch] = shape;
+    dec->prev_window_seq[ch] = sequence;
+}
+
+void imdct_window(struct faad_decoder *dec, uint8_t window_sequence, uint8_t window_shape,
+                  uint8_t prev_shape, float * restrict overlap,
+                  float * restrict spec, float * restrict out_pcm)
 {
     float * restrict work = dec->scratch->work;
-    uint8_t prev_shape = dec->prev_window_shape[ch];
     int frame_len_long = FRAME_IS_960(dec) ? 960 : 1024;
     int short_len = (frame_len_long == 960) ? 120 : 128;
     int short_win_len = 2 * short_len;
@@ -238,9 +247,6 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequ
     const float * restrict win_short = (window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
 #endif
 
-    float * restrict overlap = dec->overlap[ch];
-    dec->prev_window_shape[ch] = window_shape;
-    dec->prev_window_seq[ch] = window_sequence;
 
     if (window_sequence == EIGHT_SHORT_SEQUENCE) {
         int n_flat = (frame_len_long - short_len) / 2; /* 448 for 1024, 420 for 960 */
