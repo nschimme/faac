@@ -74,12 +74,14 @@ build_target "fuzz_faad_raw960" \
 # 4. fuzz_faad_mp4 (with and without FAAM flags)
 build_target "fuzz_faad_mp4" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faad_ -I"$root/include" -I"$root/common" -I"$root/libfaad" -I"$root/libfaam" -I"$root/frontend" -I"$bd/frontend" \
-    "$root/tests/fuzz/fuzz_faad_mp4.c" "$root/frontend/mp4read.c" $faad_src $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
+    "$root/tests/fuzz/fuzz_faad_mp4.c" "$root/frontend/mp4read.c" \
+    "$root/frontend/cli_io.c" "$root/frontend/charset.c" $faad_src $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
 build_target "fuzz_faad_mp4_full" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faad_ -I"$root/include" -I"$root/common" -I"$root/libfaad" -I"$root/libfaam" -I"$root/frontend" -I"$bd/frontend" \
     -DFAAM_MUXER_FRAGMENTED=1 -DFAAM_MUXER_VIDEO=1 \
-    "$root/tests/fuzz/fuzz_faad_mp4.c" "$root/frontend/mp4read.c" $faad_src $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
+    "$root/tests/fuzz/fuzz_faad_mp4.c" "$root/frontend/mp4read.c" \
+    "$root/frontend/cli_io.c" "$root/frontend/charset.c" $faad_src $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
 # 5. fuzz_faam_demux (with and without FAAM flags)
 build_target "fuzz_faam_demux" \
