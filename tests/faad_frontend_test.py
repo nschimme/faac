@@ -13,6 +13,8 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import wave
 
 
@@ -78,6 +80,48 @@ def main():
                                            input=stream.read(), check=True,
                                            capture_output=True).stdout
             assert stdin_pcm == piped, f"{ext}: stdin changed the decoded WAV"
+
+        # Input-controlled brands must remain JSON strings.
+        original = open(os.path.join(d, "t.m4a"), "rb").read()
+        assert original[4:8] == b"ftyp"
+        for brand in (b'x"xx', b'x\\xx', b'x\x01xx'):
+            branded = os.path.join(d, "brand.m4a")
+            with open(branded, "wb") as f:
+                f.write(original[:8] + brand + original[12:])
+            metadata = json.loads(subprocess.run([faad, "--json", branded],
+                                                 check=True, capture_output=True).stdout)
+            assert metadata["major_brand"] == brand.decode("ascii")
+
+        # A live producer leaves stdin open. PCM must arrive before EOF even
+        # though the compressed segment is smaller than the input buffer.
+        segment = open(os.path.join(d, "t.aac"), "rb").read() * 3
+        assert len(segment) < 262144
+        live_out = os.path.join(d, "live.raw")
+        proc = subprocess.Popen([faad, "-q", "-f", "raw", "-o", live_out, "-"],
+                                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.PIPE)
+        def feed():
+            try:
+                proc.stdin.write(segment)
+                proc.stdin.flush()
+            except (BrokenPipeError, ValueError):
+                pass
+        feeder = threading.Thread(target=feed, daemon=True)
+        feeder.start()
+        try:
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                if os.path.exists(live_out) and os.path.getsize(live_out) > 0:
+                    break
+                time.sleep(0.02)
+            else:
+                raise AssertionError("live ADTS produced no PCM before EOF")
+        finally:
+            proc.kill()
+            proc.wait()
+            feeder.join(timeout=5)
+            proc.stdin.close()
+            proc.stderr.close()
 
         # Default names use only the basename's extension. A leading dot
         # alone is part of a hidden filename, and directory dots stay intact.
@@ -225,6 +269,10 @@ def main():
             f.write(open(adts1, "rb").read() + open(adts2, "rb").read())
         check_duration(changing, len(first_pcm) / (2 * channels * 44100) +
                        len(second_pcm) / (2 * channels * 48000))
+        for options in (("-w",), ("-o", os.path.join(d, "changing.wav"))):
+            result = subprocess.run([faad, "-q", *options, changing], capture_output=True)
+            assert result.returncode == 1 and b"WAV output cannot change" in result.stderr
+        assert pcm(changing, ["-f", "raw"]), "raw output accepts format changes"
         assert first_pcm != second_pcm, "track selection fixtures must differ"
         assert pcm(multi, ["--track", "2"]) == second_pcm, "second track PCM"
         assert pcm(multi) == first_pcm, "default first track PCM"
@@ -379,12 +427,9 @@ def main():
             assert metadata["audio"]["channels"] == 6, "fixture did not reach six-channel frames"
 
             mp4_gapless_out = os.path.join(d, "gapless_transition.wav")
-            subprocess.run([faad, "-q", "-o", mp4_gapless_out, mp4_gapless], check=True)
-            riff, data, actual = wav_sizes(open(mp4_gapless_out, "rb").read())
-            assert data == actual > 0 and riff == data + 72, "MP4 gapless format transition produced valid WAV"
-
-            mp4_gapless_piped = subprocess.run([faad, "-q", "-w", mp4_gapless], check=True, capture_output=True).stdout
-            assert mp4_gapless_piped[80:] == open(mp4_gapless_out, "rb").read()[80:], "MP4 gapless transition -w PCM differs from -o PCM"
+            for options in (("-o", mp4_gapless_out), ("-w",)):
+                result = subprocess.run([faad, "-q", *options, mp4_gapless], capture_output=True)
+                assert result.returncode == 1 and b"WAV output cannot change" in result.stderr
 
             # Compare both output paths to explicit trimming of the untrimmed
             # stream, including a final channel count larger than the header.
