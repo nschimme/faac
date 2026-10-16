@@ -1411,7 +1411,78 @@ static void test_request_size_limit(void) {
     CHECK(faam_io_read_full(&io, frame, (uint32_t)INT32_MAX + 1u) == -1 && c.reads == reads);
 }
 
+/* A largesize must not wrap the top-level cursor back to an earlier box.
+ * The read budget makes the regression fail promptly instead of hanging. */
+static void test_top_level_offset_wrap(void) {
+    uint8_t data[32] = {
+        0,0,0,16,'f','r','e','e',0,0,0,0,0,0,0,0,
+        0,0,0,1,'f','r','e','e',255,255,255,255,255,255,255,240
+    };
+    memfile f = { .buf = data, .len = sizeof(data), .cap = sizeof(data),
+                  .fail_read_after = 8 };
+    faam_io io = mem_io(&f);
+    faam_demuxer *d = NULL;
+    CHECK(faam_demuxer_open(NULL, &io, &d) == FAAM_OK);
+    CHECK(f.reads <= 8);
+    uint32_t count = 99;
+    CHECK(faam_demuxer_get_num_tracks(d, &count, NULL) == FAAM_OK && count == 0);
+    faam_demuxer_close(&d);
+}
+
+/* Both public rewriters must reject a largesize that wraps the scan cursor. */
+static void test_update_offset_wrap(void) {
+    uint8_t data[32] = {
+        0,0,0,16,'f','r','e','e',0,0,0,0,0,0,0,0,
+        0,0,0,1,'f','r','e','e',255,255,255,255,255,255,255,240
+    };
+    for (unsigned tags = 0; tags < 2; tags++) {
+        memfile f = { .buf = data, .len = sizeof(data), .cap = sizeof(data),
+                      .fail_read_after = 12 };
+        faam_io io = mem_io(&f);
+        faam_metadata meta = { .struct_size = sizeof(meta), .title = "new" };
+        faam_status st = tags ? faam_update_tags_stream(&io, &meta, 0)
+                              : faam_update_chapters_stream(&io, NULL, 0, 0);
+        CHECK(st == FAAM_ERR_BAD_CONTAINER);
+        CHECK(f.reads <= 12);
+    }
+}
+
+/* A count extending past stco/co64 must not rewrite a following sibling. */
+static void test_update_chunk_table_bounds(void) {
+    for (unsigned wide = 0; wide < 2; wide++) {
+        for (unsigned tags = 0; tags < 2; tags++) {
+            uint8_t data[92] = {0};
+            unsigned extra = wide ? 4 : 0;
+            const char *names[] = { "moov", "trak", "mdia", "minf", "stbl" };
+            for (unsigned i = 0; i < 5; i++) {
+                put32(data + 8*i, 76 + extra - 8*i);
+                memcpy(data + 8*i + 4, names[i], 4);
+            }
+            put32(data + 40, 20 + extra);
+            memcpy(data + 44, wide ? "co64" : "stco", 4);
+            put32(data + 52, 2); /* only one entry fits */
+            put32(data + 56 + extra, 84 + extra);
+            put32(data + 60 + extra, 16);
+            memcpy(data + 64 + extra, "free", 4);
+            put32(data + 76 + extra, 12);
+            memcpy(data + 80 + extra, "mdat", 4);
+            memfile f = {0};
+            mem_write(&f, data, 88 + extra);
+            faam_io io = mem_io(&f);
+            faam_metadata meta = { .struct_size = sizeof(meta), .title = "new" };
+            faam_status st = tags ? faam_update_tags_stream(&io, &meta, 0)
+                                  : faam_update_chapters_stream(&io, NULL, 0, 0);
+            CHECK(st != FAAM_OK);
+            CHECK(f.len == 88 + extra && !memcmp(f.buf, data, f.len));
+            free(f.buf);
+        }
+    }
+}
+
 int main(void) {
+    test_update_offset_wrap();
+    test_update_chunk_table_bounds();
+    test_top_level_offset_wrap();
     test_status_contract();
     test_short_reads();
     test_gapless();
