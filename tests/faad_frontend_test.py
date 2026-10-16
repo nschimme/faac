@@ -81,6 +81,26 @@ def main():
                                            capture_output=True).stdout
             assert stdin_pcm == piped, f"{ext}: stdin changed the decoded WAV"
 
+        # MP4 seeking must match the sequential PCM suffix for file and stdin.
+        mp4 = os.path.join(d, "t.m4a")
+        sequential = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw", mp4],
+                                    check=True, capture_output=True).stdout
+        sequential_wav = subprocess.run([faad, "-q", "-w", "-g", mp4],
+                                        check=True, capture_output=True).stdout
+        for skipped in (1, 20, 1000):
+            jump = str((skipped + 0.25) * 1024 / 44100)
+            expected = sequential[skipped * 1024 * channels * 2:]
+            for source in (mp4, "-"):
+                result = subprocess.run(
+                    [faad, "-q", "-w", "-g", "-f", "raw", "--jump", jump, source],
+                    input=open(mp4, "rb").read() if source == "-" else None,
+                    check=True, capture_output=True)
+                assert result.stdout == expected, ("MP4 jump PCM/history", skipped, source)
+            if skipped < 1000:
+                result = subprocess.run([faad, "-q", "-w", "-g", "--jump", jump, mp4],
+                                        check=True, capture_output=True)
+                assert result.stdout == sequential_wav[:80] + expected, "MP4 jump WAV format/history"
+
         # Input-controlled brands must remain JSON strings.
         original = open(os.path.join(d, "t.m4a"), "rb").read()
         assert original[4:8] == b"ftyp"
@@ -191,9 +211,8 @@ def main():
                 size = struct.unpack_from("<I", data, pos)[0]
                 units.append(data[pos + 4:pos + 4 + size])
                 pos += 4 + size
-            # Repeat whole sequences so the seek lands on a frame carrying
-            # the initial SBR/PS configuration, as a fresh MP4 decoder needs.
-            skipped = len(units) * 2
+            # Seek past the repeated initial SBR/PS configuration packet.
+            skipped = len(units) * 2 + 1
             units *= 4
             def descriptor(tag, payload):
                 assert len(payload) < 128
@@ -220,6 +239,9 @@ def main():
             result = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw",
                                      "--jump", jump, path], check=True, capture_output=True)
             assert len(result.stdout) == (len(units) - skipped) * frame_samples * 2 * 2, (name, len(units), skipped, len(result.stdout), (len(units) - skipped) * frame_samples * 2 * 2)
+            sequential = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw", path],
+                                        check=True, capture_output=True).stdout
+            assert result.stdout == sequential[skipped * frame_samples * 2 * 2:], (name, "MP4 jump PCM/history")
 
         from faad_drc_stream import drc, inject
         drc_path = os.path.join(d, 'drc.aac')
