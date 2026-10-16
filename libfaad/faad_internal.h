@@ -384,6 +384,7 @@ typedef struct {
     float (*y)[SBR_BUF_SLOTS][2]; /* shared QMF workspace: generated HF replaces unused low bands */
 } SBRScratch;
 
+#if MAX_CHANNELS >= 3
 /* CCE state is allocated by tag only when a stream uses coupling. Gains
  * follow the CCE's window groups, at most 8 * 15 short-window bands. */
 typedef struct CouplingChannel {
@@ -402,6 +403,8 @@ typedef struct {
     uint32_t seed;
     uint8_t type, tag, ch;
 } CouplingTarget;
+
+#endif
 
 /* Working memory of one frame's decode phases, which never overlap: the
  * element being parsed, the IMDCT
@@ -468,7 +471,9 @@ struct faad_decoder {
     uint32_t consecutive_errors;
     float (*prev_spec)[FRAME_LEN_LONG];
 
+#if MAX_CHANNELS >= 3
     CouplingChannel *coupling;
+#endif
     FrameScratch *scratch;
 #ifndef FAAD_DISABLE_SBR
     SBRScratch sbr_scratch;
@@ -501,10 +506,12 @@ void apply_tns(ICSInfo *ics, float *spec);
 void imdct_and_window(struct faad_decoder *dec, uint32_t ch, uint8_t window_sequence, uint8_t window_shape, float *spec, float *out_pcm);
 
 faad_status decode_pce(BitReader *bs, struct faad_decoder *dec);
+#if MAX_CHANNELS >= 3
 faad_status decode_cce(BitReader *bs, struct faad_decoder *dec);
 int decode_coupling_gain(BitReader *bs);
 faad_status coupling_spectrum(struct faad_decoder *dec, CouplingTarget *targets, unsigned count);
 void coupling_pcm(struct faad_decoder *dec);
+#endif
 void imdct_window(struct faad_decoder *dec, uint8_t sequence, uint8_t shape,
                   uint8_t previous_shape, float *overlap, float *spec, float *pcm);
 faad_status decode_dse(BitReader *bs);
