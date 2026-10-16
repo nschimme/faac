@@ -107,7 +107,7 @@ struct BitStream;
 #define SBR_STOP_FREQ_MIN               0
 #define SBR_STOP_FREQ_MAX               13
 /* From this per-channel rate the core spends bits better below the crossover
- * than above it, so SBR takes over from about 6.3 kHz instead of 11.6 kHz. Under
+ * than above it, so SBR takes over from about 8 kHz instead of 11.6 kHz. Under
  * it the core needs the bandwidth: a patch that low is audibly worse than a
  * starved core. The _RICH inverse filtering and transient settings are gated
  * on the same rate. */
