@@ -58,6 +58,21 @@ def main():
             assert riff == 0xFFFFFFFF and data == 0xFFFFFFFF, f"{ext}: -w header must declare a streaming length, got {riff}/{data}"
             assert piped[80:] == open(out, "rb").read()[80:], f"{ext}: -w PCM differs from -o PCM"
 
+            # ADTS seeking must preserve synthesis history, including stdin.
+            if ext == "aac":
+                skipped = 20
+                jump = str((skipped + 0.25) * 1024 / 44100)
+                expected = piped[80 + skipped * 1024 * channels * 2:]
+                for source in (enc, "-"):
+                    result = subprocess.run(
+                        [faad, "-q", "-w", "--jump", jump, source],
+                        input=open(enc, "rb").read() if source == "-" else None,
+                        check=True, capture_output=True)
+                    assert result.stdout[80:] == expected, "ADTS jump PCM/history"
+                result = subprocess.run([faad, "-q", "-w", "--jump", "10", enc],
+                                        check=True, capture_output=True)
+                assert result.stdout[80:] == b"", "ADTS jump beyond EOF"
+
             with open(enc, "rb") as stream:
                 stdin_pcm = subprocess.run([faad, "-q", "-w", "-"],
                                            input=stream.read(), check=True,
@@ -132,6 +147,10 @@ def main():
                 size = struct.unpack_from("<I", data, pos)[0]
                 units.append(data[pos + 4:pos + 4 + size])
                 pos += 4 + size
+            # Repeat whole sequences so the seek lands on a frame carrying
+            # the initial SBR/PS configuration, as a fresh MP4 decoder needs.
+            skipped = len(units) * 2
+            units *= 4
             def descriptor(tag, payload):
                 assert len(payload) < 128
                 return bytes((tag, len(payload))) + payload
@@ -152,6 +171,11 @@ def main():
             with open(path, "wb") as f:
                 f.write(prefix + mdat + box("moov", box("trak", mdia)))
             check_duration(path, len(units) * frame_samples / rate)
+            # A fractional frame offset distinguishes 960 from 1024 samples.
+            jump = str((skipped + 0.25) * frame_samples / rate)
+            result = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw",
+                                     "--jump", jump, path], check=True, capture_output=True)
+            assert len(result.stdout) == (len(units) - skipped) * frame_samples * 2 * 2, (name, len(units), skipped, len(result.stdout), (len(units) - skipped) * frame_samples * 2 * 2)
 
         from faad_drc_stream import drc, inject
         drc_path = os.path.join(d, 'drc.aac')
