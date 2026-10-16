@@ -31,7 +31,7 @@ build_target() {
 }
 
 # Source files for libfaad (excluding test_*.c)
-faad_src="$root/libfaad/asc.c $root/libfaad/bits.c $root/libfaad/decoder.c $root/libfaad/dequant.c $root/libfaad/huffman.c $root/libfaad/imdct.c $root/libfaad/ps.c $root/libfaad/sbr.c $root/libfaad/sbr_dec_tables.c $root/libfaad/stereo.c $root/libfaad/syntax.c $root/libfaad/tns.c"
+faad_src="$root/libfaad/asc.c $root/libfaad/bits.c $root/libfaad/decoder.c $root/libfaad/coupling.c $root/libfaad/dequant.c $root/libfaad/huffman.c $root/libfaad/imdct.c $root/libfaad/ps.c $root/libfaad/sbr.c $root/libfaad/sbr_dec_tables.c $root/libfaad/stereo.c $root/libfaad/syntax.c $root/libfaad/tns.c"
 
 # Source files for libfaam
 faam_src="$root/libfaam/atom_patch.c $root/libfaam/chapter.c $root/libfaam/demux.c $root/libfaam/faam_util.c $root/libfaam/metadata.c $root/libfaam/mux.c $root/libfaam/tag.c"
@@ -144,6 +144,9 @@ for t in $run_list; do
         exit 1
     fi
     mkdir -p "corpus_$t"
+    if [ "$t" = fuzz_faad_adts ]; then
+        cp "$root"/tests/fuzz/corpus_adts/* "corpus_$t/"
+    fi
     if [ "$t" = fuzz_faad_raw960 ]; then
         cp "$root"/tests/fuzz/corpus_raw960/* "corpus_$t/"
     fi

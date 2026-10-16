@@ -1,3 +1,7 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 /* Public ABI and packet-boundary regressions. No encoder dependency. */
 #include "faad_internal.h"
 #include "endian.h"

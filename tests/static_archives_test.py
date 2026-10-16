@@ -21,7 +21,7 @@ def defined(archive):
         if len(parts) == 3 and parts[1] in "TDBRSCVW":
             name = parts[2].lstrip("_") if sys.platform == "darwin" else parts[2]
             # Toolchain and sanitizer runtime symbols (_GLOBAL__sub_I_*, asan.module_ctor, ...)
-            if not name.startswith("_") and "." not in name:
+            if not name.startswith("_") and "." not in name and name != "asan_globals_registered":
                 syms.add(name)
     return syms
 
