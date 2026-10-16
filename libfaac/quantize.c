@@ -447,20 +447,23 @@ static int smoothed_sfac(const int *want, int sb, int n, int sf_bias, int smooth
     return sfac;
 }
 
-/* Each coded band may move its scalefactor one step either way. Pick the
- * moves that make the scalefactor deltas cheapest to code (Viterbi over the
- * coded bands of the group, seeded from the previous group's last band).
- * Costs are integers, so the choice cannot differ between platforms. */
+/* Each coded band may take its scalefactor one step coarser. Pick the moves
+ * that make the scalefactor deltas cheapest to code (Viterbi over the coded
+ * bands of the group, seeded from the previous group's last band). Costs are
+ * integers (quarter bits), so the choice cannot differ between platforms. */
+#define SF_NUDGE_COST 1  /* quarter bits charged per band moved */
 static inline int sf_delta_cost(int diff)
 {
     return book12[SF_DELTA + clamp_sf_diff(diff)].len;
 }
-#define SF_NUDGE_COST 1  /* quarter bits charged per step moved */
+
 static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int base, int smooth,
                                int last_abs, int *sel)
 {
-    int a0[MAX_SCFAC_BANDS], bp[MAX_SCFAC_BANDS][3], order[MAX_SCFAC_BANDS];
-    int cost[3] = { 0, 0, 0 }, nb = 0, b, c;
+    /* state 0: one step coarser, state 1: as wanted */
+    int a0[MAX_SCFAC_BANDS], order[MAX_SCFAC_BANDS];
+    unsigned char bp[MAX_SCFAC_BANDS];
+    int cost0 = 0, cost1 = 0, nb = 0, b, c;
 
     for (int sb = 0; sb < n; sb++)
     {
@@ -476,45 +479,38 @@ static void nudge_scalefactors(const CoderInfo *ci, const int *want, int n, int 
         return;  /* nothing to chain */
     for (b = 0; b < nb; b++)
     {
-        int ncost[3];
+        int n0, n1;
+        /* absolute scalefactor of state s is a0 + 1 - s */
         if (!b)
         {
-            for (c = 0; c < 3; c++)
-            {
-                bp[0][c] = 1;
-                ncost[c] = (last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0[0] + 1 - c - last_abs))
-                         + (c == 1 ? 0 : SF_NUDGE_COST);
-            }
+            n0 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0[0] + 1 - last_abs);
+            n1 = last_abs == SF_CHAIN_UNSET ? 0 : 4 * sf_delta_cost(a0[0] - last_abs);
+            bp[0] = 0;
         }
         else
         {
-            /* the step from candidate p of band b-1 to candidate c of band b
-             * is d0 + p - c; one lookup per distinct value */
-            int d0 = a0[b] - a0[b - 1], lk[5];
-            for (c = 0; c < 5; c++)
-                lk[c] = 4 * sf_delta_cost(d0 + c - 2);
-            for (c = 0; c < 3; c++)
-            {
-                int best = cost[1] + lk[3 - c], arg = 1;
-                int v0 = cost[0] + lk[2 - c], v2 = cost[2] + lk[4 - c];
-                if (v0 < best) { best = v0; arg = 0; }
-                if (v2 < best) { best = v2; arg = 2; }
-                bp[b][c] = arg;
-                ncost[c] = best + (c == 1 ? 0 : SF_NUDGE_COST);
-            }
+            int d0 = a0[b] - a0[b - 1];
+            int l_m = 4 * sf_delta_cost(d0 - 1), l_0 = 4 * sf_delta_cost(d0), l_p = 4 * sf_delta_cost(d0 + 1);
+            /* to state 1 (diff d0 + p - 1): from p=1 costs l_0, from p=0 costs l_m */
+            int v1 = cost1 + l_0, v0 = cost0 + l_m;
+            n1 = v1; c = 1;
+            if (v0 < v1) { n1 = v0; c = 0; }
+            /* to state 0 (diff d0 + p): from p=1 costs l_p, from p=0 costs l_0 */
+            v1 = cost1 + l_p; v0 = cost0 + l_0;
+            n0 = v1; bp[b] = 1;
+            if (v0 < v1) { n0 = v0; bp[b] = 0; }
+            bp[b] |= (unsigned char)(c << 1);
         }
+        n0 += SF_NUDGE_COST;
         /* a step that would turn the band into a zero band is not offered */
-        if (SF_OFFSET - (sel[order[b]] + 1) < SF_MIN) ncost[2] = INT_MAX / 2;
-        if (SF_OFFSET - (sel[order[b]] - 1) < SF_MIN) ncost[0] = INT_MAX / 2;
-        cost[0] = ncost[0]; cost[1] = ncost[1]; cost[2] = ncost[2];
+        if (SF_OFFSET - (sel[order[b]] - 1) < SF_MIN) n0 = INT_MAX / 2;
+        cost0 = n0; cost1 = n1;
     }
-    c = 1;
-    if (cost[0] < cost[c]) c = 0;
-    if (cost[2] < cost[c]) c = 2;
+    c = cost0 < cost1 ? 0 : 1;  /* final state */
     for (b = nb - 1; b >= 0; b--)
     {
-        sel[order[b]] += c - 1;
-        c = bp[b][c];
+        sel[order[b]] -= 1 - c;
+        c = c ? (bp[b] >> 1) & 1 : bp[b] & 1;
     }
 }
 
