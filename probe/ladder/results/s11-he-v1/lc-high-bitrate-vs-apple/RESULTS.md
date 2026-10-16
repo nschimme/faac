@@ -28,3 +28,8 @@ Reading: intensity stereo costs about 1.6 % at these rates (roughly a quarter of
 preregistered all-decoders rule. PNS is worth about 5 % (it saves more bits than it loses), TNS is neutral, a wider bandwidth is neutral (CI spans 0).
 Limits: screened on the same corpus that located the gap (not held out); only 128-192 kbps; the switch is global today, so a production change needs a
 bitrate-gated default; 96 kbps and above 192 kbps not tested (no Apple refs above 192); rate and VBR/CBR untested.
+
+## Worst-clip check (the CI gate fails any clip x rung past -0.10 MOS), FAAD2, 49 clips x 3 rungs = 147 cells vs default
+- `--joint 1`: 0 of 147 cells below -0.10; worst -0.092 (24-Greensleeves-Korean-male-speech @128k), then -0.024, -0.014, -0.010. Mean MOS at equal rate +0.0015, mean rate change -0.02 kbps.
+  The BD-rate gain (-1.6 %) comes from a small, broad shift; the one near-gate clip needs a look before any default change.
+- `-c 20000`: 0 of 147 below -0.10, worst -0.011; mean +0.0014.

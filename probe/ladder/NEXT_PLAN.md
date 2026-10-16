@@ -1,5 +1,7 @@
 # Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-30, updated after Stage S9)
 
+> **Current handoff (2026-10-16): see [`HANDOFF.md`](HANDOFF.md).** The target is now **LC at high bitrates vs Apple** (HE-AAC reached parity with Apple and FDK on `he-v1-retune`). `HANDOFF.md` supersedes the Stage S11 status below, including its "48 kHz HE first, LC secondary" priority and the "frozen baseline 098e8900" rule (the base for new experiments is `nschimme/faac` `he-v1-retune`; re-fetch before branching).
+
 ## Current handoff after Stage S11 (2026-10-15)
 
 Start with [`LADDER_RESULT.md` → Stage S11](LADDER_RESULT.md#stage-s11--bounded-he-v1-feature-study-and-merged-baseline-closure-2026-10-14)
