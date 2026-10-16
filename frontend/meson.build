@@ -135,6 +135,6 @@ if get_option('muxer')
         test('faad_frontend_test', find_program('python3'),
             args: [files('../tests/faad_frontend_test.py'), faac, faad, faam,
                    get_option('max-channels').to_string(), get_option('decoder-sbr').to_string(),
-                   get_option('decoder-drc').to_string()])
+                   get_option('decoder-drc').to_string(), get_option('decoder-dab').to_string()])
     endif
 endif
