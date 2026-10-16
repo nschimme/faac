@@ -21,6 +21,7 @@ Calibration: at 128-192 kbps MOS rises only about 0.0016 per +1 % bitrate, so -5
 | PNS level change | #83 (Jules), earlier screen | default 4 optimal | **Dead end** |
 | Coarser target above 8 kHz (FFmpeg-inspired) | local | +2.2 % to +14.8 % (worse) | **Dead end** |
 | Mid-band target tilt 2.5-10 kHz (+-1.5..4.5 dB, peak 3.4-7 kHz) | local | +0.31 % to +2.87 % one way, +1.10 % the other | **Dead end** |
+| LC block-switch thresholds (level ratio, drop ratio) | local | best -0.69 % [-1.60, +0.06], worst cell -0.046 | **Dead end** (small, spans 0) |
 | `--no-pns`, `--no-tns`, `-c 20000` | CLI screen | +5.25 %, -0.05 %, -0.61 % (CI spans 0) | PNS is worth ~5 %; TNS and cutoff neutral |
 
 ## Merged-candidate work
@@ -64,6 +65,16 @@ Opt-in scratch change (`scripts/band_cost/tilt_experiment.patch`, env `TILT_DB`)
 - +3 dB (finer in the bump, control): +1.10 % [+0.57, +1.60], worst -0.042 (Girl_In_The_Fire @128)
 Worse in both directions, so master's mid-band allocation sits at a local optimum for a hump-shaped tilt. The take_your_finger scalefactor difference is not a general tilt that Apple exploits; do not retry it. A per-clip adaptive tilt is a different idea and is not covered.
 
+### Block-switch thresholds (LC `PSY_LEVEL_RATIO_LC` 2.5, `PSY_DROP_RATIO_LC` 12 in `blockswitch.c`)
+Motivation: velvet uses short blocks in 43 % of channel-frames vs Apple's 26 %. Opt-in scratch change reading `BS_LR` / `BS_DR` (`scripts/band_cost/blockswitch_experiment.patch`), LC only. Velvet is drop-driven: short ICS at -b 160 are 398 (default), 390 (LR 3.5), 380 (LR 5), 324 (DR 24), 322 (DR 48), 120 (triggers off). 49 clips, ABR 128/160/192, vs master:
+- DR 24: -0.20 % [-0.48, 0.00], worst -0.010
+- DR 48: +0.03 % [-0.58, +0.89], worst -0.137 (Last_Of_The_Mohicanz @128, fails the gate)
+- LR 3.5, DR 12: -0.49 % [-1.22, +0.13], worst -0.046 (liberate @128)
+- LR 3.5, DR 18: -0.55 % [-1.38, +0.14], worst -0.046
+- LR 3.5, DR 24: -0.69 % [-1.60, +0.06], worst -0.046; mean MOS 128/160/192: -0.0009 / +0.0009 / +0.0008. Velvet itself: dMOS +0.019 / +0.010 / +0.007, bitrate -0.1 to -0.2 %.
+- LR 5, DR 48: -0.20 % [-1.64, +1.18], worst -0.135.
+The ceiling is under 1 %, every interval spans 0, and the better settings still hurt liberate at 128. Short-block rate is not the main gap on velvet (cutting it by a quarter bought +0.019 MOS at one rung). Do not retune these for LC without a new reason. HE uses its own ratios and was not touched.
+
 ### Coarser HF target above 8 kHz (inspired by FFmpeg's NMR coder; FFmpeg is LGPL so its source may be read)
 FFmpeg `aaccoder_nmr.h` is a Viterbi scalefactor search with lambda bisected to the bit budget; a comment claims Apple codes 7.5-12.6 kHz ~6 dB and 12.6 kHz+ ~28 dB coarser. In FAAC a quadratic target rise above 8 kHz: +0.04 dB/kHz^2 -> +2.2 %, +0.08 -> +7.2 %, +0.16 -> +14.8 %; opposite sign (-0.04/-0.08) -> -0.2 % (CI spans 0). HF allocation tilt is flat; not the lever.
 
@@ -78,10 +89,10 @@ Tools in `scripts/band_cost/`. Master `-b 160`, 10 s clips, long windows unless 
 ## Open leads
 - Remaining worst clips vs Apple: velvet and take_your_finger at 128/160 kbps (~0.08 MOS, 25-30 kbps equivalent gap at equal rate; Apple overshoots nominal ABR on velvet ~10 %).
 - Cost per coded HF band: Huffman codebook choice, scalefactor cost, band-wise bit allocation, compared with Apple streams.
-- Short-window rate: FAAC picks short blocks for ~17 % of frames vs Apple ~9 % (proxy source, unconfirmed); stricter block-switch threshold at high rates.
 - Cutoff: Apple codes ~20.2 kHz at 128-192k; FAAC default 18.75 kHz. Retest `-c` on top of #81.
 - IS gating rate at 96 and 256/320 kbps (FAAC vs FAAC).
 - Never measured: VBR/CBR, a held-out music set, the full ladder (every LC and HE rung) for each change.
 
 ## Measurement setup
+Pitfall: the `faac` CLI refuses to overwrite an existing output (`Output file ... already exists (use --overwrite)`, exit status non-zero, stderr only), so a re-run into the same filename silently scores the previous encode. Use fresh directories per variant (the harness does) or pass `--overwrite`.
 Local run: clone nschimme/faac-benchmark, PMLT2014 and SoundExpert with git (music is there, ~2 GB); venv with zimtohrli, soundfile, scipy; see HANDOFF s6. Speed: callgrind instruction counts; s390x CI compares decoded audio with a tolerance and FMA is kept (no `-ffp-contract=off`).

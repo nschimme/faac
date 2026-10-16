@@ -1,0 +1,22 @@
+diff --git a/libfaac/blockswitch.c b/libfaac/blockswitch.c
+index 04c3eab..87a03d2 100644
+--- a/libfaac/blockswitch.c
++++ b/libfaac/blockswitch.c
+@@ -1,3 +1,5 @@
++#include <stdio.h>
++#include <stdlib.h>
+ /*
+  * FAAC - Freeware Advanced Audio Coder
+  * Copyright (C) 2002 Krzysztof Nikiel
+@@ -95,8 +97,9 @@ int PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannel
+   int size;
+ 
+   gpsyInfo->sampleRate = (float) sampleRate;
+-  gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_LEVEL_RATIO_LC;
+-  gpsyInfo->dropRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_DROP_RATIO_LC;
++  { const char *a = getenv("BS_LR"), *b = getenv("BS_DR");
++    gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : (a ? (float)atof(a) : PSY_LEVEL_RATIO_LC);
++    gpsyInfo->dropRatio = heCore ? PSY_LEVEL_RATIO_HE : (b ? (float)atof(b) : PSY_DROP_RATIO_LC);  }
+   gpsyInfo->levelSmooth = heCore ? 1.0f : PSY_LEVEL_SMOOTH_LC;
+   gpsyInfo->bassDom = heCore ? PSY_BASS_DOM_HE : 0.0f;
+ 
