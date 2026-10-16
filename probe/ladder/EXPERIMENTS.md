@@ -22,6 +22,7 @@ Calibration: at 128-192 kbps MOS rises only about 0.0016 per +1 % bitrate, so -5
 | Coarser target above 8 kHz (FFmpeg-inspired) | local | +2.2 % to +14.8 % (worse) | **Dead end** |
 | Mid-band target tilt 2.5-10 kHz (+-1.5..4.5 dB, peak 3.4-7 kHz) | local | +0.31 % to +2.87 % one way, +1.10 % the other | **Dead end** |
 | LC block-switch thresholds (level ratio, drop ratio) | local | best -0.69 % [-1.60, +0.06], worst cell -0.046 | **Dead end** (small, spans 0) |
+| Stereo gates/bias on the measured LC stereo rungs (bias from 48 kbps/ch, short M/S from 48/64 kbps/ch, k 1.25/1.75) | local, on #81+#88 | best -0.13 % at 48 kHz only; fails gate at 44.1 kHz | **Dead end** |
 | `--no-pns`, `--no-tns`, `-c 20000` | CLI screen | +5.25 %, -0.05 %, -0.61 % (CI spans 0) | PNS is worth ~5 %; TNS and cutoff neutral |
 
 ## Merged-candidate work
@@ -74,6 +75,14 @@ Motivation: velvet uses short blocks in 43 % of channel-frames vs Apple's 26 %. 
 - LR 3.5, DR 24: -0.69 % [-1.60, +0.06], worst -0.046; mean MOS 128/160/192: -0.0009 / +0.0009 / +0.0008. Velvet itself: dMOS +0.019 / +0.010 / +0.007, bitrate -0.1 to -0.2 %.
 - LR 5, DR 48: -0.20 % [-1.64, +1.18], worst -0.135.
 The ceiling is under 1 %, every interval spans 0, and the better settings still hurt liberate at 128. Short-block rate is not the main gap on velvet (cutting it by a quarter bought +0.019 MOS at one rung). Do not retune these for LC without a new reason. HE uses its own ratios and was not touched.
+
+### Stereo gates and bias on the benchmark's own stereo scenarios (after #81 + #88)
+Scope: `faac-benchmark` config scenarios, auto object type. 48 kHz stereo is HE up to 64 kbps and LC from 96; 44.1 kHz HE at 64, LC from 96; 32 kHz stereo is LC from 48 kbps (24 kbps/ch). All 34 scenarios x 2 clips x ABR/CBR/VBR: #88 output is identical to #81 (204 decoded-PCM md5 compares), so #88 is a pure simplification. Env-driven scratch change `scripts/band_cost/stereo_sweep.patch` (`ST_SHORT`, `ST_BIASBR`, `ST_K`); 49 clips, ABR, own harness (`score_ladder.py`, `CORP`/`RUNGS` env; the reference is resampled to 48 kHz stereo like the CI scorer), paired against the same build with defaults.
+- 48 kHz LC 96-256: short M/S from 96 kbps (48/ch): -0.06 % [-0.58, +0.68], worst -0.208 (Greensleeves @96). From 128: -0.03 %, worst -0.092. Bias from 96 kbps: -0.13 % [-0.24, -0.05], MOS +0.0038 at the 96 rung, worst -0.008 (the only clean gain). Both: worst -0.242. k 1.25: -0.06 % [-0.15, +0.02]; k 1.75: +0.07 % [-0.05, +0.22], worst -0.023.
+- 44.1 kHz LC 96-256, same bias-from-96: -0.01 % [-0.09, +0.09] but velvet @96 is -0.442 (fails the -0.10 gate), mean MOS at 96 -0.008. So the 48 kHz gain does not transfer; do not lower the bias gate.
+- 32 kHz LC 48-128: bias from 24 kbps/ch (64 kbps stereo): -0.10 % [-0.39, +0.16], worst -0.051 (Wurlitzer @64); from 40 kbps/ch: -0.11 % [-0.26, +0.03], worst -0.024, MOS +0.0028 at the 80 rung only; from 48 kbps/ch: -0.04 %, k=2 +0.04 %. Nothing consistent.
+- Verification of #81+#88 vs master on the other measured ladders: 44.1 kHz (96-256) -0.81 % [-1.23, -0.43], worst -0.014; 48 kHz (96-320) -0.83 % [-1.23, -0.47], worst -0.013 (Girl_In_The_Fire @128), MOS +0.0005/+0.0043/+0.0029/+0.0012/+0.0005 at 128-320, bitrate -0.14 % to -0.47 %; 32 kHz (48-128) +0.02 % [-0.01, +0.04], MOS unchanged except -0.001 at 128 (worst -0.029): #81's gates start at 64 kbps/ch, so 32 kHz stereo is untouched below 128 kbps.
+Verdict: stereo.c is at an optimum for the measured scenarios as #81+#88 leave it. The remaining stereo lever is the 32 kHz stereo family below 64 kbps/ch (starved/IS tiers), which this sweep did not move.
 
 ### Coarser HF target above 8 kHz (inspired by FFmpeg's NMR coder; FFmpeg is LGPL so its source may be read)
 FFmpeg `aaccoder_nmr.h` is a Viterbi scalefactor search with lambda bisected to the bit budget; a comment claims Apple codes 7.5-12.6 kHz ~6 dB and 12.6 kHz+ ~28 dB coarser. In FAAC a quadratic target rise above 8 kHz: +0.04 dB/kHz^2 -> +2.2 %, +0.08 -> +7.2 %, +0.16 -> +14.8 %; opposite sign (-0.04/-0.08) -> -0.2 % (CI spans 0). HF allocation tilt is flat; not the lever.

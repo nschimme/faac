@@ -1,0 +1,40 @@
+diff --git a/libfaac/stereo.c b/libfaac/stereo.c
+index d364292..3297bfd 100644
+--- a/libfaac/stereo.c
++++ b/libfaac/stereo.c
+@@ -19,6 +19,7 @@
+ #include "stereo.h"
+ #include "huff2.h"
+ #include "util.h"
++#include <stdlib.h>
+ #include "faac_internal.h"
+ #include "stats.h"
+ 
+@@ -60,6 +61,9 @@ static int band_at(const int *sfbOffset, int sfbn, int hz, int n2, int sampleRat
+     return sfb;
+ }
+ 
++static unsigned long env_ul(const char *n, unsigned long d){ const char *e=getenv(n); return e?strtoul(e,0,10):d; }
++static float env_f(const char *n, float d){ const char *e=getenv(n); return e?(float)atof(e):d; }
++
+ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned long bitRatePerCh, unsigned int channels, int sbr, const int *sfbOffset[2], const int sfbn[2])
+ {
+     int starved = bitRatePerCh && bitRatePerCh < IS_ONLY_BITRATE;
+@@ -74,7 +78,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
+     } else if (mode == JOINT_MIXED) {
+         if (!starved) {
+             msHz[0] = sampleRate;
+-            if (bitRatePerCh >= MS_SHORT_BITRATE)
++            if (bitRatePerCh >= env_ul("ST_SHORT", MS_SHORT_BITRATE))
+                 msHz[1] = sampleRate;
+         }
+         else if (sbr ? bitRatePerCh >= MS_SPLIT_HE_HIGH_BITRATE : bitRatePerCh >= MS_SPLIT_LC_BITRATE)
+@@ -87,7 +91,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
+      * L/R between. Without M/S, intensity covers every band past the lowest
+      * except short windows from MS_SHORT_BITRATE, which take M/S on every band. */
+     cfg->mode = mode;
+-    cfg->msBias = (mode == JOINT_MIXED && plainStereo && bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f;
++    cfg->msBias = (mode == JOINT_MIXED && plainStereo && bitRatePerCh >= env_ul("ST_BIASBR", MS_BIAS_BITRATE)) ? env_f("ST_K", MS_BIAS) : 1.0f;
+     for (int w = 0; w < 2; w++) {
+         int n = sfbn[w], n2 = 2 * (w ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG);
+         int ms = band_at(sfbOffset[w], n, msHz[w], n2, sampleRate);
