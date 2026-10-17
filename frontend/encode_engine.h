@@ -91,7 +91,6 @@ typedef struct {
 
     uint32_t resample_rate; /* --rate target Hz, 0 = keep native, UINT32_MAX = auto */
     bool rate_auto;         /* true if --rate auto was specified */
-    bool resample_decimate; /* --decimate: force multi-stage decimation cascade */
 
     bool ignore_wav_length;
     bool overwrite;

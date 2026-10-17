@@ -94,6 +94,18 @@ typedef faar_resampler_struct *faar_handle_t;
 FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, faar_quality_t quality);
 
 /**
+ * @brief Create a new resampler instance with explicit decimation cascade factor.
+ *
+ * @param in_rate Input sampling rate in Hz
+ * @param out_rate Target output sampling rate in Hz
+ * @param channels Number of audio channels (1 to 8 channels)
+ * @param quality Resampling quality preset
+ * @param decimate_factor Decimation stage factor (0 = auto, 2 = 2-stage 2:1 cascade, 4 = 4-stage 2:1 cascade)
+ * @return Opaque handle to resampler instance, or NULL on failure.
+ */
+FAARAPI faar_handle_t faar_create_ext(uint32_t in_rate, uint32_t out_rate, uint16_t channels, faar_quality_t quality, uint32_t decimate_factor);
+
+/**
  * @brief Set dithering and noise shaping mode on a resampler instance.
  *
  * @param handle Resampler instance handle

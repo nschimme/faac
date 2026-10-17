@@ -147,6 +147,8 @@ int main(int argc, char **argv) {
     bool ignore_wav_length = false;
     bool decimate = false;
 
+    uint32_t decimate_factor = 0;
+
     static struct option long_options[] = {
         {"rate", required_argument, 0, 'r'},
         {"in-rate", required_argument, 0, 'R'},
@@ -154,7 +156,7 @@ int main(int argc, char **argv) {
         {"channels", required_argument, 0, 'c'},
         {"format", required_argument, 0, 'f'},
         {"dither", required_argument, 0, 'd'},
-        {"decimate", no_argument, 0, 'D'},
+        {"decimate", optional_argument, 0, 'D'},
         {"ignorelength", no_argument, 0, 'I'},
         {"output", required_argument, 0, 'o'},
         {"help", no_argument, 0, 'h'},
@@ -162,7 +164,7 @@ int main(int argc, char **argv) {
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "r:R:c:f:d:v:IDo:h", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "r:R:c:f:d:v:I::D::o:h", long_options, NULL)) != -1) {
         switch (opt) {
             case 'r': target_rate = (uint32_t)atoi(optarg); break;
             case 'R': raw_in_rate = (uint32_t)atoi(optarg); break;
@@ -184,7 +186,9 @@ int main(int argc, char **argv) {
                 break;
             case 'v': verbose = (uint8_t)atoi(optarg); break;
             case 'I': ignore_wav_length = true; break;
-            case 'D': decimate = true; break;
+            case 'D':
+                decimate_factor = (optarg && atoi(optarg) > 0) ? (uint32_t)atoi(optarg) : 2;
+                break;
             case 'o': output_path = optarg; break;
             case 'h': print_faar_help(argv[0]); return 0;
             default: print_faar_help(argv[0]); return 1;
@@ -242,12 +246,7 @@ int main(int argc, char **argv) {
 
     bool write_wav_out = (fout != stdout && (is_wav_input || (output_path && strstr(output_path, ".wav"))));
 
-    if (decimate && in_rate <= 2 * target_rate) {
-        /* User explicitly forced multi-stage cascade decimation */
-        in_rate = target_rate * 4;
-    }
-
-    faar_handle_t r = faar_create(in_rate, target_rate, channels, quality);
+    faar_handle_t r = faar_create_ext(in_rate, target_rate, channels, quality, decimate_factor);
     if (!r) {
         fprintf(stderr, "Error: Couldn't create resampler instance for %u Hz -> %u Hz\n", in_rate, target_rate);
         if (infile) wav_close(infile);

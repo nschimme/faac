@@ -83,8 +83,7 @@ enum flags
     OPT_NO_ENCODER_INFO,
     OPT_FASTSTART,
     LANG_FLAG,
-    RATE_FLAG,
-    DECIMATE_FLAG
+    RATE_FLAG
 };
 
 static const help_t help_qual[] = {
@@ -131,9 +130,6 @@ static const help_t help_io[] = {
     {"--rate <hz|auto>",
      "Resample input audio before encoding (e.g. --rate 44100 or --rate auto).",
      "Resample audio using Polyphase Farrow-Interpolated Kaiser-Sinc Resampler. --rate auto picks optimal rate for high sample rates (>48kHz) or low bitrates."},
-    {"--decimate",
-     "Force multi-stage decimation cascade for downsampling ratios.",
-     "Speeds up large downsampling ratios by applying progressive 2:1 decimation stages."},
     {"-R <samplerate>",
      "Raw PCM input rate.",
      "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},
@@ -528,7 +524,6 @@ int main(int argc, char *argv[])
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
             {"rate", 1, 0, RATE_FLAG},
-            {"decimate", 0, 0, DECIMATE_FLAG},
             {0, 0, 0, 0}
         };
 
@@ -745,8 +740,8 @@ int main(int argc, char *argv[])
                 opts.rate_auto = false;
             }
             break;
-        case DECIMATE_FLAG:
-            opts.resample_decimate = true;
+        case 'v':
+            opts.verbose = (uint8_t)atoi(optarg);
             break;
         case HELP_QUAL:
         case HELP_IO:
