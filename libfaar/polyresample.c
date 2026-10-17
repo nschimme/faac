@@ -91,6 +91,7 @@ struct faar_resampler_struct {
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
 
     size_t delay;
+    bool flushed;               /* Tracks if flush zero-padding has already been appended */
 
     /* Multi-stage cascade pointers with clean ownership model */
     struct faar_resampler_struct *stage1;
@@ -456,11 +457,18 @@ FAARAPI size_t faar_process(faar_handle_t restrict r, const float * restrict in_
 static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
-    size_t tail_len = (r->filter_len - 1) / 2;
-    float *zero_tail = (float *)calloc(tail_len * r->channels, sizeof(float));
-    size_t written = polyresample_process_single(r, zero_tail, tail_len, out_samples, max_out_count);
-    free(zero_tail);
-    return written;
+    if (!r->flushed) {
+        size_t tail_len = (r->filter_len - 1) / 2;
+        float *zero_tail = (float *)calloc(tail_len * r->channels, sizeof(float));
+        if (zero_tail) {
+            size_t written = polyresample_process_single(r, zero_tail, tail_len, out_samples, max_out_count);
+            free(zero_tail);
+            r->flushed = true;
+            return written;
+        }
+    }
+
+    return polyresample_process_single(r, NULL, 0, out_samples, max_out_count);
 }
 
 FAARAPI size_t faar_flush(faar_handle_t r, float *out_samples, size_t max_out_count) {

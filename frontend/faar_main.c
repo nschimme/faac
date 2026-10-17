@@ -31,12 +31,13 @@ typedef enum {
 
 static const help_t core_help[] = {
     {"-r, --rate <Hz>", "Target sample rate (Required, e.g., 48000, 44100)", NULL},
-    {"-q, --quality <preset>", "DSP filter quality (fast, good, high) [default: good]", NULL},
+    {"--quality <preset>", "DSP filter quality (fast, good, high) [default: good]", NULL},
     {"-c, --channels <num>", "Audio channel count [default: 2]", NULL},
     {"-f, --format <fmt>", "Raw PCM sample format (f32le, s16le, s24le) [default: f32le]", NULL},
     {"-d, --dither <type>", "Dithering type for integer format output (none, tpdf, shaped) [default: none]", NULL},
     {"--decimate", "Force multi-stage decimation cascade for large downsampling ratios", NULL},
     {"--ignorelength", "Ignore the WAV data length in the header and read to EOF", NULL},
+    {"-q, --quiet", "Quiet mode (suppress progress and status messages)", NULL},
     {"-o, --output <path>", "Explicit output path (or use - for stdout)", NULL},
     {"-h, --help", "Display usage guide", NULL},
     {NULL, NULL, NULL}
@@ -58,32 +59,77 @@ static void print_faar_help(const char *prog_name) {
 }
 
 
-static void write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_format_t fmt, uint32_t data_size) {
-    uint8_t hdr[44] = {0};
+static void write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_format_t fmt, uint64_t data_size) {
     uint16_t bits = (fmt == FMT_F32LE) ? 32 : (fmt == FMT_S24LE ? 24 : 16);
     uint16_t audio_fmt = (fmt == FMT_F32LE) ? 3 : 1;
     uint32_t block_align = channels * (bits / 8);
     uint32_t byte_rate = rate * block_align;
-    uint32_t riff_size = data_size + 36;
+    bool is_rf64 = (data_size >= 0xFFFFFFFFULL || (data_size + 36) >= 0xFFFFFFFFULL);
 
-    memcpy(hdr, "RIFF", 4);
-    hdr[4] = riff_size & 0xFF; hdr[5] = (riff_size >> 8) & 0xFF;
-    hdr[6] = (riff_size >> 16) & 0xFF; hdr[7] = (riff_size >> 24) & 0xFF;
-    memcpy(hdr + 8, "WAVEfmt ", 8);
-    hdr[16] = 16; /* Subchunk1Size */
-    hdr[20] = audio_fmt & 0xFF; hdr[21] = (audio_fmt >> 8) & 0xFF;
-    hdr[22] = channels & 0xFF; hdr[23] = (channels >> 8) & 0xFF;
-    hdr[24] = rate & 0xFF; hdr[25] = (rate >> 8) & 0xFF;
-    hdr[26] = (rate >> 16) & 0xFF; hdr[27] = (rate >> 24) & 0xFF;
-    hdr[28] = byte_rate & 0xFF; hdr[29] = (byte_rate >> 8) & 0xFF;
-    hdr[30] = (byte_rate >> 16) & 0xFF; hdr[31] = (byte_rate >> 24) & 0xFF;
-    hdr[32] = block_align & 0xFF; hdr[33] = (block_align >> 8) & 0xFF;
-    hdr[34] = bits & 0xFF; hdr[35] = (bits >> 8) & 0xFF;
-    memcpy(hdr + 36, "data", 4);
-    hdr[40] = data_size & 0xFF; hdr[41] = (data_size >> 8) & 0xFF;
-    hdr[42] = (data_size >> 16) & 0xFF; hdr[43] = (data_size >> 24) & 0xFF;
+    if (is_rf64) {
+        uint8_t hdr[80] = {0};
+        uint64_t riff_size = data_size + 72;
 
-    fwrite(hdr, 1, 44, f);
+        memcpy(hdr, "RF64", 4);
+        memset(hdr + 4, 0xFF, 4);
+        memcpy(hdr + 8, "WAVE", 4);
+
+        memcpy(hdr + 12, "ds64", 4);
+        hdr[16] = 28; /* ds64 chunk size */
+        hdr[20] = riff_size & 0xFF; hdr[21] = (riff_size >> 8) & 0xFF;
+        hdr[22] = (riff_size >> 16) & 0xFF; hdr[23] = (riff_size >> 24) & 0xFF;
+        hdr[24] = (riff_size >> 32) & 0xFF; hdr[25] = (riff_size >> 40) & 0xFF;
+        hdr[26] = (riff_size >> 48) & 0xFF; hdr[27] = (riff_size >> 56) & 0xFF;
+
+        hdr[28] = data_size & 0xFF; hdr[29] = (data_size >> 8) & 0xFF;
+        hdr[30] = (data_size >> 16) & 0xFF; hdr[31] = (data_size >> 24) & 0xFF;
+        hdr[32] = (data_size >> 32) & 0xFF; hdr[33] = (data_size >> 40) & 0xFF;
+        hdr[34] = (data_size >> 48) & 0xFF; hdr[35] = (data_size >> 56) & 0xFF;
+
+        uint64_t sample_count = data_size / block_align;
+        hdr[36] = sample_count & 0xFF; hdr[37] = (sample_count >> 8) & 0xFF;
+        hdr[38] = (sample_count >> 16) & 0xFF; hdr[39] = (sample_count >> 24) & 0xFF;
+        hdr[40] = (sample_count >> 32) & 0xFF; hdr[41] = (sample_count >> 40) & 0xFF;
+        hdr[42] = (sample_count >> 48) & 0xFF; hdr[43] = (sample_count >> 56) & 0xFF;
+
+        memcpy(hdr + 48, "fmt ", 4);
+        hdr[52] = 16;
+        hdr[56] = audio_fmt & 0xFF; hdr[57] = (audio_fmt >> 8) & 0xFF;
+        hdr[58] = channels & 0xFF; hdr[59] = (channels >> 8) & 0xFF;
+        hdr[60] = rate & 0xFF; hdr[61] = (rate >> 8) & 0xFF;
+        hdr[62] = (rate >> 16) & 0xFF; hdr[63] = (rate >> 24) & 0xFF;
+        hdr[64] = byte_rate & 0xFF; hdr[65] = (byte_rate >> 8) & 0xFF;
+        hdr[66] = (byte_rate >> 16) & 0xFF; hdr[67] = (byte_rate >> 24) & 0xFF;
+        hdr[68] = block_align & 0xFF; hdr[69] = (block_align >> 8) & 0xFF;
+        hdr[70] = bits & 0xFF; hdr[71] = (bits >> 8) & 0xFF;
+
+        memcpy(hdr + 72, "data", 4);
+        memset(hdr + 76, 0xFF, 4);
+
+        fwrite(hdr, 1, 80, f);
+    } else {
+        uint8_t hdr[44] = {0};
+        uint32_t riff_size = (uint32_t)(data_size + 36);
+
+        memcpy(hdr, "RIFF", 4);
+        hdr[4] = riff_size & 0xFF; hdr[5] = (riff_size >> 8) & 0xFF;
+        hdr[6] = (riff_size >> 16) & 0xFF; hdr[7] = (riff_size >> 24) & 0xFF;
+        memcpy(hdr + 8, "WAVEfmt ", 8);
+        hdr[16] = 16;
+        hdr[20] = audio_fmt & 0xFF; hdr[21] = (audio_fmt >> 8) & 0xFF;
+        hdr[22] = channels & 0xFF; hdr[23] = (channels >> 8) & 0xFF;
+        hdr[24] = rate & 0xFF; hdr[25] = (rate >> 8) & 0xFF;
+        hdr[26] = (rate >> 16) & 0xFF; hdr[27] = (rate >> 24) & 0xFF;
+        hdr[28] = byte_rate & 0xFF; hdr[29] = (byte_rate >> 8) & 0xFF;
+        hdr[30] = (byte_rate >> 16) & 0xFF; hdr[31] = (byte_rate >> 24) & 0xFF;
+        hdr[32] = block_align & 0xFF; hdr[33] = (block_align >> 8) & 0xFF;
+        hdr[34] = bits & 0xFF; hdr[35] = (bits >> 8) & 0xFF;
+        memcpy(hdr + 36, "data", 4);
+        hdr[40] = (uint32_t)data_size & 0xFF; hdr[41] = ((uint32_t)data_size >> 8) & 0xFF;
+        hdr[42] = ((uint32_t)data_size >> 16) & 0xFF; hdr[43] = ((uint32_t)data_size >> 24) & 0xFF;
+
+        fwrite(hdr, 1, 44, f);
+    }
 }
 
 int main(int argc, char **argv) {
@@ -95,25 +141,29 @@ int main(int argc, char **argv) {
     const char *input_path = NULL;
     const char *output_path = NULL;
 
+    bool quiet = false;
     bool ignore_wav_length = false;
+    bool decimate = false;
 
     static struct option long_options[] = {
         {"rate", required_argument, 0, 'r'},
-        {"quality", required_argument, 0, 'q'},
+        {"quality", required_argument, 0, 1000},
         {"channels", required_argument, 0, 'c'},
         {"format", required_argument, 0, 'f'},
         {"dither", required_argument, 0, 'd'},
+        {"decimate", no_argument, 0, 'D'},
         {"ignorelength", no_argument, 0, 'I'},
+        {"quiet", no_argument, 0, 'q'},
         {"output", required_argument, 0, 'o'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "r:q:c:f:d:o:h", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "r:c:f:d:qIDo:h", long_options, NULL)) != -1) {
         switch (opt) {
             case 'r': target_rate = (uint32_t)atoi(optarg); break;
-            case 'q':
+            case 1000:
                 if (strcmp(optarg, "fast") == 0) quality = FAAR_QUALITY_FAST;
                 else if (strcmp(optarg, "high") == 0) quality = FAAR_QUALITY_HIGH;
                 else quality = FAAR_QUALITY_GOOD;
@@ -129,7 +179,9 @@ int main(int argc, char **argv) {
                 else if (strcmp(optarg, "shaped") == 0) dither = FAAR_DITHER_SHAPED;
                 else dither = FAAR_DITHER_OFF;
                 break;
+            case 'q': quiet = true; break;
             case 'I': ignore_wav_length = true; break;
+            case 'D': decimate = true; break;
             case 'o': output_path = optarg; break;
             case 'h': print_faar_help(argv[0]); return 0;
             default: print_faar_help(argv[0]); return 1;
@@ -145,14 +197,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    bool is_stdin = (strcmp(input_path, "-") == 0);
-    pcmfile_t *infile = NULL;
-    bool is_wav_input = false;
-
-    if (!is_stdin) {
-        infile = wav_open_read(input_path, false);
-        is_wav_input = (infile != NULL);
-    }
+    pcmfile_t *infile = wav_open_read(input_path, false);
+    bool is_wav_input = (infile != NULL);
 
     uint32_t in_rate = 44100;
     if (is_wav_input) {
@@ -188,6 +234,11 @@ int main(int argc, char **argv) {
 
     bool write_wav_out = (fout != stdout && (is_wav_input || (output_path && strstr(output_path, ".wav"))));
 
+    if (decimate && in_rate <= 2 * target_rate) {
+        /* User explicitly forced multi-stage cascade decimation */
+        in_rate = target_rate * 4;
+    }
+
     faar_handle_t r = faar_create(in_rate, target_rate, channels, quality);
     if (!r) {
         fprintf(stderr, "Error: Couldn't create resampler instance for %u Hz -> %u Hz\n", in_rate, target_rate);
@@ -202,7 +253,9 @@ int main(int argc, char **argv) {
     }
 
     if (write_wav_out) {
-        write_wav_header(fout, target_rate, channels, fmt, 0); /* Placeholder size */
+        /* Reserve 80-byte header to allow RF64 in-place updates without overwriting PCM audio payload */
+        uint8_t header_placeholder[80] = {0};
+        fwrite(header_placeholder, 1, 80, fout);
     }
 
     size_t chunk_frames = 2048;
@@ -216,7 +269,10 @@ int main(int argc, char **argv) {
     size_t out_bytes_per_sample = (fmt == FMT_F32LE ? 4 : (fmt == FMT_S24LE ? 3 : 2));
     uint8_t *raw_out_buf = (uint8_t *)malloc(out_cap * channels * out_bytes_per_sample);
 
-    uint32_t total_out_data_bytes = 0;
+    uint64_t total_out_data_bytes = 0;
+    if (!quiet) {
+        fprintf(stderr, "Resampling input: %u Hz -> %u Hz (%u channels)\n", in_rate, target_rate, channels);
+    }
 
     size_t samples_read = 0;
     while ((samples_read = wav_read_float32(infile, float_in_buf, chunk_frames * channels, NULL)) > 0) {
