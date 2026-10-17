@@ -1,6 +1,6 @@
 /*
  * ARDFTSRC - Arbitrary Rate Discrete Fourier Transform Sample Rate Converter
- * Polyphase Folded-Symmetry Optimized C Translation for FAAC
+ * Polyphase Table & Cache Footprint-Optimized C Translation for FAAC
  */
 
 #include "ardftsrc.h"
@@ -14,7 +14,7 @@
 #endif
 
 #define ARDFTSRC_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
-#define ARDFTSRC_STORED_PHASES (ARDFTSRC_NUM_PHASES / 2 + 1) /* 129 phases stored exploiting linear phase symmetry */
+#define ARDFTSRC_STORED_PHASES (ARDFTSRC_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
 
 /* Modified Bessel function I0(x) for Kaiser window calculation */
 static double bessel_i0(double x) {
@@ -76,7 +76,7 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     /* Ensure filter length is odd for symmetric linear phase FIR */
     if ((r->filter_len % 2) == 0) r->filter_len++;
 
-    /* Allocate half table (129 phases) by leveraging linear phase symmetry */
+    /* Allocate 129-phase table (131 KB for 255 taps) */
     r->polyphase_table = (float *)malloc(ARDFTSRC_STORED_PHASES * r->filter_len * sizeof(float));
     if (!r->polyphase_table) {
         free(r);
@@ -168,7 +168,7 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
     size_t out_frames = 0;
     const double step = 1.0 / r->ratio; /* Input step per output sample */
 
-    /* Process resampling output samples leveraging linear phase symmetry */
+    /* Process resampling output samples leveraging 256-step polyphase filter bank */
     while (out_frames < max_out_count) {
         double in_pos = r->phase;
         size_t base_idx = (size_t)floor(in_pos);
@@ -204,7 +204,7 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
                 out_samples[out_frames * r->channels + c] = sum;
             }
         } else {
-            /* General polyphase path */
+            /* 256-phase polyphase path (stored as 129 phase slices using linear phase symmetry) */
             bool is_mirrored = false;
             if (phase_idx > ARDFTSRC_NUM_PHASES / 2) {
                 phase_idx = ARDFTSRC_NUM_PHASES - phase_idx;
