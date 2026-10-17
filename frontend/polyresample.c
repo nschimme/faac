@@ -1,6 +1,6 @@
 /*
  * Polyphase Farrow Cubic Interpolated Kaiser-Windowed Sinc Sample Rate Converter
- * Auto-Vectorized Interpolate-Then-Convolve C Implementation for FAAC
+ * Auto-Vectorized Straight-Line C Implementation for FAAC
  */
 
 #include "polyresample.h"
@@ -8,6 +8,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -115,6 +116,7 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         stage2->hist = NULL;
         free(stage2);
 
+        assert(r->filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
         return r;
     }
 
@@ -136,6 +138,7 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     }
 
     if ((r->filter_len % 2) == 0) r->filter_len++;
+    assert(r->filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
 
     r->polyphase_table = (float *)malloc(POLYRESAMPLE_STORED_PHASES * r->filter_len * sizeof(float));
     if (!r->polyphase_table) {
@@ -211,6 +214,8 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
     const size_t half_len = (filter_len - 1) / 2;
     const float * restrict poly_table = r->polyphase_table;
 
+    assert(filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
+
     if (in_samples && in_count > 0) {
         size_t needed_cap = r->hist_len + in_count;
         if (needed_cap > r->hist_cap_per_ch) {
@@ -262,14 +267,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
                 const float * restrict h = &r->hist[c][base_idx];
                 double sum = (double)center_coeff * (double)h[half_len];
 
-                size_t j = 0;
-                for (; j + 3 < half_len; j += 4) {
-                    sum += (double)coeffs[j + 0] * ((double)h[j + 0] + (double)h[filter_len - 1 - (j + 0)]) +
-                           (double)coeffs[j + 1] * ((double)h[j + 1] + (double)h[filter_len - 1 - (j + 1)]) +
-                           (double)coeffs[j + 2] * ((double)h[j + 2] + (double)h[filter_len - 1 - (j + 2)]) +
-                           (double)coeffs[j + 3] * ((double)h[j + 3] + (double)h[filter_len - 1 - (j + 3)]);
-                }
-                for (; j < half_len; j++) {
+                for (size_t j = 0; j < half_len; j++) {
                     sum += (double)coeffs[j] * ((double)h[j] + (double)h[filter_len - 1 - j]);
                 }
 
@@ -314,19 +312,12 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
                 temp_coeffs[j] = (float)(w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3);
             }
 
-            /* 2. Flat inner dot-product loop: unit-stride memory accesses over contiguous arrays easily auto-vectorized by GCC/Clang */
+            /* 2. Flat straight-line inner dot-product loop: easily auto-vectorized by LLVM/GCC without manual unroll friction */
             for (uint16_t c = 0; c < r->channels; c++) {
                 const float * restrict h = &r->hist[c][base_idx];
                 double sum = 0.0;
 
-                size_t j = 0;
-                for (; j + 3 < filter_len; j += 4) {
-                    sum += (double)h[j + 0] * (double)temp_coeffs[j + 0] +
-                           (double)h[j + 1] * (double)temp_coeffs[j + 1] +
-                           (double)h[j + 2] * (double)temp_coeffs[j + 2] +
-                           (double)h[j + 3] * (double)temp_coeffs[j + 3];
-                }
-                for (; j < filter_len; j++) {
+                for (size_t j = 0; j < filter_len; j++) {
                     sum += (double)h[j] * (double)temp_coeffs[j];
                 }
 
