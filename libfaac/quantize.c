@@ -308,11 +308,12 @@ static float tilt_gain(float khz)
 void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
                            unsigned long bitrate_per_ch, unsigned channels, int is_he)
 {
-    (void)channels;
-    /* Tuned psychoacoustic profile applies to all AAC-LC channel configurations
-     * (mono, stereo, 5.1, 7.1) at or above tune_min_rate (32 kbps/ch). HE-AAC
-     * retains the default balance to avoid core treble starvation. */
-    const int tuned = bitrate_per_ch >= masking_model.tune_min_rate && !is_he;
+    /* Tuned psychoacoustic profile is calibrated specifically for rate-limited
+     * 2-channel stereo LC. 5.1/7.1 surround and HE-AAC retain the default
+     * profile balance (surround multi-channel bit allocation requires the default
+     * balance to prevent high BD-rate regressions). */
+    const int tuned = bitrate_per_ch >= masking_model.tune_min_rate
+                   && channels == 2 && !is_he;
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
     cfg->mask_tuned = tuned;
     cfg->treble_slope = (bitrate_per_ch >= masking_model.rich_min_rate)
