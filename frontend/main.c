@@ -87,7 +87,8 @@ enum flags
     OPT_IGNORE_LENGTH,
     OPT_NO_ENCODER_INFO,
     OPT_FASTSTART,
-    LANG_FLAG
+    LANG_FLAG,
+    RATE_FLAG
 };
 
 static const help_t help_qual[] = {
@@ -131,6 +132,9 @@ static const help_t help_io[] = {
     {"-P",
      "Raw PCM input mode (default 44100 Hz, 16-bit, stereo).",
      "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
+    {"--rate <hz|auto>",
+     "Resample input audio before encoding (e.g. --rate 44100 or --rate auto).",
+     "Resample audio using ARDFTSRC. --rate auto picks optimal rate for high sample rates (>48kHz) or low bitrates."},
     {"-R <samplerate>",
      "Raw PCM input rate.",
      "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},
@@ -523,6 +527,7 @@ int main(int argc, char *argv[])
             {"cbr", 0, 0, CBR_FLAG},
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
+            {"rate", 1, 0, RATE_FLAG},
             {0, 0, 0, 0}
         };
 
@@ -717,6 +722,18 @@ int main(int argc, char *argv[])
             break;
         case CAP_RATE_FLAG:
             opts.max_bit_rate = atoi(optarg) * 1000;
+            break;
+        case RATE_FLAG:
+            if (!strcmp(optarg, "auto"))
+            {
+                opts.rate_auto = true;
+                opts.resample_rate = UINT32_MAX;
+            }
+            else
+            {
+                opts.resample_rate = (uint32_t)atoi(optarg);
+                opts.rate_auto = false;
+            }
             break;
         case 'v':
             opts.verbose = (uint8_t)atoi(optarg);

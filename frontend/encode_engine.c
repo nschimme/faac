@@ -40,6 +40,7 @@
 #include "mp4write.h"
 #include "charset.h"
 #include "cli_io.h"
+#include "ardftsrc.h"
 
 void init_encode_options(encode_options_t *opts)
 {
@@ -511,8 +512,36 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->ignore_wav_length) infile->bounded_data = false;
 
-    uint32_t sample_rate = infile->samplerate;
+    uint32_t raw_sample_rate = infile->samplerate;
     uint16_t num_channels = (uint16_t)infile->channels;
+
+    uint32_t target_rate = raw_sample_rate;
+    if (opts->rate_auto)
+    {
+        uint32_t bps_per_ch = opts->bit_rate / (num_channels ? num_channels : 1);
+        if (raw_sample_rate > 48000)
+        {
+            if (raw_sample_rate % 44100 == 0)
+                target_rate = 44100;
+            else
+                target_rate = 48000;
+        }
+        else if (bps_per_ch > 0 && bps_per_ch <= 12000)
+        {
+            target_rate = (raw_sample_rate % 11025 == 0) ? 22050 : 24000;
+        }
+        else if (bps_per_ch > 0 && bps_per_ch <= 20000)
+        {
+            target_rate = 32000;
+        }
+    }
+    else if (opts->resample_rate > 0 && opts->resample_rate != UINT32_MAX)
+    {
+        target_rate = opts->resample_rate;
+    }
+
+    bool resample_active = (target_rate != raw_sample_rate && target_rate > 0);
+    uint32_t sample_rate = target_rate;
 
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);
@@ -558,6 +587,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
             log_cb(1, "disabling short blocks\n", user_data);
         else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
             log_cb(1, "disabling long blocks\n", user_data);
+        if (resample_active)
+        {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Resampling input: %u Hz -> %u Hz\n", raw_sample_rate, target_rate);
+            log_cb(1, msg, user_data);
+        }
     }
 
     params.bandwidth = opts->bandwidth;
@@ -566,13 +601,35 @@ int run_encoding_session_ext(const encode_options_t *opts,
     /* Hand integer PCM to the encoder as it is: one conversion pass instead of
        two, and nothing for it to sanitise. The encoder applies the channel map. */
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
-    bool native = wav_native_ok(infile);
-    params.input_format = !native ? FAAC_INPUT_FLOAT :
-                          infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;
+    bool native = wav_native_ok(infile) && !resample_active;
+    params.input_format = resample_active ? FAAC_INPUT_FLOAT :
+                          (!native ? FAAC_INPUT_FLOAT :
+                           infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT);
     if (native && chanmap)
     {
         params.channel_map = chanmap;
         params.channel_map_count = num_channels;
+    }
+
+    ArdftsrcResampler *resampler = NULL;
+    float *resample_in_buf = NULL;
+    float *resample_out_buf = NULL;
+    size_t resample_in_cap = 0;
+    size_t resample_out_cap = 0;
+
+    if (resample_active)
+    {
+        resampler = ardftsrc_create(raw_sample_rate, target_rate, num_channels, 1);
+        if (!resampler)
+            FAIL("Couldn't create ARDFTSRC resampler instance for %u Hz -> %u Hz\n",
+                 raw_sample_rate, target_rate);
+
+        resample_in_cap = 16384 * (size_t)num_channels;
+        resample_out_cap = 16384 * (size_t)num_channels;
+        resample_in_buf = (float *)malloc(resample_in_cap * sizeof(float));
+        resample_out_buf = (float *)malloc(resample_out_cap * sizeof(float));
+        if (!resample_in_buf || !resample_out_buf)
+            FAIL("Out of memory for resampler buffers!\n");
     }
 
     {
@@ -716,7 +773,46 @@ int run_encoding_session_ext(const encode_options_t *opts,
         int bytes_written = 0;
         const void *input_pcm = pcmbuf;
 
-        if (!input_eof)
+        if (resample_active)
+        {
+            size_t enc_samples_needed = samples_per_frame;
+            size_t resample_out_produced = ardftsrc_process(resampler, NULL, 0, resample_out_buf, enc_samples_needed / num_channels);
+
+            while (resample_out_produced < enc_samples_needed / num_channels && !input_eof)
+            {
+                bool should_read = opts->ignore_wav_length ||
+                                   current_input_samples < total_input_samples ||
+                                   total_input_samples == 0;
+                int raw_read = 0;
+                if (should_read)
+                    raw_read = (int)wav_read_float32(infile, resample_in_buf, samples_per_frame, chanmap);
+
+                if (!opts->ignore_wav_length && total_input_samples > 0 &&
+                    current_input_samples + (raw_read / num_channels) > total_input_samples)
+                {
+                    raw_read = (int)((total_input_samples - current_input_samples) * num_channels);
+                }
+
+                if (raw_read == 0)
+                {
+                    input_eof = true;
+                    resample_out_produced += ardftsrc_flush(resampler, resample_out_buf + resample_out_produced * num_channels,
+                                                            (enc_samples_needed / num_channels) - resample_out_produced);
+                    break;
+                }
+                else
+                {
+                    current_input_samples += (raw_read / num_channels);
+                    resample_out_produced += ardftsrc_process(resampler, resample_in_buf, raw_read / num_channels,
+                                                            resample_out_buf + resample_out_produced * num_channels,
+                                                            (enc_samples_needed / num_channels) - resample_out_produced);
+                }
+            }
+
+            samples_read = (int)(resample_out_produced * num_channels);
+            input_pcm = resample_out_buf;
+        }
+        else if (!input_eof)
         {
             bool should_read = opts->ignore_wav_length ||
                                current_input_samples < total_input_samples ||
@@ -753,8 +849,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
         uint32_t nbytes = 0;
         faac_status st = faac_encoder_encode(hEncoder,
-                                             input_eof ? NULL : input_pcm,
-                                             input_eof ? 0 : (uint32_t)samples_read,
+                                             (input_eof && samples_read == 0) ? NULL : input_pcm,
+                                             (input_eof && samples_read == 0) ? 0 : (uint32_t)samples_read,
                                              bitbuf,
                                              (uint32_t)max_output_bytes,
                                              &nbytes);
@@ -864,6 +960,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
 cleanup:
+    if (resampler) ardftsrc_destroy(resampler);
+    if (resample_in_buf) free(resample_in_buf);
+    if (resample_out_buf) free(resample_out_buf);
     if (pcmbuf) free(pcmbuf);
     if (bitbuf) free(bitbuf);
     if (chanmap) free(chanmap);
