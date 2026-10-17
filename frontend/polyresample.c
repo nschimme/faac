@@ -1,6 +1,6 @@
 /*
  * Polyphase Farrow-Interpolated Kaiser-Sinc Resampler
- * Multi-Channel (5.1/7.1), SIMD 64-Byte Aligned & Hot-Loop Optimized for FAAC
+ * Multi-Channel (1..8), SIMD 64-Byte Aligned & Hot-Loop Optimized for FAAC
  */
 
 #include "polyresample.h"
