@@ -1,5 +1,6 @@
 /*
  * Polyphase Kaiser-Windowed Sinc Sample Rate Converter for FAAC
+ * Multi-Stage Decimation & Double-Precision Accumulation Enhanced
  */
 
 #include "polyresample.h"
@@ -15,7 +16,6 @@
 #define POLYRESAMPLE_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
 #define POLYRESAMPLE_STORED_PHASES (POLYRESAMPLE_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
 
-/* Modified Bessel function I0(x) for Kaiser window calculation */
 static double bessel_i0(double x) {
     double sum = 1.0;
     double u = 1.0;
@@ -28,7 +28,6 @@ static double bessel_i0(double x) {
     return sum;
 }
 
-/* Calculate Kaiser window coefficient */
 static double kaiser_window(double n, double N, double beta) {
     if (beta <= 0.0) return 1.0;
     double arg = 2.0 * n / N - 1.0;
@@ -51,10 +50,69 @@ struct PolyResampler {
     size_t hist_len;            /* Current frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
     size_t delay;
+
+    /* Cascade for large downsampling ratios (>2:1) */
+    PolyResampler *stage1;
+    float *cascade_buf;
+    size_t cascade_cap;
 };
+
+static size_t polyresample_process_single(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
+                                           float * restrict out_samples, size_t max_out_count);
+
+static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, size_t max_out_count);
 
 PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, polyresample_quality_t quality) {
     if (in_rate == 0 || out_rate == 0 || channels == 0) return NULL;
+
+    /* Multi-stage cascade decimation for large downsampling ratios (>2:1) */
+    if (in_rate > 2 * out_rate) {
+        uint32_t intermediate_rate = in_rate / 2;
+        PolyResampler *r = (PolyResampler *)calloc(1, sizeof(PolyResampler));
+        if (!r) return NULL;
+
+        r->stage1 = polyresample_create(in_rate, intermediate_rate, channels, quality);
+        if (!r->stage1) {
+            free(r);
+            return NULL;
+        }
+
+        r->in_rate = in_rate;
+        r->out_rate = out_rate;
+        r->channels = channels;
+        r->quality = quality;
+        r->ratio = (double)out_rate / (double)in_rate;
+
+        r->cascade_cap = 16384 * channels;
+        r->cascade_buf = (float *)malloc(r->cascade_cap * sizeof(float));
+        if (!r->cascade_buf) {
+            polyresample_destroy(r->stage1);
+            free(r);
+            return NULL;
+        }
+
+        /* Create main stage from intermediate rate to target rate */
+        PolyResampler *stage2 = polyresample_create(intermediate_rate, out_rate, channels, quality);
+        if (!stage2) {
+            polyresample_destroy(r->stage1);
+            free(r->cascade_buf);
+            free(r);
+            return NULL;
+        }
+
+        r->filter_len = stage2->filter_len;
+        r->beta = stage2->beta;
+        r->polyphase_table = stage2->polyphase_table;
+        r->hist = stage2->hist;
+        r->hist_cap_per_ch = stage2->hist_cap_per_ch;
+        r->delay = r->stage1->delay + stage2->delay;
+
+        stage2->polyphase_table = NULL;
+        stage2->hist = NULL;
+        free(stage2);
+
+        return r;
+    }
 
     PolyResampler *r = (PolyResampler *)calloc(1, sizeof(PolyResampler));
     if (!r) return NULL;
@@ -66,10 +124,10 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     r->ratio = (double)out_rate / (double)in_rate;
 
     switch (quality) {
-        case POLYRESAMPLE_QUALITY_FAST: r->filter_len = 127; r->beta = 24.0; break;
-        case POLYRESAMPLE_QUALITY_HIGH: r->filter_len = 511; r->beta = 34.0; break;
+        case POLYRESAMPLE_QUALITY_FAST: r->filter_len = 127; r->beta = 28.0; break;
+        case POLYRESAMPLE_QUALITY_HIGH: r->filter_len = 511; r->beta = 36.0; break;
         case POLYRESAMPLE_QUALITY_GOOD:
-        default:                        r->filter_len = 255; r->beta = 30.0; break;
+        default:                        r->filter_len = 255; r->beta = 32.0; break;
     }
 
     if ((r->filter_len % 2) == 0) r->filter_len++;
@@ -80,7 +138,7 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         return NULL;
     }
 
-    double cutoff = (r->ratio < 1.0) ? 0.45 * r->ratio : 0.45;
+    double cutoff = (r->ratio < 1.0) ? 0.46 * r->ratio : 0.46;
     double half_len = (r->filter_len - 1) / 2.0;
 
     for (size_t p = 0; p < POLYRESAMPLE_STORED_PHASES; p++) {
@@ -131,9 +189,10 @@ size_t polyresample_get_delay(const PolyResampler *r) {
     return r ? r->delay : 0;
 }
 
-size_t polyresample_process(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
-                           float * restrict out_samples, size_t max_out_count) {
+static size_t polyresample_process_single(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
+                                           float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
+
     if (r->in_rate == r->out_rate) {
         size_t frames_to_copy = in_count < max_out_count ? in_count : max_out_count;
         if (in_samples && frames_to_copy > 0) {
@@ -146,7 +205,6 @@ size_t polyresample_process(PolyResampler * restrict r, const float * restrict i
     const size_t half_len = (filter_len - 1) / 2;
     const float * restrict poly_table = r->polyphase_table;
 
-    /* Dynamic buffer capacity expansion for safe continuous streaming */
     if (in_samples && in_count > 0) {
         size_t needed_cap = r->hist_len + in_count;
         if (needed_cap > r->hist_cap_per_ch) {
@@ -190,20 +248,20 @@ size_t polyresample_process(PolyResampler * restrict r, const float * restrict i
 
             for (uint16_t c = 0; c < r->channels; c++) {
                 const float * restrict h = &r->hist[c][base_idx];
-                float sum = center_coeff * h[half_len];
+                double sum = (double)center_coeff * (double)h[half_len];
 
                 size_t j = 0;
                 for (; j + 3 < half_len; j += 4) {
-                    sum += coeffs[j + 0] * (h[j + 0] + h[filter_len - 1 - (j + 0)]) +
-                           coeffs[j + 1] * (h[j + 1] + h[filter_len - 1 - (j + 1)]) +
-                           coeffs[j + 2] * (h[j + 2] + h[filter_len - 1 - (j + 2)]) +
-                           coeffs[j + 3] * (h[j + 3] + h[filter_len - 1 - (j + 3)]);
+                    sum += (double)coeffs[j + 0] * ((double)h[j + 0] + (double)h[filter_len - 1 - (j + 0)]) +
+                           (double)coeffs[j + 1] * ((double)h[j + 1] + (double)h[filter_len - 1 - (j + 1)]) +
+                           (double)coeffs[j + 2] * ((double)h[j + 2] + (double)h[filter_len - 1 - (j + 2)]) +
+                           (double)coeffs[j + 3] * ((double)h[j + 3] + (double)h[filter_len - 1 - (j + 3)]);
                 }
                 for (; j < half_len; j++) {
-                    sum += coeffs[j] * (h[j] + h[filter_len - 1 - j]);
+                    sum += (double)coeffs[j] * ((double)h[j] + (double)h[filter_len - 1 - j]);
                 }
 
-                out_samples[out_frames * r->channels + c] = sum;
+                out_samples[out_frames * r->channels + c] = (float)sum;
             }
         } else {
             bool is_mirrored = false;
@@ -215,34 +273,34 @@ size_t polyresample_process(PolyResampler * restrict r, const float * restrict i
             const float * restrict coeffs = poly_table + phase_idx * filter_len;
 
             for (uint16_t c = 0; c < r->channels; c++) {
-                float sum = 0.0f;
+                double sum = 0.0;
                 const float * restrict h = &r->hist[c][base_idx];
 
                 if (!is_mirrored) {
                     size_t j = 0;
                     for (; j + 3 < filter_len; j += 4) {
-                        sum += h[j + 0] * coeffs[j + 0] +
-                               h[j + 1] * coeffs[j + 1] +
-                               h[j + 2] * coeffs[j + 2] +
-                               h[j + 3] * coeffs[j + 3];
+                        sum += (double)h[j + 0] * (double)coeffs[j + 0] +
+                               (double)h[j + 1] * (double)coeffs[j + 1] +
+                               (double)h[j + 2] * (double)coeffs[j + 2] +
+                               (double)h[j + 3] * (double)coeffs[j + 3];
                     }
                     for (; j < filter_len; j++) {
-                        sum += h[j] * coeffs[j];
+                        sum += (double)h[j] * (double)coeffs[j];
                     }
                 } else {
                     size_t j = 0;
                     for (; j + 3 < filter_len; j += 4) {
-                        sum += h[j + 0] * coeffs[filter_len - 1 - (j + 0)] +
-                               h[j + 1] * coeffs[filter_len - 1 - (j + 1)] +
-                               h[j + 2] * coeffs[filter_len - 1 - (j + 2)] +
-                               h[j + 3] * coeffs[filter_len - 1 - (j + 3)];
+                        sum += (double)h[j + 0] * (double)coeffs[filter_len - 1 - (j + 0)] +
+                               (double)h[j + 1] * (double)coeffs[filter_len - 1 - (j + 1)] +
+                               (double)h[j + 2] * (double)coeffs[filter_len - 1 - (j + 2)] +
+                               (double)h[j + 3] * (double)coeffs[filter_len - 1 - (j + 3)];
                     }
                     for (; j < filter_len; j++) {
-                        sum += h[j] * coeffs[filter_len - 1 - j];
+                        sum += (double)h[j] * (double)coeffs[filter_len - 1 - j];
                     }
                 }
 
-                out_samples[out_frames * r->channels + c] = sum;
+                out_samples[out_frames * r->channels + c] = (float)sum;
             }
         }
 
@@ -262,18 +320,44 @@ size_t polyresample_process(PolyResampler * restrict r, const float * restrict i
     return out_frames;
 }
 
-size_t polyresample_flush(PolyResampler *r, float *out_samples, size_t max_out_count) {
+size_t polyresample_process(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
+                           float * restrict out_samples, size_t max_out_count) {
+    if (!r || !out_samples) return 0;
+
+    if (r->stage1) {
+        size_t stage1_produced = polyresample_process(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
+        return polyresample_process_single(r, r->cascade_buf, stage1_produced, out_samples, max_out_count);
+    }
+
+    return polyresample_process_single(r, in_samples, in_count, out_samples, max_out_count);
+}
+
+static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
     size_t tail_len = (r->filter_len - 1) / 2;
     float *zero_tail = (float *)calloc(tail_len * r->channels, sizeof(float));
-    size_t written = polyresample_process(r, zero_tail, tail_len, out_samples, max_out_count);
+    size_t written = polyresample_process_single(r, zero_tail, tail_len, out_samples, max_out_count);
     free(zero_tail);
     return written;
 }
 
+size_t polyresample_flush(PolyResampler *r, float *out_samples, size_t max_out_count) {
+    if (!r || !out_samples) return 0;
+
+    if (r->stage1) {
+        size_t stage1_flushed = polyresample_flush(r->stage1, r->cascade_buf, r->cascade_cap / r->channels);
+        size_t main_flushed = polyresample_process_single(r, r->cascade_buf, stage1_flushed, out_samples, max_out_count);
+        return main_flushed + polyresample_flush_single(r, out_samples + main_flushed * r->channels, max_out_count - main_flushed);
+    }
+
+    return polyresample_flush_single(r, out_samples, max_out_count);
+}
+
 void polyresample_destroy(PolyResampler *r) {
     if (!r) return;
+    if (r->stage1) polyresample_destroy(r->stage1);
+    if (r->cascade_buf) free(r->cascade_buf);
     if (r->hist) {
         for (uint16_t c = 0; c < r->channels; c++) {
             if (r->hist[c]) free(r->hist[c]);
