@@ -43,6 +43,11 @@ pcmfile_t *wav_open_read(const char *path, bool rawchans);
 size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map);
 int wav_close(pcmfile_t *file);
 
+/* NULL on a successful read/valid EOF, otherwise a diagnostic. Check after
+   every nonzero-size read, passing the returned sample count, before treating
+   a short/zero count as end of input. */
+const char *wav_read_error(const pcmfile_t *file, size_t samples_read);
+
 /* True when the file's PCM can go to the encoder as-is (little-endian 16/24-bit
    integers), sparing the float conversion pass. */
 bool wav_native_ok(const pcmfile_t *sndf);

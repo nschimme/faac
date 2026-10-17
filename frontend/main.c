@@ -46,11 +46,6 @@
 #include "encode_engine.h"
 #include "help.h"
 
-#ifdef _WIN32
-# undef stderr
-# define stderr stdout
-#endif
-
 enum flags
 {
     SHORTCTL_FLAG = 300,
@@ -718,9 +713,15 @@ int main(int argc, char *argv[])
         case CAP_RATE_FLAG:
             opts.max_bit_rate = atoi(optarg) * 1000;
             break;
-        case 'v':
-            opts.verbose = (uint8_t)atoi(optarg);
+        case 'v': {
+            unsigned long long value;
+            if (!cli_parse_uint(optarg, UINT8_MAX, &value)) {
+                fprintf(stderr, "Invalid verbosity: %s\n", optarg);
+                return 1;
+            }
+            opts.verbose = (uint8_t)value;
             break;
+        }
         case HELP_QUAL:
         case HELP_IO:
         case HELP_MP4:

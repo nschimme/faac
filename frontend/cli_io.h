@@ -61,6 +61,16 @@ int win32_mtime_utf8(const char *utf8_path, time_t *mtime);
    still check the returned NULL and report the error themselves. */
 FILE *cli_fopen(const char *path, const char *mode);
 
+/* Select binary mode for a standard stream on Windows; a no-op elsewhere. */
+bool cli_binary_stream(FILE *stream);
+
+/* Finish output, closing owned files and only flushing stdout/stderr.
+   Clears *stream even on failure; reports buffered and final write errors. */
+bool cli_finish_output(FILE **stream);
+
+/* Decimal digits only, with an inclusive upper bound. */
+bool cli_parse_uint(const char *text, unsigned long long max, unsigned long long *out);
+
 /* Open a seekable input. The path "-" reads stdin into a temporary file. */
 FILE *cli_open_seekable_input(const char *path);
 

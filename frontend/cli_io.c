@@ -392,9 +392,7 @@ FILE *cli_open_seekable_input(const char *path)
 {
     if (strcmp(path, "-") != 0)
         return cli_fopen(path, "rb");
-#ifdef _WIN32
-    _setmode(_fileno(stdin), _O_BINARY);
-#endif
+    if (!cli_binary_stream(stdin)) return NULL;
     FILE *spool = tmpfile();
     if (!spool) return NULL;
     uint8_t buf[65536];
@@ -415,4 +413,35 @@ bool cli_copy_stream(FILE *src, FILE *dst)
     while ((n = fread(buf, 1, sizeof(buf), src)) != 0)
         if (fwrite(buf, 1, n, dst) != n) return false;
     return !ferror(src) && fflush(dst) == 0;
+}
+
+bool cli_binary_stream(FILE *stream)
+{
+#ifdef _WIN32
+    return _setmode(_fileno(stream), _O_BINARY) != -1;
+#else
+    (void)stream;
+    return true;
+#endif
+}
+
+bool cli_finish_output(FILE **stream)
+{
+    FILE *f = *stream;
+    *stream = NULL;
+    if (!f) return true;
+    bool ok = !ferror(f);
+    int result = (f == stdout || f == stderr) ? fflush(f) : fclose(f);
+    return result == 0 && ok;
+}
+
+bool cli_parse_uint(const char *text, unsigned long long max, unsigned long long *out)
+{
+    char *end;
+    if (!text || *text < '0' || *text > '9') return false;
+    errno = 0;
+    unsigned long long value = strtoull(text, &end, 10);
+    if (errno || *end || value > max) return false;
+    *out = value;
+    return true;
 }

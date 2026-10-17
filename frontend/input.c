@@ -216,9 +216,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
 
   if (!strcmp(name, "-"))
   {
-#ifdef _WIN32
-    _setmode(_fileno(stdin), O_BINARY);
-#endif
+    if (!cli_binary_stream(stdin)) return NULL;
     wave_f = stdin;
     dostdin = 1;
   }
@@ -545,4 +543,12 @@ int wav_close(pcmfile_t *sndf)
   int i = fclose(sndf->f);
   free(sndf);
   return i;
+}
+
+const char *wav_read_error(const pcmfile_t *file, size_t samples_read)
+{
+    if (ferror(file->f)) return "Input read failed";
+    if (file->bounded_data && file->data_remaining > 0 && (feof(file->f) || samples_read == 0))
+        return "Unexpected end of WAV data";
+    return NULL;
 }
