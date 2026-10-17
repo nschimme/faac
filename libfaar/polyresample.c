@@ -389,10 +389,12 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
                     sum += h[j] * temp_coeffs[j];
                 }
 
-                /* Apply TPDF dither and noise shaping if enabled */
+                /* Apply TPDF dither and noise shaping if enabled.
+                   sum is in range [-32768.0f, +32768.0f]. For 16-bit, LSB step is 1.0f.
+                   For 24-bit, LSB step is (1.0f / 256.0f). */
                 if (r->dither != FAAR_DITHER_OFF && r->dither_bits > 0) {
-                    float scale = (r->dither_bits == 16) ? 32768.0f : 8388608.0f;
-                    float inv_scale = 1.0f / scale;
+                    float lsb_scale = (r->dither_bits == 16) ? 1.0f : (1.0f / 256.0f);
+                    float inv_lsb_scale = 1.0f / lsb_scale;
 
                     /* 32-bit XorShift PRNG for fast uniform random numbers [0.0, 1.0) */
                     uint32_t s1 = r->prng_state[c];
@@ -404,16 +406,16 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
 
                     float r1 = (float)s1 * (1.0f / 4294967296.0f);
                     float r2 = (float)s2 * (1.0f / 4294967296.0f);
-                    float tpdf = (r1 - r2); /* Triangular distribution [-1.0, +1.0] LSB */
+                    float tpdf = (r1 - r2) * lsb_scale; /* Triangular distribution in LSB units */
 
-                    float sample_scaled = sum * scale;
+                    float sample_scaled = sum;
                     if (r->dither == FAAR_DITHER_SHAPED) {
                         sample_scaled -= r->error_history[c] * 0.75f;
                     }
 
-                    float quantized = (float)floor((double)(sample_scaled + tpdf + 0.5f));
+                    float quantized = (float)floor((double)((sample_scaled + tpdf) * inv_lsb_scale + 0.5f)) * lsb_scale;
                     r->error_history[c] = quantized - sample_scaled;
-                    sum = quantized * inv_scale;
+                    sum = quantized;
                 }
 
                 out_samples[out_frames * r->channels + c] = sum;
