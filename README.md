@@ -14,6 +14,7 @@ FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeli
 
 - `faac` writes MP4/M4A with gapless playback info, as well as raw ADTS
 - WAV and raw PCM input, with stdin/stdout piping
+- `faar` resamples PCM audio with >140 dB stopband rejection, Farrow phase interpolation, and TPDF dithering
 - `faam` muxes, demuxes and tags MP4/M4A/M4B (AAC, H.264/H.265)
 
 ## Copyrights
@@ -66,12 +67,13 @@ Lesser General Public License for more details.
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
 | `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
 
-Library integration: [FAAC encoder API](docs/libfaac.md) and [FAAM MP4 muxer/demuxer API](docs/libfaam.md).
+Library integration: [FAAC encoder API](docs/libfaac.md), [FAAR resampler API](docs/libfaar.md), and [FAAM MP4 muxer/demuxer API](docs/libfaam.md).
 
 ## Usage
 
 ```bash
 faac input.wav -o output.m4a        # encode
+faar -r 48000 in_96k.wav out_48k.wav # resample
 faam -i output.aac -o output.m4a    # mux ADTS into MP4
 faam tag output.m4a --title Song    # edit tags in place
 ```

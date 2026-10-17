@@ -1,0 +1,8 @@
+EXPORTS
+    faar_create
+    faar_create_ext
+    faar_set_dither
+    faar_get_delay
+    faar_process
+    faar_flush
+    faar_destroy
