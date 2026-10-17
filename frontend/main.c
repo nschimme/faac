@@ -320,6 +320,7 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
     }
     if (opts->max_bit_rate)
         fprintf(stderr, "Peak bitrate: %u kbps\n", (opts->max_bit_rate + 500) / 1000);
+    fprintf(stderr, "Sample rate: %u Hz\n", info->sample_rate);
     fprintf(stderr, "Bandwidth: %u Hz\n", info->bandwidth);
 
     const char *jm_str = "";
