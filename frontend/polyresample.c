@@ -1,6 +1,6 @@
 /*
  * Polyphase Farrow-Interpolated Kaiser-Sinc Resampler
- * Clean Multi-Stage Ownership, SIMD 32-Byte Aligned & Subnormal Protected for FAAC
+ * Clean Multi-Stage Ownership, SIMD 64-Byte Aligned & Hot-Loop Optimized for FAAC
  */
 
 #include "polyresample.h"
@@ -17,9 +17,9 @@
 #define POLYRESAMPLE_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
 #define POLYRESAMPLE_STORED_PHASES (POLYRESAMPLE_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
 #define POLYRESAMPLE_MAX_FILTER_LEN 512 /* Upper bound for stack-allocated temporary coefficient buffers */
-#define POLYRESAMPLE_ALIGNMENT 32 /* 32-byte alignment for AVX2/NEON SIMD vector loads */
+#define POLYRESAMPLE_ALIGNMENT 64 /* 64-byte alignment for AVX-512 / AVX2 / NEON SIMD vector loads */
 
-/* Helper function for 32-byte SIMD memory allocation */
+/* Helper function for 64-byte SIMD memory allocation */
 static void *aligned_malloc(size_t size) {
 #if defined(_WIN32)
     return _aligned_malloc(size, POLYRESAMPLE_ALIGNMENT);
@@ -157,7 +157,7 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     if ((r->filter_len % 2) == 0) r->filter_len++;
     assert(r->filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
 
-    /* Allocate polyphase table with 32-byte SIMD alignment */
+    /* Allocate polyphase table with 64-byte SIMD alignment */
     r->polyphase_table = (float *)aligned_malloc(POLYRESAMPLE_STORED_PHASES * r->filter_len * sizeof(float));
     if (!r->polyphase_table) {
         free(r);
@@ -167,6 +167,7 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     double cutoff = (r->ratio < 1.0) ? 0.48 * r->ratio : 0.48;
     double half_len = (r->filter_len - 1) / 2.0;
 
+    /* Phase 1: High-precision setup & filter design in double (f64) precision */
     for (size_t p = 0; p < POLYRESAMPLE_STORED_PHASES; p++) {
         double frac = (double)p / (double)POLYRESAMPLE_NUM_PHASES;
         float *phase_coeffs = r->polyphase_table + p * r->filter_len;
@@ -188,7 +189,8 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         }
     }
 
-    r->hist_cap_per_ch = r->filter_len * 4 + 32768;
+    /* Ensure history capacity is aligned to 16 floats (64 bytes) for SIMD vector strides */
+    r->hist_cap_per_ch = (r->filter_len * 4 + 32768 + 15) & ~((size_t)15);
     r->hist = (float **)calloc(channels, sizeof(float *));
     if (!r->hist) {
         aligned_free(r->polyphase_table);
@@ -237,8 +239,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
     if (in_samples && in_count > 0) {
         size_t needed_cap = r->hist_len + in_count;
         if (needed_cap > r->hist_cap_per_ch) {
-            size_t new_cap = r->hist_cap_per_ch ? r->hist_cap_per_ch : 4096;
-            while (new_cap < needed_cap) new_cap *= 2;
+            size_t new_cap = (needed_cap * 2 + 15) & ~((size_t)15);
 
             for (uint16_t c = 0; c < r->channels; c++) {
                 float *new_buf = (float *)aligned_malloc(new_cap * sizeof(float));
@@ -261,7 +262,12 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
     size_t out_frames = 0;
     const double step = 1.0 / r->ratio;
 
-    float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+    /* Stack-allocated, 64-byte aligned temporary coefficient array for SIMD auto-vectorization */
+#if defined(_MSC_VER)
+    __declspec(align(64)) float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+#else
+    _Alignas(64) float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+#endif
 
     while (out_frames < max_out_count) {
         double in_pos = r->phase;
@@ -285,16 +291,16 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
 
             for (uint16_t c = 0; c < r->channels; c++) {
                 const float * restrict h = &r->hist[c][base_idx];
-                double sum = (double)center_coeff * (double)h[half_len];
+                float sum = center_coeff * h[half_len];
 
                 for (size_t j = 0; j < half_len; j++) {
-                    sum += (double)coeffs[j] * ((double)h[j] + (double)h[filter_len - 1 - j]);
+                    sum += coeffs[j] * (h[j] + h[filter_len - 1 - j]);
                 }
 
-                out_samples[out_frames * r->channels + c] = (float)sum;
+                out_samples[out_frames * r->channels + c] = sum;
             }
         } else {
-            /* Interpolate-Then-Convolve: Pre-calculate flat interpolated filter coefficients into temporary array outside channel/tap loops */
+            /* Interpolate-Then-Convolve: Pre-calculate flat interpolated filter coefficients outside channel/tap loops */
             size_t p0 = (p_idx > 0) ? p_idx - 1 : 0;
             size_t p1 = p_idx;
             size_t p2 = (p_idx + 1 < POLYRESAMPLE_NUM_PHASES) ? p_idx + 1 : POLYRESAMPLE_NUM_PHASES - 1;
@@ -313,34 +319,34 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
             const float * restrict c2 = poly_table + s2 * filter_len;
             const float * restrict c3 = poly_table + s3 * filter_len;
 
-            double d = delta;
-            double d2 = d * d;
-            double d3 = d2 * d;
+            float d = (float)delta;
+            float d2 = d * d;
+            float d3 = d2 * d;
 
-            double w0 = -0.5 * d3 + d2 - 0.5 * d;
-            double w1 = 1.5 * d3 - 2.5 * d2 + 1.0;
-            double w2 = -1.5 * d3 + 2.0 * d2 + 0.5 * d;
-            double w3 = 0.5 * d3 - 0.5 * d2;
+            float w0 = -0.5f * d3 + d2 - 0.5f * d;
+            float w1 = 1.5f * d3 - 2.5f * d2 + 1.0f;
+            float w2 = -1.5f * d3 + 2.0f * d2 + 0.5f * d;
+            float w3 = 0.5f * d3 - 0.5f * d2;
 
             for (size_t j = 0; j < filter_len; j++) {
-                double k0 = m0 ? (double)c0[filter_len - 1 - j] : (double)c0[j];
-                double k1 = m1 ? (double)c1[filter_len - 1 - j] : (double)c1[j];
-                double k2 = m2 ? (double)c2[filter_len - 1 - j] : (double)c2[j];
-                double k3 = m3 ? (double)c3[filter_len - 1 - j] : (double)c3[j];
+                float k0 = m0 ? c0[filter_len - 1 - j] : c0[j];
+                float k1 = m1 ? c1[filter_len - 1 - j] : c1[j];
+                float k2 = m2 ? c2[filter_len - 1 - j] : c2[j];
+                float k3 = m3 ? c3[filter_len - 1 - j] : c3[j];
 
-                temp_coeffs[j] = (float)(w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3);
+                temp_coeffs[j] = w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3;
             }
 
-            /* Flat straight-line inner dot-product loop over 32-byte aligned memory */
+            /* Hot Loop: Native 32-bit float SIMD vector dot-product (8 floats per cycle on AVX2 / 4 on NEON) */
             for (uint16_t c = 0; c < r->channels; c++) {
                 const float * restrict h = &r->hist[c][base_idx];
-                double sum = 0.0;
+                float sum = 0.0f;
 
                 for (size_t j = 0; j < filter_len; j++) {
-                    sum += (double)h[j] * (double)temp_coeffs[j];
+                    sum += h[j] * temp_coeffs[j];
                 }
 
-                out_samples[out_frames * r->channels + c] = (float)sum;
+                out_samples[out_frames * r->channels + c] = sum;
             }
         }
 
