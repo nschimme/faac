@@ -288,6 +288,7 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
     if (opts->max_bit_rate > 0)
         ADD(", cap %ukbps", (opts->max_bit_rate + 500) / 1000);
 
+    ADD(", %uHz", info->sample_rate);
     ADD(", cutoff %uHz", info->bandwidth);
     ADD(", %s", info->object_type == FAAC_OBJ_HE_AAC_V1 ? "HE-AAC" : "LC");
 
