@@ -6,15 +6,25 @@ on:
     paths:
       - "frontend/**"
       - "libfaac/**"
+      - "libfaad/**"
+      - "libfaam/**"
+      - "common/**"
+      - "include/**"
       - ".github/workflows/benchmark.yml"
       - "meson.build"
+      - "meson_options.txt"
   pull_request:
     branches: [ "*" ]
     paths:
       - "frontend/**"
       - "libfaac/**"
+      - "libfaad/**"
+      - "libfaam/**"
+      - "common/**"
+      - "include/**"
       - ".github/workflows/benchmark.yml"
       - "meson.build"
+      - "meson_options.txt"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
