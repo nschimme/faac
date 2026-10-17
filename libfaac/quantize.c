@@ -168,9 +168,11 @@ static const MaskingModel masking_model = {
     .rich_slope = 3.0f,
     .tune_min_rate = 32000, /* fitted profile's lower bound, bits/s per channel */
     .rich_min_rate = 56000, /* steep-slope threshold, bits/s per channel */
-    /* Scalefactor nudge: measured on stereo and mono, LC and HE-AAC, and 5.1 at
-     * a set rate; below this rate a few clips lose more than 0.1 MOS. */
-    .nudge_min_rate = 24000, /* bits/s per channel */
+    /* Scalefactor nudge, for any channel count at a set rate. Measured on
+     * stereo and mono, LC and HE-AAC, and 5.1. At 24 kbps per channel, 16 kHz
+     * mono speech loses up to 0.18 MOS on a few clips; from 28 kbps no clip is
+     * past -0.10. */
+    .nudge_min_rate = 28000, /* bits/s per channel */
     /* Empirical sample-rate policy, in Hz: above 48 kHz scale the per-line
      * slope relative to 44.1 kHz. These are not the tilt's frequency units. */
     .slope_rate_threshold = 48000,
