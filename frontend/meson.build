@@ -146,3 +146,12 @@ if get_option('muxer')
                    get_option('decoder-drc').to_string(), get_option('decoder-dab').to_string()])
     endif
 endif
+
+faar_cli = executable('faar',
+    ['faar_main.c'],
+    include_directories: ['..', '../include', '../common'],
+    link_with: [libfaar_for_frontend],
+    c_args: c_args_list,
+    dependencies: [libshell32, libfaar_dep],
+    install: true
+)
