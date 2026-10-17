@@ -14,6 +14,9 @@
 # include "getopt.c"
 #endif
 #include <faar.h>
+#include "input.h"
+#include "cli_io.h"
+#include "help.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -26,43 +29,34 @@ typedef enum {
     FMT_S24LE = 2
 } pcm_format_t;
 
-static void show_help(void) {
+static const help_t core_help[] = {
+    {"-r, --rate <Hz>", "Target sample rate (Required, e.g., 48000, 44100)", NULL},
+    {"-q, --quality <preset>", "DSP filter quality (fast, good, high) [default: good]", NULL},
+    {"-c, --channels <num>", "Audio channel count [default: 2]", NULL},
+    {"-f, --format <fmt>", "Raw PCM sample format (f32le, s16le, s24le) [default: f32le]", NULL},
+    {"-d, --dither <type>", "Dithering type for integer format output (none, tpdf, shaped) [default: none]", NULL},
+    {"--decimate", "Force multi-stage decimation cascade for large downsampling ratios", NULL},
+    {"--ignorelength", "Ignore the WAV data length in the header and read to EOF", NULL},
+    {"-o, --output <path>", "Explicit output path (or use - for stdout)", NULL},
+    {"-h, --help", "Display usage guide", NULL},
+    {NULL, NULL, NULL}
+};
+
+static const help_group_t help_groups[] = {
+    {1, "Core options", "--help", core_help, 1},
+    {0, NULL, NULL, NULL, 0}
+};
+
+static void print_faar_help(const char *prog_name) {
+    show_help(prog_name, 0, "3.0.0", help_groups);
     printf(
-        "FAAR - Freeware Advanced Audio Resampler\n"
-        "Usage: faar [options] <input> <output>\n\n"
-        "Core Options:\n"
-        "  -r, --rate <Hz>        Target sample rate (Required, e.g., 48000, 44100)\n"
-        "  -q, --quality <preset> DSP filter quality (fast, good, high) [default: good]\n"
-        "  -c, --channels <num>   Audio channel count [default: 2]\n"
-        "  -f, --format <fmt>     Raw PCM sample format (f32le, s16le, s24le) [default: f32le]\n"
-        "  -d, --dither <type>    Dithering type for integer format output (none, tpdf, shaped) [default: none]\n"
-        "  -o, --output <path>    Explicit output path (or use - for stdout)\n"
-        "  -h, --help             Display this help guide\n\n"
-        "Examples:\n"
+        "\nExamples:\n"
         "  faar -r 48000 input_96k.wav output_48k.wav\n"
         "  faar -r 48000 -q high -d tpdf -f s16le input.wav output.wav\n"
         "  cat input.raw | faar -r 48000 -c 2 -f f32le - - | aplay -f S16_LE -r 48000\n"
     );
 }
 
-static bool parse_wav_header(FILE *f, uint32_t *rate, uint16_t *channels, uint16_t *bits, pcm_format_t *fmt, uint32_t *data_size) {
-    uint8_t hdr[44];
-    if (fread(hdr, 1, 44, f) != 44) return false;
-    if (memcmp(hdr, "RIFF", 4) != 0 || memcmp(hdr + 8, "WAVE", 4) != 0) return false;
-
-    uint16_t audio_fmt = hdr[20] | (hdr[21] << 8);
-    *channels = hdr[22] | (hdr[23] << 8);
-    *rate = hdr[24] | (hdr[25] << 8) | (hdr[26] << 16) | (hdr[27] << 24);
-    *bits = hdr[34] | (hdr[35] << 8);
-
-    if (audio_fmt == 3 && *bits == 32) *fmt = FMT_F32LE;
-    else if (audio_fmt == 1 && *bits == 16) *fmt = FMT_S16LE;
-    else if (audio_fmt == 1 && *bits == 24) *fmt = FMT_S24LE;
-    else return false;
-
-    *data_size = hdr[40] | (hdr[41] << 8) | (hdr[42] << 16) | (hdr[43] << 24);
-    return true;
-}
 
 static void write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_format_t fmt, uint32_t data_size) {
     uint8_t hdr[44] = {0};
@@ -101,12 +95,18 @@ int main(int argc, char **argv) {
     const char *input_path = NULL;
     const char *output_path = NULL;
 
+    bool decimate = false;
+
+    bool ignore_wav_length = false;
+
     static struct option long_options[] = {
         {"rate", required_argument, 0, 'r'},
         {"quality", required_argument, 0, 'q'},
         {"channels", required_argument, 0, 'c'},
         {"format", required_argument, 0, 'f'},
         {"dither", required_argument, 0, 'd'},
+        {"decimate", no_argument, 0, 'D'},
+        {"ignorelength", no_argument, 0, 'I'},
         {"output", required_argument, 0, 'o'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
@@ -132,9 +132,11 @@ int main(int argc, char **argv) {
                 else if (strcmp(optarg, "shaped") == 0) dither = FAAR_DITHER_SHAPED;
                 else dither = FAAR_DITHER_OFF;
                 break;
+            case 'D': decimate = true; break;
+            case 'I': ignore_wav_length = true; break;
             case 'o': output_path = optarg; break;
-            case 'h': show_help(); return 0;
-            default: show_help(); return 1;
+            case 'h': print_faar_help(argv[0]); return 0;
+            default: print_faar_help(argv[0]); return 1;
         }
     }
 
@@ -143,34 +145,28 @@ int main(int argc, char **argv) {
 
     if (!input_path || target_rate == 0) {
         fprintf(stderr, "Error: Input path and target rate (-r <Hz>) are required.\n");
-        show_help();
+        print_faar_help(argv[0]);
         return 1;
     }
 
-    FILE *fin = (strcmp(input_path, "-") == 0) ? stdin : fopen(input_path, "rb");
-    if (!fin) {
-        fprintf(stderr, "Error: Couldn't open input file %s\n", input_path);
-        return 1;
-    }
-
-#ifdef _WIN32
-    if (fin == stdin) _setmode(_fileno(stdin), _O_BINARY);
-#endif
+    pcmfile_t *infile = wav_open_read(input_path, false);
+    bool is_wav_input = (infile != NULL);
 
     uint32_t in_rate = 44100;
-    uint16_t in_channels = channels;
-    uint16_t in_bits = 32;
-    pcm_format_t in_fmt = fmt;
-    uint32_t in_data_size = 0;
-    bool is_wav_input = false;
-
-    if (fin != stdin) {
-        if (parse_wav_header(fin, &in_rate, &in_channels, &in_bits, &in_fmt, &in_data_size)) {
-            is_wav_input = true;
-            channels = in_channels;
-        } else {
-            fseek(fin, 0, SEEK_SET);
+    if (is_wav_input) {
+        if (ignore_wav_length) infile->bounded_data = false;
+        in_rate = infile->samplerate;
+        channels = infile->channels;
+    } else {
+        infile = wav_open_read(input_path, true);
+        if (!infile) {
+            fprintf(stderr, "Error: Couldn't open input file %s\n", input_path);
+            return 1;
         }
+        infile->channels = channels;
+        infile->samplebytes = (fmt == FMT_F32LE) ? 4 : (fmt == FMT_S24LE ? 3 : 2);
+        infile->samplerate = 44100;
+        infile->isfloat = (fmt == FMT_F32LE);
     }
 
     FILE *fout = NULL;
@@ -180,10 +176,10 @@ int main(int argc, char **argv) {
         _setmode(_fileno(stdout), _O_BINARY);
 #endif
     } else {
-        fout = fopen(output_path, "wb");
+        fout = cli_fopen(output_path, "wb");
         if (!fout) {
             fprintf(stderr, "Error: Couldn't open output file %s\n", output_path);
-            if (fin != stdin) fclose(fin);
+            if (infile) wav_close(infile);
             return 1;
         }
     }
@@ -193,7 +189,7 @@ int main(int argc, char **argv) {
     faar_handle_t r = faar_create(in_rate, target_rate, channels, quality);
     if (!r) {
         fprintf(stderr, "Error: Couldn't create resampler instance for %u Hz -> %u Hz\n", in_rate, target_rate);
-        if (fin != stdin) fclose(fin);
+        if (infile) wav_close(infile);
         if (fout != stdout) fclose(fout);
         return 1;
     }
@@ -208,7 +204,7 @@ int main(int argc, char **argv) {
     }
 
     size_t chunk_frames = 2048;
-    size_t in_bytes_per_sample = (in_fmt == FMT_F32LE ? 4 : (in_fmt == FMT_S24LE ? 3 : 2));
+    size_t in_bytes_per_sample = (infile->samplebytes > 0) ? infile->samplebytes : (fmt == FMT_F32LE ? 4 : (fmt == FMT_S24LE ? 3 : 2));
     size_t in_bytes_per_frame = channels * in_bytes_per_sample;
     uint8_t *raw_in_buf = (uint8_t *)malloc(chunk_frames * in_bytes_per_frame);
     float *float_in_buf = (float *)malloc(chunk_frames * channels * sizeof(float));
@@ -220,23 +216,9 @@ int main(int argc, char **argv) {
 
     uint32_t total_out_data_bytes = 0;
 
-    size_t read_bytes = 0;
-    while ((read_bytes = fread(raw_in_buf, 1, chunk_frames * in_bytes_per_frame, fin)) > 0) {
-        size_t frames_read = read_bytes / in_bytes_per_frame;
-
-        /* Convert raw input PCM to float */
-        for (size_t i = 0; i < frames_read * channels; i++) {
-            if (in_fmt == FMT_F32LE) {
-                float_in_buf[i] = ((float *)raw_in_buf)[i];
-            } else if (in_fmt == FMT_S16LE) {
-                int16_t v = ((int16_t *)raw_in_buf)[i];
-                float_in_buf[i] = (float)v / 32768.0f;
-            } else if (in_fmt == FMT_S24LE) {
-                int32_t v = (raw_in_buf[i * 3 + 0]) | (raw_in_buf[i * 3 + 1] << 8) | ((int8_t)raw_in_buf[i * 3 + 2] << 16);
-                float_in_buf[i] = (float)v / 8388608.0f;
-            }
-        }
-
+    size_t samples_read = 0;
+    while ((samples_read = wav_read_float32(infile, float_in_buf, chunk_frames * channels, NULL)) > 0) {
+        size_t frames_read = samples_read / channels;
         size_t produced = faar_process(r, float_in_buf, frames_read, float_out_buf, out_cap);
 
         /* Convert float output PCM to requested format */
@@ -277,12 +259,12 @@ int main(int argc, char **argv) {
             if (fmt == FMT_F32LE) {
                 ((float *)raw_out_buf)[i] = val;
             } else if (fmt == FMT_S16LE) {
-                int32_t v = (int32_t)(val * 32767.0f + (val >= 0.0f ? 0.5f : -0.5f));
+                int32_t v = (int32_t)(val * 32768.0f + (val >= 0.0f ? 0.5f : -0.5f));
                 if (v > 32767) v = 32767;
                 if (v < -32768) v = -32768;
                 ((int16_t *)raw_out_buf)[i] = (int16_t)v;
             } else if (fmt == FMT_S24LE) {
-                int32_t v = (int32_t)(val * 8388607.0f + (val >= 0.0f ? 0.5f : -0.5f));
+                int32_t v = (int32_t)(val * 8388608.0f + (val >= 0.0f ? 0.5f : -0.5f));
                 if (v > 8388607) v = 8388607;
                 if (v < -8388608) v = -8388608;
                 raw_out_buf[i * 3 + 0] = v & 0xFF;
@@ -307,7 +289,7 @@ int main(int argc, char **argv) {
     free(float_out_buf);
     free(raw_out_buf);
 
-    if (fin != stdin) fclose(fin);
+    if (infile) wav_close(infile);
     if (fout != stdout) fclose(fout);
 
     return 0;
