@@ -798,34 +798,43 @@ int run_encoding_session_ext(const encode_options_t *opts,
             size_t enc_samples_needed = samples_per_frame;
             size_t resample_out_produced = faar_process(resampler, NULL, 0, resample_out_buf, enc_samples_needed / num_channels);
 
-            while (resample_out_produced < enc_samples_needed / num_channels && !input_eof)
+            while (resample_out_produced < enc_samples_needed / num_channels)
             {
-                bool should_read = opts->ignore_wav_length ||
-                                   current_input_samples < total_input_samples ||
-                                   total_input_samples == 0;
-                int raw_read = 0;
-                if (should_read)
-                    raw_read = (int)wav_read_float32(infile, resample_in_buf, samples_per_frame, chanmap);
-
-                if (!opts->ignore_wav_length && total_input_samples > 0 &&
-                    current_input_samples + (raw_read / num_channels) > total_input_samples)
+                if (!input_eof)
                 {
-                    raw_read = (int)((total_input_samples - current_input_samples) * num_channels);
+                    bool should_read = opts->ignore_wav_length ||
+                                       current_input_samples < total_input_samples ||
+                                       total_input_samples == 0;
+                    int raw_read = 0;
+                    if (should_read)
+                        raw_read = (int)wav_read_float32(infile, resample_in_buf, samples_per_frame, chanmap);
+
+                    if (!opts->ignore_wav_length && total_input_samples > 0 &&
+                        current_input_samples + (raw_read / num_channels) > total_input_samples)
+                    {
+                        raw_read = (int)((total_input_samples - current_input_samples) * num_channels);
+                    }
+
+                    if (raw_read == 0)
+                    {
+                        input_eof = true;
+                    }
+                    else
+                    {
+                        current_input_samples += (raw_read / num_channels);
+                        resample_out_produced += faar_process(resampler, resample_in_buf, raw_read / num_channels,
+                                                             resample_out_buf + resample_out_produced * num_channels,
+                                                             (enc_samples_needed / num_channels) - resample_out_produced);
+                    }
                 }
 
-                if (raw_read == 0)
+                if (input_eof)
                 {
-                    input_eof = true;
-                    resample_out_produced += faar_flush(resampler, resample_out_buf + resample_out_produced * num_channels,
-                                                        (enc_samples_needed / num_channels) - resample_out_produced);
-                    break;
-                }
-                else
-                {
-                    current_input_samples += (raw_read / num_channels);
-                    resample_out_produced += faar_process(resampler, resample_in_buf, raw_read / num_channels,
-                                                         resample_out_buf + resample_out_produced * num_channels,
-                                                         (enc_samples_needed / num_channels) - resample_out_produced);
+                    size_t flushed = faar_flush(resampler, resample_out_buf + resample_out_produced * num_channels,
+                                                (enc_samples_needed / num_channels) - resample_out_produced);
+                    resample_out_produced += flushed;
+                    if (flushed == 0)
+                        break;
                 }
             }
 

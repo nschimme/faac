@@ -95,8 +95,6 @@ int main(int argc, char **argv) {
     const char *input_path = NULL;
     const char *output_path = NULL;
 
-    bool decimate = false;
-
     bool ignore_wav_length = false;
 
     static struct option long_options[] = {
@@ -105,7 +103,6 @@ int main(int argc, char **argv) {
         {"channels", required_argument, 0, 'c'},
         {"format", required_argument, 0, 'f'},
         {"dither", required_argument, 0, 'd'},
-        {"decimate", no_argument, 0, 'D'},
         {"ignorelength", no_argument, 0, 'I'},
         {"output", required_argument, 0, 'o'},
         {"help", no_argument, 0, 'h'},
@@ -132,7 +129,6 @@ int main(int argc, char **argv) {
                 else if (strcmp(optarg, "shaped") == 0) dither = FAAR_DITHER_SHAPED;
                 else dither = FAAR_DITHER_OFF;
                 break;
-            case 'D': decimate = true; break;
             case 'I': ignore_wav_length = true; break;
             case 'o': output_path = optarg; break;
             case 'h': print_faar_help(argv[0]); return 0;
@@ -149,8 +145,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    pcmfile_t *infile = wav_open_read(input_path, false);
-    bool is_wav_input = (infile != NULL);
+    bool is_stdin = (strcmp(input_path, "-") == 0);
+    pcmfile_t *infile = NULL;
+    bool is_wav_input = false;
+
+    if (!is_stdin) {
+        infile = wav_open_read(input_path, false);
+        is_wav_input = (infile != NULL);
+    }
 
     uint32_t in_rate = 44100;
     if (is_wav_input) {
@@ -221,21 +223,22 @@ int main(int argc, char **argv) {
         size_t frames_read = samples_read / channels;
         size_t produced = faar_process(r, float_in_buf, frames_read, float_out_buf, out_cap);
 
-        /* Convert float output PCM to requested format */
+        /* Convert float output PCM to requested format (normalized float range: [-32768.0, +32768.0]) */
         for (size_t i = 0; i < produced * channels; i++) {
             float val = float_out_buf[i];
-            if (val > 1.0f) val = 1.0f;
-            if (val < -1.0f) val = -1.0f;
 
             if (fmt == FMT_F32LE) {
-                ((float *)raw_out_buf)[i] = val;
+                float norm_val = val / 32768.0f;
+                if (norm_val > 1.0f) norm_val = 1.0f;
+                if (norm_val < -1.0f) norm_val = -1.0f;
+                ((float *)raw_out_buf)[i] = norm_val;
             } else if (fmt == FMT_S16LE) {
-                int32_t v = (int32_t)(val * 32768.0f + (val >= 0.0f ? 0.5f : -0.5f));
+                int32_t v = (int32_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
                 if (v > 32767) v = 32767;
                 if (v < -32768) v = -32768;
                 ((int16_t *)raw_out_buf)[i] = (int16_t)v;
             } else if (fmt == FMT_S24LE) {
-                int32_t v = (int32_t)(val * 8388608.0f + (val >= 0.0f ? 0.5f : -0.5f));
+                int32_t v = (int32_t)(val * 256.0f + (val >= 0.0f ? 0.5f : -0.5f));
                 if (v > 8388607) v = 8388607;
                 if (v < -8388608) v = -8388608;
                 raw_out_buf[i * 3 + 0] = v & 0xFF;
@@ -253,18 +256,19 @@ int main(int argc, char **argv) {
     if (flushed > 0) {
         for (size_t i = 0; i < flushed * channels; i++) {
             float val = float_out_buf[i];
-            if (val > 1.0f) val = 1.0f;
-            if (val < -1.0f) val = -1.0f;
 
             if (fmt == FMT_F32LE) {
-                ((float *)raw_out_buf)[i] = val;
+                float norm_val = val / 32768.0f;
+                if (norm_val > 1.0f) norm_val = 1.0f;
+                if (norm_val < -1.0f) norm_val = -1.0f;
+                ((float *)raw_out_buf)[i] = norm_val;
             } else if (fmt == FMT_S16LE) {
-                int32_t v = (int32_t)(val * 32768.0f + (val >= 0.0f ? 0.5f : -0.5f));
+                int32_t v = (int32_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
                 if (v > 32767) v = 32767;
                 if (v < -32768) v = -32768;
                 ((int16_t *)raw_out_buf)[i] = (int16_t)v;
             } else if (fmt == FMT_S24LE) {
-                int32_t v = (int32_t)(val * 8388608.0f + (val >= 0.0f ? 0.5f : -0.5f));
+                int32_t v = (int32_t)(val * 256.0f + (val >= 0.0f ? 0.5f : -0.5f));
                 if (v > 8388607) v = 8388607;
                 if (v < -8388608) v = -8388608;
                 raw_out_buf[i * 3 + 0] = v & 0xFF;

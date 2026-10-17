@@ -37,6 +37,29 @@ int main(void) {
     printf("Flushed %zu additional frames\n", flushed);
 
     faar_destroy(r);
+
+    /* Test Dithering Modes (TPDF & SHAPED for 16-bit and 24-bit) */
+    printf("Testing libfaar dithering modes...\n");
+    faar_dither_t test_dithers[] = {FAAR_DITHER_OFF, FAAR_DITHER_TPDF, FAAR_DITHER_SHAPED};
+    uint8_t test_bits[] = {16, 24};
+
+    for (size_t d = 0; d < 3; d++) {
+        for (size_t b = 0; b < 2; b++) {
+            faar_handle_t r_dither = faar_create(in_rate, out_rate, channels, FAAR_QUALITY_HIGH);
+            assert(r_dither != NULL);
+            if (test_dithers[d] != FAAR_DITHER_OFF) {
+                int status = faar_set_dither(r_dither, test_dithers[d], test_bits[b]);
+                assert(status == 0);
+            }
+
+            size_t d_produced = faar_process(r_dither, in_buf, in_frames, out_buf, out_cap);
+            size_t d_flushed = faar_flush(r_dither, out_buf + d_produced * channels, out_cap - d_produced);
+            assert(d_produced + d_flushed > 0);
+
+            faar_destroy(r_dither);
+        }
+    }
+
     free(in_buf);
     free(out_buf);
 
