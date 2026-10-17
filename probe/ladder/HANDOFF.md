@@ -1,6 +1,6 @@
 # Handoff: LC at high bitrates vs Apple (2026-10-16)
 
-**Scope: LC only.** HE-AAC is at parity with Apple and FDK on the maintainer's base and is handled elsewhere (nschimme/faac#78 is being finished in the session that wrote this; do not pick it up from here).
+**Scope: LC only.** HE-AAC is at parity with Apple and FDK on the maintainer's base. nschimme/faac#78 (SBR two-region master table, unit test, lifted stop cap at 44.1-48 kHz) was closed without merging on 2026-10-17; its branch `sbr-two-region-table` still exists. Do not reopen it or open a replacement from this handoff unless the maintainer asks.
 This probe branch records research. **Never merge it.** Production changes go to `nschimme/faac` as small separate PRs from the base branch (`he-v1-retune`, which moves; LC output on it is bit-identical to master).
 **Read [EXPERIMENTS.md](EXPERIMENTS.md) first: every experiment tried so far, with results and verdicts, so you don't repeat dead ends.**
 Then read `results/s11-he-v1/lc-high-bitrate-vs-apple/` (PREREG.md, RESULTS.md).
