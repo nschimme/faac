@@ -1,6 +1,6 @@
 /*
- * ARDFTSRC - Arbitrary Rate Discrete Fourier Transform Sample Rate Converter
- * Polyphase Table & Cache Footprint-Optimized C Translation for FAAC
+ * ARDFTSRC - Polyphase Kaiser-Windowed Sinc Discrete Fourier Transform
+ * Arbitrary Rate Sample Rate Converter for FAAC
  */
 
 #include "ardftsrc.h"
@@ -49,9 +49,8 @@ struct ArdftsrcResampler {
     double beta;
     float *polyphase_table;     /* Symmetric polyphase filter bank table [129 x filter_len] */
     float **hist;               /* Per-channel overlap/history buffer pointers */
-    float *hist_storage;        /* Contiguous history buffer storage */
     size_t hist_len;            /* Current frames in hist */
-    size_t hist_cap_per_ch;     /* Capacity per channel in frames */
+    size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
     size_t delay;
 };
 
@@ -107,19 +106,22 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     }
 
     r->hist_cap_per_ch = r->filter_len * 4 + 16384;
-    r->hist_storage = (float *)calloc(channels * r->hist_cap_per_ch, sizeof(float));
-    r->hist = (float **)malloc(channels * sizeof(float *));
-
-    if (!r->hist_storage || !r->hist) {
-        free(r->hist_storage);
-        free(r->hist);
+    r->hist = (float **)calloc(channels, sizeof(float *));
+    if (!r->hist) {
         free(r->polyphase_table);
         free(r);
         return NULL;
     }
 
     for (uint16_t c = 0; c < channels; c++) {
-        r->hist[c] = r->hist_storage + c * r->hist_cap_per_ch;
+        r->hist[c] = (float *)calloc(r->hist_cap_per_ch, sizeof(float));
+        if (!r->hist[c]) {
+            for (uint16_t k = 0; k < c; k++) free(r->hist[k]);
+            free(r->hist);
+            free(r->polyphase_table);
+            free(r);
+            return NULL;
+        }
     }
 
     r->delay = (size_t)half_len;
@@ -145,7 +147,21 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
     const size_t half_len = (filter_len - 1) / 2;
     const float * restrict poly_table = r->polyphase_table;
 
+    /* Dynamic buffer capacity expansion for safe continuous streaming */
     if (in_samples && in_count > 0) {
+        size_t needed_cap = r->hist_len + in_count;
+        if (needed_cap > r->hist_cap_per_ch) {
+            size_t new_cap = r->hist_cap_per_ch ? r->hist_cap_per_ch : 4096;
+            while (new_cap < needed_cap) new_cap *= 2;
+
+            for (uint16_t c = 0; c < r->channels; c++) {
+                float *new_buf = (float *)realloc(r->hist[c], new_cap * sizeof(float));
+                if (!new_buf) return 0;
+                r->hist[c] = new_buf;
+            }
+            r->hist_cap_per_ch = new_cap;
+        }
+
         for (size_t i = 0; i < in_count; i++) {
             for (uint16_t c = 0; c < r->channels; c++) {
                 r->hist[c][r->hist_len + i] = in_samples[i * r->channels + c];
@@ -259,8 +275,12 @@ size_t ardftsrc_flush(ArdftsrcResampler *r, float *out_samples, size_t max_out_c
 
 void ardftsrc_destroy(ArdftsrcResampler *r) {
     if (!r) return;
-    if (r->hist_storage) free(r->hist_storage);
-    if (r->hist) free(r->hist);
+    if (r->hist) {
+        for (uint16_t c = 0; c < r->channels; c++) {
+            if (r->hist[c]) free(r->hist[c]);
+        }
+        free(r->hist);
+    }
     if (r->polyphase_table) free(r->polyphase_table);
     free(r);
 }
