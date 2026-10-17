@@ -1,4 +1,4 @@
-headers = ['faam.h']
+install_headers('faam.h', 'faar.h')
 if get_option('encoder')
     headers += ['faac.h']
 endif
