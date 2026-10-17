@@ -60,6 +60,7 @@ extra_args = cc.get_supported_arguments([
 ])
 add_project_arguments(extra_args, language: 'c')
 
+
 subdir('docs')
 subdir('include')
 subdir('common')
