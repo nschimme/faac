@@ -1,14 +1,9 @@
 /*
- * Polyphase Farrow-Interpolated Kaiser-Sinc Resampler
- * MAX_CHANNELS Fixed Array Optimized for FAAC
+ * libfaar - Polyphase Farrow-Interpolated Kaiser-Sinc Audio Resampler
  */
 
-#include "polyresample.h"
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <stdbool.h>
-#include <assert.h>
+#include "faar.h"
+#include "libfaar_internal.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -74,11 +69,11 @@ static double kaiser_window(double n, double N, double beta) {
     return bessel_i0(beta * sqrt(sq)) / bessel_i0(beta);
 }
 
-struct PolyResampler {
+struct faar_resampler_struct {
     uint32_t in_rate;
     uint32_t out_rate;
     uint16_t channels;
-    polyresample_quality_t quality;
+    faar_quality_t quality;
     size_t filter_len;
     double ratio;               /* out_rate / in_rate */
     double phase;               /* Fractional sample position [0.0, 1.0) */
@@ -92,32 +87,32 @@ struct PolyResampler {
     size_t delay;
 
     /* Multi-stage cascade pointers with clean ownership model */
-    PolyResampler *stage1;
-    PolyResampler *stage2;
+    struct faar_resampler_struct *stage1;
+    struct faar_resampler_struct *stage2;
     float *cascade_buf;
     size_t cascade_cap;
 };
 
-static size_t polyresample_process_single(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
+static size_t polyresample_process_single(faar_handle_t r, const float * restrict in_samples, size_t in_count,
                                            float * restrict out_samples, size_t max_out_count);
 
-static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, size_t max_out_count);
+static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, size_t max_out_count);
 
-PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, polyresample_quality_t quality) {
+FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, faar_quality_t quality) {
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
     /* Multi-stage cascade decimation for large downsampling ratios (>2:1) with clean stage ownership */
     if (in_rate > 2 * out_rate) {
         uint32_t intermediate_rate = in_rate / 2;
-        PolyResampler *r = (PolyResampler *)calloc(1, sizeof(PolyResampler));
+        struct faar_resampler_struct *r = (struct faar_resampler_struct *)calloc(1, sizeof(struct faar_resampler_struct));
         if (!r) return NULL;
 
-        r->stage1 = polyresample_create(in_rate, intermediate_rate, channels, quality);
-        r->stage2 = polyresample_create(intermediate_rate, out_rate, channels, quality);
+        r->stage1 = faar_create(in_rate, intermediate_rate, channels, quality);
+        r->stage2 = faar_create(intermediate_rate, out_rate, channels, quality);
 
         if (!r->stage1 || !r->stage2) {
-            polyresample_destroy(r->stage1);
-            polyresample_destroy(r->stage2);
+            faar_destroy(r->stage1);
+            faar_destroy(r->stage2);
             free(r);
             return NULL;
         }
@@ -131,8 +126,8 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         r->cascade_cap = 16384 * channels;
         r->cascade_buf = (float *)aligned_malloc(r->cascade_cap * sizeof(float));
         if (!r->cascade_buf) {
-            polyresample_destroy(r->stage1);
-            polyresample_destroy(r->stage2);
+            faar_destroy(r->stage1);
+            faar_destroy(r->stage2);
             free(r);
             return NULL;
         }
@@ -141,7 +136,7 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         return r;
     }
 
-    PolyResampler *r = (PolyResampler *)calloc(1, sizeof(PolyResampler));
+    struct faar_resampler_struct *r = (struct faar_resampler_struct *)calloc(1, sizeof(struct faar_resampler_struct));
     if (!r) return NULL;
 
     r->in_rate = in_rate;
@@ -152,10 +147,10 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
 
     /* Steep Kaiser beta parameters for >140 dB stopband attenuation and <0.001 dB passband ripple */
     switch (quality) {
-        case POLYRESAMPLE_QUALITY_FAST: r->filter_len = 127; r->beta = 28.0; break;
-        case POLYRESAMPLE_QUALITY_HIGH: r->filter_len = 511; r->beta = 38.0; break;
-        case POLYRESAMPLE_QUALITY_GOOD:
-        default:                        r->filter_len = 255; r->beta = 32.0; break;
+        case FAAR_QUALITY_FAST: r->filter_len = 127; r->beta = 28.0; break;
+        case FAAR_QUALITY_HIGH: r->filter_len = 511; r->beta = 38.0; break;
+        case FAAR_QUALITY_GOOD:
+        default:                r->filter_len = 255; r->beta = 32.0; break;
     }
 
     if ((r->filter_len % 2) == 0) r->filter_len++;
@@ -211,11 +206,11 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     return r;
 }
 
-size_t polyresample_get_delay(const PolyResampler *r) {
+FAARAPI size_t faar_get_delay(faar_handle_t r) {
     return r ? r->delay : 0;
 }
 
-static size_t polyresample_process_single(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
+static size_t polyresample_process_single(faar_handle_t restrict r, const float * restrict in_samples, size_t in_count,
                                            float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
@@ -394,19 +389,19 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
     return out_frames;
 }
 
-size_t polyresample_process(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
+FAARAPI size_t faar_process(faar_handle_t restrict r, const float * restrict in_samples, size_t in_count,
                            float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
     if (r->stage1 && r->stage2) {
-        size_t stage1_produced = polyresample_process(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
-        return polyresample_process(r->stage2, r->cascade_buf, stage1_produced, out_samples, max_out_count);
+        size_t stage1_produced = faar_process(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
+        return faar_process(r->stage2, r->cascade_buf, stage1_produced, out_samples, max_out_count);
     }
 
     return polyresample_process_single(r, in_samples, in_count, out_samples, max_out_count);
 }
 
-static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, size_t max_out_count) {
+static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
     size_t tail_len = (r->filter_len - 1) / 2;
@@ -416,22 +411,22 @@ static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, si
     return written;
 }
 
-size_t polyresample_flush(PolyResampler *r, float *out_samples, size_t max_out_count) {
+FAARAPI size_t faar_flush(faar_handle_t r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
     if (r->stage1 && r->stage2) {
-        size_t stage1_flushed = polyresample_flush(r->stage1, r->cascade_buf, r->cascade_cap / r->channels);
-        size_t stage2_flushed = polyresample_process(r->stage2, r->cascade_buf, stage1_flushed, out_samples, max_out_count);
-        return stage2_flushed + polyresample_flush(r->stage2, out_samples + stage2_flushed * r->channels, max_out_count - stage2_flushed);
+        size_t stage1_flushed = faar_flush(r->stage1, r->cascade_buf, r->cascade_cap / r->channels);
+        size_t stage2_flushed = faar_process(r->stage2, r->cascade_buf, stage1_flushed, out_samples, max_out_count);
+        return stage2_flushed + faar_flush(r->stage2, out_samples + stage2_flushed * r->channels, max_out_count - stage2_flushed);
     }
 
     return polyresample_flush_single(r, out_samples, max_out_count);
 }
 
-void polyresample_destroy(PolyResampler *r) {
+FAARAPI void faar_destroy(faar_handle_t r) {
     if (!r) return;
-    if (r->stage1) polyresample_destroy(r->stage1);
-    if (r->stage2) polyresample_destroy(r->stage2);
+    if (r->stage1) faar_destroy(r->stage1);
+    if (r->stage2) faar_destroy(r->stage2);
     if (r->cascade_buf) aligned_free(r->cascade_buf);
     for (uint16_t c = 0; c < r->channels && c < MAX_CHANNELS; c++) {
         if (r->hist[c]) aligned_free(r->hist[c]);

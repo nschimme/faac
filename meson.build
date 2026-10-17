@@ -61,8 +61,11 @@ extra_args = cc.get_supported_arguments([
 add_project_arguments(extra_args, language: 'c')
 
 
+inc = include_directories('include')
+
 subdir('docs')
 subdir('include')
+subdir('libfaar')
 if get_option('encoder')
     subdir('libfaac')
 endif
