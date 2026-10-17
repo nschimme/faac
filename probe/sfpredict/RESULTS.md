@@ -85,3 +85,9 @@ Sibling PRs read (#80 +34% Ir/-2.3% BD, #85 +87%/-1.6%, #86 +17%/-1.4%, #87 +11%
 
 ## Verdict
 Per-band feature predictors that replace the search: dead end; the sf-delta nudge above is the part of the search that fits the gates. Remaining lead: add a cheap distortion term (distortion only is -3.00%) within the ~1.7% instruction headroom (+0.3 to +2.5% vs #89, no instruction or footprint cost measured because they do not pay). The exact search at ±1 is the best quality found (-3.26%) but is far outside the throughput gate. Untested lead: an approximate search (table-based bit estimate, cheaper distortion, ±1, one-sided) to get under +5%; the profile suggests 5-10x is needed.
+
+## Generalizing the tuned profile (#56) and the VBR flatness factor (#69), on master f534494
+Scratch builds with env switches (TUNE_CH, TUNE_HE, TUNE_MIN, FLAT); nothing pushed to a PR.
+- Tuned masking profile without `channels == 2` / `!is_he`, BD-rate vs current gate (LC unless noted): mono music -1.72% [-2.31,-1.08] but worst cell -0.238 (48 kHz mono speech clip at 32 kbps); mono speech (TCD-VOIP 24 kHz, 28-40k) ABR -3.54% worst -0.022, CBR -1.85% worst -0.094; 5.1 (12-clip upmix, 192-384k) -5.02% worst -0.084; HE stereo (-b 64/80/96) -2.15% worst -0.037. Stereo LC decoded md5 identical. An earlier "-2.14%" mono number was wrong: its 32k rung was auto-HE.
+- Mono worst cell by per-channel rate: 32k -0.238, 36k -0.126, 40k -0.066, 48k -0.042, 64k -0.004. Mono needs a floor of about 40 kbps; HE and 5.1 look safe at the stereo floor.
+- #69 flatness factor applied at set rates (48 kHz LC ABR 96-192, same formula, strength 0.15 / 0.30): -0.22% [-0.71,+0.19] / +0.56% [-0.10,+1.13]. The rate loop undoes it, so the VBR-only gate is right. The step floor is VBR-only by construction.
