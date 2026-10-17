@@ -48,8 +48,10 @@ struct ArdftsrcResampler {
     double phase;               /* Fractional sample position [0.0, 1.0) */
     double beta;
     float *polyphase_table;     /* Symmetric polyphase filter bank table [129 x filter_len] */
-    float **hist;               /* Per-channel overlap/history buffer */
+    float **hist;               /* Per-channel overlap/history buffer pointers */
+    float *hist_storage;        /* Contiguous history buffer storage */
     size_t hist_len;            /* Current frames in hist */
+    size_t hist_cap_per_ch;     /* Capacity per channel in frames */
     size_t delay;
 };
 
@@ -65,7 +67,6 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     r->quality = quality;
     r->ratio = (double)out_rate / (double)in_rate;
 
-    /* Filter length (taper window length) based on quality preset */
     switch (quality) {
         case ARDFTSRC_QUALITY_FAST: r->filter_len = 127; r->beta = 24.0; break;
         case ARDFTSRC_QUALITY_HIGH: r->filter_len = 511; r->beta = 34.0; break;
@@ -73,21 +74,17 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         default:                    r->filter_len = 255; r->beta = 30.0; break;
     }
 
-    /* Ensure filter length is odd for symmetric linear phase FIR */
     if ((r->filter_len % 2) == 0) r->filter_len++;
 
-    /* Allocate 129-phase table (131 KB for 255 taps) */
     r->polyphase_table = (float *)malloc(ARDFTSRC_STORED_PHASES * r->filter_len * sizeof(float));
     if (!r->polyphase_table) {
         free(r);
         return NULL;
     }
 
-    /* Calculate cutoff frequency with anti-aliasing guard band */
     double cutoff = (r->ratio < 1.0) ? 0.45 * r->ratio : 0.45;
     double half_len = (r->filter_len - 1) / 2.0;
 
-    /* Pre-compute polyphase filter bank table across 129 phase steps [0.0 to 0.5] */
     for (size_t p = 0; p < ARDFTSRC_STORED_PHASES; p++) {
         double frac = (double)p / (double)ARDFTSRC_NUM_PHASES;
         float *phase_coeffs = r->polyphase_table + p * r->filter_len;
@@ -102,7 +99,6 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
             sum += val;
         }
 
-        /* Normalize phase slice for DC unity gain */
         if (sum > 0.0) {
             for (size_t j = 0; j < r->filter_len; j++) {
                 phase_coeffs[j] /= (float)sum;
@@ -110,25 +106,20 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         }
     }
 
+    r->hist_cap_per_ch = r->filter_len * 4 + 16384;
+    r->hist_storage = (float *)calloc(channels * r->hist_cap_per_ch, sizeof(float));
     r->hist = (float **)malloc(channels * sizeof(float *));
-    if (!r->hist) {
+
+    if (!r->hist_storage || !r->hist) {
+        free(r->hist_storage);
+        free(r->hist);
         free(r->polyphase_table);
         free(r);
         return NULL;
     }
 
-    /* Allocate history buffer per channel */
-    r->hist_len = 0;
-    size_t hist_alloc = r->filter_len * 4 + 16384;
     for (uint16_t c = 0; c < channels; c++) {
-        r->hist[c] = (float *)calloc(hist_alloc, sizeof(float));
-        if (!r->hist[c]) {
-            for (uint16_t k = 0; k < c; k++) free(r->hist[k]);
-            free(r->hist);
-            free(r->polyphase_table);
-            free(r);
-            return NULL;
-        }
+        r->hist[c] = r->hist_storage + c * r->hist_cap_per_ch;
     }
 
     r->delay = (size_t)half_len;
@@ -143,7 +134,6 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
                         float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
     if (r->in_rate == r->out_rate) {
-        /* Passthrough mode if rates match */
         size_t frames_to_copy = in_count < max_out_count ? in_count : max_out_count;
         if (in_samples && frames_to_copy > 0) {
             memcpy(out_samples, in_samples, frames_to_copy * r->channels * sizeof(float));
@@ -155,7 +145,6 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
     const size_t half_len = (filter_len - 1) / 2;
     const float * restrict poly_table = r->polyphase_table;
 
-    /* Append input samples to channel history buffers */
     if (in_samples && in_count > 0) {
         for (size_t i = 0; i < in_count; i++) {
             for (uint16_t c = 0; c < r->channels; c++) {
@@ -166,15 +155,14 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
     }
 
     size_t out_frames = 0;
-    const double step = 1.0 / r->ratio; /* Input step per output sample */
+    const double step = 1.0 / r->ratio;
 
-    /* Process resampling output samples leveraging 256-step polyphase filter bank */
     while (out_frames < max_out_count) {
         double in_pos = r->phase;
         size_t base_idx = (size_t)floor(in_pos);
 
         if (base_idx + filter_len > r->hist_len) {
-            break; /* Need more input samples */
+            break;
         }
 
         double frac = in_pos - (double)base_idx;
@@ -182,8 +170,7 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
         if (phase_idx >= ARDFTSRC_NUM_PHASES) phase_idx = ARDFTSRC_NUM_PHASES - 1;
 
         if (phase_idx == 0) {
-            /* Fast path for phase 0 (exact integer alignment): fold symmetric taps to halve mults */
-            const float * restrict coeffs = poly_table; /* Phase 0 slice */
+            const float * restrict coeffs = poly_table;
             const float center_coeff = coeffs[half_len];
 
             for (uint16_t c = 0; c < r->channels; c++) {
@@ -204,7 +191,6 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
                 out_samples[out_frames * r->channels + c] = sum;
             }
         } else {
-            /* 256-phase polyphase path (stored as 129 phase slices using linear phase symmetry) */
             bool is_mirrored = false;
             if (phase_idx > ARDFTSRC_NUM_PHASES / 2) {
                 phase_idx = ARDFTSRC_NUM_PHASES - phase_idx;
@@ -218,7 +204,6 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
                 const float * restrict h = &r->hist[c][base_idx];
 
                 if (!is_mirrored) {
-                    /* Forward filter convolution loop */
                     size_t j = 0;
                     for (; j + 3 < filter_len; j += 4) {
                         sum += h[j + 0] * coeffs[j + 0] +
@@ -230,7 +215,6 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
                         sum += h[j] * coeffs[j];
                     }
                 } else {
-                    /* Mirrored filter convolution loop utilizing linear phase symmetry */
                     size_t j = 0;
                     for (; j + 3 < filter_len; j += 4) {
                         sum += h[j + 0] * coeffs[filter_len - 1 - (j + 0)] +
@@ -251,7 +235,6 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
         r->phase += step;
     }
 
-    /* Shift consumed history buffer */
     size_t consumed = (size_t)floor(r->phase);
     if (consumed > 0 && consumed <= r->hist_len) {
         for (uint16_t c = 0; c < r->channels; c++) {
@@ -267,7 +250,6 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
 size_t ardftsrc_flush(ArdftsrcResampler *r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
-    /* Append silence tail equal to half filter length to flush final frames */
     size_t tail_len = (r->filter_len - 1) / 2;
     float *zero_tail = (float *)calloc(tail_len * r->channels, sizeof(float));
     size_t written = ardftsrc_process(r, zero_tail, tail_len, out_samples, max_out_count);
@@ -277,12 +259,8 @@ size_t ardftsrc_flush(ArdftsrcResampler *r, float *out_samples, size_t max_out_c
 
 void ardftsrc_destroy(ArdftsrcResampler *r) {
     if (!r) return;
-    if (r->hist) {
-        for (uint16_t c = 0; c < r->channels; c++) {
-            if (r->hist[c]) free(r->hist[c]);
-        }
-        free(r->hist);
-    }
+    if (r->hist_storage) free(r->hist_storage);
+    if (r->hist) free(r->hist);
     if (r->polyphase_table) free(r->polyphase_table);
     free(r);
 }
