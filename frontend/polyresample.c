@@ -1,6 +1,6 @@
 /*
  * Polyphase Farrow Cubic Interpolated Kaiser-Windowed Sinc Sample Rate Converter
- * Continuous Arbitrary-Ratio & >140dB Equiripple Stopband Attenuation for FAAC
+ * Auto-Vectorized Interpolate-Then-Convolve C Implementation for FAAC
  */
 
 #include "polyresample.h"
@@ -15,6 +15,7 @@
 
 #define POLYRESAMPLE_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
 #define POLYRESAMPLE_STORED_PHASES (POLYRESAMPLE_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
+#define POLYRESAMPLE_MAX_FILTER_LEN 512 /* Upper bound for stack-allocated temporary coefficient buffers */
 
 /* Robust double-precision I0 Bessel function with dynamic convergence */
 static double bessel_i0(double x) {
@@ -235,6 +236,8 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
     size_t out_frames = 0;
     const double step = 1.0 / r->ratio;
 
+    float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+
     while (out_frames < max_out_count) {
         double in_pos = r->phase;
         size_t base_idx = (size_t)floor(in_pos);
@@ -273,7 +276,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
                 out_samples[out_frames * r->channels + c] = (float)sum;
             }
         } else {
-            /* Farrow Cubic Phase Interpolation between adjacent polyphase filter bank slices */
+            /* 1. Interpolate-Then-Convolve: Pre-calculate flat interpolated filter coefficients into a temporary array outside channel/tap loops */
             size_t p0 = (p_idx > 0) ? p_idx - 1 : 0;
             size_t p1 = p_idx;
             size_t p2 = (p_idx + 1 < POLYRESAMPLE_NUM_PHASES) ? p_idx + 1 : POLYRESAMPLE_NUM_PHASES - 1;
@@ -292,7 +295,6 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
             const float * restrict c2 = poly_table + s2 * filter_len;
             const float * restrict c3 = poly_table + s3 * filter_len;
 
-            /* Pre-compute Farrow cubic polynomial weights for delta offset */
             double d = delta;
             double d2 = d * d;
             double d3 = d2 * d;
@@ -302,19 +304,30 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
             double w2 = -1.5 * d3 + 2.0 * d2 + 0.5 * d;
             double w3 = 0.5 * d3 - 0.5 * d2;
 
+            /* Flat coefficient interpolation loop - zero branches inside sample dot-product */
+            for (size_t j = 0; j < filter_len; j++) {
+                double k0 = m0 ? (double)c0[filter_len - 1 - j] : (double)c0[j];
+                double k1 = m1 ? (double)c1[filter_len - 1 - j] : (double)c1[j];
+                double k2 = m2 ? (double)c2[filter_len - 1 - j] : (double)c2[j];
+                double k3 = m3 ? (double)c3[filter_len - 1 - j] : (double)c3[j];
+
+                temp_coeffs[j] = (float)(w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3);
+            }
+
+            /* 2. Flat inner dot-product loop: unit-stride memory accesses over contiguous arrays easily auto-vectorized by GCC/Clang */
             for (uint16_t c = 0; c < r->channels; c++) {
-                double sum = 0.0;
                 const float * restrict h = &r->hist[c][base_idx];
+                double sum = 0.0;
 
-                for (size_t j = 0; j < filter_len; j++) {
-                    double k0 = m0 ? (double)c0[filter_len - 1 - j] : (double)c0[j];
-                    double k1 = m1 ? (double)c1[filter_len - 1 - j] : (double)c1[j];
-                    double k2 = m2 ? (double)c2[filter_len - 1 - j] : (double)c2[j];
-                    double k3 = m3 ? (double)c3[filter_len - 1 - j] : (double)c3[j];
-
-                    /* Farrow cubic interpolated filter coefficient */
-                    double coeff = w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3;
-                    sum += (double)h[j] * coeff;
+                size_t j = 0;
+                for (; j + 3 < filter_len; j += 4) {
+                    sum += (double)h[j + 0] * (double)temp_coeffs[j + 0] +
+                           (double)h[j + 1] * (double)temp_coeffs[j + 1] +
+                           (double)h[j + 2] * (double)temp_coeffs[j + 2] +
+                           (double)h[j + 3] * (double)temp_coeffs[j + 3];
+                }
+                for (; j < filter_len; j++) {
+                    sum += (double)h[j] * (double)temp_coeffs[j];
                 }
 
                 out_samples[out_frames * r->channels + c] = (float)sum;
