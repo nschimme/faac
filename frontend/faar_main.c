@@ -7,7 +7,12 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <getopt.h>
+#ifdef HAVE_GETOPT_H
+# include <getopt.h>
+#else
+# include "getopt.h"
+# include "getopt.c"
+#endif
 #include <faar.h>
 
 #ifdef _WIN32
