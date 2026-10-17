@@ -1,0 +1,42 @@
+.TH LIBFAAR 3 "October 2026" "libfaar 3.0.0" "Library Functions Manual"
+.SH NAME
+libfaar, faar_create, faar_set_dither, faar_get_delay, faar_process, faar_flush, faar_destroy \- Polyphase Farrow-interpolated Kaiser-sinc audio resampler library
+.SH SYNOPSIS
+.B #include <faar.h>
+.sp
+.BI "faar_handle_t faar_create(uint32_t " in_rate ", uint32_t " out_rate ", uint16_t " channels ", faar_quality_t " quality ");"
+.sp
+.BI "int faar_set_dither(faar_handle_t " handle ", faar_dither_t " dither ", uint8_t " target_bits ");"
+.sp
+.BI "size_t faar_get_delay(faar_handle_t " handle ");"
+.sp
+.BI "size_t faar_process(faar_handle_t " handle ", const float *" in_samples ", size_t " in_count ", float *" out_samples ", size_t " max_out_count ");"
+.sp
+.BI "size_t faar_flush(faar_handle_t " handle ", float *" out_samples ", size_t " max_out_count ");"
+.sp
+.BI "void faar_destroy(faar_handle_t " handle ");"
+.SH DESCRIPTION
+.B libfaar
+is a lightweight, high-precision C library for digital audio sample rate conversion. It uses a polyphase filter bank with Kaiser windowing and Farrow cubic polynomial phase interpolation to deliver continuous, infinite-resolution fractional delays with >140 dB stopband attenuation and linear phase response.
+.SH FUNCTIONS
+.TP
+.BR faar_create ()
+Allocates and initializes a resampler instance for converting audio from \fIin_rate\fR to \fIout_rate\fR across \fIchannels\fR (1 to 8 channels supported). Quality presets include \fBFAAR_QUALITY_FAST\fR, \fBFAAR_QUALITY_GOOD\fR, and \fBFAAR_QUALITY_HIGH\fR.
+.TP
+.BR faar_set_dither ()
+Configures dithering and noise-shaping error feedback (\fBFAAR_DITHER_OFF\fR, \fBFAAR_DITHER_TPDF\fR, or \fBFAAR_DITHER_SHAPED\fR) for quantization down to 16-bit or 24-bit integer PCM targets.
+.TP
+.BR faar_get_delay ()
+Returns the resampler group delay in input frames per channel.
+.TP
+.BR faar_process ()
+Resamples interleaved floating-point PCM audio samples.
+.TP
+.BR faar_flush ()
+Flushes remaining pipeline history at end of stream.
+.TP
+.BR faar_destroy ()
+Frees all allocated memory and resources associated with the resampler handle.
+.SH SEE ALSO
+.BR faar (1),
+.BR faac (1)

@@ -1,0 +1,53 @@
+.TH FAAR 1 "October 2026" "FAAR 3.0.0" "User Commands"
+.SH NAME
+faar \- Freeware Advanced Audio Resampler
+.SH SYNOPSIS
+.B faar
+[\fIoptions\fR] \fIinput\fR \fIoutput\fR
+.SH DESCRIPTION
+.B faar
+is a command-line tool for digital audio sample rate conversion using a polyphase Farrow-interpolated Kaiser-sinc filter algorithm. It provides mastering-grade signal fidelity (>140 dB stopband attenuation, linear phase response) and optional TPDF dithering with high-pass noise shaping.
+.SH OPTIONS
+.TP
+.BR \-r ", " \-\-rate " " \fIHz\fR
+Set target output sampling rate in Hz (e.g. 48000, 44100, 32000). Required.
+.TP
+.BR \-\-quality " " \fIpreset\fR
+Set DSP filter quality preset: \fBfast\fR (127 taps), \fBgood\fR (255 taps, default), or \fBhigh\fR (511 taps).
+.TP
+.BR \-c ", " \-\-channels " " \fInum\fR
+Set audio channel count for raw PCM input streams [default: 2].
+.TP
+.BR \-f ", " \-\-format " " \fIfmt\fR
+Set raw PCM sample format: \fBf32le\fR (default), \fBs16le\fR, or \fBs24le\fR.
+.TP
+.BR \-d ", " \-\-dither " " \fItype\fR
+Set dithering mode for integer format output: \fBnone\fR (default), \fBtpdf\fR (triangular dither), or \fBshaped\fR (TPDF dither with high-pass noise shaping).
+.TP
+.BR \-\-decimate
+Force multi-stage decimation cascade for large downsampling ratios.
+.TP
+.BR \-\-ignorelength
+Ignore the WAV data length in the input header and read until end-of-file.
+.TP
+.BR \-v " " \fIlevel\fR
+Set verbosity level (\fB\-v0\fR is quiet mode) [default: 1].
+.TP
+.BR \-o ", " \-\-output " " \fIpath\fR
+Specify output file path (use \fB\-\fR for stdout).
+.TP
+.BR \-h ", " \-\-help
+Display command usage guide and exit.
+.SH EXAMPLES
+.TP
+Resample a 96 kHz WAV file to 48 kHz WAV:
+.B faar -r 48000 input_96k.wav output_48k.wav
+.TP
+Resample with High Quality and TPDF dithering to 16-bit WAV in quiet mode:
+.B faar -r 48000 --quality high -d tpdf -f s16le -v0 input.wav output.wav
+.TP
+Stream raw float PCM through a shell pipeline:
+.B cat input.raw | faar -r 48000 -c 2 -f f32le - - | aplay -f S16_LE -r 48000
+.SH SEE ALSO
+.BR faac (1),
+.BR faam (1)
