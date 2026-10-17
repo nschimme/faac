@@ -1,6 +1,6 @@
 /*
  * ARDFTSRC - Arbitrary Rate Discrete Fourier Transform Sample Rate Converter
- * Polyphase Table-Optimized C Translation for FAAC
+ * Polyphase Symmetry-Optimized C Translation for FAAC
  */
 
 #include "ardftsrc.h"
@@ -13,6 +13,7 @@
 #endif
 
 #define ARDFTSRC_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
+#define ARDFTSRC_STORED_PHASES (ARDFTSRC_NUM_PHASES / 2 + 1) /* 129 phases stored exploiting linear phase symmetry */
 
 /* Modified Bessel function I0(x) for Kaiser window calculation */
 static double bessel_i0(double x) {
@@ -45,7 +46,7 @@ struct ArdftsrcResampler {
     double ratio;               /* out_rate / in_rate */
     double phase;               /* Fractional sample position [0.0, 1.0) */
     double beta;
-    float *polyphase_table;     /* Polyphase filter table bank [256 x filter_len] */
+    float *polyphase_table;     /* Symmetric polyphase filter bank table [129 x filter_len] */
     float **hist;               /* Per-channel overlap/history buffer */
     size_t hist_len;            /* Current frames in hist */
     size_t delay;
@@ -74,7 +75,8 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     /* Ensure filter length is odd for symmetric linear phase FIR */
     if ((r->filter_len % 2) == 0) r->filter_len++;
 
-    r->polyphase_table = (float *)malloc(ARDFTSRC_NUM_PHASES * r->filter_len * sizeof(float));
+    /* Allocate half table (129 phases) by leveraging linear phase symmetry */
+    r->polyphase_table = (float *)malloc(ARDFTSRC_STORED_PHASES * r->filter_len * sizeof(float));
     if (!r->polyphase_table) {
         free(r);
         return NULL;
@@ -84,8 +86,8 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     double cutoff = (r->ratio < 1.0) ? 0.45 * r->ratio : 0.45;
     double half_len = (r->filter_len - 1) / 2.0;
 
-    /* Pre-compute polyphase filter bank table across 256 fractional phase steps */
-    for (size_t p = 0; p < ARDFTSRC_NUM_PHASES; p++) {
+    /* Pre-compute polyphase filter bank table across 129 phase steps [0.0 to 0.5] */
+    for (size_t p = 0; p < ARDFTSRC_STORED_PHASES; p++) {
         double frac = (double)p / (double)ARDFTSRC_NUM_PHASES;
         float *phase_coeffs = r->polyphase_table + p * r->filter_len;
         double sum = 0.0;
@@ -164,7 +166,7 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
     size_t out_frames = 0;
     const double step = 1.0 / r->ratio; /* Input step per output sample */
 
-    /* Process resampling output samples using fast table lookup and SIMD-friendly dot products */
+    /* Process resampling output samples leveraging linear phase symmetry */
     while (out_frames < max_out_count) {
         double in_pos = r->phase;
         size_t base_idx = (size_t)floor(in_pos);
@@ -177,22 +179,42 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
         size_t phase_idx = (size_t)(frac * (double)ARDFTSRC_NUM_PHASES + 0.5);
         if (phase_idx >= ARDFTSRC_NUM_PHASES) phase_idx = ARDFTSRC_NUM_PHASES - 1;
 
+        bool is_mirrored = false;
+        if (phase_idx > ARDFTSRC_NUM_PHASES / 2) {
+            phase_idx = ARDFTSRC_NUM_PHASES - phase_idx;
+            is_mirrored = true;
+        }
+
         const float * restrict coeffs = poly_table + phase_idx * filter_len;
 
         for (uint16_t c = 0; c < r->channels; c++) {
             float sum = 0.0f;
             const float * restrict h = &r->hist[c][base_idx];
 
-            /* Auto-vectorized 4-way unrolled convolution inner loop */
-            size_t j = 0;
-            for (; j + 3 < filter_len; j += 4) {
-                sum += h[j + 0] * coeffs[j + 0] +
-                       h[j + 1] * coeffs[j + 1] +
-                       h[j + 2] * coeffs[j + 2] +
-                       h[j + 3] * coeffs[j + 3];
-            }
-            for (; j < filter_len; j++) {
-                sum += h[j] * coeffs[j];
+            if (!is_mirrored) {
+                /* Forward filter convolution loop */
+                size_t j = 0;
+                for (; j + 3 < filter_len; j += 4) {
+                    sum += h[j + 0] * coeffs[j + 0] +
+                           h[j + 1] * coeffs[j + 1] +
+                           h[j + 2] * coeffs[j + 2] +
+                           h[j + 3] * coeffs[j + 3];
+                }
+                for (; j < filter_len; j++) {
+                    sum += h[j] * coeffs[j];
+                }
+            } else {
+                /* Mirrored filter convolution loop utilizing linear phase symmetry */
+                size_t j = 0;
+                for (; j + 3 < filter_len; j += 4) {
+                    sum += h[j + 0] * coeffs[filter_len - 1 - (j + 0)] +
+                           h[j + 1] * coeffs[filter_len - 1 - (j + 1)] +
+                           h[j + 2] * coeffs[filter_len - 1 - (j + 2)] +
+                           h[j + 3] * coeffs[filter_len - 1 - (j + 3)];
+                }
+                for (; j < filter_len; j++) {
+                    sum += h[j] * coeffs[filter_len - 1 - j];
+                }
             }
 
             out_samples[out_frames * r->channels + c] = sum;
