@@ -1,6 +1,6 @@
 /*
  * Polyphase Kaiser-Windowed Sinc Sample Rate Converter for FAAC
- * Multi-Stage Decimation & Double-Precision Accumulation Enhanced
+ * Staging Linear Buffer & SIMD Vector-Optimized C Implementation
  */
 
 #include "polyresample.h"
@@ -16,18 +16,20 @@
 #define POLYRESAMPLE_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
 #define POLYRESAMPLE_STORED_PHASES (POLYRESAMPLE_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
 
+/* Robust double-precision I0 Bessel function with dynamic convergence */
 static double bessel_i0(double x) {
     double sum = 1.0;
     double u = 1.0;
     double half_x = x / 2.0;
-    for (int k = 1; k < 30; k++) {
+    for (int k = 1; k < 100; k++) {
         u *= (half_x / k) * (half_x / k);
         sum += u;
-        if (u < sum * 1e-15) break;
+        if (u < sum * 1e-16) break;
     }
     return sum;
 }
 
+/* Calculate double-precision Kaiser window coefficient */
 static double kaiser_window(double n, double N, double beta) {
     if (beta <= 0.0) return 1.0;
     double arg = 2.0 * n / N - 1.0;
@@ -46,9 +48,11 @@ struct PolyResampler {
     double phase;               /* Fractional sample position [0.0, 1.0) */
     double beta;
     float *polyphase_table;     /* Symmetric polyphase filter bank table [129 x filter_len] */
-    float **hist;               /* Per-channel overlap/history buffer pointers */
-    size_t hist_len;            /* Current frames in hist */
+
+    float **hist;               /* Per-channel history buffer pointers */
+    size_t hist_len;            /* Unconsumed frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
+
     size_t delay;
 
     /* Cascade for large downsampling ratios (>2:1) */
@@ -91,7 +95,6 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
             return NULL;
         }
 
-        /* Create main stage from intermediate rate to target rate */
         PolyResampler *stage2 = polyresample_create(intermediate_rate, out_rate, channels, quality);
         if (!stage2) {
             polyresample_destroy(r->stage1);
@@ -162,7 +165,7 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         }
     }
 
-    r->hist_cap_per_ch = r->filter_len * 4 + 16384;
+    r->hist_cap_per_ch = r->filter_len * 4 + 32768;
     r->hist = (float **)calloc(channels, sizeof(float *));
     if (!r->hist) {
         free(r->polyphase_table);
@@ -205,6 +208,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
     const size_t half_len = (filter_len - 1) / 2;
     const float * restrict poly_table = r->polyphase_table;
 
+    /* Append input samples to linear history buffers with unit-stride reads */
     if (in_samples && in_count > 0) {
         size_t needed_cap = r->hist_len + in_count;
         if (needed_cap > r->hist_cap_per_ch) {
