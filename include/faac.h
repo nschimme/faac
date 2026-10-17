@@ -162,6 +162,13 @@ enum faac_input_format {
     FAAC_INPUT_MAX = 0x7fffffff
 };
 
+/* Automatic Dynamic Range Control (DRC) analysis mode */
+enum faac_drc_mode {
+    FAAC_DRC_OFF  = 0,            /* DRC analysis disabled (default)          */
+    FAAC_DRC_AUTO = 1,            /* automatic ITU-R BS.1770 causal DRC analyzer */
+    FAAC_DRC_MAX  = 0x7fffffff
+};
+
 /*
  * Encoder parameters, supplied once to faac_encoder_open().
  *
@@ -222,6 +229,9 @@ typedef struct faac_params {
     uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
     enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
+
+    enum faac_drc_mode      drc_mode;      /* FAAC_DRC_OFF (default) or FAAC_DRC_AUTO    */
+    float                   drc_ref_level; /* target LUFS [-31.75, 0.0]; 0 = default (-23.0 LUFS) */
 } faac_params;
 
 /* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
@@ -259,6 +269,9 @@ typedef struct faac_encoder_info {
     uint32_t                encoder_delay;
 
     enum faac_rate_control  rate_control;     /* resolved mode (AUTO becomes VBR or ABR)          */
+
+    enum faac_drc_mode      drc_mode;         /* resolved DRC mode (OFF or AUTO)                  */
+    float                   drc_ref_level;    /* resolved target reference level in LUFS           */
 } faac_encoder_info;
 
 /*

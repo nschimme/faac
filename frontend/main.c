@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <math.h>
 
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
@@ -87,7 +88,9 @@ enum flags
     OPT_IGNORE_LENGTH,
     OPT_NO_ENCODER_INFO,
     OPT_FASTSTART,
-    LANG_FLAG
+    LANG_FLAG,
+    OPT_DRC,
+    OPT_DRC_REF_LEVEL
 };
 
 static const help_t help_qual[] = {
@@ -109,6 +112,12 @@ static const help_t help_qual[] = {
     {"--cap-rate <bitrate>",
      "Cap any single frame at <bitrate> kbps.",
      "For packet-oriented transports that cannot fragment a frame, where an oversized frame is dropped rather than split, and for bounding VBR (-q). Must be >= the -b bitrate. Best-effort: quality is backed off until the frame fits, so pathological input can still exceed the cap."},
+    {"--drc",
+     "Enable automatic Dynamic Range Control metadata output.",
+     "Computes ITU-R BS.1770-4 loudness and writes dynamic range control fill elements (extension type 0xB) into the bitstream for broadcast delivery. Requires a build configured with -Ddrc. Off by default. Decoders may or may not apply the metadata."},
+    {"--drc-ref-level <LUFS>",
+     "Set program reference level in LUFS (-31.75 to 0.0, default -23).",
+     "Target loudness reference level in LUFS for automatic DRC analysis. Requires --drc."},
     {NULL, NULL, NULL}
 };
 
@@ -523,6 +532,8 @@ int main(int argc, char *argv[])
             {"cbr", 0, 0, CBR_FLAG},
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
+            {"drc", 0, 0, OPT_DRC},
+            {"drc-ref-level", 1, 0, OPT_DRC_REF_LEVEL},
             {0, 0, 0, 0}
         };
 
@@ -718,6 +729,24 @@ int main(int argc, char *argv[])
         case CAP_RATE_FLAG:
             opts.max_bit_rate = atoi(optarg) * 1000;
             break;
+        case OPT_DRC:
+            opts.drc = true;
+            break;
+        case OPT_DRC_REF_LEVEL:
+            {
+                char *endptr = NULL;
+                double val = strtod(optarg, &endptr);
+                if (endptr == optarg || *endptr != '\0' || !isfinite(val) || val < -31.75 || val > 0.0)
+                {
+                    dieMessage = "Invalid --drc-ref-level (must be between -31.75 and 0.0 LUFS).\n";
+                }
+                else
+                {
+                    opts.drc_ref_level = (float)val;
+                    opts.drc_ref_level_given = true;
+                }
+            }
+            break;
         case 'v':
             opts.verbose = (uint8_t)atoi(optarg);
             break;
@@ -752,6 +781,9 @@ int main(int argc, char *argv[])
     /* The last one would silently win; the user meant one mode. */
     if (!dieMessage && quality_given && bitrate_given)
         dieMessage = "-q and -b are exclusive; use --cap-rate to bound VBR.\n";
+
+    if (!dieMessage && opts.drc_ref_level_given && !opts.drc)
+        dieMessage = "--drc-ref-level requires --drc.\n";
 
     if (dieMessage)
     {

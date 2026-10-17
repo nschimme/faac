@@ -140,6 +140,18 @@ alone, so the stream stays ABR or VBR. Best-effort \(em a frame cannot shrink be
 cost of its own side info, so a low enough cap is still exceeded on a few
 percent of frames.
 .TP
+.BR \-\-drc
+Enable automatic Dynamic Range Control metadata output. Computes ITU-R BS.1770-4
+loudness and writes dynamic range control fill elements (extension type 0xB)
+into the bitstream for broadcast delivery. Requires a build configured with
+.BR \-Ddrc .
+Off by default. Decoders may or may not apply the metadata.
+.TP
+.BR \-\-drc\-ref\-level\ <\fILUFS\fP>
+Set target program reference level in LUFS (-31.75 to 0.0, default -23.0) for
+automatic DRC analysis. Requires
+.BR \-\-drc .
+.TP
 .BR -c\ <\fIfreq\fP>
 Cut the audio off above <freq> Hz. Left out, the encoder chooses the cutoff
 from the bitrate, between 14 and 19 kHz on most stereo settings; VBR codes up
