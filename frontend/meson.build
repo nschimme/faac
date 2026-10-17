@@ -22,15 +22,27 @@ libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_
 
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
 
+frontend_common = static_library('frontend_common',
+    ['input.c', 'cli_io.c', 'charset.c', 'help.c'],
+    include_directories: ['..', '../include', '../common'],
+    c_args: c_args_list,
+    dependencies: [libiconv],
+)
+frontend_common_dep = declare_dependency(
+    link_with: [frontend_common, libfaam_for_frontend],
+    include_directories: include_directories('..', '../include', '../common'),
+    compile_args: c_args_list,
+)
+
 if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
     libfrontend = static_library('frontend',
-        ['input.c', 'mp4write.c', 'cli_io.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c',
+        ['mp4write.c', 'output.c', 'encode_engine.c', 'progress.c',
          'input.h', 'mp4write.h', 'cli_io.h', 'charset.h', 'progress.h', 'help.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
         include_directories: ['..', '../include', '../common'],
         link_with: [libfaac_for_frontend, libfaam_for_frontend],
         c_args: c_args_list,
-        dependencies: [libiconv]
+        dependencies: [frontend_common_dep]
     )
 
     faac = executable('faac',
@@ -59,12 +71,12 @@ endif
 
 if get_option('muxer')
     faam = executable('faam',
-        ['faam_main.c', 'adts.c', 'annexb.c', 'cli_io.c', 'charset.c', 'help.c',
+        ['faam_main.c', 'adts.c', 'annexb.c',
          'adts.h', 'annexb.h', 'cli_io.h', git_version_h],
         include_directories: ['..', '../include', '../common'],
         link_with: [libfaam_for_frontend],
         c_args: c_args_list,
-        dependencies: [libshell32, libiconv],
+        dependencies: [libshell32, frontend_common_dep],
         install: true
     )
 endif

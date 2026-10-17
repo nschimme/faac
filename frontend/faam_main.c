@@ -51,6 +51,8 @@
 
 #define HAS(s) ((s) && (s)[0])
 
+static int g_verbose = 1;
+
 enum {
     HELP_COMMANDS = 1,
     HELP_MUX,
@@ -83,6 +85,8 @@ static const help_t help_mux[] = {
      "Repeat for more tracks (max 8)", NULL},
     {"-o, --output <file>",
      "Output MP4 file (required); - streams fragmented MP4 when supported; --faststart, --brand m4b or gapless options use progressive MP4", NULL},
+    {"-v <verbose>",
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"--overwrite",
      "Overwrite an existing output file", NULL},
     {"--codec:N <codec>",
@@ -125,6 +129,8 @@ static const help_t help_inspect[] = {
     {"-o, --output <file>",
      "demux: output file (default: output.raw); - writes to stdout. A name containing .aac or .adts gets ADTS headers; "
      "video is written as Annex-B", NULL},
+    {"-v <verbose>",
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"--format <raw|adts>",
      "demux: choose AAC output format explicitly; default is inferred from the output filename (raw for stdout)", NULL},
     {"-t, --track <id>",
@@ -137,6 +143,7 @@ static const help_t help_inspect[] = {
 };
 
 static const help_t help_tag[] = {
+    {"-v <verbose>", "Set verbosity level (-v0 is quiet mode).", NULL},
     {"--title <text>", "Title", NULL},
     {"--titlesort <text>", "Title sort name", NULL},
     {"--artist <text>", "Artist", NULL},
@@ -176,6 +183,8 @@ static const help_t help_chapter[] = {
      "is 1 to 3 digits, .5 being 500 ms", NULL},
     {"-o, --output <file>",
      "Chapter list to write, in the same format; - writes stdout", NULL},
+    {"-v <verbose>",
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"--overwrite",
      "export: overwrite an existing chapter list", NULL},
     {NULL, NULL, NULL}
@@ -328,18 +337,6 @@ enum {
 #define FAAM_MUX_MAX_TRACKS 8 /* matches faam_muxer_config.tracks[8] in include/faam.h */
 #define FAAM_VIDEO_TIMESCALE 90000
 
-/* Strict numeric value: decimal digits only, at most max. */
-static bool parse_uint(const char *s, unsigned long long max, unsigned long long *out)
-{
-    char *end = NULL;
-    if (!s || *s < '0' || *s > '9') return false;
-    errno = 0;
-    unsigned long long v = strtoull(s, &end, 10);
-    if (errno != 0 || *end != '\0' || v > max) return false;
-    *out = v;
-    return true;
-}
-
 /* "n" or "n/d" frames per second. */
 static bool parse_fps(const char *s, uint32_t *num, uint32_t *den)
 {
@@ -351,8 +348,8 @@ static bool parse_fps(const char *s, uint32_t *num, uint32_t *den)
     strcpy(buf, s);
     slash = strchr(buf, '/');
     if (slash) *slash++ = '\0';
-    if (!parse_uint(buf, 1000000, &n) || n == 0) return false;
-    if (slash && (!parse_uint(slash, 1000000, &d) || d == 0)) return false;
+    if (!cli_parse_uint(buf, 1000000, &n) || n == 0) return false;
+    if (slash && (!cli_parse_uint(slash, 1000000, &d) || d == 0)) return false;
     *num = (uint32_t)n;
     *den = (uint32_t)d;
     return true;
@@ -570,11 +567,13 @@ static int cmd_info(int argc, char **argv)
     };
     int opt;
     optind = 1;
-    while ((opt = getopt_long(argc, argv, "hH", long_options, NULL)) != -1) {
-        if (opt == 'h') { print_usage(HELP_COMMANDS); return 0; }
-        if (opt == 'H') { print_usage('H'); return 0; }
-        print_usage('h');
-        return 1;
+    while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
+        switch (opt) {
+        case 'v': g_verbose = atoi(optarg); break;
+        case 'h': print_usage(HELP_COMMANDS); return 0;
+        case 'H': print_usage('H'); return 0;
+        default: print_usage('h'); return 1;
+        }
     }
     if (optind < argc) filepath = argv[optind];
 
@@ -777,7 +776,8 @@ static int cmd_dump(int argc, char **argv)
     };
     int opt;
     optind = 1;
-    while ((opt = getopt_long(argc, argv, "hH", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
+        if (opt == 'v') { g_verbose = atoi(optarg); continue; }
         if (opt == 'h') { print_usage(HELP_COMMANDS); return 0; }
         if (opt == 'H') { print_usage('H'); return 0; }
         print_usage('h');
@@ -808,7 +808,7 @@ static int cmd_dump(int argc, char **argv)
         return 1;
     }
 
-    printf("Dumping MP4 Atom Tree for: %s\n", filepath);
+    if (g_verbose > 0) printf("Dumping MP4 Atom Tree for: %s\n", filepath);
 
     /* Only the top-level headers are read from the file, so a multi-gigabyte mdat costs nothing;
        a moov is loaded to list what is inside it. */
@@ -1151,9 +1151,10 @@ static int cmd_mux(int argc, char **argv)
 
     int opt;
     optind = 1;
-    while (!fail && (opt = getopt_long(fargc, filtered, "i:o:hH", long_options, NULL)) != -1) {
+    while (!fail && (opt = getopt_long(fargc, filtered, "v:i:o:hH", long_options, NULL)) != -1) {
         unsigned long long v;
         switch (opt) {
+        case 'v': g_verbose = atoi(optarg); break;
         case 'i':
             if (num_inputs >= FAAM_MUX_MAX_TRACKS) {
                 snprintf(errbuf, sizeof(errbuf), "Error: too many -i inputs (max %d)\n", FAAM_MUX_MAX_TRACKS);
@@ -1170,26 +1171,26 @@ static int cmd_mux(int argc, char **argv)
             else if (strcasecmp(optarg, "m4a")) fail = bad_value(errbuf, sizeof(errbuf), "--brand", optarg, "use m4a or m4b");
             break;
         case OPT_WIDTH:
-            if (!parse_uint(optarg, 65535, &v) || v == 0) fail = bad_value(errbuf, sizeof(errbuf), "--width", optarg, "1-65535 pixels");
+            if (!cli_parse_uint(optarg, 65535, &v) || v == 0) fail = bad_value(errbuf, sizeof(errbuf), "--width", optarg, "1-65535 pixels");
             else width = (uint32_t)v;
             break;
         case OPT_HEIGHT:
-            if (!parse_uint(optarg, 65535, &v) || v == 0) fail = bad_value(errbuf, sizeof(errbuf), "--height", optarg, "1-65535 pixels");
+            if (!cli_parse_uint(optarg, 65535, &v) || v == 0) fail = bad_value(errbuf, sizeof(errbuf), "--height", optarg, "1-65535 pixels");
             else height = (uint32_t)v;
             break;
         case OPT_ROTATION:
-            if (!parse_uint(optarg, 270, &v) || v % 90) fail = bad_value(errbuf, sizeof(errbuf), "--rotation", optarg, "0, 90, 180 or 270 degrees clockwise");
+            if (!cli_parse_uint(optarg, 270, &v) || v % 90) fail = bad_value(errbuf, sizeof(errbuf), "--rotation", optarg, "0, 90, 180 or 270 degrees clockwise");
             else rotation = (uint32_t)v;
             break;
         case OPT_FPS:
             if (!parse_fps(optarg, &fps_num, &fps_den)) fail = bad_value(errbuf, sizeof(errbuf), "--fps", optarg, "n or n/d, up to 1000000");
             break;
         case OPT_ENCODER_DELAY:
-            if (!parse_uint(optarg, UINT32_MAX, &v)) fail = bad_value(errbuf, sizeof(errbuf), "--encoder-delay", optarg, "a sample count");
+            if (!cli_parse_uint(optarg, UINT32_MAX, &v)) fail = bad_value(errbuf, sizeof(errbuf), "--encoder-delay", optarg, "a sample count");
             else { delay = (uint32_t)v; gapless_given = true; }
             break;
         case OPT_PADDING_DELAY:
-            if (!parse_uint(optarg, UINT32_MAX, &v)) fail = bad_value(errbuf, sizeof(errbuf), "--padding-delay", optarg, "a sample count");
+            if (!cli_parse_uint(optarg, UINT32_MAX, &v)) fail = bad_value(errbuf, sizeof(errbuf), "--padding-delay", optarg, "a sample count");
             else { padding = (uint32_t)v; gapless_given = true; }
             break;
         case OPT_SBR_SIGNALING:
@@ -1262,9 +1263,10 @@ static int cmd_mux(int argc, char **argv)
         const char *codec_str = codec_override[i] ? codec_override[i] : mux_infer_codec_from_ext(input_files[i]);
         bool streaming_aac = !strcmp(input_files[i], "-") && strcmp(codec_str, "aac") == 0;
         if (streaming_aac) {
-#ifdef _WIN32
-            _setmode(_fileno(stdin), _O_BINARY);
-#endif
+            if (!cli_binary_stream(stdin)) {
+                fprintf(stderr, "Cannot set binary input mode\n");
+                goto done;
+            }
             fin[i] = stdin;
         } else {
             fin[i] = cli_open_seekable_input(input_files[i]);
@@ -1381,7 +1383,7 @@ static int cmd_mux(int argc, char **argv)
         fprintf(stderr, "Error: %s", time_warn);
         goto done;
     }
-    if (time_warn[0]) fprintf(stderr, "Warning: %s", time_warn);
+    if (g_verbose > 0 && time_warn[0]) fprintf(stderr, "Warning: %s", time_warn);
 
     if (tags.given) cfg.metadata = &tags.meta;
 
@@ -1401,9 +1403,10 @@ static int cmd_mux(int argc, char **argv)
                         (library_info.features & FAAM_FEATURE_FRAGMENTED) != 0;
     mux_stream = mux_stdout && !faststart && !is_m4b && !gapless_given && can_fragment;
     if (mux_stream) cfg.fragment_ms = 1000;
-#ifdef _WIN32
-    if (mux_stdout) _setmode(_fileno(stdout), _O_BINARY);
-#endif
+    if (mux_stdout && !cli_binary_stream(stdout)) {
+        fprintf(stderr, "Cannot set binary output mode\n");
+        goto done;
+    }
     if (mux_stream) {
         stream_output.spool = tmpfile();
         stream_output.output = stdout;
@@ -1479,22 +1482,22 @@ static int cmd_mux(int argc, char **argv)
         goto done;
     }
     if (mux_stream) {
-        if (!stream_output.spool || fclose(stream_output.spool) != 0) {
+        if (!stream_output.spool || !cli_finish_output(&stream_output.spool)) {
             stream_output.spool = NULL;
             fprintf(stderr, "Error writing %s\n", output_file);
             goto done;
         }
         stream_output.spool = NULL;
     } else {
-        if (fclose(fout) != 0) {
-            fout = NULL;
+        if (!cli_finish_output(&fout)) {
             fprintf(stderr, "Error writing %s\n", output_file);
             goto done;
         }
         fout = NULL;
     }
 
-    fprintf(mux_stdout ? stderr : stdout, "Successfully muxed %d input(s) -> %s\n", num_inputs, output_file);
+    if (g_verbose > 0)
+        fprintf(mux_stdout ? stderr : stdout, "Successfully muxed %d input(s) -> %s\n", num_inputs, output_file);
     ret = 0;
 
 done:
@@ -1533,12 +1536,13 @@ static int cmd_demux(int argc, char **argv)
 
     int opt;
     optind = 1;
-    while ((opt = getopt_long(argc, argv, "o:t:hH", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "v:o:t:hH", long_options, NULL)) != -1) {
         unsigned long long v;
         switch (opt) {
+        case 'v': g_verbose = atoi(optarg); break;
         case 'o': output_file = optarg; break;
         case 't':
-            if (!parse_uint(optarg, UINT32_MAX, &v) || v == 0) {
+            if (!cli_parse_uint(optarg, UINT32_MAX, &v) || v == 0) {
                 fprintf(stderr, "Error: invalid --track value \"%s\" (a track ID, 1 or more)\n", optarg);
                 return 1;
             }
@@ -1677,12 +1681,14 @@ static int cmd_demux(int argc, char **argv)
             fprintf(stderr, "Error writing %s\n", export_asc);
             goto done;
         }
-        fprintf(demux_stdout ? stderr : stdout, "Exported codec extradata (%u bytes) to %s\n", cdata_len, export_asc);
+        if (g_verbose > 0)
+            fprintf(demux_stdout ? stderr : stdout, "Exported codec extradata (%u bytes) to %s\n", cdata_len, export_asc);
     }
 
-#ifdef _WIN32
-    if (demux_stdout) _setmode(_fileno(stdout), _O_BINARY);
-#endif
+    if (demux_stdout && !cli_binary_stream(stdout)) {
+        fprintf(stderr, "Cannot set binary output mode\n");
+        goto done;
+    }
     fout = demux_stdout ? stdout : cli_fopen(output_file, "wb");
     if (!fout) {
         fprintf(stderr, "Error opening output %s\n", output_file);
@@ -1748,15 +1754,14 @@ static int cmd_demux(int argc, char **argv)
         if (write_failed) break;
     }
 
-    if (demux_stdout) write_failed |= fflush(fout) != 0;
-    else if (fclose(fout) != 0) write_failed = true;
-    fout = NULL;
+    write_failed |= !cli_finish_output(&fout);
     if (write_failed) {
         fprintf(stderr, "Error writing %s\n", output_file);
         goto done;
     }
 
-    fprintf(demux_stdout ? stderr : stdout, "Successfully demuxed %s -> %s\n", input_file, output_file);
+    if (g_verbose > 0)
+        fprintf(demux_stdout ? stderr : stdout, "Successfully demuxed %s -> %s\n", input_file, output_file);
     ret = 0;
 
 done:
@@ -1803,10 +1808,11 @@ static int cmd_tag(int argc, char **argv)
         int saved_opterr = opterr;
         opterr = 0;
         optind = 1;
-        while ((opt = getopt_long(argc, argv, "hH", long_options, NULL)) != -1) {
-            if (opt == 'h') { print_usage(HELP_TAG); return 0; }
-            if (opt == 'H') { print_usage('H'); return 0; }
-            if (opt == OPT_CLEAR) {
+        while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
+            if (opt == 'v') { g_verbose = atoi(optarg); }
+            else if (opt == 'h') { print_usage(HELP_TAG); return 0; }
+            else if (opt == 'H') { print_usage('H'); return 0; }
+            else if (opt == OPT_CLEAR) {
                 want_clear = true;
             } else if (opt == OPT_REMOVE) {
                 memset(&scratch, 0, sizeof(scratch));
@@ -1891,8 +1897,9 @@ static int cmd_tag(int argc, char **argv)
     int opt;
     optind = 1;
     bool bad_option = false;
-    while ((opt = getopt_long(argc, argv, "hH", long_options, NULL)) != -1) {
-        if (opt >= OPT_TAG_FIRST && opt <= OPT_TAG_LAST) {
+    while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
+        if (opt == 'v') { g_verbose = atoi(optarg); }
+        else if (opt >= OPT_TAG_FIRST && opt <= OPT_TAG_LAST) {
             err_msg = tag_apply(&t, opt, optarg);
         } else if (opt != OPT_REMOVE && opt != OPT_CLEAR && opt != 'h' && opt != 'H') {
             bad_option = true; /* the others were handled in pass 1 */
@@ -1912,7 +1919,7 @@ static int cmd_tag(int argc, char **argv)
         goto done;
     }
 
-    printf("Tags updated successfully on %s\n", filepath);
+    if (g_verbose > 0) printf("Tags updated successfully on %s\n", filepath);
     ret = 0;
 
 done:
@@ -2014,7 +2021,7 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
         return 1;
     }
 
-    printf("Successfully imported %u chapters into %s\n", count, filepath);
+    if (g_verbose > 0) printf("Successfully imported %u chapters into %s\n", count, filepath);
     return 0;
 }
 
@@ -2074,16 +2081,15 @@ static int cmd_chapter_export(const char *filepath, const char *output_path, boo
         write_failed |= fprintf(of, "%02u:%02u:%02u.%03u\t%s\n", hh, mm, ss, mmm,
                                 ch.title ? ch.title : "") < 0;
     }
-    if (to_stdout) write_failed |= fflush(of) != 0;
-    else if (fclose(of) != 0) write_failed = true;
-    of = NULL;
+    write_failed |= !cli_finish_output(&of);
     if (write_failed) {
         fprintf(stderr, "Error writing %s\n", output_path);
         if (!to_stdout) cli_remove(output_path);
         goto done;
     }
 
-    fprintf(to_stdout ? stderr : stdout, "Successfully exported %u chapters from %s to %s\n", count, filepath, output_path);
+    if (g_verbose > 0)
+        fprintf(to_stdout ? stderr : stdout, "Successfully exported %u chapters from %s to %s\n", count, filepath, output_path);
     ret = 0;
 
 done:
@@ -2123,8 +2129,9 @@ static int cmd_chapter(int argc, char **argv)
     bool overwrite = false;
     int opt;
     optind = 1;
-    while ((opt = getopt_long(sub_argc, sub_argv, "o:hH", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(sub_argc, sub_argv, "v:o:hH", long_options, NULL)) != -1) {
         switch (opt) {
+        case 'v': g_verbose = atoi(optarg); break;
         case OPT_CHAPTERS: chapters_path = optarg; break;
         case 'o': output_path = optarg; break;
         case OPT_OVERWRITE: overwrite = true; break;
