@@ -21,6 +21,7 @@
 #include <string.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "huffdata.h"
 #include "cpu_compute.h"
 #include "stats.h"
 
@@ -134,6 +135,7 @@ typedef struct
     float sf_smooth;
     float rich_slope;
     unsigned tune_min_rate; /* bits/s per channel */
+    unsigned nudge_min_rate;
     unsigned rich_min_rate;
     unsigned slope_rate_threshold;
     float slope_reference_rate;
@@ -166,6 +168,11 @@ static const MaskingModel masking_model = {
     .rich_slope = 3.0f,
     .tune_min_rate = 32000, /* fitted profile's lower bound, bits/s per channel */
     .rich_min_rate = 56000, /* steep-slope threshold, bits/s per channel */
+    /* Scalefactor nudge, for any channel count at a set rate. Measured on
+     * stereo and mono, LC and HE-AAC, and 5.1. At 24 kbps per channel, 16 kHz
+     * mono speech loses up to 0.18 MOS on a few clips; from 28 kbps no clip is
+     * past -0.10. */
+    .nudge_min_rate = 28000, /* bits/s per channel */
     /* Empirical sample-rate policy, in Hz: above 48 kHz scale the per-line
      * slope relative to 44.1 kHz. These are not the tilt's frequency units. */
     .slope_rate_threshold = 48000,
@@ -314,6 +321,8 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
     if (tuned)
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
+    /* Any set rate (VBR has none) at or above the nudge's measured floor. */
+    cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate;
 }
 
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
@@ -425,10 +434,110 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
+/* The scalefactor a coded band wants. Long blocks pull it most of the way
+ * towards the mean of its coded neighbours: the masking target tracks local
+ * band energy too steeply, which quantizes peaks too coarsely and the bands
+ * beside them too finely. */
+static int smoothed_sfac(int want, int prev, int next, int sf_bias, int smooth)
+{
+    int sfac = sf_bias - want;
+    if (smooth)
+    {
+        int cnt = 0, sum = 0;
+        if (prev != INT_MIN) { sum += prev; cnt++; }
+        if (next != INT_MIN) { sum += next; cnt++; }
+        if (cnt)
+            sfac += lrintf(masking_model.sf_smooth * ((float)want - (float)sum / (float)cnt));
+        /* smoothing must not turn a coded band into a zero band */
+        if (SF_OFFSET - sfac < SF_MIN)
+            sfac = SF_OFFSET - SF_MIN;
+    }
+    return sfac;
+}
+
+/* Each coded band may take its scalefactor one step coarser. Pick the moves
+ * that make the scalefactor deltas cheapest to code (Viterbi over the coded
+ * bands of the group, seeded from the previous group's last band). Costs use
+ * integer quarter bits; ties prefer the unchanged state. */
+#define SF_NUDGE_COST 1  /* quarter bits charged per band moved */
+enum { SF_NUDGE_STATES = 2 };
+static inline int sf_delta_cost(int diff)
+{
+    return book12[SF_DELTA + clamp_sf_diff(diff)].len;
+}
+
+static void nudge_scalefactors(const CoderInfo *ci, int *sel, int n, int base, int smooth,
+                               int last_abs, int run_dp)
+{
+    /* state 0: one step coarser, state 1: as wanted */
+    unsigned char bp[NSFB_LONG];
+    /* The previous group's scalefactor seeds the chain without a nudge. */
+    int cost[SF_NUDGE_STATES] = {INT_MAX / 2, 0};
+    /* Retain the raw neighbour so smoothing is independent of in-place writes. */
+    int prev_a0 = last_abs, prev_want = INT_MIN, sb, c;
+
+    for (sb = 0; sb < n; sb++)
+    {
+        int next[SF_NUDGE_STATES], a0;
+        int raw = sel[sb], prev = prev_want;
+        prev_want = raw;
+        if (raw == INT_MIN)
+            continue;
+        sel[sb] = smoothed_sfac(raw, prev, sb + 1 < n ? sel[sb + 1] : INT_MIN,
+                                ci->sf[base + sb], smooth);
+        if (!run_dp)
+            continue;
+        /* absolute scalefactor of state s is a0 + 1 - s */
+        a0 = ci->sf[base + sb] + SF_OFFSET - sel[sb];
+        {
+            int edge[SF_NUDGE_STATES + 1] = {0};
+            int state;
+            if (prev_a0 != SF_CHAIN_UNSET)
+            {
+                int d0 = a0 - prev_a0;
+                edge[0] = 4 * sf_delta_cost(d0 - 1);
+                edge[1] = 4 * sf_delta_cost(d0);
+                edge[2] = 4 * sf_delta_cost(d0 + 1);
+            }
+            bp[sb] = 0;
+            for (state = 0; state < SF_NUDGE_STATES; state++)
+            {
+                int pred = SF_NUDGE_STATES - 1;
+                int best = cost[pred] + edge[pred - state + 1];
+                int best_pred = pred;
+                for (pred = SF_NUDGE_STATES - 2; pred >= 0; pred--)
+                {
+                    int candidate = cost[pred] + edge[pred - state + 1];
+                    if (candidate < best)
+                    {
+                        best = candidate;
+                        best_pred = pred;
+                    }
+                }
+                next[state] = best;
+                bp[sb] |= (unsigned char)(best_pred << state);
+            }
+        }
+        next[0] += SF_NUDGE_COST;
+        cost[0] = next[0]; cost[1] = next[1];
+        prev_a0 = a0;
+    }
+    if (!run_dp)
+        return;
+    c = cost[0] < cost[1] ? 0 : 1;  /* final state */
+    for (sb = n - 1; sb >= 0; sb--)
+    {
+        if (sel[sb] == INT_MIN)
+            continue;
+        sel[sb] -= 1 - c;
+        c = (bp[sb] >> c) & 1;
+    }
+}
+
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
-                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
+                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen, int sf_nudge)
 {
     int gsize = ci->groups.len[gnum];
     float silence = silence_energy(ci);
@@ -437,7 +546,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int base = ci->bandcnt;
     int n = ci->sfbn;
     /* per band: sf bias minus the wanted scalefactor, or INT_MIN if not coded */
-    int want[MAX_SCFAC_BANDS];
+    int band_sf[NSFB_LONG];
     int sb;
 
     if (n > MAX_SCFAC_BANDS - base)
@@ -452,7 +561,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         g_faacStats.totalBands++;
 #endif
 
-        want[sb] = INT_MIN;
+        band_sf[sb] = INT_MIN;
         if (ci->book[band] != HCB_NONE)
             continue;
 
@@ -505,8 +614,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             ci->sf[band] += SF_OFFSET - sfac;
             continue;
         }
-        want[sb] = ci->sf[band] - sfac;
+        band_sf[sb] = ci->sf[band] - sfac;
     }
+
+    /* All raw neighbours are known before this buffer becomes gain scalefactors. */
+    nudge_scalefactors(ci, band_sf, n, base, smooth, *p_last_abs, sf_nudge);
 
     /* Pass 2: quantize the coded bands. Long blocks first pull each
      * scalefactor most of the way towards the mean of its coded neighbours:
@@ -516,22 +628,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     {
         int band = base + sb;
 
-        if (want[sb] == INT_MIN)
+        if (band_sf[sb] == INT_MIN)
             continue;
 
         int sf_bias = ci->sf[band];
-        int sfac = sf_bias - want[sb];
-        if (smooth)
-        {
-            int cnt = 0, sum = 0;
-            if (sb > 0 && want[sb - 1] != INT_MIN) { sum += want[sb - 1]; cnt++; }
-            if (sb + 1 < n && want[sb + 1] != INT_MIN) { sum += want[sb + 1]; cnt++; }
-            if (cnt)
-                sfac += lrintf(masking_model.sf_smooth * ((float)want[sb] - (float)sum / (float)cnt));
-            /* smoothing must not turn a coded band into a zero band */
-            if (SF_OFFSET - sfac < SF_MIN)
-                sfac = SF_OFFSET - SF_MIN;
-        }
+        int sfac = band_sf[sb];
 
         int lo = ci->sfb_offset[sb];
         int width = ci->sfb_offset[sb + 1] - lo;
@@ -601,7 +702,8 @@ static void ResolveIntensityNoise(const CoderInfo *left, CoderInfo *right)
 
 int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *aacquantCfg)
 {
-    float target[MAX_SCFAC_BANDS];
+    /* These arrays hold one group; MAX_SCFAC_BANDS spans all short groups. */
+    float target[NSFB_LONG];
     BandEnergy be[NSFB_LONG];
     int qs[FRAME_LEN];
     int i, lastsf = SF_CHAIN_UNSET, qlen = 0;
@@ -619,7 +721,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen, aacquantCfg->sf_nudge);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);

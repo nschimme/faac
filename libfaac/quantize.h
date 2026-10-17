@@ -27,6 +27,7 @@ typedef struct
     int pnslevel;
     float treble_slope;
     int mask_tuned;
+    int sf_nudge;
     /* Masking-target shape, set by QuantizeConfigureMask(). Untuned (VBR, HE-AAC,
      * mono, multichannel and low rates) keeps the original formula. */
     float avg_weight;
