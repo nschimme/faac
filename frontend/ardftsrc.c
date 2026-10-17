@@ -42,7 +42,7 @@ struct ArdftsrcResampler {
     uint32_t in_rate;
     uint32_t out_rate;
     uint16_t channels;
-    int quality;
+    ardftsrc_quality_t quality;
     size_t filter_len;
     double ratio;               /* out_rate / in_rate */
     double phase;               /* Fractional sample position [0.0, 1.0) */
@@ -53,7 +53,7 @@ struct ArdftsrcResampler {
     size_t delay;
 };
 
-ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, int quality) {
+ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, ardftsrc_quality_t quality) {
     if (in_rate == 0 || out_rate == 0 || channels == 0) return NULL;
 
     ArdftsrcResampler *r = (ArdftsrcResampler *)calloc(1, sizeof(ArdftsrcResampler));
@@ -67,10 +67,10 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
 
     /* Filter length (taper window length) based on quality preset */
     switch (quality) {
-        case 0:  r->filter_len = 127; r->beta = 24.0; break;
-        case 2:  r->filter_len = 511; r->beta = 34.0; break;
-        case 1:
-        default: r->filter_len = 255; r->beta = 30.0; break;
+        case ARDFTSRC_QUALITY_FAST: r->filter_len = 127; r->beta = 24.0; break;
+        case ARDFTSRC_QUALITY_HIGH: r->filter_len = 511; r->beta = 34.0; break;
+        case ARDFTSRC_QUALITY_GOOD:
+        default:                    r->filter_len = 255; r->beta = 30.0; break;
     }
 
     /* Ensure filter length is odd for symmetric linear phase FIR */

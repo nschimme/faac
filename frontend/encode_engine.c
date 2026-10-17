@@ -627,15 +627,15 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (resample_active)
     {
         /* Automatic resampler quality selection:
-         * quality 2 (High): High sample rates (>48kHz), high quality (-q >= 200), or archival bitrates (>=192kbps)
-         * quality 1 (Good): Default balanced mode for standard VBR/ABR encoding
-         * quality 0 (Fast): Low bitrates (<32kbps) where core AAC quantization bounds dominant noise floor */
-        int resample_quality = 1;
+         * ARDFTSRC_QUALITY_HIGH: High sample rates (>48kHz), high quality (-q >= 200), or archival bitrates (>=192kbps)
+         * ARDFTSRC_QUALITY_GOOD: Default balanced mode for standard VBR/ABR encoding
+         * ARDFTSRC_QUALITY_FAST: Low bitrates (<32kbps) where core AAC quantization bounds dominant noise floor */
+        ardftsrc_quality_t resample_quality = ARDFTSRC_QUALITY_GOOD;
         uint32_t total_bitrate = opts->bit_rate;
         if (raw_sample_rate > 48000 || opts->quant_quality >= 200 || total_bitrate >= 192000)
-            resample_quality = 2;
+            resample_quality = ARDFTSRC_QUALITY_HIGH;
         else if (total_bitrate > 0 && total_bitrate < 32000)
-            resample_quality = 0;
+            resample_quality = ARDFTSRC_QUALITY_FAST;
 
         resampler = ardftsrc_create(raw_sample_rate, target_rate, num_channels, resample_quality);
         if (!resampler)
