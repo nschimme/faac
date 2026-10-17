@@ -321,7 +321,9 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
     if (tuned)
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
-    /* Any set rate (VBR has none) at or above the nudge's measured floor. */
+    /* Scalefactor nudging via Viterbi delta cost minimization applies to all
+     * channel counts (mono, stereo, 5.1, 7.1) and AAC profiles (LC and HE-AAC)
+     * at set rates (VBR has none) at or above nudge_min_rate (28 kbps/ch). */
     cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate;
 }
 
