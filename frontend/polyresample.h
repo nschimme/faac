@@ -1,5 +1,5 @@
 /*
- * Polyphase Kaiser-Windowed Sinc Sample Rate Converter for FAAC
+ * Polyphase Farrow-Interpolated Kaiser-Sinc Resampler for FAAC
  */
 
 #ifndef POLYRESAMPLE_H

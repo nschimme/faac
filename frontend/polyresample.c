@@ -1,5 +1,5 @@
 /*
- * Polyphase Farrow Cubic Interpolated Kaiser-Windowed Sinc Sample Rate Converter
+ * Polyphase Farrow-Interpolated Kaiser-Sinc Resampler
  * Clean Multi-Stage Ownership, SIMD 32-Byte Aligned & Subnormal Protected for FAAC
  */
 
