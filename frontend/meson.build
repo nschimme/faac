@@ -147,10 +147,12 @@ if get_option('muxer')
     endif
 endif
 
+libfaar_for_faar_cli = get_option('frontend-static') ? libfaar_static : libfaar
+
 faar_cli = executable('faar',
     ['faar_main.c'],
     include_directories: ['..', '../include', '../common'],
-    link_with: [libfaar_for_frontend],
+    link_with: [libfaar_for_faar_cli],
     c_args: c_args_list,
     dependencies: [libshell32, libfaar_dep],
     install: true

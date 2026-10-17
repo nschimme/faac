@@ -307,8 +307,10 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
     /* Stack-allocated, 64-byte aligned temporary coefficient array for SIMD auto-vectorization */
 #if defined(_MSC_VER)
     __declspec(align(64)) float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+#elif defined(__GNUC__) || defined(__clang__)
+    float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN] __attribute__((aligned(64)));
 #else
-    _Alignas(64) float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+    float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
 #endif
 
     while (out_frames < max_out_count) {
