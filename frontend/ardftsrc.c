@@ -1,12 +1,13 @@
 /*
  * ARDFTSRC - Arbitrary Rate Discrete Fourier Transform Sample Rate Converter
- * Polyphase Symmetry-Optimized C Translation for FAAC
+ * Polyphase Folded-Symmetry Optimized C Translation for FAAC
  */
 
 #include "ardftsrc.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdbool.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -151,6 +152,7 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
     }
 
     const size_t filter_len = r->filter_len;
+    const size_t half_len = (filter_len - 1) / 2;
     const float * restrict poly_table = r->polyphase_table;
 
     /* Append input samples to channel history buffers */
@@ -179,45 +181,70 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
         size_t phase_idx = (size_t)(frac * (double)ARDFTSRC_NUM_PHASES + 0.5);
         if (phase_idx >= ARDFTSRC_NUM_PHASES) phase_idx = ARDFTSRC_NUM_PHASES - 1;
 
-        bool is_mirrored = false;
-        if (phase_idx > ARDFTSRC_NUM_PHASES / 2) {
-            phase_idx = ARDFTSRC_NUM_PHASES - phase_idx;
-            is_mirrored = true;
-        }
+        if (phase_idx == 0) {
+            /* Fast path for phase 0 (exact integer alignment): fold symmetric taps to halve mults */
+            const float * restrict coeffs = poly_table; /* Phase 0 slice */
+            const float center_coeff = coeffs[half_len];
 
-        const float * restrict coeffs = poly_table + phase_idx * filter_len;
+            for (uint16_t c = 0; c < r->channels; c++) {
+                const float * restrict h = &r->hist[c][base_idx];
+                float sum = center_coeff * h[half_len];
 
-        for (uint16_t c = 0; c < r->channels; c++) {
-            float sum = 0.0f;
-            const float * restrict h = &r->hist[c][base_idx];
-
-            if (!is_mirrored) {
-                /* Forward filter convolution loop */
                 size_t j = 0;
-                for (; j + 3 < filter_len; j += 4) {
-                    sum += h[j + 0] * coeffs[j + 0] +
-                           h[j + 1] * coeffs[j + 1] +
-                           h[j + 2] * coeffs[j + 2] +
-                           h[j + 3] * coeffs[j + 3];
+                for (; j + 3 < half_len; j += 4) {
+                    sum += coeffs[j + 0] * (h[j + 0] + h[filter_len - 1 - (j + 0)]) +
+                           coeffs[j + 1] * (h[j + 1] + h[filter_len - 1 - (j + 1)]) +
+                           coeffs[j + 2] * (h[j + 2] + h[filter_len - 1 - (j + 2)]) +
+                           coeffs[j + 3] * (h[j + 3] + h[filter_len - 1 - (j + 3)]);
                 }
-                for (; j < filter_len; j++) {
-                    sum += h[j] * coeffs[j];
+                for (; j < half_len; j++) {
+                    sum += coeffs[j] * (h[j] + h[filter_len - 1 - j]);
                 }
-            } else {
-                /* Mirrored filter convolution loop utilizing linear phase symmetry */
-                size_t j = 0;
-                for (; j + 3 < filter_len; j += 4) {
-                    sum += h[j + 0] * coeffs[filter_len - 1 - (j + 0)] +
-                           h[j + 1] * coeffs[filter_len - 1 - (j + 1)] +
-                           h[j + 2] * coeffs[filter_len - 1 - (j + 2)] +
-                           h[j + 3] * coeffs[filter_len - 1 - (j + 3)];
-                }
-                for (; j < filter_len; j++) {
-                    sum += h[j] * coeffs[filter_len - 1 - j];
-                }
+
+                out_samples[out_frames * r->channels + c] = sum;
+            }
+        } else {
+            /* General polyphase path */
+            bool is_mirrored = false;
+            if (phase_idx > ARDFTSRC_NUM_PHASES / 2) {
+                phase_idx = ARDFTSRC_NUM_PHASES - phase_idx;
+                is_mirrored = true;
             }
 
-            out_samples[out_frames * r->channels + c] = sum;
+            const float * restrict coeffs = poly_table + phase_idx * filter_len;
+
+            for (uint16_t c = 0; c < r->channels; c++) {
+                float sum = 0.0f;
+                const float * restrict h = &r->hist[c][base_idx];
+
+                if (!is_mirrored) {
+                    /* Forward filter convolution loop */
+                    size_t j = 0;
+                    for (; j + 3 < filter_len; j += 4) {
+                        sum += h[j + 0] * coeffs[j + 0] +
+                               h[j + 1] * coeffs[j + 1] +
+                               h[j + 2] * coeffs[j + 2] +
+                               h[j + 3] * coeffs[j + 3];
+                    }
+                    for (; j < filter_len; j++) {
+                        sum += h[j] * coeffs[j];
+                    }
+                } else {
+                    /* Mirrored filter convolution loop utilizing linear phase symmetry */
+                    size_t j = 0;
+                    for (; j + 3 < filter_len; j += 4) {
+                        sum += h[j + 0] * coeffs[filter_len - 1 - (j + 0)] +
+                               h[j + 1] * coeffs[filter_len - 1 - (j + 1)] +
+                               h[j + 2] * coeffs[filter_len - 1 - (j + 2)] +
+                               h[j + 3] * coeffs[filter_len - 1 - (j + 3)];
+                    }
+                    for (; j < filter_len; j++) {
+                        sum += h[j] * coeffs[filter_len - 1 - j];
+                    }
+                }
+
+                out_samples[out_frames * r->channels + c] = sum;
+            }
         }
 
         out_frames++;
