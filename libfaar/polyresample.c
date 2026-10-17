@@ -106,16 +106,25 @@ static size_t polyresample_process_single(faar_handle_t r, const float * restric
 static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, size_t max_out_count);
 
 FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, faar_quality_t quality) {
+    return faar_create_ext(in_rate, out_rate, channels, quality, 0);
+}
+
+FAARAPI faar_handle_t faar_create_ext(uint32_t in_rate, uint32_t out_rate, uint16_t channels, faar_quality_t quality, uint32_t decimate_factor) {
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
-    /* Multi-stage cascade decimation for large downsampling ratios (>2:1) with clean stage ownership */
-    if (in_rate > 2 * out_rate) {
-        uint32_t intermediate_rate = in_rate / 2;
+    bool force_decimate = (decimate_factor >= 2) || (in_rate > 2 * out_rate);
+
+    /* Multi-stage cascade decimation for large downsampling ratios (>2:1 or explicit decimate_factor) */
+    if (force_decimate && in_rate > out_rate) {
+        uint32_t intermediate_rate = in_rate / (decimate_factor >= 2 ? decimate_factor : 2);
+        if (intermediate_rate <= out_rate) intermediate_rate = in_rate / 2;
+        if (intermediate_rate <= out_rate) intermediate_rate = (in_rate + out_rate) / 2;
+
         struct faar_resampler_struct *r = (struct faar_resampler_struct *)calloc(1, sizeof(struct faar_resampler_struct));
         if (!r) return NULL;
 
-        r->stage1 = faar_create(in_rate, intermediate_rate, channels, quality);
-        r->stage2 = faar_create(intermediate_rate, out_rate, channels, quality);
+        r->stage1 = faar_create_ext(in_rate, intermediate_rate, channels, quality, 0);
+        r->stage2 = faar_create_ext(intermediate_rate, out_rate, channels, quality, 0);
 
         if (!r->stage1 || !r->stage2) {
             faar_destroy(r->stage1);
