@@ -1,9 +1,8 @@
 /*
- * ARDFTSRC - Polyphase Kaiser-Windowed Sinc Discrete Fourier Transform
- * Arbitrary Rate Sample Rate Converter for FAAC
+ * Polyphase Kaiser-Windowed Sinc Sample Rate Converter for FAAC
  */
 
-#include "ardftsrc.h"
+#include "polyresample.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -13,8 +12,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define ARDFTSRC_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
-#define ARDFTSRC_STORED_PHASES (ARDFTSRC_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
+#define POLYRESAMPLE_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
+#define POLYRESAMPLE_STORED_PHASES (POLYRESAMPLE_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
 
 /* Modified Bessel function I0(x) for Kaiser window calculation */
 static double bessel_i0(double x) {
@@ -38,11 +37,11 @@ static double kaiser_window(double n, double N, double beta) {
     return bessel_i0(beta * sqrt(sq)) / bessel_i0(beta);
 }
 
-struct ArdftsrcResampler {
+struct PolyResampler {
     uint32_t in_rate;
     uint32_t out_rate;
     uint16_t channels;
-    ardftsrc_quality_t quality;
+    polyresample_quality_t quality;
     size_t filter_len;
     double ratio;               /* out_rate / in_rate */
     double phase;               /* Fractional sample position [0.0, 1.0) */
@@ -54,10 +53,10 @@ struct ArdftsrcResampler {
     size_t delay;
 };
 
-ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, ardftsrc_quality_t quality) {
+PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, polyresample_quality_t quality) {
     if (in_rate == 0 || out_rate == 0 || channels == 0) return NULL;
 
-    ArdftsrcResampler *r = (ArdftsrcResampler *)calloc(1, sizeof(ArdftsrcResampler));
+    PolyResampler *r = (PolyResampler *)calloc(1, sizeof(PolyResampler));
     if (!r) return NULL;
 
     r->in_rate = in_rate;
@@ -67,15 +66,15 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     r->ratio = (double)out_rate / (double)in_rate;
 
     switch (quality) {
-        case ARDFTSRC_QUALITY_FAST: r->filter_len = 127; r->beta = 24.0; break;
-        case ARDFTSRC_QUALITY_HIGH: r->filter_len = 511; r->beta = 34.0; break;
-        case ARDFTSRC_QUALITY_GOOD:
-        default:                    r->filter_len = 255; r->beta = 30.0; break;
+        case POLYRESAMPLE_QUALITY_FAST: r->filter_len = 127; r->beta = 24.0; break;
+        case POLYRESAMPLE_QUALITY_HIGH: r->filter_len = 511; r->beta = 34.0; break;
+        case POLYRESAMPLE_QUALITY_GOOD:
+        default:                        r->filter_len = 255; r->beta = 30.0; break;
     }
 
     if ((r->filter_len % 2) == 0) r->filter_len++;
 
-    r->polyphase_table = (float *)malloc(ARDFTSRC_STORED_PHASES * r->filter_len * sizeof(float));
+    r->polyphase_table = (float *)malloc(POLYRESAMPLE_STORED_PHASES * r->filter_len * sizeof(float));
     if (!r->polyphase_table) {
         free(r);
         return NULL;
@@ -84,8 +83,8 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     double cutoff = (r->ratio < 1.0) ? 0.45 * r->ratio : 0.45;
     double half_len = (r->filter_len - 1) / 2.0;
 
-    for (size_t p = 0; p < ARDFTSRC_STORED_PHASES; p++) {
-        double frac = (double)p / (double)ARDFTSRC_NUM_PHASES;
+    for (size_t p = 0; p < POLYRESAMPLE_STORED_PHASES; p++) {
+        double frac = (double)p / (double)POLYRESAMPLE_NUM_PHASES;
         float *phase_coeffs = r->polyphase_table + p * r->filter_len;
         double sum = 0.0;
 
@@ -128,12 +127,12 @@ ArdftsrcResampler *ardftsrc_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     return r;
 }
 
-size_t ardftsrc_get_delay(const ArdftsrcResampler *r) {
+size_t polyresample_get_delay(const PolyResampler *r) {
     return r ? r->delay : 0;
 }
 
-size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict in_samples, size_t in_count,
-                        float * restrict out_samples, size_t max_out_count) {
+size_t polyresample_process(PolyResampler * restrict r, const float * restrict in_samples, size_t in_count,
+                           float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
     if (r->in_rate == r->out_rate) {
         size_t frames_to_copy = in_count < max_out_count ? in_count : max_out_count;
@@ -182,8 +181,8 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
         }
 
         double frac = in_pos - (double)base_idx;
-        size_t phase_idx = (size_t)(frac * (double)ARDFTSRC_NUM_PHASES + 0.5);
-        if (phase_idx >= ARDFTSRC_NUM_PHASES) phase_idx = ARDFTSRC_NUM_PHASES - 1;
+        size_t phase_idx = (size_t)(frac * (double)POLYRESAMPLE_NUM_PHASES + 0.5);
+        if (phase_idx >= POLYRESAMPLE_NUM_PHASES) phase_idx = POLYRESAMPLE_NUM_PHASES - 1;
 
         if (phase_idx == 0) {
             const float * restrict coeffs = poly_table;
@@ -208,8 +207,8 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
             }
         } else {
             bool is_mirrored = false;
-            if (phase_idx > ARDFTSRC_NUM_PHASES / 2) {
-                phase_idx = ARDFTSRC_NUM_PHASES - phase_idx;
+            if (phase_idx > POLYRESAMPLE_NUM_PHASES / 2) {
+                phase_idx = POLYRESAMPLE_NUM_PHASES - phase_idx;
                 is_mirrored = true;
             }
 
@@ -263,17 +262,17 @@ size_t ardftsrc_process(ArdftsrcResampler * restrict r, const float * restrict i
     return out_frames;
 }
 
-size_t ardftsrc_flush(ArdftsrcResampler *r, float *out_samples, size_t max_out_count) {
+size_t polyresample_flush(PolyResampler *r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
     size_t tail_len = (r->filter_len - 1) / 2;
     float *zero_tail = (float *)calloc(tail_len * r->channels, sizeof(float));
-    size_t written = ardftsrc_process(r, zero_tail, tail_len, out_samples, max_out_count);
+    size_t written = polyresample_process(r, zero_tail, tail_len, out_samples, max_out_count);
     free(zero_tail);
     return written;
 }
 
-void ardftsrc_destroy(ArdftsrcResampler *r) {
+void polyresample_destroy(PolyResampler *r) {
     if (!r) return;
     if (r->hist) {
         for (uint16_t c = 0; c < r->channels; c++) {
