@@ -74,6 +74,11 @@ struct faar_resampler_struct {
     uint32_t out_rate;
     uint16_t channels;
     faar_quality_t quality;
+    faar_dither_t dither;
+    uint8_t dither_bits;
+    uint32_t prng_state[MAX_CHANNELS];
+    float error_history[MAX_CHANNELS];
+
     size_t filter_len;
     double ratio;               /* out_rate / in_rate */
     double phase;               /* Fractional sample position [0.0, 1.0) */
@@ -204,6 +209,23 @@ FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t 
 
     r->delay = (size_t)half_len;
     return r;
+}
+
+FAARAPI int faar_set_dither(faar_handle_t r, faar_dither_t dither, uint8_t target_bits) {
+    if (!r) return -1;
+    if (dither != FAAR_DITHER_OFF && target_bits != 16 && target_bits != 24) return -1;
+
+    if (r->stage2) {
+        return faar_set_dither(r->stage2, dither, target_bits);
+    }
+
+    r->dither = dither;
+    r->dither_bits = target_bits;
+    for (uint16_t c = 0; c < r->channels && c < MAX_CHANNELS; c++) {
+        r->prng_state[c] = (uint32_t)(123456789U + c * 987654321U);
+        r->error_history[c] = 0.0f;
+    }
+    return 0;
 }
 
 FAARAPI size_t faar_get_delay(faar_handle_t r) {
@@ -364,6 +386,33 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
 
                 for (size_t j = 0; j < filter_len; j++) {
                     sum += h[j] * temp_coeffs[j];
+                }
+
+                /* Apply TPDF dither and noise shaping if enabled */
+                if (r->dither != FAAR_DITHER_OFF && r->dither_bits > 0) {
+                    float scale = (r->dither_bits == 16) ? 32768.0f : 8388608.0f;
+                    float inv_scale = 1.0f / scale;
+
+                    /* 32-bit XorShift PRNG for fast uniform random numbers [0.0, 1.0) */
+                    uint32_t s1 = r->prng_state[c];
+                    s1 ^= s1 << 13; s1 ^= s1 >> 17; s1 ^= s1 << 5;
+                    r->prng_state[c] = s1;
+
+                    uint32_t s2 = s1 + 0x9e3779b9U;
+                    s2 ^= s2 << 13; s2 ^= s2 >> 17; s2 ^= s2 << 5;
+
+                    float r1 = (float)s1 * (1.0f / 4294967296.0f);
+                    float r2 = (float)s2 * (1.0f / 4294967296.0f);
+                    float tpdf = (r1 - r2); /* Triangular distribution [-1.0, +1.0] LSB */
+
+                    float sample_scaled = sum * scale;
+                    if (r->dither == FAAR_DITHER_SHAPED) {
+                        sample_scaled -= r->error_history[c] * 0.75f;
+                    }
+
+                    float quantized = (float)floor((double)(sample_scaled + tpdf + 0.5f));
+                    r->error_history[c] = quantized - sample_scaled;
+                    sum = quantized * inv_scale;
                 }
 
                 out_samples[out_frames * r->channels + c] = sum;
