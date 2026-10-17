@@ -479,7 +479,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
    with the #undef at its end. */
 #define FAIL(...) \
     do { \
-        log_msgf(log_cb, user_data, 1, __VA_ARGS__); \
+        log_msgf(log_cb, user_data, 0, __VA_ARGS__); \
         ret = 1; \
         goto cleanup; \
     } while (0)
@@ -508,6 +508,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (!infile)
         FAIL("Couldn't open input file %s\n", opts->input_filename);
+
+    if (opts->output_filename && strcmp(opts->input_filename, "-") != 0 &&
+        strcmp(opts->output_filename, "-") != 0 &&
+        cli_same_file(opts->input_filename, opts->output_filename))
+        FAIL("Output file must be different from input file %s\n", opts->input_filename);
 
     if (opts->ignore_wav_length) infile->bounded_data = false;
 
@@ -645,9 +650,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         if (!strcmp(opts->output_filename, "-"))
         {
             outfile = stdout;
-#ifdef _WIN32
-            _setmode(_fileno(stdout), _O_BINARY);
-#endif
+            if (!cli_binary_stream(stdout)) FAIL("Cannot set binary output mode\n");
         }
         else
         {
@@ -739,6 +742,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 samples_read = (int)read_pcm();
             }
 
+            const char *read_error = wav_read_error(infile, (size_t)samples_read);
+            if (read_error) FAIL("%s: %s\n", read_error, opts->input_filename);
+
             if (!opts->ignore_wav_length && total_input_samples > 0 &&
                 current_input_samples + (samples_read / num_channels) > total_input_samples)
             {
@@ -804,6 +810,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
             }
         }
     }
+
+    /* Buffered writes may succeed even when the destination cannot accept data.
+       Finish the stream before reporting a successful encode. */
+    if (!cli_finish_output(&outfile)) FAIL("Output write failed\n");
 
     /* The in-loop progress_cb above can't know which call is last until
        after it returns, so it can't set is_final itself. */

@@ -622,36 +622,52 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDOK:
             if (!Encoding)
             {
+                WCHAR sourceInput[_MAX_PATH];
                 WCHAR targetOutput[_MAX_PATH];
+                GetDlgItemTextW(hWnd, IDC_INPUTFILENAME, sourceInput, _MAX_PATH);
                 GetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, targetOutput, _MAX_PATH);
 
                 if (targetOutput[0] != L'\0')
                 {
+                    char *utf8_in = win32_utf16_to_utf8(sourceInput);
                     char *utf8_out = win32_utf16_to_utf8(targetOutput);
-                    if (utf8_out)
+                    if (!utf8_in || !utf8_out)
                     {
-                        if (win32_access_utf8(utf8_out, 0) == 0)
-                        {
-                            int msgResult = MessageBoxW(hWnd,
-                                L"The target output file already exists. Do you want to overwrite it?",
-                                L"Confirm Overwrite",
-                                MB_YESNO | MB_ICONQUESTION);
-                            if (msgResult != IDYES)
-                            {
-                                free(utf8_out);
-                                return TRUE;
-                            }
-                            _wremove(targetOutput);
-                        }
+                        free(utf8_in);
                         free(utf8_out);
+                        MessageBoxW(hWnd, L"Could not read the input or output filename.",
+                                    L"Error", MB_OK | MB_ICONSTOP);
+                        return TRUE;
                     }
+                    bool same_file = cli_same_file(utf8_in, utf8_out);
+                    free(utf8_in);
+                    if (same_file)
+                    {
+                        free(utf8_out);
+                        MessageBoxW(hWnd, L"The output file must be different from the input file.",
+                                    L"Error", MB_OK | MB_ICONSTOP);
+                        return TRUE;
+                    }
+                    if (win32_access_utf8(utf8_out, 0) == 0)
+                    {
+                        int msgResult = MessageBoxW(hWnd,
+                            L"The target output file already exists. Do you want to overwrite it?",
+                            L"Confirm Overwrite",
+                            MB_YESNO | MB_ICONQUESTION);
+                        if (msgResult != IDYES)
+                        {
+                            free(utf8_out);
+                            return TRUE;
+                        }
+                    }
+                    free(utf8_out);
                 }
 
                 encode_thread_param_t *param = (encode_thread_param_t *)malloc(sizeof(encode_thread_param_t));
                 if (param)
                 {
                     param->hWnd = hWnd;
-                    GetDlgItemTextW(hWnd, IDC_INPUTFILENAME, param->inputFilename, _MAX_PATH);
+                    wcsncpy(param->inputFilename, sourceInput, _MAX_PATH);
                     wcsncpy(param->outputFilename, targetOutput, _MAX_PATH);
 
                     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, GUI_PROGRESS_RANGE));
