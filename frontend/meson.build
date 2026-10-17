@@ -75,10 +75,10 @@ endif
 libfaar_for_faar_cli = get_option('frontend-static') ? libfaar_static : libfaar
 
 faar_cli = executable('faar',
-    ['faar_main.c'],
+    ['faar_main.c', 'input.c', 'cli_io.c', 'help.c', 'input.h', 'cli_io.h', 'help.h', git_version_h],
     include_directories: ['..', '../include', '../common'],
-    link_with: [libfaar_for_faar_cli],
+    link_with: [libfaar_for_faar_cli, libfaam_for_frontend],
     c_args: c_args_list,
-    dependencies: [libshell32, libfaar_dep],
+    dependencies: [libshell32, libiconv, libfaar_dep],
     install: true
 )

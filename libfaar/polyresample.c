@@ -4,6 +4,7 @@
 
 #include "faar.h"
 #include "libfaar_internal.h"
+#include <stdalign.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -307,10 +308,8 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
     /* Stack-allocated, 64-byte aligned temporary coefficient array for SIMD auto-vectorization */
 #if defined(_MSC_VER)
     __declspec(align(64)) float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
-#elif defined(__GNUC__) || defined(__clang__)
-    float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN] __attribute__((aligned(64)));
 #else
-    float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+    alignas(64) float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
 #endif
 
     while (out_frames < max_out_count) {
