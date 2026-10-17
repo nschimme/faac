@@ -108,7 +108,8 @@ static int build_log_band_widths(int k_start, int k_end, int bands_per_octave, f
     return nb;
 }
 
-/* Master table (ISO 14496-3 §4.6.18.3.2.1). bs_freq_scale 1/2/3:
+/* Master table (ISO 14496-3 §4.6.18.3.2.1). bs_freq_scale 0: uniform
+ * dk-spacing, residual bands merged into the first/last pairs. 1/2/3:
  * log-spaced with 12/10/8 bands per octave, widths of a geometric series
  * rounded and sorted so the narrow bands sit at the bottom. When k2/kx
  * exceeds 2.2449, the table splits at k1 = 2*kx into lower and upper regions,
@@ -118,30 +119,46 @@ int build_freq_table(SBRInfo *sbr)
     int kx = sbr->kx, k2 = sbr->k2;
     int *edges = sbr->bandEdges;
     int bands_per_octave = 14 - 2 * sbr->bs_freq_scale; /* 12, 10, 8 for bs_freq_scale 1, 2, 3 */
-    int two_region = (float)k2 / (float)kx > SBR_TWO_REGION_RATIO;
-    int k1 = two_region ? 2 * kx : k2;
-    int widths[2 * SBR_MAX_BANDS];
-    int n_master = build_log_band_widths(kx, k1, bands_per_octave, 1.0f, widths);
+    int n_master;
 
-    if (two_region) {
-        int *upper = widths + n_master;
-        float warp = sbr->bs_alter_scale ? SBR_UPPER_REGION_WARP : 1.0f;
-        int nb1 = build_log_band_widths(k1, k2, bands_per_octave, warp, upper);
-        if (upper[0] < widths[n_master - 1]) {
-            int change = widths[n_master - 1] - upper[0];
-            int half = (upper[nb1 - 1] - upper[0]) / 2;
+    if ((float)k2 / (float)kx > 2.2449f) {
+        int k1 = 2 * kx;
+        int dk0[SBR_MAX_BANDS] = { 0 }, dk1[SBR_MAX_BANDS] = { 0 };
+        int nb0 = build_log_band_widths(kx, k1, bands_per_octave, 1.0f, dk0);
+        float warp = sbr->bs_alter_scale ? 1.3f : 1.0f;
+        int nb1 = build_log_band_widths(k1, k2, bands_per_octave, warp, dk1);
+
+        if (dk1[0] < dk0[nb0 - 1]) {
+            int change = dk0[nb0 - 1] - dk1[0];
+            int half = (dk1[nb1 - 1] - dk1[0]) / 2;
             if (change > half) change = half;
-            upper[0] += change;
-            upper[nb1 - 1] -= change;
-            qsort(upper, nb1, sizeof(int), cmp_int);
+            dk1[0] += change;
+            dk1[nb1 - 1] -= change;
+            qsort(dk1, nb1, sizeof(int), cmp_int);
         }
-        n_master += nb1;
+
+        n_master = nb0 + nb1;
+        edges[0] = kx;
+        int k = 0;
+        for (int i = 0; i < nb0; i++, k++) edges[k + 1] = edges[k] + dk0[i];
+        for (int i = 0; i < nb1; i++, k++) edges[k + 1] = edges[k] + dk1[i];
+    } else {
+        int dk0[SBR_MAX_BANDS] = { 0 };
+        n_master = build_log_band_widths(kx, k2, bands_per_octave, 1.0f, dk0);
+        edges[0] = kx;
+        for (int i = 0; i < n_master; i++) edges[i + 1] = edges[i] + dk0[i];
     }
 
-    edges[0] = kx;
-    for (int i = 0; i < n_master; i++) edges[i + 1] = edges[i] + widths[i];
-
     sbr->numBands = n_master;
+
+    /* Low-res table (ISO 14496-3 §4.6.18.3.2.2): every other high-res edge,
+     * parity chosen by n_master. */
+    int n_low = (n_master + 1) >> 1;
+    sbr->numBandsLow = n_low;
+    int odd = n_master & 1;
+    sbr->bandEdgesLow[0] = edges[0];
+    for (int b = 1; b <= n_low; b++)
+        sbr->bandEdgesLow[b] = edges[2 * b - odd];
 
     return n_master;
 }
@@ -152,6 +169,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
     SBRInfo *sbr = (SBRInfo *)AllocMemory(size);
     if (!sbr) return NULL;
     memset(sbr, 0, size);
+    sbr->sbrPresent = 1;
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
 
@@ -185,6 +203,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
     sbr->bs_alter_scale = 0; /* only warps a two-region table; see build_freq_table */
+    sbr->bs_freq_res = 1; /* HIGH resolution */
+    sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
 
     /* Where the reconstruction stops. Aim at hearing rather than k2's ceiling:
@@ -213,6 +233,8 @@ static void sbr_frame_silence(SbrFrameData *fd, int channels)
     fd->frameClass   = SBR_FRAME_CLASS_FIXFIX;
     fd->tEnv[0]      = 0;
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
+    fd->bsPointer    = 0;
+    fd->freqRes      = 1;
 }
 
 SBRContext *SbrContextInit(int channels)
@@ -411,8 +433,10 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
 {
     fd->numEnvelopes = sa->numEnvelopes;
     fd->frameClass   = sa->frameClass;
+    fd->bsPointer    = sa->bsPointer;
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
     fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
+    fd->freqRes = sbr->bs_freq_res;
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
@@ -420,8 +444,8 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
 {
     int n_env = fd->numEnvelopes;
     /* Must match write_sbr_envelope's table, or the decoder desyncs. */
-    int nb = sbr->numBands;
-    const int *edges = sbr->bandEdges;
+    int nb = sbr_env_bands(sbr, fd);
+    const int *edges = sbr_env_edges(sbr, fd);
 
     for (int ch = 0; ch < nch; ch++) {
         if (isLfe[ch]) continue;

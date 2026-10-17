@@ -44,6 +44,7 @@ typedef struct SignalAnalysis {
     SbrFrameClass frameClass;
     int numEnvelopes;
     int tEnv[SBR_MAX_ENVELOPES + 1];
+    int bsPointer;
     int envSampled[SBR_MAX_ENVELOPES];
 
     /* Block switching needs a decision for every core channel, so pass 1 runs
