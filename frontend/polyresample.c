@@ -1,6 +1,6 @@
 /*
  * Polyphase Farrow-Interpolated Kaiser-Sinc Resampler
- * Multi-Channel (1..8), SIMD 64-Byte Aligned & Hot-Loop Optimized for FAAC
+ * MAX_CHANNELS Fixed Array Optimized for FAAC
  */
 
 #include "polyresample.h"
@@ -12,6 +12,10 @@
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
+#endif
+
+#ifndef MAX_CHANNELS
+#define MAX_CHANNELS 8
 #endif
 
 #define POLYRESAMPLE_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
@@ -28,9 +32,9 @@ static void *aligned_malloc(size_t size) {
     if (posix_memalign(&ptr, POLYRESAMPLE_ALIGNMENT, size) != 0) return NULL;
     return ptr;
 #else
-    void *ptr = malloc(size + POLYRESAMPLE_ALIGNMENT);
+    void *ptr = malloc(size + POLYRESAMPLE_ALIGNMENT + sizeof(void *));
     if (!ptr) return NULL;
-    uintptr_t addr = (uintptr_t)ptr + POLYRESAMPLE_ALIGNMENT;
+    uintptr_t addr = (uintptr_t)ptr + sizeof(void *) + POLYRESAMPLE_ALIGNMENT - 1;
     void *aligned_ptr = (void *)(addr & ~(uintptr_t)(POLYRESAMPLE_ALIGNMENT - 1));
     ((void **)aligned_ptr)[-1] = ptr;
     return aligned_ptr;
@@ -81,7 +85,7 @@ struct PolyResampler {
     double beta;
     float *polyphase_table;     /* Symmetric polyphase filter bank table [129 x filter_len] */
 
-    float **hist;               /* Per-channel history buffer pointers (1..8 channels) */
+    float *hist[MAX_CHANNELS];  /* Fixed inline MAX_CHANNELS history pointers for zero-indirection cache speed */
     size_t hist_len;            /* Unconsumed frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
 
@@ -100,7 +104,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
 static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, size_t max_out_count);
 
 PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, polyresample_quality_t quality) {
-    if (in_rate == 0 || out_rate == 0 || channels == 0) return NULL;
+    if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
     /* Multi-stage cascade decimation for large downsampling ratios (>2:1) with clean stage ownership */
     if (in_rate > 2 * out_rate) {
@@ -191,18 +195,11 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
 
     /* Ensure history capacity is aligned to 16 floats (64 bytes) for SIMD vector strides */
     r->hist_cap_per_ch = (r->filter_len * 4 + 32768 + 15) & ~((size_t)15);
-    r->hist = (float **)calloc(channels, sizeof(float *));
-    if (!r->hist) {
-        aligned_free(r->polyphase_table);
-        free(r);
-        return NULL;
-    }
 
     for (uint16_t c = 0; c < channels; c++) {
         r->hist[c] = (float *)aligned_malloc(r->hist_cap_per_ch * sizeof(float));
         if (!r->hist[c]) {
             for (uint16_t k = 0; k < c; k++) aligned_free(r->hist[k]);
-            free(r->hist);
             aligned_free(r->polyphase_table);
             free(r);
             return NULL;
@@ -365,7 +362,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
                 temp_coeffs[j] = w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3;
             }
 
-            /* Hot Loop: Native 32-bit float SIMD vector dot-product (8 floats per cycle on AVX2 / 4 on NEON) across all audio channels (1..8) */
+            /* Hot Loop: Native 32-bit float SIMD vector dot-product across inline MAX_CHANNELS history buffers */
             for (uint16_t c = 0; c < r->channels; c++) {
                 const float * restrict h = &r->hist[c][base_idx];
                 float sum = 0.0f;
@@ -402,8 +399,8 @@ size_t polyresample_process(PolyResampler * restrict r, const float * restrict i
     if (!r || !out_samples) return 0;
 
     if (r->stage1 && r->stage2) {
-        size_t stage1_produced = polyresample_process_single(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
-        return polyresample_process_single(r->stage2, r->cascade_buf, stage1_produced, out_samples, max_out_count);
+        size_t stage1_produced = polyresample_process(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
+        return polyresample_process(r->stage2, r->cascade_buf, stage1_produced, out_samples, max_out_count);
     }
 
     return polyresample_process_single(r, in_samples, in_count, out_samples, max_out_count);
@@ -423,9 +420,9 @@ size_t polyresample_flush(PolyResampler *r, float *out_samples, size_t max_out_c
     if (!r || !out_samples) return 0;
 
     if (r->stage1 && r->stage2) {
-        size_t stage1_flushed = polyresample_flush_single(r->stage1, r->cascade_buf, r->cascade_cap / r->channels);
-        size_t stage2_flushed = polyresample_process_single(r->stage2, r->cascade_buf, stage1_flushed, out_samples, max_out_count);
-        return stage2_flushed + polyresample_flush_single(r->stage2, out_samples + stage2_flushed * r->channels, max_out_count - stage2_flushed);
+        size_t stage1_flushed = polyresample_flush(r->stage1, r->cascade_buf, r->cascade_cap / r->channels);
+        size_t stage2_flushed = polyresample_process(r->stage2, r->cascade_buf, stage1_flushed, out_samples, max_out_count);
+        return stage2_flushed + polyresample_flush(r->stage2, out_samples + stage2_flushed * r->channels, max_out_count - stage2_flushed);
     }
 
     return polyresample_flush_single(r, out_samples, max_out_count);
@@ -436,11 +433,8 @@ void polyresample_destroy(PolyResampler *r) {
     if (r->stage1) polyresample_destroy(r->stage1);
     if (r->stage2) polyresample_destroy(r->stage2);
     if (r->cascade_buf) aligned_free(r->cascade_buf);
-    if (r->hist) {
-        for (uint16_t c = 0; c < r->channels; c++) {
-            if (r->hist[c]) aligned_free(r->hist[c]);
-        }
-        free(r->hist);
+    for (uint16_t c = 0; c < r->channels && c < MAX_CHANNELS; c++) {
+        if (r->hist[c]) aligned_free(r->hist[c]);
     }
     if (r->polyphase_table) aligned_free(r->polyphase_table);
     free(r);
