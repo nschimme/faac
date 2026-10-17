@@ -1,6 +1,6 @@
 /*
  * Polyphase Farrow Cubic Interpolated Kaiser-Windowed Sinc Sample Rate Converter
- * Auto-Vectorized Straight-Line C Implementation for FAAC
+ * Clean Multi-Stage Ownership, SIMD 32-Byte Aligned & Subnormal Protected for FAAC
  */
 
 #include "polyresample.h"
@@ -17,6 +17,36 @@
 #define POLYRESAMPLE_NUM_PHASES 256 /* Fine fractional phase resolution for pre-calculated polyphase bank */
 #define POLYRESAMPLE_STORED_PHASES (POLYRESAMPLE_NUM_PHASES / 2 + 1) /* 129 phases stored using linear phase symmetry */
 #define POLYRESAMPLE_MAX_FILTER_LEN 512 /* Upper bound for stack-allocated temporary coefficient buffers */
+#define POLYRESAMPLE_ALIGNMENT 32 /* 32-byte alignment for AVX2/NEON SIMD vector loads */
+
+/* Helper function for 32-byte SIMD memory allocation */
+static void *aligned_malloc(size_t size) {
+#if defined(_WIN32)
+    return _aligned_malloc(size, POLYRESAMPLE_ALIGNMENT);
+#elif defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
+    void *ptr = NULL;
+    if (posix_memalign(&ptr, POLYRESAMPLE_ALIGNMENT, size) != 0) return NULL;
+    return ptr;
+#else
+    void *ptr = malloc(size + POLYRESAMPLE_ALIGNMENT);
+    if (!ptr) return NULL;
+    uintptr_t addr = (uintptr_t)ptr + POLYRESAMPLE_ALIGNMENT;
+    void *aligned_ptr = (void *)(addr & ~(uintptr_t)(POLYRESAMPLE_ALIGNMENT - 1));
+    ((void **)aligned_ptr)[-1] = ptr;
+    return aligned_ptr;
+#endif
+}
+
+static void aligned_free(void *ptr) {
+    if (!ptr) return;
+#if defined(_WIN32)
+    _aligned_free(ptr);
+#elif defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
+    free(ptr);
+#else
+    free(((void **)ptr)[-1]);
+#endif
+}
 
 /* Robust double-precision I0 Bessel function with dynamic convergence */
 static double bessel_i0(double x) {
@@ -57,8 +87,9 @@ struct PolyResampler {
 
     size_t delay;
 
-    /* Cascade for large downsampling ratios (>2:1) */
+    /* Multi-stage cascade pointers with clean ownership model */
     PolyResampler *stage1;
+    PolyResampler *stage2;
     float *cascade_buf;
     size_t cascade_cap;
 };
@@ -71,14 +102,18 @@ static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, si
 PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, polyresample_quality_t quality) {
     if (in_rate == 0 || out_rate == 0 || channels == 0) return NULL;
 
-    /* Multi-stage cascade decimation for large downsampling ratios (>2:1) */
+    /* Multi-stage cascade decimation for large downsampling ratios (>2:1) with clean stage ownership */
     if (in_rate > 2 * out_rate) {
         uint32_t intermediate_rate = in_rate / 2;
         PolyResampler *r = (PolyResampler *)calloc(1, sizeof(PolyResampler));
         if (!r) return NULL;
 
         r->stage1 = polyresample_create(in_rate, intermediate_rate, channels, quality);
-        if (!r->stage1) {
+        r->stage2 = polyresample_create(intermediate_rate, out_rate, channels, quality);
+
+        if (!r->stage1 || !r->stage2) {
+            polyresample_destroy(r->stage1);
+            polyresample_destroy(r->stage2);
             free(r);
             return NULL;
         }
@@ -90,33 +125,15 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
         r->ratio = (double)out_rate / (double)in_rate;
 
         r->cascade_cap = 16384 * channels;
-        r->cascade_buf = (float *)malloc(r->cascade_cap * sizeof(float));
+        r->cascade_buf = (float *)aligned_malloc(r->cascade_cap * sizeof(float));
         if (!r->cascade_buf) {
             polyresample_destroy(r->stage1);
+            polyresample_destroy(r->stage2);
             free(r);
             return NULL;
         }
 
-        PolyResampler *stage2 = polyresample_create(intermediate_rate, out_rate, channels, quality);
-        if (!stage2) {
-            polyresample_destroy(r->stage1);
-            free(r->cascade_buf);
-            free(r);
-            return NULL;
-        }
-
-        r->filter_len = stage2->filter_len;
-        r->beta = stage2->beta;
-        r->polyphase_table = stage2->polyphase_table;
-        r->hist = stage2->hist;
-        r->hist_cap_per_ch = stage2->hist_cap_per_ch;
-        r->delay = r->stage1->delay + stage2->delay;
-
-        stage2->polyphase_table = NULL;
-        stage2->hist = NULL;
-        free(stage2);
-
-        assert(r->filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
+        r->delay = r->stage1->delay + r->stage2->delay;
         return r;
     }
 
@@ -140,13 +157,13 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     if ((r->filter_len % 2) == 0) r->filter_len++;
     assert(r->filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
 
-    r->polyphase_table = (float *)malloc(POLYRESAMPLE_STORED_PHASES * r->filter_len * sizeof(float));
+    /* Allocate polyphase table with 32-byte SIMD alignment */
+    r->polyphase_table = (float *)aligned_malloc(POLYRESAMPLE_STORED_PHASES * r->filter_len * sizeof(float));
     if (!r->polyphase_table) {
         free(r);
         return NULL;
     }
 
-    /* Cutoff frequency tuned to 0.48 * fs to maximize audio bandwidth */
     double cutoff = (r->ratio < 1.0) ? 0.48 * r->ratio : 0.48;
     double half_len = (r->filter_len - 1) / 2.0;
 
@@ -174,20 +191,21 @@ PolyResampler *polyresample_create(uint32_t in_rate, uint32_t out_rate, uint16_t
     r->hist_cap_per_ch = r->filter_len * 4 + 32768;
     r->hist = (float **)calloc(channels, sizeof(float *));
     if (!r->hist) {
-        free(r->polyphase_table);
+        aligned_free(r->polyphase_table);
         free(r);
         return NULL;
     }
 
     for (uint16_t c = 0; c < channels; c++) {
-        r->hist[c] = (float *)calloc(r->hist_cap_per_ch, sizeof(float));
+        r->hist[c] = (float *)aligned_malloc(r->hist_cap_per_ch * sizeof(float));
         if (!r->hist[c]) {
-            for (uint16_t k = 0; k < c; k++) free(r->hist[k]);
+            for (uint16_t k = 0; k < c; k++) aligned_free(r->hist[k]);
             free(r->hist);
-            free(r->polyphase_table);
+            aligned_free(r->polyphase_table);
             free(r);
             return NULL;
         }
+        memset(r->hist[c], 0, r->hist_cap_per_ch * sizeof(float));
     }
 
     r->delay = (size_t)half_len;
@@ -223,8 +241,10 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
             while (new_cap < needed_cap) new_cap *= 2;
 
             for (uint16_t c = 0; c < r->channels; c++) {
-                float *new_buf = (float *)realloc(r->hist[c], new_cap * sizeof(float));
+                float *new_buf = (float *)aligned_malloc(new_cap * sizeof(float));
                 if (!new_buf) return 0;
+                memcpy(new_buf, r->hist[c], r->hist_len * sizeof(float));
+                aligned_free(r->hist[c]);
                 r->hist[c] = new_buf;
             }
             r->hist_cap_per_ch = new_cap;
@@ -254,7 +274,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
         double frac = in_pos - (double)base_idx;
         double phase_exact = frac * (double)POLYRESAMPLE_NUM_PHASES;
         size_t p_idx = (size_t)floor(phase_exact);
-        double delta = phase_exact - (double)p_idx; /* Fractional offset inside [p_idx, p_idx+1] for Farrow interpolation */
+        double delta = phase_exact - (double)p_idx;
 
         if (p_idx >= POLYRESAMPLE_NUM_PHASES) p_idx = POLYRESAMPLE_NUM_PHASES - 1;
 
@@ -274,7 +294,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
                 out_samples[out_frames * r->channels + c] = (float)sum;
             }
         } else {
-            /* 1. Interpolate-Then-Convolve: Pre-calculate flat interpolated filter coefficients into a temporary array outside channel/tap loops */
+            /* Interpolate-Then-Convolve: Pre-calculate flat interpolated filter coefficients into temporary array outside channel/tap loops */
             size_t p0 = (p_idx > 0) ? p_idx - 1 : 0;
             size_t p1 = p_idx;
             size_t p2 = (p_idx + 1 < POLYRESAMPLE_NUM_PHASES) ? p_idx + 1 : POLYRESAMPLE_NUM_PHASES - 1;
@@ -302,7 +322,6 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
             double w2 = -1.5 * d3 + 2.0 * d2 + 0.5 * d;
             double w3 = 0.5 * d3 - 0.5 * d2;
 
-            /* Flat coefficient interpolation loop - zero branches inside sample dot-product */
             for (size_t j = 0; j < filter_len; j++) {
                 double k0 = m0 ? (double)c0[filter_len - 1 - j] : (double)c0[j];
                 double k1 = m1 ? (double)c1[filter_len - 1 - j] : (double)c1[j];
@@ -312,7 +331,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
                 temp_coeffs[j] = (float)(w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3);
             }
 
-            /* 2. Flat straight-line inner dot-product loop: easily auto-vectorized by LLVM/GCC without manual unroll friction */
+            /* Flat straight-line inner dot-product loop over 32-byte aligned memory */
             for (uint16_t c = 0; c < r->channels; c++) {
                 const float * restrict h = &r->hist[c][base_idx];
                 double sum = 0.0;
@@ -345,9 +364,9 @@ size_t polyresample_process(PolyResampler * restrict r, const float * restrict i
                            float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
-    if (r->stage1) {
-        size_t stage1_produced = polyresample_process(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
-        return polyresample_process_single(r, r->cascade_buf, stage1_produced, out_samples, max_out_count);
+    if (r->stage1 && r->stage2) {
+        size_t stage1_produced = polyresample_process_single(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
+        return polyresample_process_single(r->stage2, r->cascade_buf, stage1_produced, out_samples, max_out_count);
     }
 
     return polyresample_process_single(r, in_samples, in_count, out_samples, max_out_count);
@@ -366,10 +385,10 @@ static size_t polyresample_flush_single(PolyResampler *r, float *out_samples, si
 size_t polyresample_flush(PolyResampler *r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
-    if (r->stage1) {
-        size_t stage1_flushed = polyresample_flush(r->stage1, r->cascade_buf, r->cascade_cap / r->channels);
-        size_t main_flushed = polyresample_process_single(r, r->cascade_buf, stage1_flushed, out_samples, max_out_count);
-        return main_flushed + polyresample_flush_single(r, out_samples + main_flushed * r->channels, max_out_count - main_flushed);
+    if (r->stage1 && r->stage2) {
+        size_t stage1_flushed = polyresample_flush_single(r->stage1, r->cascade_buf, r->cascade_cap / r->channels);
+        size_t stage2_flushed = polyresample_process_single(r->stage2, r->cascade_buf, stage1_flushed, out_samples, max_out_count);
+        return stage2_flushed + polyresample_flush_single(r->stage2, out_samples + stage2_flushed * r->channels, max_out_count - stage2_flushed);
     }
 
     return polyresample_flush_single(r, out_samples, max_out_count);
@@ -378,13 +397,14 @@ size_t polyresample_flush(PolyResampler *r, float *out_samples, size_t max_out_c
 void polyresample_destroy(PolyResampler *r) {
     if (!r) return;
     if (r->stage1) polyresample_destroy(r->stage1);
-    if (r->cascade_buf) free(r->cascade_buf);
+    if (r->stage2) polyresample_destroy(r->stage2);
+    if (r->cascade_buf) aligned_free(r->cascade_buf);
     if (r->hist) {
         for (uint16_t c = 0; c < r->channels; c++) {
-            if (r->hist[c]) free(r->hist[c]);
+            if (r->hist[c]) aligned_free(r->hist[c]);
         }
         free(r->hist);
     }
-    if (r->polyphase_table) free(r->polyphase_table);
+    if (r->polyphase_table) aligned_free(r->polyphase_table);
     free(r);
 }
