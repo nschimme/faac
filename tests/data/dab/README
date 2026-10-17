@@ -1,0 +1,20 @@
+960-sample (DAB+) test vectors for libfaad's faad_dab_test.
+
+lc_mono32  AAC-LC, mono, 32 kHz, 10 access units
+lc_st48    AAC-LC, stereo, 48 kHz, 8 access units
+he2_st48   HE-AAC v2 (SBR + PS), stereo, 48 kHz, 8 access units
+he2_st32   HE-AAC v2, stereo, 32 kHz, 9 access units; includes frames with 2- and
+           4-envelope fixed SBR grids (a different clip from the others)
+
+*.dab      length-prefixed raw access units: a little-endian uint32 ASC length,
+           the AudioSpecificConfig (frameLengthFlag = 1), then each access unit
+           as a little-endian uint32 length and its bytes.
+*.ref.pcm  16-bit PCM from FDK's decoder for the same stream, interleaved,
+           native little-endian. The test aligns it to libfaad's output by the
+           two decoders' start-up delays.
+
+The streams were made by the Opendigitalradio fork of fdk-aac, the only encoder
+at hand that accepts a 960-sample granule, from the first seconds of one music
+clip, then trimmed. The scripts that rebuild them, and that compare libfaad
+with FDK, FFmpeg and FAAD2 over a wider set of rates and channel layouts, are
+in the faac-benchmark repository (scripts/dabplus_960).

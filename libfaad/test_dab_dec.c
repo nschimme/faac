@@ -1,3 +1,7 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 /*
  * FAAD - Freeware Advanced Audio Decoder
  * Unit test for DAB+ 960-sample frame size
@@ -20,6 +24,11 @@ int main(void)
 
     /* Test 1: ASC build with 960 frame length (frame_length_flag = 1) */
     uint8_t asc_960[2] = { 0x12, 0x14 };
+    unsigned channels = 2;
+    if (lib_info.max_channels == 1) {
+        asc_960[1] = 0x0c;
+        channels = 1;
+    }
 
     faad_config cfg;
     faad_config_init(&cfg, sizeof(cfg));
@@ -37,7 +46,7 @@ int main(void)
     assert(st == FAAD_OK);
     assert(info.frame_samples == 960);
     assert(info.sample_rate == 44100);
-    assert(info.channels == 2);
+    assert(info.channels == channels);
     printf("ASC 960 frame samples: %u, rate: %u, channels: %u\n", info.frame_samples, info.sample_rate, info.channels);
 
     faad_decoder_close(&dec);

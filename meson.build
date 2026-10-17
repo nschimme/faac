@@ -71,8 +71,40 @@ subdir('libfaam')
 
 if get_option('decoder')
     subdir('libfaad')
+    # Compile the harness in ordinary CI builds without requiring libFuzzer's main.
+    static_library('fuzz_faad_raw960', 'tests/fuzz/fuzz_faad_raw960.c',
+        include_directories : ['include'], install : false)
 endif
 
 if get_option('frontend')
     subdir('frontend')
+endif
+
+# Consumers must link without any define, whichever flavour of a library they
+# pick. Only Windows declares the API differently per flavour.
+if host_machine.system() == 'windows'
+    link_checks = []
+    if is_variable('libfaac_shared')
+        link_checks += [['faac', 'shared', libfaac_shared]]
+    endif
+    if is_variable('libfaac_static')
+        link_checks += [['faac', 'static', libfaac_static]]
+    endif
+    if is_variable('libfaad_shared')
+        link_checks += [['faad', 'shared', libfaad_shared]]
+    endif
+    if is_variable('libfaad_static')
+        link_checks += [['faad', 'static', libfaad_static]]
+    endif
+    if is_variable('libfaam_shared')
+        link_checks += [['faam', 'shared', libfaam_shared]]
+    endif
+    link_checks += [['faam', 'static', libfaam_static]]
+    foreach c : link_checks
+        test('link_' + c[0] + '_' + c[1],
+            executable('link_check_' + c[0] + '_' + c[1], 'tests/link_check.c',
+                include_directories : ['include'],
+                c_args : ['-DCHECK_' + c[0].to_upper()],
+                link_with : c[2]))
+    endforeach
 endif
