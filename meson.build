@@ -54,6 +54,12 @@ else
     add_project_arguments('-include', meson.current_build_dir() / 'config.h', language: 'c')
 endif
 
+extra_args = cc.get_supported_arguments([
+    '-Werror=unused-parameter',
+    '/we4100',
+])
+add_project_arguments(extra_args, language: 'c')
+
 
 subdir('docs')
 subdir('include')
