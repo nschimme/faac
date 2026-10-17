@@ -56,7 +56,12 @@ endif
 
 extra_args = cc.get_supported_arguments([
     '-Werror=unused-parameter',
+    '-Werror=shadow',
     '/we4100',
+    '/we4456',
+    '/we4457',
+    '/we4458',
+    '/we4459',
 ])
 add_project_arguments(extra_args, language: 'c')
 

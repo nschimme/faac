@@ -439,7 +439,7 @@ faam_status faam_muxer_open(const faam_muxer_config *src, const faam_io *io, faa
         flush_staging(m);
         if (!m->error && m->io.flush && !m->io.flush(m->io.user_data)) m->error = FAAM_ERR_IO_WRITE;
         if (m->error) {
-            faam_status st = m->error;
+            st = m->error;
             faam_muxer_close(&m);
             return st;
         }
