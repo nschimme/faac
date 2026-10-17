@@ -44,13 +44,14 @@ if get_option('encoder')
         dependencies: [frontend_common_dep]
     )
 
-    libm = cc.find_library('m', required: true)
+    libm = cc.find_library('m', required: false)
+    faac_deps = [libshell32] + (libm.found() ? [libm] : [])
     faac = executable('faac',
         ['main.c'],
         c_args: c_args_list,
         include_directories: ['..', '../include', common_inc],
         link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
-        dependencies: [libshell32, libm],
+        dependencies: faac_deps,
         install: true
     )
 
