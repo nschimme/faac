@@ -2,7 +2,7 @@
 libiconv = cc.find_library('iconv', required: false)
 has_iconv = cc.has_header('iconv.h') and cc.has_function('iconv_open', dependencies: [libiconv])
 
-# Reruns every build, unlike config.h; only encode_engine.c needs it, so
+# Reruns every build, unlike config.h; only charset.c needs it, so
 # it's scoped here, not the root meson.build. No --tags: release tags here
 # are lightweight, so this always resolves to the bare short hash rather
 # than a tag name -- avoids reconciling it against meson.project_version().
@@ -23,7 +23,8 @@ libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
 
 frontend_common = static_library('frontend_common',
-    ['input.c', 'cli_io.c', 'charset.c', 'help.c', git_version_h],
+    ['input.c', 'cli_io.c', 'charset.c', 'help.c',
+     'input.h', 'cli_io.h', 'charset.h', 'help.h', git_version_h],
     include_directories: ['..', '../include', '../common'],
     c_args: c_args_list,
     dependencies: [libiconv],
@@ -38,10 +39,8 @@ if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
     libfrontend = static_library('frontend',
         ['mp4write.c', 'output.c', 'encode_engine.c', 'progress.c',
-         'input.h', 'mp4write.h', 'cli_io.h', 'charset.h', 'progress.h', 'help.h', 'output.h', 'encode_engine.h', '../common/endian.h', git_version_h],
-        include_directories: ['..', '../include', '../common'],
-        link_with: [libfaac_for_frontend, libfaam_for_frontend],
-        c_args: c_args_list,
+         'mp4write.h', 'progress.h', 'output.h', 'encode_engine.h'],
+        link_with: [libfaac_for_frontend],
         dependencies: [frontend_common_dep]
     )
 
@@ -72,10 +71,7 @@ endif
 if get_option('muxer')
     faam = executable('faam',
         ['faam_main.c', 'adts.c', 'annexb.c',
-         'adts.h', 'annexb.h', 'cli_io.h', git_version_h],
-        include_directories: ['..', '../include', '../common'],
-        link_with: [libfaam_for_frontend],
-        c_args: c_args_list,
+         'adts.h', 'annexb.h'],
         dependencies: [libshell32, frontend_common_dep],
         install: true
     )
