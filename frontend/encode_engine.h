@@ -94,6 +94,10 @@ typedef struct {
     bool encoder_info;   /* write the (c)too tool atom: version and settings */
     bool faststart;      /* MP4: moov before mdat, rewritten at the end */
 
+    bool drc;            /* --drc: enable automatic DRC analysis */
+    float drc_ref_level; /* --drc-ref-level <LUFS>: target LUFS [-31.75, 0.0] */
+    bool drc_ref_level_given;
+
     mp4_metadata_t metadata;
     const char *creation_time_str;
     const uint8_t *art_data;

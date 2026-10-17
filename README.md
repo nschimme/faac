@@ -64,6 +64,7 @@ Lesser General Public License for more details.
 | `muxer-video` | true | `libfaam`: H.264/H.265 video tracks |
 | `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
+| `drc` | false | Enable AAC dynamic range control metadata output support |
 | `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
 
 Library integration: [FAAC encoder API](docs/libfaac.md) and [FAAM MP4 muxer/demuxer API](docs/libfaam.md).
