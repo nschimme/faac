@@ -135,7 +135,7 @@ static const help_t help_io[] = {
      "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
     {"--rate <hz|auto>",
      "Resample input audio before encoding (e.g. --rate 44100 or --rate auto).",
-     "Resample audio using polyphase Kaiser FIR filtering. --rate auto picks optimal rate for high sample rates (>48kHz) or low bitrates."},
+     "Resample audio using Polyphase Farrow-Interpolated Kaiser-Sinc Resampler. --rate auto picks optimal rate for high sample rates (>48kHz) or low bitrates."},
     {"--decimate",
      "Force multi-stage decimation cascade for downsampling ratios.",
      "Speeds up large downsampling ratios by applying progressive 2:1 decimation stages."},
