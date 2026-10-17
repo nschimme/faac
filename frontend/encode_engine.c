@@ -40,7 +40,7 @@
 #include "mp4write.h"
 #include "charset.h"
 #include "cli_io.h"
-#include "polyresample.h"
+#include <faar.h>
 
 void init_encode_options(encode_options_t *opts)
 {
@@ -470,7 +470,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder *hEncoder = NULL;
     FILE *outfile = NULL;
 
-    PolyResampler *resampler = NULL;
+    faar_handle_t resampler = NULL;
     float *resample_in_buf = NULL;
     float *resample_out_buf = NULL;
 
@@ -631,17 +631,17 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (resample_active)
     {
         /* Automatic resampler quality selection:
-         * POLYRESAMPLE_QUALITY_HIGH: High sample rates (>48kHz), high quality (-q >= 200), or archival bitrates (>=192kbps)
-         * POLYRESAMPLE_QUALITY_GOOD: Default balanced mode for standard VBR/ABR encoding
-         * POLYRESAMPLE_QUALITY_FAST: Low bitrates (<32kbps) where core AAC quantization bounds dominant noise floor */
-        polyresample_quality_t resample_quality = POLYRESAMPLE_QUALITY_GOOD;
+         * FAAR_QUALITY_HIGH: High sample rates (>48kHz), high quality (-q >= 200), or archival bitrates (>=192kbps)
+         * FAAR_QUALITY_GOOD: Default balanced mode for standard VBR/ABR encoding
+         * FAAR_QUALITY_FAST: Low bitrates (<32kbps) where core AAC quantization bounds dominant noise floor */
+        faar_quality_t resample_quality = FAAR_QUALITY_GOOD;
         uint32_t total_bitrate = opts->bit_rate;
         if (raw_sample_rate > 48000 || opts->quant_quality >= 200 || total_bitrate >= 192000)
-            resample_quality = POLYRESAMPLE_QUALITY_HIGH;
+            resample_quality = FAAR_QUALITY_HIGH;
         else if (total_bitrate > 0 && total_bitrate < 32000)
-            resample_quality = POLYRESAMPLE_QUALITY_FAST;
+            resample_quality = FAAR_QUALITY_FAST;
 
-        resampler = polyresample_create(raw_sample_rate, target_rate, num_channels, resample_quality);
+        resampler = faar_create(raw_sample_rate, target_rate, num_channels, resample_quality);
         if (!resampler)
             FAIL("Couldn't create resampler instance for %u Hz -> %u Hz\n",
                  raw_sample_rate, target_rate);
@@ -796,7 +796,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         if (resample_active)
         {
             size_t enc_samples_needed = samples_per_frame;
-            size_t resample_out_produced = polyresample_process(resampler, NULL, 0, resample_out_buf, enc_samples_needed / num_channels);
+            size_t resample_out_produced = faar_process(resampler, NULL, 0, resample_out_buf, enc_samples_needed / num_channels);
 
             while (resample_out_produced < enc_samples_needed / num_channels && !input_eof)
             {
@@ -816,16 +816,16 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 if (raw_read == 0)
                 {
                     input_eof = true;
-                    resample_out_produced += polyresample_flush(resampler, resample_out_buf + resample_out_produced * num_channels,
-                                                            (enc_samples_needed / num_channels) - resample_out_produced);
+                    resample_out_produced += faar_flush(resampler, resample_out_buf + resample_out_produced * num_channels,
+                                                        (enc_samples_needed / num_channels) - resample_out_produced);
                     break;
                 }
                 else
                 {
                     current_input_samples += (raw_read / num_channels);
-                    resample_out_produced += polyresample_process(resampler, resample_in_buf, raw_read / num_channels,
-                                                            resample_out_buf + resample_out_produced * num_channels,
-                                                            (enc_samples_needed / num_channels) - resample_out_produced);
+                    resample_out_produced += faar_process(resampler, resample_in_buf, raw_read / num_channels,
+                                                         resample_out_buf + resample_out_produced * num_channels,
+                                                         (enc_samples_needed / num_channels) - resample_out_produced);
                 }
             }
 
@@ -987,7 +987,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
 cleanup:
-    if (resampler) polyresample_destroy(resampler);
+    if (resampler) faar_destroy(resampler);
     if (resample_in_buf) free(resample_in_buf);
     if (resample_out_buf) free(resample_out_buf);
     if (pcmbuf) free(pcmbuf);
