@@ -52,6 +52,11 @@ struct BitStream;
    delayed by that much. Whole slots keep the analysis on the decoder's grid. */
 #define SBR_ANALYSIS_DELAY   (6 * SBR_QMF_BANDS_64)
 #define SBR_QMF_HIST_LEN     (SBR_QMF_OVL_LEN_64 + SBR_ANALYSIS_DELAY)
+/* All encoded envelopes use the high-resolution master band table. */
+#define SBR_FREQ_RES_HIGH     1
+/* Every master band is coded; VARFIX grids have no transient envelope. */
+#define SBR_XOVER_BAND        0
+#define SBR_GRID_POINTER      0
 #define SBR_MAX_BANDS        64
 #define SBR_MAX_ENVELOPES     4
 #define SBR_HEADER_PERIOD    30
@@ -123,6 +128,8 @@ struct BitStream;
 #define SBR_TWO_REGION_MAX_RATE         48000
 #define SBR_ONE_REGION_NUM              22449
 #define SBR_ONE_REGION_DEN              10000
+#define SBR_TWO_REGION_RATIO            2.2449f
+#define SBR_UPPER_REGION_WARP           1.3f
 /* Below this per-channel rate the core is too starved to cover much, so the
  * envelope stops short of 20 kHz instead of spending bits on the quietest top
  * bands. Not at 32 kHz or below: Nyquist is 16 kHz there, so a 14 kHz stop

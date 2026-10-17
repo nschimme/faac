@@ -96,8 +96,7 @@ int main(void) {
 
                     /* Build via libfaac function */
                     build_freq_table(sbr);
-                    SbrFrameData fd_dummy = { .freqRes = 1 };
-                    int actual_n = sbr_env_edges(sbr, &fd_dummy) ? sbr->numBands : 0;
+                    int actual_n = sbr->numBands;
                     int actual_edges[SBR_MAX_BANDS + 1];
                     memcpy(actual_edges, sbr->bandEdges, (actual_n + 1) * sizeof(int));
                     free(sbr);
