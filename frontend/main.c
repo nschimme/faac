@@ -129,7 +129,7 @@ static const help_t help_io[] = {
      "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
     {"--rate <hz|auto>",
      "Resample input audio before encoding (e.g. --rate 44100 or --rate auto).",
-     "Resample audio using ARDFTSRC. --rate auto picks optimal rate for high sample rates (>48kHz) or low bitrates."},
+     "Resample audio using polyphase Kaiser FIR filtering. --rate auto picks optimal rate for high sample rates (>48kHz) or low bitrates."},
     {"-R <samplerate>",
      "Raw PCM input rate.",
      "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},

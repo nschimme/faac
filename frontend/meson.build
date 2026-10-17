@@ -38,8 +38,8 @@ if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
 
     libfrontend = static_library('frontend',
-        ['mp4write.c', 'output.c', 'encode_engine.c', 'progress.c', 'ardftsrc.c',
-         'mp4write.h', 'progress.h', 'output.h', 'encode_engine.h', 'ardftsrc.h'],
+        ['mp4write.c', 'output.c', 'encode_engine.c', 'progress.c', 'polyresample.c',
+         'mp4write.h', 'progress.h', 'output.h', 'encode_engine.h', 'polyresample.h'],
         link_with: [libfaac_for_frontend],
         dependencies: [frontend_common_dep]
     )
