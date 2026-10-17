@@ -34,7 +34,7 @@ static void put_header(const SBRInfo *sbr, BitStream *bs)
     uint32_t header = SBR_AMP_RES;
     header = (header << 4) | sbr->bs_start_freq;
     header = (header << 4) | sbr->bs_stop_freq;
-    header = (header << 3) | sbr->bs_xover_band;
+    header = (header << 3) | SBR_XOVER_BAND;
     header = (header << 4) | 2 | extra2; /* reserved=0, extra_1=1 */
     header = (header << 2) | sbr->bs_freq_scale;
     header = (header << 1) | sbr->bs_alter_scale;
@@ -43,7 +43,7 @@ static void put_header(const SBRInfo *sbr, BitStream *bs)
     PutBit(bs, header, 21 + 6 * extra2);
 }
 
-static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
+static void put_grid(const SbrFrameData *fd, BitStream *bs)
 {
     int num_env = fd->numEnvelopes;
     PutBit(bs, fd->frameClass, 2);
@@ -52,11 +52,11 @@ static void put_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
         PutBit(bs, num_env - 1, 2);
         for (int i = 0; i < num_env - 1; i++) PutBit(bs, (fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2);
         /* VARFIX frames carry two envelopes and a two-bit pointer. */
-        PutBit(bs, fd->bsPointer, 2);
-        for (int i = 0; i < num_env; i++) PutBit(bs, sbr->bs_freq_res, 1);
+        PutBit(bs, SBR_GRID_POINTER, 2);
+        for (int i = 0; i < num_env; i++) PutBit(bs, SBR_FREQ_RES_HIGH, 1);
     } else {
         PutBit(bs, num_env >> 1, 2);
-        PutBit(bs, sbr->bs_freq_res, 1);
+        PutBit(bs, SBR_FREQ_RES_HIGH, 1);
     }
 }
 
@@ -134,7 +134,7 @@ static int choose_dt(const SBRInfo *sbr, const SbrFrameData *fd, const SbrEnvDat
             const int *values = env->envData[e];
             const int *ref = t ? env_ref(sbr, env, ch, e) : values;
             uint32_t bits = t ? 0 : book->start;
-            int i = !t, nb = sbr_env_bands(sbr, fd);
+            int i = !t, nb = sbr->numBands;
             for (; i < nb; i++) {
                 int d = values[i] - ref[i - !t];
                 if (d < -lav || d > lav) break;
@@ -158,7 +158,7 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
                         int sendHeader, int coupled)
 {
     const SbrEnvRef *prev = &sbr->ch[ch0].ref[~sbr->frameCount & 1];
-    int nb = sbr_env_bands(sbr, fd), n_env = fd->numEnvelopes, n_q = n_env > 1 ? 2 : 1;
+    int nb = sbr->numBands, n_env = fd->numEnvelopes, n_q = n_env > 1 ? 2 : 1;
     /* Time deltas need the previous frame's envelope in the same layout;
      * header frames stay self-contained so a decoder can start there. */
     int noiseLinked = !sendHeader && prev->nb && prev->coupled == coupled;
@@ -173,7 +173,7 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
 
     PutBit(bs, 0, 1); /* bs_data_extra */
     if (nch == 2) PutBit(bs, coupled, 1); /* bs_coupling */
-    for (int ch = 0; ch < ngrid; ch++) put_grid(sbr, fd, bs);
+    for (int ch = 0; ch < ngrid; ch++) put_grid(fd, bs);
     for (int ch = 0; ch < nch; ch++) {
         for (int e = 0; e < n_env; e++) PutBit(bs, dt[ch] >> e & 1, 1);
         for (int q = 0; q < n_q; q++) PutBit(bs, q | noiseLinked, 1);
@@ -228,21 +228,19 @@ static int put_payload(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int 
 
 static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0)
 {
-    if (!sbr || !sbr->sbrPresent) return 0;
-
     int sendHeader = sbr->sendHeaderThisFrame;
     int nch = (id_aac == ID_CPE) ? 2 : 1;
     int payloadBits = 0, coupled = 0;
     int fillBytes = 0;
     /* Room for 2 channels of 4 envelopes of 64 bands at 20 bits plus fields. */
-    uint8_t scratch[2048];
+    enum { SBR_DRY_RUN_CAPACITY = 2048 };
     BitStream dry;
 
     if (nch == 2) couple_envelopes(sbr, fd, ch0);
 
     /* The fill_element's cnt field must precede the payload in the bitstream,
      * so its size is needed before anything is written: each layout is sized
-     * by writing it to scratch (a pair is coupled when that codes smaller,
+     * through the bounded counting stream (a pair is coupled when smaller,
      * ties favor coupled) and the last pass writes the winner. One call site
      * in a loop, so -O3 has no constant nch to clone on. */
     for (int pass = 0; pass <= nch; pass++) {
@@ -264,7 +262,7 @@ static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
             PutBit(bs, fillBytes < 15 ? fillBytes : 15, 4);
             if (fillBytes >= 15) PutBit(bs, fillBytes - 14, 8);
         } else {
-            InitBitStream(&dry, scratch, sizeof scratch);
+            InitBitStream(&dry, NULL, SBR_DRY_RUN_CAPACITY);
             out = &dry;
         }
         int bits = put_payload(sbr, fd, out, nch, ch0, sendHeader, write ? coupled : pass);

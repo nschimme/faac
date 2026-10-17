@@ -37,9 +37,12 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     float workspace[SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
 
-    /* Pass 1: Time-domain transient detection. Identifies the temporal position
-     * and strength of transients across all channels. */
+    float frameStrength = 0.0f;
+    int frameSlot = 0;
+
+    /* The strongest non-LFE transient selects the shared envelope grid. */
     for (int ch = 0; ch < nch; ch++) {
+        if (isLfe[ch]) continue;
         float smax = 0.0f, ssum = 0.0f;
         int smax_idx = 0;
         for (int slot = 0; slot < num_slots; slot++) {
@@ -61,20 +64,10 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             ssum += stot;
         }
 
-        sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
-        sa->ch[ch].transientSlot = smax_idx;
-    }
-
-    /* Choose the temporal grid based on the strongest transient. Synchronizes
-     * envelope borders across all channels to maintain spatial imaging. The
-     * LFE carries no SBR, so it gets no vote. */
-    float frameStrength = 0.0f;
-    int frameSlot = 0;
-    for (int ch = 0; ch < nch; ch++) {
-        if (isLfe[ch]) continue;
-        if (sa->ch[ch].transientStrength > frameStrength) {
-            frameStrength = sa->ch[ch].transientStrength;
-            frameSlot = sa->ch[ch].transientSlot;
+        float strength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
+        if (strength > frameStrength) {
+            frameStrength = strength;
+            frameSlot = smax_idx;
         }
     }
 
@@ -87,14 +80,12 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         sa->tEnv[0] = 0;
         sa->tEnv[1] = innerSbr;
         sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
     } else {
         int ne = sbr->numEnvFixFix;
         sa->numEnvelopes = ne;
         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
         for (int e = 0; e <= ne; e++)
             sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
-        sa->bsPointer = 0;
     }
 
     /* Slots analysed per envelope, for power normalization: the multiples of

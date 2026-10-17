@@ -55,15 +55,12 @@ typedef struct SbrFrameData {
     uint8_t eff_amp_res;
     uint8_t frameClass;
     uint8_t tEnv[SBR_MAX_ENVELOPES + 1];
-    uint8_t bsPointer;
-    uint8_t freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
     SbrEnvData ch[];
 } SbrFrameData;
 
 struct SBRInfo {
-    int sbrPresent;
     /* Coupled rendition of the pair being written: level, then balance. */
     SbrEnvData cpl[2];
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
@@ -75,14 +72,10 @@ struct SBRInfo {
     int k2;
     int numBands;
     int bandEdges[SBR_MAX_BANDS + 1];
-    int numBandsLow; /* low-res band count: every other high-res edge */
-    int bandEdgesLow[(SBR_MAX_BANDS + 1) / 2 + 1];
 
     /* --- bitstream header fields --- */
-    int bs_freq_res;       /* envelope frequency resolution: 1 = HIGH (f_master) */
     int bs_start_freq;
     int bs_stop_freq;
-    int bs_xover_band;
     int bs_alter_scale;
     int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
     int numEnvFixFix;      /* envelopes in a frame without a transient: 1 or 4 */
@@ -123,22 +116,11 @@ struct SBRContext {
     unsigned char frameData[];
 };
 
-/* The envelope band table this frame codes over. The quantizer and the writer
- * must agree on it, and the decoder picks the same one from bs_freq_res. */
-static inline int sbr_env_bands(const SBRInfo *sbr, const SbrFrameData *fd)
-{
-    return fd->freqRes ? sbr->numBands : sbr->numBandsLow;
-}
-
-static inline const int *sbr_env_edges(const SBRInfo *sbr, const SbrFrameData *fd)
-{
-    return fd->freqRes ? sbr->bandEdges : sbr->bandEdgesLow;
-}
-
 SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
 /* Recompute the bitrate-dependent band config without reallocating; lets
  * SetConfiguration adjust an existing handle. */
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
+int build_freq_table(SBRInfo *sbr);
 void SbrEnd(SBRInfo *sbr);
 
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
