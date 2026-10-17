@@ -25,8 +25,8 @@ libshell32 = cc.find_library('shell32', required: target_machine.system() == 'wi
 if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
     libfrontend = static_library('frontend',
-        ['input.c', 'mp4write.c', 'cli_io.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c', 'ardftsrc.c',
-         'input.h', 'mp4write.h', 'cli_io.h', 'charset.h', 'progress.h', 'help.h', 'output.h', 'encode_engine.h', 'ardftsrc.h', '../common/endian.h', git_version_h],
+        ['input.c', 'mp4write.c', 'cli_io.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c', 'help.c', 'polyresample.c',
+         'input.h', 'mp4write.h', 'cli_io.h', 'charset.h', 'progress.h', 'help.h', 'output.h', 'encode_engine.h', 'polyresample.h', '../common/endian.h', git_version_h],
         include_directories: ['..', '../include', '../common'],
         link_with: [libfaac_for_frontend, libfaam_for_frontend],
         c_args: c_args_list,
