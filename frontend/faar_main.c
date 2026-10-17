@@ -30,7 +30,8 @@ typedef enum {
 } pcm_format_t;
 
 static const help_t core_help[] = {
-    {"-r, --rate <Hz>", "Target sample rate (Required, e.g., 48000, 44100)", NULL},
+    {"-r, --rate <Hz>", "Target sample rate (Required, e.g., 48000, 96000, 192000, 384000)", NULL},
+    {"-R, --in-rate <Hz>", "Raw PCM input sample rate in Hz [default: 44100]", NULL},
     {"--quality <preset>", "DSP filter quality (fast, good, high) [default: good]", NULL},
     {"-c, --channels <num>", "Audio channel count [default: 2]", NULL},
     {"-f, --format <fmt>", "Raw PCM sample format (f32le, s16le, s24le) [default: f32le]", NULL},
@@ -134,6 +135,7 @@ static void write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_form
 
 int main(int argc, char **argv) {
     uint32_t target_rate = 0;
+    uint32_t raw_in_rate = 44100;
     faar_quality_t quality = FAAR_QUALITY_GOOD;
     uint16_t channels = 2;
     pcm_format_t fmt = FMT_F32LE;
@@ -147,6 +149,7 @@ int main(int argc, char **argv) {
 
     static struct option long_options[] = {
         {"rate", required_argument, 0, 'r'},
+        {"in-rate", required_argument, 0, 'R'},
         {"quality", required_argument, 0, 1000},
         {"channels", required_argument, 0, 'c'},
         {"format", required_argument, 0, 'f'},
@@ -159,9 +162,10 @@ int main(int argc, char **argv) {
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "r:c:f:d:v:IDo:h", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "r:R:c:f:d:v:IDo:h", long_options, NULL)) != -1) {
         switch (opt) {
             case 'r': target_rate = (uint32_t)atoi(optarg); break;
+            case 'R': raw_in_rate = (uint32_t)atoi(optarg); break;
             case 1000:
                 if (strcmp(optarg, "fast") == 0) quality = FAAR_QUALITY_FAST;
                 else if (strcmp(optarg, "high") == 0) quality = FAAR_QUALITY_HIGH;
@@ -196,10 +200,15 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (target_rate > 384000) {
+        fprintf(stderr, "Error: Target sample rate %u Hz exceeds maximum supported rate of 384000 Hz.\n", target_rate);
+        return 1;
+    }
+
     pcmfile_t *infile = wav_open_read(input_path, false);
     bool is_wav_input = (infile != NULL);
 
-    uint32_t in_rate = 44100;
+    uint32_t in_rate = raw_in_rate;
     if (is_wav_input) {
         if (ignore_wav_length) infile->bounded_data = false;
         in_rate = infile->samplerate;
@@ -212,7 +221,7 @@ int main(int argc, char **argv) {
         }
         infile->channels = channels;
         infile->samplebytes = (fmt == FMT_F32LE) ? 4 : (fmt == FMT_S24LE ? 3 : 2);
-        infile->samplerate = 44100;
+        infile->samplerate = raw_in_rate;
         infile->isfloat = (fmt == FMT_F32LE);
     }
 
