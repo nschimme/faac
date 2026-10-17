@@ -470,6 +470,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder *hEncoder = NULL;
     FILE *outfile = NULL;
 
+    ArdftsrcResampler *resampler = NULL;
+    float *resample_in_buf = NULL;
+    float *resample_out_buf = NULL;
+
     float *pcmbuf = NULL;
     unsigned char *bitbuf = NULL;
     int *chanmap = NULL;
@@ -612,9 +616,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
         params.channel_map_count = num_channels;
     }
 
-    ArdftsrcResampler *resampler = NULL;
-    float *resample_in_buf = NULL;
-    float *resample_out_buf = NULL;
     size_t resample_in_cap = 0;
     size_t resample_out_cap = 0;
 
