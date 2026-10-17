@@ -40,6 +40,15 @@ typedef enum {
 } faar_quality_t;
 
 /**
+ * @brief Dither modes for bit-depth truncation / quantization
+ */
+typedef enum {
+    FAAR_DITHER_OFF = 0,    /**< No dithering (direct truncation / rounding) */
+    FAAR_DITHER_TPDF = 1,   /**< Triangular Probability Density Function dither */
+    FAAR_DITHER_SHAPED = 2  /**< TPDF dither with high-pass noise shaping error feedback */
+} faar_dither_t;
+
+/**
  * @brief Opaque resampler handle type
  */
 typedef struct faar_resampler_struct *faar_handle_t;
@@ -54,6 +63,16 @@ typedef struct faar_resampler_struct *faar_handle_t;
  * @return Opaque handle to resampler instance, or NULL on allocation failure/invalid parameters.
  */
 FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t channels, faar_quality_t quality);
+
+/**
+ * @brief Set dithering and noise shaping mode on a resampler instance.
+ *
+ * @param handle Resampler instance handle
+ * @param dither Dither mode (OFF, TPDF, SHAPED)
+ * @param target_bits Target integer bit depth (16 or 24)
+ * @return 0 on success, -1 on invalid parameter/handle.
+ */
+FAARAPI int faar_set_dither(faar_handle_t handle, faar_dither_t dither, uint8_t target_bits);
 
 /**
  * @brief Get the filter group delay in input samples.
