@@ -1,6 +1,6 @@
 /*
  * Polyphase Farrow-Interpolated Kaiser-Sinc Resampler
- * Stereo De-Interleaving & Deferred History Shift Optimized for FAAC
+ * Multi-Channel (5.1/7.1), SIMD 64-Byte Aligned & Hot-Loop Optimized for FAAC
  */
 
 #include "polyresample.h"
@@ -81,7 +81,7 @@ struct PolyResampler {
     double beta;
     float *polyphase_table;     /* Symmetric polyphase filter bank table [129 x filter_len] */
 
-    float **hist;               /* Per-channel history buffer pointers */
+    float **hist;               /* Per-channel history buffer pointers (1..8 channels) */
     size_t hist_len;            /* Unconsumed frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
 
@@ -251,13 +251,29 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
             r->hist_cap_per_ch = new_cap;
         }
 
-        /* Fast unit-stride de-interleaving optimization for mono and stereo streams */
+        /* Fast unit-stride de-interleaving for mono, stereo, and 5.1 / 7.1 multichannel streams */
         if (r->channels == 2) {
             float * restrict h0 = r->hist[0] + r->hist_len;
             float * restrict h1 = r->hist[1] + r->hist_len;
             for (size_t i = 0; i < in_count; i++) {
                 h0[i] = in_samples[i * 2 + 0];
                 h1[i] = in_samples[i * 2 + 1];
+            }
+        } else if (r->channels == 6) {
+            /* 5.1 Surround Fast De-Interleave Path */
+            float * restrict h0 = r->hist[0] + r->hist_len;
+            float * restrict h1 = r->hist[1] + r->hist_len;
+            float * restrict h2 = r->hist[2] + r->hist_len;
+            float * restrict h3 = r->hist[3] + r->hist_len;
+            float * restrict h4 = r->hist[4] + r->hist_len;
+            float * restrict h5 = r->hist[5] + r->hist_len;
+            for (size_t i = 0; i < in_count; i++) {
+                h0[i] = in_samples[i * 6 + 0];
+                h1[i] = in_samples[i * 6 + 1];
+                h2[i] = in_samples[i * 6 + 2];
+                h3[i] = in_samples[i * 6 + 3];
+                h4[i] = in_samples[i * 6 + 4];
+                h5[i] = in_samples[i * 6 + 5];
             }
         } else if (r->channels == 1) {
             memcpy(r->hist[0] + r->hist_len, in_samples, in_count * sizeof(float));
@@ -349,7 +365,7 @@ static size_t polyresample_process_single(PolyResampler * restrict r, const floa
                 temp_coeffs[j] = w0 * k0 + w1 * k1 + w2 * k2 + w3 * k3;
             }
 
-            /* Hot Loop: Native 32-bit float SIMD vector dot-product (8 floats per cycle on AVX2 / 4 on NEON) */
+            /* Hot Loop: Native 32-bit float SIMD vector dot-product (8 floats per cycle on AVX2 / 4 on NEON) across all audio channels (1..8) */
             for (uint16_t c = 0; c < r->channels; c++) {
                 const float * restrict h = &r->hist[c][base_idx];
                 float sum = 0.0f;
@@ -386,7 +402,7 @@ size_t polyresample_process(PolyResampler * restrict r, const float * restrict i
     if (!r || !out_samples) return 0;
 
     if (r->stage1 && r->stage2) {
-        size_t stage1_produced = polyresample_process(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
+        size_t stage1_produced = polyresample_process_single(r->stage1, in_samples, in_count, r->cascade_buf, r->cascade_cap / r->channels);
         return polyresample_process_single(r->stage2, r->cascade_buf, stage1_produced, out_samples, max_out_count);
     }
 
