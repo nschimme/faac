@@ -214,6 +214,28 @@ static void AwakeDialogControls(HWND hWnd)
     snprintf(szTemp, sizeof(szTemp), "%uHz %uch", sampleRate, numChannels);
     SetDlgItemText(hWnd, IDC_INPUTPARAMS, szTemp);
 
+    /* Populate Sample Rate dropdown allowing only rates <= input sampleRate (no upsampling) */
+    HWND hSR = GetDlgItem(hWnd, IDC_RESAMPLERATE);
+    SendMessage(hSR, CB_RESETCONTENT, 0, 0);
+
+    LRESULT idx;
+    idx = SendMessage(hSR, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
+    SendMessage(hSR, CB_SETITEMDATA, idx, (LPARAM)UINT32_MAX);
+    idx = SendMessage(hSR, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Native");
+    SendMessage(hSR, CB_SETITEMDATA, idx, (LPARAM)0);
+
+    static const uint32_t standard_rates[] = {96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350};
+    for (size_t i = 0; i < sizeof(standard_rates) / sizeof(standard_rates[0]); i++) {
+        uint32_t rate = standard_rates[i];
+        if (rate < sampleRate) {
+            char rate_str[32];
+            snprintf(rate_str, sizeof(rate_str), "%u Hz", rate);
+            idx = SendMessage(hSR, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)rate_str);
+            SendMessage(hSR, CB_SETITEMDATA, idx, (LPARAM)rate);
+        }
+    }
+    SendMessage(hSR, CB_SETCURSEL, 0, 0);
+
     EnableWindow(GetDlgItem(hWnd, IDOK), TRUE);
 }
 
@@ -314,6 +336,20 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     opts.overwrite = true;
 
     opts.object_type = (enum faac_object_type)GetComboData(hWnd, IDC_OBJECTTYPE, FAAC_OBJ_AUTO);
+
+    {
+        LRESULT res_val = GetComboData(hWnd, IDC_RESAMPLERATE, 0);
+        if (res_val == UINT32_MAX)
+        {
+            opts.rate_auto = true;
+            opts.resample_rate = UINT32_MAX;
+        }
+        else
+        {
+            opts.rate_auto = false;
+            opts.resample_rate = (uint32_t)res_val;
+        }
+    }
 
     {
         LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
@@ -548,6 +584,16 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 
+        {
+            HWND hSR = GetDlgItem(hWnd, IDC_RESAMPLERATE);
+            LRESULT idx;
+            idx = SendMessage(hSR, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
+            SendMessage(hSR, CB_SETITEMDATA, idx, (LPARAM)UINT32_MAX);
+            idx = SendMessage(hSR, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Native");
+            SendMessage(hSR, CB_SETITEMDATA, idx, (LPARAM)0);
+            SendMessage(hSR, CB_SETCURSEL, 0, 0);
+        }
+
         SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"None");
         SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"M/S");
         SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"IS");
@@ -596,6 +642,9 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             AddTip(hWnd, IDC_OBJECTTYPE,
                 "Auto picks LC or HE-AAC v1 based on bitrate; force one to\n"
                 "override that choice.");
+            AddTip(hWnd, IDC_RESAMPLERATE,
+                "Sample rate conversion: Auto chooses optimal rate for bitrate,\n"
+                "Native keeps input sample rate.");
             AddTip(hWnd, IDC_USETNS, "Temporal Noise Shaping: reduces pre-echo on transients.");
             AddTip(hWnd, IDC_USEPNS, "Perceptual Noise Substitution: codes noise-like bands as a noise level.");
             AddTip(hWnd, IDC_SHORTCTL,

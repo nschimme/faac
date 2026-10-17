@@ -550,6 +550,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
         target_rate = opts->resample_rate;
     }
 
+    if (opts->resample_rate > 0 && opts->resample_rate != UINT32_MAX && opts->resample_rate >= raw_sample_rate)
+    {
+        FAIL("Resampling target rate (%u Hz) must be less than input sample rate (%u Hz).\n", opts->resample_rate, raw_sample_rate);
+    }
+
     /* Ensure target sample rate is within ISO/IEC 14496-3 valid AAC rates (7350 Hz to 96000 Hz) */
     if (target_rate < 7350) target_rate = 7350;
     if (target_rate > 96000) target_rate = 96000;

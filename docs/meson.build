@@ -7,3 +7,4 @@ endif
 if get_option('muxer')
     install_man('faam.1')
 endif
+install_man('faar.1', 'libfaar.3')
