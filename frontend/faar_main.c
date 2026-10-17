@@ -37,7 +37,7 @@ static const help_t core_help[] = {
     {"-d, --dither <type>", "Dithering type for integer format output (none, tpdf, shaped) [default: none]", NULL},
     {"--decimate", "Force multi-stage decimation cascade for large downsampling ratios", NULL},
     {"--ignorelength", "Ignore the WAV data length in the header and read to EOF", NULL},
-    {"-q, --quiet", "Quiet mode (suppress progress and status messages)", NULL},
+    {"-v <level>", "Set verbosity level (-v0 is quiet mode) [default: 1]", NULL},
     {"-o, --output <path>", "Explicit output path (or use - for stdout)", NULL},
     {"-h, --help", "Display usage guide", NULL},
     {NULL, NULL, NULL}
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
     const char *input_path = NULL;
     const char *output_path = NULL;
 
-    bool quiet = false;
+    uint8_t verbose = 1;
     bool ignore_wav_length = false;
     bool decimate = false;
 
@@ -153,14 +153,13 @@ int main(int argc, char **argv) {
         {"dither", required_argument, 0, 'd'},
         {"decimate", no_argument, 0, 'D'},
         {"ignorelength", no_argument, 0, 'I'},
-        {"quiet", no_argument, 0, 'q'},
         {"output", required_argument, 0, 'o'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "r:c:f:d:qIDo:h", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "r:c:f:d:v:IDo:h", long_options, NULL)) != -1) {
         switch (opt) {
             case 'r': target_rate = (uint32_t)atoi(optarg); break;
             case 1000:
@@ -179,7 +178,7 @@ int main(int argc, char **argv) {
                 else if (strcmp(optarg, "shaped") == 0) dither = FAAR_DITHER_SHAPED;
                 else dither = FAAR_DITHER_OFF;
                 break;
-            case 'q': quiet = true; break;
+            case 'v': verbose = (uint8_t)atoi(optarg); break;
             case 'I': ignore_wav_length = true; break;
             case 'D': decimate = true; break;
             case 'o': output_path = optarg; break;
@@ -253,15 +252,12 @@ int main(int argc, char **argv) {
     }
 
     if (write_wav_out) {
-        /* Reserve 80-byte header to allow RF64 in-place updates without overwriting PCM audio payload */
-        uint8_t header_placeholder[80] = {0};
-        fwrite(header_placeholder, 1, 80, fout);
+        /* Reserve 44-byte header initially at file start */
+        uint8_t header_placeholder[44] = {0};
+        fwrite(header_placeholder, 1, 44, fout);
     }
 
     size_t chunk_frames = 2048;
-    size_t in_bytes_per_sample = (infile->samplebytes > 0) ? infile->samplebytes : (fmt == FMT_F32LE ? 4 : (fmt == FMT_S24LE ? 3 : 2));
-    size_t in_bytes_per_frame = channels * in_bytes_per_sample;
-    uint8_t *raw_in_buf = (uint8_t *)malloc(chunk_frames * in_bytes_per_frame);
     float *float_in_buf = (float *)malloc(chunk_frames * channels * sizeof(float));
 
     size_t out_cap = chunk_frames * 4;
@@ -270,7 +266,7 @@ int main(int argc, char **argv) {
     uint8_t *raw_out_buf = (uint8_t *)malloc(out_cap * channels * out_bytes_per_sample);
 
     uint64_t total_out_data_bytes = 0;
-    if (!quiet) {
+    if (verbose > 0) {
         fprintf(stderr, "Resampling input: %u Hz -> %u Hz (%u channels)\n", in_rate, target_rate, channels);
     }
 
@@ -344,7 +340,6 @@ int main(int argc, char **argv) {
     }
 
     faar_destroy(r);
-    free(raw_in_buf);
     free(float_in_buf);
     free(float_out_buf);
     free(raw_out_buf);
