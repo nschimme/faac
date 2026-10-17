@@ -89,6 +89,9 @@ typedef struct {
     bool cbr; /* --cbr: bit reservoir, stuffed, declared; needs bit_rate */
     uint32_t bandwidth; /* cutoff frequency in Hz */
 
+    uint32_t resample_rate; /* --rate target Hz, 0 = keep native, UINT32_MAX = auto */
+    bool rate_auto;         /* true if --rate auto was specified */
+
     bool ignore_wav_length;
     bool overwrite;
     bool encoder_info;   /* write the (c)too tool atom: version and settings */
