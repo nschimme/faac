@@ -145,7 +145,7 @@ typedef struct
 } MaskingModel;
 
 /* Masking-model parameters, not AAC syntax constants or an absolute hearing
- * threshold. The default balance and fitted stereo profile share these
+ * threshold. The default balance and fitted profile share these
  * controls; changing them redistributes quantization error between bands. */
 static const MaskingModel masking_model = {
     /* Time-domain RMS in 16-bit PCM units; silence_energy() converts it to
@@ -183,8 +183,8 @@ static const MaskingModel masking_model = {
          * The exponent compresses band/reference energy ratios; both weights
          * balance noise-like average energy against tonal peak energy. */
         { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f },
-        /* Calibrated for rate-limited stereo LC. Keep other stream types on
-         * the default balance; this fit does not establish their quality. */
+        /* Calibrated for rate-limited AAC-LC. HE-AAC uses the default balance so
+         * treble slope de-emphasis does not starve core bands feeding SBR. */
         { .avg_weight = 0.15f, .loud_exponent = 0.35f, .slope_scale = 1.5f },
     },
     /* Empirical target offsets converted to linear multipliers at the knots.
@@ -308,6 +308,10 @@ static float tilt_gain(float khz)
 void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
                            unsigned long bitrate_per_ch, unsigned channels, int is_he)
 {
+    /* Tuned psychoacoustic profile is calibrated specifically for rate-limited
+     * 2-channel stereo LC. 5.1/7.1 surround and HE-AAC retain the default
+     * profile balance (surround multi-channel bit allocation requires the default
+     * balance to prevent high BD-rate regressions). */
     const int tuned = bitrate_per_ch >= masking_model.tune_min_rate
                    && channels == 2 && !is_he;
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
@@ -321,7 +325,9 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
     if (tuned)
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
-    /* Any set rate (VBR has none) at or above the nudge's measured floor. */
+    /* Scalefactor nudging via Viterbi delta cost minimization applies to all
+     * channel counts (mono, stereo, 5.1, 7.1) and AAC profiles (LC and HE-AAC)
+     * at set rates (VBR has none) at or above nudge_min_rate (28 kbps/ch). */
     cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate;
 }
 
