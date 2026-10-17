@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
 
     uint8_t verbose = 1;
     bool ignore_wav_length = false;
-    bool decimate = false;
+    bool allow_extreme_rates = false;
 
     uint32_t decimate_factor = 0;
 
@@ -157,6 +157,7 @@ int main(int argc, char **argv) {
         {"format", required_argument, 0, 'f'},
         {"dither", required_argument, 0, 'd'},
         {"decimate", optional_argument, 0, 'D'},
+        {"allow-extreme-rates", no_argument, 0, 1001},
         {"ignorelength", no_argument, 0, 'I'},
         {"output", required_argument, 0, 'o'},
         {"help", no_argument, 0, 'h'},
@@ -184,6 +185,7 @@ int main(int argc, char **argv) {
                 else if (strcmp(optarg, "shaped") == 0) dither = FAAR_DITHER_SHAPED;
                 else dither = FAAR_DITHER_OFF;
                 break;
+            case 1001: allow_extreme_rates = true; break;
             case 'v': verbose = (uint8_t)atoi(optarg); break;
             case 'I': ignore_wav_length = true; break;
             case 'D':
@@ -204,8 +206,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (target_rate > 384000) {
-        fprintf(stderr, "Error: Target sample rate %u Hz exceeds maximum supported rate of 384000 Hz.\n", target_rate);
+    uint32_t max_rate = allow_extreme_rates ? 384000 : 192000;
+    if (target_rate < 7350 || target_rate > max_rate) {
+        if (target_rate > 192000 && !allow_extreme_rates) {
+            fprintf(stderr, "Error: Target sample rate %u Hz exceeds standard audio rate limit (192000 Hz).\n"
+                            "       Use --allow-extreme-rates to permit rates up to 384000 Hz.\n", target_rate);
+        } else {
+            fprintf(stderr, "Error: Target sample rate %u Hz is outside valid range (7350 Hz to %u Hz).\n", target_rate, max_rate);
+        }
         return 1;
     }
 
