@@ -617,8 +617,10 @@ static const help_t help_info[] = {
      "Output bitstream info in JSON format", NULL},
     {"--track <id>",
      "MP4: decode the AAC track with this ID (default: the first AAC track); -i lists the tracks", NULL},
+    {"-v <verbose>",
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"-q, --quiet",
-     "Quiet mode (suppress decoding progress)", NULL},
+     "Same as -v0", NULL},
     {"--overwrite",
      "Overwrite an existing output file", NULL},
     {"--strict",
@@ -726,7 +728,7 @@ int main(int argc, char **argv)
 
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "o:wf:b:a:d::j:giqhH", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "o:wf:b:a:d::j:giqv:hH", long_options, &option_index)) != -1) {
         switch (opt) {
         case OPT_DRC_CUT:
         case OPT_DRC_BOOST:
@@ -788,6 +790,15 @@ int main(int argc, char **argv)
             break;
         }
         case 'q': quiet = true; break;
+        case 'v': {
+            unsigned long long value;
+            if (!cli_parse_uint(optarg, UINT8_MAX, &value)) {
+                fprintf(stderr, "Invalid verbosity: %s\n", optarg);
+                return 1;
+            }
+            quiet = value == 0;
+            break;
+        }
         case OPT_STRICT: strict_mode = true; break;
         case OPT_OVERWRITE: overwrite = true; break;
         case OPT_LICENSE: {
