@@ -32,25 +32,16 @@
 #include "ratecontrol.h"
 #include "atomic.h"
 
-/* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
+/* HE-AAC auto-mode thresholds; measured with ViSQOL and Zimtohrli. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
 /* HE only wins harder as the rate falls: the further below Nyquist the LC core
  * lands, the more spectrum SBR is rescuing. 8000 is HE-AAC's design floor and
  * the lowest rate measured. */
 #define HE_MIN_BITRATE_PER_CH 8000
-/* Highest per-channel rate at which HE-AAC still beats FAAC's own LC. It
- * depends on the sample rate: at 32 kHz the HE core runs at 16 kHz and is only
- * 8 kHz wide, so HE stops winning much sooner there. The ceiling rises
- * linearly from CEILING_BPS_PER_CH_AT_MIN_FS at HE_MIN_SAMPLE_RATE to
- * CEILING_BPS_PER_CH at HE_CEILING_FULL_FS, and stays there above it. Either
- * side moving (a wider LC core, a better SBR) re-opens these constants.
- * The 32 kHz end stays low on purpose: HE trails LC around 16 kbps/ch there,
- * so a higher value would hand those rungs to the worse coder. Stereo
- * measures HE ahead to about 44 kbps/ch, but multichannel was not measured and
- * 5.1 at 224 kbps (37 kbps/ch) loses to LC, so the cap stays below that. */
-#define HE_CEILING_BPS_PER_CH_AT_MIN_FS 12000
-#define HE_CEILING_BPS_PER_CH           36000
-#define HE_CEILING_FULL_FS              44100
+/* Stereo measurements put the HE/LC crossover at 32 kb/s/ch for 32 kHz and
+ * above 48 kb/s/ch for 48 kHz. Use one bit/s per channel per Hz between those
+ * rates, capped at 48 kb/s/ch above 48 kHz. Multichannel uses the same ceiling. */
+#define HE_CEILING_FULL_FS 48000
 /* Frozen, not derived: quantqual doesn't map onto a bitrate ceiling cleanly
  * (the two are off by 2-4.5x across the range), so this is set by measurement.
  * At matched bitrate HE leads LC well past this, further than under ABR,
@@ -191,16 +182,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
-            /* Below 44.1 kHz, SBR has less core bandwidth to extend from, so the
-             * ceiling ramps down to HE_CEILING_BPS_PER_CH_AT_MIN_FS at the
-             * HE_MIN_SAMPLE_RATE floor. */
-            unsigned int max_he_rate = 0;
-            if (hEncoder->sampleRate >= HE_CEILING_FULL_FS) {
-                max_he_rate = HE_CEILING_BPS_PER_CH;
-            } else if (hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
-                max_he_rate = HE_CEILING_BPS_PER_CH_AT_MIN_FS + (unsigned int)((hEncoder->sampleRate - HE_MIN_SAMPLE_RATE) *
-                              (HE_CEILING_BPS_PER_CH - HE_CEILING_BPS_PER_CH_AT_MIN_FS) / (HE_CEILING_FULL_FS - HE_MIN_SAMPLE_RATE));
-            }
+            /* The measured ceiling is one bit/s per channel per Hz through
+             * 48 kHz, then remains fixed. */
+            unsigned int max_he_rate = hEncoder->sampleRate < HE_CEILING_FULL_FS
+                ? hEncoder->sampleRate : HE_CEILING_FULL_FS;
             rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
