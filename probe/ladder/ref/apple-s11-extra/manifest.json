@@ -1,338 +1,2746 @@
 [
  {
-  "path": "apple-s11-extra/he/44k1_64k/21-classic.441.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_64k",
+  "path": "apple-s11-extra/he/44k1_64k/12-German-male-speech.441.16b48k.wav.m4a",
   "profile": "he",
-  "target_kbps": 64,
-  "actual_kbps": 65.28070984849543,
+  "scenario": "44k1_64k",
+  "size": 66104,
+  "sha256": "d086ab26a094dfa2d6001290cbc4a0d6421130b544e76501cdb651c62e7e7280",
+  "source_wav": "12-German-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/15-Good-evening.441.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 73888,
+  "sha256": "3c3c895f8e155cadc46e32cd2600dab2ccc88118954dcffb418a1bc192f544fc",
+  "source_wav": "15-Good-evening.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/21-classic.441.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
   "size": 82891,
-  "sha256": "a19b5d3c2ce1772ae86b5f2fa735018ee8ca9196a78776e1fa53c89dc140f9fe",
-  "source_wav": "21-classic.441.16b48k.wav",
-  "audio_duration": 9.656145,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "ea395b038ad5af6a15d7775ee0804d82da05dc5116b30b6ca984e7c6fbefb21d",
+  "source_wav": "21-classic.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/24-Greensleeves-Korean-male-speech.441.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 76155,
+  "sha256": "7d52fc8bab4540b7471e4b4ee421185d8cc825df52fdfee403367f15170fcace",
+  "source_wav": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/25-This-is-the-end.441.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 77138,
+  "sha256": "eef062adabd6ec9d8960ec5780b81bcfe3491578b8e04bff0f9e3256868ae010",
+  "source_wav": "25-This-is-the-end.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/27-last-song-drums-and-trampets.441.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 81041,
+  "sha256": "df114b612f9e35592fe8270571143e5c83ab1da11600da554435b8a8bb46284c",
+  "source_wav": "27-last-song-drums-and-trampets.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/35_SQAM_glockenspiel_cut.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 85102,
+  "sha256": "17f96e1904bf73b5334d04775e1dddfe9764e0a25a8f0bc675ecc46ca9d758d1",
+  "source_wav": "35_SQAM_glockenspiel_cut.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/4-Sound-English-male.441.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 75801,
+  "sha256": "6c43167d0062e80d48e9b7376fbab5988aac80587322dc15f0a83fa4c4a90f23",
+  "source_wav": "4-Sound-English-male.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/9-Have-big-expensive-car.441.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 84931,
+  "sha256": "86f69e7bffee9437c7726951a38fd0682fc7b7c19fe88831fefe4f0416ac23a7",
+  "source_wav": "9-Have-big-expensive-car.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Asleep__4.11-4.31_.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 86075,
+  "sha256": "1a43bfb361a7fe542ee0ba9dda262e58eb8bc0da327be7fc72c902d92f2237ce",
+  "source_wav": "Asleep__4.11-4.31_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 90487,
+  "sha256": "0b30fcbba4ce76d88f3ee769ccdda29774aedde11e6e07e99be6e4876f906432",
+  "source_wav": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Changes.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 89191,
+  "sha256": "8244d89351e0e1323b2110cce8b1c6f342b34856ae38947a5c990c76d149f494",
+  "source_wav": "Changes.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Coral.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 86917,
+  "sha256": "a9ae0e6e1be8ca3eab1a3da342745d24b1a5d19eeff70b5f4c8b1f50c9846364",
+  "source_wav": "Coral.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/ExitMusic.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 85537,
+  "sha256": "d2f0667f78535a8b36a5530542d917729a9820b2a6f3e82f82d371ad28bd9575",
+  "source_wav": "ExitMusic.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Girl_In_The_Fire__Sample_.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 91628,
+  "sha256": "171f5b3cc935ee399b59c9a873f2453f744607b5777a5f63d4d2c9bb6ebb245d",
+  "source_wav": "Girl_In_The_Fire__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Greatest_Love_of_All_2min57.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 84654,
+  "sha256": "9ac4ad62a43e0705ad15a34f9260b5581c6ca6a5cbe8eaef1122d4a62eaf921f",
+  "source_wav": "Greatest_Love_of_All_2min57.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Hey Tonight.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 83346,
+  "sha256": "3e7e99bb7b00921dcd2483add7b4fd335f63989b81fcee2566bf136f21d2c7e7",
+  "source_wav": "Hey Tonight.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Hotel California.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 86290,
+  "sha256": "9f56572af54195658950b2eb56f5d6d0b92064eed89c13b624cff9001f1ffdcd",
+  "source_wav": "Hotel California.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Jupiter, the Bringer of Jolity.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 85164,
+  "sha256": "4dbdf05b922469a6a94dc77bd4c3f1e19a6321137ce05c961579d41daf219170",
+  "source_wav": "Jupiter, the Bringer of Jolity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Last_Of_The_Mohicanz__Sample_.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 85700,
+  "sha256": "7d1508ded168333d43160df81890c4a3d90119c144c6a6f585217e42779469b6",
+  "source_wav": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/NewYorkCity.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 87128,
+  "sha256": "f2cff88635e61459f4cd4224da7b72daabad1c1e736e68f3a827affdbce0b345",
+  "source_wav": "NewYorkCity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Only Time.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 87335,
+  "sha256": "2b747e4d77252247c199b3a2a006621fa76fbd8bfc4bc1a1ecc6ebd88cec99da",
+  "source_wav": "Only Time.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Robots_old.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 85145,
+  "sha256": "279fd946f64d0da5582e9c5302ece493f8725346208a22df91720d0dc056a9fa",
+  "source_wav": "Robots_old.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Severance__1.31-1.51_.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 84686,
+  "sha256": "1073bd9347cf9f81d45fc75003c45645a9f16a4f403b153fc5efbec0d219c861",
+  "source_wav": "Severance__1.31-1.51_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Shinsho_pool_3min45_4min4.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 86394,
+  "sha256": "f542b58cab260134fefd2d13dba8b250b7e6af82812e4e3172e18893d7ef9807",
+  "source_wav": "Shinsho_pool_3min45_4min4.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/SinceAlways.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 85154,
+  "sha256": "a1077f07cdb055095cc1b680acb60e0721e494005431ece0914a9ed27bab06f4",
+  "source_wav": "SinceAlways.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/SlavesOfFear.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 83910,
+  "sha256": "413cb5130c6768acbdbdc912b4ee533d2482fc895489e01ac032728687e86804",
+  "source_wav": "SlavesOfFear.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/The Chastising of Renegade.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 88765,
+  "sha256": "11d7236bbbfc44f23696eb2682b5074d6efd18f4d70e02ec8e8b2aeb9408b931",
+  "source_wav": "The Chastising of Renegade.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Through The Fire And Flames.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 83052,
+  "sha256": "210f39d761e457f21e61ea40022b90ad7d5b1e2d92d2d40370a28ba2f4c234fb",
+  "source_wav": "Through The Fire And Flames.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/TrosYGareg.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 82528,
+  "sha256": "9f0cebbc07c2400a8ab77a4a23871465ace379cc44086c331b6e367d354feb76",
+  "source_wav": "TrosYGareg.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/Waiting.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 90222,
+  "sha256": "ed077362b86d25016ac1d201e3b88d7612a9dd2f91cbea4d0903477f42558f1f",
+  "source_wav": "Waiting.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/With Love (Outro).16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 83293,
+  "sha256": "77d4a77038ad729c95ecdb26236b259b29d29c8303c315b40cf6b6ad143639e7",
+  "source_wav": "With Love (Outro).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/bah.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 81443,
+  "sha256": "5bc475cb8f75202fb0da265d45a8f2193cbb2a2ac84c14d31057eb2605455030",
+  "source_wav": "bah.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/bas.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 82512,
+  "sha256": "c729d0536e2c7ec2e9f6b922161cdeb33961f65682a5bdb274b097b5130b7365",
+  "source_wav": "bas.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/bonhemian_rhapsody.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 86717,
+  "sha256": "224891a125d9217fcb57b6715f0ea6cdaf6917d2de06ac4e864c6103f1634368",
+  "source_wav": "bonhemian_rhapsody.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/clapton_44k.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 87267,
+  "sha256": "84f0a826fe946a48f9372b5f80e4fd21fcfa25af4985a665ca5d8b3a27b7ef54",
+  "source_wav": "clapton_44k.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/cst.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 55989,
+  "sha256": "a3a4019c376fb7f8dc8439fecafb3143d6b6a5e4a37a477b3defa5d31aa9b667",
+  "source_wav": "cst.wav"
  },
  {
   "path": "apple-s11-extra/he/44k1_64k/fms.wav.m4a",
-  "scenario": "44k1_stereo_64k",
   "profile": "he",
-  "target_kbps": 64,
-  "actual_kbps": 62.1704,
+  "scenario": "44k1_64k",
   "size": 81809,
-  "sha256": "7441cd12dbc4788af76f4e63b014532be88037c3f2c30e01aa8b52955b2a088a",
-  "source_wav": "fms.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "f97ecd9ba096e1a10fabbfd82813ac8ba38512b923a9c2010393c0d71a8aa456",
+  "source_wav": "fms.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/girl.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 86461,
+  "sha256": "82b348d67b3b9c675816732ae305fd6347d108d73f2eee7a37b6c2aa73f5149d",
+  "source_wav": "girl.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/glk.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 77752,
+  "sha256": "60b65aeebc402f7c64c3d64ef8179b9e133f1e07ad8d1474c9a3c871b0fa8320",
+  "source_wav": "glk.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/hrp.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 74235,
+  "sha256": "6c1330731698e11b83dea91c1194d5f2f94a5cc0f1e141543a4b6e7102cf6c78",
+  "source_wav": "hrp.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/liberate.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 46031,
+  "sha256": "2f842ecb5c500f6ce684cc8b9593041994057a8f34aad22c8e6505ac9f5acacc",
+  "source_wav": "liberate.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/lob.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 61840,
+  "sha256": "0457cae9e57b306dc5d548a28d2d68e3afadc408bfea0c8fb8eb44c6588990bd",
+  "source_wav": "lob.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/mof.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 89379,
+  "sha256": "a00408de89cf05c27d0e55f5fa8b43bf59ff001cc42173b31499a457a112ada6",
+  "source_wav": "mof.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/qrt.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 83678,
+  "sha256": "a7b857742d6f5e59436cff91fb297b74df7aba57cc9cbc8c866023e046a8072c",
+  "source_wav": "qrt.wav"
  },
  {
   "path": "apple-s11-extra/he/44k1_64k/sandman.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_64k",
   "profile": "he",
-  "target_kbps": 64,
-  "actual_kbps": 66.1168,
+  "scenario": "44k1_64k",
   "size": 86742,
-  "sha256": "411ae8131db4f3d8ee5951214efe920b4abc073ef49974cc53247342fc1693a2",
-  "source_wav": "sandman.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "f11236d2ac324dde2430c81e8785e31974579d0e044b5b6c712079faa8691251",
+  "source_wav": "sandman.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/take_your_finger_frin_my_head.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 84619,
+  "sha256": "0345ffdbd405c194e4be4d1231bc8dc2da2a3cf8caefa4289622ad355189e56f",
+  "source_wav": "take_your_finger_frin_my_head.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/he/44k1_64k/trumpet.16b48k.wav.m4a",
+  "profile": "he",
+  "scenario": "44k1_64k",
+  "size": 83306,
+  "sha256": "1ff8469e223d2686a3ff0f3b6591bcc16c18718a3c6bdffdbdf6c4f42043df8f",
+  "source_wav": "trumpet.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/he/44k1_64k/velvet.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_64k",
   "profile": "he",
-  "target_kbps": 64,
-  "actual_kbps": 75.44160000000001,
+  "scenario": "44k1_64k",
   "size": 98398,
-  "sha256": "e4b691adaefd706f13abd894aed83fdceb9cf599d8112ad6b7e75a1a0460ba07",
-  "source_wav": "velvet.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "7aa45f07565e784456ead4cf34395e7a333ca304f711f595cb0711fc1104dfa6",
+  "source_wav": "velvet.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/12-German-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 126418,
+  "sha256": "25b7abfab6beb483571c97e9cb2bfdbd73cdf14f9aa478cdbec7e39fb03677c3",
+  "source_wav": "12-German-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/15-Good-evening.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 137949,
+  "sha256": "24fd7d1e3b5d3be08a0a1c99fecdde8387c08bf46cf28d8037ee850a92f0f8aa",
+  "source_wav": "15-Good-evening.441.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_128k/21-classic.441.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_128k",
   "profile": "lc",
-  "target_kbps": 128,
-  "actual_kbps": 130.87707361478104,
+  "scenario": "44k1_128k",
   "size": 162067,
-  "sha256": "fcc13f120b9dee3b83882fa0fedd859aa8f6e49d7db230be88926ad6ea83267e",
-  "source_wav": "21-classic.441.16b48k.wav",
-  "audio_duration": 9.656145,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "ea22adc0f53847f2d27b9ce04929f045b6dcc0035fd8bafbc96ce8f7c93faf75",
+  "source_wav": "21-classic.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/24-Greensleeves-Korean-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 145250,
+  "sha256": "0f78086097ce18518683489061b3d04767d1c4476ff9bf6ae5e09bdf12922fcf",
+  "source_wav": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/25-This-is-the-end.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 150161,
+  "sha256": "b1d0be86c96d941b4f2a042204bf8a22ce29634a0c8d2278db120f90273d9fd1",
+  "source_wav": "25-This-is-the-end.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/27-last-song-drums-and-trampets.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 161843,
+  "sha256": "2fc410ca899828f9232510c766618d36df6ae09ad5ddc46007d61ce41ea7fda6",
+  "source_wav": "27-last-song-drums-and-trampets.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/35_SQAM_glockenspiel_cut.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 159886,
+  "sha256": "7300d1f6fd0f9b63a64b9c2ecd3c87b3f247e3be53af8debbfcfaf6b4e8a1c68",
+  "source_wav": "35_SQAM_glockenspiel_cut.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/4-Sound-English-male.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 146103,
+  "sha256": "625d5c36ed7b5c65447b157695b5a5d1f28fe64ff1af1953f2d4302947ef044a",
+  "source_wav": "4-Sound-English-male.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/9-Have-big-expensive-car.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 162597,
+  "sha256": "dfa4730df9724ebc2618adf8bbefb50d11f1c7da65ebcf09f78920f8dd33e028",
+  "source_wav": "9-Have-big-expensive-car.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Asleep__4.11-4.31_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 169760,
+  "sha256": "839ff8008bdebccc7d41d011a0ff81be0b7aa70600fbafd4063923a13896db27",
+  "source_wav": "Asleep__4.11-4.31_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 170597,
+  "sha256": "cf93828ab0e8748ce1b31b9e9ec72c35fb840fda3e3e201806233ffec8b8a0ab",
+  "source_wav": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Changes.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 167862,
+  "sha256": "ad0060bd0c850d65633a2112770b6874b16ecebcdd42810412c222399890e730",
+  "source_wav": "Changes.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Coral.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 169639,
+  "sha256": "56b79d1c27d5273d50b2b39d6127b4d05761a049fda3327b2b42e6a962acd565",
+  "source_wav": "Coral.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/ExitMusic.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 163936,
+  "sha256": "aeab022162f5d33e58f60b0a6afad5a807ee936f3d24fe2b0bec083e426ed301",
+  "source_wav": "ExitMusic.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Girl_In_The_Fire__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 166783,
+  "sha256": "8bc142ee64ae7d8b3daa48ae8aacc7df7d05177d96b7e7e0b5838611888abd1c",
+  "source_wav": "Girl_In_The_Fire__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Greatest_Love_of_All_2min57.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 161973,
+  "sha256": "d4ae0e9272cc5c8357a157b6bbf525577fa75b215e572c98cd415d029ac411a6",
+  "source_wav": "Greatest_Love_of_All_2min57.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Hey Tonight.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 167253,
+  "sha256": "abaacf2d57b78de47ae00e6cff33d75a05912337258057e235739dd2b1c712f6",
+  "source_wav": "Hey Tonight.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Hotel California.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 170430,
+  "sha256": "b1afd181ddfd80e8f70d43f590e920fa695650cfb30e21b3c5bba665d7b26fdf",
+  "source_wav": "Hotel California.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Jupiter, the Bringer of Jolity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 167697,
+  "sha256": "469ccdb838e7141ef6fa44b5c686b216417e46bd155ec91753932860a0eb861a",
+  "source_wav": "Jupiter, the Bringer of Jolity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Last_Of_The_Mohicanz__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 169462,
+  "sha256": "ec7db3c1ef4ba83ee32a1f8c01eaab5e77ec9e9d5bafe36bab794c68814f1807",
+  "source_wav": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/NewYorkCity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 167326,
+  "sha256": "25026fb5d36d63b54e0abc16a7839e0d82f58ccdbb070e58edf8962257a262b5",
+  "source_wav": "NewYorkCity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Only Time.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 169310,
+  "sha256": "a3421fd2d034a39348ed50e9f6d925d363a8ff3a0566f01d2a9d216855390446",
+  "source_wav": "Only Time.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Robots_old.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 168995,
+  "sha256": "05eec46b71adda4349e8bcb29cc5f202c23c859f327b16c965a80c7a7da71e30",
+  "source_wav": "Robots_old.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Severance__1.31-1.51_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 164082,
+  "sha256": "27c664bdcb562e63c98c70aaf1bcfada66393253fb7605fdb3e2b0dbd3651c63",
+  "source_wav": "Severance__1.31-1.51_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Shinsho_pool_3min45_4min4.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 165553,
+  "sha256": "b819ef23f3c46730c4cfb1018738e93f015b705d4bea3b85b4bc6326c28c95a1",
+  "source_wav": "Shinsho_pool_3min45_4min4.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/SinceAlways.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 163873,
+  "sha256": "3b6790e60e3e4418ec3e7d01f29e7cfffa537ecc8d728155c50796576dfe8da9",
+  "source_wav": "SinceAlways.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/SlavesOfFear.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 164166,
+  "sha256": "9e66e7c4a64dfc1bece226f07f6e08faac9bcbe0e4e23149d81d6f1d70547950",
+  "source_wav": "SlavesOfFear.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/The Chastising of Renegade.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 168442,
+  "sha256": "197295878da98628928953338ce853aad1c18cb4f170db8881dc05103c101998",
+  "source_wav": "The Chastising of Renegade.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Through The Fire And Flames.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 160883,
+  "sha256": "6342d45c831900f02011c56120c69ad75161276e92eb3c0fb4900a56093c7e3e",
+  "source_wav": "Through The Fire And Flames.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/TrosYGareg.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 157970,
+  "sha256": "3ed39695a22590aeaae4d4be44586182eda6fadc9372a4f0b1287ea5f0194660",
+  "source_wav": "TrosYGareg.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/Waiting.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 168465,
+  "sha256": "86645c4198dfb90d00f0df459efaa3c6c0a955bca1c7eb997a499217f69d1f93",
+  "source_wav": "Waiting.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/With Love (Outro).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 161882,
+  "sha256": "5b0d238e80631f814781503a1f6705c82653ae5b6f435189547423cb5eb2ab48",
+  "source_wav": "With Love (Outro).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/bah.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 158833,
+  "sha256": "ee1f73af5bc5c95b273a9e2bd8a1cf8b64cf3111a8ce04ffb8ef541695b491cd",
+  "source_wav": "bah.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/bas.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 163164,
+  "sha256": "cb91086c6d4c988c04e4fe2768d5fd372bd9ba463a873541f8a3d03e27aaf605",
+  "source_wav": "bas.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/bonhemian_rhapsody.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 166707,
+  "sha256": "b35a9564dcf79e86e1d1c0b1cc277de1c67a598791760b25419020c8db41faaf",
+  "source_wav": "bonhemian_rhapsody.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/clapton_44k.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 167149,
+  "sha256": "854b2e709306accb29515e68ca5ee356e4ff1502e73d994ce0ded08c2e7066e9",
+  "source_wav": "clapton_44k.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/cst.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 111055,
+  "sha256": "d94a5692cb9db5ef89606ee475d37686e52b689bdd3eff374206d5f6e6ca7f60",
+  "source_wav": "cst.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_128k/fms.wav.m4a",
-  "scenario": "44k1_stereo_128k",
   "profile": "lc",
-  "target_kbps": 128,
-  "actual_kbps": 124.66560000000001,
+  "scenario": "44k1_128k",
   "size": 159928,
-  "sha256": "4f80b0c23966a980e7b10befb973c8a2548e2df2711a6d493ff69703c104f1d5",
-  "source_wav": "fms.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "95ba942ac3a1d5d7b182bf0f71c61a2cd7e9716799da5e96dc3813b486a1cbcf",
+  "source_wav": "fms.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/girl.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 169214,
+  "sha256": "1bf1f66b8b2a80ce7fbde7b818570ab5774b15846220b0b3884e5d3e9da4a5fa",
+  "source_wav": "girl.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/glk.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 143209,
+  "sha256": "322f3548f58c3b5c533715e3ab08188cececfc285179735af4d542c8c76f8cec",
+  "source_wav": "glk.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/hrp.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 141329,
+  "sha256": "66d225e8bb6a316000d390c012d06ffb73351703329d346146a6ea5aa991361f",
+  "source_wav": "hrp.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/liberate.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 85166,
+  "sha256": "77272ac25c66e383016a0411bf39ae12eb00a11fcfb23adefd79d320516e6672",
+  "source_wav": "liberate.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/lob.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 119429,
+  "sha256": "5ddecfd7222ff73ee3a6770c8f4351ca9f3f99dd05e43450de96bd541d70299c",
+  "source_wav": "lob.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/mof.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 168990,
+  "sha256": "a4651e18c0d7f0dccebfa30a092b4bff6d664e88d9cfb1d0b2eb5530d193a2a7",
+  "source_wav": "mof.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/qrt.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 163784,
+  "sha256": "52d1983a82131c4e0e388f1284a34e8c5bcd6efd91a3875df7d83231b99e96f8",
+  "source_wav": "qrt.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_128k/sandman.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_128k",
   "profile": "lc",
-  "target_kbps": 128,
-  "actual_kbps": 127.8072,
+  "scenario": "44k1_128k",
   "size": 163855,
-  "sha256": "8c59a5c3201f8d9cc11e145002d1a01eaddf0f2450b7d56bc02505b7d01f6fe5",
-  "source_wav": "sandman.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "c39502a65e6650a47bf822a683747c6df7c6e5dc88cfcf0418e9333369897064",
+  "source_wav": "sandman.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/take_your_finger_frin_my_head.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 167842,
+  "sha256": "fb9d90efa5948ec92b991ab233292ab9e6dc05b22586d86a1bf710bc8ddf8e60",
+  "source_wav": "take_your_finger_frin_my_head.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_128k/trumpet.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_128k",
+  "size": 163670,
+  "sha256": "9f2dff4c75399a208e9f8c121c469eb01c586f88a31ff8feea1689e02327ff88",
+  "source_wav": "trumpet.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_128k/velvet.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_128k",
   "profile": "lc",
-  "target_kbps": 128,
-  "actual_kbps": 138.4232,
+  "scenario": "44k1_128k",
   "size": 177125,
-  "sha256": "8ead8e101d5a9bddb340cd06b7bf4179f05341c265094a22ce177d26a32e68cd",
-  "source_wav": "velvet.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "c1c9d05e608efacce9bce215e3ad2aa8ae28ec04c568b5c32d3d0931769c451a",
+  "source_wav": "velvet.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/12-German-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 153105,
+  "sha256": "055310e95544f9a34e09ff9fbc9bbef7d946f01f3289c5ac1084b0179fed0595",
+  "source_wav": "12-German-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/15-Good-evening.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 172569,
+  "sha256": "d210ce2e44bd3b405f9522348bd9637c4af109ae27033c4278d307175cb7d47b",
+  "source_wav": "15-Good-evening.441.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_160k/21-classic.441.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_160k",
   "profile": "lc",
-  "target_kbps": 160,
-  "actual_kbps": 164.86165027554992,
+  "scenario": "44k1_160k",
   "size": 203087,
-  "sha256": "41281342816e834c32d0da246364b621d8a343ffc6cb4fdfbca9b44a87122138",
-  "source_wav": "21-classic.441.16b48k.wav",
-  "audio_duration": 9.656145,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "2d87e89b81d9eb6f5ee84268cc00f914e4c47699d679f546d273d9c011a1509d",
+  "source_wav": "21-classic.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/24-Greensleeves-Korean-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 181773,
+  "sha256": "a605b4aee374d23da89e4f24cf936f67d70c6abfcde427b85594d02fd56d9b2f",
+  "source_wav": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/25-This-is-the-end.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 187146,
+  "sha256": "b20e442e9a7ef843cad3c8f24f91d7f6c9547bde55b3cfdcf2d63677173efead",
+  "source_wav": "25-This-is-the-end.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/27-last-song-drums-and-trampets.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 197981,
+  "sha256": "d1cc3e846e9621d0edd9f24dd90edebb601da42f03b4dea824aba22238b84609",
+  "source_wav": "27-last-song-drums-and-trampets.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/35_SQAM_glockenspiel_cut.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 183465,
+  "sha256": "89b9c09211a8178df1d72a89cde6f843420c288abf45cbcac38b8519a6bb1bb8",
+  "source_wav": "35_SQAM_glockenspiel_cut.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/4-Sound-English-male.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 180382,
+  "sha256": "cc4aca448c11bcbe273a7ffe1851043b08d60d203b9ee4edea4b2f016318a539",
+  "source_wav": "4-Sound-English-male.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/9-Have-big-expensive-car.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 203610,
+  "sha256": "a1c07f3598ab0b12d612afa1645e1cc0c2764e98f498950e7c7a973561c76b33",
+  "source_wav": "9-Have-big-expensive-car.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Asleep__4.11-4.31_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 208511,
+  "sha256": "a486f0cc4b96b80745498c145cf79e48e84ad2982af123d44dd88621cb03c1d5",
+  "source_wav": "Asleep__4.11-4.31_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 206160,
+  "sha256": "bbfe983477dddb76b724c664925b5e431ee1441785461d17d80ad8fb44ca81d2",
+  "source_wav": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Changes.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 205377,
+  "sha256": "9df9c16b73d2c3d91b156b2b9859f88b07aef48b22ccfb0ecae691be4f8fdbc3",
+  "source_wav": "Changes.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Coral.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 212746,
+  "sha256": "59a468fb78323a14c1802a4559122b82114188fe2312df0aa3088eb44f831d8f",
+  "source_wav": "Coral.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/ExitMusic.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 204631,
+  "sha256": "fc2def36b1e459f9147396b18d4915aad3081a7c75378e7075655433b2e53175",
+  "source_wav": "ExitMusic.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Girl_In_The_Fire__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 209599,
+  "sha256": "7bb0db2619a445b53b2330ed7a7e0eede57fb4d798cee2a0563c95c92b6c6862",
+  "source_wav": "Girl_In_The_Fire__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Greatest_Love_of_All_2min57.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 203237,
+  "sha256": "7841e80115f3be261c18c0849255c919e4a8915db99c596e0772ac55b678d666",
+  "source_wav": "Greatest_Love_of_All_2min57.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Hey Tonight.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 209879,
+  "sha256": "c900fda9b6603cb7f3fec161f6d82f3f620a6d96eff70c2706600a3432fde77a",
+  "source_wav": "Hey Tonight.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Hotel California.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 208489,
+  "sha256": "3f4ba2baf68697ca9675e09853f22fa91d8b0e772fd171cfb765e79db936ecd6",
+  "source_wav": "Hotel California.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Jupiter, the Bringer of Jolity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 211203,
+  "sha256": "34acc5de98e357ef3a37c505c42756db5646d111908a2051a1523adcd4aed574",
+  "source_wav": "Jupiter, the Bringer of Jolity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Last_Of_The_Mohicanz__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 210554,
+  "sha256": "45305db6e6f516288810abdbf2433e73d8b89de212ba7bf29eb9f670658be2cc",
+  "source_wav": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/NewYorkCity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 206580,
+  "sha256": "a0ba9b553cd1c7f2919b907a94808db8efa1dd813f1a9b8ccaba235fbc7adbbe",
+  "source_wav": "NewYorkCity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Only Time.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 209602,
+  "sha256": "fca8432a72cea9b36b3aefa274666bcd1030118dfaa95094eccef9b66c0877fb",
+  "source_wav": "Only Time.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Robots_old.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 208069,
+  "sha256": "61b9d11ebd24cf1c9795d1c80a42642dcfde5f23bd35912757c1b137951a6e86",
+  "source_wav": "Robots_old.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Severance__1.31-1.51_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 204273,
+  "sha256": "0c9896cd01bc713e3b61b9f7315b00d761ec3918978094ebc3694f481aabb5c4",
+  "source_wav": "Severance__1.31-1.51_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Shinsho_pool_3min45_4min4.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 205862,
+  "sha256": "d018aa83d384f1da062632a5d16c0e59fe9a9640cf5863f4564f52b7451f9055",
+  "source_wav": "Shinsho_pool_3min45_4min4.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/SinceAlways.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 210950,
+  "sha256": "4b6b7039c2a96a340e4f940843dcdf9705cbe8368f2030cf53dcc10767dd45b7",
+  "source_wav": "SinceAlways.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/SlavesOfFear.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 210800,
+  "sha256": "b4680aa33adce77aecbb8b0b81088a5544a3df3eec354dd46a250cccd9eebe27",
+  "source_wav": "SlavesOfFear.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/The Chastising of Renegade.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 213704,
+  "sha256": "17975b656957a20d281d9c61f6ee0cfcbbf39a88b282e9aefb2da89980bc3d8e",
+  "source_wav": "The Chastising of Renegade.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Through The Fire And Flames.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 205793,
+  "sha256": "947c489c8840f6fe068ffa2a0e521949b54b3578fd84518ee5d2a1b01cac4ad3",
+  "source_wav": "Through The Fire And Flames.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/TrosYGareg.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 196920,
+  "sha256": "f41ad77fbc129b85d3bcc1165fb11fec6c2b300f3484449827ffff610d6963a3",
+  "source_wav": "TrosYGareg.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/Waiting.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 204976,
+  "sha256": "ae754eaee855ef21b8682555555258e9b81cf62b73e7f3d18836289c2b94d829",
+  "source_wav": "Waiting.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/With Love (Outro).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 205460,
+  "sha256": "37d4c280a65c39dbac64d047ba37101c30d65a031ac96eea9a2b76fc4b32c478",
+  "source_wav": "With Love (Outro).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/bah.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 194566,
+  "sha256": "b93470f7edb55c975577fa9f87cc005fbf67bbb58db0ccb4f93fd8e8cd95beea",
+  "source_wav": "bah.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/bas.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 200202,
+  "sha256": "12f0b5cd5d9ad29c658532ad3f0cc095a4f227bbf7c4b2e09ca08b1f5629a863",
+  "source_wav": "bas.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/bonhemian_rhapsody.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 208525,
+  "sha256": "6546bf0fd459889a0a6a4662e4e36a85f313e1407eb65eb3da508b3c03f410bc",
+  "source_wav": "bonhemian_rhapsody.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/clapton_44k.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 210831,
+  "sha256": "1cd1b018621fb571cf7b6542e431691e99deed849d9e14d6c30d903d6d34a476",
+  "source_wav": "clapton_44k.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/cst.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 137272,
+  "sha256": "78dc9a96522738a32e2671adfaf0e1242709ea16c476fd2bd731c321114f94b4",
+  "source_wav": "cst.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_160k/fms.wav.m4a",
-  "scenario": "44k1_stereo_160k",
   "profile": "lc",
-  "target_kbps": 160,
-  "actual_kbps": 156.6128,
+  "scenario": "44k1_160k",
   "size": 199862,
-  "sha256": "5c5b41b6ca86f605182eff417287ffd9ac23cd023f96b43fb2f1cc476283e7aa",
-  "source_wav": "fms.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "2431f335bbd1720b740fbffe853094c50579ecb9bbeb05d8ccefa2e4d14405d0",
+  "source_wav": "fms.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/girl.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 206180,
+  "sha256": "549b346ad7c3995de698228a8896b4e4ae87f5d3649a0b5344fce999cbb2ef83",
+  "source_wav": "girl.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/glk.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 159115,
+  "sha256": "fabe89354f31f9059c630e7a5824c18c2512cc38c55e5f6b6c4a7c68e6d9b824",
+  "source_wav": "glk.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/hrp.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 173480,
+  "sha256": "1c989b65602ae8df712fb28ae2ef99d122ca52359f1861b91c5949067a18bf6a",
+  "source_wav": "hrp.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/liberate.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 106588,
+  "sha256": "b7259b6d2ed60e02ef5c0f09cb2d421c7cc939566033d691b5495821a55014fb",
+  "source_wav": "liberate.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/lob.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 147371,
+  "sha256": "40cd3a5fc6368e27efddd6a0c802e8ad7b17a2046bddc14659b86ec7f11a49e6",
+  "source_wav": "lob.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/mof.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 206740,
+  "sha256": "e649fce1cb48fa208677ae22f9f6c419dc4f708430a6414ec849bb762566ea4b",
+  "source_wav": "mof.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/qrt.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 204055,
+  "sha256": "475c9653c366c76124b4585f1a743f67ccdeff51b0145ae1ab6ccd0678161cf3",
+  "source_wav": "qrt.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_160k/sandman.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_160k",
   "profile": "lc",
-  "target_kbps": 160,
-  "actual_kbps": 160.1496,
+  "scenario": "44k1_160k",
   "size": 204283,
-  "sha256": "ee383869ba6e023018689d2d7c2066e3c447481d5fd4fd717015a672712c4ea7",
-  "source_wav": "sandman.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "b195e1856c313844399c6fd1793870ae05555cd6527ded61840f02520c1ea3fb",
+  "source_wav": "sandman.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/take_your_finger_frin_my_head.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 208097,
+  "sha256": "275a7194bfeb8b55b8d98648518a35b034cd314534c6e200626038209912388d",
+  "source_wav": "take_your_finger_frin_my_head.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_160k/trumpet.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_160k",
+  "size": 205080,
+  "sha256": "83ccafb3602e38a111041d45169862609bbb42136f08b49cd88419d95f7992ad",
+  "source_wav": "trumpet.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_160k/velvet.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_160k",
   "profile": "lc",
-  "target_kbps": 160,
-  "actual_kbps": 176.512,
+  "scenario": "44k1_160k",
   "size": 224736,
-  "sha256": "4cd513b98ebe786b506f9c2a34c1006d9d834de9ae05ee7c4141a4bf6ead4865",
-  "source_wav": "velvet.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "b8217cf7274794b77a246f18f665a2afbdea0fd24bc9a2bc04631c22f103ffe7",
+  "source_wav": "velvet.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/12-German-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 176010,
+  "sha256": "c49970177801584b8c1ecb70e48ff69d950e5f49d0d5f6b75a3a2a32e1e6ed9c",
+  "source_wav": "12-German-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/15-Good-evening.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 205385,
+  "sha256": "01097fc3a369cec29061fd5603087457acd7c8b59d4df45f0dfcb49d96ddb7dc",
+  "source_wav": "15-Good-evening.441.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_192k/21-classic.441.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_192k",
   "profile": "lc",
-  "target_kbps": 192,
-  "actual_kbps": 191.30698638017552,
+  "scenario": "44k1_192k",
   "size": 235007,
-  "sha256": "26bef7eea262651941972a9ea89c57d1eb37276a81daffcb896f2db2d4388830",
-  "source_wav": "21-classic.441.16b48k.wav",
-  "audio_duration": 9.656145,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "35b46b343802f3630c05b8dc2ff63d302618f16cf7c740e02402a4c88901bd3c",
+  "source_wav": "21-classic.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/24-Greensleeves-Korean-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 218839,
+  "sha256": "c6a8101b524b76efb1faf2bbe9cc6e07c42637547ddda26b7f6ec7a90daad001",
+  "source_wav": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/25-This-is-the-end.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 222988,
+  "sha256": "f271d064f0e80a2ddc31920c82057b6a832ea4e865093d83406b159ed35ff756",
+  "source_wav": "25-This-is-the-end.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/27-last-song-drums-and-trampets.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 236699,
+  "sha256": "241ec7e5f13c6c725c30e7acf3feb3d981d990a338d5a20cf9560e8ec50e95c0",
+  "source_wav": "27-last-song-drums-and-trampets.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/35_SQAM_glockenspiel_cut.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 205562,
+  "sha256": "0070da55944c63dd4ab809e8bc663a46dfd1ecb733ee72b25e932cb5525503f5",
+  "source_wav": "35_SQAM_glockenspiel_cut.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/4-Sound-English-male.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 215928,
+  "sha256": "4d56d824d94edbdd6c4d0530c898cf1c349602c806ff4d7dd84cb58aef33a3f5",
+  "source_wav": "4-Sound-English-male.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/9-Have-big-expensive-car.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 243543,
+  "sha256": "20f674beb0a548cb1f8d5df6f3e2b0452f177cd62da86503bc39ac48b5e38b46",
+  "source_wav": "9-Have-big-expensive-car.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Asleep__4.11-4.31_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 253767,
+  "sha256": "95e6cb1ea2fb29eb731c5f620c196acceed886bfdc83bf6ef6a4afb16b5615f4",
+  "source_wav": "Asleep__4.11-4.31_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 246784,
+  "sha256": "2c9cbec7aac1fd332d6bfd0ccd9b77bc4b9383dffa85efb4e1780cb3f4edf79e",
+  "source_wav": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Changes.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 247223,
+  "sha256": "26524a3a0d7cbe30cd701ea6becfaced8c900bce309295d78f608493f66978a6",
+  "source_wav": "Changes.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Coral.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 253800,
+  "sha256": "28b6b98e24084841eedca2818809cdb6550e020f8613592993c02333801ffb6f",
+  "source_wav": "Coral.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/ExitMusic.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 242620,
+  "sha256": "bf5248cf4257d1de20c01b501766f9c79e9e9713cfb5fb70ce2d12bd68718be3",
+  "source_wav": "ExitMusic.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Girl_In_The_Fire__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 246492,
+  "sha256": "6b1057c12ffa4e604452905be90aaacff414af6a9a4dd619c80c7e2e6e5a5794",
+  "source_wav": "Girl_In_The_Fire__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Greatest_Love_of_All_2min57.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 245964,
+  "sha256": "2d750de2d8cf44ac77d6965f81dc9d7d9fa79f64afd58f21e31121ad9250ee67",
+  "source_wav": "Greatest_Love_of_All_2min57.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Hey Tonight.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 248044,
+  "sha256": "d215afdfd4c7a94313778b193d4d96ffc7826237a0b2edf2077fd25ccb4337bf",
+  "source_wav": "Hey Tonight.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Hotel California.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 252309,
+  "sha256": "1d506f23634162f3d6704602cfc70a8900c97fb703e9966e2b07918efb8ce7ca",
+  "source_wav": "Hotel California.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Jupiter, the Bringer of Jolity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 250811,
+  "sha256": "647c33cfd5bdf0a937c8166b4e7b61234f24b2fb2aa945a413cabf9d4be5df30",
+  "source_wav": "Jupiter, the Bringer of Jolity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Last_Of_The_Mohicanz__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 246414,
+  "sha256": "088f015b1dc5239c176678a377da67246ed0242d13847f76e932da40955fc4ae",
+  "source_wav": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/NewYorkCity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 246507,
+  "sha256": "dfa9702b01384b35ce293ddc8d2fe4a765a2ca5da5ddf533e2b694e713e07a93",
+  "source_wav": "NewYorkCity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Only Time.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 252369,
+  "sha256": "4a5d806065b51495d969e540f7e20734bb932be9c5d6d9e761a768c4fe834e74",
+  "source_wav": "Only Time.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Robots_old.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 246676,
+  "sha256": "9c7cccd1981bae75258c514e15c2eee391afda879b57223e7284871fe81692f0",
+  "source_wav": "Robots_old.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Severance__1.31-1.51_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 243884,
+  "sha256": "12ba29886593e7ab7290f48a4f00ba2d635bf335d84000634e251cc5a57c3f9e",
+  "source_wav": "Severance__1.31-1.51_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Shinsho_pool_3min45_4min4.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 247535,
+  "sha256": "1b3f31e90160efee249b7c3b10e95fe8a927f2fdcfff0163e37eaf98fd092943",
+  "source_wav": "Shinsho_pool_3min45_4min4.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/SinceAlways.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 254701,
+  "sha256": "2f9421e4ffb69e8714092ec059ff007104df577bdd5d3e0f8678df11b77c15fa",
+  "source_wav": "SinceAlways.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/SlavesOfFear.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 251340,
+  "sha256": "014c8fbe8416a9e45cf4116f097387fe68bb04586edb96e9b72ef52239eb52da",
+  "source_wav": "SlavesOfFear.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/The Chastising of Renegade.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 251527,
+  "sha256": "409cb6215559fdbf130730f95ebac0509b95fd43f5b6420b4e96b8e67d470eda",
+  "source_wav": "The Chastising of Renegade.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Through The Fire And Flames.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 248359,
+  "sha256": "944d970be28b188831dc0eed8ae1d0165c9f0379a19d5eb5b52da46d9e988cf2",
+  "source_wav": "Through The Fire And Flames.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/TrosYGareg.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 234481,
+  "sha256": "1a87d431e16565e0d36afcb09fb9fed6905fb13ce18cc9d0fd89856340604230",
+  "source_wav": "TrosYGareg.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/Waiting.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 245956,
+  "sha256": "aa572d9b6d88cb0a72560520eb1588f6a77378cd6c5d582d6bda5276fa794d81",
+  "source_wav": "Waiting.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/With Love (Outro).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 249994,
+  "sha256": "e4bb2610ed122416cfebd385fd79e9fe7ef7fc7579a79fdba992bc77db1c5b7c",
+  "source_wav": "With Love (Outro).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/bah.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 232480,
+  "sha256": "ddeca70b5d53c227c57ae90f055600aa9b5c4da52d4674b719c3d4113f0683ab",
+  "source_wav": "bah.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/bas.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 241177,
+  "sha256": "9d1c600cad5308f532fa1dfda6363511933bad1793f3c5c7686c45867f1e4ccb",
+  "source_wav": "bas.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/bonhemian_rhapsody.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 250768,
+  "sha256": "7ad7aec01d518104f8e4997269cfe0362b3dd538b30f30a54792b123b2fddc66",
+  "source_wav": "bonhemian_rhapsody.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/clapton_44k.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 251933,
+  "sha256": "59cf8e1ad3fcb0efe8976e13a1b2b69d8fa17e0d81b175b688a485764d308aba",
+  "source_wav": "clapton_44k.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/cst.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 163361,
+  "sha256": "06128d48561615e952aec774d69e302fd67ef9e8f3f6dae3423cc6469d075f79",
+  "source_wav": "cst.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_192k/fms.wav.m4a",
-  "scenario": "44k1_stereo_192k",
   "profile": "lc",
-  "target_kbps": 192,
-  "actual_kbps": 190.4184,
+  "scenario": "44k1_192k",
   "size": 242119,
-  "sha256": "549ac6e47ffa2e3d8f6e06cbbc2606932b3d94c4a561301cf081ba025c53f149",
-  "source_wav": "fms.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "425622b01a61b71f4c4b9bcd91c945ed28154e73f5d663f0af5fbe205135d985",
+  "source_wav": "fms.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/girl.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 250280,
+  "sha256": "bb6429a302b34449959b85ff75f11d9a9e5e3574b21d9b3c081054a9a3355874",
+  "source_wav": "girl.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/glk.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 181838,
+  "sha256": "29257ad7017a015090c2b36f2e08bcbd4b23e021914af8cb86e015a4a598ee6b",
+  "source_wav": "glk.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/hrp.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 206859,
+  "sha256": "945586e544fee1159d94fe912e93fab461870247b6b6ecf9dd915ed687ac6047",
+  "source_wav": "hrp.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/liberate.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 127644,
+  "sha256": "4bf8b879c3d51606d302f8d7926b3ada517a0c091425bd341c83693425f7eef7",
+  "source_wav": "liberate.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/lob.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 175752,
+  "sha256": "258d9879f8bc23b4ce8be3e76f76c28160ffee493e6bd896f474f9ef2f43d078",
+  "source_wav": "lob.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/mof.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 251462,
+  "sha256": "6a5fb239107106d00cbbd109ec5c7f4a3e9179588bdfd7cac12aee7dbcadc8fd",
+  "source_wav": "mof.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/qrt.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 241957,
+  "sha256": "b350044e9cdd0eea9add9688f769af5bcad7d3994c1744999100da41791d623d",
+  "source_wav": "qrt.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_192k/sandman.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_192k",
   "profile": "lc",
-  "target_kbps": 192,
-  "actual_kbps": 193.9544,
+  "scenario": "44k1_192k",
   "size": 246539,
-  "sha256": "7da2895228268a3db6cb1858485c73c405605ac6b41fc23738695ce5b87eeab0",
-  "source_wav": "sandman.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "01b9f0935999fc66e12d92e7de7ebf4a3721e44eb7be5c49d1fb63e4bb73766c",
+  "source_wav": "sandman.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/take_your_finger_frin_my_head.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 250733,
+  "sha256": "a7155ae301e6dfbf7fdeeaa4a2e2975064525befd3ff486edde91279f3fbae9f",
+  "source_wav": "take_your_finger_frin_my_head.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_192k/trumpet.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_192k",
+  "size": 250237,
+  "sha256": "2e98d8dacead7d7282a4247f1b331e90ceccd2e1251246c08dda61031e16a104",
+  "source_wav": "trumpet.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_192k/velvet.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_192k",
   "profile": "lc",
-  "target_kbps": 192,
-  "actual_kbps": 209.4984,
+  "scenario": "44k1_192k",
   "size": 265969,
-  "sha256": "4ae95c66e0b6c8c31b74bf8f8bb99ab629dd97b0326638357c1387f2b9c1c511",
-  "source_wav": "velvet.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "5af3d58ffa10a6fc09af4b742905394da51695f8e590897d8b312a1afc770dbb",
+  "source_wav": "velvet.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/12-German-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 249006,
+  "sha256": "ce2913488cb2a2210b740d22ad2e03606a17dc572b63802233ca755d8d50fd2a",
+  "source_wav": "12-German-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/15-Good-evening.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 269158,
+  "sha256": "651f15cfa8279d844fdb3b6a3b2a575f24442330c9c197b750342347ab579913",
+  "source_wav": "15-Good-evening.441.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_256k/21-classic.441.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 254.61589485244886,
+  "scenario": "44k1_256k",
   "size": 311422,
-  "sha256": "d4dda776b23f98f0788ee62f77145d9d23ac1e325cb156f9988b280042614039",
-  "source_wav": "21-classic.441.16b48k.wav",
-  "audio_duration": 9.656145,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "b1af2cc47f2719a8044bdda4baaa42799d00916fb98f48b76fa26ee3b0e4885a",
+  "source_wav": "21-classic.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/24-Greensleeves-Korean-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 288487,
+  "sha256": "c23855d1fc14a830f0b4fcb6572a17447c8427c92f4e56cca9c2760977caca28",
+  "source_wav": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/25-This-is-the-end.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 292530,
+  "sha256": "950aab1eee332b232d403552e52092e0133d943447a1cd4d96a0da881c448dbc",
+  "source_wav": "25-This-is-the-end.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/27-last-song-drums-and-trampets.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 312546,
+  "sha256": "3fa3f4c3a90ade9dbf776235782c7e8483e43ac10a6c8a5660b3b37b80aff0e9",
+  "source_wav": "27-last-song-drums-and-trampets.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/35_SQAM_glockenspiel_cut.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 313909,
+  "sha256": "65037f4c7d71a1e4dc36e6c2d3f760a858954acc3503229ddc2aa911b944eb42",
+  "source_wav": "35_SQAM_glockenspiel_cut.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/4-Sound-English-male.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 288041,
+  "sha256": "0c2c44230a591c4f6c0ba68e66db6ae69cb8c267b767dc4b27f8d0590cc0486e",
+  "source_wav": "4-Sound-English-male.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/9-Have-big-expensive-car.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 321985,
+  "sha256": "59735686833c8049fb5f2ab2daecb993063cb4c8e592ddaa3087559547c081c8",
+  "source_wav": "9-Have-big-expensive-car.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Asleep__4.11-4.31_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 334046,
+  "sha256": "c4ef6e73a1fbf4d10110a199ddb1efcbc3bca93be5dd2bca306baf79a54aecd1",
+  "source_wav": "Asleep__4.11-4.31_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 327272,
+  "sha256": "b642c6cc7c299110a8dd445d5b35229558f79046abafff3f9e2a9fe81d753b1e",
+  "source_wav": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Changes.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 326622,
+  "sha256": "46344a3e35c697a865b13db91fbae8c66cd275955952b2e3e3786be9a7819ecb",
+  "source_wav": "Changes.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Coral.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 337332,
+  "sha256": "6cbf87893490b41b57634d58b3ff1cd5537c333bf7ace6b3dbac89233e2de33e",
+  "source_wav": "Coral.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/ExitMusic.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 316522,
+  "sha256": "011193c2e9a6a78819f5443eef5a9103767cef6dc99a517b9466e1e77a22db43",
+  "source_wav": "ExitMusic.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Girl_In_The_Fire__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 330776,
+  "sha256": "8bfe9b65e14734c969af051c3ccfedb55035b6e41d601178932d35dfe4a76443",
+  "source_wav": "Girl_In_The_Fire__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Greatest_Love_of_All_2min57.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 328120,
+  "sha256": "9d8d5774e03fb0e8c3e596db0b96ec99dd4f8a73f10c065edc82217b80261bd0",
+  "source_wav": "Greatest_Love_of_All_2min57.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Hey Tonight.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 333812,
+  "sha256": "fb248fbb09a0ffd7eefea03faefbc134c80791db29cd84f5b03421f0628324ad",
+  "source_wav": "Hey Tonight.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Hotel California.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 328823,
+  "sha256": "e862963757e6edc191cd81a2ee47d525e611b300dd55299a8b447476a8f77d69",
+  "source_wav": "Hotel California.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Jupiter, the Bringer of Jolity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 331104,
+  "sha256": "8b49ba47f8ef6cb15b01093eb9b86f06593b717c9bfa19982ed5976573dd63c1",
+  "source_wav": "Jupiter, the Bringer of Jolity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Last_Of_The_Mohicanz__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 328419,
+  "sha256": "aab9b82cf04d102fa8e6c4d84b956dec08dfc496a18ab5d76dbae649feea9481",
+  "source_wav": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/NewYorkCity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 327644,
+  "sha256": "5b91fe280101b214b37a558f440f18af90142bed2219273cf7b0fa64f1fc19ef",
+  "source_wav": "NewYorkCity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Only Time.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 332087,
+  "sha256": "7494b24f6cdaf8f6cf659ab63e89d781e8b4e37497fcff49bf18faae2e619193",
+  "source_wav": "Only Time.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Robots_old.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 330764,
+  "sha256": "ebdcc5f2c3e62b3979bd2ea50112ee75b27906be9a81e44763b359684773bde9",
+  "source_wav": "Robots_old.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Severance__1.31-1.51_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 323759,
+  "sha256": "0e4e499624b995559484d926a66376649aa92802636e394d558f5bfda7d078a2",
+  "source_wav": "Severance__1.31-1.51_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Shinsho_pool_3min45_4min4.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 326931,
+  "sha256": "102d2b399a8c50f169ab2ff561c1e87446fc250d8361d3a7aec11f3c7f0475c5",
+  "source_wav": "Shinsho_pool_3min45_4min4.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/SinceAlways.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 326607,
+  "sha256": "cde5132e51b161b9df68ae1d105e56508fb173ed1d1fd0fb9e6a66d31454c24c",
+  "source_wav": "SinceAlways.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/SlavesOfFear.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 332938,
+  "sha256": "222b805d7097d102e4feb41ffa268b55f90884efafe4d3c28e7eb0115888b7fe",
+  "source_wav": "SlavesOfFear.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/The Chastising of Renegade.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 334944,
+  "sha256": "fdf862f6f24f53fb6294593e27dfb2f046fe3e908a13761df0d102eea689d30a",
+  "source_wav": "The Chastising of Renegade.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Through The Fire And Flames.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 327645,
+  "sha256": "495fc86a7c4d1c459e3eb3d24f41d49c2404e090e6c3afa64f6662d569a01287",
+  "source_wav": "Through The Fire And Flames.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/TrosYGareg.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 323861,
+  "sha256": "14a84005c7631331978e4c5a161488047dff33c0c7d81a276722495ee71ab325",
+  "source_wav": "TrosYGareg.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/Waiting.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 326628,
+  "sha256": "b6fbea64680c89d62b08ac676eb2751851318f972ef91be129e9a6e8cbd2bed0",
+  "source_wav": "Waiting.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/With Love (Outro).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 335722,
+  "sha256": "cab025a215c5406daa6993242f46d06308143d95fdabb23123e801dc8b2ba168",
+  "source_wav": "With Love (Outro).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/bah.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 304295,
+  "sha256": "bbd7db3521e71852ed36f63684c0f5d9ba81e5c361f56e091845f59692135f99",
+  "source_wav": "bah.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/bas.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 316168,
+  "sha256": "eb7c36f8ad02e95e857722256e7b71c1baa7884ba78d9dcfadfd48267382d215",
+  "source_wav": "bas.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/bonhemian_rhapsody.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 328554,
+  "sha256": "1d0ebd2670df76815bdc1b9604eb5128d36b9f9aafab6421614b03c115f5ce2f",
+  "source_wav": "bonhemian_rhapsody.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/clapton_44k.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 335144,
+  "sha256": "51fa7bd5f118d418b6aa486993847df4950cdd3b67bdf825ba7280f5b38e2660",
+  "source_wav": "clapton_44k.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/cst.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 216906,
+  "sha256": "f6ca91abb85e94a71794ad7aff41a730f39dcc9c0a26965aa6a0e4c536c099c5",
+  "source_wav": "cst.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_256k/fms.wav.m4a",
-  "scenario": "44k1_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 255.40079999999998,
+  "scenario": "44k1_256k",
   "size": 323347,
-  "sha256": "efcf6251152380f0453ae7252bcced7bfdaf34636b4645e8848e6b128bc39307",
-  "source_wav": "fms.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "1709da3291cea3dc971b0c26d1fa4077f6857a6fd9edd6b46be55e33cce4c03a",
+  "source_wav": "fms.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/girl.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 330435,
+  "sha256": "e3ebae1d20a545256e3a365acd83967b1a8f313866ef46a11f1c2b4d163d25f9",
+  "source_wav": "girl.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/glk.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 250549,
+  "sha256": "3fe4b779b4b6ff29be32e98aa85f8ae90a33395f4f25c56b2a32cd996a5d6b33",
+  "source_wav": "glk.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/hrp.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 271405,
+  "sha256": "198ec07d790c480f2a33b70c70100baf8b7981b4303cd7f0783f3af72c738da1",
+  "source_wav": "hrp.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/liberate.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 171917,
+  "sha256": "8f02296e0e8b9df98543b42a280a4c715c9736f9ea843c159bd5c4bae55c762d",
+  "source_wav": "liberate.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/lob.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 236565,
+  "sha256": "6144ce54aec4a27068275244b24f0a1a6d40aed0c62ac976e5d9959ac49a4394",
+  "source_wav": "lob.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/mof.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 327680,
+  "sha256": "a3eb245e0e5a359c123c5b8bdc86395b51447fb23c30c7e4572db491d9ce5e9b",
+  "source_wav": "mof.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/qrt.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 309895,
+  "sha256": "8b1a0fc02c571ed43a10502197af13a2ce9c066385b17bcba51afb9a049c5860",
+  "source_wav": "qrt.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_256k/sandman.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 255.7672,
+  "scenario": "44k1_256k",
   "size": 323805,
-  "sha256": "cb088909346c06fc1c168bd1a02090a778299ec9d932a975fa7849d3ce8e205e",
-  "source_wav": "sandman.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "a486b8549a5ac60227d6ee100c6bbd256cba25ef0d96a7865f60cfed126d50be",
+  "source_wav": "sandman.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/take_your_finger_frin_my_head.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 330154,
+  "sha256": "3209e0f0e6d412f8848bd344030760210a7d07e349f7dd3089b3035704026190",
+  "source_wav": "take_your_finger_frin_my_head.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/44k1_256k/trumpet.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "44k1_256k",
+  "size": 334583,
+  "sha256": "b1014990a65a663a19ea4c16f8867c04b39237d1081a583bf64b45113943114a",
+  "source_wav": "trumpet.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/44k1_256k/velvet.16b48k.wav.m4a",
-  "scenario": "44k1_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 276.556,
+  "scenario": "44k1_256k",
   "size": 349791,
-  "sha256": "b3a16d726d3b12b377872f6e8ebd769d685007f835599f9db13e303b72a156c8",
-  "source_wav": "velvet.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "66d26ec80e0959264d3926ef0b7c14e41df49db5e965ec7e509536082f0c371b",
+  "source_wav": "velvet.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/12-German-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 248285,
+  "sha256": "1f45fb619b6ced4b38cf37d5fee2147c4b00ffacc54de3fa5ed5e77fc4d4dc97",
+  "source_wav": "12-German-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/15-Good-evening.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 278762,
+  "sha256": "9fce883ee030a7bf98d48e8441e41a382225eb66067542a2eefee57ab7f02610",
+  "source_wav": "15-Good-evening.441.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_256k/21-classic.441.16b48k.wav.m4a",
-  "scenario": "48k_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 256.3670209323098,
+  "scenario": "48k_256k",
   "size": 313535,
-  "sha256": "22ea19df8d1aa6809248a63bb66ac63f7455b5f4203f01d370cac2787290f627",
-  "source_wav": "21-classic.441.16b48k.wav",
-  "audio_duration": 9.656125,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "c022d51af060f875d63bfeccb4e1f4679149f10aae1c53685dcb100079571a85",
+  "source_wav": "21-classic.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/24-Greensleeves-Korean-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 290083,
+  "sha256": "3f2efeb6d0719aa8cbe68edb6264b8898918bb417ef43358276848c026d7b121",
+  "source_wav": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/25-This-is-the-end.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 299408,
+  "sha256": "37c3d70f98b0943e65c12ecbf50b6419b4d18e8fce12f2474dade536ea1a41f1",
+  "source_wav": "25-This-is-the-end.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/27-last-song-drums-and-trampets.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 324871,
+  "sha256": "c25a6010a3b0553d191df0259ed20662b73a942931bcb7fed2980a4ac8991e03",
+  "source_wav": "27-last-song-drums-and-trampets.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/35_SQAM_glockenspiel_cut.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 313202,
+  "sha256": "993e235b2f59aa535c83377e337a650f428517364d498347454390d3f9359f6f",
+  "source_wav": "35_SQAM_glockenspiel_cut.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/4-Sound-English-male.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 280593,
+  "sha256": "5db00d6c7f22c8dc4938a2d86ce2429d58d44e2fc1a4fa312f537a15b96fb8c7",
+  "source_wav": "4-Sound-English-male.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/9-Have-big-expensive-car.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 321938,
+  "sha256": "4c5552015a9c7aa1a9884388d03e38c1a3d5d3921ddede7fdc781d416f81845c",
+  "source_wav": "9-Have-big-expensive-car.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Asleep__4.11-4.31_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 329911,
+  "sha256": "f575f5cf0576fb34736d29d9f5426b432983d425db1cd8dec7104b09d6d3d2d4",
+  "source_wav": "Asleep__4.11-4.31_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 327131,
+  "sha256": "79298e23fcdc2fdfd87d471277860213993ba9a6f45b89d63aed9e06bc41bcd8",
+  "source_wav": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Changes.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 332129,
+  "sha256": "2059f305c0e9eed958c47e7e51651f6f054d7ab48c32cace12524a8a6fadde23",
+  "source_wav": "Changes.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Coral.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 336290,
+  "sha256": "b0aa830efb3bf9597722d4ecb56627494602437aa4c4620da11052121fa8d557",
+  "source_wav": "Coral.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/ExitMusic.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 314512,
+  "sha256": "30f62b31ca619b3d42f51a340b6b9a718ef7a23e0aa13241c45fda9f73f93cf6",
+  "source_wav": "ExitMusic.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Girl_In_The_Fire__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 339752,
+  "sha256": "16070084e1f00a7aacca9446331a869b19b70fdb462c4d94206aa45eefb07c23",
+  "source_wav": "Girl_In_The_Fire__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Greatest_Love_of_All_2min57.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 333518,
+  "sha256": "688041f336c3d5ebb822a539c0d9daf63067cf37452d16623ba373db1f26c6d9",
+  "source_wav": "Greatest_Love_of_All_2min57.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Hey Tonight.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 327792,
+  "sha256": "e0e665c53af1193a5ebbe082c902a39ede265aced9e9ff6066376610ccb50f92",
+  "source_wav": "Hey Tonight.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Hotel California.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 330301,
+  "sha256": "6758c01ada063cf7854ae181c8ff3b50b8941ef63b620e74cba1f3447f213b4a",
+  "source_wav": "Hotel California.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Jupiter, the Bringer of Jolity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 333385,
+  "sha256": "fd23b8016618cd1a5bf21bfcba1d5a34b1ecb61c7f59c3505cf1cecefbe59f9f",
+  "source_wav": "Jupiter, the Bringer of Jolity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Last_Of_The_Mohicanz__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 327241,
+  "sha256": "0beec7ab5046752e213f301d6683f0e1fc525b16155edf05d3ccad0c2ef643d4",
+  "source_wav": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/NewYorkCity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 328032,
+  "sha256": "e778339997d2ebb02d4c20d08df18bcaa9adb8d48b9ac7e0cc6c13af0c88ff15",
+  "source_wav": "NewYorkCity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Only Time.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 328878,
+  "sha256": "ffc2b0b7a4bfa598b0197290da0627f24bda8453ee9943ba09f31e8bc157318b",
+  "source_wav": "Only Time.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Robots_old.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 327674,
+  "sha256": "3d03c794862b146b4fdf35aa08cb74bffd2195a8ecc87de619813aff7ac7093d",
+  "source_wav": "Robots_old.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Severance__1.31-1.51_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 330677,
+  "sha256": "842d8b7fca1765c2ad5afb52abf0b96e294338cbe6f89e372549fbc3a2a547fe",
+  "source_wav": "Severance__1.31-1.51_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Shinsho_pool_3min45_4min4.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 341792,
+  "sha256": "5b4ff43de4db2932c5292025a5e01fd32eea14b8264e802f570ef5846a59cd2a",
+  "source_wav": "Shinsho_pool_3min45_4min4.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/SinceAlways.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 332179,
+  "sha256": "a0310d21cec9051b5ac2c3ff8d0a00f7b3f4808109d2e24b2519f76de0dfe255",
+  "source_wav": "SinceAlways.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/SlavesOfFear.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 332336,
+  "sha256": "5e5ac4988d477a15d4cef5a0c0f4a0a8bb44b895846dee0d091d7557d90079cc",
+  "source_wav": "SlavesOfFear.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/The Chastising of Renegade.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 330459,
+  "sha256": "978a2445d46c97938ef5a80cf0dfd49203ce230f4cf80b6f7fb24b3ddd2f20b6",
+  "source_wav": "The Chastising of Renegade.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Through The Fire And Flames.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 327083,
+  "sha256": "1f4ccab0e72d4f384a943ad01a8e20d6ac183890c3391dcb63454b58ef62c114",
+  "source_wav": "Through The Fire And Flames.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/TrosYGareg.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 318714,
+  "sha256": "a6c5a4d7658219186b5cc79cbf5d47cafd2883579b230a4196528deef47d5c9d",
+  "source_wav": "TrosYGareg.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/Waiting.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 326222,
+  "sha256": "474baedc032b2fced5867d1dee11fdaa75730f97dc958c24804eae50d3a45e59",
+  "source_wav": "Waiting.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/With Love (Outro).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 333264,
+  "sha256": "b53c606ddda61cbf3e7d48404636da447ecb073632dccf32420995f4281f7779",
+  "source_wav": "With Love (Outro).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/bah.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 308571,
+  "sha256": "d45b08054bf2da51d66efb97d620af625978da0ef51e76a04f101306ec645349",
+  "source_wav": "bah.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/bas.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 327850,
+  "sha256": "4bc5e287d16218eaa0642fbf3c406e2e36bf9009f88e3d4135430a5b8deebb44",
+  "source_wav": "bas.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/bonhemian_rhapsody.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 330303,
+  "sha256": "1ed6ed7b68e56498d86f5abca1652cdc0b9c3eae72a588160fb8cfa7c822f85f",
+  "source_wav": "bonhemian_rhapsody.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/clapton_44k.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 330740,
+  "sha256": "4791d590746772127d2ef3bcb81c7c4607796643ff31bb144eb224d0e6a9782a",
+  "source_wav": "clapton_44k.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/cst.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 216027,
+  "sha256": "0742fc616bac80fc4b0e211659c0d759a61523211aca771f06a988362dba3993",
+  "source_wav": "cst.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_256k/fms.wav.m4a",
-  "scenario": "48k_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 260.512,
+  "scenario": "48k_256k",
   "size": 329736,
-  "sha256": "5d94838f11e5d81577034d089cac9413639136eaeef3e5edff8d060ff4ca8461",
-  "source_wav": "fms.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "f124535a52ae3d5c5cb79b83e594debb8422990a5c9aa7e588cf7a5814e01877",
+  "source_wav": "fms.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/girl.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 328862,
+  "sha256": "a10954b42f92e4f7682acacd7eb4d2e31c5084e2c3f4974093f38da3fe0a0442",
+  "source_wav": "girl.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/glk.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 322482,
+  "sha256": "2468d3e4330c64a33eddd33931eaeb4b388614b0d048b12efec610ca1f8f235c",
+  "source_wav": "glk.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/hrp.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 292887,
+  "sha256": "f2e9528f5b8884dbece45c56fca480155f1d4106b9eadf30e2d7562cd9ab9c43",
+  "source_wav": "hrp.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/liberate.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 172481,
+  "sha256": "492672bd3fad2f4ff47190357ce3febfa55a208332f034f70b7c6dcfc2de00dd",
+  "source_wav": "liberate.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/lob.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 239819,
+  "sha256": "cb7920fd8e222f0fef3e9125b5a9d59a4e33cd942a48158e941e35a7324064f5",
+  "source_wav": "lob.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/mof.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 331647,
+  "sha256": "c681663f37f3d1f2bbff4c5e0ea82ce42e37b7a139d684c67dd693d10a26b7b0",
+  "source_wav": "mof.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/qrt.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 333090,
+  "sha256": "71912b367ba9169a321a6050976fb1600607d9899882d81c14376363156261af",
+  "source_wav": "qrt.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_256k/sandman.16b48k.wav.m4a",
-  "scenario": "48k_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 262.5944,
+  "scenario": "48k_256k",
   "size": 332339,
-  "sha256": "44ca357cac5bab569eb9d6838bd3cfd29fec0e65fc3f64d1ca2bee548aff01e4",
-  "source_wav": "sandman.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "21df71d81a056c2fbe882f16dd8d5a2c47af5cb84a3fd78eef8f50c2f45385b5",
+  "source_wav": "sandman.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/take_your_finger_frin_my_head.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 333772,
+  "sha256": "4607f0c712474e65d0193690a947dae4767507ec765e0fe5081a4286b6747f9f",
+  "source_wav": "take_your_finger_frin_my_head.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_256k/trumpet.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_256k",
+  "size": 336153,
+  "sha256": "4836f06e21dc2e5079ed261697ce24e412ff2d20368b91f1fe66ee7d4cebf5af",
+  "source_wav": "trumpet.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_256k/velvet.16b48k.wav.m4a",
-  "scenario": "48k_stereo_256k",
   "profile": "lc",
-  "target_kbps": 256,
-  "actual_kbps": 275.1568,
+  "scenario": "48k_256k",
   "size": 348042,
-  "sha256": "1960d6a204d52fd4db8301597c03fe94606d1ba7f70be804c80254e1fa4385d5",
-  "source_wav": "velvet.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "abe28e0a9dc2c52a15a793df408a3d7f9d4897f6f06fbc64b8766a20677586a8",
+  "source_wav": "velvet.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/12-German-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 321850,
+  "sha256": "65cce92ecea390a72937d1063965c62b4bf4b2d066cf7e866fe546b6ad2fd4cf",
+  "source_wav": "12-German-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/15-Good-evening.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 349669,
+  "sha256": "6c02adf99138ff37d321d7acbe4e7dbc82bacbbd2c26d6cb744c9afd105c864f",
+  "source_wav": "15-Good-evening.441.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_320k/21-classic.441.16b48k.wav.m4a",
-  "scenario": "48k_stereo_320k",
   "profile": "lc",
-  "target_kbps": 320,
-  "actual_kbps": 324.6088881409468,
+  "scenario": "48k_320k",
   "size": 395904,
-  "sha256": "6648a549b3a8db07d831e37c93fe9346fb915add26e11b0478d52b3ebfe4740f",
-  "source_wav": "21-classic.441.16b48k.wav",
-  "audio_duration": 9.656125,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "beb8d693039e4cb2e327da7e0b46e592a83fc0e3c8b6746baf4810cc57302f07",
+  "source_wav": "21-classic.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/24-Greensleeves-Korean-male-speech.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 372342,
+  "sha256": "44e3cc7d2cd10b82b5ad2498aebf562c4b2b4c17b8d0dcc8374a212dce3ec9cd",
+  "source_wav": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/25-This-is-the-end.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 380214,
+  "sha256": "fdc24fe82ca6b2061b88a873d62138608059936e45d95bdd0c9a7ca5bcccdc5d",
+  "source_wav": "25-This-is-the-end.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/27-last-song-drums-and-trampets.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 409124,
+  "sha256": "727665c340b3f9c341465a6241f4129ea9414fcf191183afad456a2171c3f97d",
+  "source_wav": "27-last-song-drums-and-trampets.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/35_SQAM_glockenspiel_cut.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 401038,
+  "sha256": "c9e8cb646ea6764a4604b46d5b38a2102a5f3fb44f39d30db4f3308b573cd6c0",
+  "source_wav": "35_SQAM_glockenspiel_cut.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/4-Sound-English-male.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 357488,
+  "sha256": "c4206f16b0e69721168f37a6734c7b3a3cff5181c74a7c02a8fdeccb969426df",
+  "source_wav": "4-Sound-English-male.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/9-Have-big-expensive-car.441.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 403077,
+  "sha256": "abd378496b1c0bda9e12278f071ad8e9347cea8e7ebdbd751aff238b6eae2246",
+  "source_wav": "9-Have-big-expensive-car.441.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Asleep__4.11-4.31_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 416129,
+  "sha256": "cce0a5ea642429d73409accab401277485b421b6f23e5d2c37004ab9d7fca549",
+  "source_wav": "Asleep__4.11-4.31_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 410024,
+  "sha256": "e1a2420d67ee7c4d2d47b9d5421125beace4019cf92ab1a4628d60730a082c54",
+  "source_wav": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Changes.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 406327,
+  "sha256": "473aaf76852026a79fbebffa364f74e984a7965287ce7b6c628dc9634837f7ab",
+  "source_wav": "Changes.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Coral.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 417319,
+  "sha256": "de30d76c5c5feeed2b98cd99167e6a7e2ae032e6d7e5af79bafa8355ed8e5ccc",
+  "source_wav": "Coral.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/ExitMusic.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 396270,
+  "sha256": "9cdf61bd0d456fff7b40828af48b3ec5e4dd0b818a5ba5de426560189a178159",
+  "source_wav": "ExitMusic.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Girl_In_The_Fire__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 416508,
+  "sha256": "c2794451e5f5bf0571aa502cfdabdd07fff6d207954256e6d5572faaa5f804a2",
+  "source_wav": "Girl_In_The_Fire__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Greatest_Love_of_All_2min57.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 415382,
+  "sha256": "3cd6fb855e30afa3273d950e40f9cbf3abf156ed8db7927660ccae0857d7d892",
+  "source_wav": "Greatest_Love_of_All_2min57.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Hey Tonight.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 409413,
+  "sha256": "6fbbd2891c414125ec69a9e65812f2e7cdb22612a82de3d02c4eeb6d0ec20037",
+  "source_wav": "Hey Tonight.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Hotel California.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 410587,
+  "sha256": "fc9348f78a55090d38c4b9bbf8d5ab20cb3b2386808fb43d0b1fdb877c8f32a3",
+  "source_wav": "Hotel California.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Jupiter, the Bringer of Jolity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 419975,
+  "sha256": "adf70995674750aeb90608a1523dbac6651ae484038807a369c3daae2b3ac5c8",
+  "source_wav": "Jupiter, the Bringer of Jolity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Last_Of_The_Mohicanz__Sample_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 410429,
+  "sha256": "4b62a48d7c9406cdfc54b04a4c669b8ef59beea122bf2fae868c3efbb95bcee9",
+  "source_wav": "Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/NewYorkCity.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 408370,
+  "sha256": "a7960fae9c7d8f2ad66a82741b4fa4be713c90397929107829a200c38150008e",
+  "source_wav": "NewYorkCity.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Only Time.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 410572,
+  "sha256": "7b35287fff5aafdeb466b0a6e2317fe837cc064e174e401250520859609cc6ff",
+  "source_wav": "Only Time.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Robots_old.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 411618,
+  "sha256": "2733a1f457e6753f502722e6aa075928b5bc642bd1431c7d46644da5aa3b034c",
+  "source_wav": "Robots_old.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Severance__1.31-1.51_.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 412956,
+  "sha256": "a5064724d4f1cf1a785c881528e8e7af22d321da15d9470dbb14493f6a867e62",
+  "source_wav": "Severance__1.31-1.51_.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Shinsho_pool_3min45_4min4.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 427129,
+  "sha256": "7b74c11da94b0726d0d4d2f80efd3ccc137fc9c2134532b91feca0075e599265",
+  "source_wav": "Shinsho_pool_3min45_4min4.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/SinceAlways.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 415136,
+  "sha256": "2b9caf39009ea40cc4a435ce1868505ae3e23767082784c0c6201d0668b52b94",
+  "source_wav": "SinceAlways.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/SlavesOfFear.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 414234,
+  "sha256": "462c944fa7caa466e119974d367daef9f2b838cb969874e606917150aaf1d107",
+  "source_wav": "SlavesOfFear.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/The Chastising of Renegade.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 422353,
+  "sha256": "5e1d87bbeb926655f53be754601f367b27ed2bf99abf93514b23dba4599e2501",
+  "source_wav": "The Chastising of Renegade.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Through The Fire And Flames.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 408155,
+  "sha256": "b73a52aba3703204ecf070cdd38e5a03f8c880eaefb8c712e283946f0718c140",
+  "source_wav": "Through The Fire And Flames.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/TrosYGareg.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 399178,
+  "sha256": "08636dba9bd04ab54dfa775c7bf59f9153d9ce949d64b794da4baf82ced06e5f",
+  "source_wav": "TrosYGareg.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/Waiting.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 410889,
+  "sha256": "ea7ecfff05d018525fb0c39e1297917960cd6708477529ae3fbcddfedbad363e",
+  "source_wav": "Waiting.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/With Love (Outro).16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 413580,
+  "sha256": "259288d376bef455fa7a5a429848abfc92c5a0ab3ab2dd0097446db2bdc66742",
+  "source_wav": "With Love (Outro).16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/bah.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 387802,
+  "sha256": "f6bad1086c680944291e354024f83726ef8e7e059ab820a114354a0a681e6c0d",
+  "source_wav": "bah.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/bas.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 415419,
+  "sha256": "381bca5047f1eff2cdc04278116e21dcd8df9fc7d0b7c43189401c5d1b617f6b",
+  "source_wav": "bas.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/bonhemian_rhapsody.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 417993,
+  "sha256": "a5a5015c381a8b3d1791fb566552688051131de1fe2646b13fbf92c48a76306e",
+  "source_wav": "bonhemian_rhapsody.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/clapton_44k.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 417963,
+  "sha256": "927c016061ab154d11f33beebb03f42934cbf216cd3c1bd5bc06ba881b1bfa59",
+  "source_wav": "clapton_44k.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/cst.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 268303,
+  "sha256": "7d611ad3ee8704438ddca462d93eed9815904b01fd97b267627a7a199e5b48ad",
+  "source_wav": "cst.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_320k/fms.wav.m4a",
-  "scenario": "48k_stereo_320k",
   "profile": "lc",
-  "target_kbps": 320,
-  "actual_kbps": 326.84159999999997,
+  "scenario": "48k_320k",
   "size": 412648,
-  "sha256": "6d836b93ec62463abcd7a9c710eb924116f2579b83b934b2a1cbc429fe313d88",
-  "source_wav": "fms.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "d942a9c4a501da83eba253977bc9c77805ff2114e748f6fe97f450cbf495ce4b",
+  "source_wav": "fms.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/girl.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 410343,
+  "sha256": "1294f0a32be529440803d6b2a4b755068c71f474c97581b953d8126372a4f3bf",
+  "source_wav": "girl.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/glk.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 402074,
+  "sha256": "2a3d51559c5b1fc9984ac964066d18d91547cf8cec714267a02f602c21329d85",
+  "source_wav": "glk.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/hrp.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 369359,
+  "sha256": "9498b9455f0291df4fb81d8f76bc6a4f474ddff6aacaef83c7d665ae40ec157b",
+  "source_wav": "hrp.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/liberate.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 211498,
+  "sha256": "0244031b49b74b62a474471f96ca10142f13d892008dec68ae1b0d823dba817e",
+  "source_wav": "liberate.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/lob.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 297690,
+  "sha256": "66803059e0274dc915477dc7d6b839adddd934559d00356a6c120b800f7ed3c6",
+  "source_wav": "lob.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/mof.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 411258,
+  "sha256": "3bd61246b2ef440dc3e5dee9400e68dbaf91234b7fbe7bebf5f844fe7e951ab7",
+  "source_wav": "mof.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/qrt.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 415483,
+  "sha256": "41b625b483826ccab38a907f2a2d01dcd53e9b6a34f77840b6578f83e008bc0a",
+  "source_wav": "qrt.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_320k/sandman.16b48k.wav.m4a",
-  "scenario": "48k_stereo_320k",
   "profile": "lc",
-  "target_kbps": 320,
-  "actual_kbps": 329.228,
+  "scenario": "48k_320k",
   "size": 415631,
-  "sha256": "8a04ff0f1d21c69e2770b119fb46cb177fda952e292321e29311e4606cf8f95c",
-  "source_wav": "sandman.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "419e19dfb922173fc1dadba8a48c23c3544df9ddc9db8f3543d7cd8eb29049b2",
+  "source_wav": "sandman.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/take_your_finger_frin_my_head.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 416739,
+  "sha256": "907da0c73d2ef219c71e1f9ba4b33794280e813a2de1d5011f4c650730845800",
+  "source_wav": "take_your_finger_frin_my_head.16b48k.wav"
+ },
+ {
+  "path": "apple-s11-extra/lc/48k_320k/trumpet.16b48k.wav.m4a",
+  "profile": "lc",
+  "scenario": "48k_320k",
+  "size": 420642,
+  "sha256": "8fbdd3f8f78634f9d213ad25695ef9ff0324727a3dd9c42acf9e128f2b0ff526",
+  "source_wav": "trumpet.16b48k.wav"
  },
  {
   "path": "apple-s11-extra/lc/48k_320k/velvet.16b48k.wav.m4a",
-  "scenario": "48k_stereo_320k",
   "profile": "lc",
-  "target_kbps": 320,
-  "actual_kbps": 333.796,
+  "scenario": "48k_320k",
   "size": 421341,
-  "sha256": "edac5a1b780775f6cb8a8c58e4be897d13308456cceffeb92f31c37dcc9534b2",
-  "source_wav": "velvet.16b48k.wav",
-  "audio_duration": 10.0,
-  "tool": "Apple AAC 27.0.1"
+  "sha256": "c06d7648b4282b3297850b1394df7f1f71ae6fd1b92e57338f59304ebeab98d9",
+  "source_wav": "velvet.16b48k.wav"
  }
 ]
