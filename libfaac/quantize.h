@@ -32,6 +32,7 @@ typedef struct
      * mono, multichannel and low rates) keeps the original formula. */
     float avg_weight;
     float loud_exponent;
+    float peak_floor;
 } AACQuantCfg;
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054f minimizes average

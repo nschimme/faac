@@ -123,6 +123,7 @@ typedef struct
     float avg_weight;
     float loud_exponent;
     float slope_scale;
+    float peak_floor;   /* fraction of the per-window reference, about -23 dB at 0.005 */
 } MaskingProfile;
 
 typedef struct
@@ -130,7 +131,6 @@ typedef struct
     float silence_rms;      /* 16-bit PCM units */
     float peak_weight;
     float avg_floor;
-    float peak_floor;
     float quiet_band;
     float sf_smooth;
     float rich_slope;
@@ -154,9 +154,9 @@ static const MaskingModel masking_model = {
     .peak_weight = 0.45f,    /* tonal contribution after the average-energy share */
     /* Fractions of uniform-energy baselines: average uses the group reference,
      * peak uses the per-window reference (about -30 and -23 dB respectively).
-     * Floors keep weak bands' power-law terms from collapsing to zero. */
+     * Floors keep weak bands' power-law terms from collapsing to zero; the peak
+     * floor is per profile. */
     .avg_floor = 0.0010f,
-    .peak_floor = 0.0050f,
     /* Below about -35 dB relative to that reference, taper the target again
      * so the floors do not spend bits on bands masked by the rest of the frame. */
     .quiet_band = 0.0003f,
@@ -182,10 +182,10 @@ static const MaskingModel masking_model = {
         /* Average-energy share, power-law loudness exponent, slope multiplier.
          * The exponent compresses band/reference energy ratios; both weights
          * balance noise-like average energy against tonal peak energy. */
-        { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f },
+        { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f },
         /* Calibrated for rate-limited stereo LC. Keep other stream types on
          * the default balance; this fit does not establish their quality. */
-        { .avg_weight = 0.15f, .loud_exponent = 0.35f, .slope_scale = 1.5f },
+        { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.0f, .peak_floor = 0.0100f },
     },
     /* Empirical target offsets converted to linear multipliers at the knots.
      * Positions are kHz at a 48 kHz reference, so they follow the same
@@ -319,6 +319,7 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
 
     cfg->avg_weight = masking_model.profiles[profile].avg_weight;
     cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
+    cfg->peak_floor = masking_model.profiles[profile].peak_floor;
     if (tuned)
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
     /* Any set rate (VBR has none) at or above the nudge's measured floor. */
@@ -370,7 +371,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
 
         // floor before pow(): formula is monotonic, so this floors the output too
         if (avg < ref * masking_model.avg_floor) avg = ref * masking_model.avg_floor;
-        if (peak < ref_win * masking_model.peak_floor) peak = ref_win * masking_model.peak_floor;
+        if (peak < ref_win * cfg->peak_floor) peak = ref_win * cfg->peak_floor;
 
         target = avg_weight * loudness(avg / ref, loud_exp)
                + (1.0f - avg_weight) * masking_model.peak_weight * loudness(peak / ref_win, loud_exp);
