@@ -28,7 +28,7 @@ replaced by
 .BR .wav .
 Input from stdin ("\-") is written to stdout instead.
 Progress and result messages are printed to stdout unless
-.B -q
+.B -v0
 is given; with
 .B -w
 they are suppressed so they do not mix with the audio.
@@ -104,8 +104,14 @@ The default is the first AAC track.
 .B -i
 lists the tracks of the file.
 .TP
+.BI -v\  verbose
+Verbosity level;
+.B -v0
+is quiet mode and suppresses decoding progress.
+.TP
 .BR -q ,\  --quiet
-Quiet mode, suppress decoding progress.
+Same as
+.BR -v0 .
 .TP
 .BR --overwrite
 Overwrite an existing output file.
