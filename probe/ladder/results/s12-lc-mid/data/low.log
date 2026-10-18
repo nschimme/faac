@@ -1,0 +1,13 @@
+audio 64k base: lowb_audio_64 mean MOS 4.4683 bytes 3884015
+audio 64k full: lowf_audio_64 mean MOS 4.4938 bytes 3880383
+audio 64k min:  lowm_audio_64 mean MOS 4.4933 bytes 3881075
+audio 80k base: lowb_audio_80 mean MOS 4.6128 bytes 4811858
+audio 80k full: lowf_audio_80 mean MOS 4.6205 bytes 4808385
+audio 80k min:  lowm_audio_80 mean MOS 4.6219 bytes 4809082
+audio_44k1 64k base: lowb_audio_44k1_64 mean MOS 4.4829 bytes 3872553
+audio_44k1 64k full: lowf_audio_44k1_64 mean MOS 4.5031 bytes 3869049
+audio_44k1 64k min:  lowm_audio_44k1_64 mean MOS 4.5052 bytes 3869703
+audio_44k1 80k base: lowb_audio_44k1_80 mean MOS 4.6245 bytes 4801123
+audio_44k1 80k full: lowf_audio_44k1_80 mean MOS 4.6263 bytes 4797478
+audio_44k1 80k min:  lowm_audio_44k1_80 mean MOS 4.6310 bytes 4798174
+LOWDONE

@@ -1,0 +1,9 @@
+[full] g_full GATE        48k   n= 4 mean BD  +2.47%  median  +3.75%  worst  +8.03%  best  -5.66%
+[full] g_full GATE        44k1  n= 4 mean BD  +2.51%  median  +0.92%  worst  +8.42%  best  -0.22%
+[full] g_full ALL49       48k   n=49 mean BD  -2.25%  median  -2.59%  worst +21.12%  best -43.24%
+[full] g_full ALL49       44k1  n=49 mean BD  -2.65%  median  -2.54%  worst +17.87%  best -48.03%
+[min] g_min GATE         48k   n= 4 mean BD  +2.82%  median  +2.79%  worst  +9.08%  best  -3.38%
+[min] g_min GATE         44k1  n= 4 mean BD  +3.25%  median  +2.10%  worst  +8.21%  best  +0.58%
+[min] g_min ALL49        48k   n=49 mean BD  -2.25%  median  -2.57%  worst +20.69%  best -43.05%
+[min] g_min ALL49        44k1  n=49 mean BD  -2.59%  median  -1.60%  worst +16.61%  best -48.34%
+GUARDDONE

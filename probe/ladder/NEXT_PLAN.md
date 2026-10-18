@@ -2,6 +2,16 @@
 
 > **Current handoff (2026-10-16): see [`HANDOFF.md`](HANDOFF.md).** The target is now **LC at high bitrates vs Apple** (HE-AAC reached parity with Apple and FDK on `he-v1-retune`). `HANDOFF.md` supersedes the Stage S11 status below, including its "48 kHz HE first, LC secondary" priority and the "frozen baseline 098e8900" rule (the base for new experiments is `nschimme/faac` `he-v1-retune`; re-fetch before branching).
 
+## Latest handoff after Stage S12 (2026-10-18)
+
+Read [`results/s12-lc-mid/README.md`](results/s12-lc-mid/README.md) first. Focus moved to LC 44.1/48 kHz at 96–320 kbps against Apple,
+scored by BD-rate on the `--gate` clips with the 49-clip corpus as the guard. [nschimme/faac#108](https://github.com/nschimme/faac/pull/108)
+(stereo LC masking profile retune) is open; wait for its CI before building on it. Closed this stage (do not rerun): block-switch
+level/drop/smoothing/context sweeps, `-c` bandwidth, rate-control account depth and settling. Next, in order: CI for #108; a
+held-out-split fit of the whole masking model against all 49 clips; analysis of the three worst remaining clips (SinceAlways,
+take_your_finger, glockenspiel); VBR LC (never uses the tuned profile); complexity-aware per-frame allocation; TNS gating.
+Stage S11 below stays valid for HE-AAC v1.
+
 ## Current handoff after Stage S11 (2026-10-15)
 
 Start with [`LADDER_RESULT.md` → Stage S11](LADDER_RESULT.md#stage-s11--bounded-he-v1-feature-study-and-merged-baseline-closure-2026-10-14)

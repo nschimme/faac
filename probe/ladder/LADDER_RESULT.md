@@ -2041,3 +2041,17 @@ Use the package's relative family paths and run manifests rather than the origin
 The [focused comparison and proposed experiments](results/s11-he-v1/reference-gaps-367cf8dc/SUGGESTED_EXPERIMENTS.md) preserve both supplied numeric matrices and a portable derivation. At HE 40/48/56/64 kb/s, historical FAAC `367cf8dc` needs +6.933% BD-rate versus FDK (47 valid curves; 95% CI [3.119%, 11.181%]) and +5.443% versus Apple (45 curves; [1.098%, 9.907%]). This encoder predates PR #70. These measured gaps prioritize matched 48 kHz HE diagnostics; LC 128–192 kb/s is secondary. Suggested experiments are not new completed results.
 
 Cloud agents can use [392 Apple reference streams](ref/apple-s11-367cf8dc/README.md): 49 clips at HE 40/48/56/64 and LC 96/128/160/192 kb/s, all verified 48 kHz stereo. Stream and source-WAV hashes are recorded; source WAVs must be fetched separately. Existing references can be decoded on Linux. New Apple clips/settings require Mac-generated references; the packaged corpus is not a held-out set. Capture hashes freeze the current media, not the unrecorded historical scoring bytes.
+
+## Stage S12 — LC 44.1/48 kHz against Apple, mid and high rates (2026-10-18)
+
+Full write-up, scripts, raw rows and probe knobs: [`results/s12-lc-mid/`](results/s12-lc-mid/README.md). The benchmark's
+`--gate` scores four clips (sandman, velvet, 21-classic, fms), and the local 49-clip scores restricted to them
+reproduce the CI table within 0.002 MOS. On all 49 clips master (`a71e7ea`) is at parity with Apple at 96–160k
+(mean gap -0.006 to +0.001) and trails only slightly at 192k and above (+0.002 to +0.006). BD-rate against Apple on the
+gate is +5.41% (48k) and +6.03% (44.1k); on all 49 clips -1.38% and -1.78%. Velvet's raw gap is mostly bytes (Apple +10%
+on that clip). Block-switch, bandwidth and rate-control account sweeps gave no BD-rate gain. A masking-model retune
+(peak floor 0.010, loudness exponent 0.30, slope multiplier 3.0, tuned stereo LC profile only) takes the gate to +2.51%
+/ +3.01% and the full set to -2.42% / -2.58%, with 64k/80k LC MOS up and bytes unchanged; submitted as
+[nschimme/faac#108](https://github.com/nschimme/faac/pull/108), CI pending. The worst clips against Apple are now
+SinceAlways, take_your_finger and the glockenspiel (+14% to +20% BD-rate), none of them in the gate.
+

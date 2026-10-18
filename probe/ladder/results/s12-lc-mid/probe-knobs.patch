@@ -1,0 +1,134 @@
+diff --git a/libfaac/blockswitch.c b/libfaac/blockswitch.c
+index 04c3eab..8c8bb7d 100644
+--- a/libfaac/blockswitch.c
++++ b/libfaac/blockswitch.c
+@@ -17,6 +17,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include <stdlib.h>
+ #include "blockswitch.h"
+ #include "coder.h"
+ #include "util.h"
+@@ -80,7 +81,9 @@ psydata_t;
+    [cur-2, cur+9], wants a short block. */
+ static void PsyCheckShort(PsyInfo * psyInfo)
+ {
+-  enum {PREVS = 2, NEXTS = 2};
++  static int PREVS = -1, NEXTS;
++  if (PREVS < 0) { const char *a = getenv("FAAC_BS_PREVS"), *b = getenv("FAAC_BS_NEXTS");
++    PREVS = a ? atoi(a) : 2; NEXTS = b ? atoi(b) : 2; }
+   const psydata_t *psydata = (const psydata_t *)psyInfo->data;
+   unsigned span = (1u << (PREVS + SUBBLOCKS_PER_FRAME + NEXTS - 1)) - 1;
+ 
+@@ -95,9 +98,10 @@ int PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannel
+   int size;
+ 
+   gpsyInfo->sampleRate = (float) sampleRate;
+-  gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_LEVEL_RATIO_LC;
+-  gpsyInfo->dropRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_DROP_RATIO_LC;
+-  gpsyInfo->levelSmooth = heCore ? 1.0f : PSY_LEVEL_SMOOTH_LC;
++  { const char *a = getenv("FAAC_BS_LR"), *b = getenv("FAAC_BS_DR"), *c = getenv("FAAC_BS_SM");
++  gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : (a ? (float)atof(a) : PSY_LEVEL_RATIO_LC);
++  gpsyInfo->dropRatio = heCore ? PSY_LEVEL_RATIO_HE : (b ? (float)atof(b) : PSY_DROP_RATIO_LC);
++  gpsyInfo->levelSmooth = heCore ? 1.0f : (c ? (float)atof(c) : PSY_LEVEL_SMOOTH_LC); }
+   gpsyInfo->bassDom = heCore ? PSY_BASS_DOM_HE : 0.0f;
+ 
+   for (channel = 0; channel < numChannels; channel++)
+diff --git a/libfaac/quantize.c b/libfaac/quantize.c
+index de61650..0c55cf4 100644
+--- a/libfaac/quantize.c
++++ b/libfaac/quantize.c
+@@ -147,7 +147,7 @@ typedef struct
+ /* Masking-model parameters, not AAC syntax constants or an absolute hearing
+  * threshold. The default balance and fitted stereo profile share these
+  * controls; changing them redistributes quantization error between bands. */
+-static const MaskingModel masking_model = {
++static MaskingModel masking_model = {
+     /* Time-domain RMS in 16-bit PCM units; silence_energy() converts it to
+      * this MDCT's energy scale so the gate is independent of block length. */
+     .silence_rms = 0.4f,
+@@ -305,9 +305,44 @@ static float tilt_gain(float khz)
+     return gain;
+ }
+ 
++#include <stdlib.h>
++#include <string.h>
++/* FAAC_MM="key=val,..." overrides masking_model: pw peak_weight, af avg_floor, pf peak_floor,
++ * qb quiet_band, sm sf_smooth, rs rich_slope, aw/le/ss profile[1] avg_weight/loud_exponent/
++ * slope_scale, t0..t7 tilt knot gain offset in dB. */
++static void mm_env(void)
++{
++    static int done;
++    const char *e = getenv("FAAC_MM");
++    char buf[512], *tok, *sv;
++    if (done) return;
++    done = 1;
++    if (!e) return;
++    strncpy(buf, e, sizeof buf - 1); buf[sizeof buf - 1] = 0;
++    for (tok = strtok_r(buf, ",", &sv); tok; tok = strtok_r(NULL, ",", &sv))
++    {
++        char *eq = strchr(tok, '=');
++        float v;
++        if (!eq) continue;
++        *eq = 0; v = (float)atof(eq + 1);
++        if (!strcmp(tok, "pw")) masking_model.peak_weight = v;
++        else if (!strcmp(tok, "af")) masking_model.avg_floor = v;
++        else if (!strcmp(tok, "pf")) masking_model.peak_floor = v;
++        else if (!strcmp(tok, "qb")) masking_model.quiet_band = v;
++        else if (!strcmp(tok, "sm")) masking_model.sf_smooth = v;
++        else if (!strcmp(tok, "rs")) masking_model.rich_slope = v;
++        else if (!strcmp(tok, "aw")) masking_model.profiles[1].avg_weight = v;
++        else if (!strcmp(tok, "le")) masking_model.profiles[1].loud_exponent = v;
++        else if (!strcmp(tok, "ss")) masking_model.profiles[1].slope_scale = v;
++        else if (tok[0] == 't' && tok[1] >= '0' && tok[1] <= '7')
++            masking_model.tilt[tok[1] - '0'].gain *= powf(10.0f, v / 20.0f);
++    }
++}
++
+ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
+                            unsigned long bitrate_per_ch, unsigned channels, int is_he)
+ {
++    mm_env();
+     const int tuned = bitrate_per_ch >= masking_model.tune_min_rate
+                    && channels == 2 && !is_he;
+     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
+diff --git a/libfaac/ratecontrol.c b/libfaac/ratecontrol.c
+index bbdc752..1083fcc 100644
+--- a/libfaac/ratecontrol.c
++++ b/libfaac/ratecontrol.c
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include <math.h>
++#include <stdlib.h>
+ 
+ #include "ratecontrol.h"
+ #include "coder.h"
+@@ -158,10 +159,15 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
+        however much each clip drew. One CORE setpoint serves the account and
+        `fix` alike -- the frame's budget less what SBR was charged, against
+        what the core actually spent. */
+-    int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
++    static float k_aim = -1; static int k_frames, k_amort;
++    if (k_aim < 0) { const char *e;
++        e = getenv("FAAC_RC_AIM");    k_aim = e ? (float)atof(e) : RC_BALANCE_AIM;
++        e = getenv("FAAC_RC_FRAMES"); k_frames = e ? atoi(e) : RC_BALANCE_FRAMES;
++        e = getenv("FAAC_RC_AMORT");  k_amort = e ? atoi(e) : RC_BALANCE_AMORT; }
++    int coreTarget = (int)(desbits * k_aim) - sbrCharge;
+     int coreBits = totalBits - sbrBits;
+     int lend;
+-    int bound = RC_BALANCE_FRAMES * desbits;
++    int bound = k_frames * desbits;
+     int diff = coreTarget - coreBits;
+     rc->balance += diff;
+     if (rc->balance > bound)
+@@ -173,7 +179,7 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
+        complex frame overspend, a debt holds the next frames under budget
+        until it is repaid. Amortizing is what keeps a deep balance from being
+        worked off in one lurch. */
+-    lend = rc->balance / RC_BALANCE_AMORT;
++    lend = rc->balance / k_amort;
+ 
+     int floored = 0;
+     int capped = 0;

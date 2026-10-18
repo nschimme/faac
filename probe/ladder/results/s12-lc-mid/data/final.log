@@ -1,0 +1,9 @@
+final GATE         48k   n= 4 mean BD  +2.51%  median  +2.64%  worst  +9.17%  best  -4.40%
+final GATE         44k1  n= 4 mean BD  +3.01%  median  +1.35%  worst  +8.69%  best  +0.64%
+final ALL49        48k   n=49 mean BD  -2.42%  median  -2.68%  worst +19.81%  best -43.33%
+final ALL49        44k1  n=49 mean BD  -2.58%  median  -1.44%  worst +18.87%  best -48.37%
+audio 64k new: finlow_audio_64 mean MOS 4.4952 bytes 3881181
+audio 80k new: finlow_audio_80 mean MOS 4.6270 bytes 4808984
+audio_44k1 64k new: finlow_audio_44k1_64 mean MOS 4.5060 bytes 3869785
+audio_44k1 80k new: finlow_audio_44k1_80 mean MOS 4.6354 bytes 4798064
+FINALDONE

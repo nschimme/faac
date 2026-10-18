@@ -1,0 +1,27 @@
+lr3 GATE           48k   n= 4 mean BD  +5.12%  median  +4.05%  worst +12.38%  best  +0.01%
+lr3 GATE           44k1  n= 4 mean BD  +6.28%  median  +6.50%  worst +11.04%  best  +1.09%
+lr4 GATE           48k   n= 4 mean BD  +5.46%  median  +4.55%  worst +12.93%  best  -0.20%
+lr4 GATE           44k1  n= 4 mean BD  +6.63%  median  +7.21%  worst +11.04%  best  +1.04%
+lr6 GATE           48k   n= 4 mean BD  +5.73%  median  +4.49%  worst +12.05%  best  +1.90%
+lr6 GATE           44k1  n= 4 mean BD  +6.69%  median  +7.34%  worst +11.24%  best  +0.83%
+dr20 GATE          48k   n= 4 mean BD  +5.53%  median  +4.68%  worst +12.62%  best  +0.16%
+dr20 GATE          44k1  n= 4 mean BD  +5.95%  median  +6.18%  worst +10.34%  best  +1.13%
+dr50 GATE          48k   n= 4 mean BD  +5.03%  median  +3.65%  worst +12.66%  best  +0.16%
+dr50 GATE          44k1  n= 4 mean BD  +6.10%  median  +6.59%  worst +10.08%  best  +1.13%
+sm0.15 GATE        48k   n= 4 mean BD  +6.73%  median  +6.87%  worst +13.07%  best  +0.12%
+sm0.15 GATE        44k1  n= 4 mean BD  +7.13%  median  +6.71%  worst +14.08%  best  +1.00%
+sm0.5 GATE         48k   n= 4 mean BD  +4.85%  median  +3.39%  worst +12.50%  best  +0.12%
+sm0.5 GATE         44k1  n= 4 mean BD  +6.03%  median  +6.28%  worst +10.46%  best  +1.10%
+pn11 GATE          48k   n= 4 mean BD  +5.05%  median  +3.80%  worst +12.63%  best  -0.06%
+pn11 GATE          44k1  n= 4 mean BD  +6.17%  median  +6.30%  worst +11.03%  best  +1.05%
+pn01 GATE          48k   n= 4 mean BD  +5.05%  median  +3.76%  worst +12.62%  best  +0.05%
+pn01 GATE          44k1  n= 4 mean BD  +6.34%  median  +6.61%  worst +11.02%  best  +1.13%
+pn12 GATE          48k   n= 4 mean BD  +5.17%  median  +4.12%  worst +12.45%  best  +0.00%
+pn12 GATE          44k1  n= 4 mean BD  +6.24%  median  +6.29%  worst +11.24%  best  +1.14%
+pn21 GATE          48k   n= 4 mean BD  +5.18%  median  +3.96%  worst +12.90%  best  -0.10%
+pn21 GATE          44k1  n= 4 mean BD  +5.87%  median  +6.19%  worst +10.08%  best  +1.02%
+pn20 GATE          48k   n= 4 mean BD  +5.00%  median  +3.70%  worst +12.75%  best  -0.16%
+pn20 GATE          44k1  n= 4 mean BD  +5.92%  median  +6.66%  worst  +9.41%  best  +0.95%
+pn10 GATE          48k   n= 4 mean BD  +4.98%  median  +3.70%  worst +12.63%  best  -0.13%
+pn10 GATE          44k1  n= 4 mean BD  +6.13%  median  +6.54%  worst +10.45%  best  +0.98%
+SWEEPDONE

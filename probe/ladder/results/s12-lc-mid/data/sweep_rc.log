@@ -1,0 +1,15 @@
+F=4 A=16 rc4_16 GATE        48k   n= 4 mean BD  +5.72%  median  +4.78%  worst +13.03%  best  +0.29%
+F=4 A=16 rc4_16 GATE        44k1  n= 4 mean BD  +6.46%  median  +6.54%  worst +11.62%  best  +1.14%
+F=4 A=8 rc4_8 GATE         48k   n= 4 mean BD  +6.51%  median  +5.75%  worst +14.27%  best  +0.28%
+F=4 A=8 rc4_8 GATE         44k1  n= 4 mean BD  +7.32%  median  +6.95%  worst +14.21%  best  +1.18%
+F=8 A=32 rc8_32 GATE        48k   n= 4 mean BD  +5.33%  median  +4.15%  worst +12.85%  best  +0.16%
+F=8 A=32 rc8_32 GATE        44k1  n= 4 mean BD  +5.97%  median  +6.28%  worst +10.18%  best  +1.13%
+F=16 A=32 rc16_32 GATE       48k   n= 4 mean BD  +5.33%  median  +4.15%  worst +12.85%  best  +0.16%
+F=16 A=32 rc16_32 GATE       44k1  n= 4 mean BD  +5.97%  median  +6.28%  worst +10.18%  best  +1.13%
+F=16 A=16 rc16_16 GATE       48k   n= 4 mean BD  +5.66%  median  +4.61%  worst +13.14%  best  +0.29%
+F=16 A=16 rc16_16 GATE       44k1  n= 4 mean BD  +6.47%  median  +6.52%  worst +11.69%  best  +1.14%
+F=32 A=16 rc32_16 GATE       48k   n= 4 mean BD  +5.66%  median  +4.61%  worst +13.14%  best  +0.29%
+F=32 A=16 rc32_16 GATE       44k1  n= 4 mean BD  +6.47%  median  +6.52%  worst +11.69%  best  +1.14%
+F=32 A=8 rc32_8 GATE        48k   n= 4 mean BD  +6.37%  median  +5.52%  worst +14.19%  best  +0.28%
+F=32 A=8 rc32_8 GATE        44k1  n= 4 mean BD  +7.30%  median  +6.92%  worst +14.18%  best  +1.18%
+SWEEPDONE

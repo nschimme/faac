@@ -1,0 +1,21 @@
+[pf=0.01,le=0.3] c_pfp0d01_lep0d3 GATE 48k   n= 4 mean BD  +4.71%  median  +3.52%  worst +10.16%  best  +1.65%
+[pf=0.01,le=0.3] c_pfp0d01_lep0d3 GATE 44k1  n= 4 mean BD  +4.80%  median  +4.85%  worst  +7.99%  best  +1.50%
+[pf=0.01,le=0.3,aw=0.1] c_pfp0d01_lep0d3_awp0d1 GATE 48k   n= 4 mean BD  +4.71%  median  +3.78%  worst +10.36%  best  +0.93%
+[pf=0.01,le=0.3,aw=0.1] c_pfp0d01_lep0d3_awp0d1 GATE 44k1  n= 4 mean BD  +4.88%  median  +4.86%  worst  +7.54%  best  +2.26%
+[pf=0.01,le=0.3,aw=0.1,ss=2.0] c_pfp0d01_lep0d3_awp0d1_ssp2d0 GATE 48k   n= 4 mean BD  +3.67%  median  +3.12%  worst  +9.98%  best  -1.52%
+[pf=0.01,le=0.3,aw=0.1,ss=2.0] c_pfp0d01_lep0d3_awp0d1_ssp2d0 GATE 44k1  n= 4 mean BD  +3.79%  median  +3.18%  worst  +7.37%  best  +1.43%
+[pf=0.01,le=0.3,aw=0.1,ss=2.0,t5=-1.5,t6=-1.5,t7=-1.5] c_pfp0d01_lep0d3_awp0d1_ssp2d0_t5pm1d5_t6pm1d5_t7pm1d5 GATE 48k   n= 4 mean BD  +2.99%  median  +3.65%  worst  +8.43%  best  -3.77%
+[pf=0.01,le=0.3,aw=0.1,ss=2.0,t5=-1.5,t6=-1.5,t7=-1.5] c_pfp0d01_lep0d3_awp0d1_ssp2d0_t5pm1d5_t6pm1d5_t7pm1d5 GATE 44k1  n= 4 mean BD  +2.80%  median  +1.39%  worst  +7.56%  best  +0.84%
+[pf=0.01,le=0.3,aw=0.1,ss=2.0,t5=-1.5,t6=-1.5,t7=-1.5,rs=4] c_pfp0d01_lep0d3_awp0d1_ssp2d0_t5pm1d5_t6pm1d5_t7pm1d5_rsp4 GATE 48k   n= 4 mean BD  +2.47%  median  +3.75%  worst  +8.03%  best  -5.66%
+[pf=0.01,le=0.3,aw=0.1,ss=2.0,t5=-1.5,t6=-1.5,t7=-1.5,rs=4] c_pfp0d01_lep0d3_awp0d1_ssp2d0_t5pm1d5_t6pm1d5_t7pm1d5_rsp4 GATE 44k1  n= 4 mean BD  +2.51%  median  +0.92%  worst  +8.42%  best  -0.22%
+[pf=0.02,le=0.25] c_pfp0d02_lep0d25 GATE 48k   n= 4 mean BD  +7.43%  median  +6.47%  worst +10.80%  best  +5.98%
+[pf=0.02,le=0.25] c_pfp0d02_lep0d25 GATE 44k1  n= 4 mean BD  +6.92%  median  +6.03%  worst +11.83%  best  +3.78%
+[pf=0.01,le=0.3,rs=4] c_pfp0d01_lep0d3_rsp4 GATE 48k   n= 4 mean BD  +3.85%  median  +3.12%  worst  +9.85%  best  -0.70%
+[pf=0.01,le=0.3,rs=4] c_pfp0d01_lep0d3_rsp4 GATE 44k1  n= 4 mean BD  +3.91%  median  +3.53%  worst  +7.85%  best  +0.75%
+[pf=0.02,le=0.3] c_pfp0d02_lep0d3 GATE 48k   n= 4 mean BD  +5.16%  median  +4.13%  worst  +9.95%  best  +2.44%
+[pf=0.02,le=0.3] c_pfp0d02_lep0d3 GATE 44k1  n= 4 mean BD  +4.99%  median  +5.00%  worst  +7.59%  best  +2.36%
+[pf=0.01,le=0.25] c_pfp0d01_lep0d25 GATE 48k   n= 4 mean BD  +6.50%  median  +5.53%  worst +10.78%  best  +4.17%
+[pf=0.01,le=0.25] c_pfp0d01_lep0d25 GATE 44k1  n= 4 mean BD  +6.11%  median  +5.47%  worst +10.34%  best  +3.14%
+[pf=0.01,le=0.3,ss=2.5] c_pfp0d01_lep0d3_ssp2d5 GATE 48k   n= 4 mean BD  +2.82%  median  +2.79%  worst  +9.08%  best  -3.38%
+[pf=0.01,le=0.3,ss=2.5] c_pfp0d01_lep0d3_ssp2d5 GATE 44k1  n= 4 mean BD  +3.25%  median  +2.10%  worst  +8.21%  best  +0.58%
+SWEEPDONE
