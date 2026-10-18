@@ -158,8 +158,15 @@ tests on the 24 odd ones. Result: no move was accepted. Fit BD stays -3.725% and
 two numbers differ because the halves contain different clips). The largest single-step gains were `pw` 0.45 to 0.346
 (-0.12), `le` 0.30 to 0.28 (-0.10), `pf` 0.010 to 0.014 (-0.085), all below the threshold, and
 `sm`, `qb`, the three tilt bands and `rs` were each worse or flat in both directions. The shipped point is a local
-optimum of this model on this half of the corpus. Fold B (fit odd, test even) is the cross-check; see
-`data/cd_B.log` if it was completed.
+optimum of this model on this half of the corpus. Fold B (fit odd, test even, `data/cd_B.log`) accepted one move in pass 1,
+`pw` (peak_weight) 0.45 to 0.346: fit -1.141% to -1.323%, and the held-out even half -3.725% to -3.846%, so both halves
+agree on the direction. Its half-step second pass (`le` +-0.01, `pf` +-17%) rejected every move so far.
+
+**`pw` 0.346 on the full ladder is not worth shipping** (`scripts/pw.sh`, `data/pw.log`, BD-rate vs Apple): gate 48k
++2.51% to +2.64% and 44.1k +3.01% to +3.30% (worse), all 49 clips 48k -2.42% to -2.62% and 44.1k -2.58% to -2.72%
+(better), 64k/80k LC mean MOS within -0.0009 to +0.0019 of the shipped values. The gain is on the full corpus and the loss
+on the gate, both under 0.3 points, and `peak_weight` is global (it would also change HE and mono unless moved into the
+profile). Treat it as a null result.
 
 **Worst clips against Apple after #60** (128k dumps, BD-rate; none except fms and 21-classic are in the gate):
 

@@ -1,0 +1,13 @@
+[pw=0.346] pw346 GATE         48k   n= 4 mean BD  +2.64%  median  +2.62%  worst  +9.54%  best  -4.23%
+[pw=0.346] pw346 GATE         44k1  n= 4 mean BD  +3.30%  median  +1.92%  worst  +8.81%  best  +0.55%
+[pw=0.346] pw346 ALL49        48k   n=49 mean BD  -2.62%  median  -2.93%  worst +19.22%  best -43.60%
+[pw=0.346] pw346 ALL49        44k1  n=49 mean BD  -2.72%  median  -1.66%  worst +17.40%  best -48.74%
+audio 64k pw=0.346: pwlow_audio_64 mean MOS 4.4943 bytes 3881628
+audio 64k shipped:  pwbase_audio_64 mean MOS 4.4952 bytes 3881181
+audio 80k pw=0.346: pwlow_audio_80 mean MOS 4.6261 bytes 4809187
+audio 80k shipped:  pwbase_audio_80 mean MOS 4.6270 bytes 4808984
+audio_44k1 64k pw=0.346: pwlow_audio_44k1_64 mean MOS 4.5056 bytes 3870143
+audio_44k1 64k shipped:  pwbase_audio_44k1_64 mean MOS 4.5060 bytes 3869785
+audio_44k1 80k pw=0.346: pwlow_audio_44k1_80 mean MOS 4.6373 bytes 4797986
+audio_44k1 80k shipped:  pwbase_audio_44k1_80 mean MOS 4.6354 bytes 4798064
+PWDONE
