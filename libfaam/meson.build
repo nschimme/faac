@@ -50,16 +50,22 @@ libfaam_static = static_library(
 )
 
 if default_lib == 'shared' or default_lib == 'both'
+  shared_kwargs = {
+    'c_args': libfaam_args['c_args'] + ['-DFAAM_BUILDING'],
+    # Same version as libfaac until the libraries are versioned together.
+    'version': meson.project_version(),
+    'vs_module_defs': 'libfaam.def',
+    'install': true,
+  }
+  if get_option('frontend-static')
+    shared_kwargs += {
+      'install_dir': get_option('libdir'),
+    }
+  endif
   libfaam_shared = shared_library(
     'faam',
     libfaam_sources,
-    kwargs: libfaam_args + {
-      'c_args': libfaam_args['c_args'] + ['-DFAAM_BUILDING'],
-      # Same version as libfaac until the libraries are versioned together.
-      'version': '3.0.0',
-      'vs_module_defs': 'libfaam.def',
-      'install': true,
-    },
+    kwargs: libfaam_args + shared_kwargs,
   )
 endif
 

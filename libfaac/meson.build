@@ -79,15 +79,21 @@ if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') a
 endif
 
 if default_lib == 'shared' or default_lib == 'both'
+    shared_kwargs = {
+      # Keep in sync with FAAC_VERSION_MAJOR/MINOR/PATCH in include/faac.h.
+      'c_args' : common_args['c_args'] + ['-DFAAC_BUILDING'],
+      'version' : meson.project_version(),
+      'vs_module_defs' : 'libfaac.def',
+    }
+    if get_option('frontend-static')
+      shared_kwargs += {
+        'install_dir': get_option('libdir'),
+      }
+    endif
     libfaac_shared = shared_library(
         'faac',
         common_src,
-        kwargs : common_args + {
-          # Keep in sync with FAAC_VERSION_MAJOR/MINOR/PATCH in include/faac.h.
-          'c_args' : common_args['c_args'] + ['-DFAAC_BUILDING'],
-          'version' : '3.0.0',
-          'vs_module_defs' : 'libfaac.def',
-        },
+        kwargs : common_args + shared_kwargs,
     )
 endif
 
