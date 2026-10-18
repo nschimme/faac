@@ -2,8 +2,8 @@
 
 Goal: beat Apple AAC 27.0.1 at 44.1 and 48 kHz stereo LC, 96–320 kbps, judged by BD-rate on the benchmark's
 `--gate` clips with the 49-clip corpus as the regression guard. Base: `nschimme/faac` master `a71e7ea`
-(contains #52, #56, #57, #58). Result: [PR #108](https://github.com/nschimme/faac/pull/108), which closes about
-half of the gate gap. Everything below is local (zimtohrli through the benchmark's `score_clip.py`), not CI.
+(contains #52, #56, #57, #58). Result: [PR #108](https://github.com/nschimme/faac/pull/108), merged upstream as #60
+(`cadcad7`), which closes about half of the gate gap. Everything below is local (zimtohrli through the benchmark's `score_clip.py`), not CI.
 Scripts are in `scripts/`, raw rows and logs in `data/`, probe knobs in `probe-knobs.patch` (never merge).
 
 ## 1. The pipeline reproduces the CI table
@@ -147,3 +147,40 @@ encodes and scores a variant over the ladder and prints BD-rate; the `sweep_*.sh
 `final.sh` scripts are the exact runs behind the logs in `data/`. Paths are hard-coded to `/home/user/work/an`,
 `/opt/faac-benchmark` and `/opt/venv312`. Apple references are `ref/apple-s11-367cf8dc` (48k 96–192k) and
 `ref/apple-s11-extra` (44.1k 128–256k, 48k 256/320k).
+
+## 7. Follow-up (same day): held-out fit and the worst clips
+
+**Coordinate descent on the whole masking model** (`scripts/cd.py`, `data/cd_*.log`, `data/cd_cache.json`). Start at the
+shipped values, objective = mean BD-rate against Apple (average of the 48k and 44.1k family means; 48k rungs
+96-256k, 44.1k rungs 128-256k), step each of 12 parameters up and down (`le`, `pf`, `ss`, `aw`, `pw`, `qb`, `af`, `sm`,
+three tilt bands, `rs`), accept a move only if it gains more than 0.15 points. Fold A fits the 25 even-indexed clips and
+tests on the 24 odd ones. Result: no move was accepted. Fit BD stays -3.725% and held-out BD stays -1.141% (the
+two numbers differ because the halves contain different clips). The largest single-step gains were `pw` 0.45 to 0.346
+(-0.12), `le` 0.30 to 0.28 (-0.10), `pf` 0.010 to 0.014 (-0.085), all below the threshold, and
+`sm`, `qb`, the three tilt bands and `rs` were each worse or flat in both directions. The shipped point is a local
+optimum of this model on this half of the corpus. Fold B (fit odd, test even) is the cross-check; see
+`data/cd_B.log` if it was completed.
+
+**Worst clips against Apple after #60** (128k dumps, BD-rate; none except fms and 21-classic are in the gate):
+
+| Clip | Signature at 128k | Reading |
+|---|---|---|
+| SinceAlways | FAAC 129 nonzero lines at 2-6 kHz against Apple's 80; 12+ kHz: FAAC 7 lines and 92% PNS, Apple 57 lines and 0% PNS | MOS gap +0.057 at 128k, +0.026 at 192k, +0.003 at 320k |
+| take_your_finger | FAAC 107 vs 76 lines at 2-6 kHz; 12+ kHz: 1 line and 98% PNS vs 29 lines | MOS gap +0.082 at 128k, +0.019 at 192k |
+| 35_SQAM_glockenspiel | FAAC undershoots the nominal rate (about -13% at 320k, -7% at 192k) | MOS gap only 0.007 to 0.017 but MOS is 4.98-4.99, where BD-rate turns a tiny MOS difference into a large percentage; low priority |
+
+**Fixed treble targets do not fix them** (`scripts/worst.sh`, `data/w_*`; BD-rate vs Apple, mean of 6 clips: shipped 9.84%
+(48k) and 9.68% (44.1k)). Raising the treble target by +3 dB above 11 kHz: 10.67% / 10.47%; +5 dB: 13.41% / 12.31%;
+`rs` 2: 10.54% / 9.98%. take_your_finger improves (48k +14.0% to +8.1% at +5 dB, 44.1k +17.5% to +12.2%), while velvet
+(48k -4.40% to +6.38%), fms and 21-classic get worse and SinceAlways does not respond (+19.8% to +23.6%). A
+fixed tilt trades clips against each other; only a rule that follows the clip could help take_your_finger, and
+SinceAlways has a different cause (the 2-6 kHz share).
+
+Revised next steps, in order:
+
+1. Read CI for #60 on master (CBR and VBR ladders, per-clip gate).
+2. SinceAlways: test lower 2-6 kHz targets on that clip alone (the `tlo`/`tmid` bands were only moved by 1 dB on the mean,
+   which cannot show a clip-specific effect), and look for what separates it from the clips that gain from the retune.
+3. A content-adaptive treble target for take_your_finger-like material (high-frequency energy relative to the frame),
+   gated so velvet, fms and 21-classic keep the shipped behaviour.
+4. VBR LC (never uses the tuned profile), TNS gating, complexity-aware per-frame allocation, held-out clips: as in section 6.
