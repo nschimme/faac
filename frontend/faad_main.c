@@ -308,9 +308,7 @@ static bool pcm_writer_open(PCMWriter *w, const char *outfile, bool write_stdout
     w->header_pending = !raw_format;
 
     if (write_stdout) {
-#ifdef _WIN32
-        _setmode(_fileno(stdout), _O_BINARY);
-#endif
+        if (!cli_binary_stream(stdout)) return false;
         w->fout = stdout;
     } else if (outfile) {
         w->fout = cli_fopen(outfile, "wb");
@@ -546,10 +544,8 @@ static bool pcm_writer_finish(PCMWriter *w, uint32_t sample_rate, uint32_t num_c
             if (!write_wav_header(w->fout, sample_rate, (uint16_t)num_channels,
                                   w->total_pcm_bytes, w->bit_depth, w->is_float, w->header_channel_mask)) return false;
         }
-        int result = fclose(w->fout);
-        w->fout = NULL;
-        if (result != 0) return false;
-    } else if (w->fout && fflush(w->fout) != 0) {
+        if (!cli_finish_output(&w->fout)) return false;
+    } else if (w->fout && !cli_finish_output(&w->fout)) {
         return false;
     }
     if (w->io_buf) {
@@ -783,9 +779,8 @@ int main(int argc, char **argv)
         case 'i': info_only = true; break;
         case OPT_JSON: json_info = true; info_only = true; break;
         case OPT_TRACK: {
-            char *end;
-            unsigned long v = strtoul(optarg, &end, 10);
-            if (*optarg == '\0' || *end != '\0' || v == 0 || v > UINT32_MAX) {
+            unsigned long long v;
+            if (!cli_parse_uint(optarg, UINT32_MAX, &v) || v == 0) {
                 fprintf(stderr, "Invalid --track %s (a track ID, 1 or more)\n", optarg);
                 return 1;
             }
@@ -831,9 +826,10 @@ int main(int argc, char **argv)
     bool memory_input = false;
     fin = !strcmp(infile, "-") ? stdin : cli_fopen(infile, "rb");
     if (!fin) { fprintf(stderr, "Error opening input file %s\n", infile); return 1; }
-#ifdef _WIN32
-    if (fin == stdin) _setmode(_fileno(stdin), _O_BINARY);
-#endif
+    if (fin == stdin && !cli_binary_stream(stdin)) {
+        fprintf(stderr, "Cannot set binary input mode\n");
+        return 1;
+    }
     if (fin == stdin && !outfile && !write_stdout && !info_only && !adts_outfile)
         write_stdout = true;
     if (fin != stdin) setvbuf(fin, NULL, _IOFBF, INPUT_BUFFER_SIZE);
@@ -964,7 +960,7 @@ int main(int argc, char **argv)
                 if (ret_status) break;
             }
         }
-        if (fclose(fadts) != 0) ret_status = 1;
+        if (!cli_finish_output(&fadts)) ret_status = 1;
         if (ret_status) goto cleanup;
         if (!quiet) printf("Extracted %u raw ADTS frames to %s\n", track.num_samples, adts_outfile);
         ret_status = 0;
