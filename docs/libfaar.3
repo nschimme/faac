@@ -23,7 +23,7 @@ is a C library for digital audio sample rate conversion. The staged-short CPU ba
 .SH FUNCTIONS
 .TP
 .BR faar_create ()
-Allocates and initializes a resampler instance for converting audio from \fIin_rate\fR to \fIout_rate\fR across \fIchannels\fR (1 to 8 channels supported). Quality presets include \fBFAAR_QUALITY_FAST\fR, \fBFAAR_QUALITY_GOOD\fR, and \fBFAAR_QUALITY_HIGH\fR.
+Allocates and initializes a resampler instance for converting audio from \fIin_rate\fR to \fIout_rate\fR across \fIchannels\fR (1 to 8 channels supported). Quality presets include \fBFAAR_QUALITY_FAST\fR, \fBFAAR_QUALITY_GOOD\fR, and \fBFAAR_QUALITY_HIGH\fR. Float builds (\fB-Dfaar-precision=float\fR) support Fast and Good only; creation returns NULL for \fBFAAR_QUALITY_HIGH\fR.
 .TP
 .BR faar_set_dither ()
 Configures dithering and noise-shaping error feedback (\fBFAAR_DITHER_OFF\fR, \fBFAAR_DITHER_TPDF\fR, or \fBFAAR_DITHER_SHAPED\fR) for quantization down to 16-bit or 24-bit integer PCM targets.
