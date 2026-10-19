@@ -26,6 +26,7 @@ their current coverage are described in
 |---|---|
 | 44.1 → 48 kHz | Dedicated upsampling plan: 2× DFT expansion, then a 21-phase fractional-delay bank |
 | 48 → 44.1 kHz | Dedicated reference plan: DFT prefilter with 2× expansion, then a 20-phase bank |
+| 44.1 → 22.05 or 48 → 24 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
 | 88.2 → 44.1 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
 | 88.2 → 48 kHz | General staged downsampling plan: DFT prefilter and a 127-phase bank |
 | 96 → 44.1 kHz | Dedicated reference plan: DFT prefilter and a 20-phase bank |
@@ -34,7 +35,8 @@ their current coverage are described in
 | 44.1 → 96 or 48 → 88.2 kHz | Dedicated fractional upsampling plan: 2× DFT expansion and a 21-phase bank |
 | 32 → 44.1 or 48 kHz; 88.2 → 96 kHz | Dedicated upsampling plan: 2× DFT expansion and a 21-phase bank |
 | 48 → 32 kHz | Dedicated downsampling plan: DFT prefilter and a 21-phase bank |
-| 176.4 → 96, 88.2, 48, or 44.1 kHz | General staged downsampling plan: DFT prefilter and a 127-phase bank |
+| 176.4 → 88.2 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
+| 176.4 → 96, 48, or 44.1 kHz | General staged downsampling plan: DFT prefilter and a 127-phase bank |
 | 192 → 96 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
 | 192 → 48 kHz | Dedicated 4:1 plan: 4× DFT decimation and a 1-phase bank |
 | 192 → 44.1 kHz | Dedicated reference plan: DFT prefilter and a 20-phase bank |
