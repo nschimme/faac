@@ -1,0 +1,225 @@
+{
+  "channels": 2,
+  "faar": {
+    "median": {
+      "child_cpu_seconds": 0.2233480000000001,
+      "process_cpu_seconds": 0.2233480000000001,
+      "process_wall_seconds": 0.22387480805628002,
+      "wall_seconds": 0.22387480805628002
+    },
+    "runs": [
+      {
+        "child_cpu_seconds": 0.215634,
+        "process_cpu_seconds": 0.215634,
+        "process_wall_seconds": 0.21611321496311575,
+        "stderr": "",
+        "wall_seconds": 0.21611321496311575
+      },
+      {
+        "child_cpu_seconds": 0.214945,
+        "process_cpu_seconds": 0.214945,
+        "process_wall_seconds": 0.21539453405421227,
+        "stderr": "",
+        "wall_seconds": 0.21539453405421227
+      },
+      {
+        "child_cpu_seconds": 0.23460000000000003,
+        "process_cpu_seconds": 0.23460000000000003,
+        "process_wall_seconds": 0.23624690005090088,
+        "stderr": "",
+        "wall_seconds": 0.23624690005090088
+      },
+      {
+        "child_cpu_seconds": 0.226259,
+        "process_cpu_seconds": 0.226259,
+        "process_wall_seconds": 0.22676837793551385,
+        "stderr": "",
+        "wall_seconds": 0.22676837793551385
+      },
+      {
+        "child_cpu_seconds": 0.2233480000000001,
+        "process_cpu_seconds": 0.2233480000000001,
+        "process_wall_seconds": 0.22387480805628002,
+        "stderr": "",
+        "wall_seconds": 0.22387480805628002
+      },
+      {
+        "child_cpu_seconds": 0.2311399999999999,
+        "process_cpu_seconds": 0.2311399999999999,
+        "process_wall_seconds": 0.23321902204770595,
+        "stderr": "",
+        "wall_seconds": 0.23321902204770595
+      },
+      {
+        "child_cpu_seconds": 0.2149970000000001,
+        "process_cpu_seconds": 0.2149970000000001,
+        "process_wall_seconds": 0.21530839905608445,
+        "stderr": "",
+        "wall_seconds": 0.21530839905608445
+      }
+    ]
+  },
+  "frames_per_channel": 2880000,
+  "input_rate": 96000,
+  "input_sha256": "7fd29f8a6f1dfecc0bdd41c6f58805a7c47fff8fb3270041018d372b529025c0",
+  "output_rate": 44100,
+  "profiles": {
+    "cpu": {
+      "command": [
+        "docker/sox-vulkan/sox-podman-timed",
+        "--single-threaded",
+        "--buffer",
+        "262144",
+        "--input-buffer",
+        "262144",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-L",
+        "-r",
+        "96000",
+        "-c",
+        "2",
+        "/tmp/faar-final-retained-bench/sox-input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-L",
+        "-r",
+        "44100",
+        "-c",
+        "2",
+        "/tmp/faar-final-retained-bench/sox-cpu-output.f32",
+        "rate",
+        "-v",
+        "44100"
+      ],
+      "count_match": true,
+      "error_dbfs": -74.19084768787683,
+      "faar_samples": 2646000,
+      "max_abs_error": 0.027088642120361328,
+      "reference_rms": 0.2440677904087429,
+      "reference_samples": 2646000,
+      "rms_error": 0.00019519002316337576,
+      "timing": {
+        "median": {
+          "child_cpu_seconds": 0.1708099999999999,
+          "process_cpu_seconds": 0.084767,
+          "process_wall_seconds": 0.08,
+          "wall_seconds": 0.26791852503083646
+        },
+        "runs": [
+          {
+            "child_cpu_seconds": 0.18101900000000004,
+            "container_cgroup_cpu_seconds": 0.086258,
+            "container_cgroup_system_seconds": 0.019401,
+            "container_cgroup_user_seconds": 0.066858,
+            "container_max_rss_kb": 20032,
+            "container_process_cpu_seconds": 0.06999999999999999,
+            "container_process_wall_seconds": 0.08,
+            "process_cpu_seconds": 0.086258,
+            "process_wall_seconds": 0.08,
+            "stderr": "SOX_TIMING real=0.08 user=0.06 sys=0.01 max_rss_kb=20032\nSOX_CGROUP_CPU usage_usec=86258 user_usec=66858 system_usec=19401",
+            "wall_seconds": 0.27582664997316897
+          },
+          {
+            "child_cpu_seconds": 0.1708099999999999,
+            "container_cgroup_cpu_seconds": 0.07879,
+            "container_cgroup_system_seconds": 0.012499,
+            "container_cgroup_user_seconds": 0.066291,
+            "container_max_rss_kb": 19820,
+            "container_process_cpu_seconds": 0.06999999999999999,
+            "container_process_wall_seconds": 0.07,
+            "process_cpu_seconds": 0.07879,
+            "process_wall_seconds": 0.07,
+            "stderr": "SOX_TIMING real=0.07 user=0.06 sys=0.01 max_rss_kb=19820\nSOX_CGROUP_CPU usage_usec=78790 user_usec=66291 system_usec=12499",
+            "wall_seconds": 0.261541741900146
+          },
+          {
+            "child_cpu_seconds": 0.16511699999999996,
+            "container_cgroup_cpu_seconds": 0.081148,
+            "container_cgroup_system_seconds": 0.013779,
+            "container_cgroup_user_seconds": 0.067369,
+            "container_max_rss_kb": 19752,
+            "container_process_cpu_seconds": 0.06999999999999999,
+            "container_process_wall_seconds": 0.07,
+            "process_cpu_seconds": 0.081148,
+            "process_wall_seconds": 0.07,
+            "stderr": "SOX_TIMING real=0.07 user=0.06 sys=0.01 max_rss_kb=19752\nSOX_CGROUP_CPU usage_usec=81148 user_usec=67369 system_usec=13779",
+            "wall_seconds": 0.2601011040387675
+          },
+          {
+            "child_cpu_seconds": 0.1705350000000001,
+            "container_cgroup_cpu_seconds": 0.084767,
+            "container_cgroup_system_seconds": 0.018939,
+            "container_cgroup_user_seconds": 0.065829,
+            "container_max_rss_kb": 19688,
+            "container_process_cpu_seconds": 0.06999999999999999,
+            "container_process_wall_seconds": 0.08,
+            "process_cpu_seconds": 0.084767,
+            "process_wall_seconds": 0.08,
+            "stderr": "SOX_TIMING real=0.08 user=0.06 sys=0.01 max_rss_kb=19688\nSOX_CGROUP_CPU usage_usec=84767 user_usec=65829 system_usec=18939",
+            "wall_seconds": 0.2708515910198912
+          },
+          {
+            "child_cpu_seconds": 0.16829800000000006,
+            "container_cgroup_cpu_seconds": 0.092443,
+            "container_cgroup_system_seconds": 0.016346,
+            "container_cgroup_user_seconds": 0.076097,
+            "container_max_rss_kb": 19908,
+            "container_process_cpu_seconds": 0.08,
+            "container_process_wall_seconds": 0.09,
+            "process_cpu_seconds": 0.092443,
+            "process_wall_seconds": 0.09,
+            "stderr": "SOX_TIMING real=0.09 user=0.07 sys=0.01 max_rss_kb=19908\nSOX_CGROUP_CPU usage_usec=92443 user_usec=76097 system_usec=16346",
+            "wall_seconds": 0.2682430880377069
+          },
+          {
+            "child_cpu_seconds": 0.1846969999999999,
+            "container_cgroup_cpu_seconds": 0.08713,
+            "container_cgroup_system_seconds": 0.01626,
+            "container_cgroup_user_seconds": 0.070869,
+            "container_max_rss_kb": 19712,
+            "container_process_cpu_seconds": 0.08,
+            "container_process_wall_seconds": 0.08,
+            "process_cpu_seconds": 0.08713,
+            "process_wall_seconds": 0.08,
+            "stderr": "SOX_TIMING real=0.08 user=0.07 sys=0.01 max_rss_kb=19712\nSOX_CGROUP_CPU usage_usec=87130 user_usec=70869 system_usec=16260",
+            "wall_seconds": 0.26791852503083646
+          },
+          {
+            "child_cpu_seconds": 0.17157899999999993,
+            "container_cgroup_cpu_seconds": 0.082532,
+            "container_cgroup_system_seconds": 0.015187,
+            "container_cgroup_user_seconds": 0.067345,
+            "container_max_rss_kb": 19940,
+            "container_process_cpu_seconds": 0.06999999999999999,
+            "container_process_wall_seconds": 0.08,
+            "process_cpu_seconds": 0.082532,
+            "process_wall_seconds": 0.08,
+            "stderr": "SOX_TIMING real=0.08 user=0.06 sys=0.01 max_rss_kb=19940\nSOX_CGROUP_CPU usage_usec=82532 user_usec=67345 system_usec=15187",
+            "wall_seconds": 0.2547733379760757
+          }
+        ]
+      }
+    }
+  },
+  "provenance": {
+    "candidate": "FAAR staged backend, 127-tap output phase filter",
+    "comparison_tool_sha256": "b0ae10f144213d9d0a4026af21f2d70c98efaceb02071317819ea26cb5650f0e",
+    "faar_binary_sha256": "df22d181a82f7d9b9b3e35c8b68258cd01dc23e58ee63cc8a391aaf0a19a6a97",
+    "faar_source_sha256": "af997a481499d4b90375ca388094b040eae495c3dae6e44a82b444b8d58dc5a3",
+    "sox_execution": "amd64 Podman, CPU rate -v, single threaded",
+    "sox_reference": "simonefil/sox-vulkan sox-16.2.2, commit 54102e40ffbdbe991505b9ac0a7c62e0b4d4ae3c",
+    "timing_note": "FAAR timing is child CPU; SoX timing is container cgroup CPU and includes process I/O. Both use the same raw float32 input and output counts."
+  },
+  "repeats": 7,
+  "warmups": 1,
+  "working_directory": "/tmp/faar-final-retained-bench"
+}

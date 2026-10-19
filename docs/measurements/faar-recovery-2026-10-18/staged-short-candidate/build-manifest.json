@@ -1,0 +1,17 @@
+{
+  "backend": "staged-short",
+  "build_directory": "/tmp/faac-faar-short-build",
+  "coefficient_precision": "double",
+  "candidate_library": "libfaar.so",
+  "candidate_library_sha256": "43967e7dacf41007f02f6dae72d36fe109532fcd5a99f9c35953a6679a20f9dd",
+  "candidate_library_bytes": 71576,
+  "host": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics; Linux x86_64",
+  "build_command": "meson setup /tmp/faac-faar-short-build -Dfaar-backend=staged-short -Dfaar-coefficient-precision=double; meson compile -C /tmp/faac-faar-short-build",
+  "verification_command": "meson test -C /tmp/faac-faar-short-build --print-errorlogs",
+  "verification_result": "6/6 tests passed",
+  "benchmarks": "bench.json, seven alternating serial runs with one warmup",
+  "signals": "signals.json",
+  "sox_source_license": "No SoX implementation source copied into libfaar",
+  "ooura_fft_license": "Official Ooura terms permit use, modification, and distribution including commercial use; retain package reference on modifications",
+  "ooura_upstream": "https://www.kurims.kyoto-u.ac.jp/~ooura/fft.html"
+}

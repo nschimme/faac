@@ -1,0 +1,42 @@
+{
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553",
+  "preset": "Good",
+  "comparison": "staged-short candidate vs current polyphase baseline",
+  "input_tone_rate_fraction": 0.45,
+  "pair_count": 187,
+  "probe_records": 374,
+  "engines": {
+    "faar-candidate": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.4999990130167789,
+      "least_attenuated_image": {
+        "attenuation_db": -140.62159099629514,
+        "in_rate": 16000,
+        "out_rate": 48000,
+        "frequency_hz": 8800,
+        "amplitude": 4.654677559173695e-08
+      },
+      "image_components_above_minus_120_db": 0
+    },
+    "faar-default": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.4999990130167789,
+      "least_attenuated_image": {
+        "attenuation_db": -140.62159099583963,
+        "in_rate": 16000,
+        "out_rate": 48000,
+        "frequency_hz": 8800,
+        "amplitude": 4.654677559417802e-08
+      },
+      "image_components_above_minus_120_db": 0
+    }
+  },
+  "paired_image_component_count": 1490,
+  "candidate_baseline_max_abs_image_attenuation_delta_db": 5.668308062922733e-07,
+  "interpretation": "Good candidate and current baseline image measurements agree to within numerical output-fit noise. This is descriptive only; no Good image threshold is defined."
+}

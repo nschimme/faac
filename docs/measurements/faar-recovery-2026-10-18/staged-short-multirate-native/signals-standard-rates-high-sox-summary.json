@@ -1,0 +1,70 @@
+{
+  "source_file": "signals-standard-rates-high-sox.json",
+  "source_sha256": "1eb75891e130965a552f84cfed12b48fb394d0cfb4c952dfd746e9f3d12ac075",
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "scope": {
+    "pairs": [
+      "192000->48000",
+      "48000->32000",
+      "48000->96000",
+      "88200->44100",
+      "96000->48000"
+    ],
+    "engines": [
+      "faar-candidate",
+      "sox-wide",
+      "ardftsrc"
+    ],
+    "preset": "FAAR High",
+    "records": 129,
+    "note": "Sparse fixed-frequency response and transient probes; characterization only, not a complete spectral or perceptual quality pass."
+  },
+  "selected_findings": [
+    {
+      "conversion": "192000->48000",
+      "frequency_hz": 24100,
+      "description": "100 Hz above output Nyquist",
+      "wanted_gain_db": {
+        "faar-candidate": -47.4564153584,
+        "sox-wide": -206.2,
+        "ardftsrc": -207.75
+      },
+      "alias_attenuation_db": {
+        "faar-candidate": 47.4564,
+        "sox-wide": 159.9436,
+        "ardftsrc": 159.9438
+      }
+    },
+    {
+      "conversion": "48000->96000",
+      "frequency_hz": 22800,
+      "description": "transition-band wanted-tone response",
+      "wanted_gain_db": {
+        "faar-candidate": -0.88004,
+        "sox-wide": -0.0,
+        "ardftsrc": -0.0
+      }
+    },
+    {
+      "conversion": "48000->96000",
+      "frequency_hz": 23952,
+      "description": "48 Hz below input Nyquist; wanted-tone response",
+      "wanted_gain_db": {
+        "faar-candidate": -154.5928,
+        "sox-wide": -42.58,
+        "ardftsrc": -35.16
+      }
+    },
+    {
+      "conversion": "48000->32000",
+      "frequency_hz": 15200,
+      "description": "transition-band wanted-tone response",
+      "wanted_gain_db": {
+        "faar-candidate": -0.86834,
+        "sox-wide": 0.0,
+        "ardftsrc": 0.0
+      }
+    }
+  ],
+  "quality_caveat": "The probe locations above include transition and stopband frequencies. They are useful for identifying candidate-specific behavior but no preset-specific acceptance mask for these new pairs has been agreed."
+}

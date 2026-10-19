@@ -1,0 +1,36 @@
+{
+  "candidate_library_sha256": "2be57d545ebed830649ab829dd39695e1734b59d4ccd2179481d5fcfcaec0c0e",
+  "source_file": "signals-standard-planner2-image-high.json",
+  "source_sha256": "44fee141c5372761825ef9e83f0a3041b8a2e978f8334cba03e52993cd4f24e0",
+  "preset": "High",
+  "pair_count": 187,
+  "probe_records": 374,
+  "engines": {
+    "faar-candidate": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "least_attenuated_image": {
+        "attenuation_db": -151.11440329266972,
+        "amplitude": 1.3907524106827423e-08,
+        "in_rate": 32000,
+        "out_rate": 768000,
+        "frequency_hz": 241600
+      },
+      "components_above_minus_120_db": 0
+    },
+    "ardftsrc": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "least_attenuated_image": {
+        "attenuation_db": -72.74733322137217,
+        "amplitude": 0.00011525414369694625,
+        "in_rate": 8000,
+        "out_rate": 768000,
+        "frequency_hz": 4400
+      },
+      "components_above_minus_120_db": 63
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "status": "rejected",
+  "candidate_trial_library_sha256": "9561d5b68063b1d9cad623a5ce8ac58796117ffd23629884ceca3e8bb5487169",
+  "conversion": "96->48 kHz",
+  "candidate_plan": "45-tap direct half-band FIR, beta 16.5, High preset",
+  "benchmark_protocol": {
+    "repeats": 10,
+    "warmups": 1,
+    "signal_duration_seconds": 30,
+    "channels": 2
+  },
+  "median_processing_cpu_seconds": {
+    "faar_trial": 0.0325930455,
+    "sox_wide": 0.04440915050000001,
+    "ardftsrc": 0.0656704595
+  },
+  "quality": {
+    "1000_hz_gain_db": -8.267750291970231e-08,
+    "21600_hz_candidate_gain_db": -1.9164715206072156,
+    "21600_hz_ardftsrc_gain_db": 9.329225753843777e-08,
+    "21600_hz_gain_delta_db": 1.916471613899473,
+    "24010_hz_candidate_alias_attenuation_db": 6.045009205024403,
+    "24010_hz_ardftsrc_alias_attenuation_db": 156.71760543516552,
+    "24010_hz_alias_attenuation_delta_db": 150.67259623014112,
+    "central_impulse_peak_offset_frames": 0,
+    "central_impulse_time_reversal_error_relative": 0.0,
+    "exact_output_frame_count": true
+  },
+  "decision": "Reject despite winning processing time versus SoX: the 21.6 kHz passband loss is 1.92 dB, and the 24.01 kHz alias probe has only 6.05 dB attenuation versus 156.72 dB for SoX/ARDFTSRC."
+}

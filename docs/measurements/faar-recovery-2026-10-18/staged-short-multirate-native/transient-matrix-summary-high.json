@@ -1,0 +1,63 @@
+{
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "preset": "High",
+  "conversion_pairs": 357,
+  "input": "2 seconds, with impulses at start, midpoint, and last input frame",
+  "endpoint_mode": "ZERO (diagnostic driver)",
+  "window": "central +/-200 ms; first/last endpoint energy over 10 ms",
+  "engines": {
+    "faar-candidate": {
+      "pairs": 357,
+      "main_peaks_at_expected_frame": 357,
+      "time_reversal_error_relative": {
+        "median": 3.868357245683433e-16,
+        "p95": 0.0008099461931229156,
+        "p99": 0.0009931040113278827,
+        "maximum": 0.0009931050746638233,
+        "pairs_above_1e-4": 72
+      },
+      "pre_post_energy_imbalance_db": {
+        "median_abs": 1.5429239464852578e-14,
+        "maximum_abs": 6000.0
+      },
+      "head_edge_energy": {
+        "median": 0.05866509675979614,
+        "maximum": 2.8957886695861816
+      },
+      "tail_edge_energy": {
+        "median": 0.05866522714495659,
+        "maximum": 5.466847896575928
+      }
+    },
+    "ardftsrc": {
+      "pairs": 357,
+      "main_peaks_at_expected_frame": 357,
+      "time_reversal_error_relative": {
+        "median": 9.278018194401968e-13,
+        "p95": 0.0006799955821256947,
+        "p99": 0.009188430961867961,
+        "maximum": 0.03474901849145637,
+        "pairs_above_1e-4": 27
+      },
+      "pre_post_energy_imbalance_db": {
+        "median_abs": 1.658643242471638e-13,
+        "maximum_abs": 0.8304466500238072
+      },
+      "head_edge_energy": {
+        "median": 0.062000587582588196,
+        "maximum": 3.001417636871338
+      },
+      "tail_edge_energy": {
+        "median": 0.062000710517168045,
+        "maximum": 5.655527591705322
+      }
+    }
+  },
+  "worst_candidate_symmetry_pair": {
+    "in_rate": 192000,
+    "out_rate": 8000,
+    "error": 0.0009931050746638233,
+    "ardftsrc_error": 5.092487196878075e-11
+  },
+  "interpretation": "Every measured central peak lands on its expected output frame. Candidate central impulse response is near symmetric for most pairs; its maximum relative time-reversal error is about 9.93e-4, compared with ARDFTSRC maximum 3.47e-2 on a different pair. These measurements characterize the matrix and do not define an automatic threshold or perceptual score."
+}

@@ -1,0 +1,188 @@
+{
+  "channels": 2,
+  "faar": {
+    "median": {
+      "child_cpu_seconds": 1.6571669999999994,
+      "process_cpu_seconds": 1.6571669999999994,
+      "process_wall_seconds": 1.6647963350405917,
+      "wall_seconds": 1.6647963350405917
+    },
+    "runs": [
+      {
+        "child_cpu_seconds": 1.6718490000000001,
+        "process_cpu_seconds": 1.6718490000000001,
+        "process_wall_seconds": 1.6759977879701182,
+        "stderr": "",
+        "wall_seconds": 1.6759977879701182
+      },
+      {
+        "child_cpu_seconds": 1.650944,
+        "process_cpu_seconds": 1.650944,
+        "process_wall_seconds": 1.6523023280315101,
+        "stderr": "",
+        "wall_seconds": 1.6523023280315101
+      },
+      {
+        "child_cpu_seconds": 1.6458450000000004,
+        "process_cpu_seconds": 1.6458450000000004,
+        "process_wall_seconds": 1.6465964789967984,
+        "stderr": "",
+        "wall_seconds": 1.6465964789967984
+      },
+      {
+        "child_cpu_seconds": 1.6752250000000002,
+        "process_cpu_seconds": 1.6752250000000002,
+        "process_wall_seconds": 1.6764657269231975,
+        "stderr": "",
+        "wall_seconds": 1.6764657269231975
+      },
+      {
+        "child_cpu_seconds": 1.646577999999998,
+        "process_cpu_seconds": 1.646577999999998,
+        "process_wall_seconds": 1.6472440829966217,
+        "stderr": "",
+        "wall_seconds": 1.6472440829966217
+      },
+      {
+        "child_cpu_seconds": 1.668280000000001,
+        "process_cpu_seconds": 1.668280000000001,
+        "process_wall_seconds": 1.6695094159804285,
+        "stderr": "",
+        "wall_seconds": 1.6695094159804285
+      },
+      {
+        "child_cpu_seconds": 1.6571669999999994,
+        "process_cpu_seconds": 1.6571669999999994,
+        "process_wall_seconds": 1.6647963350405917,
+        "stderr": "",
+        "wall_seconds": 1.6647963350405917
+      }
+    ]
+  },
+  "frames_per_channel": 2880000,
+  "input_rate": 96000,
+  "input_sha256": "7fd29f8a6f1dfecc0bdd41c6f58805a7c47fff8fb3270041018d372b529025c0",
+  "output_rate": 44100,
+  "profiles": {
+    "cpu": {
+      "command": [
+        "docker/sox-vulkan/sox-podman-timed",
+        "--single-threaded",
+        "--buffer",
+        "262144",
+        "--input-buffer",
+        "262144",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-L",
+        "-r",
+        "96000",
+        "-c",
+        "2",
+        "/tmp/faar-sox-double-30s/sox-input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-L",
+        "-r",
+        "44100",
+        "-c",
+        "2",
+        "/tmp/faar-sox-double-30s/sox-cpu-output.f32",
+        "rate",
+        "-v",
+        "44100"
+      ],
+      "count_match": true,
+      "error_dbfs": -70.65996722617713,
+      "faar_samples": 2646000,
+      "max_abs_error": 0.03569577634334564,
+      "reference_rms": 0.2440677904087429,
+      "reference_samples": 2646000,
+      "rms_error": 0.0002930904304193193,
+      "timing": {
+        "median": {
+          "child_cpu_seconds": 0.17265899999999945,
+          "process_cpu_seconds": 0.084,
+          "process_wall_seconds": 0.084,
+          "wall_seconds": 0.26940058602485806
+        },
+        "runs": [
+          {
+            "child_cpu_seconds": 0.1665100000000006,
+            "container_process_cpu_seconds": 0.08800000000000001,
+            "container_process_wall_seconds": 0.088,
+            "process_cpu_seconds": 0.08800000000000001,
+            "process_wall_seconds": 0.088,
+            "stderr": "SOX_TIMING real=0.088 user=0.070 sys=0.018",
+            "wall_seconds": 0.26940058602485806
+          },
+          {
+            "child_cpu_seconds": 0.1722059999999992,
+            "container_process_cpu_seconds": 0.08399999999999999,
+            "container_process_wall_seconds": 0.084,
+            "process_cpu_seconds": 0.08399999999999999,
+            "process_wall_seconds": 0.084,
+            "stderr": "SOX_TIMING real=0.084 user=0.060 sys=0.024",
+            "wall_seconds": 0.28827914502471685
+          },
+          {
+            "child_cpu_seconds": 0.1856650000000002,
+            "container_process_cpu_seconds": 0.084,
+            "container_process_wall_seconds": 0.084,
+            "process_cpu_seconds": 0.084,
+            "process_wall_seconds": 0.084,
+            "stderr": "SOX_TIMING real=0.084 user=0.068 sys=0.016",
+            "wall_seconds": 0.2820233500096947
+          },
+          {
+            "child_cpu_seconds": 0.17265899999999945,
+            "container_process_cpu_seconds": 0.086,
+            "container_process_wall_seconds": 0.086,
+            "process_cpu_seconds": 0.086,
+            "process_wall_seconds": 0.086,
+            "stderr": "SOX_TIMING real=0.086 user=0.072 sys=0.014",
+            "wall_seconds": 0.2628283640369773
+          },
+          {
+            "child_cpu_seconds": 0.1752079999999996,
+            "container_process_cpu_seconds": 0.093,
+            "container_process_wall_seconds": 0.096,
+            "process_cpu_seconds": 0.093,
+            "process_wall_seconds": 0.096,
+            "stderr": "SOX_TIMING real=0.096 user=0.075 sys=0.018",
+            "wall_seconds": 0.27622916200198233
+          },
+          {
+            "child_cpu_seconds": 0.15996600000000072,
+            "container_process_cpu_seconds": 0.081,
+            "container_process_wall_seconds": 0.081,
+            "process_cpu_seconds": 0.081,
+            "process_wall_seconds": 0.081,
+            "stderr": "SOX_TIMING real=0.081 user=0.064 sys=0.017",
+            "wall_seconds": 0.2541024050442502
+          },
+          {
+            "child_cpu_seconds": 0.17613000000000056,
+            "container_process_cpu_seconds": 0.078,
+            "container_process_wall_seconds": 0.078,
+            "process_cpu_seconds": 0.078,
+            "process_wall_seconds": 0.078,
+            "stderr": "SOX_TIMING real=0.078 user=0.061 sys=0.017",
+            "wall_seconds": 0.25628496590070426
+          }
+        ]
+      }
+    }
+  },
+  "repeats": 7,
+  "warmups": 1,
+  "working_directory": "/tmp/faar-sox-double-30s"
+}

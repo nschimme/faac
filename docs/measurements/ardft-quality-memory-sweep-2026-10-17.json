@@ -1,0 +1,713 @@
+{
+  "experiment": "ARDFTSRC quality sweep using make_reference delay/tail correction",
+  "input_rate_hz": 96000,
+  "output_rate_hz": 44100,
+  "seconds": 4,
+  "input_peak": 0.5,
+  "probe_hz": [
+    1000,
+    20000,
+    21800,
+    22060,
+    23000
+  ],
+  "qualities": [
+    2048,
+    4096,
+    8192,
+    16384
+  ],
+  "reference_executable": "/tmp/ardftsrc",
+  "reference_executable_sha256": "e8228950f69c0722263b5de527a359eb62672a2aa83a0f1afe18109b8659ebc2",
+  "helper_source": "/tmp/faar-reference-settings-review/scripts/analyze_faar_src.py",
+  "helper_sha256": "a81a2e0e0c647343a58caffa3ab2569a9e61b3628a0eb92265d624fce841392b",
+  "fft_buffer_estimates": [
+    {
+      "quality": 2048,
+      "block_factor": 14,
+      "input_block_frames": 4480,
+      "output_block_frames": 2058,
+      "input_fft_length": 8960,
+      "output_fft_length": 4116,
+      "four_explicit_fftw_arrays_bytes": 209248,
+      "components": {
+        "fftw_in_real_double_bytes": 71680,
+        "fftw_out_complex_double_bytes": 71696,
+        "ifftw_in_complex_double_bytes": 32944,
+        "ifftw_out_real_double_bytes": 32928
+      },
+      "scope": "Only the four reusable FFTW input/output arrays visible in ardftsrc_bench.cpp; excludes Eigen matrices, input/output storage, plans and other process memory."
+    },
+    {
+      "quality": 4096,
+      "block_factor": 28,
+      "input_block_frames": 8960,
+      "output_block_frames": 4116,
+      "input_fft_length": 17920,
+      "output_fft_length": 8232,
+      "four_explicit_fftw_arrays_bytes": 418464,
+      "components": {
+        "fftw_in_real_double_bytes": 143360,
+        "fftw_out_complex_double_bytes": 143376,
+        "ifftw_in_complex_double_bytes": 65872,
+        "ifftw_out_real_double_bytes": 65856
+      },
+      "scope": "Only the four reusable FFTW input/output arrays visible in ardftsrc_bench.cpp; excludes Eigen matrices, input/output storage, plans and other process memory."
+    },
+    {
+      "quality": 8192,
+      "block_factor": 56,
+      "input_block_frames": 17920,
+      "output_block_frames": 8232,
+      "input_fft_length": 35840,
+      "output_fft_length": 16464,
+      "four_explicit_fftw_arrays_bytes": 836896,
+      "components": {
+        "fftw_in_real_double_bytes": 286720,
+        "fftw_out_complex_double_bytes": 286736,
+        "ifftw_in_complex_double_bytes": 131728,
+        "ifftw_out_real_double_bytes": 131712
+      },
+      "scope": "Only the four reusable FFTW input/output arrays visible in ardftsrc_bench.cpp; excludes Eigen matrices, input/output storage, plans and other process memory."
+    },
+    {
+      "quality": 16384,
+      "block_factor": 112,
+      "input_block_frames": 35840,
+      "output_block_frames": 16464,
+      "input_fft_length": 71680,
+      "output_fft_length": 32928,
+      "four_explicit_fftw_arrays_bytes": 1673760,
+      "components": {
+        "fftw_in_real_double_bytes": 573440,
+        "fftw_out_complex_double_bytes": 573456,
+        "ifftw_in_complex_double_bytes": 263440,
+        "ifftw_out_real_double_bytes": 263424
+      },
+      "scope": "Only the four reusable FFTW input/output arrays visible in ardftsrc_bench.cpp; excludes Eigen matrices, input/output storage, plans and other process memory."
+    }
+  ],
+  "measurements": [
+    {
+      "input_hz": 1000,
+      "expected_output_hz": 1000,
+      "is_alias": false,
+      "input_sample_sha256": "aa7e43b0e289dc1d4047e3fdf96c131d530eb35a49b040140435983831164080",
+      "padded_reference_input_wav_sha256": "0dd85247b5e7b846b6d249821b1f89f9155be50273530456539cd3d06115e859",
+      "reference_output_wav_sha256": "53f2f2c87c966ff3b7e79525bf3ef254ec65c8d0ddeca53fbe2bbbbfdc527818",
+      "quality": 2048,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -5.059129698009554e-08,
+        "residual_rms_dbfs": -138.8049567595851,
+        "residual_rms_db_relative_to_input_rms": -129.77405683806222,
+        "total_rms_dbfs": -9.030899920510272,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 179046,
+        "removed_delay_frames": 1029,
+        "input_tail_padding_frames": 4480,
+        "reference_input_block_frames": 4480,
+        "reference_output_block_frames": 2058,
+        "reference_quality": 2048,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 1000,
+      "expected_output_hz": 1000,
+      "is_alias": false,
+      "input_sample_sha256": "aa7e43b0e289dc1d4047e3fdf96c131d530eb35a49b040140435983831164080",
+      "padded_reference_input_wav_sha256": "6d5c4d058fa67a204cea9493859c75f8ae64477cb4a06f0cea0c92e794679bf3",
+      "reference_output_wav_sha256": "055dc0f9a3208c99d7377208b3ce523af827206ebd6170d7d6e0a92fb9534175",
+      "quality": 4096,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -4.4933950289845775e-08,
+        "residual_rms_dbfs": -160.45098958332483,
+        "residual_rms_db_relative_to_input_rms": -151.42008966180194,
+        "total_rms_dbfs": -9.030899914853382,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 181104,
+        "removed_delay_frames": 2058,
+        "input_tail_padding_frames": 8960,
+        "reference_input_block_frames": 8960,
+        "reference_output_block_frames": 4116,
+        "reference_quality": 4096,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 1000,
+      "expected_output_hz": 1000,
+      "is_alias": false,
+      "input_sample_sha256": "aa7e43b0e289dc1d4047e3fdf96c131d530eb35a49b040140435983831164080",
+      "padded_reference_input_wav_sha256": "e04059376e228d2c79887b36d1cea3777229457d1ad46e1aad36bd4b8eeb6df1",
+      "reference_output_wav_sha256": "3ce4119ac9f04b929bdfe16f7dee0cd3ceeb69f62b0cd8ada701d50d2d3faa5a",
+      "quality": 8192,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -4.131454867060869e-08,
+        "residual_rms_dbfs": -160.61075835160395,
+        "residual_rms_db_relative_to_input_rms": -151.57985843008106,
+        "total_rms_dbfs": -9.030899911233979,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 189336,
+        "removed_delay_frames": 4116,
+        "input_tail_padding_frames": 17920,
+        "reference_input_block_frames": 17920,
+        "reference_output_block_frames": 8232,
+        "reference_quality": 8192,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 1000,
+      "expected_output_hz": 1000,
+      "is_alias": false,
+      "input_sample_sha256": "aa7e43b0e289dc1d4047e3fdf96c131d530eb35a49b040140435983831164080",
+      "padded_reference_input_wav_sha256": "64a3cf7886f14196e444144daf1d5ec093282eb70887060f0f7b6138c5d8f28c",
+      "reference_output_wav_sha256": "fa9f5e2c6b78afdddf31d85df708148447496cb2919866b57072850d44747650",
+      "quality": 16384,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -4.1270176106351764e-08,
+        "residual_rms_dbfs": -160.61199688078804,
+        "residual_rms_db_relative_to_input_rms": -151.58109695926518,
+        "total_rms_dbfs": -9.030899911189609,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 197568,
+        "removed_delay_frames": 8232,
+        "input_tail_padding_frames": 35840,
+        "reference_input_block_frames": 35840,
+        "reference_output_block_frames": 16464,
+        "reference_quality": 16384,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 20000,
+      "expected_output_hz": 20000,
+      "is_alias": false,
+      "input_sample_sha256": "9e30d92634c132d2c4a926e9c40cb9dd9cccbe875c5e31b6f3915cdda51c1a14",
+      "padded_reference_input_wav_sha256": "831539dacff01ae603dfa8804dd75d4cba577810bfbd770fbeff10245056ee31",
+      "reference_output_wav_sha256": "94b216a2f5cffe3107fb0ecb639975a0491bcf18f25f474cef5f4e145d1570fb",
+      "quality": 2048,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338640917056,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -1.374221328076777e-07,
+        "residual_rms_dbfs": -121.58521408381628,
+        "residual_rms_db_relative_to_input_rms": -112.55431411110428,
+        "total_rms_dbfs": -9.030900007317426,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 179046,
+        "removed_delay_frames": 1029,
+        "input_tail_padding_frames": 4480,
+        "reference_input_block_frames": 4480,
+        "reference_output_block_frames": 2058,
+        "reference_quality": 2048,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 20000,
+      "expected_output_hz": 20000,
+      "is_alias": false,
+      "input_sample_sha256": "9e30d92634c132d2c4a926e9c40cb9dd9cccbe875c5e31b6f3915cdda51c1a14",
+      "padded_reference_input_wav_sha256": "12bfc494f53b5ddcd15d98efd7060a94954e0e5280a76df15c5cc80a9fc67521",
+      "reference_output_wav_sha256": "21678f5114d702f4732b1d1546ff7cfb90eef817b0d7787505fb2b5fa689cf9f",
+      "quality": 4096,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338640917056,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -1.0160622910182895e-07,
+        "residual_rms_dbfs": -156.40288661396352,
+        "residual_rms_db_relative_to_input_rms": -147.3719866412515,
+        "total_rms_dbfs": -9.030899971525626,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 181104,
+        "removed_delay_frames": 2058,
+        "input_tail_padding_frames": 8960,
+        "reference_input_block_frames": 8960,
+        "reference_output_block_frames": 4116,
+        "reference_quality": 4096,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 20000,
+      "expected_output_hz": 20000,
+      "is_alias": false,
+      "input_sample_sha256": "9e30d92634c132d2c4a926e9c40cb9dd9cccbe875c5e31b6f3915cdda51c1a14",
+      "padded_reference_input_wav_sha256": "0bd9b63cecc9b1d95024de61a2fbb821d8e2ba1bf68314f92e8858f4bc9121bd",
+      "reference_output_wav_sha256": "938b96e8e1c7448b3b02997bb4ca13f0edc39dbab3237052dc6c12554915402c",
+      "quality": 8192,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338640917056,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -1.021826153499692e-07,
+        "residual_rms_dbfs": -162.4416183085535,
+        "residual_rms_db_relative_to_input_rms": -153.41071833584152,
+        "total_rms_dbfs": -9.030899972102022,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 189336,
+        "removed_delay_frames": 4116,
+        "input_tail_padding_frames": 17920,
+        "reference_input_block_frames": 17920,
+        "reference_output_block_frames": 8232,
+        "reference_quality": 8192,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 20000,
+      "expected_output_hz": 20000,
+      "is_alias": false,
+      "input_sample_sha256": "9e30d92634c132d2c4a926e9c40cb9dd9cccbe875c5e31b6f3915cdda51c1a14",
+      "padded_reference_input_wav_sha256": "55bd6969c28dc30a9ace8617d76b29d0c995d65802838801f5c2f045e0fd7cd1",
+      "reference_output_wav_sha256": "dafa494738550177dc95a7738677e0985e2a5e13924a69d3992267f28f950b07",
+      "quality": 16384,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338640917056,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -1.0199291381284669e-07,
+        "residual_rms_dbfs": -162.44260114298672,
+        "residual_rms_db_relative_to_input_rms": -153.4117011702747,
+        "total_rms_dbfs": -9.03089997191232,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 197568,
+        "removed_delay_frames": 8232,
+        "input_tail_padding_frames": 35840,
+        "reference_input_block_frames": 35840,
+        "reference_output_block_frames": 16464,
+        "reference_quality": 16384,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 21800,
+      "expected_output_hz": 21800,
+      "is_alias": false,
+      "input_sample_sha256": "cc2955ca996b8e3dc95c481f609a83458680a405e4300c73b1015130219f3ee7",
+      "padded_reference_input_wav_sha256": "319dfb06d2869ebef398af251350b179eb90d33a89486cf86a0c0cc2d70e7d1a",
+      "reference_output_wav_sha256": "26c5fdfcca1822f8fb3a28ff85de324e7391a7fa88924d306622b52bad80767c",
+      "quality": 2048,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338973018996,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -0.00015461697361528255,
+        "residual_rms_dbfs": -93.96599766095375,
+        "residual_rms_db_relative_to_input_rms": -84.93509776983058,
+        "total_rms_dbfs": -9.031054472952142,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 179046,
+        "removed_delay_frames": 1029,
+        "input_tail_padding_frames": 4480,
+        "reference_input_block_frames": 4480,
+        "reference_output_block_frames": 2058,
+        "reference_quality": 2048,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 21800,
+      "expected_output_hz": 21800,
+      "is_alias": false,
+      "input_sample_sha256": "cc2955ca996b8e3dc95c481f609a83458680a405e4300c73b1015130219f3ee7",
+      "padded_reference_input_wav_sha256": "1599a00ca164f48e59f1cd8a436699457faba05d47cde07cdda2508e0ba9935b",
+      "reference_output_wav_sha256": "7fd42c2debc195c1b783a619f97788492657e7bc2e2888249f4f460cc2998e6f",
+      "quality": 4096,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338973018996,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -1.8778177882120945e-06,
+        "residual_rms_dbfs": -129.16138938351276,
+        "residual_rms_db_relative_to_input_rms": -120.13048949238957,
+        "total_rms_dbfs": -9.030901747732974,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 181104,
+        "removed_delay_frames": 2058,
+        "input_tail_padding_frames": 8960,
+        "reference_input_block_frames": 8960,
+        "reference_output_block_frames": 4116,
+        "reference_quality": 4096,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 21800,
+      "expected_output_hz": 21800,
+      "is_alias": false,
+      "input_sample_sha256": "cc2955ca996b8e3dc95c481f609a83458680a405e4300c73b1015130219f3ee7",
+      "padded_reference_input_wav_sha256": "45e3a0a19949c1213a0922a756f4068e92a02bbca10a7616f8a1985a1e0286f4",
+      "reference_output_wav_sha256": "9d072e11ca30bf4ad4a9c0c669e806208fae1ad5ded791ef81754dab726178d8",
+      "quality": 8192,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338973018996,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -1.3655674435943888e-08,
+        "residual_rms_dbfs": -161.3193871750455,
+        "residual_rms_db_relative_to_input_rms": -152.28848728392234,
+        "total_rms_dbfs": -9.030899883575072,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 189336,
+        "removed_delay_frames": 4116,
+        "input_tail_padding_frames": 17920,
+        "reference_input_block_frames": 17920,
+        "reference_output_block_frames": 8232,
+        "reference_quality": 8192,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 21800,
+      "expected_output_hz": 21800,
+      "is_alias": false,
+      "input_sample_sha256": "cc2955ca996b8e3dc95c481f609a83458680a405e4300c73b1015130219f3ee7",
+      "padded_reference_input_wav_sha256": "374c07b42336fce2990418e8202506a7814fdfbacb4b875f574995a94e3c9f27",
+      "reference_output_wav_sha256": "9023d75a5e0cd207f2fd6f4bb7e7d408991ec29c4e24b4439f6ab08fa486231f",
+      "quality": 16384,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.35355338973018996,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -1.3763350276701717e-08,
+        "residual_rms_dbfs": -161.5768088026121,
+        "residual_rms_db_relative_to_input_rms": -152.54590891148897,
+        "total_rms_dbfs": -9.030899883682748,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 197568,
+        "removed_delay_frames": 8232,
+        "input_tail_padding_frames": 35840,
+        "reference_input_block_frames": 35840,
+        "reference_output_block_frames": 16464,
+        "reference_quality": 16384,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 22060,
+      "expected_output_hz": 22040,
+      "is_alias": true,
+      "input_sample_sha256": "8bf9473f9bb30f8326bb429ffc58fe519b0e31ea6c79a78f806eba81e9cee9b2",
+      "padded_reference_input_wav_sha256": "bf3f609d5ec1112e316da85de26cf16c782eb80f67a2732f3270c459211824d9",
+      "reference_output_wav_sha256": "ee7ae9bb24a0aded60862b01c02cfe2150e92cb5c89aee97a87a0c4259d55ffa",
+      "quality": 2048,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533903368021,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -108.6080905820951,
+        "residual_rms_dbfs": -105.99566064890277,
+        "residual_rms_db_relative_to_input_rms": -96.9647607726825,
+        "total_rms_dbfs": -105.70793048103715,
+        "alias_attenuation_db": 96.67703060481686,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 179046,
+        "removed_delay_frames": 1029,
+        "input_tail_padding_frames": 4480,
+        "reference_input_block_frames": 4480,
+        "reference_output_block_frames": 2058,
+        "reference_quality": 2048,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 22060,
+      "expected_output_hz": 22040,
+      "is_alias": true,
+      "input_sample_sha256": "8bf9473f9bb30f8326bb429ffc58fe519b0e31ea6c79a78f806eba81e9cee9b2",
+      "padded_reference_input_wav_sha256": "c3a95004cee01ffbb402e05e1759bfb605e9e36089a5914f799f13c7100f6c3a",
+      "reference_output_wav_sha256": "b470cc6ab5e3c4e52072b2579fb4fac1dbdfdd106694c9cb52bb85e3050841fc",
+      "quality": 4096,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533903368021,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -137.87868507696962,
+        "residual_rms_dbfs": -134.52046084108102,
+        "residual_rms_db_relative_to_input_rms": -125.48956096486073,
+        "total_rms_dbfs": -134.27688319655363,
+        "alias_attenuation_db": 125.24598332033335,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 181104,
+        "removed_delay_frames": 2058,
+        "input_tail_padding_frames": 8960,
+        "reference_input_block_frames": 8960,
+        "reference_output_block_frames": 4116,
+        "reference_quality": 4096,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 22060,
+      "expected_output_hz": 22040,
+      "is_alias": true,
+      "input_sample_sha256": "8bf9473f9bb30f8326bb429ffc58fe519b0e31ea6c79a78f806eba81e9cee9b2",
+      "padded_reference_input_wav_sha256": "8dd5b026083fd503b0a0fce696cdcf78963c8b0eb32cf6c8dbd8bb95bf4550fd",
+      "reference_output_wav_sha256": "e09f3a0e4ef952435edd01a9a856898eb17427ac196f37c5b70e9b9342de30b0",
+      "quality": 8192,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533903368021,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -177.48323745575618,
+        "residual_rms_dbfs": -165.08721568974897,
+        "residual_rms_db_relative_to_input_rms": -156.0563158135287,
+        "total_rms_dbfs": -165.05606025933508,
+        "alias_attenuation_db": 156.0251603831148,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 189336,
+        "removed_delay_frames": 4116,
+        "input_tail_padding_frames": 17920,
+        "reference_input_block_frames": 17920,
+        "reference_output_block_frames": 8232,
+        "reference_quality": 8192,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 22060,
+      "expected_output_hz": 22040,
+      "is_alias": true,
+      "input_sample_sha256": "8bf9473f9bb30f8326bb429ffc58fe519b0e31ea6c79a78f806eba81e9cee9b2",
+      "padded_reference_input_wav_sha256": "2a09cb064cca393ade1f6d1be6f51c1be5840c71cf96ea9df3a37f4bf013bea2",
+      "reference_output_wav_sha256": "69b7feb47a2e2383139e50efa48befdceb986ab26d92da29cba243c319777562",
+      "quality": 16384,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533903368021,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": null,
+        "residual_rms_dbfs": -165.93946386961062,
+        "residual_rms_db_relative_to_input_rms": -156.90856399339032,
+        "total_rms_dbfs": -165.93946384404893,
+        "alias_attenuation_db": 156.90856396782868,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 197568,
+        "removed_delay_frames": 8232,
+        "input_tail_padding_frames": 35840,
+        "reference_input_block_frames": 35840,
+        "reference_output_block_frames": 16464,
+        "reference_quality": 16384,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 23000,
+      "expected_output_hz": 21100,
+      "is_alias": true,
+      "input_sample_sha256": "1078ea735845e40f499a9b2e46ec3a1306662845af2f5ede112f5527741d6b89",
+      "padded_reference_input_wav_sha256": "2cc39602bcaaff1774e9ad7cc9f6ee189d023e8858c876aebb4435b5302081e8",
+      "reference_output_wav_sha256": "6b2382174fb69ca4e02fcfec6acbc8a6662a1ea9f90443192ae7caeabf777bb0",
+      "quality": 2048,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -181.6247391818048,
+        "residual_rms_dbfs": -116.39876213340992,
+        "residual_rms_db_relative_to_input_rms": -107.36786221188703,
+        "total_rms_dbfs": -116.39876196812654,
+        "alias_attenuation_db": 107.36786204660365,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 179046,
+        "removed_delay_frames": 1029,
+        "input_tail_padding_frames": 4480,
+        "reference_input_block_frames": 4480,
+        "reference_output_block_frames": 2058,
+        "reference_quality": 2048,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 23000,
+      "expected_output_hz": 21100,
+      "is_alias": true,
+      "input_sample_sha256": "1078ea735845e40f499a9b2e46ec3a1306662845af2f5ede112f5527741d6b89",
+      "padded_reference_input_wav_sha256": "72b9687617f9cc709f22130a3c3deb22138c6a80bc791fc326c82687858de53b",
+      "reference_output_wav_sha256": "ad4c215c67f9ab567ab883d842e5dfecdde94e2942c67526bf991be3d83dc62d",
+      "quality": 4096,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": -186.31139918335802,
+        "residual_rms_dbfs": -152.31166634955025,
+        "residual_rms_db_relative_to_input_rms": -143.2807664280274,
+        "total_rms_dbfs": -152.3114502043053,
+        "alias_attenuation_db": 143.2805502827824,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 181104,
+        "removed_delay_frames": 2058,
+        "input_tail_padding_frames": 8960,
+        "reference_input_block_frames": 8960,
+        "reference_output_block_frames": 4116,
+        "reference_quality": 4096,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 23000,
+      "expected_output_hz": 21100,
+      "is_alias": true,
+      "input_sample_sha256": "1078ea735845e40f499a9b2e46ec3a1306662845af2f5ede112f5527741d6b89",
+      "padded_reference_input_wav_sha256": "46326cdf71f1703661b13668dd2f98d6233eeada1810357a5705c5891571b2e2",
+      "reference_output_wav_sha256": "bfae8a3a0a6639193491cfce3cf72d6f59e7993b316aa4f68bf624da79dde9de",
+      "quality": 8192,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": null,
+        "residual_rms_dbfs": -165.83834669720255,
+        "residual_rms_db_relative_to_input_rms": -156.80744677567967,
+        "total_rms_dbfs": -165.83834669320993,
+        "alias_attenuation_db": 156.80744677168707,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 189336,
+        "removed_delay_frames": 4116,
+        "input_tail_padding_frames": 17920,
+        "reference_input_block_frames": 17920,
+        "reference_output_block_frames": 8232,
+        "reference_quality": 8192,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    },
+    {
+      "input_hz": 23000,
+      "expected_output_hz": 21100,
+      "is_alias": true,
+      "input_sample_sha256": "1078ea735845e40f499a9b2e46ec3a1306662845af2f5ede112f5527741d6b89",
+      "padded_reference_input_wav_sha256": "29bd0fe805c7309dc2c66836616e77bd333f6a45f4fa7b36a38dffea1e836071",
+      "reference_output_wav_sha256": "23fb439b44ea7fb6c0c6c2a0f583e68d08aedd75022b0943f0796c75b1987c37",
+      "quality": 16384,
+      "bandwidth": 0.99,
+      "input_peak": 0.5,
+      "input_rms": 0.3535533884927895,
+      "aligned_output_frames": 176400,
+      "metrics": {
+        "wanted_gain_db": null,
+        "residual_rms_dbfs": -165.8402108088907,
+        "residual_rms_db_relative_to_input_rms": -156.80931088736781,
+        "total_rms_dbfs": -165.84021080889042,
+        "alias_attenuation_db": 156.80931088736753,
+        "metric_floor_linear": 1e-12
+      },
+      "alignment": {
+        "raw_output_frames": 197568,
+        "removed_delay_frames": 8232,
+        "input_tail_padding_frames": 35840,
+        "reference_input_block_frames": 35840,
+        "reference_output_block_frames": 16464,
+        "reference_quality": 16384,
+        "reference_bandwidth": 0.99,
+        "alignment": "ARDFTSRC half-block delay; verified with an impulse"
+      }
+    }
+  ],
+  "elapsed_time_claim": false
+}

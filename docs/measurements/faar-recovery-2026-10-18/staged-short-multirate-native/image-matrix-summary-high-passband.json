@@ -1,0 +1,38 @@
+{
+  "candidate_library_sha256": "6fc528f86c35ad95773b5641e6dcc10877d17b1f26acdea66e24db578e352048",
+  "preset": "High",
+  "input_tone_rate_fraction": 0.45,
+  "pair_count": 187,
+  "probe_records": 374,
+  "engines": {
+    "faar-candidate": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.4999299262230839,
+      "least_attenuated_image": {
+        "attenuation_db": -151.11440329266972,
+        "in_rate": 32000,
+        "out_rate": 768000,
+        "frequency_hz": 241600,
+        "amplitude": 1.3907524106827423e-08
+      },
+      "image_components_above_minus_120_db": 0
+    },
+    "ardftsrc": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.4999223661091792,
+      "least_attenuated_image": {
+        "attenuation_db": -72.74733322137217,
+        "in_rate": 8000,
+        "out_rate": 768000,
+        "frequency_hz": 4400,
+        "amplitude": 0.00011525414369694625
+      },
+      "image_components_above_minus_120_db": 63
+    }
+  },
+  "interpretation": "Image amplitudes for the candidate are near the float32 output residual floor. The reported attenuation is characterization, not a perception score; Good/Fast and transient criteria are not covered."
+}

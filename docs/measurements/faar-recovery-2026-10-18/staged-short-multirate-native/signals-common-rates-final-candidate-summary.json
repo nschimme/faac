@@ -1,0 +1,163 @@
+{
+  "candidate_library_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+  "engines": [
+    "faar-candidate",
+    "sox-wide",
+    "ardftsrc"
+  ],
+  "pairs": [
+    {
+      "in_rate": 48000,
+      "out_rate": 32000,
+      "passband_tone_count": 3,
+      "max_candidate_ardftsrc_gain_delta_db": 0.02038996055697565,
+      "passband_gate_0_25_db": true,
+      "selected_alias_probes": [
+        {
+          "frequency_hz": 16100.0,
+          "candidate_attenuation_db": 154.82970753948194,
+          "ardftsrc_attenuation_db": 154.80582780579516,
+          "sox_wide_attenuation_db": 154.79577161387783
+        },
+        {
+          "frequency_hz": 16950.0,
+          "candidate_attenuation_db": 155.75073458518315,
+          "ardftsrc_attenuation_db": 155.65974572929375,
+          "sox_wide_attenuation_db": 155.65961833282012
+        },
+        {
+          "frequency_hz": 23520.0,
+          "candidate_attenuation_db": 156.40864564431996,
+          "ardftsrc_attenuation_db": 156.31661677172954,
+          "sox_wide_attenuation_db": 156.3166102989925
+        }
+      ],
+      "candidate_impulse_peak_offset_frames": 0,
+      "candidate_impulse_time_reversal_error_relative": 3.6083206243122214e-16,
+      "exact_output_frame_count": true
+    },
+    {
+      "in_rate": 48000,
+      "out_rate": 96000,
+      "passband_tone_count": 4,
+      "max_candidate_ardftsrc_gain_delta_db": 2.8676591296226994e-09,
+      "passband_gate_0_25_db": true,
+      "selected_alias_probes": [],
+      "candidate_impulse_peak_offset_frames": 0,
+      "candidate_impulse_time_reversal_error_relative": 7.160674243552176e-15,
+      "exact_output_frame_count": true
+    },
+    {
+      "in_rate": 88200,
+      "out_rate": 44100,
+      "passband_tone_count": 3,
+      "max_candidate_ardftsrc_gain_delta_db": 0.0,
+      "passband_gate_0_25_db": true,
+      "selected_alias_probes": [
+        {
+          "frequency_hz": 22150.0,
+          "candidate_attenuation_db": 156.3662175091454,
+          "ardftsrc_attenuation_db": 156.36648824945357,
+          "sox_wide_attenuation_db": 156.3575515665897
+        },
+        {
+          "frequency_hz": 23000.0,
+          "candidate_attenuation_db": 157.2822465367112,
+          "ardftsrc_attenuation_db": 157.28226478491462,
+          "sox_wide_attenuation_db": 157.282406777706
+        },
+        {
+          "frequency_hz": 43218.0,
+          "candidate_attenuation_db": 157.0693422798218,
+          "ardftsrc_attenuation_db": 157.06931742694076,
+          "sox_wide_attenuation_db": 157.06931679557334
+        }
+      ],
+      "candidate_impulse_peak_offset_frames": 0,
+      "candidate_impulse_time_reversal_error_relative": 3.677646945539992e-16,
+      "exact_output_frame_count": true
+    },
+    {
+      "in_rate": 96000,
+      "out_rate": 48000,
+      "passband_tone_count": 2,
+      "max_candidate_ardftsrc_gain_delta_db": 0.0,
+      "passband_gate_0_25_db": true,
+      "selected_alias_probes": [
+        {
+          "frequency_hz": 24010,
+          "candidate_attenuation_db": 156.70840127825875,
+          "ardftsrc_attenuation_db": 156.71760543516552,
+          "sox_wide_attenuation_db": 156.70004422277967
+        }
+      ],
+      "candidate_impulse_peak_offset_frames": 0,
+      "candidate_impulse_time_reversal_error_relative": 5.618727830503614e-16,
+      "exact_output_frame_count": true
+    },
+    {
+      "in_rate": 192000,
+      "out_rate": 48000,
+      "passband_tone_count": 4,
+      "max_candidate_ardftsrc_gain_delta_db": 1.9695218015426306e-07,
+      "passband_gate_0_25_db": true,
+      "selected_alias_probes": [
+        {
+          "frequency_hz": 24100.0,
+          "candidate_attenuation_db": 156.66536504114336,
+          "ardftsrc_attenuation_db": 159.94377094096293,
+          "sox_wide_attenuation_db": 159.9435977805712
+        },
+        {
+          "frequency_hz": 24950.0,
+          "candidate_attenuation_db": 156.80851368444684,
+          "ardftsrc_attenuation_db": 160.39523312525077,
+          "sox_wide_attenuation_db": 160.39514685495365
+        },
+        {
+          "frequency_hz": 94080.0,
+          "candidate_attenuation_db": 163.0673799163166,
+          "ardftsrc_attenuation_db": 163.10162026065058,
+          "sox_wide_attenuation_db": 163.101909967651
+        }
+      ],
+      "candidate_impulse_peak_offset_frames": 0,
+      "candidate_impulse_time_reversal_error_relative": 5.385211641167415e-16,
+      "exact_output_frame_count": true
+    }
+  ],
+  "comparison_rule": "Passband tones at or below 0.45 times the lower sample rate; aliases are separately reported.",
+  "images_48k_to_96k": [
+    {
+      "engine": "faar-candidate",
+      "images": [
+        {
+          "amplitude": 8.86525436110442e-11,
+          "attenuation_db_vs_wanted": -195.02557616137165,
+          "frequency_hz": 26400
+        }
+      ]
+    },
+    {
+      "engine": "sox-wide",
+      "images": [
+        {
+          "amplitude": 8.865254363972079e-11,
+          "attenuation_db_vs_wanted": -195.02557615856202,
+          "frequency_hz": 26400
+        }
+      ]
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [
+        {
+          "amplitude": 8.609089981146682e-11,
+          "attenuation_db_vs_wanted": -195.28025524082975,
+          "frequency_hz": 26400
+        }
+      ]
+    }
+  ],
+  "interpretation": "All five selected common-rate pairs pass the 0.25 dB passband comparison, with exact output frame counts in these diagnostics. Selected alias probes are reported independently; rejection is at or above 154.8 dB. At 192->48 kHz, candidate rejection is about 3.3-3.6 dB below SoX/ARDFTSRC on two near-Nyquist probes, while remaining above 156 dB. The 48->96 kHz image is about -195.0 dB for FAAR and wide SoX. These targeted measurements do not replace a full response matrix or perceptual validation."
+}

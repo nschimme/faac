@@ -1,0 +1,49 @@
+{
+  "candidate_library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+  "comparison_to_previous_32_to_48_plan": "The previous 5493-tap plan measured 0.04406 s FAAR / 0.04375 s SoX in its 60-round paired run; the 4097-tap plan measures 0.04296 s / 0.04538 s. Use same-run paired comparisons and report host/run variability; cross-run medians are not a randomized direct A/B test.",
+  "protocol": "60 alternating engine-order rounds per route, 30-second stereo input, one warmup, CPU processing timers; SoX CPU rate -v -b 99.5. Bootstrap resamples paired per-round percentage differences with replacement (50,000 replicates; NumPy seed 20261018).",
+  "quality": "32-to-48 selected passband gain differs from ARDFTSRC by at most 0.000574 dB through 0.495 times the lower rate; image attenuation is -108.35 dB versus the wanted tone. At 0.499 times the lower rate the comparison is in the transition region and differs by 5.68 dB; the 4097-tap plan is closer to ARDFTSRC there than the previous 5493-tap plan.",
+  "routes": [
+    {
+      "all_frame_counts_exact": true,
+      "candidate_library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+      "candidate_live_heap_bytes": 3867392.0,
+      "candidate_median_processing_seconds": 0.042963149500000006,
+      "candidate_median_setup_seconds": 0.0009875564999999994,
+      "input_rate_hz": 32000,
+      "output_rate_hz": 48000,
+      "paired_median_difference_ms": -2.1280995000000047,
+      "paired_median_relative_difference_bootstrap_95_percent_interval": [
+        -7.157831912541656,
+        -2.177661472732373
+      ],
+      "paired_median_relative_difference_percent": -4.93194816426586,
+      "paired_rounds_candidate_faster": 44,
+      "repeats": 60,
+      "sox_live_heap_bytes": 533808.0,
+      "sox_median_processing_seconds": 0.045384242500000005,
+      "sox_median_setup_seconds": 0.0006357015000000004
+    },
+    {
+      "all_frame_counts_exact": true,
+      "candidate_library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+      "candidate_live_heap_bytes": 7473440.0,
+      "candidate_median_processing_seconds": 0.067374178,
+      "candidate_median_setup_seconds": 0.0018837010000000015,
+      "input_rate_hz": 192000,
+      "output_rate_hz": 48000,
+      "paired_median_difference_ms": -0.7871655000000061,
+      "paired_median_relative_difference_bootstrap_95_percent_interval": [
+        -3.0107154573471684,
+        -0.0397540106258365
+      ],
+      "paired_median_relative_difference_percent": -1.213462676704774,
+      "paired_rounds_candidate_faster": 38,
+      "repeats": 60,
+      "sox_live_heap_bytes": 595360.0,
+      "sox_median_processing_seconds": 0.06798484750000001,
+      "sox_median_setup_seconds": 0.0005952760000000022
+    }
+  ],
+  "status": "current High-route paired follow-up for the 4097-tap 32-to-48 plan"
+}

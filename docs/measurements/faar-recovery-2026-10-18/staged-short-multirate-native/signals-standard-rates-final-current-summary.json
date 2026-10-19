@@ -1,0 +1,63 @@
+{
+  "candidate_library_sha256": "a8f0c23f1104796aeb6d01f5d49bffd6d2200681d34ad971a6989db9a2c2c752",
+  "pairs": [
+    {
+      "in_rate": 48000,
+      "out_rate": 32000,
+      "engines": {
+        "faar-candidate": {
+          "passband_probe_count": 4,
+          "passband_worst_abs_gain_db": 0.04120446431806962,
+          "alias_probe_attenuation_db": [
+            154.82894126259436,
+            155.75056109040204,
+            156.4082602363651
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 0.0016960319673547288
+        },
+        "ardftsrc": {
+          "passband_probe_count": 4,
+          "passband_worst_abs_gain_db": 1.228193836718357e-07,
+          "alias_probe_attenuation_db": [
+            154.80582780579516,
+            155.65974572929375,
+            156.31661677172954
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 2.1784342783187228e-13
+        }
+      },
+      "candidate_vs_ardftsrc_max_abs_passband_delta_db": 0.041204536022236955
+    },
+    {
+      "in_rate": 88200,
+      "out_rate": 44100,
+      "engines": {
+        "faar-candidate": {
+          "passband_probe_count": 5,
+          "passband_worst_abs_gain_db": 1.2281977326012666e-07,
+          "alias_probe_attenuation_db": [
+            156.3662175091454,
+            157.2822465367112,
+            157.0693422798218
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 3.677646945539992e-16
+        },
+        "ardftsrc": {
+          "passband_probe_count": 5,
+          "passband_worst_abs_gain_db": 1.2281977326012666e-07,
+          "alias_probe_attenuation_db": [
+            156.36648824945357,
+            157.28226478491462,
+            157.06931742694076
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 2.0986993446615726e-12
+        }
+      },
+      "candidate_vs_ardftsrc_max_abs_passband_delta_db": 9.572493028940681e-11
+    }
+  ]
+}

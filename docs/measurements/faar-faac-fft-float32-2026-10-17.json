@@ -1,0 +1,167 @@
+{
+  "library": "/tmp/faar-eval/libfaar-q39-f32fft-src.so",
+  "library_sha256": "cac7e29535545ea981aea50409b4800edbe1bbc8b52e7ac7a76b628d367508da",
+  "experiment": "Q39 stream pipeline using FAAC float32 FFT14 with Q39 spectral product",
+  "measurements": [
+    {
+      "input_hz": 1000.0,
+      "folded_hz": 1000.0,
+      "candidate": {
+        "wanted_gain_db": -1.0297398625572113e-06,
+        "residual_rms_dbfs": -147.3303248613003,
+        "residual_rms_db_relative_to_input_rms": -138.29942493977742,
+        "total_rms_dbfs": -9.030900899659231,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "reference": {
+        "wanted_gain_db": -4.1270176106351764e-08,
+        "residual_rms_dbfs": -160.61199688079193,
+        "residual_rms_db_relative_to_input_rms": -151.58109695926902,
+        "total_rms_dbfs": -9.030899911189609,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "gain_difference_db": -9.884696864508596e-07,
+      "output_frames": 176400,
+      "elapsed_seconds": 0.22118473495388508
+    },
+    {
+      "input_hz": 20000.0,
+      "folded_hz": 20000.0,
+      "candidate": {
+        "wanted_gain_db": -9.648390823614507e-07,
+        "residual_rms_dbfs": -148.4924221529283,
+        "residual_rms_db_relative_to_input_rms": -139.46152218021632,
+        "total_rms_dbfs": -9.030900834758441,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "reference": {
+        "wanted_gain_db": -1.0199291091986425e-07,
+        "residual_rms_dbfs": -162.44260114205886,
+        "residual_rms_db_relative_to_input_rms": -153.41170116934686,
+        "total_rms_dbfs": -9.03089997191232,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "gain_difference_db": -8.628461714415864e-07,
+      "output_frames": 176400,
+      "elapsed_seconds": 0.22381942602805793
+    },
+    {
+      "input_hz": 21800.0,
+      "folded_hz": 21800.0,
+      "candidate": {
+        "wanted_gain_db": -4.7445017376181414e-07,
+        "residual_rms_dbfs": -147.80772847790695,
+        "residual_rms_db_relative_to_input_rms": -138.77682858678378,
+        "total_rms_dbfs": -9.030900344369515,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "reference": {
+        "wanted_gain_db": -1.3763350276701717e-08,
+        "residual_rms_dbfs": -161.57680880388614,
+        "residual_rms_db_relative_to_input_rms": -152.545908912763,
+        "total_rms_dbfs": -9.030899883682748,
+        "alias_attenuation_db": null,
+        "metric_floor_linear": 1e-12
+      },
+      "gain_difference_db": -4.6068682348511244e-07,
+      "output_frames": 176400,
+      "elapsed_seconds": 0.2426876559620723
+    },
+    {
+      "input_hz": 22060.0,
+      "folded_hz": 22040.0,
+      "candidate": {
+        "wanted_gain_db": -149.4593122440676,
+        "residual_rms_dbfs": -154.01567496115823,
+        "residual_rms_db_relative_to_input_rms": -144.98477508494358,
+        "total_rms_dbfs": -152.6901969751604,
+        "alias_attenuation_db": 143.65929709894576,
+        "metric_floor_linear": 1e-12
+      },
+      "reference": {
+        "wanted_gain_db": null,
+        "residual_rms_dbfs": -165.9396521382498,
+        "residual_rms_db_relative_to_input_rms": -156.90875226203516,
+        "total_rms_dbfs": -165.93965213674687,
+        "alias_attenuation_db": 156.90875226053222,
+        "metric_floor_linear": 1e-12
+      },
+      "gain_difference_db": null,
+      "output_frames": 176400,
+      "elapsed_seconds": 0.24555647594388574
+    },
+    {
+      "input_hz": 23000.0,
+      "folded_hz": 21100.0,
+      "candidate": {
+        "wanted_gain_db": -190.776392092173,
+        "residual_rms_dbfs": -152.65049839644303,
+        "residual_rms_db_relative_to_input_rms": -143.61959847492014,
+        "total_rms_dbfs": -152.65040562076712,
+        "alias_attenuation_db": 143.61950569924423,
+        "metric_floor_linear": 1e-12
+      },
+      "reference": {
+        "wanted_gain_db": null,
+        "residual_rms_dbfs": -165.84021080254277,
+        "residual_rms_db_relative_to_input_rms": -156.80931088101988,
+        "total_rms_dbfs": -165.84021080240421,
+        "alias_attenuation_db": 156.80931088088136,
+        "metric_floor_linear": 1e-12
+      },
+      "gain_difference_db": null,
+      "output_frames": 176400,
+      "elapsed_seconds": 0.2548878489760682
+    }
+  ],
+  "input": {
+    "sample_rate_hz": 96000,
+    "frames": 384000,
+    "duration_seconds": 4.0,
+    "channels": 1,
+    "dtype": "float32",
+    "phase_radians": 0.0,
+    "peak": 0.5,
+    "rms": 0.3535533905932738,
+    "tones_hz": [
+      1000.0,
+      20000.0,
+      21800.0,
+      22060.0,
+      23000.0
+    ]
+  },
+  "measurement_window": {
+    "output_rate_hz": 44100,
+    "start_frame": 44100,
+    "frames": 44100,
+    "definition": "one second beginning one second into aligned output; fit sine, cosine, and DC, then measure residual and total RMS",
+    "metric_floor_linear": 1e-12
+  },
+  "reference": {
+    "executable": "/tmp/ardftsrc",
+    "sha256": "e8228950f69c0722263b5de527a359eb62672a2aa83a0f1afe18109b8659ebc2",
+    "alignment": "ARDFTSRC block delay removed and zero tail padded; for 96k->44.1k: 35840 input tail frames, 8232 output delay frames"
+  },
+  "build": {
+    "compiler": "GCC 14.2.0",
+    "flags": "-std=c11 -O2 -Wall -Wextra -fPIC -shared",
+    "command": "gcc -std=c11 -O2 -Wall -Wextra -fPIC -shared -I /tmp/faar-eval -I /home/nschimme/gitprojects/faac/include -I /home/nschimme/gitprojects/faac/libfaac -I /home/nschimme/gitprojects/faac/libfaar /tmp/faar-eval/q39_stream_prefilter_f32fft.c /tmp/faar-eval/q39_fft_fast.c /tmp/faar-eval/faac_fft14.c /tmp/faar-eval/q39_src_stream.c /tmp/faar-eval/q31-short-scaled.c -lm -o /tmp/faar-eval/libfaar-q39-f32fft-src.so"
+  },
+  "source_sha256": {
+    "/tmp/faar-eval/q39_stream_prefilter_f32fft.c": "e5eb6f40de26e34a7381132e98a504a0174054fc756de2a5ae0888cdc9f33971",
+    "/tmp/faar-eval/q39_fft_fast.c": "7dd21c8919b6f0141572e46140c8c86e1b3a19376c34f7caff599530f9aeb6fb",
+    "/tmp/faar-eval/q39_fft_fast.h": "2f440ce2cb2c3fdb402d478f42f858fc332830761ed771a38b5ac601a0c742c5",
+    "/tmp/faar-eval/q39_stream_prefilter.h": "b0c14ecb96f302f55371a075a1d6a8367faa4ca95f9c4ba1f99d301f85c35b5c",
+    "/tmp/faar-eval/faac_fft14.c": "c8d64c82279f741eb6b5162cdbfdb8be26a23378413effd7dadd5acf151469a7",
+    "/tmp/faar-eval/faac_fft14.h": "d01fabad79ac18dc404b418be0121f5a844d1181b18cb2242b35be867ac3e779",
+    "/tmp/faar-eval/q39_src_stream.c": "559757ab0d9f265cbd3dec8a5d22d4b118a380d967bce393a7ad85ec87c7ab11",
+    "/tmp/faar-eval/q31-short-scaled.c": "a232737106d745fb829f569392251a1a46c38ba6b0c93a0b1ea4174942a7debc",
+    "/tmp/faar-eval/test_q39_pipeline_f32fft.py": "46195076f076b5e3f4419c9f8104605c9c7785c8977f7b25c791b8a3b99a9448"
+  }
+}

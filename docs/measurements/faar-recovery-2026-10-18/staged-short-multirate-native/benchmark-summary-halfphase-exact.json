@@ -1,0 +1,162 @@
+{
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "repeats": 30,
+  "medians": {
+    "96000->44100": {
+      "ardftsrc": {
+        "actual_count": 1350048,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.0544830435,
+        "setup_cpu_seconds": 0.004627043
+      },
+      "faar-candidate": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.05728988000000001,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.056050746500000005,
+        "setup_cpu_seconds": 0.0012467525000000009,
+        "setup_live_heap_bytes": 3717856.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "faar-default": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.9574356850000001,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.9532026525000001,
+        "setup_cpu_seconds": 0.004135377,
+        "setup_live_heap_bytes": 402400.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "sox-wide": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.07638832000000001,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.07560108400000001,
+        "setup_cpu_seconds": 0.0006989144999999999,
+        "setup_live_heap_bytes": 622624.0,
+        "whole_process_peak_rss_kib": 174432.0
+      }
+    },
+    "48000->44100": {
+      "ardftsrc": {
+        "actual_count": 1350048,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.038859577,
+        "setup_cpu_seconds": 0.004027033500000001
+      },
+      "faar-candidate": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.0514404855,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.049988333,
+        "setup_cpu_seconds": 0.0012977524999999998,
+        "setup_live_heap_bytes": 3868064.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "faar-default": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.491932818,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.48982206100000003,
+        "setup_cpu_seconds": 0.0021113775,
+        "setup_live_heap_bytes": 184656.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "sox-wide": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.0637210885,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.062989639,
+        "setup_cpu_seconds": 0.0006916414999999995,
+        "setup_live_heap_bytes": 574784.0,
+        "whole_process_peak_rss_kib": 174432.0
+      }
+    },
+    "44100->48000": {
+      "ardftsrc": {
+        "actual_count": 1464320,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.0403177205,
+        "setup_cpu_seconds": 0.0040421020000000005
+      },
+      "faar-candidate": {
+        "actual_count": 1464320,
+        "api_total_cpu_seconds": 0.050675105000000005,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.04950977050000001,
+        "setup_cpu_seconds": 0.0011717965000000007,
+        "setup_live_heap_bytes": 3856160.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "faar-default": {
+        "actual_count": 1464320,
+        "api_total_cpu_seconds": 0.5110673105,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.509013571,
+        "setup_cpu_seconds": 0.0020836060000000004,
+        "setup_live_heap_bytes": 184656.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "sox-wide": {
+        "actual_count": 1464320,
+        "api_total_cpu_seconds": 0.06278331749999999,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.062124056999999996,
+        "setup_cpu_seconds": 0.0006385614999999999,
+        "setup_live_heap_bytes": 564880.0,
+        "whole_process_peak_rss_kib": 174432.0
+      }
+    },
+    "192000->44100": {
+      "ardftsrc": {
+        "actual_count": 1350048,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.087971477,
+        "setup_cpu_seconds": 0.0058759745000000006
+      },
+      "faar-candidate": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.08963713950000002,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.08854279350000001,
+        "setup_cpu_seconds": 0.001091461000000002,
+        "setup_live_heap_bytes": 3794176.0,
+        "whole_process_peak_rss_kib": 358116.0
+      },
+      "faar-default": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 1.894824207,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 1.8886800099999999,
+        "setup_cpu_seconds": 0.0061913655000000005,
+        "setup_live_heap_bytes": 620144.0,
+        "whole_process_peak_rss_kib": 358116.0
+      },
+      "sox-wide": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.10396515300000002,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.10323715800000001,
+        "setup_cpu_seconds": 0.0007150905000000013,
+        "setup_live_heap_bytes": 659168.0,
+        "whole_process_peak_rss_kib": 358116.0
+      }
+    }
+  }
+}

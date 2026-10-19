@@ -1,0 +1,43 @@
+{
+  "candidate_library_sha256": "2be57d545ebed830649ab829dd39695e1734b59d4ccd2179481d5fcfcaec0c0e",
+  "source_file": "signals-standard-planner2-targeted-high.json",
+  "source_sha256": "45c84e58ef176e826f0fa0256ae3b03b80e831c627b46cef6044fb5011c337ab",
+  "pairs": [
+    {
+      "conversion": "48000->96000",
+      "candidate_peak_offset_frames": 0,
+      "candidate_time_reversal_error_relative": 7.160674243552176e-15,
+      "candidate_alias_records": []
+    },
+    {
+      "conversion": "96000->48000",
+      "candidate_peak_offset_frames": 0,
+      "candidate_time_reversal_error_relative": 5.618727830503614e-16,
+      "candidate_alias_records": [
+        {
+          "frequency_hz": 24010,
+          "alias_attenuation_db": 156.70840127825875
+        }
+      ]
+    },
+    {
+      "conversion": "192000->48000",
+      "candidate_peak_offset_frames": 0,
+      "candidate_time_reversal_error_relative": 5.385211641167415e-16,
+      "candidate_alias_records": [
+        {
+          "frequency_hz": 24100.0,
+          "alias_attenuation_db": 156.66536504114336
+        },
+        {
+          "frequency_hz": 24950.0,
+          "alias_attenuation_db": 156.80851368444684
+        },
+        {
+          "frequency_hz": 94080.0,
+          "alias_attenuation_db": 163.0673799163166
+        }
+      ]
+    }
+  ]
+}

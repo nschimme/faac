@@ -1,0 +1,39 @@
+{
+  "candidate_library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+  "measurement_command": "size <binary>; stat -c %s <binary>; sha256sum <binary>",
+  "binaries": {
+    "faar_shared_library": {
+      "path": "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+      "file_bytes": 104728,
+      "text_bytes": 91587,
+      "data_bytes": 840,
+      "bss_bytes": 8,
+      "sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84"
+    },
+    "sox_cpu_shared_library": {
+      "path": "/tmp/faar-recovery/sox-instrumented-build/src/liblibsox.so.4.0.0",
+      "file_bytes": 2302080,
+      "text_bytes": 643850,
+      "data_bytes": 33072,
+      "bss_bytes": 2768,
+      "sha256": "413a22afda9c3ddb947dadc04dace1670dafcf18105e0d8fb0d1fe69e75aa271"
+    },
+    "sox_cli": {
+      "path": "/tmp/faar-recovery/sox",
+      "file_bytes": 12749136,
+      "text_bytes": 10724596,
+      "data_bytes": 478108,
+      "bss_bytes": 76336,
+      "sha256": "f59860df415ffadf84ebe60b76a080a55f3d9a26a4b32700f89c6c33e6e2778a"
+    },
+    "ardftsrc_reference_executable": {
+      "path": "/tmp/faar-recovery/ardftsrc",
+      "file_bytes": 3248072,
+      "text_bytes": 2102689,
+      "data_bytes": 66976,
+      "bss_bytes": 944,
+      "sha256": "ff84fb9164a57b6b13d8c1446df6771e8ab710745f40c4cda5967a32af20c597"
+    }
+  },
+  "caveat": "The SoX shared library and CLI and the ARDFTSRC executable contain broader application support and dependencies. Their sizes are footprint context and not a rate-kernel-only comparison."
+}

@@ -1,0 +1,160 @@
+{
+  "candidate_library_sha256": "9d2a24b6ee82814c506fc1472879c4b21bb9229004a8beb1029d4a1ffc5bd53f",
+  "optimization": "For exact High-preset 2:1 reductions, fold the real product spectrum and use an N/2 inverse FFT; retain the full inverse/strided output on the portable FFT backend.",
+  "benchmark_protocol": "Ten alternating serial trials, 30-second stereo inputs, one warmup; process CPU time with setup reported separately.",
+  "benchmarks": [
+    {
+      "conversion": "48000->96000",
+      "median_processing_seconds": {
+        "ardftsrc": 0.07406893,
+        "faar-candidate": 0.04930325,
+        "sox-wide": 0.05046765
+      },
+      "setup_cpu_seconds": {
+        "ardftsrc": 0.00261555,
+        "faar-candidate": 0.00100384,
+        "sox-wide": 0.00058501
+      },
+      "expected_frames": 2899968,
+      "actual_frames": 2899968,
+      "all_deterministic": true,
+      "setup_live_heap_bytes": {
+        "ardftsrc": null,
+        "faar-candidate": 3828064.0,
+        "sox-wide": 516704.0
+      }
+    },
+    {
+      "conversion": "96000->48000",
+      "median_processing_seconds": {
+        "ardftsrc": 0.06817155,
+        "faar-candidate": 0.03746255,
+        "sox-wide": 0.04240842
+      },
+      "setup_cpu_seconds": {
+        "ardftsrc": 0.00347835,
+        "faar-candidate": 0.00100651,
+        "sox-wide": 0.00056484
+      },
+      "expected_frames": 1458176,
+      "actual_frames": 1458176,
+      "all_deterministic": true,
+      "setup_live_heap_bytes": {
+        "ardftsrc": null,
+        "faar-candidate": 3825792.0,
+        "sox-wide": 559072.0
+      }
+    },
+    {
+      "conversion": "192000->48000",
+      "median_processing_seconds": {
+        "ardftsrc": 0.12842076,
+        "faar-candidate": 0.09528724,
+        "sox-wide": 0.06674935
+      },
+      "setup_cpu_seconds": {
+        "ardftsrc": 0.00455152,
+        "faar-candidate": 0.00104329,
+        "sox-wide": 0.00059265
+      },
+      "expected_frames": 1458176,
+      "actual_frames": 1458176,
+      "all_deterministic": true,
+      "setup_live_heap_bytes": {
+        "ardftsrc": null,
+        "faar-candidate": 3931904.0,
+        "sox-wide": 595360.0
+      }
+    },
+    {
+      "conversion": "48000->32000",
+      "median_processing_seconds": {
+        "ardftsrc": 0.03577611,
+        "faar-candidate": 0.03058466,
+        "sox-wide": 0.04641277
+      },
+      "setup_cpu_seconds": {
+        "ardftsrc": 0.003805,
+        "faar-candidate": 0.00035713,
+        "sox-wide": 0.00063243
+      },
+      "expected_frames": 983040,
+      "actual_frames": 983040,
+      "all_deterministic": true,
+      "setup_live_heap_bytes": {
+        "ardftsrc": null,
+        "faar-candidate": 971152.0,
+        "sox-wide": 533808.0
+      }
+    },
+    {
+      "conversion": "88200->44100",
+      "median_processing_seconds": {
+        "ardftsrc": 0.06127974,
+        "faar-candidate": 0.03440258,
+        "sox-wide": 0.04043919
+      },
+      "setup_cpu_seconds": {
+        "ardftsrc": 0.00347314,
+        "faar-candidate": 0.0010067,
+        "sox-wide": 0.00060218
+      },
+      "expected_frames": 1343488,
+      "actual_frames": 1343488,
+      "all_deterministic": true,
+      "setup_live_heap_bytes": {
+        "ardftsrc": null,
+        "faar-candidate": 3825792.0,
+        "sox-wide": 559072.0
+      }
+    }
+  ],
+  "targeted_response_checks": [
+    {
+      "conversion": "88200->44100",
+      "max_abs_passband_gain_delta_db": 0.0,
+      "candidate_alias_attenuation_db": [
+        156.3662175091886,
+        157.28224653657122,
+        157.0693422795947
+      ],
+      "reference_alias_attenuation_db": [
+        156.36648824945357,
+        157.28226478491462,
+        157.06931742694076
+      ],
+      "impulse_peak_offset_frames": 0,
+      "exact_output_counts": true
+    },
+    {
+      "conversion": "96000->48000",
+      "max_abs_passband_gain_delta_db": 0.0,
+      "candidate_alias_attenuation_db": [
+        156.70840127802407
+      ],
+      "reference_alias_attenuation_db": [
+        156.71760543516552
+      ],
+      "impulse_peak_offset_frames": 0,
+      "exact_output_counts": true
+    },
+    {
+      "conversion": "192000->48000",
+      "max_abs_passband_gain_delta_db": 1.9695218015426306e-07,
+      "candidate_alias_attenuation_db": [
+        156.66536504106114,
+        156.808513684406,
+        163.0673799163166
+      ],
+      "reference_alias_attenuation_db": [
+        159.94377094096293,
+        160.39523312525077,
+        163.10162026065058
+      ],
+      "impulse_peak_offset_frames": 0,
+      "exact_output_counts": true
+    }
+  ],
+  "verification": "Ooura folded path and portable full-inverse path both pass direct convolution/even-sample unit checks. Full staged-short native/default suites pass 6/6; full High response matrix is available for the prior candidate hash, while these current-hash signal checks cover the conversions affected by the optimization.",
+  "benchmark_candidate_hash": "9d2a24b6ee82814c506fc1472879c4b21bb9229004a8beb1029d4a1ffc5bd53f"
+}
