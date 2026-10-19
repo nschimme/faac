@@ -584,9 +584,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->rate_auto && params.bit_rate > 0)
     {
-        /* Measured wins at 48k: 12-16 kbps/ch, 44.1k: 8 kbps/ch; bracket centres. */
-        const uint32_t lc_48k_bps = 18000;
-        const uint32_t lc_44k_bps = 10000;
+        /* Both engines gain on most clips through 18 kbps/ch at 48k and
+           10 kbps/ch at 44.1k, not at 20 and 12; bracket centres. */
+        const uint32_t lc_48k_bps = 19000;
+        const uint32_t lc_44k_bps = 11000;
         if (raw_sample_rate > 48000)
             target_rate = (raw_sample_rate % 44100 == 0) ? 44100 : 48000;
         else if (raw_sample_rate > 32000 &&
