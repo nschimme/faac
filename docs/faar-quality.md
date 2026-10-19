@@ -13,9 +13,46 @@ float PCM I/O. `-Dfaar-precision=double` (the default) uses double sample
 arithmetic for every preset; `-Dfaar-precision=float` uses float throughout
 the FFT, FIR, bank and cubic interpolation paths for single-precision FPUs.
 The internal `FAAR_FLOAT` macro selects `faar_sample_t`; setup-time filter
-design and planning retain double arithmetic. The legacy polyphase
-backend remains available as a comparison build; its coefficient storage is
-selectable at build time. Embedded arithmetic alternatives remain deferred.
+design and planning retain double arithmetic. Float builds support Fast and
+Good only; creating a High handle returns NULL.
+
+## Current scorecard
+
+Measured on 2026-10-19 at f391c0b8 against 6de55ea3, the last build before
+the paired FFT. Both are default double builds; the float column is the
+`-Dfaar-precision=float` build.
+
+| Gate | Double build | Float build |
+|---|---|---|
+| AAC mask screen, 62 routes per preset | 186/186 pass | Fast 62/62, Good 61/62 |
+| Full matrix, 26,334 checks against 6de55ea3 | 0 regress, worst cases unchanged | not compared |
+| Output against 6de55ea3 | Fast and High bit-exact; Good one float rounding step on one sample (2 of 32 cases) | float rounding |
+| HA composite 96→44.1, Fast / Good / High | 64.8 / 75.8 / 77.1, unchanged | 51.7 / 61.1 / rejected |
+| Processing Ir against 6de55ea3, four routes | 0.69–0.89 | not compared |
+| Shared library text | 54,715 bytes (6de55ea3: 72,950) | 57,263 bytes |
+
+The float Good miss is the 32→48 kHz residual at 15.36 kHz, −129.8 dB
+against the −130 dB mask.
+
+The Ir routes are 96→44.1, 48→44.1, 192→48 and 44.1→22.05 kHz, run on
+10-second stereo input. Wall time follows Ir on large transforms. The 2:1
+Good routes are memory-bound and stay at parity (0.99–1.03×).
+
+Float arithmetic caps High's rejection near 135 dB, below its 145/150 dB
+masks. On the float build at 96→44.1, High scored 60.0 HA against Good's 61.1
+and cost 1.15–1.40× Good's instructions. The float build therefore rejects it.
+
+The masks are passed to faac-benchmark's `screen_faar_matrix.py` via
+`--mask-json`. Each preset must hold its passband within 0.01 dB up to a
+fraction of the lower Nyquist:
+- Fast: 0.90, with 100 dB stopband and residual;
+- Good: 0.96, with 130 dB;
+- High: 0.96, with 150 dB stopband and a −145 dB residual.
+
+Still open:
+- a new comparison against libsoxr, which was 1.9–8.6× faster than FAAR
+  before Phase 2;
+- per-handle heap: paired stages raised High mono's heap.
 
 ## Local comparison
 
@@ -92,6 +129,12 @@ for on-device timing, which has not been measured.
 
 ## Existing FAAC FFT experiment
 
+Superseded: `libfaar/fft_real.c` now ships a generalized `libfaac/fft.c`
+radix-4 Stockham kernel. Padded scratch planes keep its butterfly streams
+off shared L1 cache sets. Each stage pairs two real channels (or two
+consecutive mono blocks) per complex transform. The double build
+keeps the precision this float prototype lacked.
+
 An isolated prototype adapts `libfaac/fft.c`'s float32 radix-4 Stockham
 kernel to 16,384 points. It retains the experimental Q39 overlap-save
 prefilter, Q39 spectral multiplication, and 127-tap integer resampling stage;
@@ -149,5 +192,5 @@ For the runtime precision builds, use `CCACHE_DISABLE=1 meson setup
 -Dfaar-precision=float`, then compile and run `meson test` in that directory.
 The former `faar-coefficient-precision` option is replaced by `faar-precision`.
 Fingerprint fixtures are `matrix-fingerprints-double.txt` and
-`matrix-fingerprints-float.txt`. Float arithmetic does not imply that Good or
-High meets the desktop double precision noise masks.
+`matrix-fingerprints-float.txt`. Float builds are gated on the Fast and Good
+masks; High is rejected at creation.

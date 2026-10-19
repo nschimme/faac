@@ -1,6 +1,6 @@
 # libfaar - CPU Audio Resampler Library
 
-`libfaar` (Freeware Advanced Audio Resampler) is a C library for digital sample rate conversion. The staged-short CPU backend combines an overlap-save DFT prefilter with a rate-planned fractional-delay stage. Input and output use float PCM; staged-short uses double-precision filter and FFT arithmetic. Quality, transition bandwidth, CPU cost, and memory use depend on the preset and conversion ratio.
+`libfaar` (Freeware Advanced Audio Resampler) is a C library for digital sample rate conversion. The staged-short CPU backend combines an overlap-save DFT prefilter with a rate-planned fractional-delay stage. Input and output use float PCM. Sample arithmetic is double by default; `-Dfaar-precision=float` builds a float-only resampler for single-precision FPUs that supports Fast and Good. Quality, transition bandwidth, CPU cost, and memory use depend on the preset and conversion ratio.
 
 Staged-short is the only build. Its polyphase bank handles routes without a dedicated plan and the final stage after the DFT prefilter.
 
@@ -84,6 +84,9 @@ Other upsampling routes use the polyphase bank directly.
 
 - **Quantization and noise shaping**
   When downconverting floating-point audio to 16-bit or 24-bit integer PCM formats, `libfaar` applies Triangular Probability Density Function (TPDF) dithering and optional high-pass noise-shaping error feedback (`FAAR_DITHER_SHAPED`), shifting dither noise energy into psychoacoustically less sensitive treble frequencies.
+
+- **Paired transforms**
+  The DFT stage uses `fft_real.c`, a radix-4 Stockham FFT generalized from `libfaac/fft.c`. Because the anti-alias filter is real and shared, two channels go through one complex transform as L + jR, and a mono stream pairs consecutive blocks. Padded scratch planes keep the butterfly streams from aliasing the same L1 cache sets.
 
 - **Portable processing loops**
   Filter coefficients and history are contiguous, with 64-byte alignment. The implementation uses portable C and includes its FFT implementation; it does not require an external DSP library.
