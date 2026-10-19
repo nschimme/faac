@@ -20,6 +20,12 @@ invariants, flush behavior, boundary modes, endpoint impulses, passband gain,
 alias energy, and dither sequence stability. The public API has no reset
 operation, so reset behavior is not claimed.
 
+The selected staged-short plans for common AAC rates are listed in the
+[libfaar documentation](../../docs/libfaar.md#common-conversion-plans). The
+rate-matrix fingerprints and invariance checks do not establish measured audio
+quality for every listed conversion; quality comparisons must be reported for
+the specific rates and presets actually measured.
+
 `tools/compare_faar_sox_vulkan.py` compares the FAAR CLI with SoX's CPU path and
 the Vulkan `fast`, `precise`, and `reference` profiles on the same deterministic
 float32 input. It reports output counts, sample error, and process wall/CPU
