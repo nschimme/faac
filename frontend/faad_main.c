@@ -586,7 +586,7 @@ enum {
 
 static const help_t help_io[] = {
     {"-o, --output <file>",
-     "Set output filename (default: infile.wav, or stdout for stdin input)", NULL},
+     "Set output filename, - for stdout (default: infile.wav, or stdout for stdin input)", NULL},
     {"-w, --stdout",
      "Write output PCM to stdout", NULL},
     {"-f, --format <type>",
@@ -826,6 +826,11 @@ int main(int argc, char **argv)
     if (!infile) {
         print_usage('h');
         return 1;
+    }
+
+    if (outfile && !strcmp(outfile, "-")) {
+        outfile = NULL;
+        write_stdout = true;
     }
 
     uint64_t file_len = 0;
