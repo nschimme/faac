@@ -1,0 +1,200 @@
+{
+  "source_file": "bench-standard-rates-high-10trials.json",
+  "source_sha256": "934393ce26563f7561ecb0b535c9c8b40f088a3f14f046a49b4f317d6e3f90fb",
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "protocol": {
+    "repeats": 10,
+    "warmups": 1,
+    "signal_duration_seconds": 30,
+    "channels": 2,
+    "metric": "median process CPU seconds for resampler processing; setup reported separately in raw data",
+    "quality": "High preset. Timing and exact-count check only; these runs do not establish audio quality."
+  },
+  "cases": [
+    {
+      "conversion": "48000->96000",
+      "engines": {
+        "faar-candidate": {
+          "processing_cpu_seconds": 1.0079765324999999,
+          "setup_cpu_seconds": 0.002120845500000001,
+          "expected_frames": 2899968,
+          "actual_frames": 2899968,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.0
+        },
+        "faar-default": {
+          "processing_cpu_seconds": 0.9575448870000001,
+          "setup_cpu_seconds": 0.0021016045000000006,
+          "expected_frames": 2899968,
+          "actual_frames": 2899968,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.0526676568218152
+        },
+        "sox-wide": {
+          "processing_cpu_seconds": 0.0469472925,
+          "setup_cpu_seconds": 0.0005555865,
+          "expected_frames": 2899968,
+          "actual_frames": 2899968,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 21.470386870552755
+        },
+        "ardftsrc": {
+          "processing_cpu_seconds": 0.06992679300000001,
+          "setup_cpu_seconds": 0.0025520995,
+          "expected_frames": 2899968,
+          "actual_frames": 2899968,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 14.414739890902757
+        }
+      }
+    },
+    {
+      "conversion": "96000->48000",
+      "engines": {
+        "faar-candidate": {
+          "processing_cpu_seconds": 0.11128026950000001,
+          "setup_cpu_seconds": 0.0002810115,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.0
+        },
+        "faar-default": {
+          "processing_cpu_seconds": 0.46566683750000004,
+          "setup_cpu_seconds": 0.0020745735000000003,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 0.23896971082893573
+        },
+        "sox-wide": {
+          "processing_cpu_seconds": 0.0415551795,
+          "setup_cpu_seconds": 0.0005650039999999992,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 2.6778916813486515
+        },
+        "ardftsrc": {
+          "processing_cpu_seconds": 0.0634718625,
+          "setup_cpu_seconds": 0.0034517505000000006,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.753222059617362
+        }
+      }
+    },
+    {
+      "conversion": "192000->48000",
+      "engines": {
+        "faar-candidate": {
+          "processing_cpu_seconds": 0.142213044,
+          "setup_cpu_seconds": 0.00027636299999999996,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.0
+        },
+        "faar-default": {
+          "processing_cpu_seconds": 1.3819266570000002,
+          "setup_cpu_seconds": 0.004089671000000001,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 0.1029092559142956
+        },
+        "sox-wide": {
+          "processing_cpu_seconds": 0.065689214,
+          "setup_cpu_seconds": 0.0005786895,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 2.164937519270668
+        },
+        "ardftsrc": {
+          "processing_cpu_seconds": 0.125994462,
+          "setup_cpu_seconds": 0.0044097955,
+          "expected_frames": 1458176,
+          "actual_frames": 1458176,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.1287245625129143
+        }
+      }
+    },
+    {
+      "conversion": "48000->32000",
+      "engines": {
+        "faar-candidate": {
+          "processing_cpu_seconds": 0.095983446,
+          "setup_cpu_seconds": 0.0003450514999999996,
+          "expected_frames": 983040,
+          "actual_frames": 983040,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.0
+        },
+        "faar-default": {
+          "processing_cpu_seconds": 0.331506242,
+          "setup_cpu_seconds": 0.0020811315,
+          "expected_frames": 983040,
+          "actual_frames": 983040,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 0.28953737166734855
+        },
+        "sox-wide": {
+          "processing_cpu_seconds": 0.0447830015,
+          "setup_cpu_seconds": 0.0006243904999999996,
+          "expected_frames": 983040,
+          "actual_frames": 983040,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 2.1433008682993253
+        },
+        "ardftsrc": {
+          "processing_cpu_seconds": 0.037215636,
+          "setup_cpu_seconds": 0.0037533205000000003,
+          "expected_frames": 983040,
+          "actual_frames": 983040,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 2.5791161005551535
+        }
+      }
+    },
+    {
+      "conversion": "88200->44100",
+      "engines": {
+        "faar-candidate": {
+          "processing_cpu_seconds": 0.10756210600000002,
+          "setup_cpu_seconds": 0.00028725350000000007,
+          "expected_frames": 1343488,
+          "actual_frames": 1343488,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.0
+        },
+        "faar-default": {
+          "processing_cpu_seconds": 0.4280600735,
+          "setup_cpu_seconds": 0.002101149,
+          "expected_frames": 1343488,
+          "actual_frames": 1343488,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 0.25127806272733355
+        },
+        "sox-wide": {
+          "processing_cpu_seconds": 0.0394881855,
+          "setup_cpu_seconds": 0.0005821209999999997,
+          "expected_frames": 1343488,
+          "actual_frames": 1343488,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 2.7239060148762726
+        },
+        "ardftsrc": {
+          "processing_cpu_seconds": 0.0630402235,
+          "setup_cpu_seconds": 0.0034834845,
+          "expected_frames": 1343488,
+          "actual_frames": 1343488,
+          "deterministic_output": true,
+          "candidate_over_engine_time": 1.706245632203382
+        }
+      }
+    }
+  ]
+}

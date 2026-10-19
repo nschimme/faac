@@ -1,0 +1,230 @@
+[
+  {
+    "in_rate": 96000,
+    "out_rate": 44100,
+    "variant": "default",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "default",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "96000",
+      "44100",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":3763,\"setup_cpu_seconds\":0.0004485810000000002,\"processing_cpu_seconds\":0.0002188899999999998,\"api_total_cpu_seconds\":0.00066747099999999999,\"setup_live_heap_bytes\":133088,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=601 Fc=0.43904998273887219 \u03b2=19.111118114621231 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=601 dft_length=4096 Fp=0.91151 Fs=1 Fn=2.17687 att=180.618 1/1\neffects_i_dsp: make_lpf(n=2939 Fc=0.0059479390716109587 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=147)\nrate: fir_len=20 phases=147 coef_interp=0 size=23.5k\nrate: rate plan stage 1/2: dft L=1 M=1 phases=0 interpolation=0 taps=0 preload=300 remL=0\nrate: rate plan stage 2/2: poly_fir L=147 M=320 phases=147 interpolation=0 taps=20 preload=9 remL=0\nrate:     0|0     preload=300 remL=0\nrate:     0|19    preload=9 remL=0\n"
+  },
+  {
+    "in_rate": 96000,
+    "out_rate": 44100,
+    "variant": "wide",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "wide",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "96000",
+      "44100",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":3763,\"setup_cpu_seconds\":0.0018211130000000003,\"processing_cpu_seconds\":0.00072053099999999995,\"api_total_cpu_seconds\":0.002541644,\"setup_live_heap_bytes\":552912,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=5981 Fc=0.45734249827388718 \u03b2=19.078143572239966 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=5981 dft_length=32768 Fp=0.991151 Fs=1 Fn=2.17687 att=180.618 1/1\neffects_i_dsp: make_lpf(n=2939 Fc=0.006075233237773342 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=147)\nrate: fir_len=20 phases=147 coef_interp=0 size=23.5k\nrate: rate plan stage 1/2: dft L=1 M=1 phases=0 interpolation=0 taps=0 preload=2990 remL=0\nrate: rate plan stage 2/2: poly_fir L=147 M=320 phases=147 interpolation=0 taps=20 preload=9 remL=0\nrate:     0|0     preload=2990 remL=0\nrate:     0|19    preload=9 remL=0\n"
+  },
+  {
+    "in_rate": 48000,
+    "out_rate": 44100,
+    "variant": "default",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "default",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "48000",
+      "44100",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":7526,\"setup_cpu_seconds\":0.00040197300000000013,\"processing_cpu_seconds\":0.000224391,\"api_total_cpu_seconds\":0.00062636400000000013,\"setup_live_heap_bytes\":133088,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=601 Fc=0.43904998273887219 \u03b2=19.111118114621231 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=601 dft_length=4096 Fp=0.91151 Fs=1 Fn=2.17687 att=180.618 2/1\neffects_i_dsp: make_lpf(n=2939 Fc=0.0059479390716109587 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=147)\nrate: fir_len=20 phases=147 coef_interp=0 size=23.5k\nrate: rate plan stage 1/2: dft L=2 M=1 phases=0 interpolation=0 taps=0 preload=150 remL=0\nrate: rate plan stage 2/2: poly_fir L=147 M=320 phases=147 interpolation=0 taps=20 preload=9 remL=0\nrate:     0|0     preload=150 remL=0\nrate:     0|19    preload=9 remL=0\n"
+  },
+  {
+    "in_rate": 48000,
+    "out_rate": 44100,
+    "variant": "wide",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "wide",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "48000",
+      "44100",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":7526,\"setup_cpu_seconds\":0.0022750650000000002,\"processing_cpu_seconds\":0.0005624549999999999,\"api_total_cpu_seconds\":0.0028375200000000001,\"setup_live_heap_bytes\":528992,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=5981 Fc=0.45734249827388718 \u03b2=19.078143572239966 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=5981 dft_length=32768 Fp=0.991151 Fs=1 Fn=2.17687 att=180.618 2/1\neffects_i_dsp: make_lpf(n=2939 Fc=0.006075233237773342 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=147)\nrate: fir_len=20 phases=147 coef_interp=0 size=23.5k\nrate: rate plan stage 1/2: dft L=2 M=1 phases=0 interpolation=0 taps=0 preload=1495 remL=0\nrate: rate plan stage 2/2: poly_fir L=147 M=320 phases=147 interpolation=0 taps=20 preload=9 remL=0\nrate:     0|0     preload=1495 remL=0\nrate:     0|19    preload=9 remL=0\n"
+  },
+  {
+    "in_rate": 44100,
+    "out_rate": 48000,
+    "variant": "default",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "default",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "44100",
+      "48000",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":8916,\"setup_cpu_seconds\":0.00035198,\"processing_cpu_seconds\":0.00026700000000000031,\"api_total_cpu_seconds\":0.00061898000000000031,\"setup_live_heap_bytes\":98048,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=553 Fc=0.47787753223278606 \u03b2=19.111118114621231 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=553 dft_length=2048 Fp=0.91151 Fs=1 Fn=2 att=180.618 2/1\neffects_i_dsp: make_lpf(n=1679 Fc=0.010963124075194706 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=80)\nrate: fir_len=21 phases=80 coef_interp=0 size=13.4k\nrate: rate plan stage 1/2: dft L=2 M=1 phases=0 interpolation=0 taps=0 preload=138 remL=0\nrate: rate plan stage 2/2: poly_fir L=80 M=147 phases=80 interpolation=0 taps=21 preload=10 remL=0\nrate:     0|0     preload=138 remL=0\nrate:     0|20    preload=10 remL=0\n"
+  },
+  {
+    "in_rate": 44100,
+    "out_rate": 48000,
+    "variant": "wide",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "wide",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "44100",
+      "48000",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":8916,\"setup_cpu_seconds\":0.0015233949999999999,\"processing_cpu_seconds\":0.00049554900000000008,\"api_total_cpu_seconds\":0.0020189439999999999,\"setup_live_heap_bytes\":515008,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=5493 Fc=0.49778775322327862 \u03b2=19.078143572239966 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=5493 dft_length=32768 Fp=0.991151 Fs=1 Fn=2 att=180.618 2/1\neffects_i_dsp: make_lpf(n=1679 Fc=0.011217712407519471 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=80)\nrate: fir_len=21 phases=80 coef_interp=0 size=13.4k\nrate: rate plan stage 1/2: dft L=2 M=1 phases=0 interpolation=0 taps=0 preload=1373 remL=0\nrate: rate plan stage 2/2: poly_fir L=80 M=147 phases=80 interpolation=0 taps=21 preload=10 remL=0\nrate:     0|0     preload=1373 remL=0\nrate:     0|20    preload=10 remL=0\n"
+  },
+  {
+    "in_rate": 96000,
+    "out_rate": 48000,
+    "variant": "default",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "default",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "96000",
+      "48000",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":4096,\"setup_cpu_seconds\":0.00027249099999999992,\"processing_cpu_seconds\":0.0001159370000000002,\"api_total_cpu_seconds\":0.00038842800000000012,\"setup_live_heap_bytes\":67856,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=533 Fc=0.47787753223278606 \u03b2=18.433392558161877 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=533 dft_length=2048 Fp=0.91151 Fs=1 Fn=2 att=174.597 1/2\nrate: rate plan stage 1/1: dft L=1 M=2 phases=0 interpolation=0 taps=0 preload=266 remL=0\nrate:     0|0     preload=266 remL=0\n"
+  },
+  {
+    "in_rate": 96000,
+    "out_rate": 48000,
+    "variant": "wide",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "wide",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "96000",
+      "48000",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":4096,\"setup_cpu_seconds\":0.0015180859999999999,\"processing_cpu_seconds\":0.00058396400000000018,\"api_total_cpu_seconds\":0.0021020500000000003,\"setup_live_heap_bytes\":504592,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=5297 Fc=0.49778775322327862 \u03b2=18.401802232573989 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=5297 dft_length=32768 Fp=0.991151 Fs=1 Fn=2 att=174.597 1/2\nrate: rate plan stage 1/1: dft L=1 M=2 phases=0 interpolation=0 taps=0 preload=2648 remL=0\nrate:     0|0     preload=2648 remL=0\n"
+  },
+  {
+    "in_rate": 192000,
+    "out_rate": 44100,
+    "variant": "default",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "default",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "192000",
+      "44100",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":1882,\"setup_cpu_seconds\":0.00048211399999999963,\"processing_cpu_seconds\":0.00022198599999999997,\"api_total_cpu_seconds\":0.0007040999999999996,\"setup_live_heap_bytes\":150224,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=621 Fc=0.43904998273887219 \u03b2=19.78966537340597 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=621 dft_length=4096 Fp=0.91151 Fs=1 Fn=2.17687 att=186.639 1/1\neffects_i_dsp: make_lpf(n=2939 Fc=0.0059479390716109587 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=147)\nrate: fir_len=20 phases=147 coef_interp=0 size=23.5k\nrate: rate plan stage 1/3: half_fir L=0 M=0 phases=0 interpolation=0 taps=0 preload=24 remL=0\nrate: rate plan stage 2/3: dft L=1 M=1 phases=0 interpolation=0 taps=0 preload=310 remL=0\nrate: rate plan stage 3/3: poly_fir L=147 M=320 phases=147 interpolation=0 taps=20 preload=9 remL=0\nrate:    24|24    preload=24 remL=0\nrate:     0|0     preload=310 remL=0\nrate:     0|19    preload=9 remL=0\n"
+  },
+  {
+    "in_rate": 192000,
+    "out_rate": 44100,
+    "variant": "wide",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "wide",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "192000",
+      "44100",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":1882,\"setup_cpu_seconds\":0.0020949969999999999,\"processing_cpu_seconds\":0.00098839299999999974,\"api_total_cpu_seconds\":0.0030833899999999997,\"setup_live_heap_bytes\":572432,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=6193 Fc=0.45734249827388718 \u03b2=19.755197322241379 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=6193 dft_length=32768 Fp=0.991151 Fs=1 Fn=2.17687 att=186.639 1/1\neffects_i_dsp: make_lpf(n=2939 Fc=0.006075233237773342 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=147)\nrate: fir_len=20 phases=147 coef_interp=0 size=23.5k\nrate: rate plan stage 1/3: half_fir L=0 M=0 phases=0 interpolation=0 taps=0 preload=24 remL=0\nrate: rate plan stage 2/3: dft L=1 M=1 phases=0 interpolation=0 taps=0 preload=3096 remL=0\nrate: rate plan stage 3/3: poly_fir L=147 M=320 phases=147 interpolation=0 taps=20 preload=9 remL=0\nrate:    24|24    preload=24 remL=0\nrate:     0|0     preload=3096 remL=0\nrate:     0|19    preload=9 remL=0\n"
+  },
+  {
+    "in_rate": 44100,
+    "out_rate": 44101,
+    "variant": "default",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "default",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "44100",
+      "44101",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":8192,\"setup_cpu_seconds\":0.0008048790000000001,\"processing_cpu_seconds\":0.00045980200000000004,\"api_total_cpu_seconds\":0.0012646810000000001,\"setup_live_heap_bytes\":260720,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=553 Fc=0.47787753223278606 \u03b2=19.111118114621231 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=553 dft_length=2048 Fp=0.91151 Fs=1 Fn=2 att=180.618 2/1\neffects_i_dsp: make_lpf(n=5375 Fc=0.0034259762734983458 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=256)\nrate: fir_len=21 phases=256 coef_interp=3 size=172k\nrate: rate plan stage 1/2: dft L=2 M=1 phases=0 interpolation=0 taps=0 preload=138 remL=0\nrate: rate plan stage 2/2: poly_fir L=1 M=1 phases=256 interpolation=3 taps=21 preload=10 remL=0\nrate:     0|0     preload=138 remL=0\nrate:     0|20    preload=10 remL=0\n"
+  },
+  {
+    "in_rate": 44100,
+    "out_rate": 44101,
+    "variant": "wide",
+    "command": [
+      "/tmp/faar-recovery/driver",
+      "sox",
+      "wide",
+      "/tmp/faar-recovery/geometry/input.f32",
+      "/tmp/faar-recovery/geometry/output.f32",
+      "44100",
+      "44101",
+      "1",
+      "4096",
+      "65536"
+    ],
+    "stdout": "{\"engine\":\"sox\",\"input_frames\":8192,\"output_frames\":8192,\"setup_cpu_seconds\":0.0018967749999999999,\"processing_cpu_seconds\":0.00078024299999999991,\"api_total_cpu_seconds\":0.0026770179999999998,\"setup_live_heap_bytes\":677680,\"whole_process_peak_rss_kib\":25724}\n",
+    "debug": "effects: sox_add_effect: extending effects table, new size = 8\neffects_i_dsp: make_lpf(n=5493 Fc=0.49778775322327862 \u03b2=19.078143572239966 \u03c1=0.5 dc-norm=0 scale=1)\nrate: fir_len=5493 dft_length=32768 Fp=0.991151 Fs=1 Fn=2 att=180.618 2/1\neffects_i_dsp: make_lpf(n=5375 Fc=0.0035055351273498348 \u03b2=19.60632601597565 \u03c1=0.75 dc-norm=0 scale=256)\nrate: fir_len=21 phases=256 coef_interp=3 size=172k\nrate: rate plan stage 1/2: dft L=2 M=1 phases=0 interpolation=0 taps=0 preload=1373 remL=0\nrate: rate plan stage 2/2: poly_fir L=1 M=1 phases=256 interpolation=3 taps=21 preload=10 remL=0\nrate:     0|0     preload=1373 remL=0\nrate:     0|20    preload=10 remL=0\n"
+  }
+]

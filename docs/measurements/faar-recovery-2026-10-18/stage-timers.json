@@ -1,0 +1,343 @@
+{
+  "build_command": [
+    "cc",
+    "-O3",
+    "-g",
+    "-flto",
+    "-fPIC",
+    "-shared",
+    "-DFAAR_BUILDING",
+    "-DFAAR_DOUBLE_COEFFICIENTS",
+    "-DFAAR_STAGED_BACKEND",
+    "-I/home/nschimme/gitprojects/faac/include",
+    "-I/home/nschimme/gitprojects/faac/libfaar",
+    "/tmp/faar-recovery/stage-timers/polyresample.c",
+    "/tmp/faar-recovery/stage-timers/dft_prefilter.c",
+    "/tmp/faar-recovery/stage-timers/fft_double.c",
+    "/tmp/faar-recovery/stage-timers/timers.c",
+    "/home/nschimme/gitprojects/faac/libfaar/dft_fir.c",
+    "/home/nschimme/gitprojects/faac/libfaar/dft_coeffs.c",
+    "-lm",
+    "-o",
+    "/tmp/faar-recovery/stage-timers/libfaar.so"
+  ],
+  "library_sha256": "e433800b5385df754c7f69ff8093baf2260a96a57e7aa60db0b1412b22371af4",
+  "notes": "Stage timers are inclusive: real FFT time is contained within prefilter time. Clock-call overhead is included. No numerical or planner changes.",
+  "cases": [
+    {
+      "in_rate": 96000,
+      "out_rate": 44100,
+      "bit_identity_vs_uninstrumented": true,
+      "output_sha256": "b526ce04eac20ec2d6d727e9a008d4b5e89c5857903a6dff8a68733374cf47fb",
+      "runs": [
+        {
+          "engine": "faar",
+          "input_frames": 2880000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0025259450000000017,
+          "processing_cpu_seconds": 0.20233795400000001,
+          "api_total_cpu_seconds": 0.20486389900000002,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.083022,
+          "polyphase_cpu_seconds": 0.110908,
+          "real_fft_cpu_seconds_in_prefilter": 0.058525
+        },
+        {
+          "engine": "faar",
+          "input_frames": 2880000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0029035529999999997,
+          "processing_cpu_seconds": 0.23921499000000002,
+          "api_total_cpu_seconds": 0.24211854300000002,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.100861,
+          "polyphase_cpu_seconds": 0.128723,
+          "real_fft_cpu_seconds_in_prefilter": 0.070929
+        },
+        {
+          "engine": "faar",
+          "input_frames": 2880000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0024817929999999995,
+          "processing_cpu_seconds": 0.202213408,
+          "api_total_cpu_seconds": 0.20469520100000002,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.082764,
+          "polyphase_cpu_seconds": 0.110424,
+          "real_fft_cpu_seconds_in_prefilter": 0.05826
+        },
+        {
+          "engine": "faar",
+          "input_frames": 2880000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0025751779999999974,
+          "processing_cpu_seconds": 0.211027962,
+          "api_total_cpu_seconds": 0.21360314000000002,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.08936,
+          "polyphase_cpu_seconds": 0.112715,
+          "real_fft_cpu_seconds_in_prefilter": 0.060197
+        },
+        {
+          "engine": "faar",
+          "input_frames": 2880000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.002541824,
+          "processing_cpu_seconds": 0.21494109900000002,
+          "api_total_cpu_seconds": 0.21748292300000002,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.090536,
+          "polyphase_cpu_seconds": 0.114966,
+          "real_fft_cpu_seconds_in_prefilter": 0.061511
+        },
+        {
+          "engine": "faar",
+          "input_frames": 2880000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0025774809999999995,
+          "processing_cpu_seconds": 0.21842462900000004,
+          "api_total_cpu_seconds": 0.22100211000000003,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.090289,
+          "polyphase_cpu_seconds": 0.118796,
+          "real_fft_cpu_seconds_in_prefilter": 0.060887
+        },
+        {
+          "engine": "faar",
+          "input_frames": 2880000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0031120440000000013,
+          "processing_cpu_seconds": 0.252121161,
+          "api_total_cpu_seconds": 0.25523320499999996,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.109854,
+          "polyphase_cpu_seconds": 0.131995,
+          "real_fft_cpu_seconds_in_prefilter": 0.073409
+        }
+      ],
+      "medians": {
+        "processing_cpu_seconds": 0.21494109900000002,
+        "prefilter_cpu_seconds": 0.090289,
+        "polyphase_cpu_seconds": 0.114966,
+        "real_fft_cpu_seconds_in_prefilter": 0.060887
+      }
+    },
+    {
+      "in_rate": 48000,
+      "out_rate": 44100,
+      "bit_identity_vs_uninstrumented": true,
+      "output_sha256": "c3ad3566b21ed41dc0159d3690151839266aa9ed994c021d14df0d9766cde777",
+      "runs": [
+        {
+          "engine": "faar",
+          "input_frames": 1440000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.002557163999999999,
+          "processing_cpu_seconds": 0.159890494,
+          "api_total_cpu_seconds": 0.162447658,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.042533,
+          "polyphase_cpu_seconds": 0.110204,
+          "real_fft_cpu_seconds_in_prefilter": 0.029305
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1440000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0025425760000000013,
+          "processing_cpu_seconds": 0.16166212600000002,
+          "api_total_cpu_seconds": 0.164204702,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.043979,
+          "polyphase_cpu_seconds": 0.110079,
+          "real_fft_cpu_seconds_in_prefilter": 0.030481
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1440000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.002590536,
+          "processing_cpu_seconds": 0.193405208,
+          "api_total_cpu_seconds": 0.195995744,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.054247,
+          "polyphase_cpu_seconds": 0.130594,
+          "real_fft_cpu_seconds_in_prefilter": 0.037271
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1440000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.0030617490000000008,
+          "processing_cpu_seconds": 0.17414406300000002,
+          "api_total_cpu_seconds": 0.17720581200000002,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.050303,
+          "polyphase_cpu_seconds": 0.115303,
+          "real_fft_cpu_seconds_in_prefilter": 0.032286
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1440000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.00256612,
+          "processing_cpu_seconds": 0.163874914,
+          "api_total_cpu_seconds": 0.16644103400000002,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.044628,
+          "polyphase_cpu_seconds": 0.111995,
+          "real_fft_cpu_seconds_in_prefilter": 0.029355
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1440000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.002515606,
+          "processing_cpu_seconds": 0.16011375400000002,
+          "api_total_cpu_seconds": 0.16262936000000003,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.044806,
+          "polyphase_cpu_seconds": 0.108024,
+          "real_fft_cpu_seconds_in_prefilter": 0.029413
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1440000,
+          "output_frames": 1323000,
+          "setup_cpu_seconds": 0.002573224,
+          "processing_cpu_seconds": 0.17298364700000002,
+          "api_total_cpu_seconds": 0.17555687100000003,
+          "setup_live_heap_bytes": 804400,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.048521,
+          "polyphase_cpu_seconds": 0.116171,
+          "real_fft_cpu_seconds_in_prefilter": 0.03101
+        }
+      ],
+      "medians": {
+        "processing_cpu_seconds": 0.163874914,
+        "prefilter_cpu_seconds": 0.044806,
+        "polyphase_cpu_seconds": 0.111995,
+        "real_fft_cpu_seconds_in_prefilter": 0.030481
+      }
+    },
+    {
+      "in_rate": 44100,
+      "out_rate": 48000,
+      "bit_identity_vs_uninstrumented": true,
+      "output_sha256": "45b069246539c981c6b671258ec97aca51bbee6fbb5415c5e7e84214997ab379",
+      "runs": [
+        {
+          "engine": "faar",
+          "input_frames": 1323000,
+          "output_frames": 1440000,
+          "setup_cpu_seconds": 0.002187149999999999,
+          "processing_cpu_seconds": 0.559018568,
+          "api_total_cpu_seconds": 0.5612057180000001,
+          "setup_live_heap_bytes": 184656,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.0,
+          "polyphase_cpu_seconds": 0.550317,
+          "real_fft_cpu_seconds_in_prefilter": 0.0
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1323000,
+          "output_frames": 1440000,
+          "setup_cpu_seconds": 0.0021955359999999997,
+          "processing_cpu_seconds": 0.532715844,
+          "api_total_cpu_seconds": 0.53491138,
+          "setup_live_heap_bytes": 184656,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.0,
+          "polyphase_cpu_seconds": 0.524564,
+          "real_fft_cpu_seconds_in_prefilter": 0.0
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1323000,
+          "output_frames": 1440000,
+          "setup_cpu_seconds": 0.002189524,
+          "processing_cpu_seconds": 0.5349633890000001,
+          "api_total_cpu_seconds": 0.5371529130000001,
+          "setup_live_heap_bytes": 184656,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.0,
+          "polyphase_cpu_seconds": 0.527207,
+          "real_fft_cpu_seconds_in_prefilter": 0.0
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1323000,
+          "output_frames": 1440000,
+          "setup_cpu_seconds": 0.002261518999999999,
+          "processing_cpu_seconds": 0.534604936,
+          "api_total_cpu_seconds": 0.5368664550000001,
+          "setup_live_heap_bytes": 184656,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.0,
+          "polyphase_cpu_seconds": 0.526311,
+          "real_fft_cpu_seconds_in_prefilter": 0.0
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1323000,
+          "output_frames": 1440000,
+          "setup_cpu_seconds": 0.0022124169999999995,
+          "processing_cpu_seconds": 0.542095353,
+          "api_total_cpu_seconds": 0.54430777,
+          "setup_live_heap_bytes": 184656,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.0,
+          "polyphase_cpu_seconds": 0.533638,
+          "real_fft_cpu_seconds_in_prefilter": 0.0
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1323000,
+          "output_frames": 1440000,
+          "setup_cpu_seconds": 0.0022155130000000006,
+          "processing_cpu_seconds": 0.539920312,
+          "api_total_cpu_seconds": 0.542135825,
+          "setup_live_heap_bytes": 184656,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.0,
+          "polyphase_cpu_seconds": 0.532235,
+          "real_fft_cpu_seconds_in_prefilter": 0.0
+        },
+        {
+          "engine": "faar",
+          "input_frames": 1323000,
+          "output_frames": 1440000,
+          "setup_cpu_seconds": 0.002512809999999999,
+          "processing_cpu_seconds": 0.519360309,
+          "api_total_cpu_seconds": 0.521873119,
+          "setup_live_heap_bytes": 184656,
+          "whole_process_peak_rss_kib": 167372,
+          "prefilter_cpu_seconds": 0.0,
+          "polyphase_cpu_seconds": 0.510984,
+          "real_fft_cpu_seconds_in_prefilter": 0.0
+        }
+      ],
+      "medians": {
+        "processing_cpu_seconds": 0.5349633890000001,
+        "prefilter_cpu_seconds": 0.0,
+        "polyphase_cpu_seconds": 0.527207,
+        "real_fft_cpu_seconds_in_prefilter": 0.0
+      }
+    }
+  ]
+}

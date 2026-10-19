@@ -1,0 +1,201 @@
+{
+  "source_repo": "https://github.com/HongYue1/KBSRC",
+  "source_commit": "9bb02260d795350b12ac6632fed40343bffd7b86",
+  "license": "MIT (LICENSE in pinned checkout; no KBSRC code copied)",
+  "input_sha256": "7d206aaa491e47bda80f5603dadb50ac02e459aa7052cd8d1e11dca35fe97f0c",
+  "input_frames": 2938880,
+  "input_rate": 96000,
+  "output_rate": 44100,
+  "channels": 2,
+  "kbsrc_mode": "fast, one thread, native amd64 release, default len=0.2 beta=40, f64 output",
+  "ardftsrc_quality": 16384,
+  "ardftsrc_bandwidth": 0.99,
+  "warmups": 1,
+  "repeats": 7,
+  "timing_note": "KBSRC resample time is its internal timer at 1 ms print resolution and includes LPC edge extension; ARDFTSRC processing time is its internal timer and excludes input/output WAV I/O. Timings have different scopes; quality parity was not assessed.",
+  "runs": [
+    {
+      "round": 1,
+      "order": [
+        "kbsrc",
+        "ardft"
+      ],
+      "kbsrc": {
+        "read_seconds": 0.025,
+        "design_seconds": 0.063,
+        "resample_seconds": 0.057,
+        "write_seconds": 0.008,
+        "reported_total_seconds": 0.153,
+        "wall_seconds": 0.16041552694514394,
+        "output_frames": null,
+        "engine": "avx2"
+      },
+      "ardft": {
+        "setup_cpu_seconds": 0.004795118,
+        "processing_cpu_seconds": 0.062822762,
+        "output_frames": 1350048
+      }
+    },
+    {
+      "round": 2,
+      "order": [
+        "ardft",
+        "kbsrc"
+      ],
+      "ardft": {
+        "setup_cpu_seconds": 0.0060542190000000004,
+        "processing_cpu_seconds": 0.06475293900000001,
+        "output_frames": 1350048
+      },
+      "kbsrc": {
+        "read_seconds": 0.027,
+        "design_seconds": 0.064,
+        "resample_seconds": 0.068,
+        "write_seconds": 0.008,
+        "reported_total_seconds": 0.168,
+        "wall_seconds": 0.17421364795882255,
+        "output_frames": null,
+        "engine": "avx2"
+      }
+    },
+    {
+      "round": 3,
+      "order": [
+        "kbsrc",
+        "ardft"
+      ],
+      "kbsrc": {
+        "read_seconds": 0.036,
+        "design_seconds": 0.07,
+        "resample_seconds": 0.064,
+        "write_seconds": 0.01,
+        "reported_total_seconds": 0.18,
+        "wall_seconds": 0.18868656596168876,
+        "output_frames": null,
+        "engine": "avx2"
+      },
+      "ardft": {
+        "setup_cpu_seconds": 0.0047236050000000005,
+        "processing_cpu_seconds": 0.076105159,
+        "output_frames": 1350048
+      }
+    },
+    {
+      "round": 4,
+      "order": [
+        "ardft",
+        "kbsrc"
+      ],
+      "ardft": {
+        "setup_cpu_seconds": 0.004775652,
+        "processing_cpu_seconds": 0.062331621000000004,
+        "output_frames": 1350048
+      },
+      "kbsrc": {
+        "read_seconds": 0.022,
+        "design_seconds": 0.06,
+        "resample_seconds": 0.049,
+        "write_seconds": 0.008,
+        "reported_total_seconds": 0.139,
+        "wall_seconds": 0.14926457102410495,
+        "output_frames": null,
+        "engine": "avx2"
+      }
+    },
+    {
+      "round": 5,
+      "order": [
+        "kbsrc",
+        "ardft"
+      ],
+      "kbsrc": {
+        "read_seconds": 0.025,
+        "design_seconds": 0.055,
+        "resample_seconds": 0.056,
+        "write_seconds": 0.007,
+        "reported_total_seconds": 0.143,
+        "wall_seconds": 0.14806754200253636,
+        "output_frames": null,
+        "engine": "avx2"
+      },
+      "ardft": {
+        "setup_cpu_seconds": 0.005152809,
+        "processing_cpu_seconds": 0.073493714,
+        "output_frames": 1350048
+      }
+    },
+    {
+      "round": 6,
+      "order": [
+        "ardft",
+        "kbsrc"
+      ],
+      "ardft": {
+        "setup_cpu_seconds": 0.004705159,
+        "processing_cpu_seconds": 0.065493017,
+        "output_frames": 1350048
+      },
+      "kbsrc": {
+        "read_seconds": 0.026,
+        "design_seconds": 0.065,
+        "resample_seconds": 0.057,
+        "write_seconds": 0.009,
+        "reported_total_seconds": 0.157,
+        "wall_seconds": 0.1668758459854871,
+        "output_frames": null,
+        "engine": "avx2"
+      }
+    },
+    {
+      "round": 7,
+      "order": [
+        "kbsrc",
+        "ardft"
+      ],
+      "kbsrc": {
+        "read_seconds": 0.027,
+        "design_seconds": 0.064,
+        "resample_seconds": 0.056,
+        "write_seconds": 0.008,
+        "reported_total_seconds": 0.156,
+        "wall_seconds": 0.16405243193730712,
+        "output_frames": null,
+        "engine": "avx2"
+      },
+      "ardft": {
+        "setup_cpu_seconds": 0.00518581,
+        "processing_cpu_seconds": 0.071927419,
+        "output_frames": 1350048
+      }
+    }
+  ],
+  "medians": {
+    "kbsrc_resample_seconds": 0.057,
+    "kbsrc_wall_seconds": 0.16405243193730712,
+    "ardft_processing_cpu_seconds": 0.065493017
+  },
+  "host_cpu": "AMD Ryzen 9 7940HS (amd64)",
+  "kbsrc_revision": "9bb02260d795350b12ac6632fed40343bffd7b86",
+  "kbsrc_binary_sha256": "b243605999d1940629871d941221a0ef62e3a547f2f17a48e68d7f66ad8a1e64",
+  "kbsrc_license": "MIT; pinned checkout LICENSE inspected; no code copied",
+  "quality_assessed": true,
+  "output_frame_count_reported_by_kbsrc": false,
+  "interpretation": "Exploratory only: unmatched quality and timer scopes; does not establish a throughput win.",
+  "quality_comparison": {
+    "reference_output": "ARDFTSRC quality 16384, bandwidth 0.99, ardft-kbsrc-0.wav",
+    "candidate_output": "KBSRC fast mode, kbsrc-fast-0.wav",
+    "output_format": "ARDFTSRC float32 WAV; KBSRC float64 WAV",
+    "aligned_delay_frames": 8232,
+    "alignment": "8,232-frame lag; correlation measured on the first channel after a 10,000-frame edge skip over the next 100,000 frames",
+    "first_channel_alignment_correlation": 0.9999969930528946,
+    "interior_relative_residual_rms_db": -51.400308885279884,
+    "interior_window": "frames 10000 through end of common overlap after delay alignment",
+    "interior_max_absolute_difference": 0.021333165794514816,
+    "interpretation": "Diagnostic only. KBSRC and ARDFTSRC settings and filters are not matched; this does not establish or refute quality parity at comparable settings.",
+    "reference_wav_sha256": "fea9995662c2c2357944adad2c4dcaa05935470e09e4b878fb272608e034c6ff",
+    "candidate_wav_sha256": "75526594d5dc505978889af4ec9a1f01d1532fb85b879819d1eb87267ebaa40c",
+    "analysis_command": "python3 tools/compare_resampler_wavs.py ardft-kbsrc-0.wav kbsrc-fast-0.wav --lag-frames 8232 --skip-frames 10000 --alignment-frames 100000"
+  },
+  "quality_parity_assessed": false,
+  "quality_assessed_note": "A post-hoc output comparison was performed; it is not a matched-quality test."
+}

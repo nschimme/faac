@@ -1,0 +1,33 @@
+Current FAAR verification (2026-10-18)
+
+Six comparison configurations were rebuilt and passed all 6/6 Meson test
+groups:
+- Native double staged-short with -march=native.
+- Generic double staged-short.
+- Generic float staged-short.
+- Generic double polyphase comparison.
+- Generic double staged backend.
+- Fresh release default, which selects staged-short.
+
+The suites cover FFT, DFT FIR, DFT prefilter, FAAR API/streaming, quality
+probes, coefficient-oracle checks, and Tuneout-derived fingerprints over 357
+ordered rate pairs and three presets. The DFT FIR unit test independently
+checks the selected 4097-tap High 32-to-48 Kaiser coefficients against a
+long-double calculation. The matrix oracle target receives the selected
+staged-short define, so it checks the active coefficient design. Fingerprints
+are regression checks, not independent quality proof.
+
+The common routes run through boundary HOLD/ZERO, chunk/capacity, endpoint
+impulse, channel-isolation, and dither controls. A fresh default-release CLI
+smoke run converted stereo WAV files on all 16 selected routes among 32, 44.1,
+48, 88.2, 96, and 192 kHz with correct output sample-rate headers and exact
+one-second frame counts. A current-hash 60-round benchmark confirms exact
+counts and deterministic output on the two closest High routes, 32-to-48 and
+192-to-48. Their raw timing runs and paired bootstrap summary are listed in
+high-edge-routes-60trial-summary.json. The current measured common-rate
+performance and signal-response artifacts are listed in
+common-rates-current-summary.json. Current-hash High, Good, and Fast signal
+matrices each cover all 16 common routes, including wanted tones, aliases,
+impulses, two-tone products, and noise. Separate current-hash image matrices
+cover eight common upsampling routes for all three presets. These numeric
+probes are not perceptual qualification for every rate and signal.

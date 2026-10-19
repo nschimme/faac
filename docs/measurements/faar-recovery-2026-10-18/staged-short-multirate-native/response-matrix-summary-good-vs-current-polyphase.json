@@ -1,0 +1,45 @@
+{
+  "preset": "Good",
+  "comparison": "staged-short candidate vs freshly rebuilt current polyphase baseline",
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553",
+  "conversion_pairs": 357,
+  "records_per_engine": {
+    "faar-candidate": 3132,
+    "faar-default": 3132
+  },
+  "passband_rule": "frequency <= 0.45 * min(rate), below output Nyquist",
+  "passband_probe_count": 1284,
+  "candidate_baseline_abs_gain_delta_db": {
+    "median": 0.0,
+    "p95": 0.00013884805156939208,
+    "maximum": 0.25897326289331013,
+    "pairs_over_0_25_db": 5
+  },
+  "worst_passband_pair": {
+    "in_rate": 192000,
+    "out_rate": 44100,
+    "frequency_hz": 19845,
+    "candidate_gain_db": -0.2591080736845693,
+    "baseline_gain_db": -0.00013481079125916712
+  },
+  "deep_stopband_rule": "downsampling only, frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+  "deep_stopband_probe_count": 132,
+  "minimum_alias_attenuation_db": {
+    "candidate": 139.9318655381618,
+    "baseline": 155.90991059502724
+  },
+  "candidate_minus_baseline_alias_attenuation_db": {
+    "median": -7.871301041167655,
+    "minimum": -16.333200868766596,
+    "maximum": 8.142409910760762e-06
+  },
+  "worst_alias_loss_pair": {
+    "in_rate": 16000,
+    "out_rate": 12000,
+    "frequency_hz": 7840.0,
+    "candidate_attenuation_db": 139.9318655381618,
+    "baseline_attenuation_db": 156.26506640692838
+  },
+  "interpretation": "The staged Good preset and current polyphase Good preset are both characterized over the same matrix. Values are comparative evidence, not an acceptance mask; no pass/fail threshold is assigned."
+}

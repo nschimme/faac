@@ -1,0 +1,19 @@
+{
+  "candidate_library_sha256": "2be57d545ebed830649ab829dd39695e1734b59d4ccd2179481d5fcfcaec0c0e",
+  "source_file": "signals-standard-planner2-response-high.json",
+  "source_sha256": "ec2d9008f5ba4bf7c049dffeb0257b1ac38f5cde50cced180e9e42170e87b756",
+  "preset": "High",
+  "conversion_pairs": 357,
+  "probe_records": 6264,
+  "passband_probe_count": 1284,
+  "passband_max_abs_gain_delta_vs_ardftsrc_db": 0.005523635962218832,
+  "passband_over_0_25_db_count": 0,
+  "stopband_probe_count": 132,
+  "candidate_min_alias_attenuation_db": 155.89114328191772,
+  "minimum_alias_pair_frequency": {
+    "in_rate": 48000,
+    "out_rate": 44100,
+    "frequency_hz": 23520.0
+  },
+  "scope": "357 ordered supported-rate and +/-1 Hz neighbor pairs; tones only; not Good/Fast or perceptual certification"
+}

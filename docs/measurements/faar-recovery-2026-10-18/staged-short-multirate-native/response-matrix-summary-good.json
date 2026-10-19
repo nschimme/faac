@@ -1,0 +1,16 @@
+{
+  "candidate_library_sha256": "6fc528f86c35ad95773b5641e6dcc10877d17b1f26acdea66e24db578e352048",
+  "preset": "good",
+  "conversion_pairs": 357,
+  "probe_records": 3132,
+  "passband_rule": "frequency <= 0.45 * min(in_rate,out_rate), below output Nyquist",
+  "passband_probe_count": 1284,
+  "max_abs_wanted_gain_db_from_unity": 0.2591080736845693,
+  "passband_over_0_25_db_count": 5,
+  "deep_stopband_rule": "downsampling only, frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+  "deep_stopband_probe_count": 132,
+  "minimum_alias_attenuation_db": 139.9318655381618,
+  "transition_probe_count": 1408,
+  "transition_max_abs_gain_db_from_unity": 145.15078391875113,
+  "note": "Fast and Good are lower-quality presets; this is response characterization, not a comparison against High-preset ARDFTSRC or an application of the High 0.25 dB gate."
+}

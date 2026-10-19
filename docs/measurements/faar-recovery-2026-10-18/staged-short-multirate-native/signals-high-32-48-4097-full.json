@@ -1,0 +1,1128 @@
+{
+  "floor_controls": [
+    {
+      "frequency_hz": 1000,
+      "ideal_float32_rounding": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -154.85367272335355,
+        "wanted_gain_db": -8.267750291970231e-08,
+        "wanted_phase_radians": 8.843244342962443e-13
+      },
+      "in_rate": 32000,
+      "input_rounding_relative_rms_db": -152.4092784585758,
+      "out_rate": 48000,
+      "peak": 0.5
+    },
+    {
+      "frequency_hz": 6400,
+      "ideal_float32_rounding": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -153.9063591284034,
+        "wanted_gain_db": 2.7140475766907908e-08,
+        "wanted_phase_radians": -3.238657566770442e-13
+      },
+      "in_rate": 32000,
+      "input_rounding_relative_rms_db": -152.9655761324779,
+      "out_rate": 48000,
+      "peak": 0.5
+    },
+    {
+      "frequency_hz": 14400,
+      "ideal_float32_rounding": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -155.1536897941813,
+        "wanted_gain_db": 1.2281936052797683e-07,
+        "wanted_phase_radians": 4.401473598369531e-12
+      },
+      "in_rate": 32000,
+      "input_rounding_relative_rms_db": -155.1359831422762,
+      "out_rate": 48000,
+      "peak": 0.5
+    },
+    {
+      "frequency_hz": 15200,
+      "ideal_float32_rounding": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -153.60636580537798,
+        "wanted_gain_db": 3.647034782895733e-08,
+        "wanted_phase_radians": 4.397137991398783e-13
+      },
+      "in_rate": 32000,
+      "input_rounding_relative_rms_db": -155.09731515479731,
+      "out_rate": 48000,
+      "peak": 0.5
+    },
+    {
+      "frequency_hz": 15680,
+      "ideal_float32_rounding": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -152.53761020385426,
+        "wanted_gain_db": -1.5520221846532976e-08,
+        "wanted_phase_radians": 4.943339150176838e-12
+      },
+      "in_rate": 32000,
+      "input_rounding_relative_rms_db": -155.82094895417657,
+      "out_rate": 48000,
+      "peak": 0.5
+    },
+    {
+      "frequency_hz": 15840,
+      "ideal_float32_rounding": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -155.87354252207135,
+        "wanted_gain_db": 1.5422410084042674e-08,
+        "wanted_phase_radians": -6.274373865879505e-13
+      },
+      "in_rate": 32000,
+      "input_rounding_relative_rms_db": -154.52657059216872,
+      "out_rate": 48000,
+      "peak": 0.5
+    },
+    {
+      "frequency_hz": 15968,
+      "ideal_float32_rounding": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -153.71229944162016,
+        "wanted_gain_db": -4.684721156001081e-09,
+        "wanted_phase_radians": 3.462967084585981e-12
+      },
+      "in_rate": 32000,
+      "input_rounding_relative_rms_db": -154.0898164522649,
+      "out_rate": 48000,
+      "peak": 0.5
+    }
+  ],
+  "image_probes": [],
+  "metadata": {
+    "build_manifest_sha256": "b0730223463b5452d9140a3fc21dedac29c727d3d634bf29273dd373c42bf731",
+    "candidate_library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+    "cpuinfo": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics",
+    "driver_sha256": "4f73d81168e616590adcc5b26df69f8578816fce87f04e2a721f6b40ad28ef3e",
+    "faar_quality": 2,
+    "numpy": "2.2.4",
+    "platform": "Linux-7.0.14-22-pve-x86_64-with-glibc2.41",
+    "quality_gate": "0.25 dB response tolerance; wanted-tone residual floor only, as calibrated in the local FAAR controls",
+    "reference_sha256": "ff84fb9164a57b6b13d8c1446df6771e8ab710745f40c4cda5967a32af20c597",
+    "thread_policy": "one processing thread; KBSRC coefficient generation internally spawns workers even with threads=1",
+    "timing": "Native process CPU; driver I/O and source conversion excluded. FAAR collection/flush and SoX chain scheduler included; KBSRC processing includes run_engine FFT planning/scratch allocation, collection excluded; ARDFTSRC uses its existing instrumented boundaries. KBSRC scratch copy changes only the existing clock to process CPU time."
+  },
+  "other_signals": [
+    {
+      "engine": "faar-candidate",
+      "head_energy": 0.07387430548963729,
+      "imd_product_peak_dbfs": null,
+      "in_rate": 32000,
+      "input_sha256": "19bf5cd62fe509f16cd14341401909eea31789b3fd746e480d8784774d9e2ff6",
+      "out_rate": 48000,
+      "peak": 0.4977860748767853,
+      "peak_index": 24000,
+      "rms": 0.003345697693018031,
+      "signal": "impulses",
+      "tail_energy": 0.09028469201633303,
+      "timing": {
+        "api_total_cpu_seconds": 0.001796328,
+        "child_cpu_including_io": 0.0041080000000000005,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 48000,
+        "input_frames": 32000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 48000,
+        "output_sha256": "cb69c34401570a4cddf7c4b62fe89eb845eca2d843d256c7f931eb826b831151",
+        "processing_cpu_seconds": 0.001195491,
+        "setup_cpu_seconds": 0.0006008370000000001,
+        "setup_live_heap_bytes": 2056000,
+        "wall_including_io": 0.004358422942459583,
+        "whole_process_peak_rss_kib": 47064
+      }
+    },
+    {
+      "engine": "ardftsrc",
+      "head_energy": 0.0774903279967663,
+      "imd_product_peak_dbfs": null,
+      "in_rate": 32000,
+      "input_sha256": "19bf5cd62fe509f16cd14341401909eea31789b3fd746e480d8784774d9e2ff6",
+      "out_rate": 48000,
+      "peak": 0.4974597096443176,
+      "peak_index": 24000,
+      "rms": 0.0033520580082040054,
+      "signal": "impulses",
+      "tail_energy": 0.08903840516435726,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": 0.7499999999999994,
+        "child_cpu_including_io": 0.008729999999999988,
+        "chunks": 4.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 48000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 42924.0,
+        "output_frames": 65544.0,
+        "output_rate": 48000.0,
+        "output_sha256": "29b9bd8ce8b36b4402e8f1e23ae093734f5e30361f3904f4bbde3d35beb28644",
+        "peak_rss_kib_whole_program": 47320.0,
+        "processing_cpu_seconds": 0.002431317,
+        "processing_input_frames_padded": 43696.0,
+        "raw_output_frames": 65544,
+        "setup_cpu_seconds": 0.002925895,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.008917560917325318
+      }
+    },
+    {
+      "engine": "faar-candidate",
+      "head_energy": 6.420775192901174,
+      "imd_product_peak_dbfs": {
+        "14000": -178.09163484590493,
+        "2000": -164.46769805917543,
+        "8000": -174.5078489740352
+      },
+      "in_rate": 32000,
+      "input_sha256": "283733fb078ac2c55884e164a6e70c9eedab1ef05595b8866605b32ae4675eb4",
+      "out_rate": 48000,
+      "peak": 0.4922145903110504,
+      "peak_index": 215,
+      "rms": 0.24999954936362775,
+      "signal": "two_tone",
+      "tail_energy": 6.4688006922885535,
+      "timing": {
+        "api_total_cpu_seconds": 0.003013941,
+        "child_cpu_including_io": 0.0053299999999999875,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "58ad545b6f32ea3a8836fa28605e5e8567ae34a7d718b0db53d3f9b74c700dda",
+        "processing_cpu_seconds": 0.0024024339999999997,
+        "setup_cpu_seconds": 0.0006115070000000001,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.005511005991138518,
+        "whole_process_peak_rss_kib": 47320
+      }
+    },
+    {
+      "engine": "ardftsrc",
+      "head_energy": 6.415192058577107,
+      "imd_product_peak_dbfs": {
+        "14000": -195.5399197349214,
+        "2000": -229.21650538297595,
+        "8000": -191.40980724003487
+      },
+      "in_rate": 32000,
+      "input_sha256": "283733fb078ac2c55884e164a6e70c9eedab1ef05595b8866605b32ae4675eb4",
+      "out_rate": 48000,
+      "peak": 0.49229809641838074,
+      "peak_index": 191,
+      "rms": 0.24999939106949526,
+      "signal": "two_tone",
+      "tail_energy": 6.462880602249665,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": -2.7395907424033563e-08,
+        "child_cpu_including_io": 0.015146000000000007,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "99555371481b968fe713d1e4285a8ab87da2896a9f506a5625ccc32097e34e63",
+        "peak_rss_kib_whole_program": 47728.0,
+        "processing_cpu_seconds": 0.005838864,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.003304635,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.015349046909250319
+      }
+    },
+    {
+      "engine": "faar-candidate",
+      "head_energy": 1.5906966845951862,
+      "imd_product_peak_dbfs": null,
+      "in_rate": 32000,
+      "input_sha256": "f53552cfb72e3724a27917ff8a44e4dfdc9d83983179e819f5e7d10afed9e82f",
+      "out_rate": 48000,
+      "peak": 0.26334908604621887,
+      "peak_index": 35279,
+      "rms": 0.12762614105234776,
+      "signal": "multitone_noise",
+      "tail_energy": 1.5982760147212456,
+      "timing": {
+        "api_total_cpu_seconds": 0.0017459329999999999,
+        "child_cpu_including_io": 0.003950999999999982,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 48000,
+        "input_frames": 32000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 48000,
+        "output_sha256": "0c16c9ece4935d20466cb419c219bb56c1c0226adc7cca269e19433cbe39958c",
+        "processing_cpu_seconds": 0.001142522,
+        "setup_cpu_seconds": 0.0006034109999999999,
+        "setup_live_heap_bytes": 2056000,
+        "wall_including_io": 0.004130654968321323,
+        "whole_process_peak_rss_kib": 47728
+      }
+    },
+    {
+      "engine": "ardftsrc",
+      "head_energy": 1.5902941913071675,
+      "imd_product_peak_dbfs": null,
+      "in_rate": 32000,
+      "input_sha256": "f53552cfb72e3724a27917ff8a44e4dfdc9d83983179e819f5e7d10afed9e82f",
+      "out_rate": 48000,
+      "peak": 0.26330065727233887,
+      "peak_index": 35279,
+      "rms": 0.12762597786699117,
+      "signal": "multitone_noise",
+      "tail_energy": 1.5977835801706557,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": 0.880830988301105,
+        "child_cpu_including_io": 0.007895000000000013,
+        "chunks": 4.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 48000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 42924.0,
+        "output_frames": 65544.0,
+        "output_rate": 48000.0,
+        "output_sha256": "f6dfc4f93f6ab0dc260725ff314135cd285ac88ebd2366d75ee02c413620041b",
+        "peak_rss_kib_whole_program": 47728.0,
+        "processing_cpu_seconds": 0.002426699,
+        "processing_input_frames_padded": 43696.0,
+        "raw_output_frames": 65544,
+        "setup_cpu_seconds": 0.002842718,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.008054682984948158
+      }
+    }
+  ],
+  "probes": [
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 3.7127279028936755e-09,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 1.7301759780392255e-15
+      },
+      "engine": "faar-candidate",
+      "frequency_hz": 1000,
+      "in_rate": 32000,
+      "input_sha256": "96643dbe37c85bf027321ad3796e0153e51e89e11e08313bb51bb8c636eeb566",
+      "local_unity_gain_1e4_pass": true,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -157.8377002323596,
+        "wanted_gain_db": -1.6541052874565007e-07,
+        "wanted_phase_radians": 8.859701473518552e-13
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 1.7301759780392255e-15,
+      "timing": {
+        "api_total_cpu_seconds": 0.004422742,
+        "child_cpu_including_io": 0.009016,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "d2c24856f203bd02f27804e795753def8467a130e16babb0e7416933da0fc9bc",
+        "processing_cpu_seconds": 0.0036377300000000005,
+        "setup_cpu_seconds": 0.0007850120000000003,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.00944726902525872,
+        "whole_process_peak_rss_kib": 41968
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 0.0,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 0.0
+      },
+      "engine": "ardftsrc",
+      "frequency_hz": 1000,
+      "in_rate": 32000,
+      "input_sha256": "96643dbe37c85bf027321ad3796e0153e51e89e11e08313bb51bb8c636eeb566",
+      "local_unity_gain_1e4_pass": true,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -157.83770022864687,
+        "wanted_gain_db": -1.6541052874565007e-07,
+        "wanted_phase_radians": 8.84239971373816e-13
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 0.0,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": -4.1790497350706876e-12,
+        "child_cpu_including_io": 0.018307999999999998,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "b2c4d7cce95b38f9fd00e1c75da1c2593b7606b1cc22753b269923ca5239ae02",
+        "peak_rss_kib_whole_program": 42480.0,
+        "processing_cpu_seconds": 0.007045827,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.003827655,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.018574753077700734
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 1.1874423493918869,
+        "wanted_gain_db": 1.476388378482311e-07,
+        "wanted_phase_radians": 4.29135019208738e-14
+      },
+      "engine": "faar-candidate",
+      "frequency_hz": 6400,
+      "in_rate": 32000,
+      "input_sha256": "563015bd7e96769bcc15075b304cab5303266040b42cda343b1abf04c00417ed",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -149.9484855060485,
+        "wanted_gain_db": 3.0545348342238765e-07,
+        "wanted_phase_radians": -3.2603632068027123e-13
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 4.29135019208738e-14,
+      "timing": {
+        "api_total_cpu_seconds": 0.0037949430000000003,
+        "child_cpu_including_io": 0.0064380000000000045,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "d45f75cbe9f175b6db0b6189afb365bb68ecbc6f99204cca180f93d9718a0a7f",
+        "processing_cpu_seconds": 0.0031188960000000003,
+        "setup_cpu_seconds": 0.0006760469999999999,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.00664369307924062,
+        "whole_process_peak_rss_kib": 44144
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 0.0,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 0.0
+      },
+      "engine": "ardftsrc",
+      "frequency_hz": 6400,
+      "in_rate": 32000,
+      "input_sha256": "563015bd7e96769bcc15075b304cab5303266040b42cda343b1abf04c00417ed",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -151.1359278554404,
+        "wanted_gain_db": 1.5781464557415654e-07,
+        "wanted_phase_radians": -3.6894982260114503e-13
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 0.0,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": 5.420560979301774e-09,
+        "child_cpu_including_io": 0.016836999999999994,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "68f09bcba173b1d1710b6d09553488fbdcbae3229fbb8aba3e0c6797d4415df3",
+        "peak_rss_kib_whole_program": 44144.0,
+        "processing_cpu_seconds": 0.00662052,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.0035630590000000004,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.017058370052836835
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 49.09987445817545,
+        "wanted_gain_db": 7.33834281732155e-05,
+        "wanted_phase_radians": 2.1533755919992576e-13
+      },
+      "engine": "faar-candidate",
+      "frequency_hz": 14400,
+      "in_rate": 32000,
+      "input_sha256": "24b32c81f791e080b5e2fe15d68caab8bfe8947b907f147b22e56e2d9087792a",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -105.85458693587752,
+        "wanted_gain_db": -7.326060881268752e-05,
+        "wanted_phase_radians": 6.3787233697048215e-12
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 2.1533755919992576e-13,
+      "timing": {
+        "api_total_cpu_seconds": 0.0031655130000000004,
+        "child_cpu_including_io": 0.0057950000000000015,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "260193ad249fa00d658b3c0182a6ad76289c87a4bce838d443998071184247f1",
+        "processing_cpu_seconds": 0.002563505,
+        "setup_cpu_seconds": 0.0006020080000000002,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.006063728942535818,
+        "whole_process_peak_rss_kib": 44144
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 0.0,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 0.0
+      },
+      "engine": "ardftsrc",
+      "frequency_hz": 14400,
+      "in_rate": 32000,
+      "input_sha256": "24b32c81f791e080b5e2fe15d68caab8bfe8947b907f147b22e56e2d9087792a",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -154.95446139405297,
+        "wanted_gain_db": 1.2281936052797683e-07,
+        "wanted_phase_radians": 6.163385810504896e-12
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 0.0,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": 7.540570031257412e-11,
+        "child_cpu_including_io": 0.015931999999999998,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "615563fdaade4fddd13a217736cf9bd4575ddcd2828c8aa54485d424f40aee5b",
+        "peak_rss_kib_whole_program": 44144.0,
+        "processing_cpu_seconds": 0.00609785,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.0034946210000000003,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.016156678088009357
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 55.761364915837845,
+        "wanted_gain_db": 0.0002442892026100814,
+        "wanted_phase_radians": 6.209573710510434e-12
+      },
+      "engine": "faar-candidate",
+      "frequency_hz": 15200,
+      "in_rate": 32000,
+      "input_sha256": "3f4eede31f6f5ab4dca6f596317d559153a7044aab6d92e224d7fd4f77c61512",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -95.07005962463799,
+        "wanted_gain_db": -0.0002442975080433624,
+        "wanted_phase_radians": 4.3626864876740097e-13
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 6.209573710510434e-12,
+      "timing": {
+        "api_total_cpu_seconds": 0.0030692029999999995,
+        "child_cpu_including_io": 0.005391000000000007,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "c3e0b92de5ebde758174bd0056e7a6d200b3c2d47522508e5bdae884205f56d0",
+        "processing_cpu_seconds": 0.002486942,
+        "setup_cpu_seconds": 0.0005822609999999999,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.005610027001239359,
+        "whole_process_peak_rss_kib": 44144
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 0.0,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 0.0
+      },
+      "engine": "ardftsrc",
+      "frequency_hz": 15200,
+      "in_rate": 32000,
+      "input_sha256": "3f4eede31f6f5ab4dca6f596317d559153a7044aab6d92e224d7fd4f77c61512",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -150.83142454047584,
+        "wanted_gain_db": -8.305433281002854e-09,
+        "wanted_phase_radians": -5.773305061743033e-12
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 0.0,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": -3.739148957855837e-10,
+        "child_cpu_including_io": 0.016216,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "7c72b2711c717cc64dd0176bfba64886de764dba1a396ce2356e15685128b690",
+        "peak_rss_kib_whole_program": 44144.0,
+        "processing_cpu_seconds": 0.0063282930000000005,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.003415532,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.016443489002995193
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 62.56982717618649,
+        "wanted_gain_db": 0.00046539215850389926,
+        "wanted_phase_radians": 4.538884389016886e-12
+      },
+      "engine": "faar-candidate",
+      "frequency_hz": 15680,
+      "in_rate": 32000,
+      "input_sha256": "76e661201d82407b0046418096af881277071c8f20bcff9bedb05cfc2827ade7",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -89.26130792409455,
+        "wanted_gain_db": -0.00046535928275033317,
+        "wanted_phase_radians": 4.945626747396487e-12
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 4.538884389016886e-12,
+      "timing": {
+        "api_total_cpu_seconds": 0.003068402,
+        "child_cpu_including_io": 0.005881999999999998,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "ac209db6a9bd2a5c062f5a1825a9b5c106805ff9fa30c0141d386667941ab875",
+        "processing_cpu_seconds": 0.002441597,
+        "setup_cpu_seconds": 0.0006268049999999998,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.006160936085507274,
+        "whole_process_peak_rss_kib": 44656
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 0.0,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 0.0
+      },
+      "engine": "ardftsrc",
+      "frequency_hz": 15680,
+      "in_rate": 32000,
+      "input_sha256": "76e661201d82407b0046418096af881277071c8f20bcff9bedb05cfc2827ade7",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -151.83113510028105,
+        "wanted_gain_db": 3.287575356611635e-08,
+        "wanted_phase_radians": 4.067423583796017e-13
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 0.0,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": -3.202184519581226e-10,
+        "child_cpu_including_io": 0.01779899999999999,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "87cb5c8984552738305187929d3829fd15859b606b60bd77e71f9e636f2042a1",
+        "peak_rss_kib_whole_program": 44656.0,
+        "processing_cpu_seconds": 0.006618166,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.0044894850000000005,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.018090342986397445
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 65.49640156241931,
+        "wanted_gain_db": 0.0005736908297229113,
+        "wanted_phase_radians": 4.727169117471487e-13
+      },
+      "engine": "faar-candidate",
+      "frequency_hz": 15840,
+      "in_rate": 32000,
+      "input_sha256": "306286fd823682973ab91634c1597aff0045b50d170875d82cba3386c3421224",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -87.42133779487723,
+        "wanted_gain_db": -0.0005736941695708023,
+        "wanted_phase_radians": -6.47683435663801e-13
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 4.727169117471487e-13,
+      "timing": {
+        "api_total_cpu_seconds": 0.004266346,
+        "child_cpu_including_io": 0.0069370000000000265,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "baf2e78516836de88b24cf9f953ea16e62d3f46d46cf5e02beeafa4e30cacae5",
+        "processing_cpu_seconds": 0.003531579,
+        "setup_cpu_seconds": 0.0007347670000000001,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.0071732200449332595,
+        "whole_process_peak_rss_kib": 44784
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 0.0,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 0.0
+      },
+      "engine": "ardftsrc",
+      "frequency_hz": 15840,
+      "in_rate": 32000,
+      "input_sha256": "306286fd823682973ab91634c1597aff0045b50d170875d82cba3386c3421224",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -152.91773935729654,
+        "wanted_gain_db": -3.339847890992898e-09,
+        "wanted_phase_radians": -1.1204003474109497e-12
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 0.0,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": -3.762163641359417e-10,
+        "child_cpu_including_io": 0.017578999999999997,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "f93157926f1f2cd1430bae4caa79ec0e5dd253a14bb7bd4ba797adbe824f4211",
+        "peak_rss_kib_whole_program": 44784.0,
+        "processing_cpu_seconds": 0.007575982,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.003378002,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.017825743998400867
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 38.951293211267085,
+        "wanted_gain_db": 5.682115678850362,
+        "wanted_phase_radians": 2.0102339005011724e-10
+      },
+      "engine": "faar-candidate",
+      "frequency_hz": 15968,
+      "in_rate": 32000,
+      "input_sha256": "6b75b527995bd4d2d17cb12c2b8710e71039e72f6e23b9bc2f2c65a6c1f7a48e",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -115.12939265520194,
+        "wanted_gain_db": -29.149312323585196,
+        "wanted_phase_radians": 3.256350820646544e-12
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 2.0102339005011724e-10,
+      "timing": {
+        "api_total_cpu_seconds": 0.0029779920000000005,
+        "child_cpu_including_io": 0.005774000000000008,
+        "command": [
+          "/tmp/faar-recovery/driver",
+          "faar",
+          "/tmp/faac-faar-native-build/libfaar/libfaar.so",
+          "/tmp/faar-recovery/runs/input.f32",
+          "/tmp/faar-recovery/runs/output.f32",
+          "32000",
+          "48000",
+          "1",
+          "4096",
+          "65536",
+          "2"
+        ],
+        "engine": "faar",
+        "frames": 144000,
+        "input_frames": 96000,
+        "library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+        "output_frames": 144000,
+        "output_sha256": "5ca3183148c4379b10877db52f3d198fada8b00219f2b920c281d5e17a81ab88",
+        "processing_cpu_seconds": 0.002402243,
+        "setup_cpu_seconds": 0.0005757490000000004,
+        "setup_live_heap_bytes": 2051936,
+        "wall_including_io": 0.005980237969197333,
+        "whole_process_peak_rss_kib": 44784
+      }
+    },
+    {
+      "absolute_delta_vs_ardft_db": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": 0.0,
+        "wanted_gain_db": 0.0,
+        "wanted_phase_radians": 0.0
+      },
+      "engine": "ardftsrc",
+      "frequency_hz": 15968,
+      "in_rate": 32000,
+      "input_sha256": "6b75b527995bd4d2d17cb12c2b8710e71039e72f6e23b9bc2f2c65a6c1f7a48e",
+      "local_unity_gain_1e4_pass": null,
+      "metrics": {
+        "alias_attenuation_db": null,
+        "residual_relative_input_db": -154.08068586646903,
+        "wanted_gain_db": -34.83142800243556,
+        "wanted_phase_radians": -1.977670392294707e-10
+      },
+      "out_rate": 48000,
+      "peak": 0.5,
+      "phase_delta_vs_ardft_radians": 0.0,
+      "timing": {
+        "alignment_delay_frames": 8193,
+        "block_frames": 10924.0,
+        "channels": 1.0,
+        "checksum": 3.6772095198171686e-11,
+        "child_cpu_including_io": 0.015251999999999988,
+        "chunks": 10.0,
+        "command": [
+          "/tmp/faar-recovery/ardftsrc",
+          "/tmp/faar-recovery/runs/input.wav",
+          "/tmp/faar-recovery/runs/reference.wav",
+          "48000",
+          "32",
+          "16384",
+          "0.99"
+        ],
+        "finite": 1.0,
+        "frames": 144000,
+        "input_rate": 32000.0,
+        "loaded_input_frames_pre_padding": 106924.0,
+        "output_frames": 163860.0,
+        "output_rate": 48000.0,
+        "output_sha256": "f98b6387baaa4fb35a316c78a827c2e9d459ff1313a9cdf3fb81cd0680be75f0",
+        "peak_rss_kib_whole_program": 44784.0,
+        "processing_cpu_seconds": 0.005756300000000001,
+        "processing_input_frames_padded": 109240.0,
+        "raw_output_frames": 163860,
+        "setup_cpu_seconds": 0.003261033,
+        "tail_input_frames": 10924,
+        "wall_including_io": 0.015457715024240315
+      }
+    }
+  ],
+  "tones_only": false,
+  "transient_probes": [
+    {
+      "engine": "faar-candidate",
+      "expected_center_frame": 24000,
+      "in_rate": 32000,
+      "main_peak_offset_frames": 0,
+      "out_rate": 48000,
+      "peak_amplitude": 0.4977860748767853,
+      "post_ringing_energy": 0.000462521074780227,
+      "pre_ringing_energy": 0.0004625210747802267,
+      "pre_ringing_to_post_db": -5.785964799319724e-15,
+      "response_sha256": "4b0c618b4b965916ee34a1fab5b3e7374ac908927e9f584ad8a67553b900b608",
+      "time_reversal_error_relative": 4.0671590207831606e-16,
+      "window_radius_frames": 9600
+    },
+    {
+      "engine": "ardftsrc",
+      "expected_center_frame": 24000,
+      "in_rate": 32000,
+      "main_peak_offset_frames": 0,
+      "out_rate": 48000,
+      "peak_amplitude": 0.4974597096443176,
+      "post_ringing_energy": 0.0004332494694006327,
+      "pre_ringing_energy": 0.0004332494697128426,
+      "pre_ringing_to_post_db": 6.259258646303724e-09,
+      "response_sha256": "1603aa6177335c99008ab6e5eddde25e4fc06141ceb5d4f819dd77576fd262f0",
+      "time_reversal_error_relative": 3.398274545018997e-10,
+      "window_radius_frames": 9600
+    }
+  ]
+}

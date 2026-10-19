@@ -1,0 +1,945 @@
+{
+  "adapter_parity": [
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "sox",
+        "default",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "96000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "sox",
+      "in_rate": 96000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/sox",
+        "--single-threaded",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-r",
+        "96000",
+        "-c",
+        "2",
+        "/tmp/faar-recovery/validation/input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "/tmp/faar-recovery/validation/reference.f32",
+        "rate",
+        "-v",
+        "44100"
+      ],
+      "variant": "default"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "sox",
+        "wide",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "96000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "sox",
+      "in_rate": 96000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/sox",
+        "--single-threaded",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-r",
+        "96000",
+        "-c",
+        "2",
+        "/tmp/faar-recovery/validation/input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "/tmp/faar-recovery/validation/reference.f32",
+        "rate",
+        "-v",
+        "-b",
+        "99.5",
+        "44100"
+      ],
+      "variant": "wide"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-fast",
+        "generic",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "96000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-fast",
+      "in_rate": 96000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "fast",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "44100",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "generic"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-fast",
+        "auto",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "96000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-fast",
+      "in_rate": 96000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "fast",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "44100",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "auto"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-exact",
+        "generic",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "96000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-exact",
+      "in_rate": 96000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "exact",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "44100",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "generic"
+    },
+    {
+      "bit_identity": true,
+      "engine": "ardftsrc",
+      "in_rate": 96000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "sox",
+        "default",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "48000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "sox",
+      "in_rate": 48000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/sox",
+        "--single-threaded",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-r",
+        "48000",
+        "-c",
+        "2",
+        "/tmp/faar-recovery/validation/input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "/tmp/faar-recovery/validation/reference.f32",
+        "rate",
+        "-v",
+        "44100"
+      ],
+      "variant": "default"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "sox",
+        "wide",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "48000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "sox",
+      "in_rate": 48000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/sox",
+        "--single-threaded",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-r",
+        "48000",
+        "-c",
+        "2",
+        "/tmp/faar-recovery/validation/input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "/tmp/faar-recovery/validation/reference.f32",
+        "rate",
+        "-v",
+        "-b",
+        "99.5",
+        "44100"
+      ],
+      "variant": "wide"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-fast",
+        "generic",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "48000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-fast",
+      "in_rate": 48000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "fast",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "44100",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "generic"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-fast",
+        "auto",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "48000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-fast",
+      "in_rate": 48000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "fast",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "44100",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "auto"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-exact",
+        "generic",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "48000",
+        "44100",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-exact",
+      "in_rate": 48000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "exact",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "44100",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "generic"
+    },
+    {
+      "bit_identity": true,
+      "engine": "ardftsrc",
+      "in_rate": 48000,
+      "max_abs_error": 0.0,
+      "out_rate": 44100
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "sox",
+        "default",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "44100",
+        "48000",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "sox",
+      "in_rate": 44100,
+      "max_abs_error": 0.0,
+      "out_rate": 48000,
+      "reference_command": [
+        "/tmp/faar-recovery/sox",
+        "--single-threaded",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-r",
+        "44100",
+        "-c",
+        "2",
+        "/tmp/faar-recovery/validation/input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "/tmp/faar-recovery/validation/reference.f32",
+        "rate",
+        "-v",
+        "48000"
+      ],
+      "variant": "default"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "sox",
+        "wide",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "44100",
+        "48000",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "sox",
+      "in_rate": 44100,
+      "max_abs_error": 0.0,
+      "out_rate": 48000,
+      "reference_command": [
+        "/tmp/faar-recovery/sox",
+        "--single-threaded",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "-r",
+        "44100",
+        "-c",
+        "2",
+        "/tmp/faar-recovery/validation/input.f32",
+        "-t",
+        "raw",
+        "-e",
+        "float",
+        "-b",
+        "32",
+        "/tmp/faar-recovery/validation/reference.f32",
+        "rate",
+        "-v",
+        "-b",
+        "99.5",
+        "48000"
+      ],
+      "variant": "wide"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-fast",
+        "generic",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "44100",
+        "48000",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-fast",
+      "in_rate": 44100,
+      "max_abs_error": 0.0,
+      "out_rate": 48000,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "fast",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "48000",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "generic"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-fast",
+        "auto",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "44100",
+        "48000",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-fast",
+      "in_rate": 44100,
+      "max_abs_error": 0.0,
+      "out_rate": 48000,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "fast",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "48000",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "auto"
+    },
+    {
+      "bit_identity": true,
+      "driver_command": [
+        "/tmp/faar-recovery/driver",
+        "kbsrc-exact",
+        "generic",
+        "/tmp/faar-recovery/validation/input.f32",
+        "/tmp/faar-recovery/validation/driver.f32",
+        "44100",
+        "48000",
+        "2",
+        "4096",
+        "65536"
+      ],
+      "engine": "kbsrc-exact",
+      "in_rate": 44100,
+      "max_abs_error": 0.0,
+      "out_rate": 48000,
+      "reference_command": [
+        "/tmp/faar-recovery/kbsrc-portable/kbsrc",
+        "--mode",
+        "exact",
+        "--threads",
+        "1",
+        "--no-lpc",
+        "--format",
+        "f32",
+        "--rate",
+        "48000",
+        "/tmp/faar-recovery/validation/input.wav",
+        "/tmp/faar-recovery/validation/reference.wav"
+      ],
+      "variant": "generic"
+    },
+    {
+      "bit_identity": true,
+      "engine": "ardftsrc",
+      "in_rate": 44100,
+      "max_abs_error": 0.0,
+      "out_rate": 48000
+    }
+  ],
+  "binary_sizes": [
+    {
+      "file_bytes": 70888,
+      "path": "/tmp/faar-recovery/default/libfaar.so",
+      "sha256": "6845e5b3c4a8fb3ec4517617910b7104f34caa3698645e96d8b5d592d9fd9b0e",
+      "size_output": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n  16211\t    648\t      8\t  16867\t   41e3\t/tmp/faar-recovery/default/libfaar.so\n"
+    },
+    {
+      "file_bytes": 125248,
+      "path": "/tmp/faar-recovery/regressed/libfaar.so",
+      "sha256": "b7197671b2de80687d1f0f0234203adcf79fbdd3d700901a8c3363cbb4ffa835",
+      "size_output": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n  31513\t    816\t      8\t  32337\t   7e51\t/tmp/faar-recovery/regressed/libfaar.so\n"
+    },
+    {
+      "file_bytes": 125192,
+      "path": "/tmp/faar-recovery/reconstructed/libfaar.so",
+      "sha256": "ecdfbd2ace4f2524ad21fe4aea8f555d5149e3dcb9d7b41d76ba36919641250b",
+      "size_output": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n  31585\t    816\t      8\t  32409\t   7e99\t/tmp/faar-recovery/reconstructed/libfaar.so\n"
+    },
+    {
+      "file_bytes": 2302080,
+      "path": "/tmp/faar-recovery/sox-instrumented-build/src/liblibsox.so",
+      "sha256": "413a22afda9c3ddb947dadc04dace1670dafcf18105e0d8fb0d1fe69e75aa271",
+      "size_output": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n 643850\t  33072\t   2768\t 679690\t  a5f0a\t/tmp/faar-recovery/sox-instrumented-build/src/liblibsox.so\n"
+    },
+    {
+      "file_bytes": 5916984,
+      "path": "/tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a",
+      "sha256": "8150a7142428354af4b9161e00c34210149bd1e3efe809681ceebb572fe069c7",
+      "size_output": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n      0\t      0\t      0\t      0\t      0\tresampler.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n      0\t      0\t      0\t      0\t      0\tdesign.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n      0\t      0\t      0\t      0\t      0\tlpc.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n      0\t      0\t      0\t      0\t      0\tresampler.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n      0\t      0\t      0\t      0\t      0\tdesign.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n      0\t      0\t      0\t      0\t      0\tlpc.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n      0\t      0\t      0\t      0\t      0\tdispatch.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n      0\t      0\t      0\t      0\t      0\tparallel.cpp.o (ex /tmp/faar-recovery/kbsrc-cpu-build/libkbsrc.a)\n"
+    },
+    {
+      "file_bytes": 3248072,
+      "path": "/tmp/faar-recovery/ardftsrc",
+      "sha256": "ff84fb9164a57b6b13d8c1446df6771e8ab710745f40c4cda5967a32af20c597",
+      "size_output": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n2102689\t  66976\t    944\t2170609\t 211ef1\t/tmp/faar-recovery/ardftsrc\n"
+    }
+  ],
+  "controls": [
+    {
+      "actual_gain_db": -0.08729610804924334,
+      "control": "gain and phase",
+      "expected_gain_db": -0.08729610804900176
+    },
+    {
+      "actual_residual_relative_db": -79.99999999999996,
+      "control": "known spur",
+      "expected_residual_relative_db": -80
+    },
+    {
+      "control": "70-digit direct DFT Fourier interpolation of float32 quantized PCM, 64 to 80 samples",
+      "float32_output_bit_identity": false,
+      "max_abs_error_numpy_vs_decimal": 1.6653345369377348e-16,
+      "residual_relative_input_db": -150.68414215574748
+    }
+  ],
+  "footprint": [
+    {
+      "candidate": "default",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/default/libfaar.so",
+        "96000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 96000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 115680,
+        "create_mmap_delta_bytes": 286720,
+        "create_total_delta_bytes": 402400,
+        "input_frames": 288000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 402400
+      }
+    },
+    {
+      "candidate": "default",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/default/libfaar.so",
+        "48000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 48000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 41296,
+        "create_mmap_delta_bytes": 143360,
+        "create_total_delta_bytes": 184656,
+        "input_frames": 144000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 184656
+      }
+    },
+    {
+      "candidate": "default",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/default/libfaar.so",
+        "44100",
+        "48000",
+        "2",
+        "3"
+      ],
+      "in_rate": 44100,
+      "out_rate": 48000,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 41296,
+        "create_mmap_delta_bytes": 143360,
+        "create_total_delta_bytes": 184656,
+        "input_frames": 132300,
+        "output_frames": 144000,
+        "sampled_retained_stream_high_water_delta_bytes": 184656
+      }
+    },
+    {
+      "candidate": "default",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/default/libfaar.so",
+        "192000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 192000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 190064,
+        "create_mmap_delta_bytes": 430080,
+        "create_total_delta_bytes": 620144,
+        "input_frames": 576000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 620144
+      }
+    },
+    {
+      "candidate": "regressed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/regressed/libfaar.so",
+        "96000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 96000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 513584,
+        "create_mmap_delta_bytes": 290816,
+        "create_total_delta_bytes": 804400,
+        "input_frames": 288000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 949584
+      }
+    },
+    {
+      "candidate": "regressed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/regressed/libfaar.so",
+        "48000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 48000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 513584,
+        "create_mmap_delta_bytes": 290816,
+        "create_total_delta_bytes": 804400,
+        "input_frames": 144000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 949584
+      }
+    },
+    {
+      "candidate": "regressed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/regressed/libfaar.so",
+        "44100",
+        "48000",
+        "2",
+        "3"
+      ],
+      "in_rate": 44100,
+      "out_rate": 48000,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 41296,
+        "create_mmap_delta_bytes": 143360,
+        "create_total_delta_bytes": 184656,
+        "input_frames": 132300,
+        "output_frames": 144000,
+        "sampled_retained_stream_high_water_delta_bytes": 184656
+      }
+    },
+    {
+      "candidate": "regressed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/regressed/libfaar.so",
+        "192000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 192000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 513584,
+        "create_mmap_delta_bytes": 290816,
+        "create_total_delta_bytes": 804400,
+        "input_frames": 576000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 949584
+      }
+    },
+    {
+      "candidate": "reconstructed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/reconstructed/libfaar.so",
+        "96000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 96000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 513584,
+        "create_mmap_delta_bytes": 290816,
+        "create_total_delta_bytes": 804400,
+        "input_frames": 288000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 949584
+      }
+    },
+    {
+      "candidate": "reconstructed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/reconstructed/libfaar.so",
+        "48000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 48000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 513584,
+        "create_mmap_delta_bytes": 290816,
+        "create_total_delta_bytes": 804400,
+        "input_frames": 144000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 949584
+      }
+    },
+    {
+      "candidate": "reconstructed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/reconstructed/libfaar.so",
+        "44100",
+        "48000",
+        "2",
+        "3"
+      ],
+      "in_rate": 44100,
+      "out_rate": 48000,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 41296,
+        "create_mmap_delta_bytes": 143360,
+        "create_total_delta_bytes": 184656,
+        "input_frames": 132300,
+        "output_frames": 144000,
+        "sampled_retained_stream_high_water_delta_bytes": 184656
+      }
+    },
+    {
+      "candidate": "reconstructed",
+      "command": [
+        "/tmp/faar-recovery/memory",
+        "/tmp/faar-recovery/reconstructed/libfaar.so",
+        "192000",
+        "44100",
+        "2",
+        "3"
+      ],
+      "in_rate": 192000,
+      "out_rate": 44100,
+      "streaming_accounting": {
+        "client_buffer_bytes": 98304,
+        "create_arena_delta_bytes": 513584,
+        "create_mmap_delta_bytes": 290816,
+        "create_total_delta_bytes": 804400,
+        "input_frames": 576000,
+        "output_frames": 132300,
+        "sampled_retained_stream_high_water_delta_bytes": 949584
+      }
+    }
+  ],
+  "footprint_scope": "FAAR native helper excludes fixed client buffers from creation/retained deltas and includes arena+mmap allocations. Retained high water is sampled after calls, so it excludes freed intra-call temporaries. Massif separately reports measured peak heap including driver buffers; reference whole-file RSS/heap is not labeled streaming memory. Binary references include unrelated application/library code.",
+  "metadata": {
+    "driver_sha256": "8fe8410574fc4cb2001061071780f2d4ee1000060704c6cebf93784d008998c3",
+    "original_ardft_sha256": "daf1083aa269780c1d96ff32fb911d35bb716ae6dd71dc093b7531d10c6d8cee",
+    "original_kbsrc_sha256": "512f93ab989fa653b8ae60630fbf007c5a8aef75fcc1a546ac09f136befcef58",
+    "original_sox_sha256": "f59860df415ffadf84ebe60b76a080a55f3d9a26a4b32700f89c6c33e6e2778a",
+    "validator_sha256": "c359621b0cc310ec587d9ea995c28ac42fa751455a7bfc7507e7430abffac6e0"
+  },
+  "numerical_floor_proposal": {
+    "classification": "Mark a wanted-tone residual floor-limited when reference residual RMS is below this ceiling. Report raw dB deltas; propose testing absolute RMS against the ceiling there, rather than requiring 0.25 dB relative agreement. This proposal does not exempt wanted gain, total alias energy, or total image rejection from the 0.25 dB comparison.",
+    "controls_are_not_proof": "Ideal float rounding controls do not bound arbitrary filter coefficient error or all FFT sizes. Review this candidate ceiling before adopting it; the direct-DFT control covers one small rational transform, not every rate and FFT size.",
+    "formula_absolute_rms": "input_rms * 10**(ceiling_db/20)",
+    "max_observed_source_or_ideal_output_rounding_residual_relative_db": -150.68414215574748,
+    "proposed_residual_ceiling_relative_input_db": -144.68414215574748,
+    "status": "proposal for review; existing thresholds unchanged"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "candidate_library_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+  "preset": "High",
+  "conversion_pairs": 357,
+  "probe_records": 6264,
+  "records_per_engine": {
+    "faar-candidate": 3132,
+    "ardftsrc": 3132
+  },
+  "passband_rule": "frequency <= 0.45 * min(input_rate, output_rate), and below output Nyquist",
+  "passband_probe_count_per_engine": 1284,
+  "passband_max_abs_gain_delta_vs_ardftsrc_db": 0.02038996055697565,
+  "passband_over_0_25_db_count": 0,
+  "worst_passband_probe": {
+    "in_rate": 48000,
+    "out_rate": 32000,
+    "frequency_hz": 14400,
+    "candidate_gain_db": -0.020389867264752826,
+    "ardftsrc_gain_db": 9.329222282264933e-08
+  },
+  "deep_stopband_rule": "downsampling; frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+  "deep_stopband_probe_count": 132,
+  "minimum_candidate_alias_attenuation_db": 155.89114328191772,
+  "minimum_ardftsrc_alias_attenuation_db": 155.89105750933675,
+  "deep_stopband_max_abs_delta_db": 6.010285098618823,
+  "deep_stopband_comparison_note": "Differences near the float32 residual floor are descriptive; use attenuation lower bounds, not the passband 0.25 dB gate.",
+  "all_probe_runs_exact_output_counts": true,
+  "matrix_source": "tools/faar_recovery/diagnose.py --signal-matrix --tones-only",
+  "interpretation": "The 357-pair High response matrix was refreshed against the current candidate after the latest 48->32 and 88.2->44.1 planner changes. There are zero passband probes over 0.25 dB versus ARDFTSRC. This refresh covers tones only; image and transient matrices remain earlier snapshots."
+}

@@ -1,0 +1,54 @@
+{
+  "host": "AMD64 Linux",
+  "compiler_build": "Meson/Ninja, GCC, -O3 -flto=auto, double coefficients",
+  "conversion": {
+    "input_rate": 96000,
+    "output_rate": 44100,
+    "channels": 2,
+    "quality": "High"
+  },
+  "measurements": {
+    "default_polyphase": {
+      "shared_library_text_data_bss_bytes": 16292,
+      "create_live_heap_delta_bytes": 116336,
+      "library_sha256": "2188e36cf10d7de9a35fdd35b16639fb943a2162932377d4ad2738b5d5229b06"
+    },
+    "experimental_staged": {
+      "shared_library_text_data_bss_bytes": 30101,
+      "create_live_heap_delta_bytes": 579536,
+      "library_sha256": "e111f2ea2de876cf0e558713f1207ca7c6cdf343826b0d1d688a59782ba0b1b0"
+    }
+  },
+  "method": {
+    "binary_size": "GNU size text+data+bss for libfaar.so.3.0.0",
+    "live_heap": "mallinfo2 uordblks delta around faar_create followed by destroy; malloc_trim called before baseline reading; process-specific glibc accounting",
+    "harness_sha256": "cd2883163c3675edba9b69703c1de4e290e83a67dca730e6160a7ffd6278e41a"
+  },
+  "limits": "Not peak RSS, stack usage, or SoX working memory. Runs are separate build directories on the same host.",
+  "sox_cpu_reference": {
+    "image": "sox-vulkan:16.2.2, amd64",
+    "binary_path": "/usr/local/bin/sox",
+    "binary_size_bytes": 12749136,
+    "binary_sha256": "f59860df415ffadf84ebe60b76a080a55f3d9a26a4b32700f89c6c33e6e2778a",
+    "max_rss_kb_samples": [
+      20056,
+      19924,
+      20096,
+      19932,
+      19920,
+      20012,
+      19820
+    ],
+    "max_rss_kb_range": [
+      19820,
+      20096
+    ],
+    "limitations": "RSS includes SoX process buffers and is not directly comparable to FAAR create live-heap delta."
+  },
+  "matched_benchmark": {
+    "record": "faar-staged-sox-cpu-2026-10-18.json",
+    "faar_median_process_cpu_seconds": 0.4224239999999999,
+    "sox_median_cgroup_process_cpu_seconds": 0.092638,
+    "input_sha256": "7fd29f8a6f1dfecc0bdd41c6f58805a7c47fff8fb3270041018d372b529025c0"
+  }
+}

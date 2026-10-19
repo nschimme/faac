@@ -1,0 +1,106 @@
+{
+  "candidate_library_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+  "comparison": "common sample-rate pairs, wanted-tone frequencies <= 0.45 * lower rate; alias minimum is descriptive and preset-specific acceptance masks are undefined.",
+  "good": {
+    "raw_file": "signals-common-rates-good-final.json",
+    "raw_sha256": "188ebf0cce1b8d32ec4d96de89309a877bee49f22188ee7809a67eb4d69133fd",
+    "pairs": [
+      {
+        "in_rate": 48000,
+        "out_rate": 32000,
+        "passband_tones": 3,
+        "max_abs_gain_delta_ardftsrc_db": 3.964865512716435e-07,
+        "worst_reference_frequency_hz": 14400,
+        "max_abs_gain_delta_polyphase_db": 0.015784402185054634,
+        "minimum_selected_alias_attenuation_db": 120.77253375521373
+      },
+      {
+        "in_rate": 48000,
+        "out_rate": 96000,
+        "passband_tones": 4,
+        "max_abs_gain_delta_ardftsrc_db": 1.660465247312948e-05,
+        "worst_reference_frequency_hz": 21600,
+        "max_abs_gain_delta_polyphase_db": 0.0,
+        "minimum_selected_alias_attenuation_db": null
+      },
+      {
+        "in_rate": 88200,
+        "out_rate": 44100,
+        "passband_tones": 3,
+        "max_abs_gain_delta_ardftsrc_db": 7.582697618101995e-06,
+        "worst_reference_frequency_hz": 19845,
+        "max_abs_gain_delta_polyphase_db": 0.13928383427074037,
+        "minimum_selected_alias_attenuation_db": 76.60293509254765
+      },
+      {
+        "in_rate": 96000,
+        "out_rate": 48000,
+        "passband_tones": 2,
+        "max_abs_gain_delta_ardftsrc_db": 7.582697009610167e-06,
+        "worst_reference_frequency_hz": 21600,
+        "max_abs_gain_delta_polyphase_db": 0.13928383427097582,
+        "minimum_selected_alias_attenuation_db": 61.73997959548281
+      },
+      {
+        "in_rate": 192000,
+        "out_rate": 48000,
+        "passband_tones": 4,
+        "max_abs_gain_delta_ardftsrc_db": 0.1668259881296555,
+        "worst_reference_frequency_hz": 21600,
+        "max_abs_gain_delta_polyphase_db": 0.027534768113850222,
+        "minimum_selected_alias_attenuation_db": 24.652294830034226
+      }
+    ]
+  },
+  "fast": {
+    "raw_file": "signals-common-rates-fast-final.json",
+    "raw_sha256": "dedd1bbb512e70ee10a7f62532f879945847ea69b3dac256c4dadd1b80f84ac9",
+    "pairs": [
+      {
+        "in_rate": 48000,
+        "out_rate": 32000,
+        "passband_tones": 3,
+        "max_abs_gain_delta_ardftsrc_db": 0.0001672649578105431,
+        "worst_reference_frequency_hz": 14400,
+        "max_abs_gain_delta_polyphase_db": 0.5942894113441536,
+        "minimum_selected_alias_attenuation_db": 61.03833488929
+      },
+      {
+        "in_rate": 48000,
+        "out_rate": 96000,
+        "passband_tones": 4,
+        "max_abs_gain_delta_ardftsrc_db": 0.09632686540481006,
+        "worst_reference_frequency_hz": 21600,
+        "max_abs_gain_delta_polyphase_db": 0.0,
+        "minimum_selected_alias_attenuation_db": null
+      },
+      {
+        "in_rate": 88200,
+        "out_rate": 44100,
+        "passband_tones": 3,
+        "max_abs_gain_delta_ardftsrc_db": 0.02408188434821552,
+        "worst_reference_frequency_hz": 19845,
+        "max_abs_gain_delta_polyphase_db": 1.191889113141381,
+        "minimum_selected_alias_attenuation_db": 32.987914358558214
+      },
+      {
+        "in_rate": 96000,
+        "out_rate": 48000,
+        "passband_tones": 2,
+        "max_abs_gain_delta_ardftsrc_db": 0.024081884347964863,
+        "worst_reference_frequency_hz": 21600,
+        "max_abs_gain_delta_polyphase_db": 1.191889113143386,
+        "minimum_selected_alias_attenuation_db": 28.887450849696084
+      },
+      {
+        "in_rate": 192000,
+        "out_rate": 48000,
+        "passband_tones": 4,
+        "max_abs_gain_delta_ardftsrc_db": 0.9975175174898594,
+        "worst_reference_frequency_hz": 21600,
+        "max_abs_gain_delta_polyphase_db": 0.21845328304931133,
+        "minimum_selected_alias_attenuation_db": 15.240096339418487
+      }
+    ]
+  }
+}

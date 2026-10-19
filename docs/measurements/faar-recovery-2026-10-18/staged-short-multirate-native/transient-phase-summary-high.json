@@ -1,0 +1,79 @@
+{
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "preset": "High",
+  "central_impulse_window": "+/-0.2 seconds, excluding +/-1 ms around the peak",
+  "max_abs_wanted_tone_phase_delta_below_0_45_lower_rate_radians": 2.0371547192554584e-15,
+  "engines": {
+    "faar-candidate": {
+      "pairs": 4,
+      "max_abs_time_reversal_error_relative": 5.949077158628563e-16,
+      "max_abs_pre_post_energy_imbalance_db": 3.664444372902484e-14,
+      "rows": [
+        {
+          "in_rate": 96000,
+          "out_rate": 44100,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": -1.0607602132086164e-14,
+          "time_reversal_error_relative": 5.949077158628563e-16
+        },
+        {
+          "in_rate": 48000,
+          "out_rate": 44100,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": -1.0607602132086164e-14,
+          "time_reversal_error_relative": 4.854271213319502e-16
+        },
+        {
+          "in_rate": 44100,
+          "out_rate": 48000,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": 3.664444372902484e-14,
+          "time_reversal_error_relative": 5.370217310134463e-16
+        },
+        {
+          "in_rate": 192000,
+          "out_rate": 44100,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": 3.857309866213148e-15,
+          "time_reversal_error_relative": 5.775355319790304e-16
+        }
+      ]
+    },
+    "ardftsrc": {
+      "pairs": 4,
+      "max_abs_time_reversal_error_relative": 2.413365247211473e-11,
+      "max_abs_pre_post_energy_imbalance_db": 7.376815820924006e-11,
+      "rows": [
+        {
+          "in_rate": 96000,
+          "out_rate": 44100,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": -8.486081705668968e-14,
+          "time_reversal_error_relative": 1.964637036085109e-12
+        },
+        {
+          "in_rate": 48000,
+          "out_rate": 44100,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": -8.486081705668968e-14,
+          "time_reversal_error_relative": 1.9646341535071875e-12
+        },
+        {
+          "in_rate": 44100,
+          "out_rate": 48000,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": -7.376815820924006e-11,
+          "time_reversal_error_relative": 2.413365247211473e-11
+        },
+        {
+          "in_rate": 192000,
+          "out_rate": 44100,
+          "main_peak_offset_frames": 0,
+          "pre_ringing_to_post_db": -8.486081705668968e-14,
+          "time_reversal_error_relative": 1.964645099578817e-12
+        }
+      ]
+    }
+  },
+  "interpretation": "The half-sample clock/history correction restores symmetric central impulse responses and phase alignment on the four measured pairs."
+}

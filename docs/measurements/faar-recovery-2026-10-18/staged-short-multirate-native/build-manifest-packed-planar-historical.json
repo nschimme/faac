@@ -1,0 +1,84 @@
+{
+  "backend": "staged-short",
+  "build_directory": "/tmp/faac-faar-native-build",
+  "coefficient_precision": "double",
+  "candidate_library_sha256": "34b2a6587072d29ae5b27cdfa0d66d0b5049eb256bea1590c4d1b423b8434fb4",
+  "candidate_library_bytes": 92280,
+  "host": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics",
+  "platform": "Linux-7.0.14-22-pve-x86_64-with-glibc2.41",
+  "candidate_build": "Meson staged-short, double, -O3 -flto -march=native (GCC 14.2)",
+  "sox_build": "Pinned source-tree CPU rate path, shared libsox, -O3 -march=native -fPIC",
+  "verification_command": "meson test -C /tmp/faac-faar-native-build --print-errorlogs",
+  "verification_result": "6/6 tests passed in native double, generic double, and float staged-short builds (packed-planar candidate). Logs are included alongside this manifest.",
+  "benchmark": "bench-packed-planar-fourway.json; 30 alternating serial runs, one warmup; 30-second stereo inputs; four-way comparison against current FAAR default, candidate, native SoX, and ARDFTSRC.",
+  "comparison": "Native-matched SoX wide rate -v -b 99.5 and ARDFTSRC; processing CPU time, setup excluded. Candidate is faster than SoX in all three primary conversions.",
+  "notes": "Current candidate passes selected response and streaming tests and is faster than matched native SoX on all three measured conversions. Fingerprints cover all 357 ordered supported-rate pairs across three presets. Response measurements are selected probes, not exhaustive across all rate/preset/signal combinations.",
+  "optimization_note": "Packed real FFT representation, factor-two packed spectrum expansion, planar prefilter-to-polyphase handoff, reversed short phase rows, double history, and reduced phase-slot recurrence are included. Regression fingerprints match the prior double candidate.",
+  "sox_shared_library_bytes": 2806808,
+  "ardftsrc_executable_bytes": 3248072,
+  "binary_size_note": "Whole reference binary sizes include unrelated code and are not like-for-like with the FAAR shared library.",
+  "benchmark_medians": {
+    "96000->44100": {
+      "faar_processing_cpu_seconds": 0.0576524745,
+      "sox_processing_cpu_seconds": 0.06122232650000001,
+      "ardftsrc_processing_cpu_seconds": 0.05566146250000001,
+      "faar_over_sox": 0.9416903570301268,
+      "faar_setup_cpu_seconds": 0.001228458,
+      "faar_setup_live_heap_bytes": 3717856.0,
+      "sox_setup_live_heap_bytes": 622624.0
+    },
+    "48000->44100": {
+      "faar_processing_cpu_seconds": 0.049583439,
+      "sox_processing_cpu_seconds": 0.051818679500000006,
+      "ardftsrc_processing_cpu_seconds": 0.0391693075,
+      "faar_over_sox": 0.9568641941174899,
+      "faar_setup_cpu_seconds": 0.001282745,
+      "faar_setup_live_heap_bytes": 3868064.0,
+      "sox_setup_live_heap_bytes": 574784.0
+    },
+    "44100->48000": {
+      "faar_processing_cpu_seconds": 0.0491861795,
+      "sox_processing_cpu_seconds": 0.05274942800000001,
+      "ardftsrc_processing_cpu_seconds": 0.03962699,
+      "faar_over_sox": 0.9324495329124706,
+      "faar_setup_cpu_seconds": 0.0011330439999999997,
+      "faar_setup_live_heap_bytes": 3856160.0,
+      "sox_setup_live_heap_bytes": 564880.0
+    }
+  },
+  "benchmark_medians_fourway": {
+    "96000->44100": {
+      "faar_default_processing_cpu_seconds": 0.9649640340000001,
+      "faar_candidate_processing_cpu_seconds": 0.055643343,
+      "sox_processing_cpu_seconds": 0.059590172500000003,
+      "ardftsrc_processing_cpu_seconds": 0.053865205,
+      "candidate_over_default": 0.057663644487707395,
+      "candidate_over_sox": 0.9337671073195836,
+      "candidate_over_ardftsrc": 1.0330108833708143,
+      "candidate_setup_live_heap_bytes": 3717856.0,
+      "default_setup_live_heap_bytes": 402400.0
+    },
+    "48000->44100": {
+      "faar_default_processing_cpu_seconds": 0.49605263450000003,
+      "faar_candidate_processing_cpu_seconds": 0.049994104000000004,
+      "sox_processing_cpu_seconds": 0.0518192705,
+      "ardftsrc_processing_cpu_seconds": 0.040084829,
+      "candidate_over_default": 0.1007838695391507,
+      "candidate_over_sox": 0.96477822859355,
+      "candidate_over_ardftsrc": 1.2472076156293446,
+      "candidate_setup_live_heap_bytes": 3868064.0,
+      "default_setup_live_heap_bytes": 184656.0
+    },
+    "44100->48000": {
+      "faar_default_processing_cpu_seconds": 0.5047257505,
+      "faar_candidate_processing_cpu_seconds": 0.049202065,
+      "sox_processing_cpu_seconds": 0.053961405500000004,
+      "ardftsrc_processing_cpu_seconds": 0.041001282,
+      "candidate_over_default": 0.09748277148780028,
+      "candidate_over_sox": 0.9118010278661107,
+      "candidate_over_ardftsrc": 1.2000128435008448,
+      "candidate_setup_live_heap_bytes": 3856160.0,
+      "default_setup_live_heap_bytes": 184656.0
+    }
+  }
+}

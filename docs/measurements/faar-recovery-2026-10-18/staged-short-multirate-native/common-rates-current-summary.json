@@ -1,0 +1,767 @@
+{
+  "status": "current-hash common-rate matrices and selected High-route 60-trial follow-ups",
+  "candidate_library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+  "candidate_library_bytes": 104728,
+  "backend": "staged-short; default Meson backend; desktop double; CPU only",
+  "rate_scope_hz": [
+    [
+      32000,
+      44100
+    ],
+    [
+      32000,
+      48000
+    ],
+    [
+      44100,
+      48000
+    ],
+    [
+      44100,
+      88200
+    ],
+    [
+      44100,
+      96000
+    ],
+    [
+      48000,
+      32000
+    ],
+    [
+      48000,
+      44100
+    ],
+    [
+      48000,
+      88200
+    ],
+    [
+      48000,
+      96000
+    ],
+    [
+      88200,
+      44100
+    ],
+    [
+      88200,
+      96000
+    ],
+    [
+      96000,
+      44100
+    ],
+    [
+      96000,
+      48000
+    ],
+    [
+      96000,
+      192000
+    ],
+    [
+      192000,
+      48000
+    ],
+    [
+      192000,
+      96000
+    ]
+  ],
+  "benchmark_protocol": "Ten alternating 30-second stereo trials per engine, preset, and common conversion with one warmup; processing CPU medians. SoX CPU rate -v -b 99.5; ARDFTSRC quality 16384/bandwidth .99. Additional current-hash High 32,000->48,000 and 192,000->48,000 follow-ups use 60 alternating-order paired rounds and paired bootstrap intervals.",
+  "benchmarks": [
+    {
+      "input_rate": 32000,
+      "output_rate": 44100,
+      "expected_frames": 1340640,
+      "actual_frames": 1340640,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.0420779255,
+        "sox_processing_seconds": 0.055302729499999995,
+        "ardftsrc_processing_seconds": 0.0487953475,
+        "faar_setup_live_heap_bytes": 3977696.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.0337931745,
+        "sox_processing_seconds": 0.05342489500000001,
+        "ardftsrc_processing_seconds": 0.047632302,
+        "faar_setup_live_heap_bytes": 451312.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.0328611135,
+        "sox_processing_seconds": 0.0523440035,
+        "ardftsrc_processing_seconds": 0.0474710795,
+        "faar_setup_live_heap_bytes": 334544.0
+      }
+    },
+    {
+      "input_rate": 32000,
+      "output_rate": 48000,
+      "expected_frames": 1458354,
+      "actual_frames": 1458354,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.042293629,
+        "sox_processing_seconds": 0.0427934765,
+        "ardftsrc_processing_seconds": 0.10730595550000001,
+        "faar_setup_live_heap_bytes": 3867392.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.033546007,
+        "sox_processing_seconds": 0.0449972275,
+        "ardftsrc_processing_seconds": 0.106256403,
+        "faar_setup_live_heap_bytes": 304144.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.0353952935,
+        "sox_processing_seconds": 0.045348295500000003,
+        "ardftsrc_processing_seconds": 0.1077621395,
+        "faar_setup_live_heap_bytes": 187376.0
+      }
+    },
+    {
+      "input_rate": 44100,
+      "output_rate": 48000,
+      "expected_frames": 1464320,
+      "actual_frames": 1464320,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.0506605175,
+        "sox_processing_seconds": 0.062120350500000004,
+        "ardftsrc_processing_seconds": 0.0403300635,
+        "faar_setup_live_heap_bytes": 3856384.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.0401597595,
+        "sox_processing_seconds": 0.06343646150000001,
+        "ardftsrc_processing_seconds": 0.0407941535,
+        "faar_setup_live_heap_bytes": 330000.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.03919125350000001,
+        "sox_processing_seconds": 0.06220167700000001,
+        "ardftsrc_processing_seconds": 0.0407319925,
+        "faar_setup_live_heap_bytes": 213232.0
+      }
+    },
+    {
+      "input_rate": 44100,
+      "output_rate": 88200,
+      "expected_frames": 2670592,
+      "actual_frames": 2670592,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.042102586000000004,
+        "sox_processing_seconds": 0.043713330999999994,
+        "ardftsrc_processing_seconds": 0.0654267875,
+        "faar_setup_live_heap_bytes": 3828064.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.0328635975,
+        "sox_processing_seconds": 0.0452621985,
+        "ardftsrc_processing_seconds": 0.0648081025,
+        "faar_setup_live_heap_bytes": 301680.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.031976345,
+        "sox_processing_seconds": 0.0471959485,
+        "ardftsrc_processing_seconds": 0.068823671,
+        "faar_setup_live_heap_bytes": 184912.0
+      }
+    },
+    {
+      "input_rate": 44100,
+      "output_rate": 96000,
+      "expected_frames": 2912000,
+      "actual_frames": 2912000,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.0696576735,
+        "sox_processing_seconds": 0.086100986,
+        "ardftsrc_processing_seconds": 0.0633120585,
+        "faar_setup_live_heap_bytes": 3883264.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.0614286635,
+        "sox_processing_seconds": 0.08868237000000001,
+        "ardftsrc_processing_seconds": 0.06430762500000001,
+        "faar_setup_live_heap_bytes": 356880.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.0606831705,
+        "sox_processing_seconds": 0.086990118,
+        "ardftsrc_processing_seconds": 0.0623020445,
+        "faar_setup_live_heap_bytes": 240112.0
+      }
+    },
+    {
+      "input_rate": 48000,
+      "output_rate": 32000,
+      "expected_frames": 983040,
+      "actual_frames": 983040,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.030696009500000003,
+        "sox_processing_seconds": 0.045320122,
+        "ardftsrc_processing_seconds": 0.035805197000000004,
+        "faar_setup_live_heap_bytes": 971152.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.028735810000000004,
+        "sox_processing_seconds": 0.04465905900000001,
+        "ardftsrc_processing_seconds": 0.036104342500000004,
+        "faar_setup_live_heap_bytes": 294416.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.029889016000000004,
+        "sox_processing_seconds": 0.0466005135,
+        "ardftsrc_processing_seconds": 0.0359697195,
+        "faar_setup_live_heap_bytes": 182304.0
+      }
+    },
+    {
+      "input_rate": 48000,
+      "output_rate": 44100,
+      "expected_frames": 1350048,
+      "actual_frames": 1350048,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.0498101145,
+        "sox_processing_seconds": 0.065544393,
+        "ardftsrc_processing_seconds": 0.0399140385,
+        "faar_setup_live_heap_bytes": 3868288.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.038538605000000004,
+        "sox_processing_seconds": 0.0626581775,
+        "ardftsrc_processing_seconds": 0.040504886500000004,
+        "faar_setup_live_heap_bytes": 350128.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.038590408500000006,
+        "sox_processing_seconds": 0.0637574885,
+        "ardftsrc_processing_seconds": 0.038627858,
+        "faar_setup_live_heap_bytes": 233360.0
+      }
+    },
+    {
+      "input_rate": 48000,
+      "output_rate": 88200,
+      "expected_frames": 2667168,
+      "actual_frames": 2667168,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.0683887175,
+        "sox_processing_seconds": 0.08883932850000001,
+        "ardftsrc_processing_seconds": 0.060868728000000004,
+        "faar_setup_live_heap_bytes": 3878912.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.057424536000000005,
+        "sox_processing_seconds": 0.0932150115,
+        "ardftsrc_processing_seconds": 0.061145832000000004,
+        "faar_setup_live_heap_bytes": 352528.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.0564268565,
+        "sox_processing_seconds": 0.087981892,
+        "ardftsrc_processing_seconds": 0.06044943750000001,
+        "faar_setup_live_heap_bytes": 235760.0
+      }
+    },
+    {
+      "input_rate": 48000,
+      "output_rate": 96000,
+      "expected_frames": 2899968,
+      "actual_frames": 2899968,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.0467345485,
+        "sox_processing_seconds": 0.048358723000000006,
+        "ardftsrc_processing_seconds": 0.07317712500000001,
+        "faar_setup_live_heap_bytes": 3828064.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.0338571405,
+        "sox_processing_seconds": 0.0472346315,
+        "ardftsrc_processing_seconds": 0.07129812299999999,
+        "faar_setup_live_heap_bytes": 301680.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.0339423695,
+        "sox_processing_seconds": 0.04730061050000001,
+        "ardftsrc_processing_seconds": 0.0750563135,
+        "faar_setup_live_heap_bytes": 184912.0
+      }
+    },
+    {
+      "input_rate": 88200,
+      "output_rate": 44100,
+      "expected_frames": 1343488,
+      "actual_frames": 1343488,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.036405512,
+        "sox_processing_seconds": 0.0389132785,
+        "ardftsrc_processing_seconds": 0.05988128150000001,
+        "faar_setup_live_heap_bytes": 3825792.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.0238070365,
+        "sox_processing_seconds": 0.0401746665,
+        "ardftsrc_processing_seconds": 0.0596979035,
+        "faar_setup_live_heap_bytes": 301616.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.024020461,
+        "sox_processing_seconds": 0.040803356,
+        "ardftsrc_processing_seconds": 0.059446382000000006,
+        "faar_setup_live_heap_bytes": 184896.0
+      }
+    },
+    {
+      "input_rate": 88200,
+      "output_rate": 96000,
+      "expected_frames": 2912000,
+      "actual_frames": 2912000,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.1063108635,
+        "sox_processing_seconds": 0.1218528935,
+        "ardftsrc_processing_seconds": 0.081547902,
+        "faar_setup_live_heap_bytes": 3856384.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.07654871900000002,
+        "sox_processing_seconds": 0.1235185845,
+        "ardftsrc_processing_seconds": 0.0839223065,
+        "faar_setup_live_heap_bytes": 330000.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.080408805,
+        "sox_processing_seconds": 0.11978879950000001,
+        "ardftsrc_processing_seconds": 0.0815108675,
+        "faar_setup_live_heap_bytes": 213232.0
+      }
+    },
+    {
+      "input_rate": 96000,
+      "output_rate": 44100,
+      "expected_frames": 1350048,
+      "actual_frames": 1350048,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.057654854,
+        "sox_processing_seconds": 0.07561493500000001,
+        "ardftsrc_processing_seconds": 0.0527793505,
+        "faar_setup_live_heap_bytes": 3718080.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.042670255500000004,
+        "sox_processing_seconds": 0.07326226050000001,
+        "ardftsrc_processing_seconds": 0.0544837195,
+        "faar_setup_live_heap_bytes": 340752.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.0475810255,
+        "sox_processing_seconds": 0.0782571125,
+        "ardftsrc_processing_seconds": 0.0541666905,
+        "faar_setup_live_heap_bytes": 228640.0
+      }
+    },
+    {
+      "input_rate": 96000,
+      "output_rate": 48000,
+      "expected_frames": 1458176,
+      "actual_frames": 1458176,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.0374912275,
+        "sox_processing_seconds": 0.042527783000000006,
+        "ardftsrc_processing_seconds": 0.06355380100000001,
+        "faar_setup_live_heap_bytes": 3825792.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.026938181000000005,
+        "sox_processing_seconds": 0.045092691000000004,
+        "ardftsrc_processing_seconds": 0.064085208,
+        "faar_setup_live_heap_bytes": 301616.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.026274200500000004,
+        "sox_processing_seconds": 0.04340414150000001,
+        "ardftsrc_processing_seconds": 0.0655062165,
+        "faar_setup_live_heap_bytes": 184896.0
+      }
+    },
+    {
+      "input_rate": 96000,
+      "output_rate": 192000,
+      "expected_frames": 5783552,
+      "actual_frames": 5783552,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.088088331,
+        "sox_processing_seconds": 0.09317265050000001,
+        "ardftsrc_processing_seconds": 0.1413517185,
+        "faar_setup_live_heap_bytes": 3828064.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.06862309400000001,
+        "sox_processing_seconds": 0.094738968,
+        "ardftsrc_processing_seconds": 0.1403616775,
+        "faar_setup_live_heap_bytes": 301680.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.068347087,
+        "sox_processing_seconds": 0.09520065300000001,
+        "ardftsrc_processing_seconds": 0.1398239795,
+        "faar_setup_live_heap_bytes": 184912.0
+      }
+    },
+    {
+      "input_rate": 192000,
+      "output_rate": 48000,
+      "expected_frames": 1458176,
+      "actual_frames": 1458176,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.065775781,
+        "sox_processing_seconds": 0.06854902000000002,
+        "ardftsrc_processing_seconds": 0.118786901,
+        "faar_setup_live_heap_bytes": 7473440.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.039895163,
+        "sox_processing_seconds": 0.06705544500000002,
+        "ardftsrc_processing_seconds": 0.11691622500000001,
+        "faar_setup_live_heap_bytes": 297008.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.0389142705,
+        "sox_processing_seconds": 0.06734103550000001,
+        "ardftsrc_processing_seconds": 0.1232218595,
+        "faar_setup_live_heap_bytes": 182544.0
+      }
+    },
+    {
+      "input_rate": 192000,
+      "output_rate": 96000,
+      "expected_frames": 2899968,
+      "actual_frames": 2899968,
+      "deterministic": true,
+      "high": {
+        "faar_processing_seconds": 0.07260884000000001,
+        "sox_processing_seconds": 0.08189261250000002,
+        "ardftsrc_processing_seconds": 0.12485942350000001,
+        "faar_setup_live_heap_bytes": 3825792.0
+      },
+      "good": {
+        "faar_processing_seconds": 0.0513951255,
+        "sox_processing_seconds": 0.08564757650000002,
+        "ardftsrc_processing_seconds": 0.12866828900000002,
+        "faar_setup_live_heap_bytes": 301616.0
+      },
+      "fast": {
+        "faar_processing_seconds": 0.05041252300000001,
+        "sox_processing_seconds": 0.08300637500000001,
+        "ardftsrc_processing_seconds": 0.126546927,
+        "faar_setup_live_heap_bytes": 184896.0
+      }
+    }
+  ],
+  "quality": {
+    "high": {
+      "selected_passband_definition": "wanted gain probes at f <= 0.45 * min(input_rate, output_rate), compared with ARDFTSRC",
+      "selected_passband_probe_count": 62,
+      "max_absolute_wanted_gain_delta_db": 0.02038996055697565,
+      "within_0_25_db": true,
+      "minimum_alias_attenuation_db_for_frequency_ge_0_49_input_rate": 155.89114328191772,
+      "transient_route_count": 16,
+      "max_time_reversal_error_relative": 1.1574902146757296e-06,
+      "upsampling_image_routes": [
+        [
+          32000,
+          44100
+        ],
+        [
+          32000,
+          48000
+        ],
+        [
+          44100,
+          48000
+        ],
+        [
+          48000,
+          96000
+        ],
+        [
+          44100,
+          96000
+        ],
+        [
+          48000,
+          192000
+        ],
+        [
+          96000,
+          192000
+        ],
+        [
+          88200,
+          96000
+        ]
+      ],
+      "image_component_count": 8,
+      "least_image_attenuation_db_vs_wanted": -108.34674488913448
+    },
+    "good": {
+      "selected_passband_definition": "wanted gain probes at f <= 0.45 * min(input_rate, output_rate), compared with ARDFTSRC",
+      "selected_passband_probe_count": 62,
+      "max_absolute_wanted_gain_delta_db": 0.020383524108048213,
+      "within_0_25_db": true,
+      "minimum_alias_attenuation_db_for_frequency_ge_0_49_input_rate": 118.02267369521363,
+      "transient_route_count": 16,
+      "max_time_reversal_error_relative": 4.312152698032457e-07,
+      "upsampling_image_routes": [
+        [
+          32000,
+          44100
+        ],
+        [
+          32000,
+          48000
+        ],
+        [
+          44100,
+          48000
+        ],
+        [
+          48000,
+          96000
+        ],
+        [
+          44100,
+          96000
+        ],
+        [
+          48000,
+          192000
+        ],
+        [
+          96000,
+          192000
+        ],
+        [
+          88200,
+          96000
+        ]
+      ],
+      "image_component_count": 8,
+      "least_image_attenuation_db_vs_wanted": -107.13125830624412
+    },
+    "fast": {
+      "selected_passband_definition": "wanted gain probes at f <= 0.45 * min(input_rate, output_rate), compared with ARDFTSRC",
+      "selected_passband_probe_count": 62,
+      "max_absolute_wanted_gain_delta_db": 0.14203627259083274,
+      "within_0_25_db": true,
+      "minimum_alias_attenuation_db_for_frequency_ge_0_49_input_rate": 70.6941248794175,
+      "transient_route_count": 16,
+      "max_time_reversal_error_relative": 2.1272167656746814e-07,
+      "upsampling_image_routes": [
+        [
+          32000,
+          44100
+        ],
+        [
+          32000,
+          48000
+        ],
+        [
+          44100,
+          48000
+        ],
+        [
+          48000,
+          96000
+        ],
+        [
+          44100,
+          96000
+        ],
+        [
+          48000,
+          192000
+        ],
+        [
+          96000,
+          192000
+        ],
+        [
+          88200,
+          96000
+        ]
+      ],
+      "image_component_count": 8,
+      "least_image_attenuation_db_vs_wanted": -67.25345501580033
+    }
+  },
+  "performance_interpretation": "Current-hash Good, Fast, and High FAAR processing medians are below wide SoX on all 16 common routes. The 60-round paired High follow-up measured 4.93% and 1.21% lower median CPU time for 32->48 and 192->48, respectively; the latter remains close to parity.",
+  "rejected_131072_fft_experiment": {
+    "artifact": "bench-192k-high-30trials-131k-experiment.json",
+    "candidate_library_sha256": "5966afffbd53fc3676e83c7cea76ffcae8f019057d2beb3cd134995ae639f4e6",
+    "faar_processing_seconds": 0.0674562065,
+    "sox_processing_seconds": 0.067182704,
+    "faar_setup_live_heap_bytes": 15034592,
+    "decision": "rejected; the larger FFT did not improve processing time and roughly doubled setup memory"
+  },
+  "verification": {
+    "current_rerun": "Native double staged-short, generic float staged-short, default staged-short, explicit staged-short, generic staged, and polyphase comparison each passed all 6/6 Meson test groups against the current source and fingerprint fixtures.",
+    "rate_matrix": "The Tuneout-derived regression matrix covers 357 ordered pairs x 3 presets; double and float staged-short fingerprints include the selected 4097-tap High 32,000->48,000 plan.",
+    "common_routes": "A fresh current default-release CLI smoke converted stereo WAV files on all 16 selected routes among 32, 44.1, 48, 88.2, 96, and 192 kHz with correct output sample-rate headers and exact one-second frame counts.",
+    "oracle": "The independent coefficient oracle is built with the selected staged-short define. The selected 4097-tap High 32,000->48,000 Kaiser filter also passes a long-double coefficient check.",
+    "limits": "The common-rate probes do not establish perceptual quality or endpoint behavior for every supported rate pair.",
+    "common_route_invariants": "Boundary HOLD/ZERO, short/exact frame counts, chunk/output-capacity independence, start/end and centered impulses, multi-channel isolation, equal-rate identity, dither determinism, and repeated flush checks include the three added staged-short routes.",
+    "high_edge_followup": "The current candidate hash has 60 alternating-order paired CPU trials for 32,000->48,000 and 192,000->48,000; exact counts and deterministic output were verified. See high-edge-routes-60trial-summary.json and raw records.",
+    "current_hash_quality": "Current-hash High, Good, and Fast response matrices cover 62 selected passband gain probes over the 16 common conversions; all remain within 0.25 dB of ARDFTSRC. Current-hash image matrices cover eight common upsampling routes for all three presets."
+  },
+  "raw_artifact_sha256": {
+    "bench-common-16-high-10trials.json": "d97ca858e7d95588d804ca847d974a4c8648fe8bc1a638a40eac6828f8872c63",
+    "bench-common-16-good-10trials.json": "7eddea6532240a264b963d7b4ed89e663b564ef1419121c67c5a8f26f19a7dc8",
+    "bench-common-16-fast-10trials.json": "7da8b0f7072b7b5d6d738222367f0c02571b8aec07a5309ecd0ca86f1713f5da",
+    "signals-common-16-high.json": "634d177f1255503d0916664baa2c9df319fe15f74883357a047734b36c16a52a",
+    "signals-common-16-good.json": "f37c80c631a36193ef22b7dae5eb0d68d06b31d4e4c9c364b875cac704116d9e",
+    "signals-common-16-fast.json": "37afba9ec9e432211a7e8bcd79936ae7bca4ebf07614de62a961e3c0306d16f7",
+    "images-common-8-high.json": "455f94ea9dc2656d6b3d31ce5eba48b9f37bf7cfa2dc854f4ae130fe21588ba3",
+    "images-common-8-good.json": "e35b5e5ea784fe7fb4f1bba48eb64edda59e01beea851d1861e19eab506b9f67",
+    "images-common-8-fast.json": "5d20323d59f8f8df673c498b5cb1d3d00e21d2301a39a41d77259630bc3aeebb",
+    "bench-192k-high-30trials-expanded-final.json": "8ba7c39dd68f540b09c130059a0e20f5a3145b9f674b275b2db504e5f6b2bb14",
+    "bench-192k-high-30trials-131k-experiment.json": "ddf8ee0d37c98376c6777fc68f6a6cc58ca976d72be18a56985309be68187862",
+    "bench-high-32-48-4097-60trials.json": "ce71455d1329221deb862fb35730167a4128fc2a45f4f9fce063b0690526c309",
+    "bench-high-192-48-4097-60trials.json": "244a68e2634f8112e183d489d2a0fcb05cf3fca33e3f216867329c7691f1fa18",
+    "high-edge-routes-60trial-summary.json": "f02bc0863b8ad95345f78c11f7e165be743d302812ae613c777cb6bbd0092cd8",
+    "bench-high-edge-routes-before-4097-60trials.json": "60c08e816825057aeccc3ff746c1eba2270ca3f8969bfdb9c66e3d0cb6e248e7",
+    "bench-common-16-high-10trials-pre4097.json": "2a828949e21d14b62ad7a139397962e6762c041a554d276ee54e90ac7d4e2cd4",
+    "signals-common-16-high-pre4097.json": "e9662482c27b34211c3ccca3c634c145695e76e4252a60f42cb65b5f7f5b3b49",
+    "images-common-8-high-pre4097.json": "466ade061c7ca6be620f108452cd20900dacd52c1eb14022d0fd60b8e06c1660",
+    "bench-common-16-good-10trials-pre4097.json": "d39657ea4eb38fb9957e376005e7b87e558147134888d8c28dba9f69f99cd569",
+    "signals-common-16-good-pre4097.json": "ede85f45b3594f5d9f0851664a53a2cc29ee4176a080bbeb70af0878d2a525a1",
+    "images-common-8-good-pre4097.json": "07dbe9a6bdf38e56763a479448b223a5a51290ecfd80d642aa30498447c59e7b",
+    "bench-common-16-fast-10trials-pre4097.json": "d18c9766eb59289dae5c1749206f49e87675f47b1d8a7d7fbddb4ee75ebc0845",
+    "signals-common-16-fast-pre4097.json": "e68d1e649c813b3d33047d16580d1028a028d2324ae20a9b28091ecf9dfcf20b",
+    "images-common-8-fast-pre4097.json": "7ab88ef3635cb29dea094a67306bbee84eb903479a9530c88f8192a955cf0759",
+    "signals-high-32-48-4097-response.json": "0d3ef55bee3124c4a78e871aa6d0980d6c064938be719c0e29df7e69fb3a4ddd",
+    "signals-high-32-48-4097-image.json": "3f77bc7f39f2e7e77c52ce5f62e5bae46564d9def950eb44b986e6b7785d86db",
+    "signals-high-32-48-4097-full.json": "431823428dbb57d3cb7c1038a5a89b2510dcc01c9e180caa19632f8ea1838a74",
+    "binary-size-current.json": "ee6a96016ef9f356ee4810af4d9f5703e305da89b50e6d03210a27d333e90509"
+  },
+  "source_files": [
+    "README.md",
+    "docs/faar-competitive-benchmark.md",
+    "docs/faar-recovery-diagnosis.md",
+    "docs/faar-sox-rate-audit.md",
+    "docs/faar.1",
+    "docs/libfaar.3",
+    "docs/libfaar.md",
+    "frontend/faar_main.c",
+    "include/faar.h",
+    "libfaar/OOURA-NOTICE",
+    "libfaar/dft_coeffs.c",
+    "libfaar/dft_coeffs.h",
+    "libfaar/dft_fir.c",
+    "libfaar/dft_fir.h",
+    "libfaar/dft_prefilter.c",
+    "libfaar/dft_prefilter.h",
+    "libfaar/fft4g_ooura.c",
+    "libfaar/fft_double.c",
+    "libfaar/fft_double.h",
+    "libfaar/meson.build",
+    "libfaar/polyresample.c",
+    "libfaar/test_faar.c",
+    "libfaar/test_faar_dft_fir.c",
+    "libfaar/test_faar_dft_prefilter.c",
+    "libfaar/test_faar_fft.c",
+    "libfaar/test_faar_quality.c",
+    "libfaar/test_faar_tuneout_matrix.c",
+    "libfaar/verification/fixtures/matrix-fingerprints-staged-short-double.txt",
+    "libfaar/verification/fixtures/matrix-fingerprints-staged-short.txt",
+    "meson_options.txt",
+    "tools/faar_recovery/README.md",
+    "tools/faar_recovery/diagnose.py",
+    "tools/faar_recovery/driver.cpp",
+    "docs/measurements/faar-recovery-2026-10-18/staged-short-multirate-native/verification-current.txt"
+  ],
+  "build_configuration": {
+    "meson_buildtype": "release",
+    "faar_backend": "staged-short",
+    "coefficient_precision": "double",
+    "default_library": "both",
+    "lto": true,
+    "extra_c_args": [
+      "-march=native"
+    ],
+    "processing_threads": 1,
+    "cpu": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics"
+  },
+  "source_file_sha256": {
+    "README.md": "59beb4cb955454f12f4848bf6d4ae467824546c879418897f8838ee482cc88d5",
+    "docs/faar-competitive-benchmark.md": "33913aa5db61a989cea129048cdc14b940af2ae005c262b7b6ce26a185f2053a",
+    "docs/faar-recovery-diagnosis.md": "e54adaf1c4ef597875d2db3bbc5d245f41ece38f03defc0111fd3be5e51ffb0e",
+    "docs/faar-sox-rate-audit.md": "48ce0f64d340f313c34b962dd5c9674c73dcfe7623875564ec2948803126bef3",
+    "docs/faar.1": "1829fee8091342bfe0f98ea35727dc0a0b1ab006df9d40a9b191a9ec8664c53f",
+    "docs/libfaar.3": "275f39a831fbe4247d41ce20ba005f6b5c09975d58fa805bdfafa98b1984d9e8",
+    "docs/libfaar.md": "a9f6684043c5c7fd471860f367491efaac3ca0e9003f2a2eee351f5c2807cbd4",
+    "frontend/faar_main.c": "5c06e87da8642782d013e99742045b0f59bd9093f448e9d5d012c23c7befc6b5",
+    "include/faar.h": "8b559c971e683a1978e366315ea1e9e33a0abc6029fdf942390a9f176e83a0b6",
+    "libfaar/OOURA-NOTICE": "281935c2bdfa008bfe801bd6e8130ba14b30c2d52351cf8627a9631d4ca1fd33",
+    "libfaar/dft_coeffs.c": "96fe06d0a5bd2789de8ba5f3fd18d6191787a3b402c0c2e914adb012d7f05c0c",
+    "libfaar/dft_coeffs.h": "d77a0d92e31b51465c113a16e584f85b1112f75809de90a0170690e8d350c8ab",
+    "libfaar/dft_fir.c": "be574b75090476861722abf79165220044f1e964a2aa0e9761c3b051223c277b",
+    "libfaar/dft_fir.h": "23d26bb5d9784d5d37ce656f782c790a7cb8b669a29c792a88a5c1989923b2ca",
+    "libfaar/dft_prefilter.c": "75a3c95ae970c4d128e58b5df51ca8819f9b707dbc6525374525ae1ffb37503a",
+    "libfaar/dft_prefilter.h": "a1f9a1ec43065ca23ce56a652340c0fbdb1c1e3a26c6a7cbd55876561926d9ed",
+    "libfaar/fft4g_ooura.c": "f65d2760be62fc4cbd41fc85c613806ea8a659f274a4fe9651bef3b8a75fec6d",
+    "libfaar/fft_double.c": "afa370853453f0e0862b6712d91e1b0770bc946d0413fb4caeb32ec2bedb342f",
+    "libfaar/fft_double.h": "74aa79a95f6d0e4fb08d7eaef7e38ff1028dd9f28897386d04466f529f0b5851",
+    "libfaar/meson.build": "82d49f11d9957b5f2a080d8a4aa65886deff8d78b5f193a782746035bbb0bd7f",
+    "libfaar/polyresample.c": "d722a1c8ca6d70ae99ad6891eb46885ed823f66303e6d14034715867dc0b0722",
+    "libfaar/test_faar.c": "acc8599f0a2583c852d4d8df59dd958a555b908945ccead9e1adf815348544e0",
+    "libfaar/test_faar_dft_fir.c": "017c93c95bc463a250a2a29c87e0f6c4da2b243619bd1b88faa640bed945f129",
+    "libfaar/test_faar_dft_prefilter.c": "40a930f2a78842c3f85bd006f1dccbff5a2174e98e3e8d659cb928d110d473ac",
+    "libfaar/test_faar_fft.c": "859ee2c5087717da0fbeff5aa80d7dc48319b8babf2fbc7fde793ce3883858f8",
+    "libfaar/test_faar_quality.c": "3e26b8b893373489e414d6c19c78c318ef67f24c95dc63c6a2bcfeefe67f35e4",
+    "libfaar/test_faar_tuneout_matrix.c": "59afa06428162b047d772fab1b823d85f62c7bd6cbfe7a0c1e5771957e9b50dd",
+    "libfaar/verification/fixtures/matrix-fingerprints-staged-short-double.txt": "09881b5e90673fb81f08a18258a7cc6a2373a8f0b2dbb7527791f727659c92f0",
+    "libfaar/verification/fixtures/matrix-fingerprints-staged-short.txt": "1cdf6cddbc3c6568be053175b3bcf695f703e187f9fd14850a28a312f9be85d0",
+    "meson_options.txt": "b3f39572192b51725b080b6f4b63248004e6aa2619dc81912ea0441ddb48ef84",
+    "tools/faar_recovery/README.md": "737eca452032d20fa53e88592aa5b06b5ff9f377add85b92bbc9e9e269080f06",
+    "tools/faar_recovery/diagnose.py": "b14af52e7ae715e53bf9b88a9fb1acdf0947490391f3e5f4e6314087ceaed211",
+    "tools/faar_recovery/driver.cpp": "bce2e11674237a15bb738ae3a04a6b3bcc3dfba670992256129aeaf0c6a44604",
+    "docs/measurements/faar-recovery-2026-10-18/staged-short-multirate-native/verification-current.txt": "14ab3d415e3e7b62a94de5752591a16ffbd45a001746d17f4c76081df07dc53a"
+  },
+  "diagnostic_reference_build_manifest_sha256": "b0730223463b5452d9140a3fc21dedac29c727d3d634bf29273dd373c42bf731",
+  "192000_to_48000_high_60_trial_check": {
+    "candidate_processing_seconds": 0.067374178,
+    "sox_processing_seconds": 0.06798484750000001,
+    "ardftsrc_processing_seconds": 0.112801236,
+    "candidate_setup_live_heap_bytes": 7473440.0,
+    "sox_setup_live_heap_bytes": 595360.0,
+    "expected_frames": 1458176,
+    "candidate_library_sha256": "12a0b584e1a704c6d702b8bd1ebd8e78e34f302f53c1395de7de6bd6c3a59a84",
+    "interpretation": "Current-hash 60-round median favors FAAR by 0.90%; paired median relative difference is -1.21% with 95% bootstrap interval -3.01% to -0.04%. Treat this as a close measured win."
+  },
+  "code_size_comparison": {
+    "faar_staged_short_shared_library_bytes": 104728,
+    "faar_elf_text_bytes": 91587,
+    "sox_cpu_shared_library_bytes": 2302080,
+    "sox_cpu_library_elf_text_bytes": 643850,
+    "sox_cli_bytes": 12749136,
+    "sox_cli_elf_text_bytes": 10724596,
+    "ardftsrc_reference_executable_bytes": 3248072,
+    "ardftsrc_reference_elf_text_bytes": 2102689,
+    "caveat": "The SoX shared library and CLI and the ARDFTSRC executable include broader application support and dependencies; these are footprint context, not rate-kernel-only binary comparisons."
+  }
+}

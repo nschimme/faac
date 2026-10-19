@@ -1,0 +1,51 @@
+{
+  "candidate_library_sha256": "a8f0c23f1104796aeb6d01f5d49bffd6d2200681d34ad971a6989db9a2c2c752",
+  "repeats": 10,
+  "cases": [
+    {
+      "in_rate": 48000,
+      "out_rate": 96000,
+      "medians": {
+        "ardftsrc": 0.072332282,
+        "faar-candidate": 0.0484866085,
+        "sox-wide": 0.04945295000000001
+      }
+    },
+    {
+      "in_rate": 96000,
+      "out_rate": 48000,
+      "medians": {
+        "ardftsrc": 0.06405429500000001,
+        "faar-candidate": 0.05157716650000001,
+        "sox-wide": 0.041497712
+      }
+    },
+    {
+      "in_rate": 192000,
+      "out_rate": 48000,
+      "medians": {
+        "ardftsrc": 0.1131895735,
+        "faar-candidate": 0.10789872150000002,
+        "sox-wide": 0.066921509
+      }
+    },
+    {
+      "in_rate": 48000,
+      "out_rate": 32000,
+      "medians": {
+        "ardftsrc": 0.0376590775,
+        "faar-candidate": 0.0315931065,
+        "sox-wide": 0.045889384500000005
+      }
+    },
+    {
+      "in_rate": 88200,
+      "out_rate": 44100,
+      "medians": {
+        "ardftsrc": 0.0582717,
+        "faar-candidate": 0.046667949,
+        "sox-wide": 0.039256887
+      }
+    }
+  ]
+}

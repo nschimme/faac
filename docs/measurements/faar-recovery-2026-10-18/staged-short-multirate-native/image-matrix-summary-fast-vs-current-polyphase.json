@@ -1,0 +1,44 @@
+{
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553",
+  "preset": "Fast",
+  "comparison": "staged-short candidate vs current polyphase baseline",
+  "input_tone_rate_fraction": 0.45,
+  "pair_count": 187,
+  "probe_records": 374,
+  "engines": {
+    "faar-candidate": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.49447601723046414,
+      "least_attenuated_image": {
+        "attenuation_db": -64.43843948469446,
+        "in_rate": 384000,
+        "out_rate": 768000,
+        "frequency_hz": 211200,
+        "amplitude": 0.000296641351803877
+      },
+      "image_components_above_minus_120_db": 1490,
+      "image_components_above_minus_100_db": 1479
+    },
+    "faar-default": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.49447601723046414,
+      "least_attenuated_image": {
+        "attenuation_db": -64.43843948469446,
+        "in_rate": 384000,
+        "out_rate": 768000,
+        "frequency_hz": 211200,
+        "amplitude": 0.000296641351803877
+      },
+      "image_components_above_minus_120_db": 1490,
+      "image_components_above_minus_100_db": 1479
+    }
+  },
+  "paired_image_component_count": 1490,
+  "candidate_baseline_max_abs_image_attenuation_delta_db": 0.0,
+  "interpretation": "Fast candidate image measurements are identical to the current polyphase baseline across the measured matrix. The observed worst image is existing Fast preset behavior; no acceptance threshold is defined."
+}

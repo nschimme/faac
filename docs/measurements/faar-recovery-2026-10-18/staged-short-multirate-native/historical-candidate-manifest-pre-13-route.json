@@ -1,0 +1,1474 @@
+{
+  "backend": "staged-short (selected Meson default; validation remains active)",
+  "candidate_library_sha256": "5870f1c3c264219b1aae3123229e741c0a50ab54d767673b300ec17b0c4aaa78",
+  "candidate_library_bytes": 96536,
+  "candidate_build": "Meson release, desktop double, staged-short; direct 192->48 4:1 DFT plan; experimental backend under active common-rate validation.",
+  "candidate_build_directory": "/tmp/faac-faar-native-build",
+  "source_sha256": {
+    "README.md": "59beb4cb955454f12f4848bf6d4ae467824546c879418897f8838ee482cc88d5",
+    "docs/faar-competitive-benchmark.md": "9b80006cc136fdfb03e537f1c043c3e44d8b7af1e00e18ac953498b55434d9ed",
+    "docs/faar-kbsrc-algorithm-audit.md": "dacc98599d66c8bb51cbeaa0c4835e4d802476a158bbfb1a4b12e24cc59af63c",
+    "docs/faar-quality.md": "82a33b28a6a174e441bb921932b3adf386d4991e06f0507cb824cb75ae4c88b5",
+    "docs/faar-recovery-diagnosis.md": "e0d684374c1fceb08e5bbecb8e9ddf33747724507d5692664be78ff019b144b1",
+    "docs/faar-sox-rate-audit.md": "dd4c2181b3a4a7c1262e6df674ead96a74cbc40e73f89ecf0c1c998aba41400e",
+    "docs/faar.1": "1829fee8091342bfe0f98ea35727dc0a0b1ab006df9d40a9b191a9ec8664c53f",
+    "docs/libfaar.3": "275f39a831fbe4247d41ce20ba005f6b5c09975d58fa805bdfafa98b1984d9e8",
+    "docs/libfaar.md": "a9f6684043c5c7fd471860f367491efaac3ca0e9003f2a2eee351f5c2807cbd4",
+    "frontend/faar_main.c": "2ed541ba05d6870d437b571f5faaccd00a00a2744e4535cb6f583755b3e5ce41",
+    "include/faar.h": "8b559c971e683a1978e366315ea1e9e33a0abc6029fdf942390a9f176e83a0b6",
+    "libfaar/OOURA-NOTICE": "281935c2bdfa008bfe801bd6e8130ba14b30c2d52351cf8627a9631d4ca1fd33",
+    "libfaar/dft_coeffs.c": "96fe06d0a5bd2789de8ba5f3fd18d6191787a3b402c0c2e914adb012d7f05c0c",
+    "libfaar/dft_coeffs.h": "d77a0d92e31b51465c113a16e584f85b1112f75809de90a0170690e8d350c8ab",
+    "libfaar/dft_fir.c": "be574b75090476861722abf79165220044f1e964a2aa0e9761c3b051223c277b",
+    "libfaar/dft_fir.h": "23d26bb5d9784d5d37ce656f782c790a7cb8b669a29c792a88a5c1989923b2ca",
+    "libfaar/dft_prefilter.c": "75a3c95ae970c4d128e58b5df51ca8819f9b707dbc6525374525ae1ffb37503a",
+    "libfaar/dft_prefilter.h": "a1f9a1ec43065ca23ce56a652340c0fbdb1c1e3a26c6a7cbd55876561926d9ed",
+    "libfaar/fft4g_ooura.c": "f65d2760be62fc4cbd41fc85c613806ea8a659f274a4fe9651bef3b8a75fec6d",
+    "libfaar/fft_double.c": "afa370853453f0e0862b6712d91e1b0770bc946d0413fb4caeb32ec2bedb342f",
+    "libfaar/fft_double.h": "74aa79a95f6d0e4fb08d7eaef7e38ff1028dd9f28897386d04466f529f0b5851",
+    "libfaar/meson.build": "16fd0f4c5263e3f321f7d4525385d5451e39140745d56a53df656b8a4a4e560d",
+    "libfaar/polyresample.c": "9b093c2c882084454d800dccc7358e3e96d51a1f6ee2d95dd68df45a337a7314",
+    "libfaar/test_faar.c": "acc8599f0a2583c852d4d8df59dd958a555b908945ccead9e1adf815348544e0",
+    "libfaar/test_faar_dft_fir.c": "eb3dd6c34cdc9817648d79e0efbc1cce3cf127e299fd32f0ff3ea0f98cf31eca",
+    "libfaar/test_faar_quality.c": "bc4c0c61fc5f18ebf9a0d656b4dcf673d912f4f6f8e4ca98879bdb8db4ac36f7",
+    "libfaar/test_faar_tuneout_matrix.c": "22ce354ac3179f9d1c76ca380ee1374fab52036eb770583f5ef0ca3da7eb99e5",
+    "libfaar/verification/fixtures/matrix-fingerprints-staged-short-double.txt": "bda96583234cc7796484d46af4ef91dea23b1aa5135b9829666990d0e81888c6",
+    "libfaar/verification/fixtures/matrix-fingerprints-staged-short.txt": "73f50bcb33f8bee0dad90532f7b1de9afbd8fe6d193a05d9889be7c737020605",
+    "meson_options.txt": "530064e2750d3e48dd19c29378fba428d1688a18e2c89511a9733faedd16cccd",
+    "tools/compare_faar_ardft.py": "d8a2aff9c26e1481c77bda2e5f5792aebfbd3f6785e3c520b78e074541395efb",
+    "tools/faar_recovery/README.md": "cc20ecb5fce25e377fc47387ba7d3e10e4b9101383564235cc408380ed62441f",
+    "tools/faar_recovery/diagnose.py": "b14af52e7ae715e53bf9b88a9fb1acdf0947490391f3e5f4e6314087ceaed211",
+    "tools/faar_recovery/driver.cpp": "bce2e11674237a15bb738ae3a04a6b3bcc3dfba670992256129aeaf0c6a44604",
+    "docs/measurements/faar-recovery-2026-10-18/staged-short-multirate-native/verification-current.txt": "e3d12ee4ba20dc165508d57a240ddc03f6a49d766fa2dc6eba7d94f507c28b77"
+  },
+  "build_manifest_sha256_recorded_in_raw_runs": "b0730223463b5452d9140a3fc21dedac29c727d3d634bf29273dd373c42bf731",
+  "raw_benchmark_candidate_sha256": "5870f1c3c264219b1aae3123229e741c0a50ab54d767673b300ec17b0c4aaa78",
+  "host": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics",
+  "platform": "Linux-7.0.14-22-pve-x86_64-with-glibc2.41",
+  "benchmark_protocol": "Current common-rate snapshot: ten alternating 30-second stereo trials per engine/conversion, one warmup; separate 30-trial 192->48 check. See common-rates-current-summary.json. Older benchmark_medians and broad matrices in this manifest are historical snapshots unless their embedded candidate hash matches the current hash.",
+  "quality_protocol": "Current-hash tone, selected alias, impulse, and exact-count checks at High/Good/Fast cover five common conversions; current-hash upsampling images cover six common routes. Full 357-pair High tone and broad transient/image records are prior-hash evidence. Quality masks for Good/Fast and perceptual validation are not complete.",
+  "benchmark_medians": {
+    "96000->44100": {
+      "ardftsrc": {
+        "actual_count": 1350048,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.0544830435,
+        "setup_cpu_seconds": 0.004627043
+      },
+      "faar-candidate": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.05728988000000001,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.056050746500000005,
+        "setup_cpu_seconds": 0.0012467525000000009,
+        "setup_live_heap_bytes": 3717856.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "faar-default": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.9574356850000001,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.9532026525000001,
+        "setup_cpu_seconds": 0.004135377,
+        "setup_live_heap_bytes": 402400.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "sox-wide": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.07638832000000001,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.07560108400000001,
+        "setup_cpu_seconds": 0.0006989144999999999,
+        "setup_live_heap_bytes": 622624.0,
+        "whole_process_peak_rss_kib": 174432.0
+      }
+    },
+    "48000->44100": {
+      "ardftsrc": {
+        "actual_count": 1350048,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.038859577,
+        "setup_cpu_seconds": 0.004027033500000001
+      },
+      "faar-candidate": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.0514404855,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.049988333,
+        "setup_cpu_seconds": 0.0012977524999999998,
+        "setup_live_heap_bytes": 3868064.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "faar-default": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.491932818,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.48982206100000003,
+        "setup_cpu_seconds": 0.0021113775,
+        "setup_live_heap_bytes": 184656.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "sox-wide": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.0637210885,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.062989639,
+        "setup_cpu_seconds": 0.0006916414999999995,
+        "setup_live_heap_bytes": 574784.0,
+        "whole_process_peak_rss_kib": 174432.0
+      }
+    },
+    "44100->48000": {
+      "ardftsrc": {
+        "actual_count": 1464320,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.0403177205,
+        "setup_cpu_seconds": 0.0040421020000000005
+      },
+      "faar-candidate": {
+        "actual_count": 1464320,
+        "api_total_cpu_seconds": 0.050675105000000005,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.04950977050000001,
+        "setup_cpu_seconds": 0.0011717965000000007,
+        "setup_live_heap_bytes": 3856160.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "faar-default": {
+        "actual_count": 1464320,
+        "api_total_cpu_seconds": 0.5110673105,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.509013571,
+        "setup_cpu_seconds": 0.0020836060000000004,
+        "setup_live_heap_bytes": 184656.0,
+        "whole_process_peak_rss_kib": 174432.0
+      },
+      "sox-wide": {
+        "actual_count": 1464320,
+        "api_total_cpu_seconds": 0.06278331749999999,
+        "deterministic_output": true,
+        "expected_count": 1464320,
+        "processing_cpu_seconds": 0.062124056999999996,
+        "setup_cpu_seconds": 0.0006385614999999999,
+        "setup_live_heap_bytes": 564880.0,
+        "whole_process_peak_rss_kib": 174432.0
+      }
+    },
+    "192000->44100": {
+      "ardftsrc": {
+        "actual_count": 1350048,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.087971477,
+        "setup_cpu_seconds": 0.0058759745000000006
+      },
+      "faar-candidate": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.08963713950000002,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.08854279350000001,
+        "setup_cpu_seconds": 0.001091461000000002,
+        "setup_live_heap_bytes": 3794176.0,
+        "whole_process_peak_rss_kib": 358116.0
+      },
+      "faar-default": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 1.894824207,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 1.8886800099999999,
+        "setup_cpu_seconds": 0.0061913655000000005,
+        "setup_live_heap_bytes": 620144.0,
+        "whole_process_peak_rss_kib": 358116.0
+      },
+      "sox-wide": {
+        "actual_count": 1350048,
+        "api_total_cpu_seconds": 0.10396515300000002,
+        "deterministic_output": true,
+        "expected_count": 1350048,
+        "processing_cpu_seconds": 0.10323715800000001,
+        "setup_cpu_seconds": 0.0007150905000000013,
+        "setup_live_heap_bytes": 659168.0,
+        "whole_process_peak_rss_kib": 358116.0
+      }
+    }
+  },
+  "quality_sweep_counts": {
+    "fast": {
+      "probes": 98,
+      "other_signals": 42,
+      "floor_controls": 49,
+      "faar_quality": 0
+    },
+    "good": {
+      "probes": 98,
+      "other_signals": 42,
+      "floor_controls": 49,
+      "faar_quality": 1
+    },
+    "high": {
+      "probes": 98,
+      "other_signals": 42,
+      "floor_controls": 49,
+      "faar_quality": 2
+    }
+  },
+  "verification": "Six test groups pass in native staged-short and fresh default release builds. The decimated FIR unit test passes with both Ooura folded inverse and portable full inverse implementations. Current-hash High tone, alias, impulse, and exact-count checks cover 96->48, 88.2->44.1, and 192->48 kHz. The 357-pair High tone matrix is from the prior candidate hash; broad transient and image matrices remain earlier snapshots.",
+  "sox_revision": "54102e40ffbdbe991505b9ac0a7c62e0b4d4ae3c",
+  "sox_source_linked": false,
+  "ooura_notice": "libfaar/OOURA-NOTICE",
+  "interpretation": "On this measured set of five common conversions, the candidate is faster than wide SoX and ARDFTSRC in the recorded runs. The separate 192->48 SoX margin is small. This is not a universal throughput or perceptual-quality claim. Setup live heap is 0.97-7.48 MB for FAAR versus 0.51-0.60 MB for SoX.",
+  "reference_sha256": "ff84fb9164a57b6b13d8c1446df6771e8ab710745f40c4cda5967a32af20c597",
+  "raw_run_provenance_note": "The upstream diagnostic build manifest hash is recorded in each raw JSON. The adjacent current-candidate manifest additionally hashes the exact current FAAR source set and shared library, including the 192 kHz transform-size adjustment.",
+  "sox_runtime_library": {
+    "path": "/tmp/faar-recovery/sox-instrumented-build/src/liblibsox.so.4.0.0",
+    "sha256": "413a22afda9c3ddb947dadc04dace1670dafcf18105e0d8fb0d1fe69e75aa271",
+    "bytes": 2302080,
+    "note": "Scratch instrumented build of pinned SoX CPU path; diagnostic hooks export filter prototypes and parameters, with no arithmetic or planner changes."
+  },
+  "response_matrix_high_pre_clock_correction": {
+    "file": "signals-response-matrix-high.json",
+    "sha256": "c9fd6bee2e263c11ea1d98dbc97e9e8594deadd90b918f7a9ed30f2ce1294f94",
+    "summary_file": "response-matrix-summary-high.json",
+    "summary": {
+      "candidate_library_sha256": "6fc528f86c35ad95773b5641e6dcc10877d17b1f26acdea66e24db578e352048",
+      "preset": "High",
+      "conversion_pairs": 357,
+      "probe_records": 6264,
+      "candidate_reference_records_per_engine": 3132,
+      "passband_rule": "frequency <= 0.45 * min(in_rate, out_rate), and below output Nyquist",
+      "passband_probe_count": 1284,
+      "passband_max_abs_wanted_gain_delta_db": 0.005523635962218832,
+      "passband_over_0_25_db_count": 0,
+      "stopband_rule": "downsampling only; probe frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+      "stopband_probe_count": 132,
+      "candidate_min_alias_attenuation_db": 155.89114327962446,
+      "reference_min_alias_attenuation_db": 155.89105750933675,
+      "stopband_max_abs_delta_db": 6.010285098618823,
+      "stopband_comparison_note": "Several absolute-dB differences are near the float32 residual floor; compare attenuation lower bounds there rather than using 0.25 dB as a universal floor-level gate.",
+      "transition_rule": "diagnostic tones above 0.45 * min(rate) and below output Nyquist",
+      "transition_probe_count": 1408,
+      "transition_max_abs_wanted_gain_delta_db": 193.03307917624852,
+      "transition_max_below_0_475_lower_rate_db": 3.44799333380437,
+      "scope_note": "This is High-preset response coverage over the same 357 ordered supported-rate and +/-1 Hz neighbor pairs used by the Tuneout matrix. It does not certify Good/Fast presets, image rejection for upsampling, transients, or perceptual quality."
+    },
+    "status": "historical measurement; retained with original candidate hash",
+    "scope_note_current": "The 20-tap High phase-clock correction affects three downsampling plans. Those were rechecked on selected conversions; this full matrix was not rerun. Good/Fast plans are unchanged."
+  },
+  "response_matrix_good_pre_clock_correction": {
+    "file": "signals-response-matrix-good.json",
+    "sha256": "f4cc7004a80832adb03188677280e2a1bb7904a67f7c208a296afe9f5daeab4d",
+    "summary_file": "response-matrix-summary-good.json",
+    "summary": {
+      "candidate_library_sha256": "6fc528f86c35ad95773b5641e6dcc10877d17b1f26acdea66e24db578e352048",
+      "preset": "good",
+      "conversion_pairs": 357,
+      "probe_records": 3132,
+      "passband_rule": "frequency <= 0.45 * min(in_rate,out_rate), below output Nyquist",
+      "passband_probe_count": 1284,
+      "max_abs_wanted_gain_db_from_unity": 0.2591080736845693,
+      "passband_over_0_25_db_count": 5,
+      "deep_stopband_rule": "downsampling only, frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+      "deep_stopband_probe_count": 132,
+      "minimum_alias_attenuation_db": 139.9318655381618,
+      "transition_probe_count": 1408,
+      "transition_max_abs_gain_db_from_unity": 145.15078391875113,
+      "note": "Fast and Good are lower-quality presets; this is response characterization, not a comparison against High-preset ARDFTSRC or an application of the High 0.25 dB gate."
+    },
+    "status": "historical measurement; retained with original candidate hash",
+    "scope_note_current": "The 20-tap High phase-clock correction affects three downsampling plans. Those were rechecked on selected conversions; this full matrix was not rerun. Good/Fast plans are unchanged."
+  },
+  "response_matrix_fast_pre_clock_correction": {
+    "file": "signals-response-matrix-fast.json",
+    "sha256": "59c721cb54c3696083d1aa014b6ad99021ddbb7cce472347511e4074282edaea",
+    "summary_file": "response-matrix-summary-fast.json",
+    "summary": {
+      "candidate_library_sha256": "6fc528f86c35ad95773b5641e6dcc10877d17b1f26acdea66e24db578e352048",
+      "preset": "fast",
+      "conversion_pairs": 357,
+      "probe_records": 3132,
+      "passband_rule": "frequency <= 0.45 * min(in_rate,out_rate), below output Nyquist",
+      "passband_probe_count": 1284,
+      "max_abs_wanted_gain_db_from_unity": 1.2159709041990934,
+      "passband_over_0_25_db_count": 82,
+      "deep_stopband_rule": "downsampling only, frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+      "deep_stopband_probe_count": 132,
+      "minimum_alias_attenuation_db": 105.64979688099369,
+      "transition_probe_count": 1408,
+      "transition_max_abs_gain_db_from_unity": 80.26925071325198,
+      "note": "Fast and Good are lower-quality presets; this is response characterization, not a comparison against High-preset ARDFTSRC or an application of the High 0.25 dB gate."
+    },
+    "status": "historical measurement; retained with original candidate hash",
+    "scope_note_current": "The 20-tap High phase-clock correction affects three downsampling plans. Those were rechecked on selected conversions; this full matrix was not rerun. Good/Fast plans are unchanged."
+  },
+  "response_matrix_upsampling_high_passband_pre_clock_correction": {
+    "file": "signals-image-matrix-high-passband.json",
+    "sha256": "3b72c3bed6a1f4ff6199a73b08dee948abe3e29a4079492ed61d74ec89ee9c45",
+    "summary_file": "image-matrix-summary-high-passband.json",
+    "summary": {
+      "candidate_library_sha256": "6fc528f86c35ad95773b5641e6dcc10877d17b1f26acdea66e24db578e352048",
+      "preset": "High",
+      "input_tone_rate_fraction": 0.45,
+      "pair_count": 187,
+      "probe_records": 374,
+      "engines": {
+        "faar-candidate": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999299262230839,
+          "least_attenuated_image": {
+            "attenuation_db": -151.11440329266972,
+            "in_rate": 32000,
+            "out_rate": 768000,
+            "frequency_hz": 241600,
+            "amplitude": 1.3907524106827423e-08
+          },
+          "image_components_above_minus_120_db": 0
+        },
+        "ardftsrc": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999223661091792,
+          "least_attenuated_image": {
+            "attenuation_db": -72.74733322137217,
+            "in_rate": 8000,
+            "out_rate": 768000,
+            "frequency_hz": 4400,
+            "amplitude": 0.00011525414369694625
+          },
+          "image_components_above_minus_120_db": 63
+        }
+      },
+      "interpretation": "Image amplitudes for the candidate are near the float32 output residual floor. The reported attenuation is characterization, not a perception score; Good/Fast and transient criteria are not covered."
+    },
+    "status": "historical measurement; retained with original candidate hash",
+    "scope_note_current": "The 20-tap High phase-clock correction affects three downsampling plans. Those were rechecked on selected conversions; this full matrix was not rerun. Good/Fast plans are unchanged."
+  },
+  "transient_high_pre_clock_correction": {
+    "file": "signals-transient-high.json",
+    "sha256": "d27b3a998642f58536623b4ae14a5b90ec8d5e19d85e9c2786eb6f3c148c0e27",
+    "summary_file": "transient-summary-high.json",
+    "summary": {
+      "candidate_library_sha256": "6fc528f86c35ad95773b5641e6dcc10877d17b1f26acdea66e24db578e352048",
+      "preset": "High",
+      "input": "three-impulse signal; central pulse analyzed in a +/-0.2 second window, excluding +/-1 ms around peak",
+      "engines": {
+        "faar-candidate": {
+          "pairs": 4,
+          "max_abs_time_reversal_error_relative": 0.7872738615531722,
+          "max_abs_pre_post_energy_imbalance_db": 9.759963746030433,
+          "rows": [
+            {
+              "in_rate": 96000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.20949861407279968,
+              "pre_ringing_to_post_db": 9.759963746030433,
+              "time_reversal_error_relative": 0.7872738615531722
+            },
+            {
+              "in_rate": 48000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.41899722814559937,
+              "pre_ringing_to_post_db": 9.759963746030433,
+              "time_reversal_error_relative": 0.7872738615531722
+            },
+            {
+              "in_rate": 44100,
+              "out_rate": 48000,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.4977664351463318,
+              "pre_ringing_to_post_db": 3.664444372902484e-14,
+              "time_reversal_error_relative": 5.370217310134463e-16
+            },
+            {
+              "in_rate": 192000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.10641101002693176,
+              "pre_ringing_to_post_db": -1.329168351186571,
+              "time_reversal_error_relative": 0.38816586334356845
+            }
+          ]
+        },
+        "ardftsrc": {
+          "pairs": 4,
+          "max_abs_time_reversal_error_relative": 2.413365247211473e-11,
+          "max_abs_pre_post_energy_imbalance_db": 7.376815820924006e-11,
+          "rows": [
+            {
+              "in_rate": 96000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.22852957248687744,
+              "pre_ringing_to_post_db": -8.486081705668968e-14,
+              "time_reversal_error_relative": 1.964637036085109e-12
+            },
+            {
+              "in_rate": 48000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.4570591449737549,
+              "pre_ringing_to_post_db": -8.486081705668968e-14,
+              "time_reversal_error_relative": 1.9646341535071875e-12
+            },
+            {
+              "in_rate": 44100,
+              "out_rate": 48000,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.49748167395591736,
+              "pre_ringing_to_post_db": -7.376815820924006e-11,
+              "time_reversal_error_relative": 2.413365247211473e-11
+            },
+            {
+              "in_rate": 192000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "peak_amplitude": 0.11426478624343872,
+              "pre_ringing_to_post_db": -8.486081705668968e-14,
+              "time_reversal_error_relative": 1.964645099578817e-12
+            }
+          ]
+        }
+      },
+      "interpretation": "Candidate downsampling responses are asymmetric compared with ARDFTSRC in this window. The 20-tap even-bank phase-origin hypothesis is unconfirmed. A tested half-sample coefficient-origin shift improved energy balance but failed tone-residual and endpoint-constant gates; it was reverted."
+    },
+    "status": "historical pre-clock-correction measurement"
+  },
+  "response_matrix_upsampling_high": {
+    "file": "signals-image-matrix-high-halfphase-exact.json",
+    "sha256": "3c716aa27034185e43dc6b0b26c25196bcbda98ae31c809d3e7008d3919cc750",
+    "summary_file": "image-matrix-summary-high-halfphase-exact.json",
+    "summary_sha256": "cd630e6129d510a4d6d86cc070a6cbd7106a37fd06b12ac8e503f38c157a6256",
+    "summary": {
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "preset": "High",
+      "input_tone_rate_fraction": 0.45,
+      "pair_count": 187,
+      "probe_records": 374,
+      "engines": {
+        "faar-candidate": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999299262230839,
+          "least_attenuated_image": {
+            "attenuation_db": -151.11440329266972,
+            "frequency_hz": 241600,
+            "amplitude": 1.3907524106827423e-08
+          },
+          "image_components_above_minus_120_db": 0
+        },
+        "ardftsrc": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999223661091792,
+          "least_attenuated_image": {
+            "attenuation_db": -72.74733322137217,
+            "frequency_hz": 4400,
+            "amplitude": 0.00011525414369694625
+          },
+          "image_components_above_minus_120_db": 63
+        }
+      },
+      "interpretation": "Candidate image amplitudes near the float32 output residual floor; descriptive characterization, not a perception score."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185"
+  },
+  "transient_high": {
+    "file": "signals-primary-phase-transient-high.json",
+    "sha256": "c67a553225c2ba628e38dbe7d10534479a9896bd78fd1a2869a0b30812934a69",
+    "summary_file": "transient-phase-summary-high.json",
+    "summary_sha256": "977daa82c1589c85427a7551a6abc8ceed1780df833410653cd5095c320dca3a",
+    "summary": {
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "preset": "High",
+      "central_impulse_window": "+/-0.2 seconds, excluding +/-1 ms around the peak",
+      "max_abs_wanted_tone_phase_delta_below_0_45_lower_rate_radians": 2.0371547192554584e-15,
+      "engines": {
+        "faar-candidate": {
+          "pairs": 4,
+          "max_abs_time_reversal_error_relative": 5.949077158628563e-16,
+          "max_abs_pre_post_energy_imbalance_db": 3.664444372902484e-14,
+          "rows": [
+            {
+              "in_rate": 96000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": -1.0607602132086164e-14,
+              "time_reversal_error_relative": 5.949077158628563e-16
+            },
+            {
+              "in_rate": 48000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": -1.0607602132086164e-14,
+              "time_reversal_error_relative": 4.854271213319502e-16
+            },
+            {
+              "in_rate": 44100,
+              "out_rate": 48000,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": 3.664444372902484e-14,
+              "time_reversal_error_relative": 5.370217310134463e-16
+            },
+            {
+              "in_rate": 192000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": 3.857309866213148e-15,
+              "time_reversal_error_relative": 5.775355319790304e-16
+            }
+          ]
+        },
+        "ardftsrc": {
+          "pairs": 4,
+          "max_abs_time_reversal_error_relative": 2.413365247211473e-11,
+          "max_abs_pre_post_energy_imbalance_db": 7.376815820924006e-11,
+          "rows": [
+            {
+              "in_rate": 96000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": -8.486081705668968e-14,
+              "time_reversal_error_relative": 1.964637036085109e-12
+            },
+            {
+              "in_rate": 48000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": -8.486081705668968e-14,
+              "time_reversal_error_relative": 1.9646341535071875e-12
+            },
+            {
+              "in_rate": 44100,
+              "out_rate": 48000,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": -7.376815820924006e-11,
+              "time_reversal_error_relative": 2.413365247211473e-11
+            },
+            {
+              "in_rate": 192000,
+              "out_rate": 44100,
+              "main_peak_offset_frames": 0,
+              "pre_ringing_to_post_db": -8.486081705668968e-14,
+              "time_reversal_error_relative": 1.964645099578817e-12
+            }
+          ]
+        }
+      },
+      "interpretation": "The half-sample clock/history correction restores symmetric central impulse responses and phase alignment on the four measured pairs."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185"
+  },
+  "current_benchmark": {
+    "file": "bench-five-common-current-hash.json",
+    "sha256": "5858e230d379ff9ad77b394bd4192a15d817e5ca35b147c6edcfee1439f33f25",
+    "summary_file": "half-rate-optimization-summary.json",
+    "summary_sha256": "58966fa1f4ca9f38c11dc9676043a4a99db239a83679f7286bf945e39a39ad73",
+    "candidate_library_sha256": "9d2a24b6ee82814c506fc1472879c4b21bb9229004a8beb1029d4a1ffc5bd53f",
+    "repeats": 10,
+    "standard_rate_cases": 5
+  },
+  "response_matrix_upsampling_good": {
+    "file": "signals-image-matrix-good.json",
+    "sha256": "0570ee613eab303b38a16acc8f321e52202ee537acffa9f5d3f1fb0374be06bb",
+    "summary_file": "image-matrix-summary-good.json",
+    "summary_sha256": "81b2a926287de962b2aa8cac42a232115b0a44d6a58c4736d37f34e06ae1e51c",
+    "summary": {
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "preset": "Good",
+      "input_tone_rate_fraction": 0.45,
+      "pair_count": 187,
+      "probe_records": 374,
+      "engines": {
+        "faar-candidate": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999990130167789,
+          "least_attenuated_image": {
+            "attenuation_db": -140.62159099629514,
+            "in_rate": 16000,
+            "out_rate": 48000,
+            "frequency_hz": 8800,
+            "amplitude": 4.654677559173695e-08
+          },
+          "image_components_above_minus_120_db": 0,
+          "image_components_above_minus_100_db": 0
+        },
+        "ardftsrc": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999223661091792,
+          "least_attenuated_image": {
+            "attenuation_db": -72.74733322137217,
+            "in_rate": 8000,
+            "out_rate": 768000,
+            "frequency_hz": 4400,
+            "amplitude": 0.00011525414369694625
+          },
+          "image_components_above_minus_120_db": 63,
+          "image_components_above_minus_100_db": 10
+        }
+      },
+      "interpretation": "Characterization at the documented 0.45 input-rate tone. Candidate image components near the float32 residual floor do not support precise attenuation claims. This is not an automatic acceptance threshold or perceptual score."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+    "status": "characterization only; no acceptance mask defined"
+  },
+  "response_matrix_upsampling_fast": {
+    "file": "signals-image-matrix-fast.json",
+    "sha256": "78feb8e35bc2839fccbc3a22e4cdd5b0c947322aa9bb1eb88b25e1e34fa78957",
+    "summary_file": "image-matrix-summary-fast.json",
+    "summary_sha256": "aa3317b1c8b7a0d086535f1277e74ca22c18aee65bc7e0f02823d7627bc83a13",
+    "summary": {
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "preset": "Fast",
+      "input_tone_rate_fraction": 0.45,
+      "pair_count": 187,
+      "probe_records": 374,
+      "engines": {
+        "faar-candidate": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.49447601723046414,
+          "least_attenuated_image": {
+            "attenuation_db": -64.43843948469446,
+            "in_rate": 384000,
+            "out_rate": 768000,
+            "frequency_hz": 211200,
+            "amplitude": 0.000296641351803877
+          },
+          "image_components_above_minus_120_db": 1490,
+          "image_components_above_minus_100_db": 1479
+        },
+        "ardftsrc": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999223661091792,
+          "least_attenuated_image": {
+            "attenuation_db": -72.74733322137217,
+            "in_rate": 8000,
+            "out_rate": 768000,
+            "frequency_hz": 4400,
+            "amplitude": 0.00011525414369694625
+          },
+          "image_components_above_minus_120_db": 63,
+          "image_components_above_minus_100_db": 10
+        }
+      },
+      "interpretation": "Characterization at the documented 0.45 input-rate tone. No preset-specific image acceptance threshold is defined, so these measurements are not assigned a pass/fail result or perceptual score."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+    "status": "characterization only; no acceptance mask defined"
+  },
+  "transient_matrix_presets": {
+    "summary_file": "transient-matrix-summary-presets.json",
+    "summary_sha256": "64f5ca2e247dda427dfd3a64c14220a5605fb15dc12bdcf67eac1e2a5c810bc5",
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+    "reference": "ARDFTSRC High settings",
+    "files": {
+      "high": {
+        "file": "signals-transient-matrix-high.json",
+        "sha256": "a7913c70894fbf02a7263e2482e439bcb23a4a861b9eded064f26ffbb394b11d"
+      },
+      "good": {
+        "file": "signals-transient-matrix-good.json",
+        "sha256": "c4905ac3b9e76c823aedfef25c0c4c5ae8395980410434c752dba4cc269f6e3c"
+      },
+      "fast": {
+        "file": "signals-transient-matrix-fast.json",
+        "sha256": "db87578b307f960a0594fb0e019b96449da4e968d65ba548a7a9af80d72e0428"
+      },
+      "ardftsrc": {
+        "file": "signals-transient-matrix-ardftsrc.json",
+        "sha256": "d57bbd1dee9477ca2418c3da17c85f3a48c263ba796685cb6af832ec1be50db6"
+      }
+    },
+    "summary": {
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "conversion_pairs": 357,
+      "input": "2 seconds with impulses at first, midpoint, and final input frame",
+      "faar_boundary": "ZERO, set explicitly by the diagnostic driver",
+      "central_window": "+/-200 ms (clipped); first and last endpoint energies use 10 ms windows",
+      "reference": "ARDFTSRC High settings (same reference output for each FAAR preset)",
+      "engines": {
+        "faar-high": {
+          "pairs": 357,
+          "main_peaks_at_expected_frame": 357,
+          "time_reversal_error_relative": {
+            "median": 3.868357245683433e-16,
+            "p95": 0.0008099461931229156,
+            "maximum": 0.0009931050746638233,
+            "pairs_above_1e-4": 72
+          },
+          "worst_symmetry_pair": {
+            "in_rate": 192000,
+            "out_rate": 8000,
+            "error": 0.0009931050746638233
+          },
+          "pairs_with_greater_reversal_error_than_ardftsrc": 110,
+          "endpoint_energy_first_last_10ms": {
+            "head_median": 0.05866509675979614,
+            "tail_median": 0.05866522714495659,
+            "head_max": 2.8957886695861816,
+            "tail_max": 5.466847896575928
+          }
+        },
+        "faar-good": {
+          "pairs": 357,
+          "main_peaks_at_expected_frame": 357,
+          "time_reversal_error_relative": {
+            "median": 3.214504127981825e-16,
+            "p95": 0.0020276111330704756,
+            "maximum": 0.0024583091802864014,
+            "pairs_above_1e-4": 73
+          },
+          "worst_symmetry_pair": {
+            "in_rate": 768000,
+            "out_rate": 8000,
+            "error": 0.0024583091802864014
+          },
+          "pairs_with_greater_reversal_error_than_ardftsrc": 98,
+          "endpoint_energy_first_last_10ms": {
+            "head_median": 0.05855165049433708,
+            "tail_median": 0.05855172872543335,
+            "head_max": 2.884957790374756,
+            "tail_max": 5.45565938949585
+          }
+        },
+        "faar-fast": {
+          "pairs": 357,
+          "main_peaks_at_expected_frame": 357,
+          "time_reversal_error_relative": {
+            "median": 7.885548085664027e-20,
+            "p95": 0.005189464184698363,
+            "maximum": 0.005509636968583226,
+            "pairs_above_1e-4": 73
+          },
+          "worst_symmetry_pair": {
+            "in_rate": 8000,
+            "out_rate": 16000,
+            "error": 0.005509636968583226
+          },
+          "pairs_with_greater_reversal_error_than_ardftsrc": 83,
+          "endpoint_energy_first_last_10ms": {
+            "head_median": 0.058338463306427,
+            "tail_median": 0.058338530361652374,
+            "head_max": 2.864060640335083,
+            "tail_max": 5.433531284332275
+          }
+        },
+        "ardftsrc": {
+          "pairs": 357,
+          "main_peaks_at_expected_frame": 357,
+          "time_reversal_error_relative": {
+            "median": 9.278018194401968e-13,
+            "p95": 0.0006799955821256947,
+            "maximum": 0.03474901849145637,
+            "pairs_above_1e-4": 27
+          },
+          "worst_symmetry_pair": {
+            "in_rate": 8000,
+            "out_rate": 705600,
+            "error": 0.03474901849145637
+          },
+          "pairs_with_greater_reversal_error_than_ardftsrc": 0,
+          "endpoint_energy_first_last_10ms": {
+            "head_median": 0.062000587582588196,
+            "tail_median": 0.062000710517168045,
+            "head_max": 3.001417636871338,
+            "tail_max": 5.655527591705322
+          }
+        }
+      },
+      "interpretation": "All central peaks land on the expected output frame. Error counts are descriptive, not thresholds. Endpoint energies characterize the ZERO boundary only; no acceptance limit or perceptual claim is assigned."
+    }
+  },
+  "response_matrix_good_vs_current_polyphase": {
+    "file": "signals-response-matrix-good-vs-current-polyphase.json",
+    "sha256": "002c20f2eaa13e1c21ddeed6f67d1d559e84523c90ec9f484dd5c04af4c3f209",
+    "summary_file": "response-matrix-summary-good-vs-current-polyphase.json",
+    "summary_sha256": "f0f1d83dd180412def3d2de513c8929f61deb7ea15266382c0189d56e3fd8c01",
+    "summary": {
+      "preset": "Good",
+      "comparison": "staged-short candidate vs freshly rebuilt current polyphase baseline",
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553",
+      "conversion_pairs": 357,
+      "records_per_engine": {
+        "faar-candidate": 3132,
+        "faar-default": 3132
+      },
+      "passband_rule": "frequency <= 0.45 * min(rate), below output Nyquist",
+      "passband_probe_count": 1284,
+      "candidate_baseline_abs_gain_delta_db": {
+        "median": 0.0,
+        "p95": 0.00013884805156939208,
+        "maximum": 0.25897326289331013,
+        "pairs_over_0_25_db": 5
+      },
+      "worst_passband_pair": {
+        "in_rate": 192000,
+        "out_rate": 44100,
+        "frequency_hz": 19845,
+        "candidate_gain_db": -0.2591080736845693,
+        "baseline_gain_db": -0.00013481079125916712
+      },
+      "deep_stopband_rule": "downsampling only, frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+      "deep_stopband_probe_count": 132,
+      "minimum_alias_attenuation_db": {
+        "candidate": 139.9318655381618,
+        "baseline": 155.90991059502724
+      },
+      "candidate_minus_baseline_alias_attenuation_db": {
+        "median": -7.871301041167655,
+        "minimum": -16.333200868766596,
+        "maximum": 8.142409910760762e-06
+      },
+      "worst_alias_loss_pair": {
+        "in_rate": 16000,
+        "out_rate": 12000,
+        "frequency_hz": 7840.0,
+        "candidate_attenuation_db": 139.9318655381618,
+        "baseline_attenuation_db": 156.26506640692838
+      },
+      "interpretation": "The staged Good preset and current polyphase Good preset are both characterized over the same matrix. Values are comparative evidence, not an acceptance mask; no pass/fail threshold is assigned."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+    "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553"
+  },
+  "image_matrix_good_vs_current_polyphase": {
+    "file": "signals-image-matrix-good-vs-current-polyphase.json",
+    "sha256": "e214f2f7e209a53d7328f5bda327264782a54a9537c92c86e562dd3b0309e375",
+    "summary_file": "image-matrix-summary-good-vs-current-polyphase.json",
+    "summary_sha256": "649b8807b4fd8ffec9f0607649d903eb4f8a310f3399a27e5e52fc474592b7dc",
+    "summary": {
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553",
+      "preset": "Good",
+      "comparison": "staged-short candidate vs current polyphase baseline",
+      "input_tone_rate_fraction": 0.45,
+      "pair_count": 187,
+      "probe_records": 374,
+      "engines": {
+        "faar-candidate": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999990130167789,
+          "least_attenuated_image": {
+            "attenuation_db": -140.62159099629514,
+            "in_rate": 16000,
+            "out_rate": 48000,
+            "frequency_hz": 8800,
+            "amplitude": 4.654677559173695e-08
+          },
+          "image_components_above_minus_120_db": 0
+        },
+        "faar-default": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.4999990130167789,
+          "least_attenuated_image": {
+            "attenuation_db": -140.62159099583963,
+            "in_rate": 16000,
+            "out_rate": 48000,
+            "frequency_hz": 8800,
+            "amplitude": 4.654677559417802e-08
+          },
+          "image_components_above_minus_120_db": 0
+        }
+      },
+      "paired_image_component_count": 1490,
+      "candidate_baseline_max_abs_image_attenuation_delta_db": 5.668308062922733e-07,
+      "interpretation": "Good candidate and current baseline image measurements agree to within numerical output-fit noise. This is descriptive only; no Good image threshold is defined."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+    "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553"
+  },
+  "response_matrix_fast_vs_current_polyphase": {
+    "file": "signals-response-matrix-fast-vs-current-polyphase.json",
+    "sha256": "b62ab87e32f79fbdc376391e9f489e0c6af4359daad0195c7bac6355fa44e07d",
+    "summary_file": "response-matrix-summary-fast-vs-current-polyphase.json",
+    "summary_sha256": "968773392b136d181e6465f0323d782e24ecd1c8a29f498a4e30bcc790a06cd0",
+    "summary": {
+      "preset": "Fast",
+      "comparison": "staged-short candidate vs freshly rebuilt current polyphase baseline",
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553",
+      "conversion_pairs": 357,
+      "records_per_engine": {
+        "faar-candidate": 3132,
+        "faar-default": 3132
+      },
+      "passband_rule": "frequency <= 0.45 * min(rate), below output Nyquist",
+      "passband_probe_count": 1284,
+      "candidate_baseline_abs_gain_delta_db": {
+        "median": 0.0,
+        "p95": 0.15762367614594663,
+        "maximum": 1.1918891131490954,
+        "pairs_over_0_25_db": 35
+      },
+      "worst_passband_pair": {
+        "in_rate": 705600,
+        "out_rate": 352800,
+        "frequency_hz": 158760,
+        "candidate_gain_db": -0.02408179105305967,
+        "baseline_gain_db": -1.2159709042021551
+      },
+      "deep_stopband_rule": "downsampling only, frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+      "deep_stopband_probe_count": 132,
+      "minimum_alias_attenuation_db": {
+        "candidate": 105.64979688099369,
+        "baseline": 87.50500033620145
+      },
+      "candidate_minus_baseline_alias_attenuation_db": {
+        "median": -1.6196252801137234e-06,
+        "minimum": -34.26266098417625,
+        "maximum": 18.144796603652125
+      },
+      "worst_alias_loss_pair": {
+        "in_rate": 11025,
+        "out_rate": 8000,
+        "frequency_hz": 5402.25,
+        "candidate_attenuation_db": 122.05722944590957,
+        "baseline_attenuation_db": 156.31989043008582
+      },
+      "interpretation": "The staged Fast preset and current polyphase Fast preset are characterized over the same matrix. Values are comparative evidence, not an acceptance mask; no pass/fail threshold is assigned."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+    "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553"
+  },
+  "image_matrix_fast_vs_current_polyphase": {
+    "file": "signals-image-matrix-fast-vs-current-polyphase.json",
+    "sha256": "98d8fa8c3ca26bd2e4b6e1d9394660ac3e311b87e389f2d1409e0e4f50018e06",
+    "summary_file": "image-matrix-summary-fast-vs-current-polyphase.json",
+    "summary_sha256": "84cc97df8ec89635e05df84995cf1a6fe75d457f7bbafa2ab4de8d03f56de0a6",
+    "summary": {
+      "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+      "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553",
+      "preset": "Fast",
+      "comparison": "staged-short candidate vs current polyphase baseline",
+      "input_tone_rate_fraction": 0.45,
+      "pair_count": 187,
+      "probe_records": 374,
+      "engines": {
+        "faar-candidate": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.49447601723046414,
+          "least_attenuated_image": {
+            "attenuation_db": -64.43843948469446,
+            "in_rate": 384000,
+            "out_rate": 768000,
+            "frequency_hz": 211200,
+            "amplitude": 0.000296641351803877
+          },
+          "image_components_above_minus_120_db": 1490,
+          "image_components_above_minus_100_db": 1479
+        },
+        "faar-default": {
+          "probe_pairs": 187,
+          "pairs_with_in_band_images": 129,
+          "image_components": 1490,
+          "minimum_wanted_amplitude": 0.49447601723046414,
+          "least_attenuated_image": {
+            "attenuation_db": -64.43843948469446,
+            "in_rate": 384000,
+            "out_rate": 768000,
+            "frequency_hz": 211200,
+            "amplitude": 0.000296641351803877
+          },
+          "image_components_above_minus_120_db": 1490,
+          "image_components_above_minus_100_db": 1479
+        }
+      },
+      "paired_image_component_count": 1490,
+      "candidate_baseline_max_abs_image_attenuation_delta_db": 0.0,
+      "interpretation": "Fast candidate image measurements are identical to the current polyphase baseline across the measured matrix. The observed worst image is existing Fast preset behavior; no acceptance threshold is defined."
+    },
+    "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+    "baseline_library_sha256": "bf35a8482fa15bb80dab7da56f3e3e017db54a4ecdf920c0b8d484165e249553"
+  },
+  "additional_benchmark_file": "bench-extra-high-15trials.json",
+  "additional_benchmark_summary_file": "bench-extra-high-15trials-summary.json",
+  "additional_benchmark_summary_sha256": "6bde6177c4e36ea2d3d55085969baa5541bda2cbaa637066991fba8e1a4cd305",
+  "additional_benchmark_candidate_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "additional_benchmark_protocol": "15 alternating serial trials, 30-second stereo common input; reported medians are processing CPU seconds, setup excluded",
+  "additional_benchmark_medians": {
+    "96000->48000": {
+      "faar-candidate": 0.113864188,
+      "sox-wide": 0.042644187,
+      "ardftsrc": 0.06455429700000001,
+      "faar-default": 0.46217032700000005
+    },
+    "44100->44101": {
+      "faar-candidate": 0.5791686020000001,
+      "sox-wide": 0.08762514400000002,
+      "ardftsrc": 0.114362371,
+      "faar-default": 0.5009035239999999
+    }
+  },
+  "standard_rate_benchmark_file": "bench-five-common-current-hash.json",
+  "standard_rate_benchmark_summary_file": "half-rate-optimization-summary.json",
+  "standard_rate_benchmark_summary_sha256": "58966fa1f4ca9f38c11dc9676043a4a99db239a83679f7286bf945e39a39ad73",
+  "standard_rate_benchmark_candidate_sha256": "9d2a24b6ee82814c506fc1472879c4b21bb9229004a8beb1029d4a1ffc5bd53f",
+  "standard_rate_benchmark_protocol": {
+    "repeats": 10,
+    "warmups": 1,
+    "signal_duration_seconds": 30,
+    "channels": 2,
+    "metric": "median process CPU seconds for resampler processing; setup reported separately in raw data",
+    "quality": "High preset; exact-count and deterministic-output checks; audio quality measured in separate targeted records."
+  },
+  "standard_rate_benchmark_medians": {
+    "48000->96000": {
+      "ardftsrc": 0.07406893,
+      "faar-candidate": 0.04930325,
+      "sox-wide": 0.05046765
+    },
+    "96000->48000": {
+      "ardftsrc": 0.06817155,
+      "faar-candidate": 0.03746255,
+      "sox-wide": 0.04240842
+    },
+    "192000->48000": {
+      "ardftsrc": 0.12842076,
+      "faar-candidate": 0.09528724,
+      "sox-wide": 0.06674935
+    },
+    "48000->32000": {
+      "ardftsrc": 0.03577611,
+      "faar-candidate": 0.03058466,
+      "sox-wide": 0.04641277
+    },
+    "88200->44100": {
+      "ardftsrc": 0.06127974,
+      "faar-candidate": 0.03440258,
+      "sox-wide": 0.04043919
+    }
+  },
+  "standard_rate_benchmark_result": "On five common High-preset conversions, staged-short is faster than wide SoX on four (48->96, 96->48, 48->32, and 88.2->44.1 kHz), remains slower on 192->48 kHz, and is faster than ARDFTSRC on all five.",
+  "standard_rate_signal_file": "signals-common-rates-final-candidate.json",
+  "standard_rate_signal_summary_file": "signals-common-rates-final-candidate-summary.json",
+  "standard_rate_signal_summary_sha256": "995c65d6bbce72c467c332a427c0202872bc4ca3be5f5babd5dc74b861b67268",
+  "standard_rate_signal_candidate_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+  "standard_rate_signal_result": "Five common High conversions (48->96, 96->48, 192->48, 48->32, 88.2->44.1 kHz) pass selected passband gain comparisons within 0.047 dB of ARDFTSRC and produce exact frame counts. Impulse peaks align and reversal errors are below 8e-15. Selected alias probes exceed 154.8 dB attenuation; at 192->48, two near-output-Nyquist probes are 3.3-3.6 dB weaker than SoX/ARDFTSRC. The 48->96 image probe is about -195.0 dB.",
+  "standard_rate_artifacts": {
+    "bench-standard-rates-symmetric-final.json": "849d629b727a49c9d392c8f92bfbe1229ba38ca643f980ec161d73439e794c5a",
+    "bench-standard-rates-symmetric-final-summary.json": "01ebe30dc1e3d98cdacf89d5399f07807e2503efad1921872f6923697745d063",
+    "signals-standard-rates-symmetric-final.json": "44a86a6f4a86f4f029f049dc0a53abb95f9875eb66a622f2f032cc53a78334eb",
+    "signals-standard-rates-symmetric-final-summary.json": "1a5ff657f5fee0a3fea6c6e7f6a07ac67735c1fa78eecb896175ea0df7a0af78",
+    "signals-common-rates-final-candidate.json": "1b16fe98f2b5ddd40ed7fa00702b31cdd15f3b1d6aadc12c1f5eb7a73336575a",
+    "signals-common-rates-final-candidate-image.json": "8c4fd374c93fb0e8906713d43d1945d2a1714b9b85f780d165ec72df8e19eabb",
+    "signals-common-rates-final-candidate-summary.json": "995c65d6bbce72c467c332a427c0202872bc4ca3be5f5babd5dc74b861b67268",
+    "signals-common-rates-good-final.json": "188ebf0cce1b8d32ec4d96de89309a877bee49f22188ee7809a67eb4d69133fd",
+    "signals-common-rates-fast-final.json": "dedd1bbb512e70ee10a7f62532f879945847ea69b3dac256c4dadd1b80f84ac9",
+    "signals-common-rates-good-fast-summary.json": "60666d5dd847dd42d66b05802ff668064ca6472f1140e4400963013739b14b9b",
+    "signals-current-final-high-response-matrix.json": "46501f4c5428f42e6e6b810054b04ebea64e779061e32fd748979aa15ce2f40e",
+    "response-matrix-summary-current-final-high.json": "ccb5a95c1af34e8e980ea0908ee810f789806968629b66dbec75891cf12c4896"
+  },
+  "planner2_benchmark_file": "bench-standard-rates-high-10trials-planner2.json",
+  "planner2_benchmark_sha256": "9bc0142966adefc43bfe65ee97981f93bf7fa7ecdd825d9bac8f3ec818fc2ec5",
+  "planner2_response_file": "signals-standard-planner2-response-high.json",
+  "planner2_response_sha256": "ec2d9008f5ba4bf7c049dffeb0257b1ac38f5cde50cced180e9e42170e87b756",
+  "planner2_response_summary_file": "response-matrix-summary-standard-planner2-high.json",
+  "planner2_response_summary_sha256": "9c573ba6db1215604737cfd805d73bf0764a084c6170925b614a5ecfa25c625f",
+  "planner2_image_file": "signals-standard-planner2-image-high.json",
+  "planner2_image_sha256": "44fee141c5372761825ef9e83f0a3041b8a2e978f8334cba03e52993cd4f24e0",
+  "planner2_image_summary_file": "image-matrix-summary-standard-planner2-high.json",
+  "planner2_image_summary_sha256": "7e14648fe3bf8b1c7c2e780889f4c99a78618eacbfc7be0727305bba2e26647a",
+  "standard_rate_planner2_candidate_sha256": "2be57d545ebed830649ab829dd39695e1734b59d4ccd2179481d5fcfcaec0c0e",
+  "standard_rate_planner2_result": "The High 48->96 DFT plan is 7.8% faster than wide SoX on the 10-trial standard matrix and matches its measured tones/images. High 96->48 and 192->48 plans restore measured alias attenuation, but remain slower than SoX. Full High tone/image matrices were rerun at this candidate hash.",
+  "planner2_targeted_signal_file": "signals-standard-planner2-targeted-high.json",
+  "planner2_targeted_signal_summary_file": "signals-standard-planner2-targeted-high-summary.json",
+  "planner2_targeted_signal_sha256": "45c84e58ef176e826f0fa0256ae3b03b80e831c627b46cef6044fb5011c337ab",
+  "planner2_targeted_signal_candidate_sha256": "2be57d545ebed830649ab829dd39695e1734b59d4ccd2179481d5fcfcaec0c0e",
+  "default_build_verification": {
+    "build_directory": "/tmp/faac-resampler-default-build",
+    "configuration": "fresh Meson release setup with no faar-backend override",
+    "selected_backend": "staged-short",
+    "full_project_build": "passed",
+    "faar_test_groups": "6/6 passed",
+    "cli_smoke_conversions": [
+      "48000->32000",
+      "96000->44100",
+      "88200->44100"
+    ],
+    "cli_output": "all produced one second, stereo, finite float32 WAV output"
+  },
+  "benchmark_build_candidate_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+  "standard_rate_signal_result_details": {
+    "48000->32000": {
+      "in_rate": 48000,
+      "out_rate": 32000,
+      "engines": {
+        "faar-candidate": {
+          "passband_probe_count": 4,
+          "worst_abs_passband_gain_db": 0.0465492930029688,
+          "alias_probes": [
+            {
+              "frequency_hz": 16100.0,
+              "attenuation_db": 154.82970753948194
+            },
+            {
+              "frequency_hz": 16950.0,
+              "attenuation_db": 155.75073458518315
+            },
+            {
+              "frequency_hz": 23520.0,
+              "attenuation_db": 156.40864564431996
+            }
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 3.6083206243122214e-16
+        },
+        "ardftsrc": {
+          "passband_probe_count": 4,
+          "worst_abs_passband_gain_db": 1.228193836718357e-07,
+          "alias_probes": [
+            {
+              "frequency_hz": 16100.0,
+              "attenuation_db": 154.80582780579516
+            },
+            {
+              "frequency_hz": 16950.0,
+              "attenuation_db": 155.65974572929375
+            },
+            {
+              "frequency_hz": 23520.0,
+              "attenuation_db": 156.31661677172954
+            }
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 2.1784342783187228e-13
+        }
+      },
+      "max_abs_candidate_ardftsrc_passband_delta_db": 0.04654936470713613
+    },
+    "88200->44100": {
+      "in_rate": 88200,
+      "out_rate": 44100,
+      "engines": {
+        "faar-candidate": {
+          "passband_probe_count": 5,
+          "worst_abs_passband_gain_db": 1.2281977326012666e-07,
+          "alias_probes": [
+            {
+              "frequency_hz": 22150.0,
+              "attenuation_db": 156.3662175091454
+            },
+            {
+              "frequency_hz": 23000.0,
+              "attenuation_db": 157.2822465367112
+            },
+            {
+              "frequency_hz": 43218.0,
+              "attenuation_db": 157.0693422798218
+            }
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 3.677646945539992e-16
+        },
+        "ardftsrc": {
+          "passband_probe_count": 5,
+          "worst_abs_passband_gain_db": 1.2281977326012666e-07,
+          "alias_probes": [
+            {
+              "frequency_hz": 22150.0,
+              "attenuation_db": 156.36648824945357
+            },
+            {
+              "frequency_hz": 23000.0,
+              "attenuation_db": 157.28226478491462
+            },
+            {
+              "frequency_hz": 43218.0,
+              "attenuation_db": 157.06931742694076
+            }
+          ],
+          "central_peak_offset_frames": 0,
+          "time_reversal_error_relative": 2.0986993446615726e-12
+        }
+      },
+      "max_abs_candidate_ardftsrc_passband_delta_db": 9.572493028940681e-11
+    }
+  },
+  "half_rate_inverse_optimization": {
+    "summary_file": "half-rate-optimization-summary.json",
+    "summary_sha256": "58966fa1f4ca9f38c11dc9676043a4a99db239a83679f7286bf945e39a39ad73",
+    "candidate_library_sha256": "9d2a24b6ee82814c506fc1472879c4b21bb9229004a8beb1029d4a1ffc5bd53f",
+    "benchmark_files": [
+      "bench-five-common-current-hash.json"
+    ],
+    "signal_files": [
+      "signals-half-rate-folded-inverse-final.json",
+      "signals-192k-48k-half-rate-folded-inverse-final.json"
+    ],
+    "result": "Faster than SoX on 96->48 and 88.2->44.1; improves 192->48 but remains slower than SoX there.",
+    "benchmark_candidate_sha256": "9d2a24b6ee82814c506fc1472879c4b21bb9229004a8beb1029d4a1ffc5bd53f",
+    "targeted_signal_files": [
+      "signals-half-rate-folded-inverse-final.json",
+      "signals-192k-48k-half-rate-folded-inverse-final.json"
+    ]
+  },
+  "response_matrix_high_prior_candidate": {
+    "file": "signals-current-final-high-response-matrix.json",
+    "sha256": "46501f4c5428f42e6e6b810054b04ebea64e779061e32fd748979aa15ce2f40e",
+    "summary_file": "response-matrix-summary-current-final-high.json",
+    "summary_sha256": "ccb5a95c1af34e8e980ea0908ee810f789806968629b66dbec75891cf12c4896",
+    "candidate_library_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+    "summary": {
+      "candidate_library_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+      "preset": "High",
+      "conversion_pairs": 357,
+      "probe_records": 6264,
+      "records_per_engine": {
+        "faar-candidate": 3132,
+        "ardftsrc": 3132
+      },
+      "passband_rule": "frequency <= 0.45 * min(input_rate, output_rate), and below output Nyquist",
+      "passband_probe_count_per_engine": 1284,
+      "passband_max_abs_gain_delta_vs_ardftsrc_db": 0.02038996055697565,
+      "passband_over_0_25_db_count": 0,
+      "worst_passband_probe": {
+        "in_rate": 48000,
+        "out_rate": 32000,
+        "frequency_hz": 14400,
+        "candidate_gain_db": -0.020389867264752826,
+        "ardftsrc_gain_db": 9.329222282264933e-08
+      },
+      "deep_stopband_rule": "downsampling; frequency >= output Nyquist + 1000 Hz and below input Nyquist",
+      "deep_stopband_probe_count": 132,
+      "minimum_candidate_alias_attenuation_db": 155.89114328191772,
+      "minimum_ardftsrc_alias_attenuation_db": 155.89105750933675,
+      "deep_stopband_max_abs_delta_db": 6.010285098618823,
+      "deep_stopband_comparison_note": "Differences near the float32 residual floor are descriptive; use attenuation lower bounds, not the passband 0.25 dB gate.",
+      "all_probe_runs_exact_output_counts": true,
+      "matrix_source": "tools/faar_recovery/diagnose.py --signal-matrix --tones-only",
+      "interpretation": "The 357-pair High response matrix was refreshed against the current candidate after the latest 48->32 and 88.2->44.1 planner changes. There are zero passband probes over 0.25 dB versus ARDFTSRC. This refresh covers tones only; image and transient matrices remain earlier snapshots."
+    }
+  },
+  "historical_candidate_library_sha256_before_direct_4_to_1_plan": "9d2a24b6ee82814c506fc1472879c4b21bb9229004a8beb1029d4a1ffc5bd53f",
+  "current_snapshot": "common-rates-current-summary.json",
+  "current_snapshot_sha256": "0ed72dec238be6220b8d83743f0158f806f595f0716118ef97154f064bdc42e9",
+  "current_benchmark_artifacts": [
+    "bench-five-common-direct-192k-current.json",
+    "bench-192k-direct-current-30trials.json"
+  ],
+  "current_quality_artifacts": [
+    "signals-five-common-direct-192k-current-high.json",
+    "signals-five-common-current-good.json",
+    "signals-five-common-current-fast.json",
+    "signals-common-images-current-high.json",
+    "signals-common-images-current-good.json",
+    "signals-common-images-current-fast.json"
+  ],
+  "current_summary": {
+    "status": "current common-rate snapshot; broader rate-matrix evidence remains historical",
+    "candidate_library_sha256": "5870f1c3c264219b1aae3123229e741c0a50ab54d767673b300ec17b0c4aaa78",
+    "candidate_library_bytes": 96536,
+    "backend": "staged-short; default Meson backend; desktop double",
+    "rate_scope_hz": [
+      [
+        44100,
+        48000
+      ],
+      [
+        88200,
+        96000
+      ],
+      [
+        192000,
+        48000
+      ],
+      [
+        48000,
+        32000
+      ]
+    ],
+    "benchmark_protocol": "Ten alternating 30-second stereo trials per engine and conversion, one warmup; processing CPU medians. Separate 30-trial run for 192000->48000.",
+    "benchmarks": [
+      {
+        "conversion": "48000->96000",
+        "expected_frames": 2899968,
+        "actual_frames": 2899968,
+        "deterministic": true,
+        "processing_seconds": {
+          "ardftsrc": 0.07495267900000001,
+          "faar-candidate": 0.0465267595,
+          "sox-wide": 0.048373636000000005
+        },
+        "setup_live_heap_bytes": {
+          "ardftsrc": null,
+          "faar-candidate": 3828064.0,
+          "sox-wide": 516704.0
+        }
+      },
+      {
+        "conversion": "96000->48000",
+        "expected_frames": 1458176,
+        "actual_frames": 1458176,
+        "deterministic": true,
+        "processing_seconds": {
+          "ardftsrc": 0.0649113915,
+          "faar-candidate": 0.03792764550000001,
+          "sox-wide": 0.0436839855
+        },
+        "setup_live_heap_bytes": {
+          "ardftsrc": null,
+          "faar-candidate": 3825792.0,
+          "sox-wide": 559072.0
+        }
+      },
+      {
+        "conversion": "192000->48000",
+        "expected_frames": 1458176,
+        "actual_frames": 1458176,
+        "deterministic": true,
+        "processing_seconds": {
+          "ardftsrc": 0.11338010600000001,
+          "faar-candidate": 0.065597342,
+          "sox-wide": 0.0667832445
+        },
+        "setup_live_heap_bytes": {
+          "ardftsrc": null,
+          "faar-candidate": 7481264.0,
+          "sox-wide": 595360.0
+        }
+      },
+      {
+        "conversion": "48000->32000",
+        "expected_frames": 983040,
+        "actual_frames": 983040,
+        "deterministic": true,
+        "processing_seconds": {
+          "ardftsrc": 0.0364733795,
+          "faar-candidate": 0.030649758000000006,
+          "sox-wide": 0.046373708
+        },
+        "setup_live_heap_bytes": {
+          "ardftsrc": null,
+          "faar-candidate": 971152.0,
+          "sox-wide": 533808.0
+        }
+      },
+      {
+        "conversion": "88200->44100",
+        "expected_frames": 1343488,
+        "actual_frames": 1343488,
+        "deterministic": true,
+        "processing_seconds": {
+          "ardftsrc": 0.061766917500000004,
+          "faar-candidate": 0.033854560500000005,
+          "sox-wide": 0.039873868500000006
+        },
+        "setup_live_heap_bytes": {
+          "ardftsrc": null,
+          "faar-candidate": 3825792.0,
+          "sox-wide": 559072.0
+        }
+      }
+    ],
+    "192000_to_48000_30_trial_check": {
+      "faar_seconds": 0.06772876200000001,
+      "sox_seconds": 0.06959920350000001,
+      "faar_setup_live_heap_bytes": 7481264.0,
+      "sox_setup_live_heap_bytes": 595360.0,
+      "expected_frames": 1458176
+    },
+    "quality": {
+      "high": "Current-hash tone, selected alias, impulse, frame-count probes on five common conversions. Selected passband comparisons are within 0.25 dB of ARDFTSRC; 192000->48000 transition probe is 0.244 dB.",
+      "good": "Current-hash probes on five conversions; maximum selected passband difference 0.167 dB. No agreed acceptance mask.",
+      "fast": "Current-hash probes on five conversions; maximum selected passband difference 0.998 dB on 192000->48000. No accepted mask.",
+      "images": "Current-hash image checks on six common upsampling routes. Worst measured component: High -195.03 dB, Good -146.74 dB, Fast -70.47 dB."
+    },
+    "verification": {
+      "recorded_builds": "Native double, generic double, generic float staged-short, generic double polyphase, generic double staged, and fresh default release each passed 6/6 Meson test groups.",
+      "portable_fft": "Direct-convolution and streamed decimation checks passed for portable full-inverse path.",
+      "scope_limit": "The 357-pair High tone matrix and broad transient/image matrices are prior-hash evidence. Current-hash quality coverage is limited to the common-rate probes listed above.",
+      "fresh_current_workspace_rerun": "Native-double staged-short, float staged-short, and fresh default release each passed all 6/6 Meson test groups; default confirmed staged-short. Six one-second stereo WAV CLI conversions at common rates produced exact expected output counts and sample-rate headers."
+    },
+    "raw_artifacts": [
+      "signals-five-common-direct-192k-current-high.json",
+      "signals-five-common-current-good.json",
+      "signals-five-common-current-fast.json",
+      "signals-common-images-current-high.json",
+      "signals-common-images-current-good.json",
+      "signals-common-images-current-fast.json",
+      "bench-five-common-direct-192k-current.json",
+      "bench-192k-direct-current-30trials.json"
+    ],
+    "raw_artifact_sha256": {
+      "signals-five-common-direct-192k-current-high.json": "d44329a8234490c3ef1685c602f92840696932298fbf2101642c16858afdbb6b",
+      "signals-five-common-current-good.json": "91335a2f775731acac6a52f89da68a6782887c1a9e23707b5a090651bc476e69",
+      "signals-five-common-current-fast.json": "c2103bdc742214f3cf48c3baf3687a0c25676bcf5147cbdfb06d463dde63144c",
+      "signals-common-images-current-high.json": "6aeafde417a3b5d537c227d351de4258704df10601dc2e9ee2f7cd0e09e1bc30",
+      "signals-common-images-current-good.json": "c94a676c733c1ea37efb2d25272baf7dc3f65383e2c591a0718454801f206b44",
+      "signals-common-images-current-fast.json": "8d151abd1f06fb8469ad0491b8242f816a154e03aa14411fa485cdfc07ed6004",
+      "bench-five-common-direct-192k-current.json": "1cb368ed981e7902ac508d46e5fedd1229d2e0590082827d5cb820e5493d3981",
+      "bench-192k-direct-current-30trials.json": "96ade663dee4c7d0e36f972345002fa18e63eb22f21c50e3449e79004dbfc6c0"
+    },
+    "source_files": [
+      "README.md",
+      "docs/faar-competitive-benchmark.md",
+      "docs/faar-kbsrc-algorithm-audit.md",
+      "docs/faar-quality.md",
+      "docs/faar-recovery-diagnosis.md",
+      "docs/faar-sox-rate-audit.md",
+      "docs/faar.1",
+      "docs/libfaar.3",
+      "docs/libfaar.md",
+      "frontend/faar_main.c",
+      "include/faar.h",
+      "libfaar/OOURA-NOTICE",
+      "libfaar/dft_coeffs.c",
+      "libfaar/dft_coeffs.h",
+      "libfaar/dft_fir.c",
+      "libfaar/dft_fir.h",
+      "libfaar/dft_prefilter.c",
+      "libfaar/dft_prefilter.h",
+      "libfaar/fft4g_ooura.c",
+      "libfaar/fft_double.c",
+      "libfaar/fft_double.h",
+      "libfaar/meson.build",
+      "libfaar/polyresample.c",
+      "libfaar/test_faar.c",
+      "libfaar/test_faar_dft_fir.c",
+      "libfaar/test_faar_quality.c",
+      "libfaar/test_faar_tuneout_matrix.c",
+      "libfaar/verification/fixtures/matrix-fingerprints-staged-short-double.txt",
+      "libfaar/verification/fixtures/matrix-fingerprints-staged-short.txt",
+      "meson_options.txt",
+      "tools/compare_faar_ardft.py",
+      "tools/faar_recovery/README.md",
+      "tools/faar_recovery/diagnose.py",
+      "tools/faar_recovery/driver.cpp",
+      "docs/measurements/faar-recovery-2026-10-18/staged-short-multirate-native/verification-current.txt"
+    ]
+  },
+  "current_workspace_verification": "Fresh native-double, float, and default release suites passed 6/6; default backend is staged-short. Six one-second stereo CLI conversions across 44.1, 48, 88.2, 96, 192, and 32 kHz routes produced exact expected frame counts."
+}

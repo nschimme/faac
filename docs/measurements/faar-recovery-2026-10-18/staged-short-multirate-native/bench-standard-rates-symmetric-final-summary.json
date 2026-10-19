@@ -1,0 +1,51 @@
+{
+  "candidate_library_sha256": "86302d68dbc117c8a8bcd334e2c863ccbe8ed7b079aa48181e804b50df81f77e",
+  "repeats": 10,
+  "cases": [
+    {
+      "in_rate": 48000,
+      "out_rate": 96000,
+      "median_process_cpu_seconds": {
+        "ardftsrc": 0.070512671,
+        "faar-candidate": 0.044776057,
+        "sox-wide": 0.051478881500000004
+      }
+    },
+    {
+      "in_rate": 96000,
+      "out_rate": 48000,
+      "median_process_cpu_seconds": {
+        "ardftsrc": 0.06532221600000002,
+        "faar-candidate": 0.051271844000000004,
+        "sox-wide": 0.041592936000000004
+      }
+    },
+    {
+      "in_rate": 192000,
+      "out_rate": 48000,
+      "median_process_cpu_seconds": {
+        "ardftsrc": 0.118574558,
+        "faar-candidate": 0.108017699,
+        "sox-wide": 0.06531647600000001
+      }
+    },
+    {
+      "in_rate": 48000,
+      "out_rate": 32000,
+      "median_process_cpu_seconds": {
+        "ardftsrc": 0.0367621105,
+        "faar-candidate": 0.030750572000000004,
+        "sox-wide": 0.0454971845
+      }
+    },
+    {
+      "in_rate": 88200,
+      "out_rate": 44100,
+      "median_process_cpu_seconds": {
+        "ardftsrc": 0.06047788600000001,
+        "faar-candidate": 0.049138135000000006,
+        "sox-wide": 0.0387461145
+      }
+    }
+  ]
+}

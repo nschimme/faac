@@ -1,0 +1,40 @@
+{
+  "candidate_library_sha256": "973cda349a90771ea9979da1f0bb1a7876f17631350e3d0c72847218095ed185",
+  "preset": "Good",
+  "input_tone_rate_fraction": 0.45,
+  "pair_count": 187,
+  "probe_records": 374,
+  "engines": {
+    "faar-candidate": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.4999990130167789,
+      "least_attenuated_image": {
+        "attenuation_db": -140.62159099629514,
+        "in_rate": 16000,
+        "out_rate": 48000,
+        "frequency_hz": 8800,
+        "amplitude": 4.654677559173695e-08
+      },
+      "image_components_above_minus_120_db": 0,
+      "image_components_above_minus_100_db": 0
+    },
+    "ardftsrc": {
+      "probe_pairs": 187,
+      "pairs_with_in_band_images": 129,
+      "image_components": 1490,
+      "minimum_wanted_amplitude": 0.4999223661091792,
+      "least_attenuated_image": {
+        "attenuation_db": -72.74733322137217,
+        "in_rate": 8000,
+        "out_rate": 768000,
+        "frequency_hz": 4400,
+        "amplitude": 0.00011525414369694625
+      },
+      "image_components_above_minus_120_db": 63,
+      "image_components_above_minus_100_db": 10
+    }
+  },
+  "interpretation": "Characterization at the documented 0.45 input-rate tone. Candidate image components near the float32 residual floor do not support precise attenuation claims. This is not an automatic acceptance threshold or perceptual score."
+}

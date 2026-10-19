@@ -1,0 +1,204 @@
+{
+  "input_file": "/tmp/faac-threeway-2026-10-18/common-input.f32",
+  "input_sha256": "7d206aaa491e47bda80f5603dadb50ac02e459aa7052cd8d1e11dca35fe97f0c",
+  "logical_input_frames": 2903040,
+  "zero_tail_frames": 35840,
+  "padded_input_frames": 2938880,
+  "input_rate": 96000,
+  "output_rate": 44100,
+  "channels": 2,
+  "sox_profile": "CPU-only rate -v",
+  "ardftsrc_quality": 16384,
+  "ardftsrc_bandwidth": 0.99,
+  "warmups": 1,
+  "repeats": 7,
+  "timing_note": "ARDFTSRC processing CPU is timed inside its transform/overlap loop after setup and excludes file I/O. SoX cgroup CPU is timed around the complete SoX process and includes raw file I/O and small timer-shell overhead; cgroup v2 user/system counters have microsecond resolution. Comparing SoX user CPU (which includes I/O) with ARDFTSRC processing CPU modestly favors ARDFTSRC.",
+  "runs": [
+    {
+      "round": 1,
+      "order": [
+        "ardft",
+        "sox"
+      ],
+      "ardft": {
+        "output_frames": 1350048,
+        "setup_cpu_seconds": 0.004740887,
+        "processing_cpu_seconds": 0.073026387
+      },
+      "sox": {
+        "process_wall_seconds": 0.08,
+        "gnu_time_user_seconds": 0.06,
+        "gnu_time_sys_seconds": 0.01,
+        "process_cpu_seconds": 0.089194,
+        "user_cpu_seconds": 0.068953,
+        "system_cpu_seconds": 0.020241,
+        "max_rss_kb": 20116
+      }
+    },
+    {
+      "round": 2,
+      "order": [
+        "sox",
+        "ardft"
+      ],
+      "sox": {
+        "process_wall_seconds": 0.08,
+        "gnu_time_user_seconds": 0.07,
+        "gnu_time_sys_seconds": 0.01,
+        "process_cpu_seconds": 0.090804,
+        "user_cpu_seconds": 0.074045,
+        "system_cpu_seconds": 0.016759,
+        "max_rss_kb": 19940
+      },
+      "ardft": {
+        "output_frames": 1350048,
+        "setup_cpu_seconds": 0.004866231,
+        "processing_cpu_seconds": 0.066203388
+      }
+    },
+    {
+      "round": 3,
+      "order": [
+        "ardft",
+        "sox"
+      ],
+      "ardft": {
+        "output_frames": 1350048,
+        "setup_cpu_seconds": 0.00493949,
+        "processing_cpu_seconds": 0.074114397
+      },
+      "sox": {
+        "process_wall_seconds": 0.07,
+        "gnu_time_user_seconds": 0.06,
+        "gnu_time_sys_seconds": 0.01,
+        "process_cpu_seconds": 0.080651,
+        "user_cpu_seconds": 0.060687,
+        "system_cpu_seconds": 0.019965,
+        "max_rss_kb": 19784
+      }
+    },
+    {
+      "round": 4,
+      "order": [
+        "sox",
+        "ardft"
+      ],
+      "sox": {
+        "process_wall_seconds": 0.08,
+        "gnu_time_user_seconds": 0.06,
+        "gnu_time_sys_seconds": 0.01,
+        "process_cpu_seconds": 0.087273,
+        "user_cpu_seconds": 0.065695,
+        "system_cpu_seconds": 0.021578,
+        "max_rss_kb": 19720
+      },
+      "ardft": {
+        "output_frames": 1350048,
+        "setup_cpu_seconds": 0.005109037,
+        "processing_cpu_seconds": 0.06400383400000001
+      }
+    },
+    {
+      "round": 5,
+      "order": [
+        "ardft",
+        "sox"
+      ],
+      "ardft": {
+        "output_frames": 1350048,
+        "setup_cpu_seconds": 0.006728974,
+        "processing_cpu_seconds": 0.077907788
+      },
+      "sox": {
+        "process_wall_seconds": 0.08,
+        "gnu_time_user_seconds": 0.06,
+        "gnu_time_sys_seconds": 0.01,
+        "process_cpu_seconds": 0.081884,
+        "user_cpu_seconds": 0.068725,
+        "system_cpu_seconds": 0.013159,
+        "max_rss_kb": 20072
+      }
+    },
+    {
+      "round": 6,
+      "order": [
+        "sox",
+        "ardft"
+      ],
+      "sox": {
+        "process_wall_seconds": 0.08,
+        "gnu_time_user_seconds": 0.07,
+        "gnu_time_sys_seconds": 0.01,
+        "process_cpu_seconds": 0.086405,
+        "user_cpu_seconds": 0.072274,
+        "system_cpu_seconds": 0.01413,
+        "max_rss_kb": 19664
+      },
+      "ardft": {
+        "output_frames": 1350048,
+        "setup_cpu_seconds": 0.005062119,
+        "processing_cpu_seconds": 0.065211078
+      }
+    },
+    {
+      "round": 7,
+      "order": [
+        "ardft",
+        "sox"
+      ],
+      "ardft": {
+        "output_frames": 1350048,
+        "setup_cpu_seconds": 0.0050473010000000006,
+        "processing_cpu_seconds": 0.072368555
+      },
+      "sox": {
+        "process_wall_seconds": 0.09,
+        "gnu_time_user_seconds": 0.07,
+        "gnu_time_sys_seconds": 0.01,
+        "process_cpu_seconds": 0.095141,
+        "user_cpu_seconds": 0.076224,
+        "system_cpu_seconds": 0.018916,
+        "max_rss_kb": 19712
+      }
+    }
+  ],
+  "medians": {
+    "ardft_processing_cpu_seconds": 0.072368555,
+    "sox_total_process_cpu_seconds": 0.087273,
+    "sox_user_cpu_seconds": 0.068953,
+    "sox_system_cpu_seconds": 0.018916,
+    "sox_wall_seconds": 0.08
+  },
+  "sox_rate_plan_96k_to_44k1": {
+    "stages": [
+      {
+        "kind": "dft",
+        "L": 1,
+        "M": 1,
+        "fir_taps": 601,
+        "dft_length": 4096,
+        "preload": 300
+      },
+      {
+        "kind": "poly_fir",
+        "L": 147,
+        "M": 320,
+        "phases": 147,
+        "taps_per_phase": 20,
+        "preload": 9
+      }
+    ],
+    "captured_with": "SoX -V6; CPU-only rate -v"
+  },
+  "provenance": {
+    "host_cpu": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics",
+    "sox_source": "simonefil/sox-vulkan sox-16.2.2, commit 54102e40ffbdbe991505b9ac0a7c62e0b4d4ae3c",
+    "sox_image": "sox-vulkan:16.2.2, sha256:fb8aad5b0d845100c0fab5302ae8a2e50ac65bd11590b9d6650a6c65c05bb3d7, amd64/linux",
+    "sox_binary_sha256": "f59860df415ffadf84ebe60b76a080a55f3d9a26a4b32700f89c6c33e6e2778a",
+    "sox_timer": "docker/sox-vulkan/sox-podman-timed, sha256:0153236ee9419599a4084764a09c4fee1d960b145d133c2683f2d017cc88bc7a",
+    "ardftsrc_binary": "/tmp/ardftsrc-bench/ardftsrc-bench, sha256:daf1083aa269780c1d96ff32fb911d35bb716ae6dd71dc093b7531d10c6d8cee",
+    "ardftsrc_source": "faac-benchmark/scripts/ardftsrc_bench.cpp, sha256:a342a9a2dcc36035399c174b958fed3af4bd16a1979ac87838b050121b6ebb8b",
+    "compiler": "GCC 13.3, -O3 -flto for the ARDFTSRC benchmark",
+    "faar_comparison_tool_sha256": "b0ae10f144213d9d0a4026af21f2d70c98efaceb02071317819ea26cb5650f0e"
+  }
+}

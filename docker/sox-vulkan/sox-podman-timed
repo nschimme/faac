@@ -1,0 +1,33 @@
+#!/bin/sh
+# Run the SoX Vulkan image from Podman and report in-container CPU time.
+# Benchmark inputs and outputs must be under /tmp so the container can access them.
+set -eu
+sox_image=${SOX_VULKAN_IMAGE:-sox-vulkan:16.2.2}
+exec podman run --userns=host --rm -v /tmp:/tmp \
+  --entrypoint /bin/sh "$sox_image" -c '
+if [ ! -r /sys/fs/cgroup/cpu.stat ]; then
+  exec /usr/bin/time -f "SOX_TIMING real=%e user=%U sys=%S max_rss_kb=%M" \
+    /usr/local/bin/sox "$@"
+fi
+read_cpu_stats() {
+  while IFS=" " read -r key value; do
+    case "$key" in
+      usage_usec) usage_usec=$value ;;
+      user_usec) user_usec=$value ;;
+      system_usec) system_usec=$value ;;
+    esac
+  done < /sys/fs/cgroup/cpu.stat
+}
+read_cpu_stats
+before_usage=$usage_usec
+before_user=$user_usec
+before_system=$system_usec
+/usr/bin/time -f "SOX_TIMING real=%e user=%U sys=%S max_rss_kb=%M" \
+  /usr/local/bin/sox "$@"
+status=$?
+read_cpu_stats
+printf "SOX_CGROUP_CPU usage_usec=%s user_usec=%s system_usec=%s\\n" \
+  "$((usage_usec - before_usage))" "$((user_usec - before_user))" \
+  "$((system_usec - before_system))" >&2
+exit "$status"
+' sox "$@"

@@ -1,0 +1,290 @@
+{
+  "floor_controls": [],
+  "image_probes": [
+    {
+      "engine": "faar-candidate",
+      "images": [],
+      "in_rate": 44100,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "0d31288cee1cca1291e12ebc6d0bb4bb0f4b6080613bcc1dabd4d2436a604371",
+      "input_tone_hz": 19845,
+      "out_rate": 48000,
+      "segment_frames": 48000,
+      "wanted_amplitude": 0.499940378622835
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [],
+      "in_rate": 44100,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "0d31288cee1cca1291e12ebc6d0bb4bb0f4b6080613bcc1dabd4d2436a604371",
+      "input_tone_hz": 19845,
+      "out_rate": 48000,
+      "segment_frames": 48000,
+      "wanted_amplitude": 0.5000000045858695
+    },
+    {
+      "engine": "faar-candidate",
+      "images": [
+        {
+          "amplitude": 3.119578046928007e-05,
+          "attenuation_db_vs_wanted": -84.09766467914096,
+          "frequency_hz": 26400
+        }
+      ],
+      "in_rate": 48000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "4464fafa164d992244b31aa89192a3fcf65236041fc9d152a0776321447e2ea7",
+      "input_tone_hz": 21600,
+      "out_rate": 96000,
+      "segment_frames": 96000,
+      "wanted_amplitude": 0.5000104597024205
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [
+        {
+          "amplitude": 8.609089981146682e-11,
+          "attenuation_db_vs_wanted": -195.28025524082975,
+          "frequency_hz": 26400
+        }
+      ],
+      "in_rate": 48000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "4464fafa164d992244b31aa89192a3fcf65236041fc9d152a0776321447e2ea7",
+      "input_tone_hz": 21600,
+      "out_rate": 96000,
+      "segment_frames": 96000,
+      "wanted_amplitude": 0.5000000054564464
+    },
+    {
+      "engine": "faar-candidate",
+      "images": [
+        {
+          "amplitude": 3.3095183868604174e-05,
+          "attenuation_db_vs_wanted": -83.58421236200043,
+          "frequency_hz": 17600
+        }
+      ],
+      "in_rate": 32000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "24b32c81f791e080b5e2fe15d68caab8bfe8947b907f147b22e56e2d9087792a",
+      "input_tone_hz": 14400,
+      "out_rate": 48000,
+      "segment_frames": 48000,
+      "wanted_amplitude": 0.5000062308651391
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [
+        {
+          "amplitude": 8.464389662568326e-10,
+          "attenuation_db_vs_wanted": -175.42748724707906,
+          "frequency_hz": 17600
+        }
+      ],
+      "in_rate": 32000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "24b32c81f791e080b5e2fe15d68caab8bfe8947b907f147b22e56e2d9087792a",
+      "input_tone_hz": 14400,
+      "out_rate": 48000,
+      "segment_frames": 48000,
+      "wanted_amplitude": 0.5000000070700662
+    },
+    {
+      "engine": "faar-candidate",
+      "images": [
+        {
+          "amplitude": 3.116684415407958e-05,
+          "attenuation_db_vs_wanted": -84.10552298732343,
+          "frequency_hz": 24255
+        }
+      ],
+      "in_rate": 44100,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "0d31288cee1cca1291e12ebc6d0bb4bb0f4b6080613bcc1dabd4d2436a604371",
+      "input_tone_hz": 19845,
+      "out_rate": 96000,
+      "segment_frames": 96000,
+      "wanted_amplitude": 0.499998819223013
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [
+        {
+          "amplitude": 7.269205205933734e-11,
+          "attenuation_db_vs_wanted": -196.74966158966305,
+          "frequency_hz": 24255
+        }
+      ],
+      "in_rate": 44100,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "0d31288cee1cca1291e12ebc6d0bb4bb0f4b6080613bcc1dabd4d2436a604371",
+      "input_tone_hz": 19845,
+      "out_rate": 96000,
+      "segment_frames": 96000,
+      "wanted_amplitude": 0.500000004706225
+    },
+    {
+      "engine": "faar-candidate",
+      "images": [
+        {
+          "amplitude": 0.00020483180049458782,
+          "attenuation_db_vs_wanted": -67.65506427059033,
+          "frequency_hz": 26400
+        },
+        {
+          "amplitude": 0.00021452496770004478,
+          "attenuation_db_vs_wanted": -67.25345501580033,
+          "frequency_hz": 69600
+        },
+        {
+          "amplitude": 0.0001482019362296611,
+          "attenuation_db_vs_wanted": -70.46593436780684,
+          "frequency_hz": 74400
+        }
+      ],
+      "in_rate": 48000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "4464fafa164d992244b31aa89192a3fcf65236041fc9d152a0776321447e2ea7",
+      "input_tone_hz": 21600,
+      "out_rate": 192000,
+      "segment_frames": 192000,
+      "wanted_amplitude": 0.49448212398475533
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [
+        {
+          "amplitude": 9.55234491668238e-10,
+          "attenuation_db_vs_wanted": -174.37720027341695,
+          "frequency_hz": 26400
+        },
+        {
+          "amplitude": 2.0343036580125332e-09,
+          "attenuation_db_vs_wanted": -167.8110845848394,
+          "frequency_hz": 69600
+        },
+        {
+          "amplitude": 6.216453296986095e-10,
+          "attenuation_db_vs_wanted": -178.10854668090698,
+          "frequency_hz": 74400
+        }
+      ],
+      "in_rate": 48000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "4464fafa164d992244b31aa89192a3fcf65236041fc9d152a0776321447e2ea7",
+      "input_tone_hz": 21600,
+      "out_rate": 192000,
+      "segment_frames": 192000,
+      "wanted_amplitude": 0.500000005683041
+    },
+    {
+      "engine": "faar-candidate",
+      "images": [
+        {
+          "amplitude": 3.119578047059331e-05,
+          "attenuation_db_vs_wanted": -84.09766467877384,
+          "frequency_hz": 52800
+        }
+      ],
+      "in_rate": 96000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "7efa31567049311536d660919356000818152f1ca39969ddd89d91c5474f63a0",
+      "input_tone_hz": 43200,
+      "out_rate": 192000,
+      "segment_frames": 192000,
+      "wanted_amplitude": 0.5000104597023364
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [
+        {
+          "amplitude": 8.081810930515817e-11,
+          "attenuation_db_vs_wanted": -195.8292264584776,
+          "frequency_hz": 52800
+        }
+      ],
+      "in_rate": 96000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "7efa31567049311536d660919356000818152f1ca39969ddd89d91c5474f63a0",
+      "input_tone_hz": 43200,
+      "out_rate": 192000,
+      "segment_frames": 192000,
+      "wanted_amplitude": 0.5000000054511486
+    },
+    {
+      "engine": "faar-candidate",
+      "images": [
+        {
+          "amplitude": 3.111094845523623e-05,
+          "attenuation_db_vs_wanted": -84.12124385313314,
+          "frequency_hz": 17600
+        }
+      ],
+      "in_rate": 32000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "24b32c81f791e080b5e2fe15d68caab8bfe8947b907f147b22e56e2d9087792a",
+      "input_tone_hz": 14400,
+      "out_rate": 44100,
+      "segment_frames": 44100,
+      "wanted_amplitude": 0.5000062626429971
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [
+        {
+          "amplitude": 2.95871805632562e-10,
+          "attenuation_db_vs_wanted": -184.5573285255908,
+          "frequency_hz": 17600
+        }
+      ],
+      "in_rate": 32000,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "24b32c81f791e080b5e2fe15d68caab8bfe8947b907f147b22e56e2d9087792a",
+      "input_tone_hz": 14400,
+      "out_rate": 44100,
+      "segment_frames": 44100,
+      "wanted_amplitude": 0.5000000046788097
+    },
+    {
+      "engine": "faar-candidate",
+      "images": [],
+      "in_rate": 88200,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "14411a56a7fc9aa2af2560f4a2f669136beddfb289ebbabb965d24424c13273c",
+      "input_tone_hz": 39690,
+      "out_rate": 96000,
+      "segment_frames": 96000,
+      "wanted_amplitude": 0.5000062730932363
+    },
+    {
+      "engine": "ardftsrc",
+      "images": [],
+      "in_rate": 88200,
+      "input_rate_fraction": 0.45,
+      "input_sha256": "14411a56a7fc9aa2af2560f4a2f669136beddfb289ebbabb965d24424c13273c",
+      "input_tone_hz": 39690,
+      "out_rate": 96000,
+      "segment_frames": 96000,
+      "wanted_amplitude": 0.5000000045841528
+    }
+  ],
+  "metadata": {
+    "build_manifest_sha256": "b0730223463b5452d9140a3fc21dedac29c727d3d634bf29273dd373c42bf731",
+    "candidate_library_sha256": "72740b1854d58620ba2e3acedc08dbd1d8efc55746b7525e33aba67f0d20881a",
+    "cpuinfo": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics",
+    "driver_sha256": "4f73d81168e616590adcc5b26df69f8578816fce87f04e2a721f6b40ad28ef3e",
+    "faar_quality": 0,
+    "numpy": "2.2.4",
+    "platform": "Linux-7.0.14-22-pve-x86_64-with-glibc2.41",
+    "quality_gate": "0.25 dB response tolerance; wanted-tone residual floor only, as calibrated in the local FAAR controls",
+    "reference_sha256": "ff84fb9164a57b6b13d8c1446df6771e8ab710745f40c4cda5967a32af20c597",
+    "thread_policy": "one processing thread; KBSRC coefficient generation internally spawns workers even with threads=1",
+    "timing": "Native process CPU; driver I/O and source conversion excluded. FAAR collection/flush and SoX chain scheduler included; KBSRC processing includes run_engine FFT planning/scratch allocation, collection excluded; ARDFTSRC uses its existing instrumented boundaries. KBSRC scratch copy changes only the existing clock to process CPU time."
+  },
+  "other_signals": [],
+  "probes": [],
+  "tones_only": false,
+  "transient_probes": []
+}
