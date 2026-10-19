@@ -540,10 +540,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->tvbr)
     {
         params.rate_control = FAAC_RC_TVBR;
-        /* Scale 1..127 to FAAC's internal 1..5000 quality scale if specified in 1..127 range */
-        uint32_t q = opts->tvbr_quality ? opts->tvbr_quality : (opts->quant_quality ? opts->quant_quality : 100);
-        if (q <= 127)
-            q = (q * 5000) / 127;
+        uint32_t q = opts->tvbr_quality;
         if (q < 1) q = 1;
         if (q > 5000) q = 5000;
         params.quant_quality = q;

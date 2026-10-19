@@ -89,13 +89,13 @@ enum flags
 
 static const help_t help_qual[] = {
     {NULL,
-     "Rate control: -q (VBR), --tvbr <1-127>, -b (ABR, default 128), -b --cbr (CBR), -b --cvbr (CVBR); --cap-rate bounds any frame in any mode.",
+     "Rate control: -q (VBR), --tvbr <1-5000>, -b (ABR, default 128), -b --cbr (CBR), -b --cvbr (CVBR); --cap-rate bounds any frame in any mode.",
      "VBR/TVBR holds a quality and lets the bitrate follow the material; ABR/CVBR holds an average over the file; CBR holds it in every frame."},
     {"-q <quality>",
      "Set encoding quality (1-5000, default 100). (VBR)",
      "Constant quality, 1..5000, default 100; higher is better and costs more bits. The bitrate follows the material and moves between releases as the encoder is tuned. With --object-type auto, -q up to 75 uses HE-AAC v1; from 76 it is AAC-LC at a much higher bitrate. Use -b for a predictable size."},
     {"--tvbr <quality>",
-     "Set True VBR quality scale (1-127, where 127 is max quality). (TVBR)",
+     "Set True VBR quality scale (1-5000, default 100). (TVBR)",
      "Apple-style perceptual True VBR mode. Quality floats freely to preserve human auditory perception across quiet passages and transient spikes."},
     {"-b <bitrate>",
      "Set average bitrate to <bitrate> kbps. (ABR)",
@@ -722,7 +722,10 @@ int main(int argc, char *argv[])
             break;
         case TVBR_FLAG:
             opts.tvbr = true;
-            opts.tvbr_quality = (uint16_t)atoi(optarg);
+            {
+                int val = atoi(optarg);
+                opts.tvbr_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
+            }
             break;
         case CVBR_FLAG:
             opts.cvbr = true;
