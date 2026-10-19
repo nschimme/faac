@@ -12,8 +12,7 @@
 
 static int init_stage(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
-                      size_t decimation, size_t lanes, int stacked,
-                      int single);
+                      size_t decimation, size_t lanes, int stacked);
 
 
 int faar_dft_fir_init(faar_dft_fir *stage, const double *taps,
@@ -31,16 +30,15 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation) {
     return init_stage(stage, taps, tap_count, fft_size, expansion,
-                      decimation, fft_size ? 1 : 0, 0, 0);
+                      decimation, fft_size ? 1 : 0, 0);
 }
 
 int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
-                      size_t decimation, size_t lanes, int stacked,
-                      int single) {
+                      size_t decimation, size_t lanes, int stacked) {
     if ((lanes != 1 && lanes != 2) || (stacked && lanes != 1)) return -1;
     return init_stage(stage, taps, tap_count, fft_size, expansion,
-                      decimation, lanes, stacked, single);
+                      decimation, lanes, stacked);
 }
 
 static size_t overlap_stride(const faar_dft_fir *stage) {
@@ -48,61 +46,46 @@ static size_t overlap_stride(const faar_dft_fir *stage) {
     return stored ? stored : 1;
 }
 
-#define PAIR_REAL float
-#define PAIR_PLAN faar_rfftf_plan
-#define PAIR_TAG _f
-#define PAIR_FFT faar_rfftf_
+#define PAIR_REAL faar_sample_t
+#define PAIR_PLAN faar_fft_plan
+#define PAIR_TAG
+#define PAIR_FFT faar_fft_
 #include "dft_fir_pair.inc"
-#undef PAIR_REAL
-#undef PAIR_PLAN
-#undef PAIR_TAG
-#undef PAIR_FFT
-#define PAIR_REAL double
-#define PAIR_PLAN faar_rfftd_plan
-#define PAIR_TAG _d
-#define PAIR_FFT faar_rfftd_
-#include "dft_fir_pair.inc"
-#undef PAIR_REAL
-#undef PAIR_PLAN
-#undef PAIR_TAG
-#undef PAIR_FFT
 
 /* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
  * and decimation averaging. Both scales are powers of two, so exact. It is
- * always computed in double and rounded once to the stage's precision. */
+ * computed once in the selected precision. */
 static int init_paired(faar_dft_fir *stage, const double *taps) {
     const size_t n = stage->fft_size, nout = n / stage->decimation;
-    const double scale = 1.0 / ((double)nout * (double)stage->decimation);
-    faar_rfftd_plan plan;
-    double *h, *spectrum;
+    const faar_sample_t scale = 1.0 / ((faar_sample_t)nout * (faar_sample_t)stage->decimation);
+    faar_fft_plan plan;
+    faar_sample_t *h, *spectrum;
     int bad;
-    if (n > (size_t)INT_MAX || faar_rfftd_cinit(&plan, (int)n)) return -1;
-    h = faar_rfftd_cbuffer(&plan, 0);
-    memset(h, 0, 2 * n * sizeof(double));
-    memcpy(h, taps, stage->tap_count * sizeof(double));
-    spectrum = (double *)malloc(2 * n * sizeof(double));
-    if (!spectrum) { faar_rfftd_clear(&plan); return -1; }
-    h = faar_rfftd_cforward(&plan, h);
+    if (n > (size_t)INT_MAX || faar_fft_cinit(&plan, (int)n)) return -1;
+    h = faar_fft_cbuffer(&plan, 0);
+    memset(h, 0, 2 * n * sizeof(faar_sample_t));
+    for (size_t i = 0; i < stage->tap_count; ++i) h[i] = taps[i];
+    spectrum = (faar_sample_t *)malloc(2 * n * sizeof(faar_sample_t));
+    if (!spectrum) { faar_fft_clear(&plan); return -1; }
+    h = faar_fft_cforward(&plan, h);
     for (size_t i = 0; i < 2 * n; ++i) spectrum[i] = h[i] * scale;
-    faar_rfftd_clear(&plan);
-    bad = stage->single ? init_transforms_f(stage, spectrum)
-                        : init_transforms_d(stage, spectrum);
+    faar_fft_clear(&plan);
+    bad = init_transforms(stage, spectrum);
     free(spectrum);
     if (bad) return -1;
-    stage->overlap = (double *)calloc(stage->lanes * overlap_stride(stage),
-                                      sizeof(double));
-    stage->input_block = (double *)calloc(stage->lanes
-            * stage->stream_in, sizeof(double));
-    stage->output_block = (double *)calloc(stage->lanes
-            * stage->stream_out, sizeof(double));
+    stage->overlap = (faar_sample_t *)calloc(stage->lanes * overlap_stride(stage),
+                                      sizeof(faar_sample_t));
+    stage->input_block = (faar_sample_t *)calloc(stage->lanes
+            * stage->stream_in, sizeof(faar_sample_t));
+    stage->output_block = (faar_sample_t *)calloc(stage->lanes
+            * stage->stream_out, sizeof(faar_sample_t));
     return stage->overlap && stage->input_block && stage->output_block
         ? 0 : -1;
 }
 
 static int init_stage(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
-                      size_t decimation, size_t lanes, int stacked,
-                      int single) {
+                      size_t decimation, size_t lanes, int stacked) {
     int halfband = fft_size == 0;
     if (halfband) {
         if (tap_count < 5 || (tap_count - 1) % 4
@@ -111,7 +94,7 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
         fft_size = 256 + tap_count - 1;
     }
     if (!stage || !taps || !tap_count || tap_count > fft_size
-            || fft_size > SIZE_MAX / (2 * sizeof(double))
+            || fft_size > SIZE_MAX / (2 * sizeof(faar_sample_t))
             || (expansion != 1 && expansion != 2)
             || (decimation != 1 && decimation != 2 && decimation != 4)
             || (fft_size - tap_count + 1) % expansion
@@ -125,7 +108,6 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
     memset(stage, 0, sizeof(*stage));
     stage->lanes = lanes ? lanes : 1;
     stage->paired = lanes != 0;
-    stage->single = single;
     stage->halfband = halfband;
 
     stage->fft_size = fft_size;
@@ -145,15 +127,15 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
         }
         return 0;
     }
-    stage->filter_spectrum = (double *)calloc(halfband ? tap_count / 4 + 1
-                                                   : fft_size + 2, sizeof(double));
-    stage->work = (double *)calloc(fft_size + 2, sizeof(double));
-    stage->overlap = (double *)calloc((tap_count - 1) / expansion
+    stage->filter_spectrum = (faar_sample_t *)calloc(halfband ? tap_count / 4 + 1
+                                                   : fft_size + 2, sizeof(faar_sample_t));
+    stage->work = (faar_sample_t *)calloc(fft_size + 2, sizeof(faar_sample_t));
+    stage->overlap = (faar_sample_t *)calloc((tap_count - 1) / expansion
                                       ? (tap_count - 1) / expansion : 1,
-                                      sizeof(double));
-    stage->input_block = (double *)calloc(stage->input_block_size,
-                                          sizeof(double));
-    stage->output_block = (double *)calloc(stage->block_size, sizeof(double));
+                                      sizeof(faar_sample_t));
+    stage->input_block = (faar_sample_t *)calloc(stage->input_block_size,
+                                          sizeof(faar_sample_t));
+    stage->output_block = (faar_sample_t *)calloc(stage->block_size, sizeof(faar_sample_t));
     if (!stage->filter_spectrum || !stage->work || !stage->overlap
             || !stage->input_block || !stage->output_block) {
         faar_dft_fir_clear(stage);
@@ -174,63 +156,58 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
     free(stage->overlap);
     free(stage->input_block);
     free(stage->output_block);
-    faar_rfftf_clear(&stage->in_f);
-    faar_rfftf_clear(&stage->out_f);
-    faar_rfftd_clear(&stage->in_d);
-    faar_rfftd_clear(&stage->out_d);
-    free(stage->spec_f);
-    free(stage->spec_d);
+    faar_fft_clear(&stage->in);
+    faar_fft_clear(&stage->out);
+    free(stage->spec);
     memset(stage, 0, sizeof(*stage));
 }
 
 
-static void update_overlap(faar_dft_fir *stage, const double *input) {
+static void update_overlap(faar_dft_fir *stage, const faar_sample_t *input) {
     const size_t overlap = stage->tap_count - 1;
     if (!overlap) return;
     for (size_t lane = 0; lane < stage->lanes; ++lane) {
         const size_t block = stage->stream_in;
-        const double *in = input + lane * block;
-        double *keep = stage->overlap + lane * overlap_stride(stage);
+        const faar_sample_t *in = input + lane * block;
+        faar_sample_t *keep = stage->overlap + lane * overlap_stride(stage);
         size_t stored_overlap = overlap / stage->expansion;
         if (block >= stored_overlap) {
             memcpy(keep, in + block - stored_overlap,
-                   stored_overlap * sizeof(double));
+                   stored_overlap * sizeof(faar_sample_t));
         } else {
             memmove(keep, keep + block,
-                    (stored_overlap - block) * sizeof(double));
-            memcpy(keep + stored_overlap - block, in, block * sizeof(double));
+                    (stored_overlap - block) * sizeof(faar_sample_t));
+            memcpy(keep + stored_overlap - block, in, block * sizeof(faar_sample_t));
         }
     }
 }
 
-int faar_dft_fir_process(faar_dft_fir *stage, const double *input,
-                         double *output) {
+int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
+                         faar_sample_t *output) {
     if (stage && stage->halfband && input && output) {
         const size_t n = stage->tap_count;
         const size_t block = stage->block_size;
-        memcpy(stage->work, stage->overlap, (n - 1) * sizeof(double));
-        memcpy(stage->work + n - 1, input, block * sizeof(double));
+        memcpy(stage->work, stage->overlap, (n - 1) * sizeof(faar_sample_t));
+        memcpy(stage->work + n - 1, input, block * sizeof(faar_sample_t));
         for (size_t i = 0; i < block / 2; ++i)
             output[i] = stage->filter_spectrum[n / 4] * stage->work[2 * i + n / 2];
         /* Vectorize across independent outputs, without reassociating a
          * floating-point reduction or requiring compiler-specific flags. */
         for (size_t j = 0; j < n / 4; ++j) {
-            const double coefficient = stage->filter_spectrum[j];
-            const double *x = stage->work + 2 * j + 1;
-            const double *y = stage->work + n - 2 - 2 * j;
+            const faar_sample_t coefficient = stage->filter_spectrum[j];
+            const faar_sample_t *x = stage->work + 2 * j + 1;
+            const faar_sample_t *y = stage->work + n - 2 - 2 * j;
             for (size_t i = 0; i < block / 2; ++i)
                 output[i] += coefficient * (x[2 * i] + y[2 * i]);
         }
-        memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(double));
+        memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
         return 0;
     }
     if (!stage || !input || !output || !stage->overlap
-            || (stage->paired ? !stage->spec_f && !stage->spec_d
+            || (stage->paired ? !stage->spec
                               : !stage->work || !stage->filter_spectrum))
         return -1;
-    if (stage->paired && stage->single)
-        convolve_paired_f(stage, input, output);
-    else if (stage->paired) convolve_paired_d(stage, input, output);
+    if (stage->paired) convolve_paired(stage, input, output);
     else
         return -1;
     update_overlap(stage, input);
@@ -240,7 +217,7 @@ int faar_dft_fir_process(faar_dft_fir *stage, const double *input,
 void faar_dft_fir_reset(faar_dft_fir *stage) {
     if (!stage || !stage->overlap) return;
     memset(stage->overlap, 0, stage->lanes * overlap_stride(stage)
-                                  * sizeof(double));
+                                  * sizeof(faar_sample_t));
     stage->input_fill = 0;
     stage->output_count = 0;
     stage->output_offset = 0;
@@ -249,7 +226,7 @@ void faar_dft_fir_reset(faar_dft_fir *stage) {
 }
 
 /* Lane l of the caller's output starts l * stride samples in. */
-static size_t stream_drain(faar_dft_fir *stage, double *output, size_t stride,
+static size_t stream_drain(faar_dft_fir *stage, faar_sample_t *output, size_t stride,
                            size_t capacity) {
     size_t remaining = stage->output_count - stage->output_offset;
     size_t count = remaining < capacity ? remaining : capacity;
@@ -257,7 +234,7 @@ static size_t stream_drain(faar_dft_fir *stage, double *output, size_t stride,
         for (size_t lane = 0; lane < stage->lanes; ++lane)
             memcpy(output + lane * stride,
                    stage->output_block + lane * stage->stream_out
-                       + stage->output_offset, count * sizeof(double));
+                       + stage->output_offset, count * sizeof(faar_sample_t));
         stage->output_offset += count;
     }
     if (stage->output_offset == stage->output_count) {
@@ -268,9 +245,9 @@ static size_t stream_drain(faar_dft_fir *stage, double *output, size_t stride,
 }
 
 
-int faar_dft_fir_stream(faar_dft_fir *stage, const double *input,
+int faar_dft_fir_stream(faar_dft_fir *stage, const faar_sample_t *input,
                         size_t input_count, size_t *consumed,
-                        double *output, size_t output_capacity,
+                        faar_sample_t *output, size_t output_capacity,
                         size_t *produced) {
     if (!stage || !consumed || !produced || (input_count && !input)
             || (output_capacity && !output) || stage->finishing
@@ -288,7 +265,7 @@ int faar_dft_fir_stream(faar_dft_fir *stage, const double *input,
             memcpy(stage->input_block + lane * stage->stream_in
                        + stage->input_fill,
                    input + lane * input_count + *consumed,
-                   count * sizeof(double));
+                   count * sizeof(faar_sample_t));
         stage->input_fill += count;
         *consumed += count;
         if (stage->input_fill == stage->stream_in) {
@@ -304,7 +281,7 @@ int faar_dft_fir_stream(faar_dft_fir *stage, const double *input,
     return 0;
 }
 
-int faar_dft_fir_flush(faar_dft_fir *stage, double *output,
+int faar_dft_fir_flush(faar_dft_fir *stage, faar_sample_t *output,
                        size_t output_capacity, size_t *produced) {
     if (!stage || !produced || (output_capacity && !output))
         return -1;
@@ -318,7 +295,7 @@ int faar_dft_fir_flush(faar_dft_fir *stage, double *output,
         for (size_t lane = 0; lane < stage->lanes; ++lane)
             memset(stage->input_block + lane * stage->stream_in
                        + real_count, 0,
-                   (stage->stream_in - real_count) * sizeof(double));
+                   (stage->stream_in - real_count) * sizeof(faar_sample_t));
         if (faar_dft_fir_process(stage, stage->input_block,
                                  stage->output_block)) return -1;
         stage->input_fill = 0;

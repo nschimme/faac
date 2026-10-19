@@ -23,6 +23,7 @@
 #define JOIN_(a, b) a##b
 #define JOIN(a, b) JOIN_(a, b)
 #define FN(name) JOIN(PREFIX, name)
+#if defined(FAAR_FLOAT) || !defined(FAAR_FFT_LEAN)
 #define REAL float
 #define PLAN faar_rfftf_plan
 #define PREFIX faar_rfftf_
@@ -30,6 +31,8 @@
 #undef REAL
 #undef PLAN
 #undef PREFIX
+#endif
+#if !defined(FAAR_FLOAT) || !defined(FAAR_FFT_LEAN)
 #define REAL double
 #define PLAN faar_rfftd_plan
 #define PREFIX faar_rfftd_
@@ -37,6 +40,7 @@
 #undef REAL
 #undef PLAN
 #undef PREFIX
+#endif
 #else
 #define BUTTERFLY_SUMS \
     REAL t1 = r1 + r3, t2 = i1 + i3; \

@@ -362,14 +362,15 @@ static int isolation_for(faar_quality_t quality, float tolerance) {
     return 0;
 }
 
-/* Good and High pair channels in one double FFT: coupling is rounding at
- * 1e-16, far below a float output step, so only that bound is allowed. Fast
- * pairs in float, where roundoff couples channels at about -140 dB RMS
- * (peaks near 4e-7 of full scale). */
+/* Paired-channel roundoff follows the build precision. */
 static int test_channel_isolation(void) {
-    if (isolation_for(FAAR_QUALITY_HIGH, 1e-12f)
-            || isolation_for(FAAR_QUALITY_GOOD, 1e-12f)
-            || isolation_for(FAAR_QUALITY_FAST, 4e-7f)) return 1;
+#ifdef FAAR_FLOAT
+    const float tolerance = 4e-7f;
+#else
+    const float tolerance = 1e-12f;
+#endif
+    for (int q = 0; q < 3; ++q)
+        if (isolation_for((faar_quality_t)q, tolerance)) return 1;
     puts("Tuneout-derived FAAR channel isolation: 2, 6 and 8 channels passed");
     return 0;
 }

@@ -96,7 +96,7 @@ def main():
         raise RuntimeError('cutoff configuration changed; review reconstruction before rebuilding')
     recovered=a.root/'reconstructed/polyresample.c';recovered.parent.mkdir(exist_ok=True);recovered.write_text(baseline)
     regressed=a.root/'regressed/polyresample.c';regressed.parent.mkdir(exist_ok=True);regressed.write_text(regression)
-    cc=['cc','-O3','-g','-flto','-fPIC','-shared','-DFAAR_BUILDING','-DFAAR_DOUBLE_COEFFICIENTS','-I'+str(REPO/'include'),'-I'+str(REPO/'libfaar')]
+    cc=['cc','-O3','-g','-flto','-fPIC','-shared','-DFAAR_BUILDING','-I'+str(REPO/'include'),'-I'+str(REPO/'libfaar')]
     for name,src,staged in [('default',poly,False),('regressed',regressed,True),('reconstructed',recovered,True)]:
         d=a.root/name;d.mkdir(exist_ok=True)
         run(cc+(['-DFAAR_STAGED_BACKEND'] if staged else [])+[src]+([REPO/'libfaar'/x for x in sources] if staged else [])+['-lm','-o',d/'libfaar.so'],name+'-build')

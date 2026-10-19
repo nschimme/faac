@@ -7,8 +7,8 @@ libfaar_sources = files(
 )
 
 libfaar_args = ['-DFAAR_BUILDING']
-if get_option('faar-coefficient-precision') == 'double'
-  libfaar_args += '-DFAAR_DOUBLE_COEFFICIENTS'
+if get_option('faar-precision') == 'float'
+  libfaar_args += '-DFAAR_FLOAT'
 endif
 
 # Real-transform wrappers are exercised only by FFT verification.
@@ -73,10 +73,7 @@ test_faar_quality = executable('test_faar_quality',
 test('test_faar_quality', test_faar_quality)
 
 # Kept as independent verification tooling with Tuneout-derived test provenance.
-faar_fingerprint_file = 'matrix-fingerprints-staged-short.txt'
-if get_option('faar-coefficient-precision') == 'double'
-  faar_fingerprint_file = 'matrix-fingerprints-staged-short-double.txt'
-endif
+faar_fingerprint_file = 'matrix-fingerprints-' + get_option('faar-precision') + '.txt'
 faar_matrix_args = [
   '-DFAAR_RATE_FIXTURE_PATH="' + meson.current_source_dir() / 'verification/fixtures/rates.txt' + '"',
   '-DFAAR_FINGERPRINT_FIXTURE_PATH="' + meson.current_source_dir() / 'verification/fixtures' / faar_fingerprint_file + '"',
@@ -84,7 +81,7 @@ faar_matrix_args = [
 test_faar_tuneout_matrix = executable('test_faar_tuneout_matrix',
   'test_faar_tuneout_matrix.c',
   include_directories: inc,
-  c_args: faar_matrix_args,
+  c_args: faar_matrix_args + libfaar_args,
   dependencies: [libfaar_dep, m_dep],
 )
 test('test_faar_tuneout_matrix', test_faar_tuneout_matrix)
@@ -97,6 +94,7 @@ test_faar_dft_fir_sources = files(
 )
 test_faar_dft_fir = executable('test_faar_dft_fir',
   test_faar_dft_fir_sources,
+  c_args: libfaar_args,
   include_directories: inc,
   dependencies: [m_dep],
 )
@@ -111,6 +109,7 @@ test_faar_dft_prefilter_sources = files(
 )
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   test_faar_dft_prefilter_sources,
+  c_args: libfaar_args,
   include_directories: inc,
   dependencies: [m_dep],
 )

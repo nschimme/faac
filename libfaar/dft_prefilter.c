@@ -16,8 +16,8 @@ struct faar_dft_prefilter {
     faar_dft_fir *fir;
     uint16_t stages;
     uint16_t lanes; /* channels sharing one stage's transforms */
-    double *channel_input;
-    double *channel_output;
+    faar_sample_t *channel_input;
+    faar_sample_t *channel_output;
     size_t channel_output_capacity;
     size_t block_size;
     size_t prefix_drop;
@@ -83,7 +83,7 @@ static size_t fifo_drain(faar_dft_prefilter *s, float *output,
     return n;
 }
 
-static int fifo_push_planes(faar_dft_prefilter *s, const double *planes,
+static int fifo_push_planes(faar_dft_prefilter *s, const faar_sample_t *planes,
                             size_t stride, size_t frames) {
     size_t drop = frames < s->prefix_drop ? frames : s->prefix_drop;
     s->prefix_drop -= drop;
@@ -164,7 +164,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_expanded(uint16_t channels,
                                                size_t fft_size,
                                                size_t expansion) {
     return faar_dft_prefilter_create_rate(channels, taps, tap_count,
-                                           fft_size, expansion, 1, 0);
+                                           fft_size, expansion, 1);
 }
 
 faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
@@ -172,8 +172,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                                                size_t tap_count,
                                                size_t fft_size,
                                                size_t expansion,
-                                               size_t decimation,
-                                               int single) {
+                                               size_t decimation) {
     int halfband = fft_size == 0;
     if (halfband) fft_size = 256 + tap_count - 1;
     if (!channels || channels > 8 || !taps || tap_count < 3
@@ -199,11 +198,11 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
     s->lanes = !halfband && channels > 1 ? 2 : 1;
     s->stages = (uint16_t)((channels + s->lanes - 1) / s->lanes);
     s->fir = (faar_dft_fir *)calloc(s->stages, sizeof(*s->fir));
-    s->channel_input = (double *)malloc(s->lanes * s->block_size
-                                        * sizeof(double));
+    s->channel_input = (faar_sample_t *)malloc(s->lanes * s->block_size
+                                        * sizeof(faar_sample_t));
     s->channel_output_capacity = 2 * fft_size + 1;
-    s->channel_output = (double *)malloc(s->channel_output_capacity
-                                         * channels * sizeof(double));
+    s->channel_output = (faar_sample_t *)malloc(s->channel_output_capacity
+                                         * channels * sizeof(faar_sample_t));
     if (!s->fir || !s->channel_input || !s->channel_output)
         goto fail;
     for (uint16_t f = 0; f < s->stages; ++f) {
@@ -211,12 +210,12 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
             size_t lanes = channels - f * s->lanes < s->lanes
                 ? channels - f * s->lanes : s->lanes;
             if (faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
-                    fft_size, expansion, decimation, lanes, 0, single)) goto fail;
+                    fft_size, expansion, decimation, lanes, 0)) goto fail;
             continue;
         }
         if (!halfband) {
             if (faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
-                    fft_size, expansion, decimation, 1, 1, single)) goto fail;
+                    fft_size, expansion, decimation, 1, 1)) goto fail;
             continue;
         }
         if (faar_dft_fir_init_rate(&s->fir[f], taps, tap_count,

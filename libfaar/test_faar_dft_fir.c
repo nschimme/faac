@@ -131,14 +131,16 @@ static int test_32_to_48_high_filter(void) {
  * against explicit zero insertion and double convolution; they agree to the
  * paired precision's roundoff. */
 static int check_paired(size_t expansion, size_t decimation, size_t lanes,
-                        int stacked, int single) {
+                        int stacked) {
     enum { TAPS = 13, FFT = 128, FRAMES = 700, CHUNK = 37 };
-    double taps[TAPS], in[2][FRAMES], planes[2 * CHUNK];
-    double out[2][FRAMES * 2 + FFT], ref[2][FRAMES * 2 + FFT];
+    double taps[TAPS];
+    faar_sample_t in[2][FRAMES], planes[2 * CHUNK];
+    faar_sample_t out[2][FRAMES * 2 + FFT];
+    double ref[2][FRAMES * 2 + FFT];
     size_t count[2] = {0, 0};
     faar_dft_fir paired;
     const size_t cap = FFT * 2;
-    double *buf = (double *)malloc(2 * cap * sizeof(double));
+    faar_sample_t *buf = malloc(2 * cap * sizeof(*buf));
     size_t used = 0, produced = 0;
     for (size_t j = 0; j < TAPS; ++j) {
         double x = (double)j - (TAPS - 1) / 2.0;
@@ -150,7 +152,7 @@ static int check_paired(size_t expansion, size_t decimation, size_t lanes,
         for (size_t i = 0; i < FRAMES; ++i)
             in[l][i] = (0.3 + 0.2 * l) * sin(0.05 * (1 + l) * i) + 0.1 * cos(0.31 * i);
     if (!buf || faar_dft_fir_init_paired(&paired, taps, TAPS, FFT, expansion,
-                                         decimation, lanes, stacked, single))
+                                         decimation, lanes, stacked))
         return fail("paired FIR init failed");
     for (size_t at = 0; at < FRAMES; at += CHUNK) {
         size_t n = FRAMES - at < CHUNK ? FRAMES - at : CHUNK, eaten = 0;
@@ -181,7 +183,7 @@ static int check_paired(size_t expansion, size_t decimation, size_t lanes,
         }
         if (used != count[l]) return fail("paired FIR output count differs");
         for (size_t i = 0; i < used; ++i)
-            if (fabs(ref[l][i] - out[l][i]) > (single ? 2e-6 : 2e-14))
+            if (fabs(ref[l][i] - out[l][i]) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-14))
                 return fail("paired FIR differs from direct double convolution");
     }
     free(buf);
@@ -190,11 +192,10 @@ static int check_paired(size_t expansion, size_t decimation, size_t lanes,
 
 static int test_paired(void) {
     static const size_t rates[][2] = {{1, 1}, {2, 1}, {1, 2}, {1, 4}, {2, 2}, {2, 4}};
-    for (int single = 0; single <= 1; ++single)
         for (size_t r = 0; r < sizeof(rates) / sizeof(rates[0]); ++r)
             for (size_t mode = 0; mode < 3; ++mode)
                 if (check_paired(rates[r][0], rates[r][1], mode == 1 ? 2 : 1,
-                                 mode == 2, single)) return 1;
+                                 mode == 2)) return 1;
     puts("DFT FIR: paired lanes match direct double convolution for every rate");
     return 0;
 }
@@ -205,7 +206,8 @@ int main(void) {
     if (test_paired()) return 1;
     enum { TAPS = 31, FFT_SIZE = 128, BLOCK = FFT_SIZE - TAPS + 1,
            BLOCKS = 9 };
-    double taps[TAPS], input[BLOCK * BLOCKS], output[BLOCK * BLOCKS];
+    double taps[TAPS];
+    faar_sample_t input[BLOCK * BLOCKS], output[BLOCK * BLOCKS];
     faar_dft_fir stage;
 
     for (size_t j = 0; j < TAPS; ++j) {
@@ -244,7 +246,7 @@ int main(void) {
         double expected = 0.0;
         for (size_t k = 0; k < TAPS && k <= n; ++k)
             expected += taps[k] * input[n - k];
-        if (fabs(output[n] - expected) > 2e-12) {
+        if (fabs(output[n] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
             fprintf(stderr, "sample %zu: got %.17g expected %.17g\n",
                     n, output[n], expected);
             return fail("overlap-save differs from direct FIR convolution");
@@ -254,7 +256,7 @@ int main(void) {
 
     /* Exercise the actual chunk/backpressure wrapper on a partial final block. */
     enum { STREAM_N = 503, CHUNK = 17, CAPACITY = 11 };
-    double stream_input[STREAM_N], stream_output[STREAM_N];
+    faar_sample_t stream_input[STREAM_N], stream_output[STREAM_N];
     for (size_t i = 0; i < STREAM_N; ++i)
         stream_input[i] = 0.25 * sin(0.037 * i) + 0.1 * cos(0.113 * i);
     if (faar_dft_fir_init(&stage, taps, TAPS, FFT_SIZE))
@@ -295,7 +297,7 @@ int main(void) {
         double expected = 0.0;
         for (size_t k = 0; k < TAPS && k <= n; ++k)
             expected += taps[k] * stream_input[n-k];
-        if (fabs(stream_output[n] - expected) > 2e-12) {
+        if (fabs(stream_output[n] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
             faar_dft_fir_clear(&stage);
             return fail("streaming FIR differs from direct causal convolution");
         }
@@ -331,7 +333,7 @@ int main(void) {
         double expected = 0.0;
         for (size_t k = 0; k < TAPS && k <= n; ++k)
             expected += taps[k] * stream_input[n-k];
-        if (fabs(stream_output[n] - expected) > 2e-12) {
+        if (fabs(stream_output[n] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
             faar_dft_fir_clear(&stage);
             return fail("reset FIR output depends on prior stream");
         }
@@ -341,8 +343,8 @@ int main(void) {
     /* A factor-two interpolating transform is compared against literal
        zero insertion followed by the direct time-domain convolution. */
     enum { UPSAMPLE_N = 503 };
-    double upsample_input[UPSAMPLE_N], upsample_output[2 * UPSAMPLE_N];
-    double expanded[2 * UPSAMPLE_N];
+    faar_sample_t upsample_input[UPSAMPLE_N], upsample_output[2 * UPSAMPLE_N];
+    faar_sample_t expanded[2 * UPSAMPLE_N];
     for (size_t i = 0; i < UPSAMPLE_N; ++i) {
         upsample_input[i] = 0.2 * sin(0.041 * i) + 0.1 * cos(0.17 * i);
         expanded[2 * i] = upsample_input[i];
@@ -386,7 +388,7 @@ int main(void) {
         double expected = 0.0;
         for (size_t k = 0; k < TAPS && k <= n; ++k)
             expected += taps[k] * expanded[n-k];
-        if (fabs(upsample_output[n] - expected) > 2e-12) {
+        if (fabs(upsample_output[n] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
             fprintf(stderr, "expanded sample %zu: got %.17g expected %.17g\n",
                     n, upsample_output[n], expected);
             return fail("frequency-domain factor-two expansion differs from direct convolution");
@@ -395,7 +397,7 @@ int main(void) {
 
     /* The half-rate path folds the product spectrum and uses an N/2 inverse
        transform. Compare it to every second sample from the full N inverse. */
-    double half_rate_output[BLOCKS * BLOCK / 2];
+    faar_sample_t half_rate_output[BLOCKS * BLOCK / 2];
     faar_dft_fir full_rate, half_rate;
     if (faar_dft_fir_init(&full_rate, taps, TAPS, FFT_SIZE)
             || faar_dft_fir_init_rate(&half_rate, taps, TAPS, FFT_SIZE,
@@ -417,7 +419,7 @@ int main(void) {
         }
         for (size_t i = 0; i < BLOCK / 2; ++i) {
             if (fabs(half_rate_output[b * BLOCK / 2 + i]
-                        - output[b * BLOCK + 2 * i]) > 2e-12) {
+                        - output[b * BLOCK + 2 * i]) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
                 fprintf(stderr, "half-rate block %zu sample %zu got %.17g even %.17g odd %.17g\n",
                         b, i, half_rate_output[b * BLOCK / 2 + i],
                         output[b * BLOCK + 2 * i], output[b * BLOCK + 2 * i + 1]);
@@ -431,7 +433,7 @@ int main(void) {
     faar_dft_fir_clear(&half_rate);
 
     enum { HALF_STREAM_N = 503 };
-    double half_stream_input[HALF_STREAM_N], half_stream_output[(HALF_STREAM_N+1)/2];
+    faar_sample_t half_stream_input[HALF_STREAM_N], half_stream_output[(HALF_STREAM_N+1)/2];
     for (size_t i = 0; i < HALF_STREAM_N; ++i)
         half_stream_input[i] = 0.25 * sin(0.037 * i) + 0.1 * cos(0.113 * i);
     if (faar_dft_fir_init_rate(&stage, taps, TAPS, FFT_SIZE, 1, 2))
@@ -473,7 +475,7 @@ int main(void) {
         double expected = 0.0;
         for (size_t k = 0; k < TAPS && k <= n; ++k)
             expected += taps[k] * half_stream_input[n-k];
-        if (fabs(half_stream_output[m] - expected) > 2e-12) {
+        if (fabs(half_stream_output[m] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
             faar_dft_fir_clear(&stage);
             return fail("half-rate streaming differs from direct decimated convolution");
         }
@@ -484,8 +486,9 @@ int main(void) {
        packed N/4 inverse against a full inverse and streamed convolution. */
     enum { TAPS4 = 13, FFT4 = 128, BLOCK4 = FFT4 - TAPS4 + 1,
            BLOCKS4 = 4, STREAM4 = 503 };
-    double taps4[TAPS4], input4[BLOCK4 * BLOCKS4];
-    double full4_output[BLOCK4], quarter4_output[BLOCK4 / 4];
+    double taps4[TAPS4];
+    faar_sample_t input4[BLOCK4 * BLOCKS4];
+    faar_sample_t full4_output[BLOCK4], quarter4_output[BLOCK4 / 4];
     for (size_t j = 0; j < TAPS4; ++j) {
         double x = (double)j - (TAPS4 - 1) / 2.0;
         double sinc = x == 0.0 ? 0.24 : sin(0.24 * M_PI * x) / (M_PI * x);
@@ -509,7 +512,7 @@ int main(void) {
             return fail("quarter-rate FIR block processing failed");
         }
         for (size_t i = 0; i < BLOCK4 / 4; ++i) {
-            if (fabs(quarter4_output[i] - full4_output[4 * i]) > 2e-12) {
+            if (fabs(quarter4_output[i] - full4_output[4 * i]) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
                 faar_dft_fir_clear(&full4);
                 faar_dft_fir_clear(&quarter4);
                 return fail("folded N/4 inverse differs from full inverse");
@@ -519,7 +522,7 @@ int main(void) {
     faar_dft_fir_clear(&full4);
     faar_dft_fir_clear(&quarter4);
 
-    double stream4_input[STREAM4], stream4_output[(STREAM4 + 3) / 4];
+    faar_sample_t stream4_input[STREAM4], stream4_output[(STREAM4 + 3) / 4];
     for (size_t i = 0; i < STREAM4; ++i)
         stream4_input[i] = 0.19 * sin(0.031 * i) + 0.08 * cos(0.097 * i);
     if (faar_dft_fir_init_rate(&stage, taps4, TAPS4, FFT4, 1, 4))
@@ -560,7 +563,7 @@ int main(void) {
         double expected = 0.0;
         for (size_t k = 0; k < TAPS4 && k <= n; ++k)
             expected += taps4[k] * stream4_input[n - k];
-        if (fabs(stream4_output[m] - expected) > 2e-12) {
+        if (fabs(stream4_output[m] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
             faar_dft_fir_clear(&stage);
             return fail("quarter-rate stream differs from direct convolution");
         }
