@@ -140,5 +140,55 @@ python3 tools/faar_recovery/diagnose.py --phase signals --transient-matrix \
 The proposed numerical-floor ceiling is diagnostic output for review; the
 existing gain, alias, and fingerprint thresholds are unchanged. A whole-file
 KBSRC/ARDFTSRC interface is never labeled as passing FAAR's streaming contract.
+## Additional competitor engines
+
+Extra `diagnose.py --engines` names, all with the same driver argv, timing,
+heap, and output contract as the existing engines (`setup_cpu_seconds`,
+`processing_cpu_seconds`, `setup_live_heap_bytes`, `whole_process_peak_rss_kib`,
+plus an `io_type` field):
+
+| Engine | Library and configuration | I/O |
+| --- | --- | --- |
+| `soxr-hq` | libsoxr `soxr_quality_spec(SOXR_HQ,0)`, one thread | float32 interleaved |
+| `soxr-vhq` | libsoxr `SOXR_VHQ`, one thread | float32 interleaved |
+| `tuneout-standard`, `tuneout-long`, `tuneout-extralong` | tuneout-resampler Generic policy with the Standard/Long/ExtraLong length | `process_f32` (f64 accumulation) |
+| `ardftsrc-rs` | ardftsrc-rs `Config` quality 16384, bandwidth 0.99 (matches the C++ ARDFTSRC comparison) | file f32; samples f64 |
+| `ardftsrc-rs-default` | ardftsrc-rs default config (quality 2304, bandwidth 0.975) | f32 |
+
+qaac runs HQ with float32 and VHQ with float64; here both use float32 to match
+FAAR's float API. libsoxr is driven in `block_frames` chunks and drained with a
+NULL input. ardftsrc-rs rejects quality 16384 with f32 samples
+(`QualityTooHighForF32`), so the matched variant converts to f64 inside the
+timed region; its chunk size is dictated by the crate (`input_buffer_size()`),
+so the driver buffers `block_frames` input into those chunks. Output counts
+equal `ceil(n*out/in)` for all of them in the smoke run; ardftsrc-rs trims its
+own algorithmic delay internally.
+
+The Rust engines live in `rust_driver/` (a standalone crate, not part of the
+FAAC build) and share the argv shape of `driver.cpp`:
+`rust_driver <tuneout|ardftsrc-rs> <variant> input.f32 output.f32 in_rate out_rate channels block_frames output_capacity`.
+It uses `CLOCK_PROCESS_CPUTIME_ID` via libc and `getrusage`. Live heap comes from
+a counting global allocator, so it covers Rust allocations only (and also
+reports `peak_live_heap_bytes`). Tuneout builds its coefficient bank in
+construction, so its setup time and heap are large relative to the others.
+`whole_process_peak_rss_kib` is the child's `ru_maxrss`, which can be inflated by
+the parent process image on fork, as with the existing engines.
+
+Rust >= 1.89 is required (tuneout-resampler). `build.py` uses
+`ROOT/rust-toolchain/bin` when present, else `cargo` on PATH. The references are
+cloned into `ROOT/refs` and checked out at the commits pinned in `build.py`; the
+commit hashes, the soxr header/library hashes, and the rustc version are
+recorded under `external_references` in `build-manifest.json`. `--external-only`
+rebuilds just the soxr/Rust drivers and merges their manifest entries without
+touching the FAAR/SoX/KBSRC builds. The `rust_driver/Cargo.toml` path
+dependencies are fixed to `/tmp/faar-recovery/refs`.
+
+```sh
+python3 tools/faar_recovery/build.py --root /tmp/faar-recovery --external-only
+python3 tools/faar_recovery/diagnose.py --phase bench --repeats 1 --seconds 2 \
+  --bench-pair 96000 44100 --bench-pair 44100 48000 \
+  --engines faar-default soxr-hq soxr-vhq tuneout-standard ardftsrc-rs --suffix=-external-smoke
+```
+
 Reference licenses and instrumented-copy policies are in
 [reference-notices/NOTICE.md](reference-notices/NOTICE.md).

@@ -20,7 +20,7 @@ from compare_faar_ardft import write_float_wav, read_float_wav, measure
 
 PRIMARY=[(96000,44100),(48000,44100),(44100,48000)]
 EXTRA=[(96000,48000),(192000,44100),(48000,48000),(44100,44101)]
-ENGINES=['faar-default','faar-regressed','faar-reconstructed','faar-candidate','sox','sox-wide','sox-steep','sox-extreme','kbsrc-fast-generic','kbsrc-fast-auto','kbsrc-exact-generic','kbsrc-exact-auto','ardftsrc']
+ENGINES=['faar-default','faar-regressed','faar-reconstructed','faar-candidate','sox','sox-wide','sox-steep','sox-extreme','kbsrc-fast-generic','kbsrc-fast-auto','kbsrc-exact-generic','kbsrc-exact-auto','ardftsrc','soxr-hq','soxr-vhq','tuneout-standard','tuneout-long','tuneout-extralong','ardftsrc-rs','ardftsrc-rs-default']
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def db(x):return 20*math.log10(max(float(x),1e-300))
@@ -87,10 +87,13 @@ def main():
         else:
             if engine=='faar-candidate':kind='faar';variant=str(a.candidate_library)
             elif engine.startswith('faar-'):kind='faar';variant=str(a.root/engine[5:]/'libfaar.so')
+            elif engine in ('soxr-hq','soxr-vhq'):kind=engine;variant='libsoxr'
+            elif engine.startswith('tuneout-'):kind='tuneout';variant=engine[8:]
+            elif engine.startswith('ardftsrc-rs'):kind='ardftsrc-rs';variant='default' if engine.endswith('-default') else 'matched'
             elif engine.startswith('sox'):kind='sox';variant={'sox':'default','sox-wide':'wide','sox-steep':'steep','sox-extreme':'extreme'}[engine]
             else:
                 kind='kbsrc-exact' if 'exact' in engine else 'kbsrc-fast';variant='generic' if engine.endswith('generic') else 'auto'
-            cmd=[str(a.root/'driver'),kind,variant,str(infile),str(outfile),str(ir),str(orate),str(channels),str(block),str(capacity)]
+            cmd=[str(a.root/('rust_driver' if kind in ('tuneout','ardftsrc-rs') else 'driver')),kind,variant,str(infile),str(outfile),str(ir),str(orate),str(channels),str(block),str(capacity)]
             if kind=='faar' and a.faar_quality is not None:
                 cmd.append(str(a.faar_quality))
         env=dict(os.environ)

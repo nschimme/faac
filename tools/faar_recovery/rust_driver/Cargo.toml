@@ -1,0 +1,21 @@
+# External-reference timing driver. Never linked into libfaar.
+[package]
+name = "faar-recovery-rust-driver"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+libc = "0.2"
+# Pinned reference checkouts; build.py supplies the paths through [patch]-free
+# path dependencies by default under /tmp/faar-recovery/refs.
+tuneout-resampler = { path = "/tmp/faar-recovery/refs/tuneout-resampler" }
+ardftsrc = { path = "/tmp/faar-recovery/refs/ardftsrc-rs/ardftsrc", default-features = true }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = 1
