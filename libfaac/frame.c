@@ -868,12 +868,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering */
+    /* Perform TNS analysis and filtering on long and short blocks */
     for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
-
+        if (!hEncoder->isLfeChannel[channel] && useTns) {
 #ifdef FAAC_STATS
+            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
             if (attack > 0.0f && isfinite(attack)) {
                 g_faacStats.totalAttack += attack;
                 if (attack > g_faacStats.maxAttack) {
@@ -881,19 +880,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 }
                 g_faacStats.attackCount++;
             }
-            g_faacStats.longBlocks++;
+            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW)
+                g_faacStats.shortBlocks++;
+            else
+                g_faacStats.longBlocks++;
 #endif
-
-            /* No envelope yet (the first frames) means no basis to reject
-               on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                continue;
-            }
-
+            /* TnsEncode evaluates LPC prediction gain and post-quantization benefit directly on the spectrum. */
             TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 

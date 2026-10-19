@@ -47,8 +47,8 @@ enum { SINE_WINDOW = 0, KBD_WINDOW = 1 };
  * TNS_LPC_ORDER), never the spec's 4 filters at order 20. Both are checked
  * against the bitstream field widths by _Static_asserts in channels.c, which
  * this header can't include without a cycle. */
-#define TNS_MAX_ORDER 8
-#define TNS_MAX_FILTERS 1
+#define TNS_MAX_ORDER 12
+#define TNS_MAX_FILTERS 3
 #define DEF_TNS_COEFF_THRESH 0.1f
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
@@ -58,21 +58,24 @@ typedef struct {
     uint8_t direction;                    /* Filtering direction */
     uint8_t coefCompress;                 /* Are coeffs compressed? */
     uint8_t length;                       /* Length, in bands */
-    int8_t index[TNS_MAX_ORDER+1];         /* Quantized reflection-coeff indices */
+    int8_t index[TNS_MAX_ORDER+1];        /* Quantized reflection-coeff indices */
 } TnsFilterData;
 
 typedef struct {
     int numFilters;                             /* Number of filters */
-    int coefResolution;                         /* Coefficient resolution */
-    TnsFilterData tnsFilter[TNS_MAX_FILTERS];    /* TNS filters */
+    int coefResolution;                         /* Coefficient resolution (3 or 4) */
+    TnsFilterData tnsFilter[TNS_MAX_FILTERS];   /* TNS filters */
 } TnsWindowData;
 
 typedef struct {
     int tnsDataPresent;
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
-    int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
-    TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
+    int tnsNumSwbLong;      /* full swb count for long (decoder's num_swb) */
+    int tnsMinBandNumberShort;
+    int tnsMaxBandsShort;
+    int tnsNumSwbShort;     /* full swb count for short */
+    TnsWindowData windowData[MAX_SHORT_WINDOWS];
 } TnsInfo;
 
 typedef struct CoderInfo {

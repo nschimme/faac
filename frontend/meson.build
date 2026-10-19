@@ -41,6 +41,19 @@ if get_option('encoder')
         install: true
     )
 
+    ffmpeg_exe = find_program('ffmpeg', required: false)
+    test_tns = executable('test_tns',
+        ['test_tns.c'],
+        include_directories: ['..', '../include'],
+        dependencies: [libm],
+        link_with: [libfaac_for_frontend]
+    )
+    if ffmpeg_exe.found()
+        test('tns_roundtrip', test_tns, args: [ffmpeg_exe.full_path(), meson.current_build_dir()])
+    else
+        test('tns_roundtrip', test_tns)
+    endif
+
     if target_machine.system() == 'windows'
         windows = import('windows')
         resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',

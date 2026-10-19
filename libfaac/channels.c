@@ -134,34 +134,39 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
     bits += LEN_TNS_PRES;
 
-    /* TNS is long-only (see tns.c): tnsDataPresent is never set for
-     * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
-     * to write, always at the long-window field widths. */
     if (tns->tnsDataPresent) {
-        TnsWindowData *win = &tns->windowData;
+        bool isShort = (coder->block_type == ONLY_SHORT_WINDOW);
+        int numWindows = isShort ? MAX_SHORT_WINDOWS : 1;
+        int nfiltBits = isShort ? LEN_TNS_NFILTS : LEN_TNS_NFILTL;
+        int lengthBits = isShort ? LEN_TNS_LENGTHS : LEN_TNS_LENGTHL;
+        int orderBits  = isShort ? LEN_TNS_ORDERS  : LEN_TNS_ORDERL;
 
-        PutBit(bs, win->numFilters, LEN_TNS_NFILTL);
-        bits += LEN_TNS_NFILTL;
+        for (int w = 0; w < numWindows; w++) {
+            TnsWindowData *win = &tns->windowData[w];
 
-        if (win->numFilters > 0) {
-            PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
-            bits += LEN_TNS_COEFF_RES;
+            PutBit(bs, win->numFilters, nfiltBits);
+            bits += nfiltBits;
 
-            for (int f = 0; f < win->numFilters; f++) {
-                TnsFilterData *flt = &win->tnsFilter[f];
-                PutBit(bs, flt->length, LEN_TNS_LENGTHL);
-                PutBit(bs, flt->order, LEN_TNS_ORDERL);
-                bits += LEN_TNS_LENGTHL + LEN_TNS_ORDERL;
+            if (win->numFilters > 0) {
+                PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
+                bits += LEN_TNS_COEFF_RES;
 
-                if (flt->order > 0) {
-                    PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
-                    PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
-                    bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
+                for (int f = 0; f < win->numFilters; f++) {
+                    TnsFilterData *flt = &win->tnsFilter[f];
+                    PutBit(bs, flt->length, lengthBits);
+                    PutBit(bs, flt->order, orderBits);
+                    bits += lengthBits + orderBits;
 
-                    int res = win->coefResolution - flt->coefCompress;
-                    for (int i = 1; i <= flt->order; i++) {
-                        PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
-                        bits += res;
+                    if (flt->order > 0) {
+                        PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
+                        PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
+                        bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
+
+                        int res = win->coefResolution - flt->coefCompress;
+                        for (int i = 1; i <= flt->order; i++) {
+                            PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
+                            bits += res;
+                        }
                     }
                 }
             }

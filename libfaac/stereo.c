@@ -178,6 +178,12 @@ static inline void apply_is(float * restrict sl0, float * restrict sr0,
     }
 }
 
+/* Note on decoder tool ordering: Per ISO/IEC 14496-3 Section 4.6.8 / 4.6.2, AAC decoders
+ * undo M/S and Intensity Stereo coupling first to restore left and right spectral lines,
+ * and subsequently apply inverse TNS prediction independently on each individual channel stream.
+ * To maintain encoder/decoder state alignment, FAAC applies TNS analysis and filtering
+ * independently per channel on uncoupled L/R spectral lines prior to running the AACstereo
+ * M/S and Intensity Stereo decision passes below. */
 /* One pass over a window group's bands. A band below ms_end takes M/S when it
  * saves bits: mid and side are each coded at half the L/R noise, since the
  * decoder adds both into each channel, so M/S wins when Em*Es < El*Er/4. From
