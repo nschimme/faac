@@ -7,6 +7,7 @@
 
 /* Block overlap-save FIR stage; filter coefficients are supplied by caller. */
 typedef struct faar_dft_fir {
+    int halfband; /* Sparse time-domain 2:1 FIR, sharing stream storage. */
     faar_real_fft_plan fft;
     faar_real_fft_plan input_fft;
     faar_real_fft_plan decimated_fft;

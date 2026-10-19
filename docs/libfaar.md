@@ -23,12 +23,46 @@ coverage are described in
 
 | Conversion class | `staged-short` plan |
 |---|---|
-| General downsampling | Choose the largest DFT decimation D in {4, 2, 1}, then the smallest expansion E in {1, 2}, such that the bank rate R = input × E / D is at least 2.50 × output. Design the prefilter against output Nyquist. Use exact 1-tap sampling when R/output is integral; otherwise use a 21-tap Kaiser bank. |
+| General downsampling | Evaluate zero or more leading wide-transition 2:1 half-band stages using the calibrated work model below, then choose the largest DFT decimation D in {4, 2, 1}, then the smallest expansion E in {1, 2}, such that the bank rate R = input × E / D is at least 2.50 × output. Keep the final bank rate and tap count no greater than the original general plan and require the same 2.50 margin after each halving. Design the sharp prefilter at the reduced input rate against FINAL output Nyquist. Use exact 1-tap sampling when R/output is integral; otherwise use a 21-tap Kaiser bank. |
 | Near-unity downsampling where 2× expansion cannot reach that margin | Use 2× expansion and the wider-bandwidth 20-tap prototype bank. |
 | Dedicated half-rate and 192 → 48 kHz plans | Keep 2× and 4× DFT decimation respectively, followed by exact 1-tap sampling. Fast/Good use spec-designed filters; High retains the measured filter. |
 | Dedicated reference plans to 44.1 kHz | Keep the 20-tap prototype bank and existing expansion. Fast/Good use spec-designed prefilters. High retains the measured 48/96 kHz designs; 192 kHz uses a spec-designed filter whose stop edge also covers the near-Nyquist alias probe. |
 | Dedicated plans to 32 kHz | Keep 2× expansion, with exact 3:1 sampling for 48 kHz input and a 21-tap bank for 44.1 kHz input. High's 48 kHz filter uses the sharper existing stop edge. |
 | Dedicated 2× expansion upsampling | Design Fast/Good against input Nyquist. Keep measured High filters except the corrected 32 kHz input plans. Exact double-rate routes use a 1-tap bank; the measured prototype is retained for 44.1 → 48 kHz, and generic fractional banks use 41 taps to suppress phase modulation. Measured High banks remain unchanged except for 32 kHz input. |
+
+The planner evaluates every eligible `k`, including `k=0`, and minimizes
+work per final output sample. For each candidate, `F` is the sum of paired
+half-band multiply-adds, `(stage_input / (2 * final_output)) * (taps/4 + 1)`;
+`T` is the final FFT work divided by its usable block length and scaled to
+final outputs; `B` is the bank length. Forward and inverse FFT sizes are
+`N/E` and `N/D`, reflecting zero-insertion and spectral folding, so
+`T = ((N/E)*log2(N/E) + (N/D)*log2(N/D)) / block_final_outputs`,
+where `block_final_outputs = (N-taps+1)*final_output/(stage_input*E)`.
+`V` counts input frames visited by all stages per final output. The fitted
+cost is `0.41445*F + 0.29928*T + 0.21198*B + 0.74921*V`. Constants were fitted
+once to 93 candidate/preset cases measured in three alternating rounds of
+30 s stereo, with nonnegative least squares and constraints rejecting
+calibration candidates measured more than 3% slower than `k=0`. There is no
+per-route cost table. The fitted constant output overhead was zero. `k=0` retains the original
+filter and 5.3 dB margin; only cascaded candidates add the 4.7 dB reserve.
+
+Leading stages apply only to GENERAL downsampling; dedicated HALF, QUARTER,
+REFERENCE, DOWN32 and UP plans retain their existing designs. Each leading
+stage stops aliases before they can land inside 1.04 times the final output
+Nyquist. Its required pass edge is the preset's 0.90/0.96 times that Nyquist;
+we conservatively extend it to 1.04, paired with the stop edge
+`stage_input/2 - 1.04 * final_output/2`. These symmetric edges centre the
+filter at one quarter of the stage input rate, making alternate non-centre
+taps zero. Lengths are rounded to `4m+1`. A sparse time-domain FIR pairs the
+symmetric odd taps and vectorizes across independent outputs. It uses the
+same centred prefix/suffix padding and HOLD/ZERO endpoints as the DFT FIR.
+The cascade retains the original duration cap, composes delay in input frames,
+and leaves dither to the final stage.
+
+Cascade filters share the preset Kaiser design and 5.3 dB margin, with an
+additional 4.7 dB reserve for shorter final-filter sidelobes and the added float
+boundary. The final stage keeps the preset pass/stop edges relative to FINAL
+output Nyquist. Dedicated designs do not use this additional reserve.
 
 The 21-tap bank's oversampling margin is the centre of the measured 2.48–2.52
 bracket: at 0.96 Nyquist, isolated C bank probes measured residuals of −141.35,

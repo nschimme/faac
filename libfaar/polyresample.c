@@ -224,24 +224,32 @@ static const struct {
     [FAAR_QUALITY_HIGH] = {0.96, 1.04, 150.0},
 };
 
+static void design_band(faar_quality_t quality, double pb, double sb,
+        size_t alignment, double reserve_db, size_t *tap_count, double *beta, double *cutoff) {
+    size_t preset = quality <= FAAR_QUALITY_HIGH ? (size_t)quality
+                                                 : FAAR_QUALITY_GOOD;
+    /* Shared full-screen Kaiser margin. Cascades reserve another 4.7 dB
+     * for the extra float boundary and shorter final-filter sidelobes.
+     * Edges are cycles per input sample. */
+    double attenuation = preset_specs[preset].attenuation + 5.3 + reserve_db;
+    size_t n = (size_t)ceil((attenuation - 7.95) / (14.36 * (sb - pb))) + 1;
+    *tap_count = ((n - 1 + alignment - 1) / alignment) * alignment + 1;
+    *beta = 0.1102 * (attenuation - 8.7);
+    *cutoff = 0.5 * (pb + sb);
+}
+
 /* Kaiser length and beta for a preset spec at filter_rate. alignment is the
  * divisor N-1 must meet so the DFT stage stays centred on input zero. */
 static void design_from_spec(faar_quality_t quality, uint32_t out_rate,
-        uint32_t filter_rate, double stopband, size_t alignment,
+        uint32_t filter_rate, double stopband, size_t alignment, double reserve_db,
         size_t *tap_count, double *beta, double *cutoff) {
     size_t preset = quality <= FAAR_QUALITY_HIGH ? (size_t)quality
                                                  : FAAR_QUALITY_GOOD;
     double pb = preset_specs[preset].passband;
     double sb = stopband > 0.0 ? stopband : preset_specs[preset].stopband;
-    /* Full-screen bracket: 5.2 dB misses 150 dB (149.916); 5.3 dB passes. */
-    const double margin_db = 5.3;
-    double attenuation = preset_specs[preset].attenuation + margin_db;
-    double nyquist_ratio = 0.5 * (double)out_rate / filter_rate;
-    size_t n = (size_t)ceil((attenuation - 7.95)
-                            / (14.36 * (sb - pb) * nyquist_ratio)) + 1;
-    *tap_count = n + (alignment - (n - 1) % alignment) % alignment;
-    *beta = 0.1102 * (attenuation - 8.7);
-    *cutoff = 0.5 * (pb + sb) * nyquist_ratio;
+    design_band(quality, 0.5 * pb * out_rate / filter_rate,
+                0.5 * sb * out_rate / filter_rate, alignment, reserve_db,
+                tap_count, beta, cutoff);
 }
 
 struct short_plan {
@@ -284,10 +292,11 @@ static const struct short_route_entry *short_dedicated_route(uint32_t in,
 }
 
 static struct short_plan short_plan(uint32_t in, uint32_t out,
-        faar_quality_t quality) {
+        faar_quality_t quality, bool general) {
     struct short_plan p = {0, 1, 1, 1, 21, 19.078143572239966, 0.0};
     enum short_route route = short_half_rate_route(in, out) ? HALF : GENERAL;
     const struct short_route_entry *entry = short_dedicated_route(in, out);
+    if (general) { route = GENERAL; entry = NULL; }
     if (entry) {
         route = entry->route;
         p.expansion = entry->expansion;
@@ -358,14 +367,18 @@ selected:
         size_t alignment = p.expansion == 2 ? 4 : p.decimation;
         if (alignment < 2) alignment = 2;
         design_from_spec(quality, lower, in * (uint32_t)p.expansion, sb,
-                         alignment, &p.taps, &p.beta, &p.cutoff);
+                         alignment, general ? 4.7 : 0.0, &p.taps, &p.beta, &p.cutoff);
     }
     return p;
 }
 
 #endif
 static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
-        uint16_t channels, faar_quality_t quality) {
+        uint16_t channels, faar_quality_t quality
+#ifdef FAAR_STAGED_SHORT_POLY
+        , const struct short_plan *selected
+#endif
+        ) {
     size_t tap_count, fft_size = 1;
     size_t expansion = 1;
     double beta;
@@ -376,9 +389,9 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         default: tap_count = 301; beta = 12.0; break;
     }
 #ifdef FAAR_STAGED_SHORT_POLY
-    struct short_plan plan = short_plan(in_rate, out_rate, quality);
+    struct short_plan plan = *selected;
     tap_count = plan.taps;
-    fft_size = plan.fft;
+    fft_size = plan.fft ? plan.fft : 1;
     expansion = plan.expansion;
     beta = plan.beta;
 #endif
@@ -417,7 +430,13 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     size_t decimation = 1;
 #endif
     r->dft_prefilter = faar_dft_prefilter_create_rate(channels, taps,
-            tap_count, fft_size, expansion, decimation);
+            tap_count,
+#ifdef FAAR_STAGED_SHORT_POLY
+            selected->fft == 0 ? 0 : fft_size,
+#else
+            fft_size,
+#endif
+            expansion, decimation);
     free(taps);
     if (!r->dft_prefilter) { free(r); return NULL; }
 #ifdef FAAR_STAGED_SHORT_POLY
@@ -430,6 +449,12 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         free(r);
         return NULL;
     }
+#ifdef FAAR_STAGED_SHORT_POLY
+    if (selected->fft == 0) {
+        r->delay = (tap_count - 1) / 2;
+        return r;
+    }
+#endif
     uint32_t stage2_rate = in_rate * (uint32_t)expansion
         / (uint32_t)decimation;
     r->stage2 = faar_create_ext_internal(stage2_rate, out_rate, channels,
@@ -443,6 +468,99 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         / (expansion * decimation)
         + (r->stage2->delay + expansion * decimation - 1)
             / (expansion * decimation);
+    return r;
+}
+#endif
+
+#ifdef FAAR_STAGED_SHORT_POLY
+/* Keep the final bank's rate and arithmetic no greater than the original
+ * general plan, while moving its sharp filter to the lowest viable rate. */
+static unsigned short_max_halvings(uint32_t in, uint32_t out, faar_quality_t q) {
+    if (in <= out || short_half_rate_route(in, out)
+            || short_dedicated_route(in, out)) return 0;
+    struct short_plan original = short_plan(in, out, q, true);
+    uint64_t bank = (uint64_t)in * original.expansion / original.decimation;
+    unsigned k = 0;
+    while (!(in & 1) && in / 2 > out) {
+        struct short_plan next = short_plan(in / 2, out, q, true);
+        uint64_t rate = (uint64_t)(in / 2) * next.expansion / next.decimation;
+        if (rate < 2.5 * out || rate > bank || next.bank > original.bank) break;
+        in /= 2;
+        ++k;
+    }
+    return k;
+}
+
+/* Coefficients in ns per stereo-independent output, calibrated once from
+ * alternating three-round 30 s stereo candidate measurements. Nonnegative
+ * least squares rejects calibration choices measured >3% slower than k=0.
+ * No rate or preset identities enter this model. */
+static double short_work(uint32_t in, uint32_t out, faar_quality_t quality,
+        unsigned k, double fir_work, double visited) {
+    struct short_plan p = short_plan(in, out, quality, k != 0);
+    size_t n = p.fft;
+    while (n < p.taps * 5) n *= 2;
+    double forward = (double)n / p.expansion;
+    double inverse = (double)n / p.decimation;
+    double block_input = (double)(n - p.taps + 1) / p.expansion;
+    double fft_work = (forward * log2(forward) + inverse * log2(inverse))
+        / block_input * in / out;
+    return 0.41445 * fir_work + 0.29928 * fft_work + 0.21198 * p.bank
+        + 0.74921 * (visited + (double)in / out);
+}
+
+static struct short_plan short_preplan(uint32_t in, uint32_t out,
+        faar_quality_t quality) {
+    struct short_plan pre = {0, 0, 1, 2, 1, 0, 0};
+    /* Symmetric edges cover the preset pass edge and reject aliases before
+     * they can land inside 1.04 times FINAL output Nyquist. */
+    double pb = 0.52 * out / in;
+    design_band(quality, pb, 0.5 - pb, 4, 4.7,
+                &pre.taps, &pre.beta, &pre.cutoff);
+    return pre;
+}
+
+static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality_t q) {
+    unsigned limit = short_max_halvings(in, out, q), best = 0;
+    if (!limit) return 0;
+    double fir = 0, visited = 0;
+    double minimum = short_work(in, out, q, 0, 0, 0);
+    for (unsigned k = 1; k <= limit; ++k) {
+        struct short_plan pre = short_preplan(in, out, q);
+        /* Paired odd coefficients plus the centre, per FINAL output. */
+        fir += (double)in / (2.0 * out) * (pre.taps / 4 + 1);
+        visited += (double)in / out;
+        in /= 2;
+        double work = short_work(in, out, q, k, fir, visited);
+        if (work < minimum) { minimum = work; best = k; }
+    }
+    return best;
+}
+
+static faar_handle_t short_cascade(uint32_t in, uint32_t out,
+        uint16_t channels, faar_quality_t quality, unsigned k) {
+    if (!k) {
+        struct short_plan p = short_plan(in, out, quality, true);
+        return faar_create_staged(in, out, channels, quality, &p);
+    }
+    struct short_plan pre = short_preplan(in, out, quality);
+    faar_handle_t r = calloc(1, sizeof(*r));
+    if (!r) return NULL;
+    r->in_rate = in;
+    r->out_rate = out;
+    r->channels = channels;
+    r->quality = quality;
+    r->boundary = FAAR_BOUNDARY_HOLD;
+    r->ratio = (double)out / in;
+    r->stage1 = faar_create_staged(in, in / 2, channels, quality, &pre);
+    r->stage2 = short_cascade(in / 2, out, channels, quality, k - 1);
+    r->cascade_cap = 4096 * channels;
+    r->cascade_buf = aligned_malloc(r->cascade_cap * sizeof(float));
+    if (!r->stage1 || !r->stage2 || !r->cascade_buf) {
+        faar_destroy(r);
+        return NULL;
+    }
+    r->delay = r->stage1->delay + 2 * r->stage2->delay;
     return r;
 }
 #endif
@@ -461,8 +579,16 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     use_staged = in_rate > out_rate
         || short_dedicated_route(in_rate, out_rate) != NULL;
 #endif
-    if (!force_polyphase && use_staged)
+    if (!force_polyphase && use_staged) {
+#ifdef FAAR_STAGED_SHORT_POLY
+        unsigned k = short_halvings(in_rate, out_rate, quality);
+        if (k) return short_cascade(in_rate, out_rate, channels, quality, k);
+        struct short_plan p = short_plan(in_rate, out_rate, quality, false);
+        return faar_create_staged(in_rate, out_rate, channels, quality, &p);
+#else
         return faar_create_staged(in_rate, out_rate, channels, quality);
+#endif
+    }
 #else
     (void)force_polyphase;
 #endif
@@ -1039,9 +1165,20 @@ FAARAPI size_t faar_process(faar_handle_t restrict r, const float * restrict in_
         size_t filtered = 0;
         if (in_samples) r->input_frames += in_count;
         if (faar_dft_prefilter_process(r->dft_prefilter, in_samples, in_count,
-                r->dft_intermediate, temp_capacity, &filtered)) return 0;
-        size_t produced = polyresample_process_planar(r->stage2,
-                r->dft_intermediate, filtered, out_samples, max_out_count);
+                r->dft_intermediate, r->stage2 ? temp_capacity
+                    : (max_out_count < temp_capacity ? max_out_count : temp_capacity),
+                &filtered)) return 0;
+        size_t produced;
+        if (r->stage2) {
+            produced = polyresample_process_planar(r->stage2,
+                    r->dft_intermediate, filtered, out_samples, max_out_count);
+        } else {
+            produced = filtered;
+            for (size_t i = 0; i < filtered; ++i)
+                for (uint16_t c = 0; c < r->channels; ++c)
+                    out_samples[i * r->channels + c] = r->dft_intermediate[c * filtered + i];
+            apply_dither(r, out_samples, produced);
+        }
         r->output_frames += produced;
         return produced;
     }
@@ -1153,6 +1290,17 @@ FAARAPI size_t faar_flush(faar_handle_t r, float *out_samples, size_t max_out_co
         const size_t temp_capacity = 8192;
         if (ensure_dft_intermediate(r, temp_capacity)) return 0;
         size_t produced = 0, filtered;
+        if (!r->stage2) {
+            size_t capacity = max_out_count < temp_capacity ? max_out_count : temp_capacity;
+            if (faar_dft_prefilter_flush(r->dft_prefilter, r->dft_intermediate,
+                        capacity, &filtered)) return 0;
+            for (size_t i = 0; i < filtered; ++i)
+                for (uint16_t c = 0; c < r->channels; ++c)
+                    out_samples[i * r->channels + c] = r->dft_intermediate[c * filtered + i];
+            r->output_frames += filtered;
+            apply_dither(r, out_samples, filtered);
+            return filtered;
+        }
         do {
             filtered = 0;
             if (faar_dft_prefilter_flush(r->dft_prefilter, r->dft_intermediate,

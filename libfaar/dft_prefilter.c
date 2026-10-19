@@ -167,6 +167,8 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                                                size_t fft_size,
                                                size_t expansion,
                                                size_t decimation) {
+    int halfband = fft_size == 0;
+    if (halfband) fft_size = 256 + tap_count - 1;
     if (!channels || channels > 8 || !taps || tap_count < 3
             || !(tap_count & 1) || fft_size < tap_count
             || (expansion != 1 && expansion != 2)
@@ -194,7 +196,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
         goto fail;
     for (uint16_t c = 0; c < channels; ++c)
         if (faar_dft_fir_init_rate(&s->fir[c], taps, tap_count,
-                                  fft_size, expansion, decimation)) goto fail;
+                                  halfband ? 0 : fft_size, expansion, decimation)) goto fail;
     return s;
 fail:
     faar_dft_prefilter_destroy(s);

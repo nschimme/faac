@@ -27,6 +27,13 @@ int faar_dft_fir_init_expanded(faar_dft_fir *stage, const double *taps,
 int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation) {
+    int halfband = fft_size == 0;
+    if (halfband) {
+        if (tap_count < 5 || (tap_count - 1) % 4
+                || tap_count > SIZE_MAX - 255 || expansion != 1 || decimation != 2)
+            return -1;
+        fft_size = 256 + tap_count - 1;
+    }
     if (!stage || !taps || !tap_count || tap_count > fft_size
             || fft_size > SIZE_MAX / (2 * sizeof(double))
             || (expansion != 1 && expansion != 2)
@@ -37,7 +44,8 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
             || (tap_count - 1) % decimation)
         return -1;
     memset(stage, 0, sizeof(*stage));
-    if (faar_real_fft_plan_init(&stage->fft, fft_size)) return -1;
+    if (!halfband && faar_real_fft_plan_init(&stage->fft, fft_size)) return -1;
+    stage->halfband = halfband;
 
     stage->fft_size = fft_size;
     stage->tap_count = tap_count;
@@ -55,7 +63,7 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
                                                   sizeof(double));
     }
 #ifdef FAAR_OOURA_REAL_FFT
-    if (decimation == 2
+    if (!halfband && decimation == 2
             && faar_real_fft_plan_init(&stage->decimated_fft, fft_size / 2)) {
         faar_dft_fir_clear(stage);
         return -1;
@@ -66,7 +74,8 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
         return -1;
     }
 #endif
-    stage->filter_spectrum = (double *)calloc(fft_size + 2, sizeof(double));
+    stage->filter_spectrum = (double *)calloc(halfband ? tap_count / 4 + 1
+                                                   : fft_size + 2, sizeof(double));
     stage->work = (double *)calloc(fft_size + 2, sizeof(double));
     stage->overlap = (double *)calloc((tap_count - 1) / expansion
                                       ? (tap_count - 1) / expansion : 1,
@@ -83,9 +92,15 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
         faar_dft_fir_clear(stage);
         return -1;
     }
-    for (size_t i = 0; i < tap_count; ++i)
-        stage->filter_spectrum[i] = taps[i];
-    faar_real_fft_execute_packed(&stage->fft, stage->filter_spectrum, 0);
+    if (halfband) {
+        for (size_t j = 0; j < tap_count / 4; ++j)
+            stage->filter_spectrum[j] = taps[2 * j + 1];
+        stage->filter_spectrum[tap_count / 4] = taps[tap_count / 2];
+    } else {
+        for (size_t i = 0; i < tap_count; ++i)
+            stage->filter_spectrum[i] = taps[i];
+        faar_real_fft_execute_packed(&stage->fft, stage->filter_spectrum, 0);
+    }
     return 0;
 }
 
@@ -105,6 +120,25 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
 
 int faar_dft_fir_process(faar_dft_fir *stage, const double *input,
                          double *output) {
+    if (stage && stage->halfband && input && output) {
+        const size_t n = stage->tap_count;
+        const size_t block = stage->block_size;
+        memcpy(stage->work, stage->overlap, (n - 1) * sizeof(double));
+        memcpy(stage->work + n - 1, input, block * sizeof(double));
+        for (size_t i = 0; i < block / 2; ++i)
+            output[i] = stage->filter_spectrum[n / 4] * stage->work[2 * i + n / 2];
+        /* Vectorize across independent outputs, without reassociating a
+         * floating-point reduction or requiring compiler-specific flags. */
+        for (size_t j = 0; j < n / 4; ++j) {
+            const double coefficient = stage->filter_spectrum[j];
+            const double *x = stage->work + 2 * j + 1;
+            const double *y = stage->work + n - 2 - 2 * j;
+            for (size_t i = 0; i < block / 2; ++i)
+                output[i] += coefficient * (x[2 * i] + y[2 * i]);
+        }
+        memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(double));
+        return 0;
+    }
     if (!stage || !input || !output || !stage->work
             || !stage->filter_spectrum || !stage->overlap)
         return -1;
