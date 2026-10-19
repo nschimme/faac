@@ -7,11 +7,13 @@ if get_option('faar-backend') != 'polyphase'
     'dft_coeffs.c',
     'dft_prefilter.c',
     'dft_fir.c',
-    'fft_double.c',
   )
 endif
+if get_option('faar-backend') == 'staged'
+  libfaar_sources += files('fft_double.c')
+endif
 if get_option('faar-backend') == 'staged-short'
-  libfaar_sources += files('fft4g_ooura.c')
+  libfaar_sources += files('fft_real.c')
 endif
 
 libfaar_args = ['-DFAAR_BUILDING']
@@ -23,7 +25,8 @@ if get_option('faar-backend') != 'polyphase'
 endif
 if get_option('faar-backend') == 'staged-short'
   libfaar_args += '-DFAAR_STAGED_SHORT_POLY'
-  libfaar_args += '-DFAAR_OOURA_REAL_FFT'
+  libfaar_args += '-DFAAR_PAIRED_FFT'
+  libfaar_args += '-DFAAR_FFT_LEAN'
 endif
 
 if host_machine.system() == 'windows'
@@ -122,10 +125,6 @@ test('test_faar_tuneout_matrix', test_faar_tuneout_matrix)
 # into libfaar for staged and staged-short builds.
 test_faar_fft_sources = files('test_faar_fft.c', 'fft_double.c')
 test_faar_fft_args = []
-if get_option('faar-backend') == 'staged-short'
-  test_faar_fft_sources += files('fft4g_ooura.c')
-  test_faar_fft_args += '-DFAAR_OOURA_REAL_FFT'
-endif
 test_faar_fft = executable('test_faar_fft',
   test_faar_fft_sources,
   include_directories: inc,
@@ -142,8 +141,9 @@ test_faar_dft_fir_sources = files(
 )
 test_faar_dft_fir_args = []
 if get_option('faar-backend') == 'staged-short'
-  test_faar_dft_fir_sources += files('fft4g_ooura.c')
-  test_faar_dft_fir_args += '-DFAAR_OOURA_REAL_FFT'
+  test_faar_dft_fir_sources += files('fft_real.c')
+  test_faar_dft_fir_args += '-DFAAR_TEST_UNPAIRED'
+  test_faar_dft_fir_args += '-DFAAR_PAIRED_FFT'
 endif
 test_faar_dft_fir = executable('test_faar_dft_fir',
   test_faar_dft_fir_sources,
@@ -153,13 +153,32 @@ test_faar_dft_fir = executable('test_faar_dft_fir',
 )
 test('test_faar_dft_fir', test_faar_dft_fir)
 
-test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
+test_faar_dft_prefilter_sources = files(
   'test_faar_dft_prefilter.c',
   'dft_coeffs.c',
   'dft_prefilter.c',
   'dft_fir.c',
   'fft_double.c',
+)
+test_faar_dft_prefilter_args = []
+if get_option('faar-backend') == 'staged-short'
+  test_faar_dft_prefilter_sources += files('fft_real.c')
+  test_faar_dft_prefilter_args += '-DFAAR_PAIRED_FFT'
+endif
+test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
+  test_faar_dft_prefilter_sources,
+  c_args: test_faar_dft_prefilter_args,
   include_directories: inc,
   dependencies: [m_dep],
 )
 test('test_faar_dft_prefilter', test_faar_dft_prefilter)
+
+# Single-precision FFT used by the paired DFT stage; libfaar links it only for
+# staged-short, but the verification builds it in every backend.
+test_faar_fft_real = executable('test_faar_fft_real',
+  'test_faar_fft_real.c',
+  'fft_real.c',
+  include_directories: inc,
+  dependencies: [m_dep],
+)
+test('test_faar_fft_real', test_faar_fft_real, timeout: 180)

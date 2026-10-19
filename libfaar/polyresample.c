@@ -436,7 +436,14 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
 #else
             fft_size,
 #endif
-            expansion, decimation);
+            expansion, decimation,
+#ifdef FAAR_STAGED_SHORT_POLY
+            /* Only Fast meets its mask in float; Good and High need the
+             * double rounding floor. */
+            quality == FAAR_QUALITY_FAST);
+#else
+            0);
+#endif
     free(taps);
     if (!r->dft_prefilter) { free(r); return NULL; }
 #ifdef FAAR_STAGED_SHORT_POLY

@@ -118,9 +118,8 @@ and measurement.
 Ooura's official [FFT package page](https://www.kurims.kyoto-u.ac.jp/~ooura/fft.html)
 was checked directly. It explicitly permits using, copying, modifying, and
 distributing the code for any purpose, including commercial use, without fee;
-it requests a package reference when the code is modified. FAAR retains the
-copyright, permission text, and package URL in [`OOURA-NOTICE`](../libfaar/OOURA-NOTICE).
-The imported `fft4g.c` arithmetic is unchanged; the integration removes SoX's
-symbol aliases and include wrapper and uses FAAR's real-FFT adapter.
+it requests a package reference when the code is modified. FAAR shipped it
+unchanged, with its notice, until the paired FFT in `libfaar/fft_real.c`
+replaced it; libfaar no longer contains Ooura code.
 
-The selected staged-short backend uses this FFT and is the Meson default. Six configured builds pass all 6/6 Meson test groups. On the current workspace library, Good, Fast, and High measured faster than wide SoX on all 16 common routes. A separate 131,072-point FFT experiment used substantially more setup memory without improving CPU time and was rejected. Selected passband gain probes meet the 0.25 dB ARDFTSRC comparison for all three presets. Broader perceptual validation and High 192→48 setup-memory reduction remain open. See the [current diagnosis](faar-recovery-diagnosis.md), [current measurement summary](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/common-rates-current-summary.json), and [60-round paired follow-up](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/high-edge-routes-60trial-summary.json).
+The staged-short backend used this FFT when it became the Meson default. Six configured builds pass all 6/6 Meson test groups. On the current workspace library, Good, Fast, and High measured faster than wide SoX on all 16 common routes. A separate 131,072-point FFT experiment used substantially more setup memory without improving CPU time and was rejected. Selected passband gain probes meet the 0.25 dB ARDFTSRC comparison for all three presets. Broader perceptual validation and High 192→48 setup-memory reduction remain open. See the [current diagnosis](faar-recovery-diagnosis.md), [current measurement summary](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/common-rates-current-summary.json), and [60-round paired follow-up](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/high-edge-routes-60trial-summary.json).

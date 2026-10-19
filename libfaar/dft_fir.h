@@ -2,15 +2,17 @@
 #define FAAR_DFT_FIR_H
 
 #include "fft_double.h"
+#include "fft_real.h"
 
 #include <stddef.h>
 
 /* Block overlap-save FIR stage; filter coefficients are supplied by caller. */
 typedef struct faar_dft_fir {
     int halfband; /* Sparse time-domain 2:1 FIR, sharing stream storage. */
+#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
     faar_real_fft_plan fft;
     faar_real_fft_plan input_fft;
-    faar_real_fft_plan decimated_fft;
+#endif
     size_t fft_size;
     size_t tap_count;
     size_t expansion;
@@ -22,8 +24,20 @@ typedef struct faar_dft_fir {
     double *work;
     double *overlap;
     double *input_block;
+#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
     double *input_spectrum;
+#endif
     double *output_block;
+    int paired;
+    int stacked;
+    size_t stream_in; /* samples per lane the stage takes before it runs */
+    size_t stream_out;
+    size_t lanes;
+    int single; /* paired stage runs in float rather than double */
+    faar_rfftf_plan in_f, out_f;
+    faar_rfftd_plan in_d, out_d;
+    float *spec_f;
+    double *spec_d;
     size_t input_fill;
     size_t output_count;
     size_t output_offset;
@@ -39,6 +53,21 @@ int faar_dft_fir_init_expanded(faar_dft_fir *stage, const double *taps,
 int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation);
+#ifdef FAAR_PAIRED_FFT
+/* Paired stage: `lanes` (1 or 2) channels share one complex FFT as
+ * z = a + jb, so the two real outputs come out as real and imaginary parts.
+ * single runs the transforms in float, otherwise in double.
+ * With stacked, a lone channel instead pairs each block with the next, so the
+ * stage runs once per two blocks (stream_in input samples). Rates and block
+ * geometry are as for init_rate; fft_size must be a power of two the complex
+ * FFT supports. Lane planes are laid out one after another: input lane l
+ * starts at input + l * input_count, output lane l at output + l *
+ * output_capacity (process: stream_in and stream_out). */
+int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
+                      size_t tap_count, size_t fft_size, size_t expansion,
+                      size_t decimation, size_t lanes, int stacked,
+                      int single);
+#endif
 void faar_dft_fir_clear(faar_dft_fir *stage);
 
 /* Consumes and produces exactly stage->block_size mono samples per call. */
