@@ -41,7 +41,7 @@ int faar_dft_prefilter_flush(faar_dft_prefilter *s,float *out,size_t cap,size_t 
  double t=recovery_clock();recovery_real_fft_impl(p,data,inverse);recovery_totals[2]+=recovery_clock()-t;
 }\n'''
     (d/'fft_double.c').write_text('#include "timers.h"\n'+fft)
-    cmd=['cc','-O3','-g','-flto','-fPIC','-shared','-DFAAR_BUILDING','-DFAAR_DOUBLE_COEFFICIENTS','-DFAAR_STAGED_BACKEND','-I'+str(REPO/'include'),'-I'+str(REPO/'libfaar'),str(d/'polyresample.c'),str(d/'dft_prefilter.c'),str(d/'fft_double.c'),str(d/'timers.c'),str(REPO/'libfaar/dft_fir.c'),str(REPO/'libfaar/dft_coeffs.c'),'-lm','-o',str(d/'libfaar.so')]
+    cmd=['cc','-O3','-g','-flto','-fPIC','-shared','-DFAAR_BUILDING','-DFAAR_STAGED_BACKEND','-I'+str(REPO/'include'),'-I'+str(REPO/'libfaar'),str(d/'polyresample.c'),str(d/'dft_prefilter.c'),str(d/'fft_double.c'),str(d/'timers.c'),str(REPO/'libfaar/dft_fir.c'),str(REPO/'libfaar/dft_coeffs.c'),'-lm','-o',str(d/'libfaar.so')]
     subprocess.run(cmd,check=True)
     report={'build_command':cmd,'library_sha256':hashlib.sha256((d/'libfaar.so').read_bytes()).hexdigest(),'notes':'Stage timers are inclusive: real FFT time is contained within prefilter time. Clock-call overhead is included. No numerical or planner changes.','cases':[]}
     for ir,orate in [(96000,44100),(48000,44100),(44100,48000)]:

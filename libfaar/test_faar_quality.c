@@ -373,6 +373,10 @@ static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {44100,48000},
                of -144.684142 dB relative to unit-sine RMS. */
             double gain_db = 20.0 * log10(gain);
             double residual_limit = sqrt(0.5) * pow(10.0, -144.684142 / 20.0);
+#ifdef FAAR_FLOAT
+            /* Float FFT and accumulation have a higher arithmetic floor. */
+            residual_limit = 4e-7;
+#endif
             if (!isfinite(rms) || !isfinite(gain_db)
                     || fabs(gain_db) > 0.25 || rms > residual_limit) {
                 fprintf(stderr, "passband failure at %u->%u %.0f Hz: gain=%g (%g dB) residual=%g limit=%g\n",

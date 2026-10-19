@@ -9,7 +9,11 @@ See the [direct ARDFTSRC benchmark](faar-competitive-benchmark.md) for current
 performance, methodology, and the remaining CPU gap.
 
 FAAR quality work is in progress. The selected `staged-short` backend uses
-float PCM and double-precision filter and FFT arithmetic. The legacy polyphase
+float PCM I/O. `-Dfaar-precision=double` (the default) uses double sample
+arithmetic for every preset; `-Dfaar-precision=float` uses float throughout
+the FFT, FIR, bank and cubic interpolation paths for single-precision FPUs.
+The internal `FAAR_FLOAT` macro selects `faar_sample_t`; setup-time filter
+design and planning retain double arithmetic. The legacy polyphase
 backend remains available as a comparison build; its coefficient storage is
 selectable at build time. Embedded arithmetic alternatives remain deferred.
 
@@ -138,3 +142,12 @@ alias attenuation at 22.06 kHz. These controls guide the new block planner;
 they do not establish equivalence across the full signal suite. The listed
 buffer sizes count only the reference's four explicit FFT arrays, excluding
 plans, Eigen matrices, and whole-file input/output storage.
+
+For the runtime precision builds, use `CCACHE_DISABLE=1 meson setup
+--reconfigure build-codex-double -Dfaar-precision=double` or
+`CCACHE_DISABLE=1 meson setup --reconfigure build-codex-float
+-Dfaar-precision=float`, then compile and run `meson test` in that directory.
+The former `faar-coefficient-precision` option is replaced by `faar-precision`.
+Fingerprint fixtures are `matrix-fingerprints-double.txt` and
+`matrix-fingerprints-float.txt`. Float arithmetic does not imply that Good or
+High meets the desktop double precision noise masks.

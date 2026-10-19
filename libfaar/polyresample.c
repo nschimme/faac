@@ -20,12 +20,6 @@
 #define POLYRESAMPLE_MAX_FILTER_LEN 512 /* Upper bound for stack-allocated temporary coefficient buffers */
 #define POLYRESAMPLE_ALIGNMENT 64 /* 64-byte alignment for AVX-512 / AVX2 / NEON SIMD vector loads */
 
-#ifdef FAAR_DOUBLE_COEFFICIENTS
-typedef double polyresample_coef_t;
-#else
-typedef float polyresample_coef_t;
-#endif
-
 /* Helper function for 64-byte SIMD memory allocation */
 static void *aligned_malloc(size_t size) {
 #if defined(_WIN32)
@@ -103,10 +97,10 @@ struct faar_resampler_struct {
     bool exact_phase_bank;
     bool half_sample_phase_bank;
     double beta;
-    polyresample_coef_t *polyphase_table; /* Half-bank and interpolation guards, shared by all channels */
-    polyresample_coef_t *polyphase_reverse_table; /* Reversed exact rows, avoids per-output coefficient copies */
+    faar_sample_t *polyphase_table; /* Half-bank and interpolation guards, shared by all channels */
+    faar_sample_t *polyphase_reverse_table; /* Reversed exact rows, avoids per-output coefficient copies */
 
-    polyresample_coef_t *hist[MAX_CHANNELS]; /* Keeps sample and coefficient arithmetic at the selected width */
+    faar_sample_t *hist[MAX_CHANNELS]; /* Keeps sample and coefficient arithmetic at the selected width */
     size_t hist_len;            /* Unconsumed frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
 
@@ -187,7 +181,7 @@ static void apply_dither(faar_handle_t r, float *samples, size_t frames) {
             sample_scaled -= r->error_history[c] * 0.75f;
         }
 
-        float quantized = (float)floor((double)((sample_scaled + tpdf) * inv_lsb_scale + 0.5f)) * lsb_scale;
+        float quantized = (float)floorf((sample_scaled + tpdf) * inv_lsb_scale + 0.5f) * lsb_scale;
         r->error_history[c] = quantized - sample_scaled;
         sum = quantized;
         samples[i] = sum;
@@ -401,10 +395,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     r->dft_prefilter = faar_dft_prefilter_create_rate(channels, taps,
             tap_count,
             selected->fft == 0 ? 0 : fft_size,
-            expansion, decimation,
-            /* Only Fast meets its mask in float; Good and High need the
-             * double rounding floor. */
-            quality == FAAR_QUALITY_FAST);
+            expansion, decimation);
     free(taps);
     if (!r->dft_prefilter) { free(r); return NULL; }
     size_t phase_bank_len = plan.bank;
@@ -622,7 +613,7 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
 
     /* Allocate polyphase table with 64-byte SIMD alignment */
     size_t stored_phases = r->num_phases / 2 + 3;
-    r->polyphase_table = (polyresample_coef_t *)aligned_malloc(stored_phases * r->filter_len * sizeof(*r->polyphase_table));
+    r->polyphase_table = (faar_sample_t *)aligned_malloc(stored_phases * r->filter_len * sizeof(*r->polyphase_table));
     if (!r->polyphase_table) {
         free(r);
         return NULL;
@@ -630,7 +621,7 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     /* The short exact banks repay a second oriented copy; keep generic banks
        compact and let their uncommon exact reverse phase use the stack path. */
     if (r->exact_phase_bank && r->filter_len <= 32) {
-        r->polyphase_reverse_table = (polyresample_coef_t *)aligned_malloc(
+        r->polyphase_reverse_table = (faar_sample_t *)aligned_malloc(
                 stored_phases * r->filter_len * sizeof(*r->polyphase_reverse_table));
         if (!r->polyphase_reverse_table) {
             aligned_free(r->polyphase_table);
@@ -646,12 +637,12 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     /* Store phases -1..N/2+1, including guards for cubic interpolation. */
     for (size_t p = 0; p < stored_phases; p++) {
         double frac = ((double)p - 1.0) / (double)r->num_phases;
-        polyresample_coef_t *phase_coeffs = r->polyphase_table + p * r->filter_len;
+        faar_sample_t *phase_coeffs = r->polyphase_table + p * r->filter_len;
         double sum = 0.0;
 
         for (size_t j = 0; j < r->filter_len; j++) {
             if (r->filter_len == 1) {
-                phase_coeffs[j] = (polyresample_coef_t)1.0;
+                phase_coeffs[j] = (faar_sample_t)1.0;
                 sum = 1.0;
                 continue;
             }
@@ -684,7 +675,7 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
                 double win = radicand <= 0.0 ? 0.0
                     : bessel_i0(r->beta * sqrt(radicand)) / bessel_i0(r->beta);
                 double val = sinc * win * prototype_scale;
-                phase_coeffs[j] = (polyresample_coef_t)val;
+                phase_coeffs[j] = (faar_sample_t)val;
                 sum += val;
                 continue;
             }
@@ -700,7 +691,7 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
             double win = kaiser_window(window_position,
                                        (double)r->filter_len - 1.0, r->beta);
             double val = sinc * win;
-            phase_coeffs[j] = (polyresample_coef_t)val;
+            phase_coeffs[j] = (faar_sample_t)val;
             sum += val;
         }
 
@@ -712,8 +703,8 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
             normalize_phase = false;
         if (normalize_phase && sum > 0.0) {
             for (size_t j = 0; j < r->filter_len; j++) {
-#ifdef FAAR_DOUBLE_COEFFICIENTS
-                phase_coeffs[j] = (polyresample_coef_t)(phase_coeffs[j] / sum);
+#ifndef FAAR_FLOAT
+                phase_coeffs[j] = (faar_sample_t)(phase_coeffs[j] / sum);
 #else
                 phase_coeffs[j] /= (float)sum;
 #endif
@@ -722,9 +713,9 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     }
     if (r->polyphase_reverse_table) {
         for (size_t p = 0; p < stored_phases; ++p) {
-            const polyresample_coef_t *source =
+            const faar_sample_t *source =
                 r->polyphase_table + p * r->filter_len;
-            polyresample_coef_t *reverse =
+            faar_sample_t *reverse =
                 r->polyphase_reverse_table + p * r->filter_len;
             for (size_t j = 0; j < r->filter_len; ++j)
                 reverse[j] = source[r->filter_len - 1 - j];
@@ -735,7 +726,7 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     r->hist_cap_per_ch = (r->filter_len * 2 + 4096 + 15) & ~((size_t)15);
 
     for (uint16_t c = 0; c < channels; c++) {
-        r->hist[c] = (polyresample_coef_t *)aligned_malloc(
+        r->hist[c] = (faar_sample_t *)aligned_malloc(
                 r->hist_cap_per_ch * sizeof(*r->hist[c]));
         if (!r->hist[c]) {
             for (uint16_t k = 0; k < c; k++) aligned_free(r->hist[k]);
@@ -805,7 +796,7 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
 
     const size_t filter_len = r->filter_len;
     const size_t half_len = (filter_len - 1) / 2;
-    const polyresample_coef_t * restrict poly_table = r->polyphase_table + filter_len;
+    const faar_sample_t * restrict poly_table = r->polyphase_table + filter_len;
 
     assert(filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
 
@@ -815,7 +806,7 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
             size_t new_cap = (needed_cap * 2 + 15) & ~((size_t)15);
 
             for (uint16_t c = 0; c < r->channels; c++) {
-                polyresample_coef_t *new_buf = (polyresample_coef_t *)aligned_malloc(
+                faar_sample_t *new_buf = (faar_sample_t *)aligned_malloc(
                         new_cap * sizeof(*new_buf));
                 if (!new_buf) return 0;
                 memcpy(new_buf, r->hist[c], r->hist_len * sizeof(*new_buf));
@@ -827,43 +818,43 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
 
         /* Fast unit-stride de-interleaving for mono, stereo, and 5.1 / 7.1 multichannel streams */
         if (r->channels == 2) {
-            polyresample_coef_t * restrict h0 = r->hist[0] + r->hist_len;
-            polyresample_coef_t * restrict h1 = r->hist[1] + r->hist_len;
+            faar_sample_t * restrict h0 = r->hist[0] + r->hist_len;
+            faar_sample_t * restrict h1 = r->hist[1] + r->hist_len;
             for (size_t i = 0; i < in_count; i++) {
-                h0[i] = (polyresample_coef_t)in_samples[i * 2 + 0];
-                h1[i] = (polyresample_coef_t)in_samples[i * 2 + 1];
+                h0[i] = (faar_sample_t)in_samples[i * 2 + 0];
+                h1[i] = (faar_sample_t)in_samples[i * 2 + 1];
             }
         } else if (r->channels == 6) {
             /* 5.1 Surround Fast De-Interleave Path */
-            polyresample_coef_t * restrict h0 = r->hist[0] + r->hist_len;
-            polyresample_coef_t * restrict h1 = r->hist[1] + r->hist_len;
-            polyresample_coef_t * restrict h2 = r->hist[2] + r->hist_len;
-            polyresample_coef_t * restrict h3 = r->hist[3] + r->hist_len;
-            polyresample_coef_t * restrict h4 = r->hist[4] + r->hist_len;
-            polyresample_coef_t * restrict h5 = r->hist[5] + r->hist_len;
+            faar_sample_t * restrict h0 = r->hist[0] + r->hist_len;
+            faar_sample_t * restrict h1 = r->hist[1] + r->hist_len;
+            faar_sample_t * restrict h2 = r->hist[2] + r->hist_len;
+            faar_sample_t * restrict h3 = r->hist[3] + r->hist_len;
+            faar_sample_t * restrict h4 = r->hist[4] + r->hist_len;
+            faar_sample_t * restrict h5 = r->hist[5] + r->hist_len;
             for (size_t i = 0; i < in_count; i++) {
-                h0[i] = (polyresample_coef_t)in_samples[i * 6 + 0];
-                h1[i] = (polyresample_coef_t)in_samples[i * 6 + 1];
-                h2[i] = (polyresample_coef_t)in_samples[i * 6 + 2];
-                h3[i] = (polyresample_coef_t)in_samples[i * 6 + 3];
-                h4[i] = (polyresample_coef_t)in_samples[i * 6 + 4];
-                h5[i] = (polyresample_coef_t)in_samples[i * 6 + 5];
+                h0[i] = (faar_sample_t)in_samples[i * 6 + 0];
+                h1[i] = (faar_sample_t)in_samples[i * 6 + 1];
+                h2[i] = (faar_sample_t)in_samples[i * 6 + 2];
+                h3[i] = (faar_sample_t)in_samples[i * 6 + 3];
+                h4[i] = (faar_sample_t)in_samples[i * 6 + 4];
+                h5[i] = (faar_sample_t)in_samples[i * 6 + 5];
             }
         } else if (r->channels == 1) {
             for (size_t i = 0; i < in_count; ++i)
-                r->hist[0][r->hist_len + i] = (polyresample_coef_t)in_samples[i];
+                r->hist[0][r->hist_len + i] = (faar_sample_t)in_samples[i];
         } else {
             for (size_t i = 0; i < in_count; i++) {
                 for (uint16_t c = 0; c < r->channels; c++) {
                     r->hist[c][r->hist_len + i] =
-                        (polyresample_coef_t)in_samples[i * r->channels + c];
+                        (faar_sample_t)in_samples[i * r->channels + c];
                 }
             }
         }
         /* Initialize the virtual past only once, independently of chunk size. */
         if (!r->input_frames && !r->flushed && r->boundary == FAAR_BOUNDARY_HOLD) {
             for (uint16_t c = 0; c < r->channels; c++) {
-            polyresample_coef_t first = r->hist[c][r->history_pad];
+            faar_sample_t first = r->hist[c][r->history_pad];
                 for (size_t j = 0; j < r->history_pad; j++) r->hist[c][j] = first;
             }
         }
@@ -911,15 +902,15 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
 #if defined(_MSC_VER)
     __declspec(align(64)) float temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
 #else
-    alignas(64) polyresample_coef_t temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
+    alignas(64) faar_sample_t temp_coeffs[POLYRESAMPLE_MAX_FILTER_LEN];
 #endif
 
     while (out_frames < max_out_count) {
         size_t sample_base_idx = base_idx;
-        double frac = 0.0;
+        faar_sample_t frac = 0;
         bool reverse;
         size_t p_idx;
-        double delta;
+        faar_sample_t delta;
         if (r->exact_phase_bank) {
             /* The doubled grid represents the 20-tap bank's half-sample
                origin; all other exact banks use the ordinary reduced grid. */
@@ -933,55 +924,55 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
                 ? mapped : 2 * mapped;
             if (phase_index < r->num_phases / 2) {
                 p_idx = (size_t)phase_index;
-                delta = 0.0;
+                delta = 0;
             } else {
                 p_idx = r->num_phases / 2 - 1;
-                delta = 1.0;
+                delta = 1;
             }
         } else {
-            frac = (double)phase_remainder / r->out_rate;
+            frac = (faar_sample_t)phase_remainder / r->out_rate;
             /* Reflection changes the sign of fractional delay. Anchor negative
                phases at the next input sample so the evaluated position agrees. */
-            reverse = frac > 0.5;
+            reverse = frac > (faar_sample_t)0.5;
             if (reverse) {
                 sample_base_idx++;
-                frac = 1.0 - frac;
+                frac = 1 - frac;
             }
-            double phase_exact = frac * (double)r->num_phases;
-            p_idx = (size_t)floor(phase_exact);
+            faar_sample_t phase_exact = frac * (faar_sample_t)r->num_phases;
+            p_idx = (size_t)phase_exact;
             if (p_idx >= r->num_phases / 2)
                 p_idx = r->num_phases / 2 - 1;
-            delta = phase_exact - (double)p_idx;
+            delta = phase_exact - (faar_sample_t)p_idx;
         }
         if (sample_base_idx + filter_len > r->hist_len) {
             break;
         }
 
-        if ((filter_len & 1) && p_idx == 0 && delta < 1e-6) {
+        if ((filter_len & 1) && p_idx == 0 && delta < (faar_sample_t)1e-6) {
             /* Fast path for phase 0 (exact integer alignment): fold symmetric taps */
-            const polyresample_coef_t * restrict coeffs = poly_table;
-            const polyresample_coef_t center_coeff = coeffs[half_len];
+            const faar_sample_t * restrict coeffs = poly_table;
+            const faar_sample_t center_coeff = coeffs[half_len];
 
             for (uint16_t c = 0; c < r->channels; c++) {
-                const polyresample_coef_t * restrict h = &r->hist[c][sample_base_idx];
-                double sum = (double)center_coeff * h[half_len];
+                const faar_sample_t * restrict h = &r->hist[c][sample_base_idx];
+                faar_sample_t sum = (faar_sample_t)center_coeff * h[half_len];
 
                 for (size_t j = 0; j < half_len; j++) {
-                    sum += (double)coeffs[j] * ((double)h[j] + h[filter_len - 1 - j]);
+                    sum += (faar_sample_t)coeffs[j] * ((faar_sample_t)h[j] + h[filter_len - 1 - j]);
                 }
 
                 out_samples[out_frames * r->channels + c] = sum;
             }
         } else {
             /* Interpolate-Then-Convolve: Pre-calculate flat interpolated filter coefficients outside channel/tap loops */
-            const polyresample_coef_t * restrict c1 = poly_table + p_idx * filter_len;
-            const polyresample_coef_t * restrict c0 = c1 - filter_len;
-            const polyresample_coef_t * restrict c2 = c1 + filter_len;
-            const polyresample_coef_t * restrict c3 = c2 + filter_len;
-            const polyresample_coef_t * restrict coeffs;
+            const faar_sample_t * restrict c1 = poly_table + p_idx * filter_len;
+            const faar_sample_t * restrict c0 = c1 - filter_len;
+            const faar_sample_t * restrict c2 = c1 + filter_len;
+            const faar_sample_t * restrict c3 = c2 + filter_len;
+            const faar_sample_t * restrict coeffs;
 
             /* Exact rational phases need no four-row interpolation. */
-            if (delta < 1e-6) {
+            if (delta < (faar_sample_t)1e-6) {
                 if (reverse && r->polyphase_reverse_table) {
                     coeffs = r->polyphase_reverse_table
                         + filter_len + p_idx * filter_len;
@@ -995,47 +986,38 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
             } else {
             /* Four-point Lagrange weights reproduce cubics exactly, allowing
                a smaller phase bank without the leading cubic phase error. */
-#ifdef FAAR_DOUBLE_COEFFICIENTS
-            double d = delta;
-            double d2 = d * d;
-            double d3 = d2 * d;
-            double w0 = (-d3 + 3.0 * d2 - 2.0 * d) / 6.0;
-            double w1 = (d3 - 2.0 * d2 - d + 2.0) / 2.0;
-            double w2 = (-d3 + d2 + 2.0 * d) / 2.0;
-            double w3 = (d3 - d) / 6.0;
-#else
-            float d = (float)delta;
-            float d2 = d * d;
-            float d3 = d2 * d;
-            float w0 = (-d3 + 3.0f * d2 - 2.0f * d) / 6.0f;
-            float w1 = (d3 - 2.0f * d2 - d + 2.0f) / 2.0f;
-            float w2 = (-d3 + d2 + 2.0f * d) / 2.0f;
-            float w3 = (d3 - d) / 6.0f;
-#endif
+            faar_sample_t d = delta;
+            faar_sample_t d2 = d * d;
+            faar_sample_t d3 = d2 * d;
+            faar_sample_t w0 = (-d3 + 3 * d2 - 2 * d) / 6;
+            faar_sample_t w1 = (d3 - 2 * d2 - d + 2) / 2;
+            faar_sample_t w2 = (-d3 + d2 + 2 * d) / 2;
+            faar_sample_t w3 = (d3 - d) / 6;
+
 
             for (size_t j = 0; j < filter_len; j++) {
                 size_t target = reverse ? filter_len - 1 - j : j;
-                temp_coeffs[target] = (polyresample_coef_t)(w0 * c0[j] + w1 * c1[j] + w2 * c2[j] + w3 * c3[j]);
+                temp_coeffs[target] = (faar_sample_t)(w0 * c0[j] + w1 * c1[j] + w2 * c2[j] + w3 * c3[j]);
             }
                 coeffs = temp_coeffs;
             }
 
-            /* Double accumulation keeps rounding noise below the float coefficient floor. */
+            /* Keep accumulation in the selected sample precision. */
             for (uint16_t c = 0; c < r->channels; c++) {
-                const polyresample_coef_t * restrict h = &r->hist[c][sample_base_idx];
-                double accumulator0 = 0.0, accumulator1 = 0.0;
-                double accumulator2 = 0.0, accumulator3 = 0.0;
+                const faar_sample_t * restrict h = &r->hist[c][sample_base_idx];
+                faar_sample_t accumulator0 = 0, accumulator1 = 0;
+                faar_sample_t accumulator2 = 0, accumulator3 = 0;
                 size_t j = 0;
                 for (; j + 3 < filter_len; j += 4) {
-                    accumulator0 += (double)h[j] * coeffs[j];
-                    accumulator1 += (double)h[j + 1] * coeffs[j + 1];
-                    accumulator2 += (double)h[j + 2] * coeffs[j + 2];
-                    accumulator3 += (double)h[j + 3] * coeffs[j + 3];
+                    accumulator0 += (faar_sample_t)h[j] * coeffs[j];
+                    accumulator1 += (faar_sample_t)h[j + 1] * coeffs[j + 1];
+                    accumulator2 += (faar_sample_t)h[j + 2] * coeffs[j + 2];
+                    accumulator3 += (faar_sample_t)h[j + 3] * coeffs[j + 3];
                 }
-                double accumulator = accumulator0 + accumulator1
+                faar_sample_t accumulator = accumulator0 + accumulator1
                     + accumulator2 + accumulator3;
                 for (; j < filter_len; ++j)
-                    accumulator += (double)h[j] * coeffs[j];
+                    accumulator += (faar_sample_t)h[j] * coeffs[j];
                 out_samples[out_frames * r->channels + c] = (float)accumulator;
             }
         }
@@ -1136,7 +1118,7 @@ static size_t polyresample_process_planar(faar_handle_t r,
             if (needed_cap > (SIZE_MAX - 15) / 2) return 0;
             size_t new_cap = (needed_cap * 2 + 15) & ~((size_t)15);
             for (uint16_t c = 0; c < r->channels; ++c) {
-                polyresample_coef_t *new_buf = (polyresample_coef_t *)aligned_malloc(
+                faar_sample_t *new_buf = (faar_sample_t *)aligned_malloc(
                         new_cap * sizeof(*new_buf));
                 if (!new_buf) return 0;
                 memcpy(new_buf, r->hist[c], r->hist_len * sizeof(*new_buf));
@@ -1147,9 +1129,9 @@ static size_t polyresample_process_planar(faar_handle_t r,
         }
         for (uint16_t c = 0; c < r->channels; ++c) {
             const float * restrict channel_input = in_samples + (size_t)c * in_count;
-            polyresample_coef_t * restrict channel_history =
+            faar_sample_t * restrict channel_history =
                 r->hist[c] + r->hist_len;
-#ifdef FAAR_DOUBLE_COEFFICIENTS
+#ifndef FAAR_FLOAT
             for (size_t i = 0; i < in_count; ++i)
                 channel_history[i] = channel_input[i];
 #else
@@ -1160,7 +1142,7 @@ static size_t polyresample_process_planar(faar_handle_t r,
         if (!r->input_frames && !r->flushed
                 && r->boundary == FAAR_BOUNDARY_HOLD) {
             for (uint16_t c = 0; c < r->channels; ++c) {
-                polyresample_coef_t first = r->hist[c][r->history_pad];
+                faar_sample_t first = r->hist[c][r->history_pad];
                 for (size_t j = 0; j < r->history_pad; ++j)
                     r->hist[c][j] = first;
             }
@@ -1184,7 +1166,7 @@ static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, siz
         float *tail = (float *)malloc(tail_len * r->channels * sizeof(float));
         if (tail) {
             for (uint16_t c = 0; c < r->channels; c++) {
-                polyresample_coef_t last = r->boundary == FAAR_BOUNDARY_HOLD && r->input_frames
+                faar_sample_t last = r->boundary == FAAR_BOUNDARY_HOLD && r->input_frames
                     ? r->hist[c][r->hist_len - 1] : 0.0f;
                 for (size_t j = 0; j < tail_len; j++) tail[j * r->channels + c] = last;
             }
