@@ -59,6 +59,9 @@ def main():
             assert actual > 0, f"{ext}: -w produced no PCM"
             assert riff == 0xFFFFFFFF and data == 0xFFFFFFFF, f"{ext}: -w header must declare a streaming length, got {riff}/{data}"
             assert piped[80:] == open(out, "rb").read()[80:], f"{ext}: -w PCM differs from -o PCM"
+            dash = subprocess.run([os.path.abspath(faad), "-q", "-o", "-", enc], cwd=d, check=True, capture_output=True).stdout
+            assert dash == piped, f"{ext}: -o - differs from -w"
+            assert not os.path.exists(os.path.join(d, "-")), f"{ext}: -o - wrote a file named -"
 
             # ADTS seeking must preserve synthesis history, including stdin.
             if ext == "aac":
