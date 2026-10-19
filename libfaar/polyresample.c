@@ -392,10 +392,8 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     r->boundary = FAAR_BOUNDARY_HOLD;
     r->dft_expansion = expansion;
     size_t decimation = plan.decimation;
-    r->dft_prefilter = faar_dft_prefilter_create_rate(channels, taps,
-            tap_count,
-            selected->fft == 0 ? 0 : fft_size,
-            expansion, decimation);
+    r->dft_prefilter = faar_dft_prefilter_create_stage(channels, taps,
+            tap_count, fft_size, expansion, decimation, selected->fft == 0);
     free(taps);
     if (!r->dft_prefilter) { free(r); return NULL; }
     size_t phase_bank_len = plan.bank;

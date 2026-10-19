@@ -8,7 +8,7 @@
 
 /* Block overlap-save FIR stage; filter coefficients are supplied by caller. */
 typedef struct faar_dft_fir {
-    int halfband; /* Sparse time-domain 2:1 FIR, sharing stream storage. */
+    int halfband; /* Sparse time-domain 2:1 FIR; otherwise paired FFT. */
     size_t fft_size;
     size_t tap_count;
     size_t expansion;
@@ -21,7 +21,6 @@ typedef struct faar_dft_fir {
     faar_sample_t *overlap;
     faar_sample_t *input_block;
     faar_sample_t *output_block;
-    int paired;
     int stacked;
     size_t stream_in; /* samples per lane the stage takes before it runs */
     size_t stream_out;
@@ -35,8 +34,10 @@ typedef struct faar_dft_fir {
     int finished;
 } faar_dft_fir;
 
-/* fft_size must be a supported power of two and at least tap_count.
- * init_rate also accepts zero for the sparse half-band 2:1 stage. */
+/* Input samples per half-band block. */
+#define FAAR_HALFBAND_BLOCK 256
+
+/* fft_size must be a supported power of two and at least tap_count. */
 int faar_dft_fir_init(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size);
 int faar_dft_fir_init_expanded(faar_dft_fir *stage, const double *taps,
@@ -55,6 +56,10 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
 int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation, size_t lanes, int stacked);
+/* Sparse time-domain 2:1 stage: N = 4m+1 taps with the even non-centre
+ * taps zero. */
+int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
+                      size_t tap_count);
 void faar_dft_fir_clear(faar_dft_fir *stage);
 
 /* Consumes and produces exactly stage->block_size mono samples per call. */

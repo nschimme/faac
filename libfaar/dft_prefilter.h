@@ -15,16 +15,23 @@ faar_dft_prefilter *faar_dft_prefilter_create_expanded(uint16_t channels,
                                                 size_t tap_count,
                                                 size_t fft_size,
                                                 size_t expansion);
-/* Where built with paired transforms, channel pairs share one complex FFT
- * (a lone channel stacks its blocks), in the build-selected precision.
- * fft_size == 0 selects a sparse time-domain half-band (expansion=1,
- * decimation=2, N=4m+1); alternate non-centre taps must be zero. */
+/* Channel pairs share one complex FFT (a lone channel stacks its blocks),
+ * in the build-selected precision. */
 faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                                                const double *taps,
                                                size_t tap_count,
                                                size_t fft_size,
                                                size_t expansion,
                                                size_t decimation);
+/* halfband selects a sparse time-domain 2:1 stage (N = 4m+1, alternate
+ * non-centre taps zero) and ignores the FFT geometry. */
+faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
+                                               const double *taps,
+                                               size_t tap_count,
+                                               size_t fft_size,
+                                               size_t expansion,
+                                               size_t decimation,
+                                               int halfband);
 void faar_dft_prefilter_destroy(faar_dft_prefilter *stage);
 int faar_dft_prefilter_set_boundary(faar_dft_prefilter *stage, int hold);
 int faar_dft_prefilter_process(faar_dft_prefilter *stage, const float *input,
