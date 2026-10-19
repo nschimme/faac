@@ -469,7 +469,22 @@ static struct short_plan short_preplan(uint32_t in, uint32_t out,
     return pre;
 }
 
-static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality_t q) {
+static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality_t q,
+        const struct short_route_entry *entry) {
+    bool reference = entry && entry->route == REFERENCE;
+    /* On these routes sparse half-bands down to below 4:1 measured cheaper
+       than the general cost model's choice, at the same quality. */
+    bool prefer = (q == FAAR_QUALITY_GOOD
+            && ((!entry && in % out == 0) || reference))
+        || (q == FAAR_QUALITY_HIGH && reference);
+    if (prefer && (uint64_t)in >= 4 * (uint64_t)out) {
+        unsigned count = 0;
+        while (!(in & 1) && (uint64_t)in >= 4 * (uint64_t)out) {
+            in /= 2;
+            ++count;
+        }
+        return count;
+    }
     unsigned limit = short_max_halvings(in, out, q), best = 0;
     if (!limit) return 0;
     double fir = 0, visited = 0;
@@ -487,9 +502,9 @@ static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality_t q) {
 }
 
 static faar_handle_t short_cascade(uint32_t in, uint32_t out,
-        uint16_t channels, faar_quality_t quality, unsigned k) {
+        uint16_t channels, faar_quality_t quality, unsigned k, bool dedicated) {
     if (!k) {
-        struct short_plan p = short_plan(in, out, quality, true);
+        struct short_plan p = short_plan(in, out, quality, !dedicated);
         return faar_create_staged(in, out, channels, quality, &p);
     }
     struct short_plan pre = short_preplan(in, out, quality);
@@ -502,7 +517,7 @@ static faar_handle_t short_cascade(uint32_t in, uint32_t out,
     r->boundary = FAAR_BOUNDARY_HOLD;
     r->ratio = (double)out / in;
     r->stage1 = faar_create_staged(in, in / 2, channels, quality, &pre);
-    r->stage2 = short_cascade(in / 2, out, channels, quality, k - 1);
+    r->stage2 = short_cascade(in / 2, out, channels, quality, k - 1, dedicated);
     r->cascade_cap = 4096 * channels;
     r->cascade_buf = aligned_malloc(r->cascade_cap * sizeof(float));
     if (!r->stage1 || !r->stage2 || !r->cascade_buf) {
@@ -522,12 +537,13 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
 #endif
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
-    bool use_staged = in_rate > out_rate
-        || short_dedicated_route(in_rate, out_rate) != NULL;
+    const struct short_route_entry *entry = short_dedicated_route(in_rate, out_rate);
+    bool use_staged = in_rate > out_rate || entry;
     /* The final phase bank must bypass planning to avoid recursive stages. */
     if (!force_polyphase && use_staged) {
-        unsigned k = short_halvings(in_rate, out_rate, quality);
-        if (k) return short_cascade(in_rate, out_rate, channels, quality, k);
+        unsigned k = short_halvings(in_rate, out_rate, quality, entry);
+        if (k) return short_cascade(in_rate, out_rate, channels, quality, k,
+            quality == FAAR_QUALITY_GOOD || entry);
         struct short_plan p = short_plan(in_rate, out_rate, quality, false);
         return faar_create_staged(in_rate, out_rate, channels, quality, &p);
     }
