@@ -1007,16 +1007,17 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
     r->output_frames += out_frames;
     size_t consumed = base_idx;
     r->phase = (uint64_t)base_idx * r->out_rate + phase_remainder;
-    if (consumed > 0 && consumed <= r->hist_len) {
-        /* Deferred history shift optimization: deferred memmove execution */
-        if (consumed >= filter_len / 2 || r->hist_len - consumed < filter_len) {
-            for (uint16_t c = 0; c < r->channels; c++) {
-                memmove(r->hist[c], r->hist[c] + consumed,
-                        (r->hist_len - consumed) * sizeof(*r->hist[c]));
-            }
-            r->hist_len -= consumed;
-            r->phase = phase_remainder;
-        }
+    /* The next clock position may be beyond currently buffered input
+     * (notably a 1-tap bank with an integral sampling step). Discard all
+     * available history, preserving the pending skip in the phase clock. */
+    size_t discard = consumed < r->hist_len ? consumed : r->hist_len;
+    if (discard && (discard >= filter_len / 2
+                || r->hist_len - discard < filter_len)) {
+        for (uint16_t c = 0; c < r->channels; ++c)
+            memmove(r->hist[c], r->hist[c] + discard,
+                    (r->hist_len - discard) * sizeof(*r->hist[c]));
+        r->hist_len -= discard;
+        r->phase -= (uint64_t)discard * r->out_rate;
     }
 
     apply_dither(r, out_samples, out_frames);
