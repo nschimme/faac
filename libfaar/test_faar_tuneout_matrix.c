@@ -342,7 +342,7 @@ static int test_high_precision_coefficients(void) {
     return 0;
 }
 
-static int test_channel_isolation(void) {
+static int isolation_for(faar_quality_t quality, float tolerance) {
     static const uint32_t rates[][2] = {
         {48000, 44100}, {96000, 44100}, {192000, 44100},
         {32000, 44100}, {32000, 48000}, {88200, 96000}, {8000, 768000}
@@ -359,7 +359,7 @@ static int test_channel_isolation(void) {
                     interleaved[i * channels + c] = sample(i, c);
             audio combined;
             if (convert(interleaved, INPUT_FRAMES, in_rate, out_rate, channels,
-                        17, OUTPUT_CHUNK, FAAR_QUALITY_GOOD, &combined)) {
+                        17, OUTPUT_CHUNK, quality, &combined)) {
                 free(interleaved); return 1;
             }
             for (uint16_t c = 0; c < channels; ++c) {
@@ -368,7 +368,7 @@ static int test_channel_isolation(void) {
                     mono_input[i] = interleaved[i * channels + c];
                 audio mono;
                 if (convert(mono_input, INPUT_FRAMES, in_rate, out_rate, 1,
-                            17, OUTPUT_CHUNK, FAAR_QUALITY_GOOD, &mono)) {
+                            17, OUTPUT_CHUNK, quality, &mono)) {
                     free(combined.samples); free(interleaved); return 1;
                 }
                 if (mono.frames != combined.frames) {
@@ -376,7 +376,7 @@ static int test_channel_isolation(void) {
                     return fail("channel output length differs from mono", in_rate, out_rate, channels);
                 }
                 for (size_t i = 0; i < mono.frames; ++i)
-                    if (mono.samples[i] != combined.samples[i * channels + c]) {
+                    if (fabsf(mono.samples[i] - combined.samples[i * channels + c]) > tolerance) {
                         free(mono.samples); free(combined.samples); free(interleaved);
                         return fail("channel output depends on other channels", in_rate, out_rate, channels);
                     }
@@ -386,6 +386,17 @@ static int test_channel_isolation(void) {
             free(interleaved);
         }
     }
+    return 0;
+}
+
+/* Good and High pair channels in one double FFT: coupling is rounding at
+ * 1e-16, far below a float output step, so only that bound is allowed. Fast
+ * pairs in float, where roundoff couples channels at about -140 dB RMS
+ * (peaks near 4e-7 of full scale). */
+static int test_channel_isolation(void) {
+    if (isolation_for(FAAR_QUALITY_HIGH, 1e-12f)
+            || isolation_for(FAAR_QUALITY_GOOD, 1e-12f)
+            || isolation_for(FAAR_QUALITY_FAST, 4e-7f)) return 1;
     puts("Tuneout-derived FAAR channel isolation: 2, 6 and 8 channels passed");
     return 0;
 }

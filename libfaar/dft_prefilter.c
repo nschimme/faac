@@ -14,6 +14,8 @@ struct faar_dft_prefilter {
     size_t decimation;
     size_t half;
     faar_dft_fir *fir;
+    uint16_t stages;
+    uint16_t lanes; /* channels sharing one stage's transforms */
     double *channel_input;
     double *channel_output;
     size_t channel_output_capacity;
@@ -103,16 +105,20 @@ static int feed_raw_chunk(faar_dft_prefilter *s, const float *input,
                           size_t frames) {
     size_t expanded_frames = frames * s->expansion;
     size_t capacity = expanded_frames + s->block_size;
+    /* A stacked stage emits two blocks at once and must drain them within
+     * the call, since pending output stops it taking input. */
+    if (s->fir[0].stream_out > capacity) capacity = s->fir[0].stream_out;
     if (capacity > s->channel_output_capacity) return -1;
     size_t produced = SIZE_MAX;
-    for (uint16_t c = 0; c < s->channels; ++c) {
-        for (size_t i = 0; i < frames; ++i) {
-            s->channel_input[i] = input[i * s->channels + c];
-        }
+    for (uint16_t f = 0; f < s->stages; ++f) {
+        for (uint16_t l = 0; l < s->fir[f].lanes; ++l)
+            for (size_t i = 0; i < frames; ++i)
+                s->channel_input[l * frames + i] =
+                    input[i * s->channels + f * s->lanes + l];
         size_t consumed = 0, channel_produced = 0;
-        if (faar_dft_fir_stream(&s->fir[c], s->channel_input,
-                                frames,
-                                &consumed, s->channel_output + c * capacity,
+        if (faar_dft_fir_stream(&s->fir[f], s->channel_input,
+                                frames, &consumed,
+                                s->channel_output + f * s->lanes * capacity,
                                 capacity, &channel_produced)
                 || consumed != frames) return -1;
         if (produced == SIZE_MAX) produced = channel_produced;
@@ -158,7 +164,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_expanded(uint16_t channels,
                                                size_t fft_size,
                                                size_t expansion) {
     return faar_dft_prefilter_create_rate(channels, taps, tap_count,
-                                           fft_size, expansion, 1);
+                                           fft_size, expansion, 1, 0);
 }
 
 faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
@@ -166,7 +172,8 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                                                size_t tap_count,
                                                size_t fft_size,
                                                size_t expansion,
-                                               size_t decimation) {
+                                               size_t decimation,
+                                               int single) {
     int halfband = fft_size == 0;
     if (halfband) fft_size = 256 + tap_count - 1;
     if (!channels || channels > 8 || !taps || tap_count < 3
@@ -187,16 +194,41 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
     if (s->half > SIZE_MAX / 2) { free(s); return NULL; }
     s->prefix_drop = 2 * s->half / decimation;
     s->hold = 1;
-    s->fir = (faar_dft_fir *)calloc(channels, sizeof(*s->fir));
-    s->channel_input = (double *)malloc(s->block_size * sizeof(double));
+#ifdef FAAR_PAIRED_FFT
+    /* Two channels share each complex transform, a lone channel shares it
+     * with its next block; the half-band is direct. */
+    s->lanes = !halfband && channels > 1 ? 2 : 1;
+#else
+    (void)single;
+    s->lanes = 1;
+#endif
+    s->stages = (uint16_t)((channels + s->lanes - 1) / s->lanes);
+    s->fir = (faar_dft_fir *)calloc(s->stages, sizeof(*s->fir));
+    s->channel_input = (double *)malloc(s->lanes * s->block_size
+                                        * sizeof(double));
     s->channel_output_capacity = 2 * fft_size + 1;
     s->channel_output = (double *)malloc(s->channel_output_capacity
                                          * channels * sizeof(double));
     if (!s->fir || !s->channel_input || !s->channel_output)
         goto fail;
-    for (uint16_t c = 0; c < channels; ++c)
-        if (faar_dft_fir_init_rate(&s->fir[c], taps, tap_count,
-                                  halfband ? 0 : fft_size, expansion, decimation)) goto fail;
+    for (uint16_t f = 0; f < s->stages; ++f) {
+#ifdef FAAR_PAIRED_FFT
+        if (s->lanes > 1) {
+            size_t lanes = channels - f * s->lanes < s->lanes
+                ? channels - f * s->lanes : s->lanes;
+            if (faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
+                    fft_size, expansion, decimation, lanes, 0, single)) goto fail;
+            continue;
+        }
+        if (!halfband) {
+            if (faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
+                    fft_size, expansion, decimation, 1, 1, single)) goto fail;
+            continue;
+        }
+#endif
+        if (faar_dft_fir_init_rate(&s->fir[f], taps, tap_count,
+                halfband ? 0 : fft_size, expansion, decimation)) goto fail;
+    }
     return s;
 fail:
     faar_dft_prefilter_destroy(s);
@@ -206,8 +238,8 @@ fail:
 void faar_dft_prefilter_destroy(faar_dft_prefilter *s) {
     if (!s) return;
     if (s->fir) {
-        for (uint16_t c = 0; c < s->channels; ++c)
-            faar_dft_fir_clear(&s->fir[c]);
+        for (uint16_t f = 0; f < s->stages; ++f)
+            faar_dft_fir_clear(&s->fir[f]);
     }
     free(s->fir);
     free(s->channel_input);
@@ -269,13 +301,14 @@ int faar_dft_prefilter_flush(faar_dft_prefilter *s, float *output,
             if (s->half % s->expansion
                     || feed_endpoint(s, endpoint,
                                      s->half / s->expansion)) return -1;
-            size_t capacity = s->fir[0].output_block_size;
-            for (uint16_t c = 0; c < s->channels; ++c) {
+            /* A stacked stage may still hold a whole stacked block. */
+            size_t capacity = s->channel_output_capacity;
+            for (uint16_t f = 0; f < s->stages; ++f) {
                 size_t channel_produced = 0;
-                if (faar_dft_fir_flush(&s->fir[c],
-                        s->channel_output + c * capacity, capacity,
+                if (faar_dft_fir_flush(&s->fir[f],
+                        s->channel_output + f * s->lanes * capacity, capacity,
                         &channel_produced)) return -1;
-                if (c == 0) *produced = channel_produced;
+                if (f == 0) *produced = channel_produced;
                 else if (*produced != channel_produced) return -1;
             }
             if (fifo_push_planes(s, s->channel_output, capacity, *produced))
@@ -295,7 +328,7 @@ int faar_dft_prefilter_flush(faar_dft_prefilter *s, float *output,
 
 void faar_dft_prefilter_reset(faar_dft_prefilter *s) {
     if (!s) return;
-    for (uint16_t c = 0; c < s->channels; ++c) faar_dft_fir_reset(&s->fir[c]);
+    for (uint16_t f = 0; f < s->stages; ++f) faar_dft_fir_reset(&s->fir[f]);
     s->prefix_drop = 2 * s->half / s->decimation;
     s->fifo_read = s->fifo_count = 0;
     s->input_count = s->released_count = 0;

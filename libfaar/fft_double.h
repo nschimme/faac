@@ -20,8 +20,6 @@ typedef struct faar_real_fft_plan {
     double *split_real;
     double *split_imag;
     double *scratch;
-    int *ooura_ip;
-    double *ooura_work;
 } faar_real_fft_plan;
 
 /* Returns zero on success. Supported sizes factor entirely into 2, 3, 5, 7. */

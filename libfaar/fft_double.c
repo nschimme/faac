@@ -10,9 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef FAAR_OOURA_REAL_FFT
-void rdft(int n, int isgn, double *a, int *ip, double *w);
-#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846264338327950288
@@ -194,16 +191,6 @@ int faar_real_fft_plan_init(faar_real_fft_plan *plan, size_t size) {
             || size > SIZE_MAX / (sizeof(double) * 2)) return -1;
     memset(plan, 0, sizeof(*plan));
     plan->size = size;
-#ifdef FAAR_OOURA_REAL_FFT
-    plan->ooura_ip = (int *)calloc(size / 8 + 2, sizeof(*plan->ooura_ip));
-    plan->ooura_work = (double *)calloc(size / 2 + 2,
-                                         sizeof(*plan->ooura_work));
-    if (!plan->ooura_ip || !plan->ooura_work) {
-        faar_real_fft_plan_clear(plan);
-        return -1;
-    }
-    return 0;
-#else
     size_t half = size / 2;
     if (faar_fft_plan_init(&plan->complex_plan, half)) return -1;
     plan->split_real = (double *)malloc((half + 1) * sizeof(double));
@@ -219,7 +206,6 @@ int faar_real_fft_plan_init(faar_real_fft_plan *plan, size_t size) {
         plan->split_imag[k] = -sin(angle);
     }
     return 0;
-#endif
 }
 
 void faar_real_fft_plan_clear(faar_real_fft_plan *plan) {
@@ -228,33 +214,11 @@ void faar_real_fft_plan_clear(faar_real_fft_plan *plan) {
     free(plan->split_real);
     free(plan->split_imag);
     free(plan->scratch);
-    free(plan->ooura_ip);
-    free(plan->ooura_work);
     memset(plan, 0, sizeof(*plan));
 }
 
 void faar_real_fft_execute(const faar_real_fft_plan *plan, double *data,
                            int inverse) {
-#ifdef FAAR_OOURA_REAL_FFT
-    if (!plan || !data || !plan->size || !plan->ooura_ip
-            || !plan->ooura_work) return;
-    const int n = (int)plan->size;
-    if (!inverse) {
-        rdft(n, 1, data, plan->ooura_ip, plan->ooura_work);
-        for (size_t k = 1; k < plan->size / 2; ++k)
-            data[2 * k + 1] = -data[2 * k + 1];
-        data[n] = data[1];
-        data[n + 1] = 0.0;
-        data[1] = 0.0;
-    } else {
-        for (size_t k = 1; k < plan->size / 2; ++k)
-            data[2 * k + 1] = -data[2 * k + 1];
-        data[1] = data[n];
-        rdft(n, -1, data, plan->ooura_ip, plan->ooura_work);
-        const double scale = 2.0 / (double)n;
-        for (size_t i = 0; i < plan->size; ++i) data[i] *= scale;
-    }
-#else
     if (!plan || !data || !plan->size || !plan->scratch) return;
     const size_t half = plan->size / 2;
     double *scratch = plan->scratch;
@@ -296,21 +260,11 @@ void faar_real_fft_execute(const faar_real_fft_plan *plan, double *data,
             data[2 * i + 1] = scratch[2 * i + 1];
         }
     }
-#endif
 }
 
 void faar_real_fft_execute_packed(const faar_real_fft_plan *plan, double *data,
                                  int inverse) {
     if (!plan || !data || !plan->size) return;
-#ifdef FAAR_OOURA_REAL_FFT
-    if (!plan->ooura_ip || !plan->ooura_work) return;
-    const int n = (int)plan->size;
-    rdft(n, inverse ? -1 : 1, data, plan->ooura_ip, plan->ooura_work);
-    if (inverse) {
-        const double scale = 2.0 / (double)n;
-        for (size_t i = 0; i < plan->size; ++i) data[i] *= scale;
-    }
-#else
     if (!plan->scratch) return;
     const size_t n = plan->size;
     if (!inverse) {
@@ -326,5 +280,4 @@ void faar_real_fft_execute_packed(const faar_real_fft_plan *plan, double *data,
             data[2 * k + 1] = -data[2 * k + 1];
         faar_real_fft_execute(plan, data, 1);
     }
-#endif
 }

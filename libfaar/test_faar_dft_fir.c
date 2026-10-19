@@ -127,9 +127,89 @@ static int test_32_to_48_high_filter(void) {
     return 0;
 }
 
+#ifdef FAAR_PAIRED_FFT
+/* Stream `lanes` channels (or one stacked channel) through the paired stage
+ * and each one through the unpaired double stage; they must agree to the
+ * paired precision's roundoff. */
+static int check_paired(size_t expansion, size_t decimation, size_t lanes,
+                        int stacked, int single) {
+    enum { TAPS = 13, FFT = 128, FRAMES = 700, CHUNK = 37 };
+    double taps[TAPS], in[2][FRAMES], planes[2 * CHUNK];
+    double out[2][FRAMES * 2 + FFT], ref[2][FRAMES * 2 + FFT];
+    size_t count[2] = {0, 0};
+    faar_dft_fir paired, direct;
+    const size_t cap = FFT * 2;
+    double *buf = (double *)malloc(2 * cap * sizeof(double));
+    size_t used = 0, produced = 0;
+    for (size_t j = 0; j < TAPS; ++j) {
+        double x = (double)j - (TAPS - 1) / 2.0;
+        taps[j] = (x == 0.0 ? 0.3 : sin(0.3 * M_PI * x) / (M_PI * x))
+            * (0.54 - 0.46 * cos(2.0 * M_PI * j / (TAPS - 1)));
+        taps[j] *= (double)expansion;
+    }
+    for (size_t l = 0; l < 2; ++l)
+        for (size_t i = 0; i < FRAMES; ++i)
+            in[l][i] = (0.3 + 0.2 * l) * sin(0.05 * (1 + l) * i) + 0.1 * cos(0.31 * i);
+    if (!buf || faar_dft_fir_init_paired(&paired, taps, TAPS, FFT, expansion,
+                                         decimation, lanes, stacked, single))
+        return fail("paired FIR init failed");
+    for (size_t at = 0; at < FRAMES; at += CHUNK) {
+        size_t n = FRAMES - at < CHUNK ? FRAMES - at : CHUNK, eaten = 0;
+        for (size_t l = 0; l < lanes; ++l)
+            for (size_t i = 0; i < n; ++i) planes[l * n + i] = in[l][at + i];
+        if (faar_dft_fir_stream(&paired, planes, n, &eaten, buf, cap, &produced)
+                || eaten != n) return fail("paired FIR stream failed");
+        for (size_t l = 0; l < lanes; ++l)
+            for (size_t i = 0; i < produced; ++i) out[l][count[l]++] = buf[l * cap + i];
+    }
+    do {
+        if (faar_dft_fir_flush(&paired, buf, cap, &produced))
+            return fail("paired FIR flush failed");
+        for (size_t l = 0; l < lanes; ++l)
+            for (size_t i = 0; i < produced; ++i) out[l][count[l]++] = buf[l * cap + i];
+    } while (produced);
+    faar_dft_fir_clear(&paired);
+    for (size_t l = 0; l < lanes; ++l) {
+        if (faar_dft_fir_init_rate(&direct, taps, TAPS, FFT, expansion, decimation))
+            return fail("reference FIR init failed");
+        size_t eaten = 0;
+        if (faar_dft_fir_stream(&direct, in[l], FRAMES, &eaten, ref[l],
+                                sizeof(ref[l]) / sizeof(double), &produced)
+                || eaten != FRAMES) return fail("reference FIR stream failed");
+        used = produced;
+        do {
+            if (faar_dft_fir_flush(&direct, ref[l] + used, cap, &produced))
+                return fail("reference FIR flush failed");
+            used += produced;
+        } while (produced);
+        faar_dft_fir_clear(&direct);
+        if (used != count[l]) return fail("paired FIR output count differs");
+        for (size_t i = 0; i < used; ++i)
+            if (fabs(ref[l][i] - out[l][i]) > (single ? 2e-6 : 1e-12))
+                return fail("paired FIR differs from the double stage");
+    }
+    free(buf);
+    return 0;
+}
+
+static int test_paired(void) {
+    static const size_t rates[][2] = {{1, 1}, {2, 1}, {1, 2}, {1, 4}, {2, 2}, {2, 4}};
+    for (int single = 0; single <= 1; ++single)
+        for (size_t r = 0; r < sizeof(rates) / sizeof(rates[0]); ++r)
+            for (size_t mode = 0; mode < 3; ++mode)
+                if (check_paired(rates[r][0], rates[r][1], mode == 1 ? 2 : 1,
+                                 mode == 2, single)) return 1;
+    puts("DFT FIR: paired lanes match the unpaired double stage for every rate");
+    return 0;
+}
+#endif
+
 int main(void) {
     if (test_designed_filter()) return 1;
     if (test_32_to_48_high_filter()) return 1;
+#ifdef FAAR_PAIRED_FFT
+    if (test_paired()) return 1;
+#endif
     enum { TAPS = 31, FFT_SIZE = 128, BLOCK = FFT_SIZE - TAPS + 1,
            BLOCKS = 9 };
     double taps[TAPS], input[BLOCK * BLOCKS], output[BLOCK * BLOCKS];
