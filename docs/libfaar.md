@@ -1,25 +1,27 @@
-# libfaar - Polyphase Farrow-Interpolated Kaiser-Sinc Audio Resampler Library
+# libfaar - CPU Audio Resampler Library
 
-`libfaar` (Freeware Advanced Audio Resampler) is a lightweight, dependency-free, high-precision C library for digital sample rate conversion. Designed to combine mastering-grade signal fidelity with high execution throughput, `libfaar` operates across arbitrary sampling ratios without phase distortion, aliasing artifacts, or quantization noise.
+`libfaar` (Freeware Advanced Audio Resampler) is a C library for digital sample rate conversion. Fresh Meson builds select the staged-short CPU backend, which combines an overlap-save DFT prefilter with a rate-planned fractional-delay stage. The legacy polyphase backend remains available for comparison. Input and output use float PCM; the selected backend uses double-precision filter and FFT arithmetic. Quality, transition bandwidth, CPU cost, and memory use depend on the preset and conversion ratio.
+
+Choose `-Dfaar-backend=polyphase` to build the legacy comparison backend, or `-Dfaar-backend=staged` to build the earlier staged implementation. `staged-short` is the default.
 
 ---
 
-## Technical Highlights & Audiophile Benefits
+## Implementation
 
-- **Mastering-Grade Aliasing Suppression (>140 dB Stopband Rejection)**
-  High-quality mode uses a 511-tap Kaiser window filter ($\beta = 38.0$) to push aliasing products completely below the noise floor of digital audio (-140 dB), surpassing commercial mastering standards.
+- **Three filter presets**
+  Fast, Good, and High select rate-dependent filter plans. The legacy polyphase backend uses 127, 255, and 511 taps respectively; staged-short designs its DFT prefilter and phase bank for the conversion rate.
 
-- **Sample-Accurate Phase Continuity (Farrow Cubic Phase Interpolation)**
-  Rather than truncating or rounding to nearest discrete polyphase steps, `libfaar` evaluates Farrow cubic polynomials continuously across 256 pre-computed polyphase filter slices. This provides infinite fractional delay resolution and eliminates phase quantization noise.
+- **Rate-planned filtering**
+  Staged-short uses an overlap-save DFT anti-alias filter and a short fractional-delay bank where the plan calls for one. Integer phase arithmetic preserves the requested ratio across streaming block boundaries.
 
-- **Zero Phase Distortion (Linear Phase Symmetry)**
-  Filter banks are constructed with perfect linear phase symmetry, ensuring uniform group delay across all frequencies and preserving acoustic transients without phase smearing.
+- **Aligned streaming output**
+  The first output corresponds to input time zero, and flushing produces `ceil(input_frames * out_rate / in_rate)` output frames. The default boundary mode holds the first and last sample outside a finite stream; `FAAR_BOUNDARY_ZERO` selects silence instead. Filter lookahead is available through `faar_get_delay()` in input frames, including cascaded stages.
 
-- **Audiophile Quantization & Noise Shaping**
+- **Quantization and noise shaping**
   When downconverting floating-point audio to 16-bit or 24-bit integer PCM formats, `libfaar` applies Triangular Probability Density Function (TPDF) dithering and optional high-pass noise-shaping error feedback (`FAAR_DITHER_SHAPED`), shifting dither noise energy into psychoacoustically less sensitive treble frequencies.
 
-- **High Performance & Auto-Vectorized Architecture**
-  Filter dot products are implemented in flat, unit-stride loops with 64-byte memory alignment (`alignas(64)`), enabling SIMD auto-vectorization across AVX2, AVX-512, and ARM NEON ($180\text{x}-800\text{x}$ realtime).
+- **Portable processing loops**
+  Filter coefficients and history are contiguous, with 64-byte alignment. The implementation uses portable C and includes its FFT implementation; it does not require an external DSP library.
 
 - **Multi-Channel & Surround Support**
   Native support for 1 to 8 channels (including 5.1 and 7.1 surround sound) with unit-stride de-interleaving and automatic multi-stage decimation cascades for extreme downsampling ratios ($>2:1$).
@@ -36,14 +38,18 @@ Include header: `#include <faar.h>`
 Opaque handle to a resampler instance.
 
 #### `faar_quality_t`
-- `FAAR_QUALITY_FAST`: 127-tap filter, 28 dB Kaiser beta (~100 dB stopband rejection)
-- `FAAR_QUALITY_GOOD`: 255-tap filter, 32 dB Kaiser beta (~120 dB stopband rejection)
-- `FAAR_QUALITY_HIGH`: 511-tap filter, 38 dB Kaiser beta (>140 dB stopband rejection)
+- `FAAR_QUALITY_FAST`: lowest-cost plan
+- `FAAR_QUALITY_GOOD`: balanced plan
+- `FAAR_QUALITY_HIGH`: highest-quality plan
 
 #### `faar_dither_t`
-- `FAAR_DITHER_OFF`: Direct rounding without dithering
+- `FAAR_DITHER_OFF`: Float output without quantization or dithering
 - `FAAR_DITHER_TPDF`: Triangular Probability Density Function dither
 - `FAAR_DITHER_SHAPED`: TPDF dither with high-pass noise shaping error feedback
+
+#### `faar_boundary_t`
+- `FAAR_BOUNDARY_HOLD`: Continue the first and last sample beyond the supplied stream (default)
+- `FAAR_BOUNDARY_ZERO`: Treat samples outside the supplied stream as silence
 
 ---
 
@@ -55,6 +61,9 @@ FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t 
 
 /* Configure dithering and noise shaping for integer PCM outputs */
 FAARAPI int faar_set_dither(faar_handle_t handle, faar_dither_t dither, uint8_t target_bits);
+
+/* Select endpoint extension before processing or flushing */
+FAARAPI int faar_set_boundary(faar_handle_t handle, faar_boundary_t boundary);
 
 /* Query filter group delay in input samples per channel */
 FAARAPI size_t faar_get_delay(faar_handle_t handle);
@@ -83,6 +92,7 @@ Usage: faar [options] <input> <output>
 Core Options:
   -r, --rate <Hz>        Target sample rate (Required, e.g., 48000, 44100)
   --quality <preset>     DSP filter quality (fast, good, high) [default: good]
+  --boundary <mode>      Endpoint extension (hold, zero) [default: hold]
   -c, --channels <num>   Audio channel count [default: 2]
   -f, --format <fmt>     Raw PCM sample format (f32le, s16le, s24le) [default: f32le]
   -d, --dither <type>    Dithering type for integer format output (none, tpdf, shaped) [default: none]

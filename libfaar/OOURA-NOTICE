@@ -1,0 +1,11 @@
+Copyright Takuya OOURA, 1996-2001.
+
+You may use, copy, modify and distribute this code for any purpose (include
+commercial use) and without fee. Please refer to this package when you modify
+this code.
+
+Package home: https://www.kurims.kyoto-u.ac.jp/~ooura/fft.html
+
+The libfaar/fft4g_ooura.c file is derived from the package's one-dimensional
+C FFT source as distributed with the pinned SoX CPU reference. Its arithmetic
+was not modified for this adaptation; FAAR calls only the real DFT routine.

@@ -2,6 +2,7 @@ EXPORTS
     faar_create
     faar_create_ext
     faar_set_dither
+    faar_set_boundary
     faar_get_delay
     faar_process
     faar_flush

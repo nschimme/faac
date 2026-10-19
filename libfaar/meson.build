@@ -2,7 +2,29 @@ libfaar_sources = files(
   'polyresample.c',
 )
 
+if get_option('faar-backend') != 'polyphase'
+  libfaar_sources += files(
+    'dft_coeffs.c',
+    'dft_prefilter.c',
+    'dft_fir.c',
+    'fft_double.c',
+  )
+endif
+if get_option('faar-backend') == 'staged-short'
+  libfaar_sources += files('fft4g_ooura.c')
+endif
+
 libfaar_args = ['-DFAAR_BUILDING']
+if get_option('faar-coefficient-precision') == 'double'
+  libfaar_args += '-DFAAR_DOUBLE_COEFFICIENTS'
+endif
+if get_option('faar-backend') != 'polyphase'
+  libfaar_args += '-DFAAR_STAGED_BACKEND'
+endif
+if get_option('faar-backend') == 'staged-short'
+  libfaar_args += '-DFAAR_STAGED_SHORT_POLY'
+  libfaar_args += '-DFAAR_OOURA_REAL_FFT'
+endif
 
 if host_machine.system() == 'windows'
   libfaar_args += '-DFAAR_DLL'
@@ -42,7 +64,7 @@ libfaar_dep = declare_dependency(
 
 pkg = import('pkgconfig')
 pkg.generate(libfaar,
-  description: 'Polyphase Farrow-Interpolated Kaiser-Sinc Audio Resampler Library',
+  description: 'FAAC audio resampler library',
   subdirs: 'faac',
 )
 
@@ -53,3 +75,91 @@ test_faar = executable('test_faar',
 )
 
 test('test_faar', test_faar)
+
+test_faar_quality = executable('test_faar_quality',
+  'test_faar_quality.c',
+  c_args: libfaar_args,
+  include_directories: inc,
+  dependencies: [libfaar_dep, m_dep],
+)
+test('test_faar_quality', test_faar_quality)
+
+# Kept as independent verification tooling with Tuneout-derived test provenance.
+faar_fingerprint_file = 'matrix-fingerprints.txt'
+if get_option('faar-coefficient-precision') == 'double'
+  faar_fingerprint_file = 'matrix-fingerprints-double.txt'
+endif
+if get_option('faar-backend') == 'staged'
+  faar_fingerprint_file = 'matrix-fingerprints-staged.txt'
+  if get_option('faar-coefficient-precision') == 'double'
+    faar_fingerprint_file = 'matrix-fingerprints-staged-double.txt'
+  endif
+endif
+if get_option('faar-backend') == 'staged-short'
+  faar_fingerprint_file = 'matrix-fingerprints-staged-short.txt'
+  if get_option('faar-coefficient-precision') == 'double'
+    faar_fingerprint_file = 'matrix-fingerprints-staged-short-double.txt'
+  endif
+endif
+faar_matrix_args = [
+  '-DFAAR_RATE_FIXTURE_PATH="' + meson.current_source_dir() / 'verification/fixtures/rates.txt' + '"',
+  '-DFAAR_FINGERPRINT_FIXTURE_PATH="' + meson.current_source_dir() / 'verification/fixtures' / faar_fingerprint_file + '"',
+]
+if get_option('faar-backend') == 'staged-short'
+  # The independent coefficient oracle must model the selected backend even
+  # though this test executable links to the already-built library.
+  faar_matrix_args += '-DFAAR_STAGED_SHORT_POLY'
+endif
+test_faar_tuneout_matrix = executable('test_faar_tuneout_matrix',
+  'test_faar_tuneout_matrix.c',
+  include_directories: inc,
+  c_args: faar_matrix_args,
+  dependencies: [libfaar_dep, m_dep],
+)
+test('test_faar_tuneout_matrix', test_faar_tuneout_matrix)
+
+# Independent double FFT core for the CPU DFT resampling stage. It is linked
+# into libfaar for staged and staged-short builds.
+test_faar_fft_sources = files('test_faar_fft.c', 'fft_double.c')
+test_faar_fft_args = []
+if get_option('faar-backend') == 'staged-short'
+  test_faar_fft_sources += files('fft4g_ooura.c')
+  test_faar_fft_args += '-DFAAR_OOURA_REAL_FFT'
+endif
+test_faar_fft = executable('test_faar_fft',
+  test_faar_fft_sources,
+  include_directories: inc,
+  c_args: test_faar_fft_args,
+  dependencies: [m_dep],
+)
+test('test_faar_fft', test_faar_fft)
+
+test_faar_dft_fir_sources = files(
+  'test_faar_dft_fir.c',
+  'dft_coeffs.c',
+  'dft_fir.c',
+  'fft_double.c',
+)
+test_faar_dft_fir_args = []
+if get_option('faar-backend') == 'staged-short'
+  test_faar_dft_fir_sources += files('fft4g_ooura.c')
+  test_faar_dft_fir_args += '-DFAAR_OOURA_REAL_FFT'
+endif
+test_faar_dft_fir = executable('test_faar_dft_fir',
+  test_faar_dft_fir_sources,
+  c_args: test_faar_dft_fir_args,
+  include_directories: inc,
+  dependencies: [m_dep],
+)
+test('test_faar_dft_fir', test_faar_dft_fir)
+
+test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
+  'test_faar_dft_prefilter.c',
+  'dft_coeffs.c',
+  'dft_prefilter.c',
+  'dft_fir.c',
+  'fft_double.c',
+  include_directories: inc,
+  dependencies: [m_dep],
+)
+test('test_faar_dft_prefilter', test_faar_dft_prefilter)

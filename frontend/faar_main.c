@@ -1,5 +1,5 @@
 /*
- * faar - Polyphase Farrow-Interpolated Kaiser-Sinc Audio Resampler CLI Tool
+ * faar - CPU Audio Resampler CLI Tool
  */
 
 #include <stdio.h>
@@ -33,6 +33,7 @@ static const help_t core_help[] = {
     {"-r, --rate <Hz>", "Target sample rate (Required, e.g., 48000, 96000, 192000, 384000)", NULL},
     {"-R, --in-rate <Hz>", "Raw PCM input sample rate in Hz [default: 44100]", NULL},
     {"--quality <preset>", "DSP filter quality (fast, good, high) [default: good]", NULL},
+    {"--boundary <mode>", "Endpoint extension (hold, zero) [default: hold]", NULL},
     {"-c, --channels <num>", "Audio channel count [default: 2]", NULL},
     {"-f, --format <fmt>", "Raw PCM sample format (f32le, s16le, s24le) [default: f32le]", NULL},
     {"-d, --dither <type>", "Dithering type for integer format output (none, tpdf, shaped) [default: none]", NULL},
@@ -54,13 +55,50 @@ static void print_faar_help(const char *prog_name) {
     printf(
         "\nExamples:\n"
         "  faar -r 48000 input_96k.wav output_48k.wav\n"
-        "  faar -r 48000 -q high -d tpdf -f s16le input.wav output.wav\n"
+        "  faar -r 48000 --quality high -d tpdf -f s16le input.wav output.wav\n"
         "  cat input.raw | faar -r 48000 -c 2 -f f32le - - | aplay -f S16_LE -r 48000\n"
     );
 }
 
+static int write_output_frames(FILE *fout, const float *samples, uint8_t *raw_out_buf,
+                               size_t frames, uint16_t channels, pcm_format_t fmt,
+                               size_t bytes_per_sample, uint64_t *total_bytes) {
+    size_t sample_count = frames * channels;
 
-static void write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_format_t fmt, uint64_t data_size) {
+    /* Convert float output PCM ([-32768, +32768]) to the requested format. */
+    for (size_t i = 0; i < sample_count; i++) {
+        float val = samples[i];
+
+        if (fmt == FMT_F32LE) {
+            float norm_val = val / 32768.0f;
+            if (norm_val > 1.0f) norm_val = 1.0f;
+            if (norm_val < -1.0f) norm_val = -1.0f;
+            ((float *)raw_out_buf)[i] = norm_val;
+        } else if (fmt == FMT_S16LE) {
+            int32_t v = (int32_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
+            if (v > 32767) v = 32767;
+            if (v < -32768) v = -32768;
+            ((int16_t *)raw_out_buf)[i] = (int16_t)v;
+        } else if (fmt == FMT_S24LE) {
+            int32_t v = (int32_t)(val * 256.0f + (val >= 0.0f ? 0.5f : -0.5f));
+            if (v > 8388607) v = 8388607;
+            if (v < -8388608) v = -8388608;
+            raw_out_buf[i * 3 + 0] = v & 0xFF;
+            raw_out_buf[i * 3 + 1] = (v >> 8) & 0xFF;
+            raw_out_buf[i * 3 + 2] = (v >> 16) & 0xFF;
+        }
+    }
+
+    size_t bytes_to_write = frames * channels * bytes_per_sample;
+    if (bytes_to_write && fwrite(raw_out_buf, 1, bytes_to_write, fout) != bytes_to_write) {
+        return -1;
+    }
+    *total_bytes += bytes_to_write;
+    return 0;
+}
+
+
+static int write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_format_t fmt, uint64_t data_size) {
     uint16_t bits = (fmt == FMT_F32LE) ? 32 : (fmt == FMT_S24LE ? 24 : 16);
     uint16_t audio_fmt = (fmt == FMT_F32LE) ? 3 : 1;
     uint32_t block_align = channels * (bits / 8);
@@ -107,7 +145,7 @@ static void write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_form
         memcpy(hdr + 72, "data", 4);
         memset(hdr + 76, 0xFF, 4);
 
-        fwrite(hdr, 1, 80, f);
+        return fwrite(hdr, 1, sizeof(hdr), f) == sizeof(hdr) ? 0 : -1;
     } else {
         uint8_t hdr[44] = {0};
         uint32_t riff_size = (uint32_t)(data_size + 36);
@@ -129,7 +167,7 @@ static void write_wav_header(FILE *f, uint32_t rate, uint16_t channels, pcm_form
         hdr[40] = (uint32_t)data_size & 0xFF; hdr[41] = ((uint32_t)data_size >> 8) & 0xFF;
         hdr[42] = ((uint32_t)data_size >> 16) & 0xFF; hdr[43] = ((uint32_t)data_size >> 24) & 0xFF;
 
-        fwrite(hdr, 1, 44, f);
+        return fwrite(hdr, 1, sizeof(hdr), f) == sizeof(hdr) ? 0 : -1;
     }
 }
 
@@ -140,6 +178,7 @@ int main(int argc, char **argv) {
     uint16_t channels = 2;
     pcm_format_t fmt = FMT_F32LE;
     faar_dither_t dither = FAAR_DITHER_OFF;
+    faar_boundary_t boundary = FAAR_BOUNDARY_HOLD;
     const char *input_path = NULL;
     const char *output_path = NULL;
 
@@ -153,6 +192,7 @@ int main(int argc, char **argv) {
         {"rate", required_argument, 0, 'r'},
         {"in-rate", required_argument, 0, 'R'},
         {"quality", required_argument, 0, 1000},
+        {"boundary", required_argument, 0, 1002},
         {"channels", required_argument, 0, 'c'},
         {"format", required_argument, 0, 'f'},
         {"dither", required_argument, 0, 'd'},
@@ -186,6 +226,11 @@ int main(int argc, char **argv) {
                 else dither = FAAR_DITHER_OFF;
                 break;
             case 1001: allow_extreme_rates = true; break;
+            case 1002:
+                if (strcmp(optarg, "hold") == 0) boundary = FAAR_BOUNDARY_HOLD;
+                else if (strcmp(optarg, "zero") == 0) boundary = FAAR_BOUNDARY_ZERO;
+                else { fprintf(stderr, "Invalid boundary mode: %s\n", optarg); return 1; }
+                break;
             case 'v': verbose = (uint8_t)atoi(optarg); break;
             case 'I': ignore_wav_length = true; break;
             case 'D':
@@ -235,6 +280,8 @@ int main(int argc, char **argv) {
         infile->samplebytes = (fmt == FMT_F32LE) ? 4 : (fmt == FMT_S24LE ? 3 : 2);
         infile->samplerate = raw_in_rate;
         infile->isfloat = (fmt == FMT_F32LE);
+        /* All raw formats exposed by this CLI are little-endian. */
+        infile->bigendian = false;
     }
 
     FILE *fout = NULL;
@@ -262,6 +309,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    faar_set_boundary(r, boundary);
     if (dither != FAAR_DITHER_OFF && (fmt == FMT_S16LE || fmt == FMT_S24LE)) {
         uint8_t target_bits = (fmt == FMT_S16LE) ? 16 : 24;
         faar_set_dither(r, dither, target_bits);
@@ -270,7 +318,13 @@ int main(int argc, char **argv) {
     if (write_wav_out) {
         /* Reserve 44-byte header initially at file start */
         uint8_t header_placeholder[44] = {0};
-        fwrite(header_placeholder, 1, 44, fout);
+        if (fwrite(header_placeholder, 1, 44, fout) != sizeof(header_placeholder)) {
+            fprintf(stderr, "Error: Couldn't write WAV header to output\n");
+            faar_destroy(r);
+            if (infile) wav_close(infile);
+            if (fout != stdout) fclose(fout);
+            return 1;
+        }
     }
 
     size_t chunk_frames = 2048;
@@ -290,69 +344,60 @@ int main(int argc, char **argv) {
     while ((samples_read = wav_read_float32(infile, float_in_buf, chunk_frames * channels, NULL)) > 0) {
         size_t frames_read = samples_read / channels;
         size_t produced = faar_process(r, float_in_buf, frames_read, float_out_buf, out_cap);
-
-        /* Convert float output PCM to requested format (normalized float range: [-32768.0, +32768.0]) */
-        for (size_t i = 0; i < produced * channels; i++) {
-            float val = float_out_buf[i];
-
-            if (fmt == FMT_F32LE) {
-                float norm_val = val / 32768.0f;
-                if (norm_val > 1.0f) norm_val = 1.0f;
-                if (norm_val < -1.0f) norm_val = -1.0f;
-                ((float *)raw_out_buf)[i] = norm_val;
-            } else if (fmt == FMT_S16LE) {
-                int32_t v = (int32_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
-                if (v > 32767) v = 32767;
-                if (v < -32768) v = -32768;
-                ((int16_t *)raw_out_buf)[i] = (int16_t)v;
-            } else if (fmt == FMT_S24LE) {
-                int32_t v = (int32_t)(val * 256.0f + (val >= 0.0f ? 0.5f : -0.5f));
-                if (v > 8388607) v = 8388607;
-                if (v < -8388608) v = -8388608;
-                raw_out_buf[i * 3 + 0] = v & 0xFF;
-                raw_out_buf[i * 3 + 1] = (v >> 8) & 0xFF;
-                raw_out_buf[i * 3 + 2] = (v >> 16) & 0xFF;
+        for (;;) {
+            if (write_output_frames(fout, float_out_buf, raw_out_buf, produced, channels,
+                                    fmt, out_bytes_per_sample, &total_out_data_bytes) != 0) {
+                fprintf(stderr, "Error: Couldn't write converted audio to output\n");
+                faar_destroy(r);
+                free(float_in_buf);
+                free(float_out_buf);
+                free(raw_out_buf);
+                if (infile) wav_close(infile);
+                if (fout != stdout) fclose(fout);
+                return 1;
             }
+            produced = faar_process(r, NULL, 0, float_out_buf, out_cap);
+            if (produced == 0) break;
         }
-
-        size_t bytes_to_write = produced * channels * out_bytes_per_sample;
-        fwrite(raw_out_buf, 1, bytes_to_write, fout);
-        total_out_data_bytes += bytes_to_write;
     }
 
-    size_t flushed = faar_flush(r, float_out_buf, out_cap);
-    if (flushed > 0) {
-        for (size_t i = 0; i < flushed * channels; i++) {
-            float val = float_out_buf[i];
-
-            if (fmt == FMT_F32LE) {
-                float norm_val = val / 32768.0f;
-                if (norm_val > 1.0f) norm_val = 1.0f;
-                if (norm_val < -1.0f) norm_val = -1.0f;
-                ((float *)raw_out_buf)[i] = norm_val;
-            } else if (fmt == FMT_S16LE) {
-                int32_t v = (int32_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
-                if (v > 32767) v = 32767;
-                if (v < -32768) v = -32768;
-                ((int16_t *)raw_out_buf)[i] = (int16_t)v;
-            } else if (fmt == FMT_S24LE) {
-                int32_t v = (int32_t)(val * 256.0f + (val >= 0.0f ? 0.5f : -0.5f));
-                if (v > 8388607) v = 8388607;
-                if (v < -8388608) v = -8388608;
-                raw_out_buf[i * 3 + 0] = v & 0xFF;
-                raw_out_buf[i * 3 + 1] = (v >> 8) & 0xFF;
-                raw_out_buf[i * 3 + 2] = (v >> 16) & 0xFF;
-            }
+    for (;;) {
+        size_t flushed = faar_flush(r, float_out_buf, out_cap);
+        if (flushed == 0) break;
+        if (write_output_frames(fout, float_out_buf, raw_out_buf, flushed, channels,
+                                fmt, out_bytes_per_sample, &total_out_data_bytes) != 0) {
+            fprintf(stderr, "Error: Couldn't write flushed audio to output\n");
+            faar_destroy(r);
+            free(float_in_buf);
+            free(float_out_buf);
+            free(raw_out_buf);
+            if (infile) wav_close(infile);
+            if (fout != stdout) fclose(fout);
+            return 1;
         }
-
-        size_t bytes_to_write = flushed * channels * out_bytes_per_sample;
-        fwrite(raw_out_buf, 1, bytes_to_write, fout);
-        total_out_data_bytes += bytes_to_write;
     }
 
     if (write_wav_out && fout != stdout) {
-        fseek(fout, 0, SEEK_SET);
-        write_wav_header(fout, target_rate, channels, fmt, total_out_data_bytes);
+        if (fseek(fout, 0, SEEK_SET) != 0) {
+            fprintf(stderr, "Error: Couldn't seek to WAV header in output\n");
+            faar_destroy(r);
+            free(float_in_buf);
+            free(float_out_buf);
+            free(raw_out_buf);
+            if (infile) wav_close(infile);
+            fclose(fout);
+            return 1;
+        }
+        if (write_wav_header(fout, target_rate, channels, fmt, total_out_data_bytes) != 0) {
+            fprintf(stderr, "Error: Couldn't write WAV header to output\n");
+            faar_destroy(r);
+            free(float_in_buf);
+            free(float_out_buf);
+            free(raw_out_buf);
+            if (infile) wav_close(infile);
+            fclose(fout);
+            return 1;
+        }
     }
 
     faar_destroy(r);

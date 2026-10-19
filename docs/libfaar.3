@@ -1,12 +1,14 @@
 .TH LIBFAAR 3 "October 2026" "libfaar 3.0.0" "Library Functions Manual"
 .SH NAME
-libfaar, faar_create, faar_set_dither, faar_get_delay, faar_process, faar_flush, faar_destroy \- Polyphase Farrow-interpolated Kaiser-sinc audio resampler library
+libfaar, faar_create, faar_set_dither, faar_set_boundary, faar_get_delay, faar_process, faar_flush, faar_destroy \- CPU audio resampler library
 .SH SYNOPSIS
 .B #include <faar.h>
 .sp
 .BI "faar_handle_t faar_create(uint32_t " in_rate ", uint32_t " out_rate ", uint16_t " channels ", faar_quality_t " quality ");"
 .sp
 .BI "int faar_set_dither(faar_handle_t " handle ", faar_dither_t " dither ", uint8_t " target_bits ");"
+.sp
+.BI "int faar_set_boundary(faar_handle_t " handle ", faar_boundary_t " boundary ");"
 .sp
 .BI "size_t faar_get_delay(faar_handle_t " handle ");"
 .sp
@@ -17,7 +19,7 @@ libfaar, faar_create, faar_set_dither, faar_get_delay, faar_process, faar_flush,
 .BI "void faar_destroy(faar_handle_t " handle ");"
 .SH DESCRIPTION
 .B libfaar
-is a lightweight, high-precision C library for digital audio sample rate conversion. It uses a polyphase filter bank with Kaiser windowing and Farrow cubic polynomial phase interpolation to deliver continuous, infinite-resolution fractional delays with >140 dB stopband attenuation and linear phase response.
+is a C library for digital audio sample rate conversion. Fresh Meson builds select the staged-short CPU backend, which uses an overlap-save DFT prefilter and a rate-planned fractional-delay stage. The legacy polyphase backend remains available for comparison. Input and output are float PCM; staged-short uses double-precision filter and FFT arithmetic. Rejection and transition bandwidth depend on the quality preset and conversion ratio.
 .SH FUNCTIONS
 .TP
 .BR faar_create ()
@@ -27,13 +29,16 @@ Allocates and initializes a resampler instance for converting audio from \fIin_r
 Configures dithering and noise-shaping error feedback (\fBFAAR_DITHER_OFF\fR, \fBFAAR_DITHER_TPDF\fR, or \fBFAAR_DITHER_SHAPED\fR) for quantization down to 16-bit or 24-bit integer PCM targets.
 .TP
 .BR faar_get_delay ()
-Returns the resampler group delay in input frames per channel.
+Returns filter lookahead in input frames, including cascaded stages; zero at equal rates.
 .TP
 .BR faar_process ()
-Resamples interleaved floating-point PCM audio samples.
+Resamples interleaved floating-point PCM audio samples. All supplied input is buffered. Drain pending output with a NULL input pointer and zero input count. Output time zero corresponds to input time zero. The selected boundary mode controls endpoint extension.
+.TP
+.BR faar_set_boundary ()
+Selects how samples outside a finite input stream are extended. The default, \fBFAAR_BOUNDARY_HOLD\fR, continues the first and last sample; \fBFAAR_BOUNDARY_ZERO\fR uses silence. Set this before processing or flushing. Holding endpoints avoids forcing a step to silence at a nonzero endpoint, but cannot supply neighboring audio or keep a sample clock continuous across independent handles. Use one handle for a continuous stream.
 .TP
 .BR faar_flush ()
-Flushes remaining pipeline history at end of stream.
+Flushes remaining pipeline history at end of stream. Call until zero is returned. Total output length is ceil(input_frames * out_rate / in_rate). No further input may be supplied after flushing starts.
 .TP
 .BR faar_destroy ()
 Frees all allocated memory and resources associated with the resampler handle.
