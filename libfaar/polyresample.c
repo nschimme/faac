@@ -213,14 +213,34 @@ static bool short_half_rate_route(uint32_t in_rate, uint32_t out_rate) {
             || in_rate == 96000 || in_rate == 176400 || in_rate == 192000);
 }
 
+/* Band edges are fractions of the output Nyquist frequency. */
 static const struct {
     double passband, stopband, attenuation;
-} short_half_rate_specs[] = {
+} preset_specs[] = {
     /* Fast preserves 90% bandwidth with 100 dB alias rejection. */
     [FAAR_QUALITY_FAST] = {0.90, 1.04, 100.0},
     /* Good preserves 96% bandwidth with 130 dB alias rejection. */
     [FAAR_QUALITY_GOOD] = {0.96, 1.04, 130.0},
+    [FAAR_QUALITY_HIGH] = {0.96, 1.04, 150.0},
 };
+
+/* Kaiser length and beta for a preset spec at filter_rate. alignment is the
+ * divisor N-1 must meet so the DFT stage stays centred on input zero. */
+static void design_from_spec(faar_quality_t quality, uint32_t out_rate,
+        uint32_t filter_rate, double stopband, size_t alignment,
+        size_t *tap_count, double *beta, double *cutoff) {
+    size_t preset = quality <= FAAR_QUALITY_HIGH ? (size_t)quality
+                                                 : FAAR_QUALITY_GOOD;
+    double pb = preset_specs[preset].passband;
+    double sb = stopband > 0.0 ? stopband : preset_specs[preset].stopband;
+    double attenuation = preset_specs[preset].attenuation;
+    double nyquist_ratio = 0.5 * (double)out_rate / filter_rate;
+    size_t n = (size_t)ceil((attenuation - 7.95)
+                            / (14.36 * (sb - pb) * nyquist_ratio)) + 1;
+    *tap_count = n + (alignment - (n - 1) % alignment) % alignment;
+    *beta = 0.1102 * (attenuation - 8.7);
+    *cutoff = 0.5 * (pb + sb) * nyquist_ratio;
+}
 #endif
 static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         uint16_t channels, faar_quality_t quality) {
@@ -248,6 +268,8 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
             || (in_rate == 88200 && out_rate == 96000);
     bool short_half_rate_plan = short_half_rate_route(in_rate, out_rate);
     double half_rate_cutoff = 0.24889387661163931;
+    double spec_cutoff = 0.0;
+    bool short_44_32_plan = in_rate == 44100 && out_rate == 32000;
     bool short_48_32_plan = in_rate == 48000 && out_rate == 32000;
     bool short_reference_plan = (in_rate == 96000 && out_rate == 44100)
         || (in_rate == 48000 && out_rate == 44100)
@@ -315,28 +337,22 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
             tap_count = 5493;
             beta = 19.078143572239966;
         } else {
-            size_t preset = quality == FAAR_QUALITY_FAST
-                ? FAAR_QUALITY_FAST : FAAR_QUALITY_GOOD;
-            double pb = short_half_rate_specs[preset].passband;
-            double sb = short_half_rate_specs[preset].stopband;
-            double attenuation = short_half_rate_specs[preset].attenuation;
-            double nyquist_ratio = 0.5 * (double)out_rate / in_rate;
-            double transition = (sb - pb) * nyquist_ratio;
-            tap_count = (size_t)ceil((attenuation - 7.95)
-                                       / (14.36 * transition)) + 1;
-            /* Odd N makes N-1 divisible by two for DFT decimation.
-             * Prefix padding plus FIR delay is twice the half-length, so
+            /* Prefix padding plus FIR delay is twice the half-length, so
              * either half-length parity aligns to input time zero. */
-            if (!(tap_count & 1)) ++tap_count;
-            beta = 0.1102 * (attenuation - 8.7);
-            half_rate_cutoff = 0.5 * (pb + sb) * nyquist_ratio;
+            design_from_spec(quality, out_rate, in_rate, 0.0, 2,
+                             &tap_count, &beta, &half_rate_cutoff);
         }
     }
-    if (short_48_32_plan) {
-        if (quality == FAAR_QUALITY_HIGH) {
-            tap_count = 1201;
-            beta = 18.0;
-        }
+    if (short_48_32_plan || short_44_32_plan
+            || (short_reference_plan && quality != FAAR_QUALITY_HIGH)) {
+        if (short_48_32_plan || short_44_32_plan) expansion = 2;
+        /* Keep the near-Nyquist alias-energy regression inside High's stopband. */
+        double sb = short_48_32_plan && quality == FAAR_QUALITY_HIGH
+            ? 1.00625 : 0.0;
+        /* Expanded filters need an even half-length to center on input zero. */
+        design_from_spec(quality, out_rate, in_rate * (uint32_t)expansion, sb,
+                         expansion == 2 ? 4 : 2,
+                         &tap_count, &beta, &spec_cutoff);
     }
 #endif
     while (fft_size < tap_count * 5) {
@@ -346,7 +362,8 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     double *taps = (double *)malloc(tap_count * sizeof(*taps));
     if (!taps) return NULL;
 #ifdef FAAR_STAGED_SHORT_POLY
-    double cutoff = short_direct_192_48_plan ? 0.124411
+    double cutoff = spec_cutoff ? spec_cutoff
+        : short_direct_192_48_plan ? 0.124411
         : short_reference_plan
         ? (in_rate == 192000 ? 0.1085 : 0.22867124913694359)
         : short_upsample_plan ? 0.24889387661163931
@@ -394,12 +411,12 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         phase_bank_len = 20;
     else if (short_upsample_plan)
         phase_bank_len = 21;
-    else if (short_fractional_upsample_plan || short_48_32_plan)
+    else if (short_fractional_upsample_plan || short_44_32_plan)
         phase_bank_len = 21;
     else if (short_generic_upsample_plan)
         phase_bank_len = 21;
     else if (short_direct_192_48_plan || short_half_rate_plan
-             || short_exact_double_upsample_plan)
+             || short_exact_double_upsample_plan || short_48_32_plan)
         phase_bank_len = 1;
     if (quality == FAAR_QUALITY_HIGH) {
         if (out_rate == 44100 && (in_rate == 96000 || in_rate == 48000
@@ -407,8 +424,8 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
             phase_bank_len = 20;
         else if (in_rate == 44100 && out_rate == 48000)
             phase_bank_len = 21;
-        else if (in_rate == 48000 && out_rate == 32000)
-            phase_bank_len = 21;
+        else if (short_48_32_plan)
+            phase_bank_len = 1;
         else if (in_rate == 48000 && out_rate == 96000)
             phase_bank_len = 1;
         else if (short_fractional_upsample_plan)
