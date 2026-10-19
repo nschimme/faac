@@ -277,7 +277,6 @@ static int test_impulses(void) {
     return 0;
 }
 
-#ifdef FAAR_STAGED_SHORT_POLY
 static int test_staged_short_impulse_symmetry(void) {
     static const uint32_t rates[][2] = {
         {96000,44100}, {48000,44100}, {192000,44100}, {44100,48000},
@@ -320,7 +319,6 @@ static int test_staged_short_impulse_symmetry(void) {
     puts("staged-short centered High impulse responses are symmetric");
     return 0;
 }
-#endif
 
 /* Least-squares fit y ~= a*sin(wt)+b*cos(wt), giving phase-independent gain and residual. */
 static int test_passband(void) {
@@ -386,7 +384,6 @@ static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {44100,48000},
     return 0;
 }
 
-#ifdef FAAR_STAGED_SHORT_POLY
 static int test_48k_32k_wideband(void) {
     const uint32_t ir = 48000, orate = 32000;
     const double freqs[] = {14400.0, 15200.0};
@@ -461,7 +458,6 @@ static int test_48k_96k_wideband(void) {
     free(input);
     return 0;
 }
-#endif
 
 static int run_dither(uint32_t ir, uint32_t orate, size_t block, size_t cap,
                       int enabled, samples *out) {
@@ -535,13 +531,11 @@ static int test_alias_energy(void) {
         double first_frequency, second_frequency;
     } rates[] = {
         {96000, 44100, 96000, 22060.0, 23000.0},
-#ifdef FAAR_STAGED_SHORT_POLY
         {192000, 44100, 192000, 22060.0, 23000.0},
         {96000, 48000, 96000, 24010.0, 0.0},
         {192000, 48000, 192000, 24100.0, 94080.0},
         {48000, 32000, 48000, 16100.0, 16950.0},
         {88200, 44100, 88200, 22150.0, 23000.0},
-#endif
     };
     for (size_t r = 0; r < sizeof(rates)/sizeof(rates[0]); ++r) {
       const uint32_t ir = rates[r].in_rate, orate = rates[r].out_rate;
@@ -611,14 +605,10 @@ int main(int argc, char **argv) {
     const faar_test_group groups[] = {
         {"boundary", test_boundary_modes}, {"lengths", test_lengths},
         {"streaming", test_streaming}, {"impulses", test_impulses},
-#ifdef FAAR_STAGED_SHORT_POLY
         {"staged_short_symmetry", test_staged_short_impulse_symmetry},
-#endif
         {"passband", test_passband},
-#ifdef FAAR_STAGED_SHORT_POLY
         {"48k_96k_wideband", test_48k_96k_wideband},
         {"48k_32k_wideband", test_48k_32k_wideband},
-#endif
         {"alias", test_alias_energy},
         {"empty", test_empty_flush}, {"dither", test_dither_streams}
     };

@@ -194,14 +194,9 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
     if (s->half > SIZE_MAX / 2) { free(s); return NULL; }
     s->prefix_drop = 2 * s->half / decimation;
     s->hold = 1;
-#ifdef FAAR_PAIRED_FFT
     /* Two channels share each complex transform, a lone channel shares it
      * with its next block; the half-band is direct. */
     s->lanes = !halfband && channels > 1 ? 2 : 1;
-#else
-    (void)single;
-    s->lanes = 1;
-#endif
     s->stages = (uint16_t)((channels + s->lanes - 1) / s->lanes);
     s->fir = (faar_dft_fir *)calloc(s->stages, sizeof(*s->fir));
     s->channel_input = (double *)malloc(s->lanes * s->block_size
@@ -212,7 +207,6 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
     if (!s->fir || !s->channel_input || !s->channel_output)
         goto fail;
     for (uint16_t f = 0; f < s->stages; ++f) {
-#ifdef FAAR_PAIRED_FFT
         if (s->lanes > 1) {
             size_t lanes = channels - f * s->lanes < s->lanes
                 ? channels - f * s->lanes : s->lanes;
@@ -225,7 +219,6 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                     fft_size, expansion, decimation, 1, 1, single)) goto fail;
             continue;
         }
-#endif
         if (faar_dft_fir_init_rate(&s->fir[f], taps, tap_count,
                 halfband ? 0 : fft_size, expansion, decimation)) goto fail;
     }

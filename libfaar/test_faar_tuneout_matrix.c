@@ -267,7 +267,6 @@ static long double oracle_i0(long double x) {
     return sum;
 }
 
-#ifdef FAAR_STAGED_SHORT_POLY
 static long double oracle_high_coefficient(size_t length, size_t tap,
         long double cutoff, long double beta, long double scale) {
     const long double pi = acosl(-1.0L);
@@ -284,28 +283,7 @@ static long double oracle_high_coefficient(size_t length, size_t tap,
     }
     return scale * values[tap] / total;
 }
-#endif
 
-#ifndef FAAR_STAGED_SHORT_POLY
-static long double oracle_polyphase_high_coefficient(size_t tap,
-        long double phase) {
-    const size_t length = 511;
-    const long double beta = 38.0L, cutoff = 0.48L;
-    const long double pi = acosl(-1.0L);
-    long double values[511], total = 0.0L;
-    for (size_t j = 0; j < length; ++j) {
-        long double n = (long double)j - 255.0L - phase;
-        long double sinc = fabsl(n) < 1e-20L ? 2.0L * cutoff
-            : sinl(2.0L * pi * cutoff * n) / (pi * n);
-        long double position = 2.0L * j / (length - 1) - 1.0L;
-        long double window = oracle_i0(beta * sqrtl(1.0L - position * position))
-            / oracle_i0(beta);
-        values[j] = sinc * window;
-        total += values[j];
-    }
-    return values[tap] / total;
-}
-#endif
 
 static int test_high_precision_coefficients(void) {
     const size_t frames = 2048, impulse_frame = 512;
@@ -317,7 +295,6 @@ static int test_high_precision_coefficients(void) {
                      FAAR_QUALITY_HIGH, &output);
     free(input);
     if (rc) return 1;
-#ifdef FAAR_STAGED_SHORT_POLY
     /* 44.1 -> 88.2 kHz is a 2x zero-inserted DFT plan: the independent
        long-double oracle checks its 5,493-tap Kaiser prefilter at the
        centered sample and the adjacent half-rate interpolation sample. */
@@ -325,10 +302,6 @@ static int test_high_precision_coefficients(void) {
         0.24889387661163931L, 19.078143572239966L, 2.0L);
     long double expected_half = oracle_high_coefficient(5493, 2747,
         0.24889387661163931L, 19.078143572239966L, 2.0L);
-#else
-    long double expected_phase0 = oracle_polyphase_high_coefficient(255, 0.0L);
-    long double expected_half = oracle_polyphase_high_coefficient(255, 0.5L);
-#endif
     double actual_phase0 = output.samples[2 * impulse_frame];
     double actual_half = output.samples[2 * impulse_frame + 1];
     free(output.samples);

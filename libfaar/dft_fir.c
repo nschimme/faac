@@ -31,10 +31,9 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation) {
     return init_stage(stage, taps, tap_count, fft_size, expansion,
-                      decimation, 0, 0, 0);
+                      decimation, fft_size ? 1 : 0, 0, 0);
 }
 
-#ifdef FAAR_PAIRED_FFT
 int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation, size_t lanes, int stacked,
@@ -43,14 +42,12 @@ int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
     return init_stage(stage, taps, tap_count, fft_size, expansion,
                       decimation, lanes, stacked, single);
 }
-#endif
 
 static size_t overlap_stride(const faar_dft_fir *stage) {
     size_t stored = (stage->tap_count - 1) / stage->expansion;
     return stored ? stored : 1;
 }
 
-#ifdef FAAR_PAIRED_FFT
 #define PAIR_REAL float
 #define PAIR_PLAN faar_rfftf_plan
 #define PAIR_TAG _f
@@ -101,7 +98,6 @@ static int init_paired(faar_dft_fir *stage, const double *taps) {
     return stage->overlap && stage->input_block && stage->output_block
         ? 0 : -1;
 }
-#endif
 
 static int init_stage(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
@@ -125,17 +121,11 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
         return -1;
     if (lanes && (halfband || fft_size / expansion > (size_t)INT_MAX))
         return -1;
-#if defined(FAAR_PAIRED_FFT) && !defined(FAAR_TEST_UNPAIRED)
     if (!lanes && !halfband) return -1;
-#endif
     memset(stage, 0, sizeof(*stage));
     stage->lanes = lanes ? lanes : 1;
     stage->paired = lanes != 0;
     stage->single = single;
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    if (!lanes && !halfband
-            && faar_real_fft_plan_init(&stage->fft, fft_size)) return -1;
-#endif
     stage->halfband = halfband;
 
     stage->fft_size = fft_size;
@@ -148,7 +138,6 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
     stage->stacked = stacked;
     stage->stream_in = stage->input_block_size * (stacked ? 2 : 1);
     stage->stream_out = stage->output_block_size * (stacked ? 2 : 1);
-#ifdef FAAR_PAIRED_FFT
     if (lanes) {
         if (init_paired(stage, taps)) {
             faar_dft_fir_clear(stage);
@@ -156,17 +145,6 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
         }
         return 0;
     }
-#endif
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    if (expansion == 2) {
-        if (faar_real_fft_plan_init(&stage->input_fft, fft_size / 2)) {
-            faar_dft_fir_clear(stage);
-            return -1;
-        }
-        stage->input_spectrum = (double *)calloc(fft_size / 2 + 2,
-                                                  sizeof(double));
-    }
-#endif
     stage->filter_spectrum = (double *)calloc(halfband ? tap_count / 4 + 1
                                                    : fft_size + 2, sizeof(double));
     stage->work = (double *)calloc(fft_size + 2, sizeof(double));
@@ -181,119 +159,30 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
         faar_dft_fir_clear(stage);
         return -1;
     }
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    if (expansion == 2 && !stage->input_spectrum) {
-        faar_dft_fir_clear(stage);
-        return -1;
-    }
-#endif
     if (halfband) {
         for (size_t j = 0; j < tap_count / 4; ++j)
             stage->filter_spectrum[j] = taps[2 * j + 1];
         stage->filter_spectrum[tap_count / 4] = taps[tap_count / 2];
     }
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    else {
-        for (size_t i = 0; i < tap_count; ++i)
-            stage->filter_spectrum[i] = taps[i];
-        faar_real_fft_execute_packed(&stage->fft, stage->filter_spectrum, 0);
-    }
-#endif
     return 0;
 }
 
 void faar_dft_fir_clear(faar_dft_fir *stage) {
     if (!stage) return;
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    faar_real_fft_plan_clear(&stage->fft);
-    faar_real_fft_plan_clear(&stage->input_fft);
-#endif
     free(stage->filter_spectrum);
     free(stage->work);
     free(stage->overlap);
     free(stage->input_block);
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    free(stage->input_spectrum);
-#endif
     free(stage->output_block);
-#ifdef FAAR_PAIRED_FFT
     faar_rfftf_clear(&stage->in_f);
     faar_rfftf_clear(&stage->out_f);
     faar_rfftd_clear(&stage->in_d);
     faar_rfftd_clear(&stage->out_d);
-#endif
     free(stage->spec_f);
     free(stage->spec_d);
     memset(stage, 0, sizeof(*stage));
 }
 
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-static void convolve_double(faar_dft_fir *stage, const double *input,
-                            double *output) {
-    const size_t n = stage->fft_size;
-    const size_t overlap = stage->tap_count - 1;
-    const size_t block = stage->block_size;
-    if (stage->expansion == 1) {
-        for (size_t i = 0; i < overlap; ++i)
-            stage->work[i] = stage->overlap[i];
-        for (size_t i = 0; i < block; ++i)
-            stage->work[overlap + i] = input[i];
-        faar_real_fft_execute_packed(&stage->fft, stage->work, 0);
-    } else {
-        const size_t half = n / 2;
-        const size_t raw_overlap = overlap / 2;
-        for (size_t i = 0; i < raw_overlap; ++i)
-            stage->input_spectrum[i] = stage->overlap[i];
-        for (size_t i = 0; i < stage->input_block_size; ++i)
-            stage->input_spectrum[raw_overlap + i] = input[i];
-        faar_real_fft_execute_packed(&stage->input_fft,
-                                     stage->input_spectrum, 0);
-        /* Zero insertion repeats the input spectrum at twice the FFT size.
-           Build directly in the packed-real layout: DC and the new Nyquist
-           bin share the input DC, then copy and mirror the half-size bins. */
-        const size_t nyquist = half / 2;
-        stage->work[0] = stage->input_spectrum[0];
-        stage->work[1] = stage->input_spectrum[0];
-        if (nyquist > 1)
-            memcpy(stage->work + 2, stage->input_spectrum + 2,
-                   2 * (nyquist - 1) * sizeof(double));
-        stage->work[2 * nyquist] = stage->input_spectrum[1];
-        stage->work[2 * nyquist + 1] = 0.0;
-        for (size_t k = nyquist + 1; k < half; ++k) {
-            size_t mirror = half - k;
-            stage->work[2 * k] = stage->input_spectrum[2 * mirror];
-            stage->work[2 * k + 1] = -stage->input_spectrum[2 * mirror + 1];
-        }
-    }
-    stage->work[0] *= stage->filter_spectrum[0];
-    stage->work[1] *= stage->filter_spectrum[1];
-    for (size_t i = 2; i < n; i += 2) {
-        double xr = stage->work[i];
-        double xi = stage->work[i + 1];
-        double hr = stage->filter_spectrum[i];
-        double hi = stage->filter_spectrum[i + 1];
-        stage->work[i] = xr * hr - xi * hi;
-        stage->work[i + 1] = xr * hi + xi * hr;
-    }
-    if (stage->decimation == 2) {
-        /* The portable real FFT backend does not expose the same packed-bin
-           convention for alias folding. Keep this backend exact by using its
-           full inverse and selecting the requested output phase. */
-        faar_real_fft_execute_packed(&stage->fft, stage->work, 1);
-        for (size_t i = 0; i < stage->output_block_size; ++i)
-            output[i] = stage->work[overlap + 2 * i];
-    } else if (stage->decimation == 4) {
-        faar_real_fft_execute_packed(&stage->fft, stage->work, 1);
-        for (size_t i = 0; i < stage->output_block_size; ++i)
-            output[i] = stage->work[overlap + 4 * i];
-    } else {
-        faar_real_fft_execute_packed(&stage->fft, stage->work, 1);
-        for (size_t i = 0; i < block; ++i)
-            output[i] = stage->work[overlap + i];
-    }
-}
-
-#endif
 
 static void update_overlap(faar_dft_fir *stage, const double *input) {
     const size_t overlap = stage->tap_count - 1;
@@ -339,17 +228,11 @@ int faar_dft_fir_process(faar_dft_fir *stage, const double *input,
             || (stage->paired ? !stage->spec_f && !stage->spec_d
                               : !stage->work || !stage->filter_spectrum))
         return -1;
-#ifdef FAAR_PAIRED_FFT
     if (stage->paired && stage->single)
         convolve_paired_f(stage, input, output);
     else if (stage->paired) convolve_paired_d(stage, input, output);
     else
-#endif
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    convolve_double(stage, input, output);
-#else
         return -1;
-#endif
     update_overlap(stage, input);
     return 0;
 }

@@ -127,9 +127,8 @@ static int test_32_to_48_high_filter(void) {
     return 0;
 }
 
-#ifdef FAAR_PAIRED_FFT
 /* Stream `lanes` channels (or one stacked channel) through the paired stage
- * and each one through the unpaired double stage; they must agree to the
+ * against explicit zero insertion and double convolution; they agree to the
  * paired precision's roundoff. */
 static int check_paired(size_t expansion, size_t decimation, size_t lanes,
                         int stacked, int single) {
@@ -137,7 +136,7 @@ static int check_paired(size_t expansion, size_t decimation, size_t lanes,
     double taps[TAPS], in[2][FRAMES], planes[2 * CHUNK];
     double out[2][FRAMES * 2 + FFT], ref[2][FRAMES * 2 + FFT];
     size_t count[2] = {0, 0};
-    faar_dft_fir paired, direct;
+    faar_dft_fir paired;
     const size_t cap = FFT * 2;
     double *buf = (double *)malloc(2 * cap * sizeof(double));
     size_t used = 0, produced = 0;
@@ -170,23 +169,20 @@ static int check_paired(size_t expansion, size_t decimation, size_t lanes,
     } while (produced);
     faar_dft_fir_clear(&paired);
     for (size_t l = 0; l < lanes; ++l) {
-        if (faar_dft_fir_init_rate(&direct, taps, TAPS, FFT, expansion, decimation))
-            return fail("reference FIR init failed");
-        size_t eaten = 0;
-        if (faar_dft_fir_stream(&direct, in[l], FRAMES, &eaten, ref[l],
-                                sizeof(ref[l]) / sizeof(double), &produced)
-                || eaten != FRAMES) return fail("reference FIR stream failed");
-        used = produced;
-        do {
-            if (faar_dft_fir_flush(&direct, ref[l] + used, cap, &produced))
-                return fail("reference FIR flush failed");
-            used += produced;
-        } while (produced);
-        faar_dft_fir_clear(&direct);
+        used = (FRAMES * expansion + decimation - 1) / decimation;
+        for (size_t i = 0; i < used; ++i) {
+            size_t n = i * decimation;
+            double sum = 0.0;
+            for (size_t k = 0; k < TAPS && k <= n; ++k)
+                if ((n - k) % expansion == 0
+                        && (n - k) / expansion < FRAMES)
+                    sum += taps[k] * in[l][(n - k) / expansion];
+            ref[l][i] = sum;
+        }
         if (used != count[l]) return fail("paired FIR output count differs");
         for (size_t i = 0; i < used; ++i)
-            if (fabs(ref[l][i] - out[l][i]) > (single ? 2e-6 : 1e-12))
-                return fail("paired FIR differs from the double stage");
+            if (fabs(ref[l][i] - out[l][i]) > (single ? 2e-6 : 2e-14))
+                return fail("paired FIR differs from direct double convolution");
     }
     free(buf);
     return 0;
@@ -199,17 +195,14 @@ static int test_paired(void) {
             for (size_t mode = 0; mode < 3; ++mode)
                 if (check_paired(rates[r][0], rates[r][1], mode == 1 ? 2 : 1,
                                  mode == 2, single)) return 1;
-    puts("DFT FIR: paired lanes match the unpaired double stage for every rate");
+    puts("DFT FIR: paired lanes match direct double convolution for every rate");
     return 0;
 }
-#endif
 
 int main(void) {
     if (test_designed_filter()) return 1;
     if (test_32_to_48_high_filter()) return 1;
-#ifdef FAAR_PAIRED_FFT
     if (test_paired()) return 1;
-#endif
     enum { TAPS = 31, FFT_SIZE = 128, BLOCK = FFT_SIZE - TAPS + 1,
            BLOCKS = 9 };
     double taps[TAPS], input[BLOCK * BLOCKS], output[BLOCK * BLOCKS];
