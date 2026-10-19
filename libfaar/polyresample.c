@@ -206,6 +206,22 @@ FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t 
 }
 
 #ifdef FAAR_STAGED_BACKEND
+#ifdef FAAR_STAGED_SHORT_POLY
+static bool short_half_rate_route(uint32_t in_rate, uint32_t out_rate) {
+    return (uint64_t)in_rate == 2 * (uint64_t)out_rate
+        && (in_rate == 44100 || in_rate == 48000 || in_rate == 88200
+            || in_rate == 96000 || in_rate == 176400 || in_rate == 192000);
+}
+
+static const struct {
+    double passband, stopband, attenuation;
+} short_half_rate_specs[] = {
+    /* Fast preserves 90% bandwidth with 100 dB alias rejection. */
+    [FAAR_QUALITY_FAST] = {0.90, 1.04, 100.0},
+    /* Good preserves 96% bandwidth with 130 dB alias rejection. */
+    [FAAR_QUALITY_GOOD] = {0.96, 1.04, 130.0},
+};
+#endif
 static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         uint16_t channels, faar_quality_t quality) {
     size_t tap_count, fft_size = 1;
@@ -230,9 +246,8 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     bool short_generic_upsample_plan =
         (in_rate == 32000 && (out_rate == 44100 || out_rate == 48000))
             || (in_rate == 88200 && out_rate == 96000);
-    bool short_half_rate_plan = in_rate == 96000 && out_rate == 48000;
-    bool short_192_96_plan = in_rate == 192000 && out_rate == 96000;
-    bool short_standard_half_rate_plan = in_rate == 88200 && out_rate == 44100;
+    bool short_half_rate_plan = short_half_rate_route(in_rate, out_rate);
+    double half_rate_cutoff = 0.24889387661163931;
     bool short_48_32_plan = in_rate == 48000 && out_rate == 32000;
     bool short_reference_plan = (in_rate == 96000 && out_rate == 44100)
         || (in_rate == 48000 && out_rate == 44100)
@@ -295,11 +310,26 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
             tap_count = 153;
         }
     }
-    if (short_half_rate_plan || short_standard_half_rate_plan
-            || short_192_96_plan) {
+    if (short_half_rate_plan) {
         if (quality == FAAR_QUALITY_HIGH) {
             tap_count = 5493;
             beta = 19.078143572239966;
+        } else {
+            size_t preset = quality == FAAR_QUALITY_FAST
+                ? FAAR_QUALITY_FAST : FAAR_QUALITY_GOOD;
+            double pb = short_half_rate_specs[preset].passband;
+            double sb = short_half_rate_specs[preset].stopband;
+            double attenuation = short_half_rate_specs[preset].attenuation;
+            double nyquist_ratio = 0.5 * (double)out_rate / in_rate;
+            double transition = (sb - pb) * nyquist_ratio;
+            tap_count = (size_t)ceil((attenuation - 7.95)
+                                       / (14.36 * transition)) + 1;
+            /* Odd N makes N-1 divisible by two for DFT decimation.
+             * Prefix padding plus FIR delay is twice the half-length, so
+             * either half-length parity aligns to input time zero. */
+            if (!(tap_count & 1)) ++tap_count;
+            beta = 0.1102 * (attenuation - 8.7);
+            half_rate_cutoff = 0.5 * (pb + sb) * nyquist_ratio;
         }
     }
     if (short_48_32_plan) {
@@ -324,9 +354,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         : (short_exact_double_upsample_plan || short_fractional_upsample_plan)
             ? 0.24889387661163931
         : short_generic_upsample_plan ? 0.24889387661163931
-        : (short_half_rate_plan || short_standard_half_rate_plan
-           || short_192_96_plan)
-            ? 0.24889387661163931
+        : short_half_rate_plan ? half_rate_cutoff
         : short_48_32_plan ? 0.3267
         : 0.4794 * (double)out_rate / (double)in_rate;
 #else
@@ -352,8 +380,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     r->dft_expansion = expansion;
 #ifdef FAAR_STAGED_SHORT_POLY
     size_t decimation = short_direct_192_48_plan ? 4
-        : (short_half_rate_plan || short_standard_half_rate_plan
-           || short_192_96_plan) ? 2 : 1;
+        : short_half_rate_plan ? 2 : 1;
 #else
     size_t decimation = 1;
 #endif
@@ -372,7 +399,6 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     else if (short_generic_upsample_plan)
         phase_bank_len = 21;
     else if (short_direct_192_48_plan || short_half_rate_plan
-             || short_standard_half_rate_plan || short_192_96_plan
              || short_exact_double_upsample_plan)
         phase_bank_len = 1;
     if (quality == FAAR_QUALITY_HIGH) {
@@ -391,8 +417,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
             phase_bank_len = 1;
         else if (in_rate == 88200 && out_rate == 44100)
             phase_bank_len = 1;
-        else if (short_exact_double_upsample_plan || short_192_96_plan
-                 || short_half_rate_plan || short_standard_half_rate_plan)
+        else if (short_exact_double_upsample_plan || short_half_rate_plan)
             phase_bank_len = 1;
     }
 #else
@@ -431,6 +456,8 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
         && rate_ratio <= 0.95;
     bool use_staged = downsample_stage;
 #ifdef FAAR_STAGED_SHORT_POLY
+    if (short_half_rate_route(in_rate, out_rate))
+        use_staged = true;
     if (in_rate == 44100 && out_rate == 48000)
         use_staged = true;
     if (in_rate == 48000 && out_rate == 96000
