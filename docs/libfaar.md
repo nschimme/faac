@@ -16,39 +16,36 @@ Choose `-Dfaar-backend=polyphase` to build the legacy comparison backend, or `-D
 
 ### Common conversion plans
 
-Fresh Meson builds use `staged-short`. The routes below describe which plan that
-backend selects for common AAC conversion rates; they do not imply that every
-route has the same measured quality or performance. The verification tools and
-their current coverage are described in
+Fresh Meson builds use `staged-short`. Plans combine a DFT prefilter with an
+exact sampling stage or fractional-delay bank. The verification tools and their
+coverage are described in
 [`libfaar/verification/README.md`](../libfaar/verification/README.md).
 
-| Conversion | `staged-short` plan |
+| Conversion class | `staged-short` plan |
 |---|---|
-| 44.1 → 48 kHz | Dedicated upsampling plan: 2× DFT expansion, then a 21-phase fractional-delay bank |
-| 48 → 44.1 kHz | Dedicated reference plan: 2× DFT expansion, then a 20-tap bank; Fast/Good use spec-designed prefilters |
-| 44.1 → 22.05 or 48 → 24 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
-| 88.2 → 44.1 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
-| 88.2 → 48 kHz | General staged downsampling plan: DFT prefilter and a 127-phase bank |
-| 96 → 44.1 kHz | Dedicated reference plan: DFT prefilter and a 20-tap bank; Fast/Good use spec-designed prefilters |
-| 96 → 48 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
-| 44.1 → 88.2, 48 → 96, or 96 → 192 kHz | Dedicated exact-double upsampling plan: 2× DFT expansion and a 1-phase bank |
-| 44.1 → 96 or 48 → 88.2 kHz | Dedicated fractional upsampling plan: 2× DFT expansion and a 21-phase bank |
-| 32 → 44.1 or 48 kHz; 88.2 → 96 kHz | Dedicated upsampling plan: 2× DFT expansion and a 21-phase bank |
-| 48 → 32 kHz | Spec-designed 2× DFT expansion, then exact 3:1 sampling with a 1-tap bank; High uses a sharper stopband for near-Nyquist alias rejection |
-| 44.1 → 32 kHz | Spec-designed 2× DFT expansion, then a 21-tap fractional-delay bank |
-| 176.4 → 88.2 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
-| 176.4 → 96, 48, or 44.1 kHz | General staged downsampling plan: DFT prefilter and a 127-phase bank |
-| 192 → 96 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
-| 192 → 48 kHz | Dedicated 4:1 plan: 4× DFT decimation and a 1-phase bank |
-| 192 → 44.1 kHz | Dedicated reference plan: DFT prefilter and a 20-tap bank; Fast/Good use spec-designed prefilters |
+| General downsampling | Choose the largest DFT decimation D in {4, 2, 1}, then the smallest expansion E in {1, 2}, such that the bank rate R = input × E / D is at least 2.50 × output. Design the prefilter against output Nyquist. Use exact 1-tap sampling when R/output is integral; otherwise use a 21-tap Kaiser bank. |
+| Near-unity downsampling where 2× expansion cannot reach that margin | Use 2× expansion and the wider-bandwidth 20-tap prototype bank. |
+| Dedicated half-rate and 192 → 48 kHz plans | Keep 2× and 4× DFT decimation respectively, followed by exact 1-tap sampling. Fast/Good use spec-designed filters; High retains the measured filter. |
+| Dedicated reference plans to 44.1 kHz | Keep the 20-tap prototype bank and existing expansion. Fast/Good use spec-designed prefilters. High retains the measured 48/96 kHz designs; 192 kHz uses a spec-designed filter whose stop edge also covers the near-Nyquist alias probe. |
+| Dedicated plans to 32 kHz | Keep 2× expansion, with exact 3:1 sampling for 48 kHz input and a 21-tap bank for 44.1 kHz input. High's 48 kHz filter uses the sharper existing stop edge. |
+| Dedicated 2× expansion upsampling | Design Fast/Good against input Nyquist. Keep measured High filters except the corrected 32 kHz input plans. Exact double-rate routes use a 1-tap bank; the measured prototype is retained for 44.1 → 48 kHz, and generic fractional banks use 41 taps to suppress phase modulation. Measured High banks remain unchanged except for 32 kHz input. |
 
-The fractional-delay bank length is a plan parameter, not the DFT prefilter's
-tap count. Filter tap counts and coefficients vary by quality preset. Other
-downsampling routes with output/input ratios from 0.20 through 0.95 use the
-general staged plan; conversions outside the staged routes use the legacy
-polyphase path. Setting `-Dfaar-backend=polyphase` selects that legacy backend
-for all conversions, while `-Dfaar-backend=staged` selects the earlier staged
-planner.
+The 21-tap bank's oversampling margin is the centre of the measured 2.48–2.52
+bracket: at 0.96 Nyquist, isolated C bank probes measured residuals of −141.35,
+−145.50 and −150.66 dB at ratios 2.48, 2.50 and 2.52 respectively.
+
+Spec-designed filters use the lower Nyquist frequency: Fast preserves 90% of
+that bandwidth with 100 dB rejection; Good preserves 96% with 130 dB rejection;
+High preserves 96% with 150 dB rejection. The Kaiser estimate includes one
+uniform 5.3 dB design margin (5.2 dB failed the full screen; 5.3 dB passed). FIR lengths
+respect DFT expansion, decimation and time-zero alignment. Bank tap counts are
+independent of prefilter tap counts. Preset masks define acceptance; rejection
+beyond the mask and Fast response above 0.90 Nyquist can differ from earlier
+plans.
+
+Other upsampling routes retain the legacy polyphase path. Setting
+`-Dfaar-backend=polyphase` selects that backend for all conversions, while
+`-Dfaar-backend=staged` selects the earlier staged planner.
 
 - **Aligned streaming output**
   The first output corresponds to input time zero, and flushing produces `ceil(input_frames * out_rate / in_rate)` output frames. The default boundary mode holds the first and last sample outside a finite stream; `FAAR_BOUNDARY_ZERO` selects silence instead. Filter lookahead is available through `faar_get_delay()` in input frames, including cascaded stages.

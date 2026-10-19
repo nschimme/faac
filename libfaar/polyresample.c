@@ -213,7 +213,7 @@ static bool short_half_rate_route(uint32_t in_rate, uint32_t out_rate) {
             || in_rate == 96000 || in_rate == 176400 || in_rate == 192000);
 }
 
-/* Band edges are fractions of the output Nyquist frequency. */
+/* Band edges are fractions of the lower Nyquist frequency. */
 static const struct {
     double passband, stopband, attenuation;
 } preset_specs[] = {
@@ -233,7 +233,9 @@ static void design_from_spec(faar_quality_t quality, uint32_t out_rate,
                                                  : FAAR_QUALITY_GOOD;
     double pb = preset_specs[preset].passband;
     double sb = stopband > 0.0 ? stopband : preset_specs[preset].stopband;
-    double attenuation = preset_specs[preset].attenuation;
+    /* Full-screen bracket: 5.2 dB misses 150 dB (149.916); 5.3 dB passes. */
+    const double margin_db = 5.3;
+    double attenuation = preset_specs[preset].attenuation + margin_db;
     double nyquist_ratio = 0.5 * (double)out_rate / filter_rate;
     size_t n = (size_t)ceil((attenuation - 7.95)
                             / (14.36 * (sb - pb) * nyquist_ratio)) + 1;
@@ -241,6 +243,126 @@ static void design_from_spec(faar_quality_t quality, uint32_t out_rate,
     *beta = 0.1102 * (attenuation - 8.7);
     *cutoff = 0.5 * (pb + sb) * nyquist_ratio;
 }
+
+struct short_plan {
+    size_t taps, fft, expansion, decimation, bank;
+    double beta, cutoff;
+};
+
+enum short_route { GENERAL, REFERENCE, UP, HALF, QUARTER, DOWN32 };
+
+static const struct short_route_entry {
+    uint32_t in, out;
+    enum short_route route;
+    size_t expansion, bank, high_bank;
+} short_routes[] = {
+    {48000, 44100, REFERENCE, 2, 20, 0},
+    {96000, 44100, REFERENCE, 1, 20, 0},
+    {192000, 44100, REFERENCE, 1, 20, 0},
+    {192000, 48000, QUARTER, 1, 1, 0},
+    {44100, 32000, DOWN32, 2, 21, 0},
+    {48000, 32000, DOWN32, 2, 1, 0},
+    {44100, 48000, UP, 2, 21, 0},
+    {44100, 88200, UP, 2, 1, 0},
+    {48000, 96000, UP, 2, 1, 0},
+    {96000, 192000, UP, 2, 1, 0},
+    {44100, 96000, UP, 2, 41, 21},
+    {48000, 88200, UP, 2, 41, 21},
+    /* Wider support suppresses phase modulation near input Nyquist. */
+    {32000, 44100, UP, 2, 41, 0},
+    {32000, 48000, UP, 2, 41, 0},
+    {88200, 96000, UP, 2, 41, 21},
+};
+
+static const struct short_route_entry *short_dedicated_route(uint32_t in,
+        uint32_t out) {
+    for (size_t i = 0; i < sizeof(short_routes) / sizeof(*short_routes); ++i) {
+        if (in == short_routes[i].in && out == short_routes[i].out)
+            return &short_routes[i];
+    }
+    return NULL;
+}
+
+static struct short_plan short_plan(uint32_t in, uint32_t out,
+        faar_quality_t quality) {
+    struct short_plan p = {0, 1, 1, 1, 21, 19.078143572239966, 0.0};
+    enum short_route route = short_half_rate_route(in, out) ? HALF : GENERAL;
+    const struct short_route_entry *entry = short_dedicated_route(in, out);
+    if (entry) {
+        route = entry->route;
+        p.expansion = entry->expansion;
+        p.bank = quality == FAAR_QUALITY_HIGH && entry->high_bank
+            ? entry->high_bank : entry->bank;
+    }
+    switch (route) {
+    case HALF:
+        p.decimation = 2;
+        p.bank = 1;
+        p.taps = 5493;
+        p.cutoff = 0.24889387661163931;
+        break;
+    case QUARTER:
+        p.decimation = 4;
+        p.taps = 8193;
+        p.cutoff = 0.124411;
+        break;
+    case REFERENCE:
+        p.taps = in == 192000 ? 3071 : 5981;
+        p.cutoff = in == 192000 ? 0.1085 : 0.22867124913694359;
+        if (in == 192000 && quality == FAAR_QUALITY_HIGH) p.fft = 32768;
+        break;
+    case UP:
+        p.taps = in == 32000 && out == 48000 ? 4097 : 5493;
+        if (in == 48000 || in == 96000) {
+            p.taps = 5297;
+            p.beta = 18.401802232573989;
+        }
+        p.cutoff = 0.24889387661163931;
+        break;
+    case DOWN32:
+        break;
+    case GENERAL:
+        p.expansion = 2;
+        /* Bank input must oversample the output by K: High's 0.96 Nyquist
+         * residual brackets K in [2.48, 2.52], so take the centre. */
+        const double bank_margin = 2.50;
+        for (size_t d = 4; d; d /= 2) {
+            for (size_t e = 1; e <= 2; ++e) {
+                if ((uint64_t)in * e % d == 0
+                        && (uint64_t)in * e >= bank_margin * out * d) {
+                    p.decimation = d;
+                    p.expansion = e;
+                    goto selected;
+                }
+            }
+        }
+selected:
+        /* Near-unity ratios cannot reach K with 2x expansion; the even
+         * prototype preserves their wider bank bandwidth. */
+        if ((double)in * p.expansion / p.decimation / out < bank_margin)
+            p.bank = 20;
+        if ((uint64_t)in * p.expansion % ((uint64_t)out * p.decimation) == 0)
+            p.bank = 1;
+        break;
+    }
+    if (route == GENERAL || route == DOWN32
+            || quality != FAAR_QUALITY_HIGH
+            || (route == REFERENCE && in == 192000)
+            || (route == UP && in == 32000)) {
+        /* This stop edge also covers the existing near-Nyquist alias probe. */
+        uint32_t lower = in < out ? in : out;
+        double sb = route == DOWN32 && in == 48000
+            && quality == FAAR_QUALITY_HIGH ? 1.00625
+            : route == REFERENCE && in == 192000
+                && quality == FAAR_QUALITY_HIGH ? 1.00045 : 0.0;
+        size_t alignment = p.expansion == 2 ? 4 : p.decimation;
+        if (alignment < 2) alignment = 2;
+        design_from_spec(quality, lower, in * (uint32_t)p.expansion, sb,
+                         alignment, &p.taps, &p.beta, &p.cutoff);
+    }
+    return p;
+}
+
 #endif
 static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         uint16_t channels, faar_quality_t quality) {
@@ -254,106 +376,11 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
         default: tap_count = 301; beta = 12.0; break;
     }
 #ifdef FAAR_STAGED_SHORT_POLY
-    bool short_direct_192_48_plan = in_rate == 192000 && out_rate == 48000;
-    bool short_double_upsample_plan = in_rate == 48000 && out_rate == 96000
-        && quality == FAAR_QUALITY_HIGH;
-    bool short_exact_double_upsample_plan =
-        (uint64_t)out_rate == 2 * (uint64_t)in_rate
-        && (in_rate == 44100 || in_rate == 48000 || in_rate == 96000);
-    bool short_fractional_upsample_plan =
-        (in_rate == 44100 && out_rate == 96000)
-            || (in_rate == 48000 && out_rate == 88200);
-    bool short_generic_upsample_plan =
-        (in_rate == 32000 && (out_rate == 44100 || out_rate == 48000))
-            || (in_rate == 88200 && out_rate == 96000);
-    bool short_half_rate_plan = short_half_rate_route(in_rate, out_rate);
-    double half_rate_cutoff = 0.24889387661163931;
-    double spec_cutoff = 0.0;
-    bool short_44_32_plan = in_rate == 44100 && out_rate == 32000;
-    bool short_48_32_plan = in_rate == 48000 && out_rate == 32000;
-    bool short_reference_plan = (in_rate == 96000 && out_rate == 44100)
-        || (in_rate == 48000 && out_rate == 44100)
-        || (in_rate == 192000 && out_rate == 44100);
-    if (short_direct_192_48_plan) {
-        /* Direct 4:1 DFT decimation avoids an additional per-output FIR.
-         * High keeps the measured sharp plan; lower presets use their own
-         * standard tap count with a divisible-by-four Fast length. */
-        if (quality == FAAR_QUALITY_HIGH) {
-            tap_count = 8193;
-            beta = 19.078143572239966;
-        } else if (quality == FAAR_QUALITY_FAST) {
-            tap_count = 153;
-        }
-    }
-    if (short_reference_plan) {
-        expansion = in_rate == 48000 ? 2 : 1;
-        if (quality == FAAR_QUALITY_HIGH) {
-            tap_count = in_rate == 192000 ? 3071 : 5981;
-            beta = 19.078143572239966;
-            /* A larger overlap-save block is substantially more efficient at
-             * 192 kHz. Keep the measured High filter response unchanged. */
-            if (in_rate == 192000) fft_size = 32768;
-        } else if (quality == FAAR_QUALITY_FAST && in_rate == 48000) {
-            tap_count = 153; /* Expansion needs an even half-length. */
-        }
-    }
-    bool short_upsample_plan = in_rate == 44100 && out_rate == 48000;
-    if (short_upsample_plan) {
-        expansion = 2;
-        if (quality == FAAR_QUALITY_HIGH) {
-            tap_count = 5493;
-            beta = 19.078143572239966;
-        } else if (quality == FAAR_QUALITY_FAST) {
-            tap_count = 153;
-        }
-    }
-    if (short_double_upsample_plan) {
-        tap_count = 5297;
-        beta = 18.401802232573989;
-        expansion = 2;
-    }
-    if (short_exact_double_upsample_plan || short_fractional_upsample_plan)
-        expansion = 2;
-    if ((short_exact_double_upsample_plan || short_fractional_upsample_plan)
-            && quality == FAAR_QUALITY_FAST)
-        tap_count = 153; /* Even half-length is required by doubled-rate centering. */
-    if ((short_exact_double_upsample_plan || short_fractional_upsample_plan)
-            && quality == FAAR_QUALITY_HIGH) {
-        tap_count = in_rate == 44100 ? 5493 : 5297;
-        beta = in_rate == 44100 ? 19.078143572239966
-                                : 18.401802232573989;
-    }
-    if (short_generic_upsample_plan) {
-        expansion = 2;
-        if (quality == FAAR_QUALITY_HIGH) {
-            tap_count = in_rate == 32000 && out_rate == 48000 ? 4097 : 5493;
-            beta = 19.078143572239966;
-        } else if (quality == FAAR_QUALITY_FAST) {
-            tap_count = 153;
-        }
-    }
-    if (short_half_rate_plan) {
-        if (quality == FAAR_QUALITY_HIGH) {
-            tap_count = 5493;
-            beta = 19.078143572239966;
-        } else {
-            /* Prefix padding plus FIR delay is twice the half-length, so
-             * either half-length parity aligns to input time zero. */
-            design_from_spec(quality, out_rate, in_rate, 0.0, 2,
-                             &tap_count, &beta, &half_rate_cutoff);
-        }
-    }
-    if (short_48_32_plan || short_44_32_plan
-            || (short_reference_plan && quality != FAAR_QUALITY_HIGH)) {
-        if (short_48_32_plan || short_44_32_plan) expansion = 2;
-        /* Keep the near-Nyquist alias-energy regression inside High's stopband. */
-        double sb = short_48_32_plan && quality == FAAR_QUALITY_HIGH
-            ? 1.00625 : 0.0;
-        /* Expanded filters need an even half-length to center on input zero. */
-        design_from_spec(quality, out_rate, in_rate * (uint32_t)expansion, sb,
-                         expansion == 2 ? 4 : 2,
-                         &tap_count, &beta, &spec_cutoff);
-    }
+    struct short_plan plan = short_plan(in_rate, out_rate, quality);
+    tap_count = plan.taps;
+    fft_size = plan.fft;
+    expansion = plan.expansion;
+    beta = plan.beta;
 #endif
     while (fft_size < tap_count * 5) {
         if (fft_size > SIZE_MAX / 2) return NULL;
@@ -362,18 +389,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     double *taps = (double *)malloc(tap_count * sizeof(*taps));
     if (!taps) return NULL;
 #ifdef FAAR_STAGED_SHORT_POLY
-    double cutoff = spec_cutoff ? spec_cutoff
-        : short_direct_192_48_plan ? 0.124411
-        : short_reference_plan
-        ? (in_rate == 192000 ? 0.1085 : 0.22867124913694359)
-        : short_upsample_plan ? 0.24889387661163931
-        : short_double_upsample_plan ? 0.24889387661163931
-        : (short_exact_double_upsample_plan || short_fractional_upsample_plan)
-            ? 0.24889387661163931
-        : short_generic_upsample_plan ? 0.24889387661163931
-        : short_half_rate_plan ? half_rate_cutoff
-        : short_48_32_plan ? 0.3267
-        : 0.4794 * (double)out_rate / (double)in_rate;
+    double cutoff = plan.cutoff;
 #else
     double cutoff = 0.4794 * (double)out_rate / (double)in_rate;
 #endif
@@ -396,8 +412,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     r->boundary = FAAR_BOUNDARY_HOLD;
     r->dft_expansion = expansion;
 #ifdef FAAR_STAGED_SHORT_POLY
-    size_t decimation = short_direct_192_48_plan ? 4
-        : short_half_rate_plan ? 2 : 1;
+    size_t decimation = plan.decimation;
 #else
     size_t decimation = 1;
 #endif
@@ -406,37 +421,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     free(taps);
     if (!r->dft_prefilter) { free(r); return NULL; }
 #ifdef FAAR_STAGED_SHORT_POLY
-    size_t phase_bank_len = 127;
-    if (short_reference_plan)
-        phase_bank_len = 20;
-    else if (short_upsample_plan)
-        phase_bank_len = 21;
-    else if (short_fractional_upsample_plan || short_44_32_plan)
-        phase_bank_len = 21;
-    else if (short_generic_upsample_plan)
-        phase_bank_len = 21;
-    else if (short_direct_192_48_plan || short_half_rate_plan
-             || short_exact_double_upsample_plan || short_48_32_plan)
-        phase_bank_len = 1;
-    if (quality == FAAR_QUALITY_HIGH) {
-        if (out_rate == 44100 && (in_rate == 96000 || in_rate == 48000
-                                  || in_rate == 192000))
-            phase_bank_len = 20;
-        else if (in_rate == 44100 && out_rate == 48000)
-            phase_bank_len = 21;
-        else if (short_48_32_plan)
-            phase_bank_len = 1;
-        else if (in_rate == 48000 && out_rate == 96000)
-            phase_bank_len = 1;
-        else if (short_fractional_upsample_plan)
-            phase_bank_len = 21;
-        else if (in_rate == 96000 && out_rate == 48000)
-            phase_bank_len = 1;
-        else if (in_rate == 88200 && out_rate == 44100)
-            phase_bank_len = 1;
-        else if (short_exact_double_upsample_plan || short_half_rate_plan)
-            phase_bank_len = 1;
-    }
+    size_t phase_bank_len = plan.bank;
 #else
     size_t phase_bank_len = 127;
 #endif
@@ -473,26 +458,8 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
         && rate_ratio <= 0.95;
     bool use_staged = downsample_stage;
 #ifdef FAAR_STAGED_SHORT_POLY
-    if (short_half_rate_route(in_rate, out_rate))
-        use_staged = true;
-    if (in_rate == 44100 && out_rate == 48000)
-        use_staged = true;
-    if (in_rate == 48000 && out_rate == 96000
-            && quality == FAAR_QUALITY_HIGH)
-        use_staged = true;
-    if ((uint64_t)out_rate == 2 * (uint64_t)in_rate
-            && (in_rate == 44100 || in_rate == 48000 || in_rate == 96000))
-        use_staged = true;
-    if ((in_rate == 44100 && out_rate == 96000)
-            || (in_rate == 48000 && out_rate == 88200)
-            || (in_rate == 192000 && out_rate == 96000))
-        use_staged = true;
-    if ((in_rate == 32000 && (out_rate == 44100 || out_rate == 48000))
-            || (in_rate == 88200 && out_rate == 96000))
-        use_staged = true;
-    if (in_rate == 192000 && out_rate == 48000) {
-        use_staged = true;
-    }
+    use_staged = in_rate > out_rate
+        || short_dedicated_route(in_rate, out_rate) != NULL;
 #endif
     if (!force_polyphase && use_staged)
         return faar_create_staged(in_rate, out_rate, channels, quality);
@@ -563,7 +530,8 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     }
 
 #ifdef FAAR_STAGED_SHORT_POLY
-    if (filter_len_override == 20 || filter_len_override == 21)
+    if (filter_len_override == 20 || filter_len_override == 21
+            || filter_len_override == 41)
         r->beta = 19.60632601597565;
 #endif
 
@@ -643,9 +611,10 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
                 const double prototype_center = bank_147 ? 1469.0 : 839.0;
                 const double prototype_denominator = bank_147 ? 1469.75 : 839.75;
                 const double prototype_scale = bank_147 ? 147.0 : 80.0;
+                double phase_count = bank_147 ? 294.0 : (double)r->num_phases;
                 double prototype_index =
                     ((double)(r->filter_len - 1 - j) * prototype_phases)
-                    + (frac + 0.5) * (double)r->num_phases * 0.5 - 1.0;
+                    + (frac + 0.5) * phase_count * 0.5 - 1.0;
                 double z = prototype_index - prototype_center;
                 double y = z / prototype_denominator;
                 double radicand = 1.0 - y * y;
