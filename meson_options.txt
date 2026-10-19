@@ -75,6 +75,18 @@ option('max-channels',
     max: 8,
     value: 8)
 
+option('faar-coefficient-precision',
+    description: 'FAAR coefficient storage precision',
+    type: 'combo',
+    choices: ['double', 'float'],
+    value: 'double')
+
+option('faar-backend',
+    description: 'FAAR resampling backend (staged-short plans common audio rates; legacy fallback retained)',
+    type: 'combo',
+    choices: ['polyphase', 'staged', 'staged-short'],
+    value: 'staged-short')
+
 # End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
 # Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();
 # the decoder (FAAD_STATS) prints its own on close.

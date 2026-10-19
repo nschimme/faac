@@ -31,10 +31,14 @@ int main(void) {
 
     size_t produced = faar_process(r, in_buf, in_frames, out_buf, out_cap);
     printf("Processed %zu input frames -> %zu output frames\n", in_frames, produced);
-    assert(produced > 0);
-
-    size_t flushed = faar_flush(r, out_buf + produced * channels, out_cap - produced);
-    printf("Flushed %zu additional frames\n", flushed);
+    size_t total = produced;
+    size_t flushed;
+    do {
+        flushed = faar_flush(r, out_buf + total * channels, out_cap - total);
+        total += flushed;
+    } while (flushed && total < out_cap);
+    printf("Flushed %zu additional frames\n", total - produced);
+    assert(total == (in_frames * (size_t)out_rate + in_rate - 1) / in_rate);
 
     faar_destroy(r);
 

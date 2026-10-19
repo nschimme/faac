@@ -14,7 +14,7 @@ FAAC is an open-source, dependency-free AAC encoder, with FAAD as its decoder, a
 
 - `faac` and `faad` write and read MP4/M4A with gapless playback info, as well as raw ADTS
 - `faac` reads WAV and raw PCM; `faad` writes WAV and raw PCM, with stdin/stdout piping
-- `faar` resamples PCM audio with >140 dB stopband rejection, Farrow phase interpolation, and TPDF dithering
+- `faar` resamples PCM audio with three quality presets, a staged CPU backend, and optional TPDF dithering
 - `faam` muxes, demuxes and tags MP4/M4A/M4B (AAC, H.264/H.265)
 
 ## Copyrights

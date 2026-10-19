@@ -6,14 +6,17 @@ faar \- Freeware Advanced Audio Resampler
 [\fIoptions\fR] \fIinput\fR \fIoutput\fR
 .SH DESCRIPTION
 .B faar
-is a command-line tool for digital audio sample rate conversion using a polyphase Farrow-interpolated Kaiser-sinc filter algorithm. It provides mastering-grade signal fidelity (>140 dB stopband attenuation, linear phase response) and optional TPDF dithering with high-pass noise shaping.
+is a command-line tool for digital audio sample rate conversion using the staged CPU backend selected by default. It provides linear-phase filtering and optional TPDF dithering with high-pass noise shaping. Rejection, transition bandwidth, memory use, and CPU cost depend on the quality preset and conversion ratio.
 .SH OPTIONS
 .TP
 .BR \-r ", " \-\-rate " " \fIHz\fR
 Set target output sampling rate in Hz (e.g. 48000, 44100, 32000). Required.
 .TP
 .BR \-\-quality " " \fIpreset\fR
-Set DSP filter quality preset: \fBfast\fR (127 taps), \fBgood\fR (255 taps, default), or \fBhigh\fR (511 taps).
+Set DSP filter quality preset: \fBfast\fR, \fBgood\fR (default), or \fBhigh\fR. Filter plans depend on the selected backend and conversion rates.
+.TP
+.BR \-\-boundary " " \fImode\fR
+Select endpoint extension for each input stream: \fBhold\fR (default) continues the first and last sample; \fBzero\fR uses silence outside the stream. HOLD avoids a forced step to silence at nonzero endpoints, but independent files still start separate sample clocks. Use one continuous stream when track-to-track clock continuity is required.
 .TP
 .BR \-c ", " \-\-channels " " \fInum\fR
 Set audio channel count for raw PCM input streams [default: 2].

@@ -15,7 +15,7 @@
 
 /**
  * @file faar.h
- * @brief Public API for libfaar - Polyphase Farrow-Interpolated Kaiser-Sinc Audio Resampler
+ * @brief Public API for libfaar CPU audio resampling
  *
  * Design summary:
  *   - Parameters are supplied up front to faar_create() or configured via faar_set_dither().
@@ -60,9 +60,9 @@ extern "C" {
  * @brief Resampler quality presets
  */
 typedef enum faar_quality_t {
-    FAAR_QUALITY_FAST = 0, /**< Fast mode: 127-tap filter, 28 dB Kaiser beta (~100 dB stopband rejection) */
-    FAAR_QUALITY_GOOD = 1, /**< Good mode: 255-tap filter, 32 dB Kaiser beta (~120 dB stopband rejection) */
-    FAAR_QUALITY_HIGH = 2, /**< High mode: 511-tap filter, 38 dB Kaiser beta (>140 dB stopband rejection) */
+    FAAR_QUALITY_FAST = 0, /**< Fast plan */
+    FAAR_QUALITY_GOOD = 1, /**< Balanced plan */
+    FAAR_QUALITY_HIGH = 2, /**< Highest-quality plan */
     FAAR_QUALITY_MAX  = 0x7fffffff
 } faar_quality_t;
 
@@ -76,6 +76,13 @@ typedef enum faar_dither_t {
     FAAR_DITHER_MAX    = 0x7fffffff
 } faar_dither_t;
 
+/** Samples assumed outside an independently supplied stream. */
+typedef enum faar_boundary_t {
+    FAAR_BOUNDARY_ZERO = 0, /**< Silence outside the stream */
+    FAAR_BOUNDARY_HOLD = 1, /**< Continue the first/last sample (default) */
+    FAAR_BOUNDARY_MAX = 0x7fffffff
+} faar_boundary_t;
+
 /**
  * @brief Opaque resampler handle type
  */
@@ -83,7 +90,7 @@ typedef struct faar_resampler_struct faar_resampler_struct;
 typedef faar_resampler_struct *faar_handle_t;
 
 /**
- * @brief Create a new polyphase Farrow resampler instance.
+ * @brief Create a new resampler instance.
  *
  * @param in_rate Input sampling rate in Hz (e.g. 48000, 96000, 192000)
  * @param out_rate Target output sampling rate in Hz (e.g. 44100, 24000, 16000)
@@ -115,11 +122,19 @@ FAARAPI faar_handle_t faar_create_ext(uint32_t in_rate, uint32_t out_rate, uint1
  */
 FAARAPI int faar_set_dither(faar_handle_t handle, faar_dither_t dither, uint8_t target_bits);
 
+/** Select endpoint extension before supplying input or flushing.
+ * HOLD avoids a forced step to silence at nonzero track endpoints. It cannot
+ * recover missing neighboring audio or preserve a sample clock across separate
+ * handles. Use one handle for a truly continuous stream.
+ * @return 0 on success, -1 for invalid arguments or an already-started stream.
+ */
+FAARAPI int faar_set_boundary(faar_handle_t handle, faar_boundary_t boundary);
+
 /**
  * @brief Get the filter group delay in input samples.
  *
  * @param handle Resampler instance handle
- * @return Group delay in frames (samples per channel)
+ * @return Filter lookahead in input frames, including cascaded stages; zero at equal rates.
  */
 FAARAPI size_t faar_get_delay(faar_handle_t handle);
 
@@ -127,6 +142,10 @@ FAARAPI size_t faar_get_delay(faar_handle_t handle);
  * @brief Process PCM float audio samples through the resampler.
  *
  * Inputs and outputs are interleaved float audio samples (-32768.0 to +32768.0 scale).
+ * All supplied input is buffered. If the output buffer fills, drain with
+ * in_samples == NULL and in_count == 0. Output frame zero corresponds to input
+ * frame zero. Endpoint values are held outside the supplied stream by default;
+ * faar_set_boundary() can select silence instead.
  *
  * @param handle Resampler instance handle
  * @param in_samples Pointer to input interleaved float sample array (can be NULL if in_count is 0)
@@ -140,6 +159,9 @@ FAARAPI size_t faar_process(faar_handle_t handle, const float *in_samples, size_
 
 /**
  * @brief Flush remaining history samples in the filter pipeline at stream end.
+ *
+ * Call until zero is returned. Total output length is ceil(input_frames *
+ * out_rate / in_rate). No further input may be supplied after flushing starts.
  *
  * @param handle Resampler instance handle
  * @param out_samples Pointer to output interleaved float buffer
