@@ -58,6 +58,7 @@ pkg.generate(libfaar,
 
 test_faar = executable('test_faar',
   'test_faar.c',
+  c_args: libfaar_args,
   include_directories: inc,
   dependencies: [libfaar_dep, m_dep],
 )

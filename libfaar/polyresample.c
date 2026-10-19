@@ -518,6 +518,10 @@ static faar_handle_t short_cascade(uint32_t in, uint32_t out,
 static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rate,
         uint16_t channels, faar_quality_t quality, uint32_t decimate_factor,
         size_t filter_len_override, bool force_polyphase) {
+#ifdef FAAR_FLOAT
+    /* Float arithmetic cannot meet High's rejection masks or improve on Good. */
+    if (quality == FAAR_QUALITY_HIGH) return NULL;
+#endif
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
     bool use_staged = in_rate > out_rate

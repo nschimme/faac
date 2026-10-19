@@ -4,8 +4,25 @@
 #include <assert.h>
 #include <faar.h>
 
+#ifdef FAAR_FLOAT
+#define TEST_QUALITY FAAR_QUALITY_GOOD
+#else
+#define TEST_QUALITY FAAR_QUALITY_HIGH
+#endif
+
 int main(void) {
     printf("Testing libfaar API...\n");
+#ifdef FAAR_FLOAT
+    static const uint32_t rates[][2] = {
+        {96000, 44100}, {44100, 48000}, {48000, 48000}
+    };
+    for (size_t i = 0; i < sizeof(rates) / sizeof(rates[0]); ++i) {
+        assert(faar_create(rates[i][0], rates[i][1], 2,
+                           FAAR_QUALITY_HIGH) == NULL);
+        assert(faar_create_ext(rates[i][0], rates[i][1], 2,
+                               FAAR_QUALITY_HIGH, 2) == NULL);
+    }
+#endif
 
     uint32_t in_rate = 96000;
     uint32_t out_rate = 44100;
@@ -49,7 +66,7 @@ int main(void) {
 
     for (size_t d = 0; d < 3; d++) {
         for (size_t b = 0; b < 2; b++) {
-            faar_handle_t r_dither = faar_create(in_rate, out_rate, channels, FAAR_QUALITY_HIGH);
+            faar_handle_t r_dither = faar_create(in_rate, out_rate, channels, TEST_QUALITY);
             assert(r_dither != NULL);
             if (test_dithers[d] != FAAR_DITHER_OFF) {
                 int status = faar_set_dither(r_dither, test_dithers[d], test_bits[b]);

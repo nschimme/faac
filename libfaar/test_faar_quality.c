@@ -7,6 +7,12 @@
  * All failures use explicit checks so release builds remain effective with NDEBUG.
  */
 #include <faar.h>
+
+#ifdef FAAR_FLOAT
+#define TEST_QUALITY FAAR_QUALITY_GOOD
+#else
+#define TEST_QUALITY FAAR_QUALITY_HIGH
+#endif
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -58,7 +64,7 @@ static int append(samples *s, const float *src, size_t n) {
 static int convert_boundary(const float *input, size_t in_frames, uint32_t in_rate,
                    uint32_t out_rate, uint16_t channels, size_t block,
                    size_t out_cap, samples *out, faar_boundary_t boundary) {
-    faar_handle_t h = faar_create(in_rate, out_rate, channels, FAAR_QUALITY_HIGH);
+    faar_handle_t h = faar_create(in_rate, out_rate, channels, TEST_QUALITY);
     if (!h) return fail("faar_create returned NULL");
     if (faar_set_boundary(h, boundary)) {faar_destroy(h);return fail("boundary configuration failed");}
     out->data = NULL;
@@ -157,7 +163,7 @@ static int test_boundary_modes(void) {
             return fail("explicit zero padding lost its edge response");
         }
     }
-    faar_handle_t h=faar_create(48000,44100,1,FAAR_QUALITY_HIGH);
+    faar_handle_t h=faar_create(48000,44100,1,TEST_QUALITY);
     float out[4];
     float input[1]={.5f};
     if(!h)return fail("boundary state create failed");
@@ -277,6 +283,7 @@ static int test_impulses(void) {
     return 0;
 }
 
+#ifndef FAAR_FLOAT
 static int test_staged_short_impulse_symmetry(void) {
     static const uint32_t rates[][2] = {
         {96000,44100}, {48000,44100}, {192000,44100}, {44100,48000},
@@ -319,6 +326,8 @@ static int test_staged_short_impulse_symmetry(void) {
     puts("staged-short centered High impulse responses are symmetric");
     return 0;
 }
+
+#endif
 
 /* Least-squares fit y ~= a*sin(wt)+b*cos(wt), giving phase-independent gain and residual. */
 static int test_passband(void) {
@@ -466,7 +475,7 @@ static int test_48k_96k_wideband(void) {
 static int run_dither(uint32_t ir, uint32_t orate, size_t block, size_t cap,
                       int enabled, samples *out) {
     const size_t n = 1024;
-    faar_handle_t h = faar_create(ir, orate, 1, FAAR_QUALITY_HIGH);
+    faar_handle_t h = faar_create(ir, orate, 1, TEST_QUALITY);
     if (!h) return fail("dither create failed");
     if (enabled && faar_set_dither(h, FAAR_DITHER_TPDF, 16) != 0) {
         faar_destroy(h); return fail("set TPDF16 failed");
@@ -528,6 +537,7 @@ static int test_dither_streams(void) {
 }
 
 /* Measure total output energy above Nyquist; do not project onto a presumed alias tone. */
+#ifndef FAAR_FLOAT
 static int test_alias_energy(void) {
     static const struct {
         uint32_t in_rate, out_rate;
@@ -593,8 +603,10 @@ static int test_alias_energy(void) {
     return 0;
 }
 
+#endif
+
 static int test_empty_flush(void) {
-    faar_handle_t h = faar_create(48000, 44100, 1, FAAR_QUALITY_HIGH);
+    faar_handle_t h = faar_create(48000, 44100, 1, TEST_QUALITY);
     float out[8];
     if (!h) return fail("empty flush create failed");
     if (faar_flush(h, out, 8) || faar_flush(h, out, 8)) {
@@ -609,11 +621,15 @@ int main(int argc, char **argv) {
     const faar_test_group groups[] = {
         {"boundary", test_boundary_modes}, {"lengths", test_lengths},
         {"streaming", test_streaming}, {"impulses", test_impulses},
+#ifndef FAAR_FLOAT
         {"staged_short_symmetry", test_staged_short_impulse_symmetry},
+#endif
         {"passband", test_passband},
         {"48k_96k_wideband", test_48k_96k_wideband},
         {"48k_32k_wideband", test_48k_32k_wideband},
+#ifndef FAAR_FLOAT
         {"alias", test_alias_energy},
+#endif
         {"empty", test_empty_flush}, {"dither", test_dither_streams}
     };
     return faar_run_groups(argc, argv, groups, sizeof(groups) / sizeof(groups[0]));

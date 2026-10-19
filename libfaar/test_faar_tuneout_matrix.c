@@ -8,6 +8,12 @@
  * This is local verification tooling. It is not linked into libfaar.
  */
 #include <faar.h>
+
+#ifdef FAAR_FLOAT
+#define TEST_QUALITY FAAR_QUALITY_GOOD
+#else
+#define TEST_QUALITY FAAR_QUALITY_HIGH
+#endif
 #include <ctype.h>
 #include <math.h>
 #include <inttypes.h>
@@ -15,6 +21,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef FAAR_FLOAT
+#define PRESET_COUNT 2
+#else
+#define PRESET_COUNT 3
+#endif
 
 #define CHANNEL_LIMIT 8
 #define INPUT_FRAMES 257
@@ -58,13 +70,13 @@ static void hash_output(uint64_t *hash, uint32_t in_rate, uint32_t out_rate,
 static int check_fingerprints(void) {
     static const char *path = FAAR_FINGERPRINT_FIXTURE_PATH;
     if (getenv("FAAR_RECORD_FINGERPRINTS")) {
-        for (unsigned q = 0; q < 3; ++q)
+        for (unsigned q = 0; q < PRESET_COUNT; ++q)
             printf("%u %016" PRIx64 "\n", q, matrix_fingerprints[q]);
         return 0;
     }
     FILE *f = fopen(path, "r");
     if (!f) return fail("could not open portable fingerprint fixture", 0, 0, 1);
-    for (unsigned q = 0; q < 3; ++q) {
+    for (unsigned q = 0; q < PRESET_COUNT; ++q) {
         unsigned index;
         uint64_t expected;
         if (fscanf(f, "%u %" SCNx64, &index, &expected) != 2
@@ -210,7 +222,10 @@ static int test_matrix_streaming(void) {
     float input[INPUT_FRAMES];
     for (size_t i = 0; i < INPUT_FRAMES; ++i) input[i] = sample(i, 0);
     static const faar_quality_t qualities[] = {
-        FAAR_QUALITY_FAST, FAAR_QUALITY_GOOD, FAAR_QUALITY_HIGH
+        FAAR_QUALITY_FAST, FAAR_QUALITY_GOOD,
+#ifndef FAAR_FLOAT
+        FAAR_QUALITY_HIGH
+#endif
     };
     for (size_t p = 0; p < pair_count; ++p) {
         uint32_t in_rate = pairs[p][0], out_rate = pairs[p][1];
@@ -246,7 +261,7 @@ static int test_matrix_streaming(void) {
             free(reference.samples); free(streamed.samples);
         }
     }
-    printf("Tuneout-derived FAAR rate matrix: %zu ordered pairs x 3 presets passed\n", pair_count);
+    printf("Tuneout-derived FAAR rate matrix: %zu ordered pairs x %u presets passed\n", pair_count, PRESET_COUNT);
     matrix_completed = 1;
     return 0;
 }
@@ -256,6 +271,7 @@ static int test_recorded_fingerprints(void) {
     return check_fingerprints();
 }
 
+#ifndef FAAR_FLOAT
 static long double oracle_i0(long double x) {
     long double term = 1.0L, sum = 1.0L;
     for (unsigned k = 1; k < 256; ++k) {
@@ -315,6 +331,8 @@ static int test_high_precision_coefficients(void) {
     return 0;
 }
 
+#endif
+
 static int isolation_for(faar_quality_t quality, float tolerance) {
     static const uint32_t rates[][2] = {
         {48000, 44100}, {96000, 44100}, {192000, 44100},
@@ -369,7 +387,7 @@ static int test_channel_isolation(void) {
 #else
     const float tolerance = 1e-12f;
 #endif
-    for (int q = 0; q < 3; ++q)
+    for (int q = 0; q < PRESET_COUNT; ++q)
         if (isolation_for((faar_quality_t)q, tolerance)) return 1;
     puts("Tuneout-derived FAAR channel isolation: 2, 6 and 8 channels passed");
     return 0;
@@ -381,7 +399,7 @@ static int test_equal_rate_bit_identity(void) {
     for (size_t i = 0; i < 17 * CHANNEL_LIMIT; ++i) input[i] = sample(i, (unsigned)(i % CHANNEL_LIMIT));
     input[0] = 0.0f;
     input[1] = -0.0f;
-    faar_handle_t h = faar_create(48000, 48000, CHANNEL_LIMIT, FAAR_QUALITY_HIGH);
+    faar_handle_t h = faar_create(48000, 48000, CHANNEL_LIMIT, TEST_QUALITY);
     if (!h) return fail("equal-rate create failed", 48000, 48000, CHANNEL_LIMIT);
     size_t made = faar_process(h, input, 17, output, 17);
     size_t tail = faar_flush(h, output + made * CHANNEL_LIMIT, 17 - made);
@@ -397,7 +415,9 @@ static int test_equal_rate_bit_identity(void) {
 int main(int argc, char **argv) {
     const faar_test_group groups[] = {
         {"matrix", test_matrix_streaming}, {"fingerprints", test_recorded_fingerprints},
+#ifndef FAAR_FLOAT
         {"coefficients", test_high_precision_coefficients},
+#endif
         {"channels", test_channel_isolation}, {"equal-rate", test_equal_rate_bit_identity}
     };
     return faar_run_groups(argc, argv, groups, sizeof(groups) / sizeof(groups[0]));

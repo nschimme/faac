@@ -105,7 +105,10 @@ Opaque handle to a resampler instance.
 #### `faar_quality_t`
 - `FAAR_QUALITY_FAST`: lowest-cost plan
 - `FAAR_QUALITY_GOOD`: balanced plan
-- `FAAR_QUALITY_HIGH`: highest-quality plan
+- `FAAR_QUALITY_HIGH`: highest-quality plan (double builds only)
+
+Float builds (`-Dfaar-precision=float`) support Fast and Good only.
+`faar_create` and `faar_create_ext` return `NULL` for `FAAR_QUALITY_HIGH`.
 
 #### `faar_dither_t`
 - `FAAR_DITHER_OFF`: Float output without quantization or dithering
