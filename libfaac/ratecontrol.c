@@ -19,6 +19,7 @@
 #include "ratecontrol.h"
 #include "coder.h"
 #include "quantize.h"
+#include "faac_internal.h"
 #include "stats.h"
 
 #define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
@@ -46,9 +47,9 @@
 #define RC_RESERVOIR_START     0.5f
 
 void RateControlReset(RateControl *rc, unsigned int numChannels,
-                      unsigned long bitRate, unsigned long sampleRate, int cbr)
+                      unsigned long bitRate, unsigned long sampleRate, int rcMode)
 {
-    rc->frameBudget = numChannels * (bitRate * FRAME_LEN) / sampleRate;
+    rc->frameBudget = (rcMode == RATE_VBR || rcMode == RATE_TVBR) ? 0 : numChannels * (bitRate * FRAME_LEN) / sampleRate;
 
     /* A signed account opens square at zero: any nonzero start is credit the
        stream never earned, which `lend` then spends. */
@@ -58,12 +59,12 @@ void RateControlReset(RateControl *rc, unsigned int numChannels,
     rc->sbrBitsAcc = -1;
 
     /* The reservoir is the decoder buffer (AAC_MAX_BITS_PER_CH per channel)
-       refilled at the mean rate. ABR/VBR leave resMean 0: no cap, no floor,
-       buffer_fullness stays 0x7FF. */
+       refilled at the mean rate. ABR/VBR/TVBR leave resMean 0: no cap, no floor,
+       buffer_fullness stays 0x7FF. CBR uses hard bit reservoir. CVBR manages balance/caps dynamically. */
     rc->resMean = 0;
     rc->resCap = 0;
     rc->resFill = 0;
-    if (cbr)
+    if (rcMode == RATE_CBR)
     {
         rc->resMean = rc->frameBudget;
         rc->resCap = (int)numChannels * AAC_MAX_BITS_PER_CH - rc->resMean;
@@ -109,8 +110,11 @@ int RateControlFrameCap(RateControl *rc)
 }
 
 float RateControlUpdate(RateControl *rc, int payloadBits,
-                        float quality, float maxqual)
+                        float quality, float maxqual, int rcMode)
 {
+    if (rcMode == RATE_VBR || rcMode == RATE_TVBR)
+        return quality;
+
     int desbits = rc->frameBudget;
     int sbrBits = rc->sbrBits;
     /* The reservoir is charged every bit sent; the controller only the bits
@@ -163,8 +167,26 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
     int lend;
     int bound = RC_BALANCE_FRAMES * desbits;
     int diff = coreTarget - coreBits;
+
+    /* CVBR mode logic: Constrained VBR allows quiet passages to underspend
+       without banking excessive credit that would cause huge bitrate spikes later.
+       It caps positive balance banked on simple passages, but retains full debt tracking. */
+    if (rcMode == RATE_CVBR) {
+        if (diff > 0)
+            diff = diff / 2; /* dampened accumulation of unspent bits */
+    }
+
     rc->balance += diff;
-    if (rc->balance > bound)
+    if (rcMode == RATE_CVBR)
+    {
+        /* Asymmetric balance bounds for CVBR: cap banked credit tightly (e.g. 1 frame budget)
+           while keeping full debt bound to prevent massive rate spikes. */
+        if (rc->balance > desbits)
+            rc->balance = desbits;
+        else if (rc->balance < -bound)
+            rc->balance = -bound;
+    }
+    else if (rc->balance > bound)
         rc->balance = bound;
     else if (rc->balance < -bound)
         rc->balance = -bound;

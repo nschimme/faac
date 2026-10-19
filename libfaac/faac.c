@@ -40,7 +40,8 @@ _Static_assert(sizeof(enum faac_object_type)   == 4, "faac_object_type must be 3
 _Static_assert(sizeof(enum faac_mpeg_version)  == 4, "faac_mpeg_version must be 32-bit");
 _Static_assert(sizeof(enum faac_rate_control)  == 4, "faac_rate_control must be 32-bit");
 _Static_assert((int)FAAC_RC_AUTO == RATE_AUTO && (int)FAAC_RC_VBR == RATE_VBR
-            && (int)FAAC_RC_ABR == RATE_ABR && (int)FAAC_RC_CBR == RATE_CBR, "rate control drift");
+            && (int)FAAC_RC_ABR == RATE_ABR && (int)FAAC_RC_CBR == RATE_CBR
+            && (int)FAAC_RC_TVBR == RATE_TVBR && (int)FAAC_RC_CVBR == RATE_CVBR, "rate control drift");
 _Static_assert(sizeof(enum faac_joint_mode)    == 4, "faac_joint_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_shortctl_mode) == 4, "faac_shortctl_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_stream_format) == 4, "faac_stream_format must be 32-bit");
@@ -198,9 +199,11 @@ static faac_status validate_params(const faac_params *p)
         return FAAC_ERR_INVALID_ARGUMENT;
     switch (p->rate_control) {
     case FAAC_RC_AUTO: break;
-    case FAAC_RC_VBR:  if (p->bit_rate)  return FAAC_ERR_INVALID_ARGUMENT; break;
+    case FAAC_RC_VBR:
+    case FAAC_RC_TVBR: if (p->bit_rate)  return FAAC_ERR_INVALID_ARGUMENT; break;
     case FAAC_RC_ABR:
-    case FAAC_RC_CBR:  if (!p->bit_rate) return FAAC_ERR_INVALID_ARGUMENT; break;
+    case FAAC_RC_CBR:
+    case FAAC_RC_CVBR: if (!p->bit_rate) return FAAC_ERR_INVALID_ARGUMENT; break;
     default:           return FAAC_ERR_INVALID_ARGUMENT;
     }
     if (p->max_bit_rate) {

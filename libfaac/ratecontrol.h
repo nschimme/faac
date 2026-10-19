@@ -48,9 +48,9 @@ typedef struct {
     int prevWant;      /* previous frame's core bits if it was stuffed, else 0 */
 } RateControl;
 
-/* Opens the account and, for CBR, sizes the reservoir from the resolved rate. */
+/* Opens the account and, for CBR/CVBR, sizes the reservoir or budget bounds. */
 void RateControlReset(RateControl *rc, unsigned int numChannels,
-                      unsigned long bitRate, unsigned long sampleRate, int cbr);
+                      unsigned long bitRate, unsigned long sampleRate, int rcMode);
 
 /* Fill after a raw_data_block of payloadBits (no ADTS header). Used by both the
    ADTS header and the controller so the two cannot disagree. */
@@ -64,7 +64,7 @@ int RateControlFrameCap(RateControl *rc);
    returns the quality for the next frame. SBR's share is charged separately
    so the controller does not starve the core to pay for it. */
 float RateControlUpdate(RateControl *rc, int payloadBits,
-                        float quality, float maxqual);
+                        float quality, float maxqual, int rcMode);
 
 #ifdef FAAC_STATS
 void RateControlStatsInit(void);

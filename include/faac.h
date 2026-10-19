@@ -149,6 +149,8 @@ enum faac_rate_control {
     FAAC_RC_VBR,                     /* quant_quality drives; bit_rate must be 0 */
     FAAC_RC_ABR,                     /* average bit_rate; requires bit_rate      */
     FAAC_RC_CBR,                     /* bit reservoir; requires bit_rate         */
+    FAAC_RC_TVBR,                    /* True VBR: perceptual quality-driven (1..127 or 1..5000) */
+    FAAC_RC_CVBR,                    /* Constrained VBR: bit_rate target with smart allocation cap */
     FAAC_RC_MAX  = 0x7fffffff
 };
 

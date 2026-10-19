@@ -537,7 +537,27 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
 
-    if (opts->quant_quality > 0 && opts->bit_rate == 0)
+    if (opts->tvbr)
+    {
+        params.rate_control = FAAC_RC_TVBR;
+        /* Scale 1..127 to FAAC's internal 1..5000 quality scale if specified in 1..127 range */
+        uint32_t q = opts->tvbr_quality ? opts->tvbr_quality : (opts->quant_quality ? opts->quant_quality : 100);
+        if (q <= 127)
+            q = (q * 5000) / 127;
+        if (q < 1) q = 1;
+        if (q > 5000) q = 5000;
+        params.quant_quality = q;
+        params.bit_rate = 0;
+    }
+    else if (opts->cvbr)
+    {
+        if (opts->bit_rate == 0)
+            FAIL("--cvbr needs a bitrate (-b)\n");
+        params.rate_control = FAAC_RC_CVBR;
+        params.bit_rate = opts->bit_rate / (num_channels ? num_channels : 1);
+        params.quant_quality = 0;
+    }
+    else if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {
         params.quant_quality = opts->quant_quality;
         params.bit_rate = 0;

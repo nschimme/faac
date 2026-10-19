@@ -364,7 +364,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     RefreshLfeMap(hEncoder);
 
     RateControlReset(&hEncoder->rc, hEncoder->numChannels, hEncoder->config.bitRate,
-                     hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
+                     hEncoder->sampleRate, hEncoder->config.rateControl);
 
     return 1;
 }
@@ -1014,9 +1014,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #endif
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
+    if (hEncoder->config.bitRate || hEncoder->config.rateControl == RATE_TVBR || hEncoder->config.rateControl == RATE_CVBR)
         hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
-                                                          hEncoder->aacquantCfg.quality, maxqual);
+                                                          hEncoder->aacquantCfg.quality, maxqual,
+                                                          hEncoder->config.rateControl);
 
     return frameBytes;
 }
