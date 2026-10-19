@@ -643,8 +643,9 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 "Auto picks LC or HE-AAC v1 based on bitrate; force one to\n"
                 "override that choice.");
             AddTip(hWnd, IDC_RESAMPLERATE,
-                "Sample rate conversion: Auto chooses optimal rate for bitrate,\n"
-                "Native keeps input sample rate.");
+                "Auto with ABR/CBR reduces rates above 48 kHz to 44.1/48 kHz\n"
+                "and low-bitrate LC to 32 kHz. VBR keeps the input rate\n"
+                "up to the AAC maximum of 96 kHz.");
             AddTip(hWnd, IDC_USETNS, "Temporal Noise Shaping: reduces pre-echo on transients.");
             AddTip(hWnd, IDC_USEPNS, "Perceptual Noise Substitution: codes noise-like bands as a noise level.");
             AddTip(hWnd, IDC_SHORTCTL,

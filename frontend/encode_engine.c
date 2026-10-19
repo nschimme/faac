@@ -526,29 +526,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
     uint16_t num_channels = (uint16_t)infile->channels;
 
     uint32_t target_rate = raw_sample_rate;
-    if (opts->rate_auto)
-    {
-        uint32_t bps_per_ch = opts->bit_rate / (num_channels ? num_channels : 1);
-        if (raw_sample_rate > 48000)
-        {
-            if (raw_sample_rate % 44100 == 0)
-                target_rate = 44100;
-            else
-                target_rate = 48000;
-        }
-        else if (bps_per_ch > 0 && bps_per_ch <= 12000)
-        {
-            target_rate = (raw_sample_rate % 11025 == 0) ? 22050 : 24000;
-        }
-        else if (bps_per_ch > 0 && bps_per_ch <= 20000)
-        {
-            target_rate = 32000;
-        }
-    }
-    else if (opts->resample_rate > 0 && opts->resample_rate != UINT32_MAX)
-    {
+    if (!opts->rate_auto && opts->resample_rate > 0 && opts->resample_rate != UINT32_MAX)
         target_rate = opts->resample_rate;
-    }
 
     if (opts->resample_rate > 0 && opts->resample_rate != UINT32_MAX && opts->resample_rate >= raw_sample_rate)
     {
@@ -600,6 +579,39 @@ int run_encoding_session_ext(const encode_options_t *opts,
         params.rate_control = FAAC_RC_CBR;
     }
 
+    params.bandwidth = opts->bandwidth;
+    params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
+
+    if (opts->rate_auto && params.bit_rate > 0)
+    {
+        /* Measured wins at 48k: 12-16 kbps/ch, 44.1k: 8 kbps/ch; bracket centres. */
+        const uint32_t lc_48k_bps = 18000;
+        const uint32_t lc_44k_bps = 10000;
+        if (raw_sample_rate > 48000)
+            target_rate = (raw_sample_rate % 44100 == 0) ? 44100 : 48000;
+        else if (raw_sample_rate > 32000 &&
+                 ((raw_sample_rate % 8000 == 0 && params.bit_rate <= lc_48k_bps) ||
+                  (raw_sample_rate % 11025 == 0 && params.bit_rate <= lc_44k_bps)))
+        {
+            faac_status st = faac_encoder_open(&params, &hEncoder);
+            if (st != FAAC_OK)
+                FAIL("Couldn't open encoder instance for %s: %s\n",
+                     opts->input_filename, faac_strerror(st));
+            faac_encoder_info native_info = { .struct_size = sizeof(native_info) };
+            faac_encoder_get_info(hEncoder, &native_info);
+            faac_encoder_close(&hEncoder);
+            if (native_info.object_type == FAAC_OBJ_LOW)
+            {
+                target_rate = 32000;
+                /* Keep AUTO from switching to HE at the new rate. */
+                params.object_type = FAAC_OBJ_LOW;
+            }
+        }
+        sample_rate = target_rate;
+        params.sample_rate = sample_rate;
+        resample_active = (target_rate != raw_sample_rate);
+    }
+
     if (log_cb)
     {
         if (opts->shortctl == FAAC_SHORTCTL_NOSHORT)
@@ -613,9 +625,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
             log_cb(1, msg, user_data);
         }
     }
-
-    params.bandwidth = opts->bandwidth;
-    params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
     /* Hand integer PCM to the encoder as it is: one conversion pass instead of
        two, and nothing for it to sanitise. The encoder applies the channel map. */
@@ -635,18 +644,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (resample_active)
     {
-        /* Automatic resampler quality selection:
-         * FAAR_QUALITY_HIGH: High sample rates (>48kHz), high quality (-q >= 200), or archival bitrates (>=192kbps)
-         * FAAR_QUALITY_GOOD: Default balanced mode for standard VBR/ABR encoding
-         * FAAR_QUALITY_FAST: Low bitrates (<32kbps) where core AAC quantization bounds dominant noise floor */
-        faar_quality_t resample_quality = FAAR_QUALITY_GOOD;
-        uint32_t total_bitrate = opts->bit_rate;
-        if (raw_sample_rate > 48000 || opts->quant_quality >= 200 || total_bitrate >= 192000)
-            resample_quality = FAAR_QUALITY_HIGH;
-        else if (total_bitrate > 0 && total_bitrate < 32000)
-            resample_quality = FAAR_QUALITY_FAST;
-
-        resampler = faar_create(raw_sample_rate, target_rate, num_channels, resample_quality);
+        /* Good's 0.96 passband covers LC's 14.5 kHz at 32 kHz; grade did not change MOS. */
+        resampler = faar_create(raw_sample_rate, target_rate, num_channels, FAAR_QUALITY_GOOD);
         if (!resampler)
             FAIL("Couldn't create resampler instance for %u Hz -> %u Hz\n",
                  raw_sample_rate, target_rate);
