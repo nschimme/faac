@@ -1,6 +1,6 @@
 # FAAR resampler recovery diagnosis
 
-**Status:** `staged-short` is the default backend. The work is focused on standard audio rates that commonly occur in music, video, broadcast, and consumer devices. The legacy single-stage polyphase path remains a fallback for unplanned rate pairs and is selectable as a comparison build.
+**Status:** `staged-short` is the default backend. The work is focused on standard audio rates that commonly occur in music, video, broadcast, and consumer devices. The polyphase bank serves unplanned rate pairs and the final stage after the DFT prefilter; staged-short is the only build. The current scorecard is in [FAAR quality measurements](faar-quality.md#current-scorecard).
 
 ## FAAC/qaac-priority follow-up
 
@@ -17,9 +17,9 @@ The current SoX comparison uses SoX's `rate` effect, not libsoxr, so it does not
 
 ## Current candidate and common-rate results
 
-The default production backend is `staged-short`; the staged-short planner handles the measured common routes; the legacy single-stage polyphase path remains a fallback for unplanned pairs. The current desktop-double shared library is 104,728 bytes. FAAR uses paired complex transforms from `libfaar/fft_real.c`; the former Ooura implementation has been removed; no SoX rate-conversion code is linked into FAAR.
+The default production backend is `staged-short`; the staged-short planner handles the measured common routes; the legacy single-stage polyphase path remains a fallback for unplanned pairs. The desktop-double shared library at f391c0b8 has 54,715 text bytes. FAAR uses paired complex transforms from `libfaar/fft_real.c`; the former Ooura implementation has been removed; no SoX rate-conversion code is linked into FAAR.
 
-Ten alternating 30-second stereo trials per engine and conversion were run, with one warmup. Values below are processing CPU medians in seconds, shown as **FAAR / SoX**. SoX used its CPU `rate -v -b 99.5` path.
+The SoX table below predates the paired FFT. Processing at f391c0b8 uses 11–31% fewer instructions than at 6de55ea3, so these FAAR timings are upper bounds. Ten alternating 30-second stereo trials per engine and conversion were run, with one warmup. Values below are processing CPU medians in seconds, shown as **FAAR / SoX**. SoX used its CPU `rate -v -b 99.5` path.
 
 | Conversion | High FAAR / SoX | Good FAAR / SoX | Fast FAAR / SoX |
 |---|---:|---:|---:|
@@ -46,13 +46,13 @@ The selected High plan uses 4097 DFT taps for 32→48 kHz; the other High plans 
 
 On these routes, selected passband gain probes at frequencies up to 0.45 × the lower of the input and output rates differ from ARDFTSRC by at most 0.021 dB for High, 0.021 dB for Good, and 0.143 dB for Fast. All are within the 0.25 dB comparison target for these probes. High, Good, and Fast tone, alias, impulse, and count results cover all 16 routes. Eight common upsampling routes were checked for images; the least image attenuation was -108.35 dB for High, -107.13 dB for Good, and -67.25 dB for Fast. The updated 32→48 High plan retains selected passband gain within 0.001 dB of ARDFTSRC through 0.495 × the lower rate; its image attenuation is -108.35 dB. At 0.499 × the lower rate, it differs from ARDFTSRC by 5.68 dB in the transition region and is closer than the previous 5493-tap plan. These probes do not constitute a perceptual quality test or a full transition-band qualification. Deep alias probes above 0.49 × input rate reached at least 155.89 dB for High, 118.02 dB for Good, and 70.69 dB for Fast.
 
-Setup memory varies by preset: High uses about 0.97–7.47 MB, Good 0.29–0.45 MB, and Fast 0.18–0.33 MB of measured live heap. The High 192→48 plan is the largest. The current shared library is 104,728 bytes with 91,587 ELF text bytes. The pinned SoX CPU shared library is 2,302,080 bytes with 643,850 text bytes, but includes SoX's broader library support; this is context, not a kernel-only comparison. A 30-trial experiment with a 131,072-point FFT measured 0.06746 s for FAAR versus 0.06718 s for SoX and increased live heap to 15.0 MB; that plan was rejected, and the selected 192→48 plan stays at 65,536 points.
+Setup memory varies by preset: High uses about 0.97–7.47 MB, Good 0.29–0.45 MB, and Fast 0.18–0.33 MB of measured live heap. The High 192→48 plan is the largest. That measurement's shared library was 104,728 bytes with 91,587 ELF text bytes; f391c0b8 has 54,715. The pinned SoX CPU shared library is 2,302,080 bytes with 643,850 text bytes, but includes SoX's broader library support; this is context, not a kernel-only comparison. A 30-trial experiment with a 131,072-point FFT measured 0.06746 s for FAAR versus 0.06718 s for SoX and increased live heap to 15.0 MB; that plan was rejected, and the selected 192→48 plan stays at 65,536 points.
 
-Native-double staged-short, float staged-short, default staged-short, explicit staged-short, generic staged, and polyphase comparison builds passed all six Meson test groups. The default build selects `staged-short`. The checks cover streaming/API behavior, coefficient and FFT paths, quality probes, and rate-matrix fingerprints. See [`common-rates-current-summary.json`](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/common-rates-current-summary.json) and the raw benchmark and signal artifacts beside it.
+Default, explicit-double and float builds pass all six Meson test groups; the generic staged and polyphase comparison builds were removed because they failed the quality masks. The checks cover streaming/API behavior, coefficient and FFT paths, quality probes, and rate-matrix fingerprints. See [`common-rates-current-summary.json`](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/common-rates-current-summary.json) and the raw benchmark and signal artifacts beside it.
 
 ## Remaining validation
 
-The staged-short planner is the default and has measured plans for 16 common conversions among 32, 44.1, 48, 88.2, 96, and 192 kHz. The legacy single-stage path remains a compatibility fallback for pairs without a staged plan. Remaining work is to broaden endpoint/transient and perceptual validation, measure the full current-hash response matrix, and assess setup memory on constrained targets. Good/Fast have probe results against the same ARDFTSRC reference, but no separately agreed preset acceptance masks. Embedded arithmetic and on-device timing remain deferred.
+The staged-short planner is the default and has measured plans for 16 common conversions among 32, 44.1, 48, 88.2, 96, and 192 kHz. The polyphase bank handles pairs without a staged plan. Remaining work is to broaden endpoint/transient and perceptual validation, measure the full current-hash response matrix, and assess setup memory on constrained targets. Fast, Good and High now have acceptance masks (see the quality scorecard). The float build covers single-precision FPUs; on-device timing remains open.
 
 ## Earlier recovery measurements
 
