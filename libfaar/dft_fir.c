@@ -29,14 +29,13 @@ int faar_dft_fir_init_expanded(faar_dft_fir *stage, const double *taps,
 int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation) {
-    return init_stage(stage, taps, tap_count, fft_size, expansion,
-                      decimation, fft_size ? 1 : 0, 0);
+    return faar_dft_fir_init_paired(stage, taps, tap_count, fft_size,
+                                    expansion, decimation, 1, 0);
 }
 
 int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation, size_t lanes, int stacked) {
-    if ((lanes != 1 && lanes != 2) || (stacked && lanes != 1)) return -1;
     return init_stage(stage, taps, tap_count, fft_size, expansion,
                       decimation, lanes, stacked);
 }
@@ -83,17 +82,10 @@ static int init_paired(faar_dft_fir *stage, const double *taps) {
         ? 0 : -1;
 }
 
-static int init_stage(faar_dft_fir *stage, const double *taps,
-                      size_t tap_count, size_t fft_size, size_t expansion,
-                      size_t decimation, size_t lanes, int stacked) {
-    int halfband = fft_size == 0;
-    if (halfband) {
-        if (tap_count < 5 || (tap_count - 1) % 4
-                || tap_count > SIZE_MAX - 255 || expansion != 1 || decimation != 2)
-            return -1;
-        fft_size = 256 + tap_count - 1;
-    }
-    if (!stage || !taps || !tap_count || tap_count > fft_size
+static int init_geometry(faar_dft_fir *stage, size_t tap_count,
+                      size_t fft_size, size_t expansion, size_t decimation,
+                      size_t lanes, int stacked) {
+    if (!stage || !tap_count || tap_count > fft_size
             || fft_size > SIZE_MAX / (2 * sizeof(faar_sample_t))
             || (expansion != 1 && expansion != 2)
             || (decimation != 1 && decimation != 2 && decimation != 4)
@@ -102,14 +94,8 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
             || (fft_size - tap_count + 1) % decimation
             || (tap_count - 1) % decimation)
         return -1;
-    if (lanes && (halfband || fft_size / expansion > (size_t)INT_MAX))
-        return -1;
-    if (!lanes && !halfband) return -1;
     memset(stage, 0, sizeof(*stage));
-    stage->lanes = lanes ? lanes : 1;
-    stage->paired = lanes != 0;
-    stage->halfband = halfband;
-
+    stage->lanes = lanes;
     stage->fft_size = fft_size;
     stage->tap_count = tap_count;
     stage->expansion = expansion;
@@ -120,19 +106,37 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
     stage->stacked = stacked;
     stage->stream_in = stage->input_block_size * (stacked ? 2 : 1);
     stage->stream_out = stage->output_block_size * (stacked ? 2 : 1);
-    if (lanes) {
-        if (init_paired(stage, taps)) {
-            faar_dft_fir_clear(stage);
-            return -1;
-        }
-        return 0;
+    return 0;
+}
+
+static int init_stage(faar_dft_fir *stage, const double *taps,
+                      size_t tap_count, size_t fft_size, size_t expansion,
+                      size_t decimation, size_t lanes, int stacked) {
+    if (!taps || (lanes != 1 && lanes != 2) || (stacked && lanes != 1)
+            || (expansion && fft_size / expansion > (size_t)INT_MAX)
+            || init_geometry(stage, tap_count, fft_size, expansion,
+                             decimation, lanes, stacked))
+        return -1;
+    if (init_paired(stage, taps)) {
+        faar_dft_fir_clear(stage);
+        return -1;
     }
-    stage->filter_spectrum = (faar_sample_t *)calloc(halfband ? tap_count / 4 + 1
-                                                   : fft_size + 2, sizeof(faar_sample_t));
-    stage->work = (faar_sample_t *)calloc(fft_size + 2, sizeof(faar_sample_t));
-    stage->overlap = (faar_sample_t *)calloc((tap_count - 1) / expansion
-                                      ? (tap_count - 1) / expansion : 1,
-                                      sizeof(faar_sample_t));
+    return 0;
+}
+
+int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
+                      size_t tap_count) {
+    if (!taps || tap_count < 5 || (tap_count - 1) % 4
+            || tap_count > SIZE_MAX - FAAR_HALFBAND_BLOCK
+            || init_geometry(stage, tap_count,
+                             FAAR_HALFBAND_BLOCK + tap_count - 1, 1, 2, 1, 0))
+        return -1;
+    stage->halfband = 1;
+    /* Odd taps and the centre: the even non-centre taps are zero. */
+    stage->filter_spectrum = (faar_sample_t *)calloc(tap_count / 4 + 1,
+                                                     sizeof(faar_sample_t));
+    stage->work = (faar_sample_t *)calloc(stage->fft_size + 2, sizeof(faar_sample_t));
+    stage->overlap = (faar_sample_t *)calloc(tap_count - 1, sizeof(faar_sample_t));
     stage->input_block = (faar_sample_t *)calloc(stage->input_block_size,
                                           sizeof(faar_sample_t));
     stage->output_block = (faar_sample_t *)calloc(stage->block_size, sizeof(faar_sample_t));
@@ -141,11 +145,9 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
         faar_dft_fir_clear(stage);
         return -1;
     }
-    if (halfband) {
-        for (size_t j = 0; j < tap_count / 4; ++j)
-            stage->filter_spectrum[j] = taps[2 * j + 1];
-        stage->filter_spectrum[tap_count / 4] = taps[tap_count / 2];
-    }
+    for (size_t j = 0; j < tap_count / 4; ++j)
+        stage->filter_spectrum[j] = taps[2 * j + 1];
+    stage->filter_spectrum[tap_count / 4] = taps[tap_count / 2];
     return 0;
 }
 
@@ -203,13 +205,9 @@ int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
         memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
         return 0;
     }
-    if (!stage || !input || !output || !stage->overlap
-            || (stage->paired ? !stage->spec
-                              : !stage->work || !stage->filter_spectrum))
+    if (!stage || !input || !output || !stage->overlap || !stage->spec)
         return -1;
-    if (stage->paired) convolve_paired(stage, input, output);
-    else
-        return -1;
+    convolve_paired(stage, input, output);
     update_overlap(stage, input);
     return 0;
 }

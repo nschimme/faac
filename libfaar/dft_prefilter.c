@@ -163,14 +163,19 @@ faar_dft_prefilter *faar_dft_prefilter_create_expanded(uint16_t channels,
                                            fft_size, expansion, 1);
 }
 
-faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
+faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                const double *taps,
                                                size_t tap_count,
                                                size_t fft_size,
                                                size_t expansion,
-                                               size_t decimation) {
-    int halfband = fft_size == 0;
-    if (halfband) fft_size = 256 + tap_count - 1;
+                                               size_t decimation,
+                                               int halfband) {
+    if (halfband) {
+        if (tap_count > SIZE_MAX - FAAR_HALFBAND_BLOCK) return NULL;
+        fft_size = FAAR_HALFBAND_BLOCK + tap_count - 1;
+        expansion = 1;
+        decimation = 2;
+    }
     if (!channels || channels > 8 || !taps || tap_count < 3
             || !(tap_count & 1) || fft_size < tap_count
             || (expansion != 1 && expansion != 2)
@@ -210,18 +215,25 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                     fft_size, expansion, decimation, lanes, 0)) goto fail;
             continue;
         }
-        if (!halfband) {
-            if (faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
-                    fft_size, expansion, decimation, 1, 1)) goto fail;
-            continue;
-        }
-        if (faar_dft_fir_init_rate(&s->fir[f], taps, tap_count,
-                halfband ? 0 : fft_size, expansion, decimation)) goto fail;
+        if (halfband ? faar_dft_fir_init_halfband(&s->fir[f], taps, tap_count)
+                     : faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
+                           fft_size, expansion, decimation, 1, 1))
+            goto fail;
     }
     return s;
 fail:
     faar_dft_prefilter_destroy(s);
     return NULL;
+}
+
+faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
+                                               const double *taps,
+                                               size_t tap_count,
+                                               size_t fft_size,
+                                               size_t expansion,
+                                               size_t decimation) {
+    return faar_dft_prefilter_create_stage(channels, taps, tap_count, fft_size,
+                                           expansion, decimation, 0);
 }
 
 void faar_dft_prefilter_destroy(faar_dft_prefilter *s) {
