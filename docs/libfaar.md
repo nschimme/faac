@@ -14,6 +14,39 @@ Choose `-Dfaar-backend=polyphase` to build the legacy comparison backend, or `-D
 - **Rate-planned filtering**
   Staged-short uses an overlap-save DFT anti-alias filter and a short fractional-delay bank where the plan calls for one. Integer phase arithmetic preserves the requested ratio across streaming block boundaries.
 
+### Common conversion plans
+
+Fresh Meson builds use `staged-short`. The routes below describe which plan that
+backend selects for common AAC conversion rates; they do not imply that every
+route has the same measured quality or performance. The verification tools and
+their current coverage are described in
+[`libfaar/verification/README.md`](../libfaar/verification/README.md).
+
+| Conversion | `staged-short` plan |
+|---|---|
+| 44.1 → 48 kHz | Dedicated upsampling plan: 2× DFT expansion, then a 21-phase fractional-delay bank |
+| 48 → 44.1 kHz | Dedicated reference plan: DFT prefilter with 2× expansion, then a 20-phase bank |
+| 88.2 → 44.1 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
+| 88.2 → 48 kHz | General staged downsampling plan: DFT prefilter and a 127-phase bank |
+| 96 → 44.1 kHz | Dedicated reference plan: DFT prefilter and a 20-phase bank |
+| 96 → 48 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
+| 44.1 → 88.2, 48 → 96, or 96 → 192 kHz | Dedicated exact-double upsampling plan: 2× DFT expansion and a 1-phase bank |
+| 44.1 → 96 or 48 → 88.2 kHz | Dedicated fractional upsampling plan: 2× DFT expansion and a 21-phase bank |
+| 32 → 44.1 or 48 kHz; 88.2 → 96 kHz | Dedicated upsampling plan: 2× DFT expansion and a 21-phase bank |
+| 48 → 32 kHz | Dedicated downsampling plan: DFT prefilter and a 21-phase bank |
+| 176.4 → 96, 88.2, 48, or 44.1 kHz | General staged downsampling plan: DFT prefilter and a 127-phase bank |
+| 192 → 96 kHz | Dedicated half-rate plan: 2× DFT decimation and a 1-phase bank |
+| 192 → 48 kHz | Dedicated 4:1 plan: 4× DFT decimation and a 1-phase bank |
+| 192 → 44.1 kHz | Dedicated reference plan: DFT prefilter and a 20-phase bank |
+
+The fractional-delay bank length is a plan parameter, not the DFT prefilter's
+tap count. Filter tap counts and coefficients vary by quality preset. Other
+downsampling routes with output/input ratios from 0.20 through 0.95 use the
+general staged plan; conversions outside the staged routes use the legacy
+polyphase path. Setting `-Dfaar-backend=polyphase` selects that legacy backend
+for all conversions, while `-Dfaar-backend=staged` selects the earlier staged
+planner.
+
 - **Aligned streaming output**
   The first output corresponds to input time zero, and flushing produces `ceil(input_frames * out_rate / in_rate)` output frames. The default boundary mode holds the first and last sample outside a finite stream; `FAAR_BOUNDARY_ZERO` selects silence instead. Filter lookahead is available through `faar_get_delay()` in input frames, including cascaded stages.
 
