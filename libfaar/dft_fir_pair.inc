@@ -42,10 +42,16 @@ static int PAIR_FN(init_transforms)(faar_dft_fir *stage,
     if (!h) return -1;
     for (size_t i = 0; i < 2 * n; ++i) h[i] = (PAIR_REAL)spectrum[i];
     stage->PAIR_FN(spec) = h;
-    if (PAIR_FFT_FN(cinit)(&stage->PAIR_FN(in), (int)(n / stage->expansion)))
-        return -1;
-    if (nout != n / stage->expansion
-            && PAIR_FFT_FN(cinit)(&stage->PAIR_FN(out), (int)nout)) return -1;
+    const size_t nin = n / stage->expansion;
+    if (nout > nin) {
+        if (PAIR_FFT_FN(cinit)(&stage->PAIR_FN(out), (int)nout)
+                || PAIR_FFT_FN(cinit_shared)(&stage->PAIR_FN(in), (int)nin,
+                                             &stage->PAIR_FN(out))) return -1;
+    } else {
+        if (PAIR_FFT_FN(cinit)(&stage->PAIR_FN(in), (int)nin)) return -1;
+        if (nout != nin && PAIR_FFT_FN(cinit_shared)(&stage->PAIR_FN(out),
+                (int)nout, &stage->PAIR_FN(in))) return -1;
+    }
     return 0;
 }
 

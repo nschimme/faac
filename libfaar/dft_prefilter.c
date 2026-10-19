@@ -103,12 +103,8 @@ static int fifo_push_planes(faar_dft_prefilter *s, const faar_sample_t *planes,
 /* Feed an interleaved raw block to all independent channel FIR states. */
 static int feed_raw_chunk(faar_dft_prefilter *s, const float *input,
                           size_t frames) {
-    size_t expanded_frames = frames * s->expansion;
-    size_t capacity = expanded_frames + s->block_size;
-    /* A stacked stage emits two blocks at once and must drain them within
-     * the call, since pending output stops it taking input. */
-    if (s->fir[0].stream_out > capacity) capacity = s->fir[0].stream_out;
-    if (capacity > s->channel_output_capacity) return -1;
+    /* A feed can complete at most one stage block. */
+    size_t capacity = s->channel_output_capacity;
     size_t produced = SIZE_MAX;
     for (uint16_t f = 0; f < s->stages; ++f) {
         for (uint16_t l = 0; l < s->fir[f].lanes; ++l)
@@ -200,7 +196,8 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
     s->fir = (faar_dft_fir *)calloc(s->stages, sizeof(*s->fir));
     s->channel_input = (faar_sample_t *)malloc(s->lanes * s->block_size
                                         * sizeof(faar_sample_t));
-    s->channel_output_capacity = 2 * fft_size + 1;
+    s->channel_output_capacity = (channels == 1 && !halfband ? 2 : 1)
+        * s->block_size / decimation;
     s->channel_output = (faar_sample_t *)malloc(s->channel_output_capacity
                                          * channels * sizeof(faar_sample_t));
     if (!s->fir || !s->channel_input || !s->channel_output)

@@ -2,14 +2,14 @@
 #ifndef FAAR_FFT_REAL_H
 #define FAAR_FFT_REAL_H
 
-/* Plans own mutable scratch: executions on one plan must be serialized.
+/* Plans have mutable scratch: executions sharing it must be serialized.
  * Sizes are powers of two, 256 through 65536. Init returns 0 on success.
  * Packed spectrum: DC, Nyquist, then (real, positive-sine imaginary) bins,
  * Data contains exactly N scalars.
  * Init requires a fresh or cleared plan. Inverse is normalized. Clear accepts a zero-initialized plan. */
 typedef struct faar_rfftf_plan {
     int size, logm;
-    float *twiddle, *split, *work;
+    float *twiddle, *split, *work, *scratch;
 } faar_rfftf_plan;
 
 int faar_rfftf_init(faar_rfftf_plan *plan, int size);
@@ -23,18 +23,22 @@ void faar_rfftf_execute(const faar_rfftf_plan *plan, float *data, int inverse);
  * buffer holding the result: either one, so the caller never aliases it.
  * The inverse is conj(cforward(conj(x))) / n. */
 int faar_rfftf_cinit(faar_rfftf_plan *plan, int n);
+int faar_rfftf_cinit_shared(faar_rfftf_plan *plan, int n,
+                              const faar_rfftf_plan *owner);
 float *faar_rfftf_cbuffer(const faar_rfftf_plan *plan, int which);
 float *faar_rfftf_cforward(const faar_rfftf_plan *plan, float *in);
 
 typedef struct faar_rfftd_plan {
     int size, logm;
-    double *twiddle, *split, *work;
+    double *twiddle, *split, *work, *scratch;
 } faar_rfftd_plan;
 
 int faar_rfftd_init(faar_rfftd_plan *plan, int size);
 void faar_rfftd_clear(faar_rfftd_plan *plan);
 void faar_rfftd_execute(const faar_rfftd_plan *plan, double *data, int inverse);
 int faar_rfftd_cinit(faar_rfftd_plan *plan, int n);
+int faar_rfftd_cinit_shared(faar_rfftd_plan *plan, int n,
+                              const faar_rfftd_plan *owner);
 double *faar_rfftd_cbuffer(const faar_rfftd_plan *plan, int which);
 double *faar_rfftd_cforward(const faar_rfftd_plan *plan, double *in);
 

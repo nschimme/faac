@@ -280,7 +280,7 @@ static REAL *FN(core)(const PLAN *plan, REAL *in)
     int n = plan->size / 2, n4 = n / 4, B = 4;
     const int padded = n >= (sizeof(REAL) == sizeof(float) ? 4096 : 2048);
     const int im = PAD_IM(n);
-    REAL *sa = plan->work + 2 * plan->size;
+    REAL *sa = plan->scratch;
     REAL *sb = sa + 2 * im;
     REAL *src, *dst;
     const REAL *tw = plan->twiddle;
@@ -349,7 +349,7 @@ void FN(clear)(PLAN *plan)
 
 /* m complex points; the real wrapper additionally needs the split table.
  * FAAR_FFT_LEAN builds only the complex transforms libfaar uses. */
-static int FN(setup)(PLAN *plan, int m, int split)
+static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch)
 {
     int n2, j, b;
     REAL *tw;
@@ -358,7 +358,8 @@ static int FN(setup)(PLAN *plan, int m, int split)
     for (j = m; j > 1; j >>= 1) plan->logm++;
     plan->twiddle = malloc(2 * m * sizeof(REAL));
     plan->split = split ? malloc(2 * m * sizeof(REAL)) : NULL;
-    plan->work = malloc((4 * m + 4 * PAD_IM(m)) * sizeof(REAL));
+    plan->work = malloc((4 * m + (scratch ? 0 : 4 * PAD_IM(m))) * sizeof(REAL));
+    plan->scratch = scratch ? scratch : plan->work ? plan->work + 4 * m : NULL;
     if (!plan->twiddle || (split && !plan->split) || !plan->work) {
         FN(clear)(plan);
         return -1;
@@ -389,7 +390,7 @@ int FN(init)(PLAN *plan, int size)
     if (!plan) return -1;
     memset(plan, 0, sizeof(*plan));
     if (size < 256 || size > 65536 || (size & (size - 1))) return -1;
-    return FN(setup)(plan, size / 2, 1);
+    return FN(setup)(plan, size / 2, 1, NULL);
 }
 
 #endif
@@ -399,7 +400,16 @@ int FN(cinit)(PLAN *plan, int n)
     if (!plan) return -1;
     memset(plan, 0, sizeof(*plan));
     if (n < 16 || n > (1 << 22) || (n & (n - 1))) return -1;
-    return FN(setup)(plan, n, 0);
+    return FN(setup)(plan, n, 0, NULL);
+}
+
+/* The owner must outlive this plan; their executions must be serialized. */
+int FN(cinit_shared)(PLAN *plan, int n, const PLAN *owner)
+{
+    if (!plan || !owner || n < 16 || n > owner->size / 2
+            || (n & (n - 1))) return -1;
+    memset(plan, 0, sizeof(*plan));
+    return FN(setup)(plan, n, 0, owner->scratch);
 }
 
 REAL *FN(cbuffer)(const PLAN *plan, int which)
