@@ -2,6 +2,7 @@
 // Raw files are native little-endian float32 interleaved PCM, peak 1.0.
 #include "faar.h"
 #include "sox.h"
+#include "soxr.h"
 #include "kbsrc/kbsrc.hpp"
 #include <algorithm>
 #include <cmath>
@@ -38,7 +39,7 @@ static const sox_effect_handler_t source_handler = {"recovery-input", nullptr, S
 static const sox_effect_handler_t sink_handler = {"recovery-output", nullptr, SOX_EFF_MCHAN, nullptr, nullptr, sink_flow, nullptr, nullptr, nullptr, 0};
 
 int main(int argc, char** argv) try {
-    if (argc != 10 && argc != 11) throw std::runtime_error("usage: driver faar|sox|kbsrc-fast|kbsrc-exact library-or-engine input.f32 output.f32 in_rate out_rate channels block_frames output_capacity [faar_quality]");
+    if (argc != 10 && argc != 11) throw std::runtime_error("usage: driver faar|sox|soxr-hq|soxr-vhq|kbsrc-fast|kbsrc-exact library-or-engine input.f32 output.f32 in_rate out_rate channels block_frames output_capacity [faar_quality]");
     const std::string engine = argv[1], library = argv[2];
     const unsigned ir = std::stoul(argv[5]), orate = std::stoul(argv[6]), ch = std::stoul(argv[7]);
     const size_t block = std::stoull(argv[8]), capacity = std::stoull(argv[9]);
@@ -114,6 +115,41 @@ int main(int argc, char** argv) try {
         profile_start(); t=cpu(); if(sox_flow_effects(chain,nullptr,nullptr)!=SOX_SUCCESS) throw std::runtime_error("SoX flow failed");
         process=cpu()-t; profile_stop(); api_total=setup+process;
         sox_delete_effects_chain(chain); sox_quit();
+    } else if (engine == "soxr-hq" || engine == "soxr-vhq") {
+        // qaac configuration (SOXR_HQ / SOXR_VHQ, quality flags 0, interleaved I/O), one thread, no OpenMP.
+        // Both run float32 I/O for a like-for-like comparison with the FAAR float API.
+        std::vector<float> out(capacity * ch);
+        size_t before = heap(); double t = cpu();
+        soxr_error_t err = nullptr;
+        soxr_quality_spec_t q = soxr_quality_spec(engine == "soxr-hq" ? SOXR_HQ : SOXR_VHQ, 0);
+        soxr_io_spec_t io = soxr_io_spec(SOXR_FLOAT32_I, SOXR_FLOAT32_I);
+        soxr_runtime_spec_t rt = soxr_runtime_spec(1);
+        soxr_t s = soxr_create(ir, orate, ch, &err, &io, &q, &rt);
+        if (err || !s) throw std::runtime_error(std::string("soxr_create: ") + (err ? err : "null"));
+        setup = cpu() - t; live_setup = heap() - before;
+        profile_start(); t = cpu();
+        for (size_t pos = 0; pos < frames; pos += block) {
+            size_t n = std::min(block, frames - pos), done = 0;
+            while (done < n) {
+                size_t idone = 0, odone = 0;
+                err = soxr_process(s, input.data() + (pos + done) * ch, n - done, &idone, out.data(), capacity, &odone);
+                if (err) throw std::runtime_error(std::string("soxr_process: ") + err);
+                result.insert(result.end(), out.begin(), out.begin() + odone * ch);
+                done += idone;
+                if (!idone && !odone) throw std::runtime_error("soxr made no progress");
+            }
+        }
+        for (size_t guard = 0;; ++guard) {
+            size_t odone = 0;
+            err = soxr_process(s, nullptr, 0, nullptr, out.data(), capacity, &odone);
+            if (err) throw std::runtime_error(std::string("soxr drain: ") + err);
+            if (!odone) break;
+            result.insert(result.end(), out.begin(), out.begin() + odone * ch);
+            if (guard > frames + 1024) throw std::runtime_error("soxr drain did not terminate");
+        }
+        process = cpu() - t; profile_stop(); api_total = setup + process;
+        soxr_delete(s);
+        extra = ",\"io_type\":\"f32\",\"soxr_version\":\"" + std::string(soxr_version()) + "\",\"threads\":1";
     } else if (engine == "kbsrc-fast" || engine == "kbsrc-exact") {
         setenv("KBSRC_CPU",library.c_str(),1);
         std::vector<double> source(input.begin(),input.end());

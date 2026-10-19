@@ -25,6 +25,26 @@ external libraries are linked into `libfaar` or installed by its build.
   Recovery additions export numeric coefficients and increase debug-print
   precision; the numerical pipeline is unchanged. The separate SoX file audit
   in `docs/faar-sox-rate-audit.md` controls any future implementation reuse.
+- libsoxr (soxr-hq, soxr-vhq engines) is external, LGPL-2.1-or-later. The
+  diagnostic driver dynamically links the Debian runtime
+  `libsoxr.so.0` (package 0.1.3-4+b2); `soxr.h` is the copy shipped in the
+  qaac checkout, staged under `refs/soxr-include`. No libsoxr source or header
+  is copied into the repository or `libfaar`.
+- tuneout-resampler is external, Apache-2.0, revision
+  `a0b9f56c256ac67efe9d133438fe007a19332744`
+  (https://github.com/studio-nodoka/tuneout-resampler), cloned to
+  `/tmp/faar-recovery/refs`. It is a path dependency of
+  `rust_driver/` only. This is separate from the Tuneout-derived tests in
+  `libfaar/verification`, which keep their own Apache-2.0 attribution.
+- ardftsrc-rs is external, MIT OR Apache-2.0, revision
+  `78305ae1a26ce0676a099c3666d20bd31e2dbfa1`
+  (https://github.com/phayes/ardftsrc-rs), also a path dependency of
+  `rust_driver/` only. It pulls registry crates (realfft/rustfft, num-*,
+  thiserror, libc) under their own MIT/Apache-2.0 terms into the scratch
+  build; none are vendored here. It is a different implementation from the
+  mrspoonsi/ARDFTSRC C++ reference above.
+- These Rust and soxr engines are comparison references only. None of their code
+  is linked into, copied into, or ported into `libfaar`.
 
 The Decimal oracle, test runner, reference bindings, and recovery scripts are
 independently written local tooling. Tuneout-derived tests continue to retain
