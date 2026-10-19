@@ -4,10 +4,8 @@
 
 #include "faar.h"
 #include "libfaar_internal.h"
-#ifdef FAAR_STAGED_BACKEND
 #include "dft_coeffs.h"
 #include "dft_prefilter.h"
-#endif
 #include <stdalign.h>
 
 #ifndef M_PI
@@ -121,12 +119,10 @@ struct faar_resampler_struct {
     struct faar_resampler_struct *stage2;
     float *cascade_buf;
     size_t cascade_cap;
-#ifdef FAAR_STAGED_BACKEND
     faar_dft_prefilter *dft_prefilter;
     size_t dft_expansion;
     float *dft_intermediate;
     size_t dft_intermediate_capacity;
-#endif
 };
 
 static size_t polyresample_process_single(faar_handle_t r, const float * restrict in_samples, size_t in_count,
@@ -134,7 +130,6 @@ static size_t polyresample_process_single(faar_handle_t r, const float * restric
 
 static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, size_t max_out_count);
 
-#ifdef FAAR_STAGED_BACKEND
 static size_t polyresample_process_planar(faar_handle_t r,
         const float * restrict in_samples, size_t in_count,
         float * restrict out_samples, size_t max_out_count);
@@ -149,7 +144,6 @@ static int ensure_dft_intermediate(faar_handle_t r, size_t frames) {
     r->dft_intermediate_capacity = frames;
     return 0;
 }
-#endif
 
 static faar_handle_t faar_create_ext_internal(uint32_t in_rate,
         uint32_t out_rate, uint16_t channels, faar_quality_t quality,
@@ -205,8 +199,6 @@ FAARAPI faar_handle_t faar_create(uint32_t in_rate, uint32_t out_rate, uint16_t 
     return faar_create_ext(in_rate, out_rate, channels, quality, 0);
 }
 
-#ifdef FAAR_STAGED_BACKEND
-#ifdef FAAR_STAGED_SHORT_POLY
 static bool short_half_rate_route(uint32_t in_rate, uint32_t out_rate) {
     return (uint64_t)in_rate == 2 * (uint64_t)out_rate
         && (in_rate == 44100 || in_rate == 48000 || in_rate == 88200
@@ -372,40 +364,21 @@ selected:
     return p;
 }
 
-#endif
 static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
-        uint16_t channels, faar_quality_t quality
-#ifdef FAAR_STAGED_SHORT_POLY
-        , const struct short_plan *selected
-#endif
-        ) {
-    size_t tap_count, fft_size = 1;
-    size_t expansion = 1;
-    double beta;
-    switch (quality) {
-        case FAAR_QUALITY_FAST: tap_count = 151; beta = 8.0; break;
-        case FAAR_QUALITY_HIGH: tap_count = 601; beta = 18.0; break;
-        case FAAR_QUALITY_GOOD:
-        default: tap_count = 301; beta = 12.0; break;
-    }
-#ifdef FAAR_STAGED_SHORT_POLY
+        uint16_t channels, faar_quality_t quality,
+        const struct short_plan *selected) {
     struct short_plan plan = *selected;
-    tap_count = plan.taps;
-    fft_size = plan.fft ? plan.fft : 1;
-    expansion = plan.expansion;
-    beta = plan.beta;
-#endif
+    size_t tap_count = plan.taps;
+    size_t fft_size = plan.fft ? plan.fft : 1;
+    size_t expansion = plan.expansion;
+    double beta = plan.beta;
     while (fft_size < tap_count * 5) {
         if (fft_size > SIZE_MAX / 2) return NULL;
         fft_size <<= 1;
     }
     double *taps = (double *)malloc(tap_count * sizeof(*taps));
     if (!taps) return NULL;
-#ifdef FAAR_STAGED_SHORT_POLY
     double cutoff = plan.cutoff;
-#else
-    double cutoff = 0.4794 * (double)out_rate / (double)in_rate;
-#endif
     if (faar_dft_design_lowpass(taps, tap_count, cutoff, beta)) {
         free(taps);
         return NULL;
@@ -424,44 +397,26 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
     r->ratio = (double)out_rate / (double)in_rate;
     r->boundary = FAAR_BOUNDARY_HOLD;
     r->dft_expansion = expansion;
-#ifdef FAAR_STAGED_SHORT_POLY
     size_t decimation = plan.decimation;
-#else
-    size_t decimation = 1;
-#endif
     r->dft_prefilter = faar_dft_prefilter_create_rate(channels, taps,
             tap_count,
-#ifdef FAAR_STAGED_SHORT_POLY
             selected->fft == 0 ? 0 : fft_size,
-#else
-            fft_size,
-#endif
             expansion, decimation,
-#ifdef FAAR_STAGED_SHORT_POLY
             /* Only Fast meets its mask in float; Good and High need the
              * double rounding floor. */
             quality == FAAR_QUALITY_FAST);
-#else
-            0);
-#endif
     free(taps);
     if (!r->dft_prefilter) { free(r); return NULL; }
-#ifdef FAAR_STAGED_SHORT_POLY
     size_t phase_bank_len = plan.bank;
-#else
-    size_t phase_bank_len = 127;
-#endif
     if ((uint64_t)in_rate * expansion > UINT32_MAX) {
         faar_dft_prefilter_destroy(r->dft_prefilter);
         free(r);
         return NULL;
     }
-#ifdef FAAR_STAGED_SHORT_POLY
     if (selected->fft == 0) {
         r->delay = (tap_count - 1) / 2;
         return r;
     }
-#endif
     uint32_t stage2_rate = in_rate * (uint32_t)expansion
         / (uint32_t)decimation;
     r->stage2 = faar_create_ext_internal(stage2_rate, out_rate, channels,
@@ -477,9 +432,7 @@ static faar_handle_t faar_create_staged(uint32_t in_rate, uint32_t out_rate,
             / (expansion * decimation);
     return r;
 }
-#endif
 
-#ifdef FAAR_STAGED_SHORT_POLY
 /* Keep the final bank's rate and arithmetic no greater than the original
  * general plan, while moving its sharp filter to the lowest viable rate. */
 static unsigned short_max_halvings(uint32_t in, uint32_t out, faar_quality_t q) {
@@ -570,35 +523,21 @@ static faar_handle_t short_cascade(uint32_t in, uint32_t out,
     r->delay = r->stage1->delay + 2 * r->stage2->delay;
     return r;
 }
-#endif
 
 static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rate,
         uint16_t channels, faar_quality_t quality, uint32_t decimate_factor,
         size_t filter_len_override, bool force_polyphase) {
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
-#ifdef FAAR_STAGED_BACKEND
-    double rate_ratio = (double)out_rate / (double)in_rate;
-    bool downsample_stage = in_rate > out_rate && rate_ratio >= 0.20
-        && rate_ratio <= 0.95;
-    bool use_staged = downsample_stage;
-#ifdef FAAR_STAGED_SHORT_POLY
-    use_staged = in_rate > out_rate
+    bool use_staged = in_rate > out_rate
         || short_dedicated_route(in_rate, out_rate) != NULL;
-#endif
+    /* The final phase bank must bypass planning to avoid recursive stages. */
     if (!force_polyphase && use_staged) {
-#ifdef FAAR_STAGED_SHORT_POLY
         unsigned k = short_halvings(in_rate, out_rate, quality);
         if (k) return short_cascade(in_rate, out_rate, channels, quality, k);
         struct short_plan p = short_plan(in_rate, out_rate, quality, false);
         return faar_create_staged(in_rate, out_rate, channels, quality, &p);
-#else
-        return faar_create_staged(in_rate, out_rate, channels, quality);
-#endif
     }
-#else
-    (void)force_polyphase;
-#endif
 
     bool force_decimate = (decimate_factor >= 2) || ((uint64_t)in_rate > 2 * (uint64_t)out_rate);
 
@@ -662,11 +601,9 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
         default:                r->filter_len = 255; r->beta = 32.0; break;
     }
 
-#ifdef FAAR_STAGED_SHORT_POLY
     if (filter_len_override == 20 || filter_len_override == 21
             || filter_len_override == 41)
         r->beta = 19.60632601597565;
-#endif
 
     if (filter_len_override) {
         r->filter_len = filter_len_override;
@@ -680,11 +617,7 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     } else r->num_phases = POLYRESAMPLE_NUM_PHASES;
 
     if ((r->filter_len % 2) == 0
-#ifndef FAAR_STAGED_SHORT_POLY
-            ) r->filter_len++;
-#else
             && filter_len_override != 20) r->filter_len++;
-#endif
     assert(r->filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
 
     /* Allocate polyphase table with 64-byte SIMD alignment */
@@ -707,11 +640,7 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     }
 
     double cutoff = (r->ratio < 1.0)
-#ifdef FAAR_STAGED_SHORT_POLY
         ? (filter_len_override ? 0.49 : 0.48 * r->ratio) : 0.48;
-#else
-        ? (filter_len_override ? 0.49 : 0.48 * r->ratio) : 0.48;
-#endif
     double half_len = (r->filter_len - 1) / 2.0;
 
     /* Store phases -1..N/2+1, including guards for cubic interpolation. */
@@ -726,7 +655,6 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
                 sum = 1.0;
                 continue;
             }
-#ifdef FAAR_STAGED_SHORT_POLY
             bool sampled_long_prototype = filter_len_override == 20
                 || (filter_len_override == 21
                     && r->in_rate == 88200 && r->out_rate == 48000);
@@ -760,10 +688,8 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
                 sum += val;
                 continue;
             }
-#endif
             double n = (double)j - half_len - frac;
             double sinc = (fabs(n) < 1e-9) ? (2.0 * cutoff) : sin(2.0 * M_PI * cutoff * n) / (M_PI * n);
-#ifdef FAAR_STAGED_SHORT_POLY
             double window_position = (double)j;
             if (filter_len_override == 21 && r->in_rate == 48000
                     && r->out_rate == 32000) {
@@ -771,9 +697,6 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
                  * This makes complementary phases time-reversal symmetric. */
                 window_position -= frac;
             }
-#else
-            double window_position = (double)j;
-#endif
             double win = kaiser_window(window_position,
                                        (double)r->filter_len - 1.0, r->beta);
             double val = sinc * win;
@@ -782,13 +705,11 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
         }
 
         bool normalize_phase = true;
-#ifdef FAAR_STAGED_SHORT_POLY
         bool sampled_long_prototype = filter_len_override == 20
             || (filter_len_override == 21
                 && r->in_rate == 88200 && r->out_rate == 48000);
         if (sampled_long_prototype)
             normalize_phase = false;
-#endif
         if (normalize_phase && sum > 0.0) {
             for (size_t j = 0; j < r->filter_len; j++) {
 #ifdef FAAR_DOUBLE_COEFFICIENTS
@@ -829,12 +750,10 @@ static faar_handle_t faar_create_ext_internal(uint32_t in_rate, uint32_t out_rat
     r->delay = in_rate == out_rate ? 0 : (size_t)half_len;
     /* Center the first output on input frame zero. */
     r->history_pad = r->delay;
-#ifdef FAAR_STAGED_SHORT_POLY
     if (filter_len_override == 20) {
         r->history_pad++;
         r->phase = out_rate / 2;
     }
-#endif
     r->hist_len = in_rate == out_rate ? 0 : r->history_pad;
     return r;
 }
@@ -848,12 +767,10 @@ FAARAPI faar_handle_t faar_create_ext(uint32_t in_rate, uint32_t out_rate,
 FAARAPI int faar_set_boundary(faar_handle_t r, faar_boundary_t boundary) {
     if (!r || (boundary != FAAR_BOUNDARY_ZERO && boundary != FAAR_BOUNDARY_HOLD)
         || r->input_frames || r->flushed) return -1;
-#ifdef FAAR_STAGED_BACKEND
     if (r->dft_prefilter
             && faar_dft_prefilter_set_boundary(r->dft_prefilter,
                                                boundary == FAAR_BOUNDARY_HOLD))
         return -1;
-#endif
     if (r->stage1 && (faar_set_boundary(r->stage1, boundary)
                   || faar_set_boundary(r->stage2, boundary))) return -1;
     if (!r->stage1 && r->stage2 && faar_set_boundary(r->stage2, boundary)) return -1;
@@ -1161,7 +1078,6 @@ FAARAPI size_t faar_process(faar_handle_t restrict r, const float * restrict in_
                            float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples || (r->flushed && in_samples && in_count)) return 0;
 
-#ifdef FAAR_STAGED_BACKEND
     if (r->dft_prefilter) {
         if (in_count > (SIZE_MAX - 8192) / r->dft_expansion
                 || in_count * r->dft_expansion + 8192
@@ -1189,7 +1105,6 @@ FAARAPI size_t faar_process(faar_handle_t restrict r, const float * restrict in_
         r->output_frames += produced;
         return produced;
     }
-#endif
 
     if (r->stage1 && r->stage2) {
         size_t produced = 0, stage1_produced;
@@ -1210,7 +1125,6 @@ FAARAPI size_t faar_process(faar_handle_t restrict r, const float * restrict in_
     return polyresample_process_single(r, in_samples, in_count, out_samples, max_out_count);
 }
 
-#ifdef FAAR_STAGED_BACKEND
 static size_t polyresample_process_planar(faar_handle_t r,
         const float * restrict in_samples, size_t in_count,
         float * restrict out_samples, size_t max_out_count) {
@@ -1256,7 +1170,6 @@ static size_t polyresample_process_planar(faar_handle_t r,
     }
     return polyresample_process_single(r, NULL, 0, out_samples, max_out_count);
 }
-#endif
 
 static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
@@ -1267,9 +1180,7 @@ static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, siz
     }
     if (!r->flushed) {
         size_t tail_len = (r->filter_len - 1) / 2 + 1;
-#ifdef FAAR_STAGED_SHORT_POLY
         if (r->filter_len == 20) ++tail_len;
-#endif
         float *tail = (float *)malloc(tail_len * r->channels * sizeof(float));
         if (tail) {
             for (uint16_t c = 0; c < r->channels; c++) {
@@ -1290,7 +1201,6 @@ static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, siz
 FAARAPI size_t faar_flush(faar_handle_t r, float *out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
 
-#ifdef FAAR_STAGED_BACKEND
     if (r->dft_prefilter) {
         r->flushed = true;
         max_out_count = output_capacity(r, max_out_count);
@@ -1324,7 +1234,6 @@ FAARAPI size_t faar_flush(faar_handle_t r, float *out_samples, size_t max_out_co
         r->output_frames += produced;
         return produced;
     }
-#endif
 
     if (r->stage1 && r->stage2) {
         size_t produced = 0, stage1_flushed;
@@ -1348,10 +1257,8 @@ FAARAPI void faar_destroy(faar_handle_t r) {
     if (!r) return;
     if (r->stage1) faar_destroy(r->stage1);
     if (r->stage2) faar_destroy(r->stage2);
-#ifdef FAAR_STAGED_BACKEND
     if (r->dft_prefilter) faar_dft_prefilter_destroy(r->dft_prefilter);
     free(r->dft_intermediate);
-#endif
     if (r->cascade_buf) aligned_free(r->cascade_buf);
     for (uint16_t c = 0; c < r->channels && c < MAX_CHANNELS; c++) {
         if (r->hist[c]) aligned_free(r->hist[c]);

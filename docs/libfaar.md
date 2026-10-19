@@ -1,15 +1,15 @@
 # libfaar - CPU Audio Resampler Library
 
-`libfaar` (Freeware Advanced Audio Resampler) is a C library for digital sample rate conversion. Fresh Meson builds select the staged-short CPU backend, which combines an overlap-save DFT prefilter with a rate-planned fractional-delay stage. The legacy polyphase backend remains available for comparison. Input and output use float PCM; the selected backend uses double-precision filter and FFT arithmetic. Quality, transition bandwidth, CPU cost, and memory use depend on the preset and conversion ratio.
+`libfaar` (Freeware Advanced Audio Resampler) is a C library for digital sample rate conversion. The staged-short CPU backend combines an overlap-save DFT prefilter with a rate-planned fractional-delay stage. Input and output use float PCM; staged-short uses double-precision filter and FFT arithmetic. Quality, transition bandwidth, CPU cost, and memory use depend on the preset and conversion ratio.
 
-Choose `-Dfaar-backend=polyphase` to build the legacy comparison backend, or `-Dfaar-backend=staged` to build the earlier staged implementation. `staged-short` is the default.
+Staged-short is the only build. Its polyphase bank handles routes without a dedicated plan and the final stage after the DFT prefilter.
 
 ---
 
 ## Implementation
 
 - **Three filter presets**
-  Fast, Good, and High select rate-dependent filter plans. The legacy polyphase backend uses 127, 255, and 511 taps respectively; staged-short designs its DFT prefilter and phase bank for the conversion rate.
+  Fast, Good, and High select rate-dependent filter plans. The fallback polyphase bank uses 127, 255, and 511 taps respectively; staged-short designs its DFT prefilter and phase bank for the conversion rate.
 
 - **Rate-planned filtering**
   Staged-short uses an overlap-save DFT anti-alias filter and a short fractional-delay bank where the plan calls for one. Integer phase arithmetic preserves the requested ratio across streaming block boundaries.
@@ -77,9 +77,7 @@ independent of prefilter tap counts. Preset masks define acceptance; rejection
 beyond the mask and Fast response above 0.90 Nyquist can differ from earlier
 plans.
 
-Other upsampling routes retain the legacy polyphase path. Setting
-`-Dfaar-backend=polyphase` selects that backend for all conversions, while
-`-Dfaar-backend=staged` selects the earlier staged planner.
+Other upsampling routes use the polyphase bank directly.
 
 - **Aligned streaming output**
   The first output corresponds to input time zero, and flushing produces `ceil(input_frames * out_rate / in_rate)` output frames. The default boundary mode holds the first and last sample outside a finite stream; `FAAR_BOUNDARY_ZERO` selects silence instead. Filter lookahead is available through `faar_get_delay()` in input frames, including cascaded stages.

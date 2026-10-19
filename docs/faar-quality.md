@@ -44,7 +44,7 @@ padding and removal of its block delay before comparing equal time intervals.
 These comparisons do not reproduce every format or score on the HydrogenAudio
 website. Deep rejection measurements can be limited by float32 source rounding.
 
-## Legacy polyphase backend limits
+## Historical polyphase-only limits
 
 The current High preset does not yet match ARDFTSRC's combination of bandwidth
 and rejection. At 96 kHz to 44.1 kHz, the corrected 511-tap implementation has

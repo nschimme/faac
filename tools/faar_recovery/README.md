@@ -1,8 +1,15 @@
 # FAAR recovery diagnostics
 
-These tools provide independent common-rate benchmarking and quality diagnostics for FAAR. The production Meson default is `staged-short`; planned common routes use its DFT-plus-phase pipeline, while unplanned pairs retain a compatibility fallback. `polyphase` and `staged` remain comparison build options. The checked-in current snapshot covers 16 common conversions and records performance, passband, transient, and image probes.
+These tools provide independent common-rate benchmarking and quality diagnostics for FAAR. The production Meson default is `staged-short`; planned common routes use its DFT-plus-phase pipeline, while unplanned pairs retain a compatibility fallback. Staged-short is the only production build. The checked-in current snapshot covers 16 common conversions and records performance, passband, transient, and image probes.
 
 ## Build
+
+The historical `build.py` FAAR reconstruction, `stage_timers.py`, and
+`fft_bench.cpp` require the pre-cleanup source checkout at `70caa24f`. They
+intentionally retain its old FFT and backend names to reproduce the archived
+measurements; they cannot rebuild those variants from current sources.
+The `--external-only` build and diagnostics against supplied libraries remain
+available in this checkout.
 
 Requirements: GCC/G++, CMake, Ninja, Python + NumPy, Valgrind, GNU binutils, and
 local pinned SoX/KBSRC checkouts. The ARDFTSRC source adapter is included here;

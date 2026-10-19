@@ -19,7 +19,7 @@ libfaar, faar_create, faar_set_dither, faar_set_boundary, faar_get_delay, faar_p
 .BI "void faar_destroy(faar_handle_t " handle ");"
 .SH DESCRIPTION
 .B libfaar
-is a C library for digital audio sample rate conversion. Fresh Meson builds select the staged-short CPU backend, which uses an overlap-save DFT prefilter and a rate-planned fractional-delay stage. The legacy polyphase backend remains available for comparison. Input and output are float PCM; staged-short uses double-precision filter and FFT arithmetic. Rejection and transition bandwidth depend on the quality preset and conversion ratio.
+is a C library for digital audio sample rate conversion. The staged-short CPU backend uses an overlap-save DFT prefilter and a rate-planned fractional-delay stage. Input and output are float PCM; staged-short uses double-precision filter and FFT arithmetic. Rejection and transition bandwidth depend on the quality preset and conversion ratio.
 .SH FUNCTIONS
 .TP
 .BR faar_create ()

@@ -1,7 +1,6 @@
 #ifndef FAAR_DFT_FIR_H
 #define FAAR_DFT_FIR_H
 
-#include "fft_double.h"
 #include "fft_real.h"
 
 #include <stddef.h>
@@ -9,10 +8,6 @@
 /* Block overlap-save FIR stage; filter coefficients are supplied by caller. */
 typedef struct faar_dft_fir {
     int halfband; /* Sparse time-domain 2:1 FIR, sharing stream storage. */
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    faar_real_fft_plan fft;
-    faar_real_fft_plan input_fft;
-#endif
     size_t fft_size;
     size_t tap_count;
     size_t expansion;
@@ -24,9 +19,6 @@ typedef struct faar_dft_fir {
     double *work;
     double *overlap;
     double *input_block;
-#if !defined(FAAR_PAIRED_FFT) || defined(FAAR_TEST_UNPAIRED)
-    double *input_spectrum;
-#endif
     double *output_block;
     int paired;
     int stacked;
@@ -45,7 +37,8 @@ typedef struct faar_dft_fir {
     int finished;
 } faar_dft_fir;
 
-/* fft_size must be at least tap_count and have only 2, 3, 5, 7 prime factors. */
+/* fft_size must be a supported power of two and at least tap_count.
+ * init_rate also accepts zero for the sparse half-band 2:1 stage. */
 int faar_dft_fir_init(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size);
 int faar_dft_fir_init_expanded(faar_dft_fir *stage, const double *taps,
@@ -53,7 +46,6 @@ int faar_dft_fir_init_expanded(faar_dft_fir *stage, const double *taps,
 int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation);
-#ifdef FAAR_PAIRED_FFT
 /* Paired stage: `lanes` (1 or 2) channels share one complex FFT as
  * z = a + jb, so the two real outputs come out as real and imaginary parts.
  * single runs the transforms in float, otherwise in double.
@@ -67,7 +59,6 @@ int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation, size_t lanes, int stacked,
                       int single);
-#endif
 void faar_dft_fir_clear(faar_dft_fir *stage);
 
 /* Consumes and produces exactly stage->block_size mono samples per call. */

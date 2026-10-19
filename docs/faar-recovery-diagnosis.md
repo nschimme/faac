@@ -17,7 +17,7 @@ The current SoX comparison uses SoX's `rate` effect, not libsoxr, so it does not
 
 ## Current candidate and common-rate results
 
-The default production backend is `staged-short`; the staged-short planner handles the measured common routes; the legacy single-stage polyphase path remains a fallback for unplanned pairs and is also selectable with `-Dfaar-backend=polyphase`. The current desktop-double shared library is 104,728 bytes. FAAR uses paired complex transforms from `libfaar/fft_real.c`; the former Ooura implementation has been removed; no SoX rate-conversion code is linked into FAAR.
+The default production backend is `staged-short`; the staged-short planner handles the measured common routes; the legacy single-stage polyphase path remains a fallback for unplanned pairs. The current desktop-double shared library is 104,728 bytes. FAAR uses paired complex transforms from `libfaar/fft_real.c`; the former Ooura implementation has been removed; no SoX rate-conversion code is linked into FAAR.
 
 Ten alternating 30-second stereo trials per engine and conversion were run, with one warmup. Values below are processing CPU medians in seconds, shown as **FAAR / SoX**. SoX used its CPU `rate -v -b 99.5` path.
 

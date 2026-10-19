@@ -5,7 +5,7 @@
 /* Plans own mutable scratch: executions on one plan must be serialized.
  * Sizes are powers of two, 256 through 65536. Init returns 0 on success.
  * Packed spectrum: DC, Nyquist, then (real, positive-sine imaginary) bins,
- * matching faar_real_fft_execute_packed. Data contains exactly N scalars.
+ * Data contains exactly N scalars.
  * Init requires a fresh or cleared plan. Inverse is normalized. Clear accepts a zero-initialized plan. */
 typedef struct faar_rfftf_plan {
     int size, logm;
