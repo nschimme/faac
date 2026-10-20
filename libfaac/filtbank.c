@@ -171,8 +171,7 @@ static void OnsetGains(const float * restrict src, float * restrict gain)
         QUIET_SEGMENTS = 2,
         BLOCKS = (MAX_SHORT_WINDOWS + 1) * BLOCK_LEN_SHORT / SEG_LEN
     };
-    /* The floor bounds the ratio at 101 and the gain at ~10.05; an exponent of
-     * 1 (gain up to 101) produced scalefactors the decoders reject. */
+    /* The floor bounds the ratio at 101 and so the gain at ~10.05. */
     const float floor_ratio = 0.01f;
     /* Windows with almost no high-frequency energy have no attack to protect. */
     const float min_diff_ratio = 6.3e-4f;
@@ -257,8 +256,7 @@ static void WindowAndMdct(faacEncStruct* hEncoder, CoderInfo *coderInfo, int blo
         float * restrict src = overlapBuf + NFLAT_LS;
         float * restrict dst = p_out_mdct;
 
-        /* HE-AAC runs the core on a downsampled signal where the boost costs
-         * more than it buys. */
+        /* Not tuned for the HE-AAC core. */
         if (hEncoder->config.aacObjectType == HE_V1)
             for (k = 0; k < MAX_SHORT_WINDOWS; k++)
                 coderInfo->temporal_gain[k] = 1.0f;
