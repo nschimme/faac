@@ -740,9 +740,6 @@ int main(int argc, char *argv[])
                 opts.rate_auto = false;
             }
             break;
-        case 'v':
-            opts.verbose = (uint8_t)atoi(optarg);
-            break;
         case HELP_QUAL:
         case HELP_IO:
         case HELP_MP4:
