@@ -256,8 +256,10 @@ static void WindowAndMdct(faacEncStruct* hEncoder, CoderInfo *coderInfo, int blo
         float * restrict src = overlapBuf + NFLAT_LS;
         float * restrict dst = p_out_mdct;
 
-        /* Not tuned for the HE-AAC core. */
-        if (hEncoder->config.aacObjectType == HE_V1)
+        /* The boost was only measured with the tuned masking profile (stereo
+         * LC, ABR or CBR, 32 kbps per channel and up); elsewhere, including
+         * VBR, leave the targets alone. */
+        if (!hEncoder->aacquantCfg.mask_tuned)
             for (k = 0; k < MAX_SHORT_WINDOWS; k++)
                 coderInfo->temporal_gain[k] = 1.0f;
         else
