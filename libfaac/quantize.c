@@ -312,6 +312,7 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
                    && channels == 2 && !is_he;
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
     cfg->mask_tuned = tuned;
+    cfg->onset_lf_lines = (int)(2000u * 2u * BLOCK_LEN_SHORT / sample_rate);
     cfg->treble_slope = (bitrate_per_ch >= masking_model.rich_min_rate)
         ? masking_model.rich_slope : 1.0f;
     if (sample_rate > masking_model.slope_rate_threshold)
@@ -396,7 +397,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         else
             target *= treble_rolloff(lo, hi, slope_per_line);
         if (ci->block_type == ONLY_SHORT_WINDOW)
-            target *= group_gain;
+            target *= lo < cfg->onset_lf_lines ? sqrtf(group_gain) : group_gain;
         /* A band this far under the frame is masked by it; the floors above
          * would otherwise pin its target at the floor. Falls at half the
          * loudness exponent. */
