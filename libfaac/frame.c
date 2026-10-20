@@ -257,13 +257,20 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
-    /* Only VBR reaches here without a bandwidth: ABR derived its own above.
+    /* Only VBR/TVBR reaches here without a bandwidth: ABR derived its own above.
+     * For low TVBR quality levels (TVBR <= 30 / quantqual <= 1180) on AAC-LC,
+     * constrain core bandwidth (e.g. 12.5 kHz - 14.5 kHz) to avoid bit starvation on upper SFBs.
      * Hi-res VBR at the default quality or higher keeps the full band so that
      * nothing above the ceiling is discarded; below it the ceiling saves bits.
      * ABR keeps the ceiling because the extra band costs bits at a fixed rate. */
-    if (!config->bandWidth)
-        config->bandWidth = (hEncoder->sampleRate > 48000 && config->quantqual >= DEFQUAL)
-            ? (unsigned int)(hEncoder->sampleRate / 2) : BANDWIDTH_CEILING;
+    if (!config->bandWidth) {
+        if (config->rateControl == RATE_TVBR && config->quantqual < DEFQUAL && config->aacObjectType == LOW) {
+            config->bandWidth = 12500 + (config->quantqual * 2000 / DEFQUAL);
+        } else {
+            config->bandWidth = (hEncoder->sampleRate > 48000 && config->quantqual >= DEFQUAL)
+                ? (unsigned int)(hEncoder->sampleRate / 2) : BANDWIDTH_CEILING;
+        }
+    }
 
     // check bandwidth
     if (hEncoder->config.bandWidth < 100)
@@ -364,7 +371,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     RefreshLfeMap(hEncoder);
 
     RateControlReset(&hEncoder->rc, hEncoder->numChannels, hEncoder->config.bitRate,
-                     hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
+                     hEncoder->sampleRate, hEncoder->config.rateControl);
 
     return 1;
 }
@@ -1014,9 +1021,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #endif
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
+    if (hEncoder->config.bitRate || hEncoder->config.rateControl == RATE_TVBR || hEncoder->config.rateControl == RATE_CVBR)
         hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
-                                                          hEncoder->aacquantCfg.quality, maxqual);
+                                                          hEncoder->aacquantCfg.quality, maxqual,
+                                                          hEncoder->config.rateControl);
 
     return frameBytes;
 }

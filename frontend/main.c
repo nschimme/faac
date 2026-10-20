@@ -76,6 +76,8 @@ enum flags
     OBJTYPE_FLAG,
     CAP_RATE_FLAG,
     CBR_FLAG,
+    TVBR_FLAG,
+    CVBR_FLAG,
     OPT_TNS_DISABLE,
     OPT_OVERWRITE,
     OPT_COMPILATION,
@@ -87,14 +89,20 @@ enum flags
 
 static const help_t help_qual[] = {
     {NULL,
-     "Rate control: -q (VBR), -b (ABR, default 128), -b --cbr (CBR); --cap-rate bounds any frame in any mode.",
-     "VBR holds a quality and lets the bitrate follow the material; ABR holds an average over the file; CBR holds it in every frame. -q with --cap-rate is capped VBR: constant quality, no frame above the cap. -q and -b are exclusive."},
+     "Rate control: -q (VBR), --tvbr <1-5000>, -b (ABR, default 128), -b --cbr (CBR), -b --cvbr (CVBR); --cap-rate bounds any frame in any mode.",
+     "VBR/TVBR holds a quality and lets the bitrate follow the material; ABR/CVBR holds an average over the file; CBR holds it in every frame."},
     {"-q <quality>",
      "Set encoding quality (1-5000, default 100). (VBR)",
      "Constant quality, 1..5000, default 100; higher is better and costs more bits. The bitrate follows the material and moves between releases as the encoder is tuned. With --object-type auto, -q up to 75 uses HE-AAC v1; from 76 it is AAC-LC at a much higher bitrate. Use -b for a predictable size."},
+    {"--tvbr <quality>",
+     "Set True VBR quality scale (1-5000, default 100). (TVBR)",
+     "Apple-style perceptual True VBR mode. Quality floats freely to preserve human auditory perception across quiet passages and transient spikes."},
     {"-b <bitrate>",
      "Set average bitrate to <bitrate> kbps. (ABR)",
      "Approximate over the file; max. ~500 kbps (stereo)."},
+    {"--cvbr",
+     "Hold -b as a constrained variable bitrate. (CVBR)",
+     "Constrained VBR allowing bitrate flexibility for complex passages while enforcing average bitrate limits and preventing bit inflation on simple audio."},
     {"--cbr",
      "Hold -b as a constant bitrate. (CBR)",
      "A bit reservoir keeps every frame inside the decoder's input buffer and stuffs any frame that would otherwise overflow it, so the rate lands exactly; ADTS declares the buffer fullness, MP4 the buffer size. For constant-rate channels and matched-rate tests; on a file or a packet network the stuffing is bytes for nothing."},
@@ -516,6 +524,8 @@ int main(int argc, char *argv[])
             {"language", 1, 0, LANG_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {"cbr", 0, 0, CBR_FLAG},
+            {"tvbr", 1, 0, TVBR_FLAG},
+            {"cvbr", 0, 0, CVBR_FLAG},
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
             {0, 0, 0, 0}
@@ -709,6 +719,16 @@ int main(int argc, char *argv[])
             break;
         case CBR_FLAG:
             opts.cbr = true;
+            break;
+        case TVBR_FLAG:
+            opts.tvbr = true;
+            {
+                int val = atoi(optarg);
+                opts.tvbr_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
+            }
+            break;
+        case CVBR_FLAG:
+            opts.cvbr = true;
             break;
         case CAP_RATE_FLAG:
             opts.max_bit_rate = atoi(optarg) * 1000;

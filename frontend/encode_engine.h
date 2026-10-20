@@ -87,6 +87,9 @@ typedef struct {
     uint32_t bit_rate; /* total bitrate in bps (whole stream) */
     uint32_t max_bit_rate; /* bps whole stream cap */
     bool cbr; /* --cbr: bit reservoir, stuffed, declared; needs bit_rate */
+    bool tvbr; /* --tvbr: True VBR (perceptual quality scale) */
+    bool cvbr; /* --cvbr: Constrained VBR */
+    uint16_t tvbr_quality; /* TVBR quality 1..127 */
     uint32_t bandwidth; /* cutoff frequency in Hz */
 
     bool ignore_wav_length;
