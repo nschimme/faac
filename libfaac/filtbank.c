@@ -156,43 +156,57 @@ static inline void ZeroFlat(float * restrict dst, int len)
     memset(dst, 0, len * sizeof(float));
 }
 
-/* Per-window onset gain for the quantizer's band targets: a window whose first
- * quarter is much quieter than its average starts at an attack, so its group
- * is coded finer to keep the noise from spreading ahead of the attack.
+/* Per-window onset gains for the quantizer's band targets: a window whose
+ * first quarter is much quieter than its average starts at an attack, so its
+ * group is coded finer to keep the noise from spreading ahead of the attack.
  * Energies use the first difference, so the measure follows the high-frequency
- * content where pre-echo is audible. Steady windows return 1. */
-static float OnsetGain(const float * restrict src)
+ * content where pre-echo is audible. Steady windows get 1.
+ * Windows hop by half their length, so each 32-sample block's energy is
+ * measured once and shared by the windows that cover it. */
+static void OnsetGains(const float * restrict src, float * restrict gain)
 {
-    enum { SEGMENTS = 8, SEG_LEN = BLOCK_LEN_SHORT * 2 / SEGMENTS, QUIET_SEGMENTS = 2 };
+    enum {
+        SEG_LEN = BLOCK_LEN_SHORT / 4,
+        SEGMENTS = BLOCK_LEN_SHORT * 2 / SEG_LEN,
+        QUIET_SEGMENTS = 2,
+        BLOCKS = (MAX_SHORT_WINDOWS + 1) * BLOCK_LEN_SHORT / SEG_LEN
+    };
     /* The floor bounds the ratio at 101 and the gain at ~10.05; an exponent of
      * 1 (gain up to 101) produced scalefactors the decoders reject. */
     const float floor_ratio = 0.01f;
     /* Windows with almost no high-frequency energy have no attack to protect. */
     const float min_diff_ratio = 6.3e-4f;
-    float total = 0.0f, prior = 0.0f, raw = 0.0f;
-    int seg, i;
+    float diff_energy[BLOCKS], raw_energy[BLOCKS];
+    int b, i, k;
 
-    for (seg = 0; seg < SEGMENTS; seg++) {
-        float energy = 0.0f;
-        for (i = seg * SEG_LEN; i < (seg + 1) * SEG_LEN; i++) {
+    for (b = 0; b < BLOCKS; b++) {
+        float d = 0.0f, r = 0.0f;
+        for (i = b * SEG_LEN; i < (b + 1) * SEG_LEN; i++) {
             float diff = src[i] - src[i - 1];
-            energy += diff * diff;
-            raw += src[i] * src[i];
+            d += diff * diff;
+            r += src[i] * src[i];
         }
-        total += energy;
-        if (seg < QUIET_SEGMENTS)
-            prior += energy;
+        diff_energy[b] = d;
+        raw_energy[b] = r;
     }
 
-    {
-        float avg = total / (float)SEGMENTS;
-        float floor = avg * floor_ratio;
+    for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
+        const int first = k * BLOCK_LEN_SHORT / SEG_LEN;
+        float total = 0.0f, prior = 0.0f, raw = 0.0f;
+        float avg, floor;
 
+        for (b = first; b < first + SEGMENTS; b++) {
+            total += diff_energy[b];
+            raw += raw_energy[b];
+            if (b < first + QUIET_SEGMENTS)
+                prior += diff_energy[b];
+        }
+        avg = total / (float)SEGMENTS;
+        floor = avg * floor_ratio;
         prior /= (float)QUIET_SEGMENTS;
-        if (total > 0.0f && total >= min_diff_ratio * raw && prior < avg)
-            return sqrtf((avg + floor) / (prior + floor));
+        gain[k] = (total > 0.0f && total >= min_diff_ratio * raw && prior < avg)
+            ? sqrtf((avg + floor) / (prior + floor)) : 1.0f;
     }
-    return 1.0f;
 }
 
 /* Left long half is windowed with the previous frame's shape and the right
@@ -243,12 +257,15 @@ static void WindowAndMdct(faacEncStruct* hEncoder, CoderInfo *coderInfo, int blo
         float * restrict src = overlapBuf + NFLAT_LS;
         float * restrict dst = p_out_mdct;
 
-        for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
-            /* HE-AAC runs the core on a downsampled signal where the boost
-             * costs more than it buys. */
-            coderInfo->temporal_gain[k] = hEncoder->config.aacObjectType == HE_V1
-                ? 1.0f : OnsetGain(src);
+        /* HE-AAC runs the core on a downsampled signal where the boost costs
+         * more than it buys. */
+        if (hEncoder->config.aacObjectType == HE_V1)
+            for (k = 0; k < MAX_SHORT_WINDOWS; k++)
+                coderInfo->temporal_gain[k] = 1.0f;
+        else
+            OnsetGains(src, coderInfo->temporal_gain);
 
+        for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
             ApplyWindowDirect(dst, src, win, BLOCK_LEN_SHORT);
             ApplyWindowReverse(dst+BLOCK_LEN_SHORT, src+BLOCK_LEN_SHORT, win, BLOCK_LEN_SHORT);
             MDCT(dst, 2*BLOCK_LEN_SHORT, hEncoder->gpsyInfo.sharedWorkBuffLong);
