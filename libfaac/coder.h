@@ -95,6 +95,7 @@ typedef struct CoderInfo {
         int n;
         int len[MAX_SHORT_WINDOWS];
     } groups;
+    float temporal_gain[MAX_SHORT_WINDOWS];
 
     TnsInfo tnsInfo;
 

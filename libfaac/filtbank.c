@@ -156,9 +156,48 @@ static inline void ZeroFlat(float * restrict dst, int len)
     memset(dst, 0, len * sizeof(float));
 }
 
+/* Per-window onset gain for the quantizer's band targets: a window whose first
+ * quarter is much quieter than its average starts at an attack, so its group
+ * is coded finer to keep the noise from spreading ahead of the attack.
+ * Energies use the first difference, so the measure follows the high-frequency
+ * content where pre-echo is audible. Steady windows return 1. */
+static float OnsetGain(const float * restrict src)
+{
+    enum { SEGMENTS = 8, SEG_LEN = BLOCK_LEN_SHORT * 2 / SEGMENTS, QUIET_SEGMENTS = 2 };
+    /* The floor bounds the ratio at 101 and the gain at ~10.05; an exponent of
+     * 1 (gain up to 101) produced scalefactors the decoders reject. */
+    const float floor_ratio = 0.01f;
+    /* Windows with almost no high-frequency energy have no attack to protect. */
+    const float min_diff_ratio = 6.3e-4f;
+    float total = 0.0f, prior = 0.0f, raw = 0.0f;
+    int seg, i;
+
+    for (seg = 0; seg < SEGMENTS; seg++) {
+        float energy = 0.0f;
+        for (i = seg * SEG_LEN; i < (seg + 1) * SEG_LEN; i++) {
+            float diff = src[i] - src[i - 1];
+            energy += diff * diff;
+            raw += src[i] * src[i];
+        }
+        total += energy;
+        if (seg < QUIET_SEGMENTS)
+            prior += energy;
+    }
+
+    {
+        float avg = total / (float)SEGMENTS;
+        float floor = avg * floor_ratio;
+
+        prior /= (float)QUIET_SEGMENTS;
+        if (total > 0.0f && total >= min_diff_ratio * raw && prior < avg)
+            return sqrtf((avg + floor) / (prior + floor));
+    }
+    return 1.0f;
+}
+
 /* Left long half is windowed with the previous frame's shape and the right
  * with this frame's, as the decoder does; short slopes are always sine. */
-static void WindowAndMdct(faacEncStruct* hEncoder, int block_type, int lshape, int rshape,
+static void WindowAndMdct(faacEncStruct* hEncoder, CoderInfo *coderInfo, int block_type, int lshape, int rshape,
                           const float * restrict p_prev_data,
                           const float * restrict p_in_data,
                           float * restrict p_out_mdct)
@@ -205,6 +244,11 @@ static void WindowAndMdct(faacEncStruct* hEncoder, int block_type, int lshape, i
         float * restrict dst = p_out_mdct;
 
         for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
+            /* HE-AAC runs the core on a downsampled signal where the boost
+             * costs more than it buys. */
+            coderInfo->temporal_gain[k] = hEncoder->config.aacObjectType == HE_V1
+                ? 1.0f : OnsetGain(src);
+
             ApplyWindowDirect(dst, src, win, BLOCK_LEN_SHORT);
             ApplyWindowReverse(dst+BLOCK_LEN_SHORT, src+BLOCK_LEN_SHORT, win, BLOCK_LEN_SHORT);
             MDCT(dst, 2*BLOCK_LEN_SHORT, hEncoder->gpsyInfo.sharedWorkBuffLong);
@@ -244,7 +288,7 @@ void FilterBankElement(faacEncStruct* hEncoder, CoderInfo *coderInfo, const AACE
     for (c = 0; c < nch; c++) {
         int ch = el->channels[c];
 
-        WindowAndMdct(hEncoder, coderInfo[ch].block_type, prev, shape,
+        WindowAndMdct(hEncoder, &coderInfo[ch], coderInfo[ch].block_type, prev, shape,
                       hEncoder->audioFIFO[ch][FIFO_PAST],
                       hEncoder->audioFIFO[ch][FIFO_CURR], hEncoder->freqBuff[ch]);
         coderInfo[ch].window_shape = shape;
