@@ -162,8 +162,11 @@ static inline void ZeroFlat(float * restrict dst, int len)
  * Energies use the first difference, so the measure follows the high-frequency
  * content where pre-echo is audible. Steady windows get 1.
  * Windows hop by half their length, so each 32-sample block's energy is
- * measured once and shared by the windows that cover it. */
-static void OnsetGains(const float * restrict src, float * restrict gain)
+ * measured once and shared by the windows that cover it.
+ * late[] flags a boosted window whose attack starts in its second half (the
+ * first block holding a tenth of the peak block's energy is block 4 or later);
+ * short-window TNS is applied to those windows only. */
+static void OnsetGains(const float * restrict src, float * restrict gain, int * restrict late)
 {
     enum {
         SEG_LEN = BLOCK_LEN_SHORT / 4,
@@ -191,12 +194,15 @@ static void OnsetGains(const float * restrict src, float * restrict gain)
 
     for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
         const int first = k * BLOCK_LEN_SHORT / SEG_LEN;
-        float total = 0.0f, prior = 0.0f, raw = 0.0f;
+        float total = 0.0f, prior = 0.0f, raw = 0.0f, peak = 0.0f;
         float avg, floor;
+        int start;
 
         for (b = first; b < first + SEGMENTS; b++) {
             total += diff_energy[b];
             raw += raw_energy[b];
+            if (diff_energy[b] > peak)
+                peak = diff_energy[b];
             if (b < first + QUIET_SEGMENTS)
                 prior += diff_energy[b];
         }
@@ -205,6 +211,9 @@ static void OnsetGains(const float * restrict src, float * restrict gain)
         prior /= (float)QUIET_SEGMENTS;
         gain[k] = (total > 0.0f && total >= min_diff_ratio * raw && prior < avg)
             ? sqrtf((avg + floor) / (prior + floor)) : 1.0f;
+
+        for (start = first; diff_energy[start] < 0.10f * peak; start++) ;
+        late[k] = gain[k] > 1.0f && start - first >= SEGMENTS / 2;
     }
 }
 
@@ -261,9 +270,12 @@ static void WindowAndMdct(faacEncStruct* hEncoder, CoderInfo *coderInfo, int blo
          * VBR, leave the targets alone. */
         if (!hEncoder->aacquantCfg.mask_tuned)
             for (k = 0; k < MAX_SHORT_WINDOWS; k++)
+            {
                 coderInfo->temporal_gain[k] = 1.0f;
+                coderInfo->late_attack[k] = 0;
+            }
         else
-            OnsetGains(src, coderInfo->temporal_gain);
+            OnsetGains(src, coderInfo->temporal_gain, coderInfo->late_attack);
 
         for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
             ApplyWindowDirect(dst, src, win, BLOCK_LEN_SHORT);
