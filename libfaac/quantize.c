@@ -342,6 +342,18 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     int gsize = ci->groups.len[gnum];
     int total_len = ci->sfb_offset[ci->sfbn];
     int sfb;
+    int group_start = 0;
+    float group_gain = 1.0f; /* strongest onset gain among the group's windows */
+
+    if (ci->block_type == ONLY_SHORT_WINDOW)
+    {
+        int group, win;
+        for (group = 0; group < gnum; group++)
+            group_start += ci->groups.len[group];
+        for (win = group_start; win < group_start + gsize; win++)
+            if (ci->temporal_gain[win] > group_gain)
+                group_gain = ci->temporal_gain[win];
+    }
 
     // whole group below the silence gate: force every band to a zero target
     if (group_total < silence_energy(ci) * (float)(gsize * total_len))
@@ -383,6 +395,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         }
         else
             target *= treble_rolloff(lo, hi, slope_per_line);
+        if (ci->block_type == ONLY_SHORT_WINDOW)
+            target *= group_gain;
         /* A band this far under the frame is masked by it; the floors above
          * would otherwise pin its target at the floor. Falls at half the
          * loudness exponent. */
