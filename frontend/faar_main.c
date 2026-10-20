@@ -50,8 +50,8 @@ static const help_group_t help_groups[] = {
     {0, NULL, NULL, NULL, 0}
 };
 
-static void print_faar_help(const char *prog_name) {
-    show_help(prog_name, 0, "3.0.0", help_groups);
+static void print_faar_help(const char *prog_name, int mode) {
+    show_help(prog_name, mode, "3.0.0", help_groups);
     printf(
         "\nExamples:\n"
         "  faar -r 48000 input_96k.wav output_48k.wav\n"
@@ -205,7 +205,7 @@ int main(int argc, char **argv) {
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "r:R:c:f:d:v:I::D::o:h", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "r:R:c:f:d:v:I::D::o:hH", long_options, NULL)) != -1) {
         switch (opt) {
             case 'r': target_rate = (uint32_t)atoi(optarg); break;
             case 'R': raw_in_rate = (uint32_t)atoi(optarg); break;
@@ -237,8 +237,9 @@ int main(int argc, char **argv) {
                 decimate_factor = (optarg && atoi(optarg) > 0) ? (uint32_t)atoi(optarg) : 2;
                 break;
             case 'o': output_path = optarg; break;
-            case 'h': print_faar_help(argv[0]); return 0;
-            default: print_faar_help(argv[0]); return 1;
+            case 'h': print_faar_help(argv[0], 'h'); return 0;
+            case 'H': print_faar_help(argv[0], 'H'); return 0;
+            default: print_faar_help(argv[0], 'h'); return 1;
         }
     }
 
@@ -246,8 +247,7 @@ int main(int argc, char **argv) {
     if (optind < argc && !output_path) output_path = argv[optind++];
 
     if (!input_path || target_rate == 0) {
-        fprintf(stderr, "Error: Input path and target rate (-r <Hz>) are required.\n");
-        print_faar_help(argv[0]);
+        print_faar_help(argv[0], 'h');
         return 1;
     }
 
