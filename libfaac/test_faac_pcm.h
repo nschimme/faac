@@ -12,7 +12,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-static int16_t *pcm_make(uint32_t rate, uint32_t channels, uint32_t frames)
+static inline int16_t *pcm_make(uint32_t rate, uint32_t channels, uint32_t frames)
 {
     int16_t *pcm = (int16_t *)malloc((size_t)frames * channels * sizeof(*pcm));
     uint32_t rng = 0x2545F491u;
@@ -27,6 +27,17 @@ static int16_t *pcm_make(uint32_t rate, uint32_t channels, uint32_t frames)
         for (uint32_t c = 0; c < channels; c++)
             pcm[(size_t)i * channels + c] = (int16_t)(v * (c ? 0.7 : 1.0));
     }
+    return pcm;
+}
+
+/* Full-scale white noise: the worst case for frame size. */
+static inline int16_t *pcm_make_noise(uint32_t channels, uint32_t frames)
+{
+    int16_t *pcm = (int16_t *)malloc((size_t)frames * channels * sizeof(*pcm));
+    uint32_t rng = 7;
+    FT_REQUIRE(pcm);
+    for (size_t i = 0; i < (size_t)frames * channels; i++)
+        pcm[i] = (int16_t)((int)(ft_rand(&rng) % 60001) - 30000);
     return pcm;
 }
 

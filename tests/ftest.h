@@ -1,6 +1,6 @@
 /* Minimal test checks. FT_CHECK records a failure and keeps going; FT_REQUIRE stops
  * the test, for preconditions the rest of the test would crash without.
- * Never uses assert(), so a build defining NDEBUG cannot disable it. */
+ * Never uses assert(), so a build defining NDEBUG cannot disable it. A test that has to skip exits 77, which meson reports as skipped. */
 #ifndef FTEST_H
 #define FTEST_H
 
@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define FT_SKIP_STATUS 77 /* meson's "skipped" exit code */
 
 static int ft_failures;
 

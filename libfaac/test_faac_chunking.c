@@ -24,7 +24,8 @@ static size_t encode_chunked(const config *cfg, const int16_t *pcm, uint32_t fra
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);
     FT_REQUIRE(faac_encoder_get_info(enc, &info) == FAAC_OK);
 
-    size_t cap = (size_t)info.max_output_bytes * (frames / info.frame_samples + 8), len = 0;
+    /* encode() refuses an output buffer below one maximal ADTS frame, so keep that much spare. */
+    size_t cap = (size_t)info.max_output_bytes * (frames / info.frame_samples + 8) + 8192, len = 0;
     uint8_t *stream = (uint8_t *)malloc(cap);
     FT_REQUIRE(stream);
     if (chunk > info.frame_samples) chunk = info.frame_samples;

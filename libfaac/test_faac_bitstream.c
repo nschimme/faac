@@ -50,20 +50,26 @@ static void test_matches_putbit(uint32_t seed)
     FT_CHECK_MEM(got_buf, want_buf, BUF);
 }
 
+/* A write past the end is reported and must not touch the bytes beyond it. */
 static void test_overflow_reported(void)
 {
-    uint8_t buf[4];
+    uint8_t buf[8], untouched[4];
     BitStream bs;
     BitAccumulator a;
-    InitBitStream(&bs, buf, sizeof(buf));
+    memset(buf, 0xA5, sizeof(buf));
+    memcpy(untouched, buf + 4, sizeof(untouched));
+    InitBitStream(&bs, buf, 4);
+    memset(buf + 4, 0xA5, sizeof(untouched));
     AccumBegin(&a, &bs);
     AccumPutBits(&a, 0xFFFFFFFFu, 32);
     AccumPutBits(&a, 1, 1);
     FT_CHECK(AccumEnd(&a) == -1);
+    FT_CHECK_MEM(buf + 4, untouched, sizeof(untouched));
 
-    InitBitStream(&bs, buf, sizeof(buf));
+    InitBitStream(&bs, buf, 4);
     FT_CHECK(PutBit(&bs, 0xFFFFFFFFu, 32) == 0);
     FT_CHECK(PutBit(&bs, 1, 1) == -1);
+    FT_CHECK_MEM(buf + 4, untouched, sizeof(untouched));
 }
 
 int main(void)
