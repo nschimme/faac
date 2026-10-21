@@ -50,14 +50,8 @@ enum { TNS_SHORT_MAX_ORDER = 2 };
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
 
-typedef enum {
-    TNS_DIRECTION_FORWARD = 0,
-    TNS_DIRECTION_BACKWARD = 1
-} TnsDirection;
-
 typedef struct {
     uint8_t order;                        /* Filter order */
-    uint8_t direction;                    /* Filtering direction */
     uint8_t coefCompress;                 /* Are coeffs compressed? */
     uint8_t length;                       /* Length, in bands */
     int8_t index[TNS_MAX_ORDER+1];         /* Quantized reflection-coeff indices */
@@ -71,7 +65,6 @@ typedef struct {
 
 typedef struct {
     uint8_t maxOrder;
-    uint8_t direction; /* TnsDirection, stored compactly */
     uint8_t coeffResolution;
     float gainLimit;
 } TnsFitConfig;

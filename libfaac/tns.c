@@ -189,28 +189,10 @@ static void finalize_filter(int order, const float * k, float * a)
     }
 }
 
-static void filter_spec(int length, int order, TnsDirection direction, const float * a,
+static void filter_spec(int length, int order, const float * a,
                         const float * src, float * dst)
 {
     int i, j;
-
-    if (direction == TNS_DIRECTION_FORWARD) {
-        int limit = order < length ? order : length;
-
-        for (i = 0; i < limit; i++) {
-            float acc = src[i];
-            for (j = 1; j <= i; j++)
-                acc += a[j] * src[i - j];
-            dst[i] = acc;
-        }
-        for (; i < length; i++) {
-            float acc = src[i];
-            for (j = 1; j <= order; j++)
-                acc += a[j] * src[i - j];
-            dst[i] = acc;
-        }
-        return;
-    }
 
     for (i = length - 1; i >= 0; i--) {
         float acc = src[i];
@@ -241,12 +223,12 @@ void TnsInit(faacEncStruct* hEncoder)
         info->startBand[0] = tns_sfb_range[fs].min;
         info->maxBands[0] = tns_sfb_range[fs].max;
         info->numSwb[0] = hEncoder->srInfo->num_cb_long;
-        info->fit[0] = (TnsFitConfig){TNS_LPC_ORDER, TNS_DIRECTION_FORWARD,
+        info->fit[0] = (TnsFitConfig){TNS_LPC_ORDER,
                                     DEF_TNS_COEFF_RES, TNS_GAIN_LIMIT};
         info->startBand[1] = shortStartBand;
         info->maxBands[1] = tns_sfb_max_short[fs];
         info->numSwb[1] = hEncoder->srInfo->num_cb_short;
-        info->fit[1] = (TnsFitConfig){TNS_SHORT_MAX_ORDER, TNS_DIRECTION_BACKWARD,
+        info->fit[1] = (TnsFitConfig){TNS_SHORT_MAX_ORDER,
                                     TNS_SHORT_COEFF_RES, TNS_SHORT_GAIN_LIMIT};
     }
 }
@@ -259,7 +241,6 @@ static int tns_fit_range(int b_start, int b_stop, const TnsFitConfig *fit,
                          TnsFilterData *filter)
 {
     const int max_order = fit->maxOrder;
-    const TnsDirection direction = (TnsDirection)fit->direction;
     const int coeff_res = fit->coeffResolution;
     const float gain_limit = fit->gainLimit;
     int i_start = sfbOffsetTable[b_start];
@@ -352,11 +333,6 @@ static int tns_fit_range(int b_start, int b_stop, const TnsFitConfig *fit,
 
     filter->order = order;
 
-    /* Autocorrelation is invariant under sequence reversal, so both
-     * directions give the same LPC fit and prediction gain. The caller
-     * selects which direction to apply to the spectrum. */
-    filter->direction = (uint8_t)direction;
-
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */
     filter->coefCompress = 1;
@@ -380,7 +356,7 @@ static int tns_fit_range(int b_start, int b_stop, const TnsFitConfig *fit,
          * r. Only the filtered energy needs a pass here. */
         float filt_e = 0.0f;
 
-        filter_spec(length, order, direction, k, wspec, trial);
+        filter_spec(length, order, k, wspec, trial);
         for (i = 0; i < length; i++)
             filt_e += trial[i] * trial[i];
         if (filt_e < TNS_MIN_ENERGY)
@@ -389,7 +365,7 @@ static int tns_fit_range(int b_start, int b_stop, const TnsFitConfig *fit,
             return 0;
     }
 
-    filter_spec(length, order, direction, k, band, trial);
+    filter_spec(length, order, k, band, trial);
     memcpy(band, trial, length * sizeof(float));
     return 1;
 }

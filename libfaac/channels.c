@@ -164,7 +164,7 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
                     bits += lengthBits + orderBits;
 
                     if (flt->order > 0) {
-                        PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
+                        PutBit(bs, 1, LEN_TNS_DIRECTION);
                         PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
                         bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
 
