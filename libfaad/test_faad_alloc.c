@@ -82,8 +82,38 @@ static void test_lazy_allocations(bool ps)
 }
 #endif
 
+#if MAX_CHANNELS >= 3 /* mono and stereo builds omit the coupling tool */
+static void test_coupling_allocation(void)
+{
+    faad_config cfg;
+    assert(faad_config_init(&cfg, sizeof(cfg)) == FAAD_OK);
+    calls = live = total = largest = fail_at = 0;
+    faad_decoder *dec = NULL;
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    assert(!dec->coupling);
+    const uint8_t zero_cce[8] = {0}; /* tag 0, one SCE target, empty ICS */
+    BitReader bs;
+    bits_init(&bs, zero_cce, sizeof(zero_cce));
+    fail_at = calls + 1;
+    assert(decode_cce(&bs, dec) == FAAD_ERR_INSUFFICIENT_MEM);
+    assert(!dec->coupling);
+    fail_at = 0;
+    bits_init(&bs, zero_cce, sizeof(zero_cce));
+    assert(decode_cce(&bs, dec) == FAAD_OK);
+    assert(dec->coupling && dec->allocated_bytes == total);
+    size_t before = calls;
+    assert(faad_decoder_flush(dec) == FAAD_OK);
+    bits_init(&bs, zero_cce, sizeof(zero_cce));
+    assert(decode_cce(&bs, dec) == FAAD_OK && calls == before);
+    assert(faad_decoder_close(&dec) == FAAD_OK && !live);
+}
+#endif
+
 int main(void)
 {
+#if MAX_CHANNELS >= 3
+    test_coupling_allocation();
+#endif
 #ifndef FAAD_DISABLE_SBR
     test_lazy_allocations(false);
 #ifndef FAAD_DISABLE_PS

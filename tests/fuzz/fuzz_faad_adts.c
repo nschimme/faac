@@ -33,7 +33,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     info.struct_size = sizeof(info);
     (void)faad_decoder_get_info(dec, &info);
 
-    uint8_t pcm[16384];
+    uint32_t pcm_capacity = info.max_output_bytes;
+    uint8_t *pcm = malloc(pcm_capacity);
+    if (!pcm) { faad_decoder_close(&dec); return 0; }
     size_t pos = 0;
     int frames = 0;
 
@@ -43,7 +45,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         uint32_t flags = 0;
 
         st = faad_decode_frame(dec, payload + pos, (uint32_t)(payload_len - pos),
-                               &consumed, pcm, sizeof(pcm), &written, &flags);
+                               &consumed, pcm, pcm_capacity, &written, &flags);
 
         if (flags & FAAD_FRAME_FORMAT_CHANGED) {
             info.struct_size = sizeof(info);
@@ -66,6 +68,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         }
     }
 
+    free(pcm);
     faad_decoder_close(&dec);
     return 0;
 }
