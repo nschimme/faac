@@ -27,6 +27,13 @@ jobs:
               shell: bash,
             }
           - {
+              name: Linux GCC (FAAR float),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dfaar-precision=float,
+            }
+          - {
               name: Linux GCC (SBR Decimation),
               os: ubuntu-latest,
               compiler: gcc,
@@ -193,6 +200,25 @@ jobs:
         with:
           name: faac-${{ github.sha }}-${{ matrix.config.name }}
           path: temp/*
+
+  fuzz-build:
+    name: Fuzz harness build
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DISABLE: 1
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build clang
+
+      - name: Build fuzz harnesses
+        run: |
+          meson setup build
+          FUZZ_BUILD_ONLY=1 tests/fuzz/run.sh build
 
   cppcheck:
     name: Cppcheck
