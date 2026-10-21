@@ -50,6 +50,11 @@ enum { TNS_SHORT_MAX_ORDER = 2 };
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
 
+typedef enum {
+    TNS_DIRECTION_FORWARD = 0,
+    TNS_DIRECTION_BACKWARD = 1
+} TnsDirection;
+
 typedef struct {
     uint8_t order;                        /* Filter order */
     uint8_t direction;                    /* Filtering direction */
@@ -65,6 +70,13 @@ typedef struct {
 } TnsWindowData;
 
 typedef struct {
+    uint8_t maxOrder;
+    uint8_t direction; /* TnsDirection, stored compactly */
+    uint8_t coeffResolution;
+    float gainLimit;
+} TnsFitConfig;
+
+typedef struct {
     int tnsDataPresent;
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
@@ -72,6 +84,8 @@ typedef struct {
     int tnsStartBandShort;
     int tnsMaxBandsShort;
     int tnsNumSwbShort;
+    TnsFitConfig longFit;
+    TnsFitConfig shortFit;
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* one long or eight short windows */
 } TnsInfo;
 

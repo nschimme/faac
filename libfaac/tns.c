@@ -37,7 +37,7 @@ static const uint8_t tns_sfb_max_short[12] = {
 
 /* Short-window TNS begins at the first SFB lower edge at or above 2750 Hz. */
 static const float TNS_SHORT_MIN_FREQUENCY = 2750.0f;
-enum { TNS_SHORT_DIRECTION = 1, TNS_SHORT_COEFF_RES = 4 };
+enum { TNS_SHORT_COEFF_RES = 4 };
 static const float TNS_SHORT_GAIN_LIMIT = 2.0f;
 
 #define TNS_LPC_ORDER       8     /* fixed filter order; the spec allows up to 20, but higher orders rarely paid for themselves here */
@@ -189,12 +189,12 @@ static void finalize_filter(int order, const float * k, float * a)
     }
 }
 
-static void filter_spec(int length, int order, int direction, const float * a,
+static void filter_spec(int length, int order, TnsDirection direction, const float * a,
                         const float * src, float * dst)
 {
     int i, j;
 
-    if (direction == 0) {
+    if (direction == TNS_DIRECTION_FORWARD) {
         int limit = order < length ? order : length;
 
         for (i = 0; i < limit; i++) {
@@ -231,6 +231,10 @@ void TnsInit(faacEncStruct* hEncoder)
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
+        info->longFit.maxOrder = TNS_LPC_ORDER;
+        info->longFit.direction = TNS_DIRECTION_FORWARD;
+        info->longFit.coeffResolution = DEF_TNS_COEFF_RES;
+        info->longFit.gainLimit = TNS_GAIN_LIMIT;
         int shortStartBand = 0;
         int shortEdge = 0;
 
@@ -243,17 +247,24 @@ void TnsInit(faacEncStruct* hEncoder)
         info->tnsStartBandShort = shortStartBand;
         info->tnsMaxBandsShort = tns_sfb_max_short[fs];
         info->tnsNumSwbShort = hEncoder->srInfo->num_cb_short;
+        info->shortFit.maxOrder = TNS_SHORT_MAX_ORDER;
+        info->shortFit.direction = TNS_DIRECTION_BACKWARD;
+        info->shortFit.coeffResolution = TNS_SHORT_COEFF_RES;
+        info->shortFit.gainLimit = TNS_SHORT_GAIN_LIMIT;
     }
 }
 
 /* Fits one TNS filter over scalefactor bands [b_start, b_stop) and, if it
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
-static int tns_fit_range(int b_start, int b_stop, int max_order, int direction,
-                         int coeff_res, float gain_limit,
+static int tns_fit_range(int b_start, int b_stop, const TnsFitConfig *fit,
                          const int *sfbOffsetTable, float *spec,
                          TnsFilterData *filter)
 {
+    const int max_order = fit->maxOrder;
+    const TnsDirection direction = (TnsDirection)fit->direction;
+    const int coeff_res = fit->coeffResolution;
+    const float gain_limit = fit->gainLimit;
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
     float *band;
@@ -405,8 +416,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
     if (b_stop <= b_start)
         return;
 
-    if (!tns_fit_range(b_start, b_stop, TNS_LPC_ORDER, 0,
-                       DEF_TNS_COEFF_RES, TNS_GAIN_LIMIT,
+    if (!tns_fit_range(b_start, b_stop, &tnsInfo->longFit,
                        sfbOffsetTable, spec,
                        &tnsInfo->windowData[0].tnsFilter[0]))
         return;
@@ -446,9 +456,8 @@ void TnsEncodeShort(CoderInfo *coderInfo, float *spec)
         if (!coderInfo->late_attack[w])
             continue;
 
-        if (!tns_fit_range(b_start, b_stop, TNS_SHORT_MAX_ORDER,
-                           TNS_SHORT_DIRECTION, TNS_SHORT_COEFF_RES,
-                           TNS_SHORT_GAIN_LIMIT, sfbOffsetTable, windowSpec,
+        if (!tns_fit_range(b_start, b_stop, &tnsInfo->shortFit,
+                           sfbOffsetTable, windowSpec,
                            &window->tnsFilter[0]))
             continue;
 
