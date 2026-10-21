@@ -26,7 +26,7 @@
 #define PRESET_COUNT 3
 #endif
 
-#define CHANNEL_LIMIT 8
+#define CHANNEL_LIMIT MAX_CHANNELS
 #define INPUT_FRAMES 257
 #define OUTPUT_CHUNK 19
 typedef struct audio audio;
@@ -280,6 +280,7 @@ static int isolation_for(faar_quality_t quality, float tolerance) {
         uint32_t in_rate = rates[ri][0], out_rate = rates[ri][1];
         for (size_t ci = 0; ci < sizeof(channel_counts) / sizeof(channel_counts[0]); ++ci) {
             uint16_t channels = channel_counts[ci];
+            if (channels > CHANNEL_LIMIT) continue;
             float *interleaved = (float *)malloc(INPUT_FRAMES * channels * sizeof(float));
             if (!interleaved) return fail("channel test allocation failed", in_rate, out_rate, channels);
             for (size_t i = 0; i < INPUT_FRAMES; ++i)
@@ -324,9 +325,17 @@ static int test_channel_isolation(void) {
 #else
     const float tolerance = 1e-12f;
 #endif
+    if (CHANNEL_LIMIT < 2) {
+        puts("Tuneout-derived FAAR channel isolation: skipped (requires >= 2 channels)");
+        return 0;
+    }
     for (int q = 0; q < PRESET_COUNT; ++q)
         if (isolation_for((faar_quality_t)q, tolerance)) return 1;
-    puts("Tuneout-derived FAAR channel isolation: 2, 6 and 8 channels passed");
+    if (CHANNEL_LIMIT == 8)
+        puts("Tuneout-derived FAAR channel isolation: 2, 6 and 8 channels passed");
+    else
+        printf("Tuneout-derived FAAR channel isolation: supported counts from {2, 6, 8} up to %u passed\n",
+               (unsigned)CHANNEL_LIMIT);
     return 0;
 }
 

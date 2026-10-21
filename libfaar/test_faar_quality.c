@@ -21,6 +21,7 @@
 
 #define PI 3.14159265358979323846264338327950288
 #define MAX_CAP 16384u
+#define TEST_CHANNELS (MAX_CHANNELS < 2 ? MAX_CHANNELS : 2)
 
 typedef struct samples {
     float *data;
@@ -120,11 +121,13 @@ static int test_boundary_modes(void) {
     for(size_t r=0;r<sizeof(rates)/sizeof(rates[0]);r++) {
         for(size_t nidx=0;nidx<sizeof(lengths)/sizeof(lengths[0]);nidx++) {
             size_t n=lengths[nidx];
-            float *input=malloc(n*2*sizeof(*input));
+            float *input=malloc(n*TEST_CHANNELS*sizeof(*input));
             if(!input)return fail("boundary input allocation failed");
-            for(size_t j=0;j<n;j++){input[j*2]=.5f;input[j*2+1]=-.25f;}
+            for(size_t j=0;j<n;j++)
+                for(unsigned c=0;c<TEST_CHANNELS;c++)
+                    input[j*TEST_CHANNELS+c]=c==0?.5f:-.25f;
             samples output;
-            int rc=convert(input,n,rates[r][0],rates[r][1],2,17,17,&output);
+            int rc=convert(input,n,rates[r][0],rates[r][1],TEST_CHANNELS,17,17,&output);
             free(input);
             if(rc)return rc;
             if(output.frames!=expected_frames(n,rates[r][0],rates[r][1])) {
@@ -134,8 +137,10 @@ static int test_boundary_modes(void) {
                 free(output.data);return fail("boundary duration mismatch");
             }
             for(size_t j=0;j<output.frames;j++) {
-                if(fabsf(output.data[j*2]-.5f)>2e-6f || fabsf(output.data[j*2+1]+.25f)>2e-6f) {
-                    free(output.data);return fail("endpoint hold changed a constant signal");
+                for(unsigned c=0;c<TEST_CHANNELS;c++) {
+                    if(fabsf(output.data[j*TEST_CHANNELS+c]-(c==0?.5f:-.25f))>2e-6f) {
+                        free(output.data);return fail("endpoint hold changed a constant signal");
+                    }
                 }
             }
             free(output.data);
@@ -173,7 +178,9 @@ static int test_boundary_modes(void) {
     faar_process(h,input,1,out,4);
     if(faar_set_boundary(h,FAAR_BOUNDARY_ZERO)!=-1) {faar_destroy(h);return fail("late boundary change accepted");}
     faar_destroy(h);
-    puts("endpoint hold: mono/stereo, short streams, cascades and explicit zero mode passed");
+    puts(TEST_CHANNELS == 2
+         ? "endpoint hold: mono/stereo, short streams, cascades and explicit zero mode passed"
+         : "endpoint hold: mono, short streams, cascades and explicit zero mode passed");
     return 0;
 }
 
@@ -215,26 +222,26 @@ static int test_streaming(void) {
     const size_t caps[] = {1, 17, 257, 16384};
     for (size_t r = 0; r < sizeof(rates)/sizeof(rates[0]); r++) {
         uint32_t ir = rates[r][0], orate = rates[r][1];
-        float *in = (float *)malloc(n * 2 * sizeof(float));
+        float *in = (float *)malloc(n * TEST_CHANNELS * sizeof(float));
         if (!in) return fail("stream test input allocation failed");
         for (size_t i = 0; i < n; i++) {
-            in[2*i] = signal_value(i, 0, n);
-            in[2*i+1] = signal_value(i, 1, n);
+            for (uint16_t c = 0; c < TEST_CHANNELS; ++c)
+                in[TEST_CHANNELS*i+c] = signal_value(i, c, n);
         }
         samples ref;
-        if (convert(in, n, ir, orate, 2, n, 16384, &ref)) { free(in); return 1; }
+        if (convert(in, n, ir, orate, TEST_CHANNELS, n, 16384, &ref)) { free(in); return 1; }
         size_t want = expected_frames(n, ir, orate);
         if (ref.frames != want) { free(in); free(ref.data); return fail("reference length differs from ceil duration"); }
 
         for (size_t b = 0; b < sizeof(blocks)/sizeof(blocks[0]); b++) {
             for (size_t c = 0; c < sizeof(caps)/sizeof(caps[0]); c++) {
                 samples got;
-                if (convert(in, n, ir, orate, 2, blocks[b], caps[c], &got)) {
+                if (convert(in, n, ir, orate, TEST_CHANNELS, blocks[b], caps[c], &got)) {
                     free(in); free(ref.data); return 1;
                 }
                 if (got.frames != want) { free(in); free(ref.data); free(got.data); return fail("stream variant frame count differs"); }
                 float maxdiff = 0.0f;
-                for (size_t i = 0; i < want * 2; i++) {
+                for (size_t i = 0; i < want * TEST_CHANNELS; i++) {
                     float d = fabsf(ref.data[i] - got.data[i]);
                     if (!isfinite(d)) { free(in); free(ref.data); free(got.data); return fail("non-finite streaming output difference"); }
                     if (d > maxdiff) maxdiff = d;

@@ -12,22 +12,22 @@
 #endif
 
 int main(void) {
+    const uint16_t channels = MAX_CHANNELS < 2 ? MAX_CHANNELS : 2;
     printf("Testing libfaar API...\n");
 #ifdef FAAR_FLOAT
     static const uint32_t rates[][2] = {
         {96000, 44100}, {44100, 48000}, {48000, 48000}
     };
     for (size_t i = 0; i < sizeof(rates) / sizeof(rates[0]); ++i) {
-        assert(faar_create(rates[i][0], rates[i][1], 2,
+        assert(faar_create(rates[i][0], rates[i][1], channels,
                            FAAR_QUALITY_HIGH) == NULL);
-        assert(faar_create_ext(rates[i][0], rates[i][1], 2,
+        assert(faar_create_ext(rates[i][0], rates[i][1], channels,
                                FAAR_QUALITY_HIGH, 2) == NULL);
     }
 #endif
 
     uint32_t in_rate = 96000;
     uint32_t out_rate = 44100;
-    uint16_t channels = 2;
 
     faar_handle_t r = faar_create(in_rate, out_rate, channels, FAAR_QUALITY_GOOD);
     assert(r != NULL);
@@ -40,8 +40,8 @@ int main(void) {
     /* Fill with 1 kHz sine wave */
     for (size_t i = 0; i < in_frames; i++) {
         float val = (float)sin(2.0 * 3.141592653589793 * 1000.0 * i / in_rate);
-        in_buf[i * 2 + 0] = val;
-        in_buf[i * 2 + 1] = val;
+        for (uint16_t c = 0; c < channels; ++c)
+            in_buf[i * channels + c] = val;
     }
 
     size_t out_cap = 2048;
