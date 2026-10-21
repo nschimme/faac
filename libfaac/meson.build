@@ -106,3 +106,14 @@ pkgconfig.generate(
     version: project_ver,
     filebase: 'faac'
 )
+
+# Unit tests; encoder tests reach libfaac only through the static archive.
+if is_variable('libfaac_static')
+    foreach t : ['chunking', 'frames', 'bitstream']
+        test('faac_' + t + '_test',
+            executable('test_faac_' + t, 'test_faac_' + t + '.c',
+                include_directories : ['..', '../include'],
+                link_with : libfaac_static,
+                dependencies : [libm]))
+    endforeach
+endif
