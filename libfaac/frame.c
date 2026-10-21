@@ -182,11 +182,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
-            /* The measured ceiling is one bit/s per channel per Hz through
-             * 48 kHz, then remains fixed. */
+            /* HE-AAC stays below one bit/s per channel per Hz (through
+             * 48 kHz, then fixed): at that rate LC gives up about 0.02 MOS
+             * for about 6 dB less pre-echo, a price inside HE's rate lead,
+             * while further down it costs several times as much. */
             unsigned int max_he_rate = hEncoder->sampleRate < HE_CEILING_FULL_FS
                 ? hEncoder->sampleRate : HE_CEILING_FULL_FS;
-            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
+            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch < max_he_rate);
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
@@ -562,6 +564,12 @@ int faacEncClose(faacEncHandle hpEncoder)
                     grp_avg, split, g_faacStats.shortChannels);
         }
 
+        if (g_faacStats.shortChannels > 0)
+            fprintf(stderr, " Short TNS           : Late win = %u | Filtered = %u | TNS ch = %5.1f%% of %u short ch\n",
+                    g_faacStats.shortWindowsLate, g_faacStats.shortWindowsTNS,
+                    100.0 * g_faacStats.shortChannelsTNS / g_faacStats.shortChannels,
+                    g_faacStats.shortChannels);
+
 
         if (g_faacStats.sbrFrames > 0)
         {
@@ -865,8 +873,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
 
             TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+        } else if (!hEncoder->isLfeChannel[channel] && useTns &&
+                   coderInfo[channel].block_type == ONLY_SHORT_WINDOW &&
+                   hEncoder->config.aacObjectType != HE_V1) {
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 

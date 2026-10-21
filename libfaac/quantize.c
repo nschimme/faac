@@ -332,7 +332,7 @@ static float treble_rolloff(int lo, int hi, float slope_per_line)
     return 10.0f / (1.0f + (float)(lo + hi) * slope_per_line);
 }
 
-static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
+static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int group_start, float quality,
                                     const AACQuantCfg * __restrict cfg, const BandEnergy * __restrict be, float group_total,
                                     float * __restrict target_out)
 {
@@ -342,6 +342,15 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     int gsize = ci->groups.len[gnum];
     int total_len = ci->sfb_offset[ci->sfbn];
     int sfb;
+    float group_gain = 1.0f; /* strongest onset gain among the group's windows */
+
+    if (ci->block_type == ONLY_SHORT_WINDOW)
+    {
+        int win;
+        for (win = group_start; win < group_start + gsize; win++)
+            if (ci->temporal_gain[win] > group_gain)
+                group_gain = ci->temporal_gain[win];
+    }
 
     // whole group below the silence gate: force every band to a zero target
     if (group_total < silence_energy(ci) * (float)(gsize * total_len))
@@ -383,6 +392,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         }
         else
             target *= treble_rolloff(lo, hi, slope_per_line);
+        if (ci->block_type == ONLY_SHORT_WINDOW)
+            target *= group_gain;
         /* A band this far under the frame is masked by it; the floors above
          * would otherwise pin its target at the floor. Falls at half the
          * loudness exponent. */
@@ -491,33 +502,38 @@ static void nudge_scalefactors(const CoderInfo *ci, int *sel, int n, int base, i
         /* absolute scalefactor of state s is a0 + 1 - s */
         a0 = ci->sf[base + sb] + SF_OFFSET - sel[sb];
         {
-            int edge[SF_NUDGE_STATES + 1] = {0};
-            int state;
+            int edge0 = 0, edge1 = 0, edge2 = 0;
+            int best, best_pred;
             if (prev_a0 != SF_CHAIN_UNSET)
             {
                 int d0 = a0 - prev_a0;
-                edge[0] = 4 * sf_delta_cost(d0 - 1);
-                edge[1] = 4 * sf_delta_cost(d0);
-                edge[2] = 4 * sf_delta_cost(d0 + 1);
+                edge0 = 4 * sf_delta_cost(d0 - 1);
+                edge1 = 4 * sf_delta_cost(d0);
+                edge2 = 4 * sf_delta_cost(d0 + 1);
             }
-            bp[sb] = 0;
-            for (state = 0; state < SF_NUDGE_STATES; state++)
+            /* Spell out the two-state transitions: keeping this tiny fixed
+             * graph out of nested loops lets the compiler share the delta
+             * costs without a per-band state loop. Predecessor ties still
+             * favor state 1, matching the original loop order. */
+            best = cost[1] + edge2;
+            best_pred = 1;
+            if (cost[0] + edge1 < best)
             {
-                int pred = SF_NUDGE_STATES - 1;
-                int best = cost[pred] + edge[pred - state + 1];
-                int best_pred = pred;
-                for (pred = SF_NUDGE_STATES - 2; pred >= 0; pred--)
-                {
-                    int candidate = cost[pred] + edge[pred - state + 1];
-                    if (candidate < best)
-                    {
-                        best = candidate;
-                        best_pred = pred;
-                    }
-                }
-                next[state] = best;
-                bp[sb] |= (unsigned char)(best_pred << state);
+                best = cost[0] + edge1;
+                best_pred = 0;
             }
+            next[0] = best;
+            bp[sb] = (unsigned char)best_pred;
+
+            best = cost[1] + edge1;
+            best_pred = 1;
+            if (cost[0] + edge0 < best)
+            {
+                best = cost[0] + edge0;
+                best_pred = 0;
+            }
+            next[1] = best;
+            bp[sb] |= (unsigned char)(best_pred << 1);
         }
         next[0] += SF_NUDGE_COST;
         cost[0] = next[0]; cost[1] = next[1];
@@ -567,12 +583,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
 
         int width = ci->sfb_offset[sb + 1] - ci->sfb_offset[sb];
+        if (target[sb] == 0.0f)
+            goto zero_band;
         float avg_per_window = be[sb].sum / (float)gsize;
-        if (avg_per_window < silence * width || target[sb] == 0.0f)
-        {
-            ci->book[band] = HCB_ZERO;
-            continue;
-        }
+        if (avg_per_window < silence * width)
+            goto zero_band;
 
         /* Log-domain identity: log10(target/rms) = log10(target) - 0.5*log10(avg) + 0.5*log10(width).
          * Reuses sf_enrg_avg (log10(avg) * SF_STEP_ENRG) shared with PNS to avoid division and sqrtf. */
@@ -616,6 +631,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
         }
         band_sf[sb] = ci->sf[band] - sfac;
+        continue;
+
+zero_band:
+        ci->book[band] = HCB_ZERO;
+        continue;
     }
 
     /* All raw neighbours are known before this buffer becomes gain scalefactors. */
@@ -709,6 +729,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     int qs[FRAME_LEN];
     int i, lastsf = SF_CHAIN_UNSET, qlen = 0;
     float *gxr = xr;
+    int group_start = 0;
     int cutoff = (coder->block_type == ONLY_SHORT_WINDOW)
                ? aacquantCfg->max_l / 8 : coder->sfb_offset[coder->sfbn];
 
@@ -721,9 +742,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         if (coder->useRef)
             group_total = coder->refTotal[i];
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg, be, group_total, target);
+        derive_masking_targets(coder, i, group_start, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg, be, group_total, target);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen, aacquantCfg->sf_nudge);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
+        group_start += coder->groups.len[i];
     }
     huffbook(coder, qs);
 

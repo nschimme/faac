@@ -42,16 +42,18 @@ enum WINDOW_TYPE {
 /* ics_info window_shape, as the decoder names them. */
 enum { SINE_WINDOW = 0, KBD_WINDOW = 1 };
 
-/* Array bounds, sized to what this encoder actually emits rather than to what
- * the spec permits: one filter per long window at a fixed order (tns.c's
- * TNS_LPC_ORDER), never the spec's 4 filters at order 20. Both are checked
- * against the bitstream field widths by _Static_asserts in channels.c, which
- * this header can't include without a cycle. */
+/* Private coefficient-array capacities for emitted long and short filters. */
 #define TNS_MAX_ORDER 8
+enum { TNS_SHORT_MAX_ORDER = 2 };
 #define TNS_MAX_FILTERS 1
 #define DEF_TNS_COEFF_THRESH 0.1f
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
+
+typedef enum {
+    TNS_DIRECTION_FORWARD = 0,
+    TNS_DIRECTION_BACKWARD = 1
+} TnsDirection;
 
 typedef struct {
     uint8_t order;                        /* Filter order */
@@ -68,11 +70,19 @@ typedef struct {
 } TnsWindowData;
 
 typedef struct {
+    uint8_t maxOrder;
+    uint8_t direction; /* TnsDirection, stored compactly */
+    uint8_t coeffResolution;
+    float gainLimit;
+} TnsFitConfig;
+
+typedef struct {
     int tnsDataPresent;
-    int tnsMinBandNumberLong;
-    int tnsMaxBandsLong;
-    int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
-    TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
+    TnsFitConfig fit[2]; /* long, short */
+    uint8_t startBand[2];
+    uint8_t maxBands[2];
+    uint8_t numSwb[2]; /* decoder's full num_swb for the sample rate */
+    TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* one long or eight short windows */
 } TnsInfo;
 
 typedef struct CoderInfo {
@@ -95,6 +105,8 @@ typedef struct CoderInfo {
         int n;
         int len[MAX_SHORT_WINDOWS];
     } groups;
+    float temporal_gain[MAX_SHORT_WINDOWS];
+    int late_attack[MAX_SHORT_WINDOWS]; /* onset in the second half of the window */
 
     TnsInfo tnsInfo;
 
