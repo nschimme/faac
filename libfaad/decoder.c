@@ -1041,7 +1041,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
             } else if (syntax_id == ID_CCE) {
 #if MAX_CHANNELS >= 3
                 faad_status st = decode_cce(&bs, dec);
-                if (st == FAAD_ERR_INSUFFICIENT_MEM) return st;
+                if (st == FAAD_ERR_NO_MEMORY) return st;
                 if (st != FAAD_OK) { decode_success = false; break; }
                 have_coupling = true;
 #else
