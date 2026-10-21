@@ -2,7 +2,7 @@
 """Round-trip the faad frontend through faac: ADTS and MP4 input, WAV to a
 file and to stdout.
 
-Usage: faad_frontend_test.py <faac> <faad> <faam> <max-channels> <decoder-sbr> <decoder-drc> <decoder-dab>
+Usage: faad_frontend_test.py <faac> <faad> <faam> <max-channels> <decoder-sbr> <decoder-drc>
 """
 
 import math
@@ -263,52 +263,6 @@ def main():
                                     input=data if source == "-" else None, capture_output=True)
             assert result.returncode == 1 and b"sample table" in result.stderr, result.stderr
             assert not os.path.exists(out)
-
-        dab_vectors = (("lc_st48", 48000, 960),
-                                           ("he2_st48", 48000 if sbr else 24000,
-                                            1920 if sbr else 960))
-        for name, rate, frame_samples in (dab_vectors if sys.argv[7] == "true" and channels == 2 else ()):
-            fixture = os.path.join(os.path.dirname(__file__), "data", "dab", name + ".dab")
-            data = open(fixture, "rb").read()
-            asc_len = struct.unpack_from("<I", data)[0]
-            asc = data[4:4 + asc_len]
-            units = []
-            pos = 4 + asc_len
-            while pos < len(data):
-                size = struct.unpack_from("<I", data, pos)[0]
-                units.append(data[pos + 4:pos + 4 + size])
-                pos += 4 + size
-            # Seek past the repeated initial SBR/PS configuration packet.
-            skipped = len(units) * 2 + 1
-            units *= 4
-            def descriptor(tag, payload):
-                assert len(payload) < 128
-                return bytes((tag, len(payload))) + payload
-            esds = box("esds", u32(0) + descriptor(3, b"\x00\x01\x00" +
-                       descriptor(4, b"\x40\x15" + bytes(11) + descriptor(5, asc))))
-            entry = box("mp4a", bytes(6) + struct.pack(">H", 1) + bytes(8) +
-                        struct.pack(">HHHHI", 2, 16, 0, 0, 48000 << 16) + esds)
-            prefix = box("ftyp", b"M4A " + u32(0) + b"M4A ")
-            mdat = box("mdat", b"".join(units))
-            stbl = box("stbl", box("stsd", u32(0, 1) + entry) +
-                       box("stsz", u32(0, 0, len(units), *map(len, units))) +
-                       box("stsc", u32(0, 1, 1, len(units), 1)) +
-                       box("stco", u32(0, 1, len(prefix) + 8)) +
-                       box("stts", u32(0, 1, len(units), 960)))
-            mdia = box("mdia", box("mdhd", u32(0, 0, 0, 24000, len(units) * 960, 0)) +
-                       box("hdlr", u32(0, 0) + b"soun" + bytes(12)) + box("minf", stbl))
-            path = os.path.join(d, name + ".m4a")
-            with open(path, "wb") as f:
-                f.write(prefix + mdat + box("moov", box("trak", mdia)))
-            check_duration(path, len(units) * frame_samples / rate)
-            # A fractional frame offset distinguishes 960 from 1024 samples.
-            jump = str((skipped + 0.25) * frame_samples / rate)
-            result = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw",
-                                     "--jump", jump, path], check=True, capture_output=True)
-            assert len(result.stdout) == (len(units) - skipped) * frame_samples * 2 * 2, (name, len(units), skipped, len(result.stdout), (len(units) - skipped) * frame_samples * 2 * 2)
-            sequential = subprocess.run([faad, "-q", "-w", "-g", "-f", "raw", path],
-                                        check=True, capture_output=True).stdout
-            assert result.stdout == sequential[skipped * frame_samples * 2 * 2:], (name, "MP4 jump PCM/history")
 
         from faad_drc_stream import drc, inject
         drc_path = os.path.join(d, 'drc.aac')

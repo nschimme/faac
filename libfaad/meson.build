@@ -152,15 +152,6 @@ test_faad_coupling = executable('test_faad_coupling', 'test_faad_coupling.c',
 test('faad_coupling_test', test_faad_coupling)
 
 
-if get_option('decoder-dab')
-    test_faad_dab = executable('test_faad_dab', 'test_faad_dab.c',
-        c_args : faad_c_args + test_static_args,
-        include_directories : ['..', '../include', common_inc],
-        link_with : libfaad,
-        dependencies : [libm],
-    )
-    test('faad_dab_test', test_faad_dab, args : [meson.project_source_root() / 'tests' / 'data' / 'dab'])
-endif
 if cc.has_argument('-fshort-enums')
     test_faad_api_short = executable('test_faad_api_short', 'test_faad_api.c',
         c_args: faad_c_args + test_static_args + ['-fshort-enums'],

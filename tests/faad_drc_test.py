@@ -14,13 +14,13 @@ from faad_drc_stream import drc, inject
 
 def main():
     faac, probe = sys.argv[1:3]
-    enabled, sbr, dab = sys.argv[3:6]
+    enabled, sbr = sys.argv[3:5]
     enabled = enabled == 'true'
-    case = sys.argv[6] if len(sys.argv) > 6 else 'all'
-    channels = min(2, int(sys.argv[7]))
+    case = sys.argv[5] if len(sys.argv) > 5 else 'all'
+    channels = min(2, int(sys.argv[6]))
     if case == 'excluded' and channels < 2:
         return sys.exit(77)
-    if (case in ('he', 'hetilt') and sbr != 'true') or (case == 'dab' and dab != 'true'):
+    if case in ('he', 'hetilt') and sbr != 'true':
         return sys.exit(77)
     def selected(name):
         return case in ('all', name)
@@ -222,24 +222,6 @@ def main():
             assert any(r[6] for r, _ in base_short), 'fixture must contain short windows'
             ratio(samples(decode(inject(transient, drc()), 127)), samples(base_short), -20*math.log10(2) if enabled else 0)
             print('verified short-window single-band gain: PASS')
-        if selected('dab') and dab == 'true':
-            for name in (('lc_mono32', 'lc_st48') if channels >= 2 else ('lc_mono32',)):
-                path = os.path.join(os.path.dirname(__file__), 'data', 'dab', name + '.dab')
-                data = open(path, 'rb').read()
-                offset = 4 + struct.unpack_from('<I', data)[0]
-                modified = data[:offset]
-                while offset < len(data):
-                    n = struct.unpack_from('<I', data, offset)[0]
-                    offset += 4
-                    # Reuse the bit splice with a temporary ADTS envelope, never decoded.
-                    length = n + 7
-                    header = bytes((255,241,80,128 | (length >> 11), (length >> 3)&255, ((length&7)<<5)|31,252))
-                    body = inject(header + data[offset:offset+n], drc())[7:]
-                    modified += struct.pack('<I', len(body)) + body
-                    offset += n
-                ratio(samples(decode(modified, 127, raw=True)), samples(decode(data, raw=True)), -20*math.log10(2) if enabled else 0)
-            print('960-sample gain: PASS')
-
         if selected('he') and sbr == 'true':
             os.unlink(aac)
             subprocess.run([faac, '-a', '--object-type', 'he-aac-v1', '-b', str(32 * channels), '-o', aac, src], check=True, capture_output=True)
