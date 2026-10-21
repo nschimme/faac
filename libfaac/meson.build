@@ -117,3 +117,13 @@ if is_variable('libfaac_static')
                 dependencies : [libm]))
     endforeach
 endif
+
+# quantize.c is included into the test so the static kernels are reachable.
+if is_variable('libfaac_static') and config_h.get('HAVE_SSE2')
+    test('faac_quantize_test',
+        executable('test_faac_quantize', 'test_faac_quantize.c',
+            include_directories : common_args['include_directories'],
+            c_args : common_args['c_args'],
+            link_with : [libfaac_static, quantize_sse],
+            dependencies : [libm, codec_dep]))
+endif

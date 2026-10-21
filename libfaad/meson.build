@@ -168,6 +168,15 @@ if get_option('encoder')
         dependencies: [libm],
     )
     test('faad_robust_test', test_faad_robust, timeout: 120)
+
+    test_faad_roundtrip = executable('test_faad_roundtrip',
+        'test_faad_roundtrip.c',
+        c_args: faad_c_args + test_static_args,
+        include_directories: ['..', '../include', common_inc],
+        link_with: [libfaad, libfaac],
+        dependencies: [libm],
+    )
+    test('faad_roundtrip_test', test_faad_roundtrip)
 endif
 
 if get_option('encoder') and (default_lib == 'static' or default_lib == 'both') and not meson.is_cross_build()
