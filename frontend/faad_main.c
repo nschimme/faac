@@ -675,6 +675,7 @@ int main(int argc, char **argv)
 
     const char *infile = NULL;
     const char *outfile = NULL;
+    char *out_path = NULL;
     const char *adts_outfile = NULL;
     bool write_stdout = false;
     bool raw_format = false;
@@ -1001,7 +1002,8 @@ int main(int argc, char **argv)
 
     if (!info_only) {
         if (!write_stdout && !outfile) {
-            char *out_path = (char *)malloc(strlen(infile) + 8);
+            out_path = (char *)malloc(strlen(infile) + 8);
+            if (!out_path) { ret_status = 1; goto cleanup; }
             strcpy(out_path, infile);
             char *base = out_path;
             for (char *c = out_path; *c; c++) {
@@ -1276,6 +1278,7 @@ cleanup:
     pcm_writer_close(&writer);
     if (dec) faad_decoder_close(&dec);
     if (inbuf) free(inbuf);
+    free(out_path);
     if (is_mp4) mp4_free_track(&track);
 
 #ifdef _WIN32
