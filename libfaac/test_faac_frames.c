@@ -76,7 +76,7 @@ static unsigned walk(const stream *s, uint32_t channels, int *seq, unsigned max_
     return n;
 }
 
-static void test_ceiling(void)
+static void test_ceiling(uint32_t max_channels)
 {
     /* Noise at top quality or the highest accepted rate drives frames to the limit (mono VBR
      * and mono ABR 264k land on exactly 6144 bits), so the check can actually fail. */
@@ -88,6 +88,7 @@ static void test_ceiling(void)
     };
     for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); i++) {
         uint32_t frames = RATE * 2;
+        if (modes[i].channels > max_channels) continue; /* build has fewer channels */
         int16_t *pcm = modes[i].noise ? pcm_make_noise(modes[i].channels, frames) : pcm_make(RATE, modes[i].channels, frames);
         stream s = encode(modes[i].channels, modes[i].rc, modes[i].bit_rate, modes[i].quality, pcm, frames);
         FT_CHECK(walk(&s, modes[i].channels, NULL, 0) > 0);
@@ -120,7 +121,9 @@ static void test_window_transitions(void)
 
 int main(void)
 {
-    test_ceiling();
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    FT_REQUIRE(faac_get_library_info(&lib) == FAAC_OK);
+    test_ceiling(lib.max_channels);
     test_window_transitions();
     return ft_done();
 }

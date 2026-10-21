@@ -49,6 +49,8 @@ static size_t encode_chunked(const config *cfg, const int16_t *pcm, uint32_t fra
 
 int main(void)
 {
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    FT_REQUIRE(faac_get_library_info(&lib) == FAAC_OK);
     static const config configs[] = {
         { "LC stereo 44.1k", FAAC_OBJ_LOW, 44100, 2, 64000 },
         { "LC mono 48k", FAAC_OBJ_LOW, 48000, 1, 48000 },
@@ -58,6 +60,7 @@ int main(void)
 
     for (size_t c = 0; c < sizeof(configs) / sizeof(configs[0]); c++) {
         const config *cfg = &configs[c];
+        if (cfg->channels > lib.max_channels) continue; /* build has fewer channels */
         uint32_t frames = cfg->rate * 3 / 2 + 5; /* not a multiple of any chunk size */
         int16_t *pcm = pcm_make(cfg->rate, cfg->channels, frames);
         uint8_t *ref = NULL;

@@ -1,7 +1,7 @@
 /* Encoder -> in-tree decoder round trip, checked against properties the format fixes
  * rather than against today's tuning:
- *  - alignment: with the declared encoder and decoder delays removed, a click lands where
- *    it was put in (the gapless contract);
+ *  - alignment: with the declared encoder and decoder delays removed, the decode lines up
+ *    with the input to the sample (the gapless contract);
  *  - level: a steady tone keeps its level to within half a scalefactor step (one step is
  *    2^(1/4), about 1.5 dB);
  *  - channel identity: a tone on one channel does not come out on the other;
@@ -114,22 +114,33 @@ static int16_t *tones(uint32_t rate, uint32_t channels, uint32_t frames, const d
     return pcm;
 }
 
-static void test_click_alignment(enum faac_object_type object, uint32_t rate, uint32_t bit_rate, const char *name)
+/* Cross-correlates the decode with the input over a wideband core-band signal. With the
+ * declared delays removed the peak must sit at lag 0: one sample off already shows as a
+ * different peak (a parabolic fit puts it within 0.01 sample of 0 at every rate tried). */
+static void test_alignment(enum faac_object_type object, uint32_t rate, uint32_t bit_rate, const char *name)
 {
-    uint32_t frames = rate * 2;
-    size_t clicks[3] = { rate * 4 / 10, rate * 9 / 10, rate * 14 / 10 };
-    int16_t *in = (int16_t *)calloc(frames, sizeof(int16_t));
+    enum { TONES = 120 };
+    uint32_t frames = rate * 3;
+    int16_t *in = (int16_t *)malloc((size_t)frames * sizeof(int16_t));
+    double phase[TONES];
+    uint32_t rng = 5;
     FT_REQUIRE(in);
-    for (size_t k = 0; k < 3; k++) in[clicks[k]] = 30000;
-    decoded d = roundtrip(object, rate, 1, bit_rate, in, frames);
-    FT_REQUIRE(d.frames > clicks[2] + d.delay + 2048);
-    for (size_t k = 0; k < 3; k++) {
-        size_t centre = clicks[k] + d.delay, peak = centre - 512;
-        for (size_t i = centre - 512; i < centre + 512; i++)
-            if (abs(d.pcm[i]) > abs(d.pcm[peak])) peak = i;
-        if (labs((long)peak - (long)centre) > 2) fprintf(stderr, "%s click %zu: ", name, k);
-        FT_CHECK(labs((long)peak - (long)centre) <= 2); /* a misdeclared delay is a frame (1024+) off */
+    for (int k = 0; k < TONES; k++) phase[k] = 2.0 * M_PI * (ft_rand(&rng) & 0xFFFF) / 65536.0;
+    for (uint32_t i = 0; i < frames; i++) {
+        double v = 0;
+        for (int k = 0; k < TONES; k++) v += 60.0 * sin(2.0 * M_PI * (300.0 + 45.0 * k) * i / rate + phase[k]);
+        in[i] = (int16_t)v;
     }
+    decoded d = roundtrip(object, rate, 1, bit_rate, in, frames);
+    double best = 0;
+    int best_lag = 0;
+    for (int lag = -4; lag <= 4; lag++) {
+        double sum = 0;
+        for (size_t i = rate / 2; i < rate * 5 / 2; i++) sum += (double)in[i] * d.pcm[i + d.delay + lag];
+        if (lag == -4 || sum > best) { best = sum; best_lag = lag; }
+    }
+    if (best_lag) fprintf(stderr, "%s: ", name);
+    FT_CHECK_INT(best_lag, 0);
     free(d.pcm);
     free(in);
 }
@@ -205,9 +216,9 @@ static void test_he_band(void)
 {
     double input, unused;
     double with = he_band_energy(1, &input), without = he_band_energy(0, &unused);
-    /* Envelope steps are 1.5 or 3 dB and the encoder trims the high band's noise
-     * floor and limiter, so this is a coarse gate: it fails if SBR is lost (tens of dB)
-     * or applied at the wrong gain (6 dB or more). */
+    /* The band measures about 4 dB under the input today, so the level gate is coarse:
+     * it catches SBR being lost (tens of dB) or a gain error of 6 dB or more. The firm
+     * property is the with/without comparison below. */
     double level = 10.0 * log10(with / input);
     FT_CHECK(level >= -9.0 && level <= 3.0);
     FT_CHECK(10.0 * log10(with / without) >= 25.0);
@@ -215,11 +226,22 @@ static void test_he_band(void)
 
 int main(void)
 {
-    test_click_alignment(FAAC_OBJ_LOW, 44100, 96000, "LC 44.1k");
-    test_click_alignment(FAAC_OBJ_LOW, 48000, 64000, "LC 48k");
-    test_click_alignment(FAAC_OBJ_HE_AAC_V1, 48000, 48000, "HE 48k");
-    test_tone_level_and_channels();
-    test_silence();
-    test_he_band();
+    faac_library_info enc = { .struct_size = sizeof(enc) };
+    faad_library_info dec = { .struct_size = sizeof(dec) };
+    FT_REQUIRE(faac_get_library_info(&enc) == FAAC_OK);
+    FT_REQUIRE(faad_get_library_info(&dec) == FAAD_OK);
+    int stereo = enc.max_channels >= 2 && dec.max_channels >= 2;
+
+    test_alignment(FAAC_OBJ_LOW, 44100, 96000, "LC 44.1k");
+    test_alignment(FAAC_OBJ_LOW, 48000, 64000, "LC 48k");
+    if (dec.sbr_supported) {
+        test_alignment(FAAC_OBJ_HE_AAC_V1, 48000, 48000, "HE 48k");
+        test_alignment(FAAC_OBJ_HE_AAC_V1, 32000, 40000, "HE 32k");
+    }
+    if (stereo) {
+        test_tone_level_and_channels();
+        test_silence();
+        if (dec.sbr_supported) test_he_band();
+    }
     return ft_done();
 }
