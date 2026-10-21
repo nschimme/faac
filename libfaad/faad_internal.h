@@ -236,9 +236,16 @@ typedef struct {
     bool gain_control_present;
 } ICSInfo;
 
+typedef enum {
+    MS_MASK_NONE = 0,
+    MS_MASK_EXPLICIT = 1,
+    MS_MASK_ALL = 2,
+    MS_MASK_RESERVED = 3
+} MSMaskMode;
+
 typedef struct {
     bool common_window;
-    uint8_t ms_mask_present; /* 0 none, 1 per band, 2 all bands */
+    MSMaskMode ms_mask_present;
     uint8_t ms_used[8][MAX_SFB];
     ICSInfo ics[2];
 } CPEInfo;

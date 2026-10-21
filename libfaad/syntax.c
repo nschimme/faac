@@ -251,8 +251,8 @@ faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, ui
         decode_ics_info(bs, &cpe->ics[0]);
         cpe->ics[1] = cpe->ics[0];
 
-        cpe->ms_mask_present = bits_get(bs, 2);
-        if (cpe->ms_mask_present == 1) {
+        cpe->ms_mask_present = (MSMaskMode)bits_get(bs, 2);
+        if (cpe->ms_mask_present == MS_MASK_EXPLICIT) {
             for (int g = 0; g < cpe->ics[0].num_window_groups && g < 8; g++) {
                 for (int sfb = 0; sfb < cpe->ics[0].max_sfb && sfb < MAX_SFB; sfb++) {
                     cpe->ms_used[g][sfb] = bits_get(bs, 1);

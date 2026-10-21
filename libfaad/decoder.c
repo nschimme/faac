@@ -978,10 +978,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 #ifdef FAAD_STATS
                 {
                     unsigned nb = bits_get_consumed(&bs) - b0;
-                    /* ms_mask_present 2 sends no per-band flags, so every band is M/S. */
-                    if (cpe->ms_mask_present == 2)
+                    /* The all-one mask sends no per-band flags. */
+                    if (cpe->ms_mask_present == MS_MASK_ALL)
                         memset(cpe->ms_used, 1, sizeof(cpe->ms_used));
-                    const uint8_t (*ms)[MAX_SFB] = cpe->ms_mask_present ? (const uint8_t (*)[MAX_SFB])cpe->ms_used : NULL;
+                    const uint8_t (*ms)[MAX_SFB] = cpe->ms_mask_present != MS_MASK_NONE ? (const uint8_t (*)[MAX_SFB])cpe->ms_used : NULL;
                     core_dump_ics(ch_idx, &cpe->ics[0], dec->spec[ch_idx], ms, nb);
                     core_dump_ics(ch_idx + 1, &cpe->ics[1], dec->spec[ch_idx + 1], ms, cpe->ms_mask_present);
                 }

@@ -34,9 +34,9 @@ void apply_ms_stereo(CPEInfo *cpe, float * restrict spec_l, float * restrict spe
     for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
         for (int sfb = 0; sfb < ics->max_sfb && sfb < MAX_SFB; sfb++) {
             bool ms_flag = false;
-            if (cpe->ms_mask_present == 1) {
+            if (cpe->ms_mask_present == MS_MASK_EXPLICIT) {
                 ms_flag = (cpe->ms_used[g][sfb] != 0);
-            } else if (cpe->ms_mask_present != 0) {
+            } else if (cpe->ms_mask_present != MS_MASK_NONE) {
                 ms_flag = true;
             }
 
@@ -102,8 +102,9 @@ void apply_is_stereo(CPEInfo *cpe, float * restrict spec_l, float * restrict spe
                     if (pos > IS_POS_RANGE) pos = IS_POS_RANGE;
                     float scale = is_scale_lut[pos + IS_POS_RANGE];
                     if (cb == 14) scale = -scale; /* INTENSITY_HCB2: out of phase */
-                    /* §4.6.8.2.3: an ms_used flag on an intensity band flips its sign. */
-                    if (cpe->ms_mask_present == 2 || (cpe->ms_mask_present == 1 && cpe->ms_used[g][sfb]))
+                    /* §4.6.8.2.3: the all-one mask also flips intensity polarity. */
+                    if (cpe->ms_mask_present == MS_MASK_ALL ||
+                        (cpe->ms_mask_present == MS_MASK_EXPLICIT && cpe->ms_used[g][sfb]))
                         scale = -scale;
 
 #ifndef FAAD_DISABLE_DAB
