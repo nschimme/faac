@@ -220,6 +220,26 @@ jobs:
           meson setup build
           FUZZ_BUILD_ONLY=1 tests/fuzz/run.sh build
 
+  sanitize:
+    name: Address and undefined behavior sanitizers
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DISABLE: 1
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build
+
+      - name: Configure sanitizer build
+        run: meson setup build -Db_sanitize=address,undefined -Db_lto=false -Db_lundef=false
+
+      - name: Test
+        run: meson test -C build --print-errorlogs --timeout-multiplier 4
+
   cppcheck:
     name: Cppcheck
     runs-on: ubuntu-latest

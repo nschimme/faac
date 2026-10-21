@@ -114,7 +114,9 @@ test_faad = executable('test_faad',
 )
 test('faad_smoke_test', test_faad)
 
-if host_machine.system() == 'linux' and (default_lib == 'static' or default_lib == 'both')
+# Allocator interception conflicts with sanitizer interception.
+faad_alloc_sanitized = get_option('b_sanitize') != 'none'
+if host_machine.system() == 'linux' and (default_lib == 'static' or default_lib == 'both') and not faad_alloc_sanitized
     test_faad_alloc = executable('test_faad_alloc', 'test_faad_alloc.c',
         c_args: faad_c_args + ['-DFAAD_STATIC'],
         include_directories: ['..', '../include', common_inc],
