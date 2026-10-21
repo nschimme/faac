@@ -189,28 +189,23 @@ static void finalize_filter(int order, const float * k, float * a)
     }
 }
 
-static void filter_spec(int length, int order, TnsDirection direction, const float * a,
-                        const float * src, float * dst)
+static void filter_forward(int length, int order, const float * a,
+                           const float * src, float * dst)
 {
     int i, j;
 
-    if (direction == TNS_DIRECTION_FORWARD) {
-        int limit = order < length ? order : length;
-
-        for (i = 0; i < limit; i++) {
-            float acc = src[i];
-            for (j = 1; j <= i; j++)
-                acc += a[j] * src[i - j];
-            dst[i] = acc;
-        }
-        for (; i < length; i++) {
-            float acc = src[i];
-            for (j = 1; j <= order; j++)
-                acc += a[j] * src[i - j];
-            dst[i] = acc;
-        }
-        return;
+    for (i = 0; i < length; i++) {
+        float acc = src[i];
+        for (j = 1; j <= order && j <= i; j++)
+            acc += a[j] * src[i - j];
+        dst[i] = acc;
     }
+}
+
+static void filter_backward(int length, int order, const float * a,
+                            const float * src, float * dst)
+{
+    int i, j;
 
     for (i = length - 1; i >= 0; i--) {
         float acc = src[i];
@@ -218,6 +213,15 @@ static void filter_spec(int length, int order, TnsDirection direction, const flo
             acc += a[j] * src[i + j];
         dst[i] = acc;
     }
+}
+
+static void filter_spec(int length, int order, TnsDirection direction, const float * a,
+                        const float * src, float * dst)
+{
+    if (direction == TNS_DIRECTION_FORWARD)
+        filter_forward(length, order, a, src, dst);
+    else
+        filter_backward(length, order, a, src, dst);
 }
 
 void TnsInit(faacEncStruct* hEncoder)
