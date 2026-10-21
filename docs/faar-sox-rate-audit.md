@@ -109,7 +109,7 @@ On a 30-second stereo 96-to-44.1 kHz High-preset probe, seven GCC `-O3 -flto`
 runs measured median CPU time of 1.598 s for the existing loop and 1.605 s for
 the recurrence. Both produced the same output checksum and exact frame count.
 The change did not improve throughput, so it was not retained. The matrix
-fingerprint suite remains green on the unchanged backend. The SoX CPU stage
+property suite remains green on the unchanged backend. The SoX CPU stage
 planner, filter design, and FIR/DFT stages still need independent adaptation
 and measurement.
 

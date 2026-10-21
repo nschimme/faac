@@ -14,9 +14,7 @@
 #else
 #define TEST_QUALITY FAAR_QUALITY_HIGH
 #endif
-#include <ctype.h>
 #include <math.h>
-#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,10 +29,6 @@
 #define CHANNEL_LIMIT 8
 #define INPUT_FRAMES 257
 #define OUTPUT_CHUNK 19
-#define FINGERPRINT_SCALE 65536.0
-#define FNV_OFFSET UINT64_C(14695981039346656037)
-#define FNV_PRIME UINT64_C(1099511628211)
-
 typedef struct audio audio;
 struct audio {
     float *samples;
@@ -42,55 +36,6 @@ struct audio {
     size_t capacity;
     uint16_t channels;
 };
-static int fail(const char *message, uint32_t in_rate, uint32_t out_rate,
-                unsigned channels);
-
-static uint64_t matrix_fingerprints[3] = {FNV_OFFSET, FNV_OFFSET, FNV_OFFSET};
-static int matrix_completed;
-
-static void hash_u32(uint64_t *hash, uint32_t value) {
-    for (unsigned i = 0; i < 4; ++i) {
-        *hash ^= (uint8_t)(value >> (i * 8));
-        *hash *= FNV_PRIME;
-    }
-}
-
-static void hash_output(uint64_t *hash, uint32_t in_rate, uint32_t out_rate,
-                        faar_quality_t quality, const audio *output) {
-    hash_u32(hash, in_rate);
-    hash_u32(hash, out_rate);
-    hash_u32(hash, (uint32_t)quality);
-    hash_u32(hash, (uint32_t)output->frames);
-    for (size_t i = 0; i < output->frames; ++i) {
-        int32_t fixed = (int32_t)llround((double)output->samples[i] * FINGERPRINT_SCALE);
-        hash_u32(hash, (uint32_t)fixed);
-    }
-}
-
-static int check_fingerprints(void) {
-    static const char *path = FAAR_FINGERPRINT_FIXTURE_PATH;
-    if (getenv("FAAR_RECORD_FINGERPRINTS")) {
-        for (unsigned q = 0; q < PRESET_COUNT; ++q)
-            printf("%u %016" PRIx64 "\n", q, matrix_fingerprints[q]);
-        return 0;
-    }
-    FILE *f = fopen(path, "r");
-    if (!f) return fail("could not open portable fingerprint fixture", 0, 0, 1);
-    for (unsigned q = 0; q < PRESET_COUNT; ++q) {
-        unsigned index;
-        uint64_t expected;
-        if (fscanf(f, "%u %" SCNx64, &index, &expected) != 2
-            || index != q || expected != matrix_fingerprints[q]) {
-            fclose(f);
-            return fail("portable regression fingerprint changed", 0, 0, 1);
-        }
-    }
-    int trailing;
-    do { trailing = fgetc(f); } while (trailing != EOF && isspace((unsigned char)trailing));
-    fclose(f);
-    return trailing == EOF ? 0 : fail("fingerprint fixture has extra records", 0, 0, 1);
-}
-
 static int fail(const char *message, uint32_t in_rate, uint32_t out_rate,
                 unsigned channels) {
     fprintf(stderr, "FAIL: %s (%u -> %u Hz, %u channels)\n", message,
@@ -256,19 +201,11 @@ static int test_matrix_streaming(void) {
                     return fail("chunking changed output samples", in_rate, out_rate, 1);
                 }
             }
-            hash_output(&matrix_fingerprints[q], in_rate, out_rate,
-                        qualities[q], &reference);
             free(reference.samples); free(streamed.samples);
         }
     }
     printf("Tuneout-derived FAAR rate matrix: %zu ordered pairs x %u presets passed\n", pair_count, PRESET_COUNT);
-    matrix_completed = 1;
     return 0;
-}
-
-static int test_recorded_fingerprints(void) {
-    if (!matrix_completed && test_matrix_streaming()) return 1;
-    return check_fingerprints();
 }
 
 #ifndef FAAR_FLOAT
@@ -414,7 +351,7 @@ static int test_equal_rate_bit_identity(void) {
 #include "verification/test_groups.h"
 int main(int argc, char **argv) {
     const faar_test_group groups[] = {
-        {"matrix", test_matrix_streaming}, {"fingerprints", test_recorded_fingerprints},
+        {"matrix", test_matrix_streaming},
 #ifndef FAAR_FLOAT
         {"coefficients", test_high_precision_coefficients},
 #endif

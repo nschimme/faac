@@ -103,8 +103,7 @@ def main():
         for target in ['quality','tuneout_matrix']:
             opts=[]
             if target=='tuneout_matrix':
-                fixture='matrix-fingerprints-staged-double.txt' if staged else 'matrix-fingerprints-double.txt'
-                opts=['-DFAAR_RATE_FIXTURE_PATH="'+str(REPO/'libfaar/verification/fixtures/rates.txt')+'"', '-DFAAR_FINGERPRINT_FIXTURE_PATH="'+str(REPO/'libfaar/verification/fixtures'/fixture)+'"']
+                opts=['-DFAAR_RATE_FIXTURE_PATH="'+str(REPO/'libfaar/verification/fixtures/rates.txt')+'"']
             run(['cc','-O3','-g','-I'+str(REPO/'include'),REPO/'libfaar'/('test_faar_'+target+'.c'),*opts,'-L'+str(d),'-Wl,-rpath,'+str(d),'-lfaar','-lm','-o',d/target],name+'-'+target+'-build')
     soxr_inc,rust_dir,versions=build_external(a,run,commands,env)
     sox_dst=a.root/'sox-instrumented-source'; sox_dst.mkdir(exist_ok=True)

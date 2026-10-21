@@ -191,6 +191,5 @@ For the runtime precision builds, use `CCACHE_DISABLE=1 meson setup
 `CCACHE_DISABLE=1 meson setup --reconfigure build-codex-float
 -Dfaar-precision=float`, then compile and run `meson test` in that directory.
 The former `faar-coefficient-precision` option is replaced by `faar-precision`.
-Fingerprint fixtures are `matrix-fingerprints-double.txt` and
-`matrix-fingerprints-float.txt`. Float builds are gated on the Fast and Good
+Float builds are gated on the Fast and Good
 masks; High is rejected at creation.

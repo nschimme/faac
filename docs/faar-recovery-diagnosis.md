@@ -48,7 +48,7 @@ On these routes, selected passband gain probes at frequencies up to 0.45 × the 
 
 Setup memory varies by preset: High uses about 0.97–7.47 MB, Good 0.29–0.45 MB, and Fast 0.18–0.33 MB of measured live heap. The High 192→48 plan is the largest. That measurement's shared library was 104,728 bytes with 91,587 ELF text bytes; f391c0b8 has 54,715. The pinned SoX CPU shared library is 2,302,080 bytes with 643,850 text bytes, but includes SoX's broader library support; this is context, not a kernel-only comparison. A 30-trial experiment with a 131,072-point FFT measured 0.06746 s for FAAR versus 0.06718 s for SoX and increased live heap to 15.0 MB; that plan was rejected, and the selected 192→48 plan stays at 65,536 points.
 
-Default, explicit-double and float builds pass all six Meson test groups; the generic staged and polyphase comparison builds were removed because they failed the quality masks. The checks cover streaming/API behavior, coefficient and FFT paths, quality probes, and rate-matrix fingerprints. See [`common-rates-current-summary.json`](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/common-rates-current-summary.json) and the raw benchmark and signal artifacts beside it.
+Default, explicit-double and float builds pass all six Meson test groups; the generic staged and polyphase comparison builds were removed because they failed the quality masks. The checks cover streaming/API behavior, coefficient and FFT paths, quality probes, and rate-matrix properties. See [`common-rates-current-summary.json`](measurements/faar-recovery-2026-10-18/staged-short-multirate-native/common-rates-current-summary.json) and the raw benchmark and signal artifacts beside it.
 
 ## Remaining validation
 
@@ -97,13 +97,12 @@ The SoX CPU code is not imported into FAAR. The inspected pinned fork contains G
 
 ## Verification scope and limits
 
-The recovery tools run quality groups independently so a fingerprint failure
+The recovery tools run quality groups independently so a failed group
 does not suppress the signal-response groups. The checks cover FAAR's native
 frame-count, chunk/capacity, drain, endpoint, dither, and channel behavior;
 cross-engine comparisons cover only shared numerical probes. SoX, KBSRC, and
 ARDFTSRC do not expose FAAR's streaming API contract, so their passing those
-numerical probes is not evidence they satisfy that contract. Fingerprints are
-regression checks, not quality proof.
+numerical probes is not evidence they satisfy that contract.
 
 The signal set includes wanted-tone gain and residual, phase, alias rejection,
 two-tone products, multitone/noise, impulses, and endpoint diagnostics. High

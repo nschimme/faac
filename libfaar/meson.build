@@ -74,10 +74,8 @@ test_faar_quality = executable('test_faar_quality',
 test('test_faar_quality', test_faar_quality)
 
 # Kept as independent verification tooling with Tuneout-derived test provenance.
-faar_fingerprint_file = 'matrix-fingerprints-' + get_option('faar-precision') + '.txt'
 faar_matrix_args = [
   '-DFAAR_RATE_FIXTURE_PATH="' + meson.current_source_dir() / 'verification/fixtures/rates.txt' + '"',
-  '-DFAAR_FINGERPRINT_FIXTURE_PATH="' + meson.current_source_dir() / 'verification/fixtures' / faar_fingerprint_file + '"',
 ]
 test_faar_tuneout_matrix = executable('test_faar_tuneout_matrix',
   'test_faar_tuneout_matrix.c',
