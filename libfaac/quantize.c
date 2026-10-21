@@ -332,7 +332,7 @@ static float treble_rolloff(int lo, int hi, float slope_per_line)
     return 10.0f / (1.0f + (float)(lo + hi) * slope_per_line);
 }
 
-static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
+static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int group_start, float quality,
                                     const AACQuantCfg * __restrict cfg, const BandEnergy * __restrict be, float group_total,
                                     float * __restrict target_out)
 {
@@ -342,14 +342,11 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     int gsize = ci->groups.len[gnum];
     int total_len = ci->sfb_offset[ci->sfbn];
     int sfb;
-    int group_start = 0;
     float group_gain = 1.0f; /* strongest onset gain among the group's windows */
 
     if (ci->block_type == ONLY_SHORT_WINDOW)
     {
-        int group, win;
-        for (group = 0; group < gnum; group++)
-            group_start += ci->groups.len[group];
+        int win;
         for (win = group_start; win < group_start + gsize; win++)
             if (ci->temporal_gain[win] > group_gain)
                 group_gain = ci->temporal_gain[win];
@@ -723,6 +720,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     int qs[FRAME_LEN];
     int i, lastsf = SF_CHAIN_UNSET, qlen = 0;
     float *gxr = xr;
+    int group_start = 0;
     int cutoff = (coder->block_type == ONLY_SHORT_WINDOW)
                ? aacquantCfg->max_l / 8 : coder->sfb_offset[coder->sfbn];
 
@@ -735,9 +733,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         if (coder->useRef)
             group_total = coder->refTotal[i];
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg, be, group_total, target);
+        derive_masking_targets(coder, i, group_start, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg, be, group_total, target);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen, aacquantCfg->sf_nudge);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
+        group_start += coder->groups.len[i];
     }
     huffbook(coder, qs);
 
