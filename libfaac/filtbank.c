@@ -265,15 +265,7 @@ static void WindowAndMdct(faacEncStruct* hEncoder, CoderInfo *coderInfo, int blo
         float * restrict src = overlapBuf + NFLAT_LS;
         float * restrict dst = p_out_mdct;
 
-        /* Not tuned for the HE-AAC core. */
-        if (hEncoder->config.aacObjectType == HE_V1)
-            for (k = 0; k < MAX_SHORT_WINDOWS; k++)
-            {
-                coderInfo->temporal_gain[k] = 1.0f;
-                coderInfo->late_attack[k] = 0;
-            }
-        else
-            OnsetGains(src, coderInfo->temporal_gain, coderInfo->late_attack);
+        OnsetGains(src, coderInfo->temporal_gain, coderInfo->late_attack);
 
         for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
             ApplyWindowDirect(dst, src, win, BLOCK_LEN_SHORT);
