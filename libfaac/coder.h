@@ -78,14 +78,10 @@ typedef struct {
 
 typedef struct {
     int tnsDataPresent;
-    int tnsMinBandNumberLong;
-    int tnsMaxBandsLong;
-    int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
-    int tnsStartBandShort;
-    int tnsMaxBandsShort;
-    int tnsNumSwbShort;
-    TnsFitConfig longFit;
-    TnsFitConfig shortFit;
+    TnsFitConfig fit[2]; /* long, short */
+    uint8_t startBand[2];
+    uint8_t maxBands[2];
+    uint8_t numSwb[2]; /* decoder's full num_swb for the sample rate */
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* one long or eight short windows */
 } TnsInfo;
 

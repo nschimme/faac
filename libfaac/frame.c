@@ -868,7 +868,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         } else if (!hEncoder->isLfeChannel[channel] && useTns &&
                    coderInfo[channel].block_type == ONLY_SHORT_WINDOW &&
                    hEncoder->config.aacObjectType != HE_V1) {
-            TnsEncodeShort(&coderInfo[channel], hEncoder->freqBuff[channel]);
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }

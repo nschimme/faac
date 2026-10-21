@@ -225,32 +225,29 @@ void TnsInit(faacEncStruct* hEncoder)
     unsigned int ch;
     int fs = hEncoder->sampleRateIdx;
 
+    int shortStartBand = 0;
+    int shortEdge = 0;
+
+    while (shortStartBand < hEncoder->srInfo->num_cb_short &&
+           (float)shortEdge * (float)hEncoder->sampleRate /
+               (2.0f * (float)BLOCK_LEN_SHORT) < TNS_SHORT_MIN_FREQUENCY) {
+        shortEdge += hEncoder->srInfo->cb_width_short[shortStartBand];
+        shortStartBand++;
+    }
+
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
         TnsInfo *info = &hEncoder->coderInfo[ch].tnsInfo;
 
-        info->tnsMaxBandsLong = tns_sfb_range[fs].max;
-        info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
-        info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
-        info->longFit.maxOrder = TNS_LPC_ORDER;
-        info->longFit.direction = TNS_DIRECTION_FORWARD;
-        info->longFit.coeffResolution = DEF_TNS_COEFF_RES;
-        info->longFit.gainLimit = TNS_GAIN_LIMIT;
-        int shortStartBand = 0;
-        int shortEdge = 0;
-
-        while (shortStartBand < hEncoder->srInfo->num_cb_short &&
-               (float)shortEdge * (float)hEncoder->sampleRate /
-                   (2.0f * (float)BLOCK_LEN_SHORT) < TNS_SHORT_MIN_FREQUENCY) {
-            shortEdge += hEncoder->srInfo->cb_width_short[shortStartBand];
-            shortStartBand++;
-        }
-        info->tnsStartBandShort = shortStartBand;
-        info->tnsMaxBandsShort = tns_sfb_max_short[fs];
-        info->tnsNumSwbShort = hEncoder->srInfo->num_cb_short;
-        info->shortFit.maxOrder = TNS_SHORT_MAX_ORDER;
-        info->shortFit.direction = TNS_DIRECTION_BACKWARD;
-        info->shortFit.coeffResolution = TNS_SHORT_COEFF_RES;
-        info->shortFit.gainLimit = TNS_SHORT_GAIN_LIMIT;
+        info->startBand[0] = tns_sfb_range[fs].min;
+        info->maxBands[0] = tns_sfb_range[fs].max;
+        info->numSwb[0] = hEncoder->srInfo->num_cb_long;
+        info->fit[0] = (TnsFitConfig){TNS_LPC_ORDER, TNS_DIRECTION_FORWARD,
+                                    DEF_TNS_COEFF_RES, TNS_GAIN_LIMIT};
+        info->startBand[1] = shortStartBand;
+        info->maxBands[1] = tns_sfb_max_short[fs];
+        info->numSwb[1] = hEncoder->srInfo->num_cb_short;
+        info->fit[1] = (TnsFitConfig){TNS_SHORT_MAX_ORDER, TNS_DIRECTION_BACKWARD,
+                                    TNS_SHORT_COEFF_RES, TNS_SHORT_GAIN_LIMIT};
     }
 }
 
@@ -400,70 +397,48 @@ static int tns_fit_range(int b_start, int b_stop, const TnsFitConfig *fit,
 void TnsEncode(CoderInfo *coderInfo, float *spec)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
+    int shortBlock = coderInfo->block_type == ONLY_SHORT_WINDOW;
+    const TnsFitConfig *fit = &tnsInfo->fit[shortBlock];
     int numBands = coderInfo->sfbn;
     const int *sfbOffsetTable = coderInfo->sfb_offset;
-    int b_start, b_stop;
+    int b_start, b_stop, w;
+    int windows = shortBlock ? MAX_SHORT_WINDOWS : 1;
 
-    /* The caller routes ONLY_SHORT_WINDOW through TnsEncodeShort(). */
+    if (shortBlock)
+        memset(tnsInfo->windowData, 0, sizeof(tnsInfo->windowData));
+    else
+        tnsInfo->windowData[0].numFilters = 0;
     tnsInfo->tnsDataPresent = 0;
-    tnsInfo->windowData[0].numFilters = 0;
 
-    /* Frame-invariant: the band limits come from the sample rate's TNS table and
-     * numBands is aacquantCfg.max_cbl for every long channel. Recomputed rather
-     * than latched in TnsInit only because TnsInit runs before CalcBW. */
-    b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
-    b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
+    /* TnsInit runs before CalcBW, so the long-band limits must still be
+     * clamped to the current frame's numBands here. */
+    b_start = min(tnsInfo->startBand[shortBlock], numBands);
+    b_stop = min(tnsInfo->maxBands[shortBlock], numBands);
     if (b_stop <= b_start)
         return;
 
-    if (!tns_fit_range(b_start, b_stop, &tnsInfo->longFit,
-                       sfbOffsetTable, spec,
-                       &tnsInfo->windowData[0].tnsFilter[0]))
-        return;
-
-#ifdef FAAC_STATS
-    g_faacStats.longBlocksTNS++;
-#endif
-
-    /* Declared from b_start to the top of the spectrum rather than to b_stop,
-     * over-declaring the region. */
-    tnsInfo->windowData[0].tnsFilter[0].length = tnsInfo->tnsNumSwbLong - b_start;
-    tnsInfo->windowData[0].numFilters = 1;
-    tnsInfo->windowData[0].coefResolution = DEF_TNS_COEFF_RES;
-    tnsInfo->tnsDataPresent = 1;
-}
-
-void TnsEncodeShort(CoderInfo *coderInfo, float *spec)
-{
-    TnsInfo *tnsInfo = &coderInfo->tnsInfo;
-
-    memset(tnsInfo->windowData, 0, sizeof(tnsInfo->windowData));
-    tnsInfo->tnsDataPresent = 0;
-    int numBands = coderInfo->sfbn;
-    const int *sfbOffsetTable = coderInfo->sfb_offset;
-    int b_start = min(tnsInfo->tnsStartBandShort, numBands);
-    int b_stop = min(tnsInfo->tnsMaxBandsShort, numBands);
-    int w;
-
-    if (b_stop <= b_start)
-        return;
-
-    for (w = 0; w < MAX_SHORT_WINDOWS; w++) {
+    for (w = 0; w < windows; w++) {
         TnsWindowData *window = &tnsInfo->windowData[w];
         float *windowSpec = spec + w * BLOCK_LEN_SHORT;
 
-        /* Only windows whose attack starts late pay for the filter. */
-        if (!coderInfo->late_attack[w])
+        /* Only short windows whose attack starts late pay for the filter. */
+        if (shortBlock && !coderInfo->late_attack[w])
             continue;
 
-        if (!tns_fit_range(b_start, b_stop, &tnsInfo->shortFit,
+        if (!tns_fit_range(b_start, b_stop, fit,
                            sfbOffsetTable, windowSpec,
                            &window->tnsFilter[0]))
             continue;
 
-        window->tnsFilter[0].length = tnsInfo->tnsNumSwbShort - b_start;
+#ifdef FAAC_STATS
+        if (!shortBlock)
+            g_faacStats.longBlocksTNS++;
+#endif
+
+        /* Declare through the decoder's full spectrum, beyond b_stop. */
+        window->tnsFilter[0].length = tnsInfo->numSwb[shortBlock] - b_start;
         window->numFilters = 1;
-        window->coefResolution = TNS_SHORT_COEFF_RES;
+        window->coefResolution = fit->coeffResolution;
         tnsInfo->tnsDataPresent = 1;
     }
 }
