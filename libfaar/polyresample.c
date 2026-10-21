@@ -101,6 +101,7 @@ struct faar_resampler_struct {
     faar_sample_t *polyphase_reverse_table; /* Reversed exact rows, avoids per-output coefficient copies */
 
     faar_sample_t *hist[MAX_CHANNELS]; /* Keeps sample and coefficient arithmetic at the selected width */
+    faar_sample_t last_input[MAX_CHANNELS]; /* Retained even when history is fully consumed */
     size_t hist_len;            /* Unconsumed frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
 
@@ -877,7 +878,11 @@ static size_t polyresample_process_single(faar_handle_t restrict r, const float 
             }
         }
         r->hist_len += in_count;
-        if (!r->flushed) r->input_frames += in_count;
+        if (!r->flushed) {
+            for (uint16_t c = 0; c < r->channels; c++)
+                r->last_input[c] = r->hist[c][r->hist_len - 1];
+            r->input_frames += in_count;
+        }
     }
 
     max_out_count = output_capacity(r, max_out_count);
@@ -1166,7 +1171,11 @@ static size_t polyresample_process_planar(faar_handle_t r,
             }
         }
         r->hist_len += in_count;
-        if (!r->flushed) r->input_frames += in_count;
+        if (!r->flushed) {
+            for (uint16_t c = 0; c < r->channels; ++c)
+                r->last_input[c] = r->hist[c][r->hist_len - 1];
+            r->input_frames += in_count;
+        }
     }
     return polyresample_process_single(r, NULL, 0, out_samples, max_out_count);
 }
@@ -1185,7 +1194,7 @@ static size_t polyresample_flush_single(faar_handle_t r, float *out_samples, siz
         if (tail) {
             for (uint16_t c = 0; c < r->channels; c++) {
                 faar_sample_t last = r->boundary == FAAR_BOUNDARY_HOLD && r->input_frames
-                    ? r->hist[c][r->hist_len - 1] : 0.0f;
+                    ? r->last_input[c] : 0.0f;
                 for (size_t j = 0; j < tail_len; j++) tail[j * r->channels + c] = last;
             }
             r->flushed = true;
