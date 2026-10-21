@@ -319,7 +319,7 @@ jobs:
           results-path: ./results
           base-sha: ${{ github.event.pull_request.base.sha }}
           cand-sha: ${{ github.event.pull_request.head.sha }}
-          summary-only: false
+          summary-only: true
           strict-decode: true
 
       - name: Upload Full Report
