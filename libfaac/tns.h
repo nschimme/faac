@@ -30,11 +30,8 @@ extern "C" {
 /* Latch the per-channel band limits from the sample rate's TNS tool table. */
 void TnsInit(faacEncStruct* hEncoder);
 
-/* Analyse one long-block channel and, if it pays off, whiten `spec` in place. */
+/* Analyse a channel and filter windows that pass the fit gates. */
 void TnsEncode(CoderInfo *coderInfo, float *spec);
-
-/* Analyse eight short-block windows and filter windows that pass the fit gates. */
-void TnsEncodeShort(CoderInfo *coderInfo, float *spec);
 
 #ifdef __cplusplus
 }
