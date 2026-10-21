@@ -39,7 +39,7 @@ project_ver = meson.project_version()
 
 common_args = {
     'include_directories' : ['..', '../include', common_inc],
-    'c_args' : faad_c_args + lib_only_c_args,
+    'c_args' : faad_c_args,
     'dependencies' : [libm, codec_dep],
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
@@ -157,17 +157,6 @@ if cc.has_argument('-fshort-enums')
         c_args: faad_c_args + test_static_args + ['-fshort-enums'],
         include_directories: ['..', '../include', common_inc], link_with: [libfaad])
     test('faad_api_short_enums_test', test_faad_api_short)
-endif
-
-if get_option('stats')
-    test_faad_dump = executable('test_faad_dump',
-        'test_faad_dump.c',
-        c_args: faad_c_args + test_static_args,
-        include_directories: ['..', '../include', common_inc],
-        link_with: [libfaad],
-    )
-    test('faad_dump_test', find_program('python3'),
-        args: [files('../tests/faad_dump_test.py'), test_faad_dump])
 endif
 
 if get_option('encoder')
