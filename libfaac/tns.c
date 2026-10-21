@@ -184,18 +184,11 @@ static void finalize_filter(int order, const float * k, float * a)
 static void filter_spec(int length, int order, const float * a, const float * src, float * dst)
 {
     int i, j;
-    int limit = order < length ? order : length;
 
-    for (i = 0; i < limit; i++) {
+    for (i = length - 1; i >= 0; i--) {
         float acc = src[i];
-        for (j = 1; j <= i; j++)
-            acc += a[j] * src[i - j];
-        dst[i] = acc;
-    }
-    for (; i < length; i++) {
-        float acc = src[i];
-        for (j = 1; j <= order; j++)
-            acc += a[j] * src[i - j];
+        for (j = 1; j <= order && i + j < length; j++)
+            acc += a[j] * src[i + j];
         dst[i] = acc;
     }
 }
@@ -310,11 +303,11 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     filter->order = order;
 
-    /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
+    /* Fixed, not chosen: calc_autocorr_f is invariant under sequence
      * reversal, so both directions give the same LPC fit and prediction gain.
      * Picking the right one needs the time-domain transient position, which
      * this function never sees. */
-    filter->direction = 0;
+    filter->direction = 1;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */
