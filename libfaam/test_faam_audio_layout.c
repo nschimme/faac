@@ -13,7 +13,8 @@
  * Lesser General Public License for more details.
  */
 
-/* Container regression for the frontend's single-track write sequence. */
+/* Single-track AAC layout: every mvhd/tkhd/mdhd/elst/stsz/stco/esds field is derived
+ * from the written frames, for ABR, constant-rate, faststart and 64-bit durations. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -145,6 +146,6 @@ int main(void) {
     run_case(100, true, 0, false);
     run_case(10, true, 0, false);
     run_case(2, false, true, false);
-    puts("master layout: short, ABR, CBR, and 64-bit duration passed");
+    puts("audio layout: short, ABR, CBR, faststart and 64-bit duration passed");
     return 0;
 }

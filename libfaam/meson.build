@@ -97,14 +97,14 @@ test_faam = executable(
 
 test('faam_smoke_test', test_faam)
 
-test_master_layout = executable(
-  'test_master_layout',
-  'test_master_layout.c',
+test_faam_audio_layout = executable(
+  'test_faam_audio_layout',
+  'test_faam_audio_layout.c',
   include_directories: libfaam_inc,
   link_with: libfaam_static,
   c_args: ['-DFAAM_STATIC'],
 )
-test('faam_master_layout_test', test_master_layout)
+test('faam_audio_layout_test', test_faam_audio_layout)
 
 test_faststart = executable(
   'test_faststart',
