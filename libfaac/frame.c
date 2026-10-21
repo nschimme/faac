@@ -562,6 +562,12 @@ int faacEncClose(faacEncHandle hpEncoder)
                     grp_avg, split, g_faacStats.shortChannels);
         }
 
+        if (g_faacStats.shortChannels > 0)
+            fprintf(stderr, " Short TNS           : Late win = %u | Filtered = %u | TNS ch = %5.1f%% of %u short ch\n",
+                    g_faacStats.shortWindowsLate, g_faacStats.shortWindowsTNS,
+                    100.0 * g_faacStats.shortChannelsTNS / g_faacStats.shortChannels,
+                    g_faacStats.shortChannels);
+
 
         if (g_faacStats.sbrFrames > 0)
         {
