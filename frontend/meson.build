@@ -38,7 +38,6 @@ if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
     libfaar_for_frontend = get_option('frontend-static') ? libfaar_static : libfaar
     libfrontend = static_library('frontend',
-<<<<<<< HEAD
         ['mp4write.c', 'output.c', 'encode_engine.c', 'progress.c',
          'mp4write.h', 'progress.h', 'output.h', 'encode_engine.h'],
         link_with: [libfaac_for_frontend, libfaar_for_frontend],
