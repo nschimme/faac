@@ -21,6 +21,10 @@ if get_option('decoder-sbr')
     faad_src += ['sbr_dec_tables.c']
 endif
 
+if get_option('decoder-ps') and get_option('decoder-sbr') and get_option('max-channels') >= 2
+    faad_src += ['../common/ps_tables.c']
+endif
+
 faad_c_args = c_args + ['-DCOMMON_PREFIX=faad_']
 if not get_option('decoder-drc')
     faad_c_args += ['-DFAAD_DISABLE_DRC']

@@ -87,7 +87,8 @@ otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8), `FAAC_SBR_DECIMATION`
 |---|---|
 | AAC-LC | Supported by every encoder build; 1024 samples/channel per frame |
 | HE-AAC v1 | Dual-rate SBR; input rate at least 32000 Hz; 2048 samples/channel per frame |
-| HE-AAC v2, MAIN, SSR, LTP, LD, ELD, USAC | Unsupported |
+| HE-AAC v2 | SBR + Parametric Stereo; requires `encoder-ps=true`, stereo input, and input rate at least 32000 Hz; 2048 samples/channel per frame |
+| MAIN, SSR, LTP, LD, ELD, USAC | Unsupported |
 | ADTS | Library supplies each frame's header |
 | RAW AAC | One access unit per emitted frame; MPEG-4 ASC available separately |
 | MP4/M4A | Mux outside the library using RAW access units and ASC |

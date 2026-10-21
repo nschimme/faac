@@ -4,7 +4,7 @@ FAAC is an open-source, dependency-free AAC encoder, with FAAD as its decoder, a
 
 ### Key features:
 
-- MPEG-4 AAC-LC and HE-AAC v1 (SBR) encoding and decoding, plus HE-AAC v2 (PS) decoding
+- MPEG-4 AAC-LC, HE-AAC v1 (SBR), and optional HE-AAC v2 (PS) encoding and decoding
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
@@ -58,6 +58,7 @@ Lesser General Public License for more details.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `encoder` | true | Build `libfaac` and the `faac` frontend |
+| `encoder-ps` | true | Enable HE-AAC v2 Parametric Stereo encoding |
 | `decoder` | true | Build `libfaad` and the `faad` frontend |
 | `frontend` | true | Build the command-line tools |
 | `frontend-static` | false | Link the frontend executables to the static libraries |
@@ -69,6 +70,10 @@ Lesser General Public License for more details.
 | `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
 | `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
+
+PS encoding requires stereo input at 32 kHz or higher. Force HE-AAC v2 with
+`faac --object-type he-aac-v2`; AUTO selects it within the measured low-bitrate
+range when PS encoding is enabled. See [PS quality measurements](docs/ps-quality.md).
 
 Library integration: [FAAC encoder API](docs/libfaac.md), [FAAD decoder API](docs/libfaad.md) and
 [FAAM MP4 muxer/demuxer API](docs/libfaam.md).

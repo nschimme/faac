@@ -44,7 +44,18 @@ typedef struct SignalAnalysis {
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int envSampled[SBR_MAX_ENVELOPES];
 
-    SignalAnalysisChannel ch[];
+    /* Block switching needs a decision for every core channel, so pass 1 runs
+       full width. */
+    SignalAnalysisChannel ch[MAX_CHANNELS];
+
+    /* Per-envelope QMF band energy, binned over the grid above; only the first
+       numEnvelopes rows are written. */
+    float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+#if FAAC_ENCODER_PS
+    float bandCrossE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+    float bandCrossIm[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+    float psE[2][4][64], psCross[4][64], psCrossIm[4][64];
+#endif
 } SignalAnalysis;
 
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr);

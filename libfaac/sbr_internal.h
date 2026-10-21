@@ -19,6 +19,7 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
+#include "ps.h"
 
 /* A written frame's last envelope and the layout it was coded in: the
  * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
@@ -57,12 +58,31 @@ typedef struct SbrFrameData {
     uint8_t tEnv[SBR_MAX_ENVELOPES + 1];
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
-    SbrEnvData ch[];
+    struct {
+        int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+    } ch[MAX_CHANNELS];
+#if FAAC_ENCODER_PS
+    int iid[PS_BANDS];
+    int icc[PS_BANDS];
+    int enable_icc;
+    int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
+    int enable_phase;
+    int ps_num_env;
+    struct {
+        int iid[PS_BANDS], icc[PS_BANDS];
+        int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
+    } ps_extra[1];
+#endif
 } SbrFrameData;
 
 struct SBRInfo {
-    /* Coupled rendition of the pair being written: level, then balance. */
+    int is_he_v2;
+#if FAAC_ENCODER_PS
+    PsHybrid psHybrid;
+#endif
+    /* Coupled rendition of a conventional stereo SBR pair: level, then balance. */
     SbrEnvData cpl[2];
+    int sbrPresent;
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
     int numChannels;
     int sampleRate;        /* full output rate; the dual-rate core runs at sampleRate/2 */
@@ -112,8 +132,9 @@ struct SBRContext {
        the payload the current access unit emits. */
     SbrFrameData *frameFIFO[SBR_FRAME_FIFO];
     int          frameHead;
-    /* Channel-sized payload slots share the context allocation. */
-    unsigned char frameData[];
+#if FAAC_ENCODER_PS
+    PsCarrier psCarrier;
+#endif
 };
 
 SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
@@ -123,6 +144,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 int build_freq_table(SBRInfo *sbr);
 void SbrEnd(SBRInfo *sbr);
 
+void SbrQmfAnalysisComplex(SBRInfo *, const float *, float *, float *, int, int);
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
