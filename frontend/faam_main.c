@@ -1700,7 +1700,7 @@ static int cmd_demux(int argc, char **argv)
     uint32_t frame_bytes = 0;
     static const uint8_t annexb_sc[4] = { 0x00, 0x00, 0x00, 0x01 };
 
-    faam_frame_loc loc;
+    faam_frame_loc loc = { .struct_size = sizeof(loc) };
     while (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
         if (loc.track_id != ti.track_id) {
             /* Skip frames not belonging to the extracted track */
