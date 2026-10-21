@@ -38,10 +38,8 @@ config_h.set('FAAD_STATS', get_option('stats'))
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
 
 c_args = []
-lib_only_c_args = []
 if cc.get_argument_syntax() == 'msvc'
-    c_args += ['-DWIN32', '-D_WINDOWS', '-D_USRDLL']
-    lib_only_c_args += ['-DNDEBUG']
+    c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL']
 endif
 
 configure_file(
