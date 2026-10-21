@@ -34,6 +34,13 @@ jobs:
               options: -Dfaar-precision=float,
             }
           - {
+              name: Linux GCC (single channel),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dmax-channels=1,
+            }
+          - {
               name: Linux GCC (SBR Decimation),
               os: ubuntu-latest,
               compiler: gcc,
