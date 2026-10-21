@@ -1,0 +1,35 @@
+name: Nightly fuzzing
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DISABLE: 1
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build clang
+
+      - name: Run fuzz harnesses
+        run: |
+          meson setup build
+          tests/fuzz/run.sh build 120
+
+      - name: Upload fuzz failures
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-failures
+          path: |
+            build/fuzz/**/crash-*
+            build/fuzz/**/leak-*
+          if-no-files-found: ignore

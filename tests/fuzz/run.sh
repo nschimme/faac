@@ -5,7 +5,11 @@ set -e
 root=$(cd "$(dirname "$0")/../.." && pwd)
 bd=${1:-$root/build}
 secs=${2:-60}
-shift 2 2>/dev/null || true
+if [ "$#" -ge 2 ]; then
+    shift 2
+else
+    shift "$#"
+fi
 targets="$*"
 
 # Generated headers (git_version.h) and config.h come from the meson build.
@@ -31,7 +35,7 @@ build_target() {
 }
 
 # Source files for libfaad (excluding test_*.c)
-faad_src="$root/libfaad/asc.c $root/libfaad/bits.c $root/libfaad/decoder.c $root/libfaad/dequant.c $root/libfaad/huffman.c $root/libfaad/imdct.c $root/libfaad/ps.c $root/libfaad/sbr.c $root/libfaad/sbr_dec_tables.c $root/libfaad/stereo.c $root/libfaad/syntax.c $root/libfaad/tns.c"
+faad_src="$root/libfaad/asc.c $root/libfaad/bits.c $root/libfaad/coupling.c $root/libfaad/decoder.c $root/libfaad/dequant.c $root/libfaad/huffman.c $root/libfaad/imdct.c $root/libfaad/ps.c $root/libfaad/sbr.c $root/libfaad/sbr_dec_tables.c $root/libfaad/stereo.c $root/libfaad/syntax.c $root/libfaad/tns.c"
 
 # Source files for libfaam
 faam_src="$root/libfaam/atom_patch.c $root/libfaam/chapter.c $root/libfaam/demux.c $root/libfaam/faam_util.c $root/libfaam/metadata.c $root/libfaam/mux.c $root/libfaam/tag.c"
