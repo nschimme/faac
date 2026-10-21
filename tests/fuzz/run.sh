@@ -144,9 +144,6 @@ for t in $run_list; do
         exit 1
     fi
     mkdir -p "corpus_$t"
-    if [ "$t" = fuzz_faad_raw960 ]; then
-        cp "$root"/tests/fuzz/corpus_raw960/* "corpus_$t/"
-    fi
     if [ -f "$seed_m4a" ]; then
         case $t in
             fuzz_faam_tags) { printf '\000'; cat "$seed_m4a"; } > "corpus_$t/seed_m4a" ;;

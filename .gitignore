@@ -74,3 +74,8 @@ core
 experiments/
 /libfaac/faac.pc
 __pycache__/
+
+# libFuzzer working corpora and output
+/tests/fuzz/corpus_*
+/tests/fuzz/out/
+/fuzz/
