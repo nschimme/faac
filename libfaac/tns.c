@@ -425,13 +425,20 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
         if (shortBlock && !coderInfo->late_attack[w])
             continue;
 
+#ifdef FAAC_STATS
+        if (shortBlock)
+            g_faacStats.shortWindowsLate++;
+#endif
+
         if (!tns_fit_range(b_start, b_stop, fit,
                            sfbOffsetTable, windowSpec,
                            &window->tnsFilter[0]))
             continue;
 
 #ifdef FAAC_STATS
-        if (!shortBlock)
+        if (shortBlock)
+            g_faacStats.shortWindowsTNS++;
+        else
             g_faacStats.longBlocksTNS++;
 #endif
 
@@ -441,4 +448,9 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
         window->coefResolution = fit->coeffResolution;
         tnsInfo->tnsDataPresent = 1;
     }
+
+#ifdef FAAC_STATS
+    if (shortBlock && tnsInfo->tnsDataPresent)
+        g_faacStats.shortChannelsTNS++;
+#endif
 }

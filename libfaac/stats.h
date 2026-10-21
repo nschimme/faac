@@ -37,6 +37,9 @@ typedef struct faacEncStats {
 
     unsigned int longBlocks;
     unsigned int longBlocksTNS;
+    unsigned int shortWindowsLate;
+    unsigned int shortWindowsTNS;
+    unsigned int shortChannelsTNS;
 
     unsigned int sbrFrames;
     unsigned int sbrTransientFrames;
