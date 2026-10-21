@@ -39,7 +39,7 @@ project_ver = meson.project_version()
 
 common_args = {
     'include_directories' : ['..', '../include', common_inc],
-    'c_args' : faad_c_args,
+    'c_args' : faad_c_args + lib_only_c_args,
     'dependencies' : [libm, codec_dep],
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',

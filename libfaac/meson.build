@@ -4,7 +4,7 @@ if config_h.get('HAVE_SSE2')
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
-        c_args: c_args + sse2_flag,
+        c_args: c_args + lib_only_c_args + sse2_flag,
         gnu_symbol_visibility: 'hidden'
     )
     quantize_simd_libs += quantize_sse
@@ -58,7 +58,7 @@ project_ver = meson.project_version()
 
 common_args = {
     'include_directories' : ['..', '../include', common_inc],
-    'c_args' : c_args + ['-DCOMMON_PREFIX=faac_'],
+    'c_args' : c_args + lib_only_c_args + ['-DCOMMON_PREFIX=faac_'],
     'dependencies' : [libm, codec_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,

@@ -17,6 +17,7 @@
 /* Exercise dump lifecycle in one process: output must be readable immediately
  * after close, append across streams, and restart frame numbering per stream. */
 #include "faad3.h"
+#undef NDEBUG
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

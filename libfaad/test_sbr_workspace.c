@@ -1,5 +1,6 @@
 /* Compare shared storage with the separate-buffer processing order. */
 #include "sbr.c"
+#undef NDEBUG
 #include <assert.h>
 #include <stdio.h>
 

@@ -1,4 +1,5 @@
 #include "faad_internal.h"
+#undef NDEBUG
 #include <assert.h>
 #include <stdio.h>
 
