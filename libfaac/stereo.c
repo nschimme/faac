@@ -297,16 +297,10 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         elem->common_window = false;
         elem->msInfo.is_present = false;
 
-        if (coder[lch].block_type != coder[rch].block_type || coder[lch].groups.n != coder[rch].groups.n)
+        /* frame.c assigns one group to non-short blocks and copies the
+         * left short grouping to its CPE partner in BlocGroup. */
+        if (coder[lch].block_type != coder[rch].block_type)
             continue;
-
-        int ok = 1;
-        for (int g = 0; g < coder[lch].groups.n; g++) {
-            if (coder[lch].groups.len[g] != coder[rch].groups.len[g]) {
-                ok = 0; break;
-            }
-        }
-        if (!ok) continue;
 
         int shortwin = coder[lch].block_type == ONLY_SHORT_WINDOW;
         int ms_end = cfg->msEnd[shortwin];
