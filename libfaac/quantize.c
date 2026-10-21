@@ -505,33 +505,38 @@ static void nudge_scalefactors(const CoderInfo *ci, int *sel, int n, int base, i
         /* absolute scalefactor of state s is a0 + 1 - s */
         a0 = ci->sf[base + sb] + SF_OFFSET - sel[sb];
         {
-            int edge[SF_NUDGE_STATES + 1] = {0};
-            int state;
+            int edge0 = 0, edge1 = 0, edge2 = 0;
+            int best, best_pred;
             if (prev_a0 != SF_CHAIN_UNSET)
             {
                 int d0 = a0 - prev_a0;
-                edge[0] = 4 * sf_delta_cost(d0 - 1);
-                edge[1] = 4 * sf_delta_cost(d0);
-                edge[2] = 4 * sf_delta_cost(d0 + 1);
+                edge0 = 4 * sf_delta_cost(d0 - 1);
+                edge1 = 4 * sf_delta_cost(d0);
+                edge2 = 4 * sf_delta_cost(d0 + 1);
             }
-            bp[sb] = 0;
-            for (state = 0; state < SF_NUDGE_STATES; state++)
+            /* Spell out the two-state transitions: keeping this tiny fixed
+             * graph out of nested loops lets the compiler share the delta
+             * costs without a per-band state loop. Predecessor ties still
+             * favor state 1, matching the original loop order. */
+            best = cost[1] + edge2;
+            best_pred = 1;
+            if (cost[0] + edge1 < best)
             {
-                int pred = SF_NUDGE_STATES - 1;
-                int best = cost[pred] + edge[pred - state + 1];
-                int best_pred = pred;
-                for (pred = SF_NUDGE_STATES - 2; pred >= 0; pred--)
-                {
-                    int candidate = cost[pred] + edge[pred - state + 1];
-                    if (candidate < best)
-                    {
-                        best = candidate;
-                        best_pred = pred;
-                    }
-                }
-                next[state] = best;
-                bp[sb] |= (unsigned char)(best_pred << state);
+                best = cost[0] + edge1;
+                best_pred = 0;
             }
+            next[0] = best;
+            bp[sb] = (unsigned char)best_pred;
+
+            best = cost[1] + edge1;
+            best_pred = 1;
+            if (cost[0] + edge0 < best)
+            {
+                best = cost[0] + edge0;
+                best_pred = 0;
+            }
+            next[1] = best;
+            bp[sb] |= (unsigned char)(best_pred << 1);
         }
         next[0] += SF_NUDGE_COST;
         cost[0] = next[0]; cost[1] = next[1];
