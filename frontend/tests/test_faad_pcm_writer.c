@@ -15,8 +15,8 @@
 
 /* Exercise production PCM finalization across signed and unsigned 32-bit
  * boundaries using sparse files, without decoding gigabytes of audio. */
-#define main faad_cli_main
-#include "../frontend/faad_main.c"
+#define main decode_engine_c_main
+#include "../decode_engine.c"
 #undef main
 #ifdef _WIN32
 #include <winioctl.h>

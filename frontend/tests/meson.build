@@ -30,12 +30,22 @@ test('test_unit_frontend_output_helpers', test_output)
 if get_option('encoder') and not meson.is_cross_build()
     test_encode_engine = executable('test_encode_engine', 'test_encode_engine.c',
         c_args: c_args_list,
-        include_directories: ['..', '../..', '../../include', common_inc],
+        include_directories: ['..', '../..', '../../include', common_inc, '../../tests'],
         link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
         dependencies: [frontend_common_dep])
     test('test_integration_faac_encode_engine', test_encode_engine,
         args: [join_paths(meson.current_build_dir(), 'encode-engine-test.wav'),
                join_paths(meson.current_build_dir(), 'encode-engine-test.aac')])
+endif
+
+if get_option('decoder') and not meson.is_cross_build()
+    test_decode_engine = executable('test_decode_engine',
+        ['test_decode_engine.c', '../decode_engine.c', '../mp4read.c', '../adts.c'],
+        c_args: c_args_list,
+        include_directories: ['..', '../..', '../../include', common_inc, '../../tests'],
+        link_with: [libfaad_for_frontend, libfaam_for_frontend],
+        dependencies: [frontend_common_dep])
+    test('test_integration_faad_decode_engine', test_decode_engine)
 endif
 
 if get_option('encoder') and not meson.is_cross_build()

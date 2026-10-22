@@ -22,8 +22,8 @@ libshell32 = cc.find_library('shell32', required: target_machine.system() == 'wi
 libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
 
 frontend_common = static_library('frontend_common',
-    ['input.c', 'cli_io.c', 'cli_parse.c', 'charset.c', 'help.c',
-     'input.h', 'cli_io.h', 'cli_parse.h', 'charset.h', 'help.h', git_version_h],
+    ['input.c', 'cli_io.c', 'cli_parse.c', 'charset.c', 'help.c', 'progress.c',
+     'input.h', 'cli_io.h', 'cli_parse.h', 'charset.h', 'help.h', 'progress.h', git_version_h],
     include_directories: ['..', '../include', '../common'],
     c_args: c_args_list,
     dependencies: [libiconv],
@@ -38,8 +38,8 @@ if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
 
     libfrontend = static_library('frontend',
-        ['mp4write.c', 'output.c', 'encode_engine.c', 'progress.c',
-         'mp4write.h', 'progress.h', 'output.h', 'encode_engine.h'],
+        ['mp4write.c', 'output.c', 'encode_engine.c',
+         'mp4write.h', 'output.h', 'encode_engine.h'],
         link_with: [libfaac_for_frontend],
         dependencies: [frontend_common_dep]
     )
@@ -79,7 +79,7 @@ if get_option('decoder')
         gc_args += ['-Wl,-dead_strip']
     endif
     faad = executable('faad',
-        ['faad_main.c', 'mp4read.c', 'adts.c'],
+        ['faad_main.c', 'decode_engine.c', 'mp4read.c', 'adts.c'],
         link_with: [libfaad_for_frontend],
         link_args: gc_args,
         dependencies: [libshell32, frontend_common_dep],
@@ -88,9 +88,6 @@ if get_option('decoder')
 endif
 
 if get_option('muxer')
-    # Large-file semantics on 32-bit POSIX for every fopen() and stat() in faam, cli_io.c's
-    # included: without them a file past 2 GiB cannot be opened, and cli_same_file() could not
-    # see it.
     faam = executable('faam',
         ['faam_main.c', 'adts.c', 'annexb.c',
          'adts.h', 'annexb.h'],
