@@ -10,7 +10,7 @@
 
 static int write_checked(const SbrFrameData *fd, const PsRef *ref, int offset)
 {
-    unsigned char first[512], second[512];
+    unsigned char first[512] = {0}, second[512] = {0};
     int count = PsWrite(fd, NULL, false, ref);
     for (int pass = 0; pass < 2; pass++) {
         unsigned char *data = pass ? second : first;
