@@ -32,9 +32,10 @@
  * fewer frames and gains less. */
 #define IS_ONLY_BITRATE  40000
 /* From this rate (bps per channel) a short window takes M/S on every band
- * like a long one instead of intensity stereo; below it the bits that
- * full-band intensity stereo saves still buy more quality than the image
- * they cost. Measured at 160 and 192 kbps stereo LC. */
+ * like a long one. Below it, down to the starved rates, it takes M/S below
+ * MS_SPLIT_HZ and intensity stereo above: wider M/S cost quality on tonal
+ * clips that go short, while intensity stereo from the lowest band collapsed
+ * the image. */
 #define MS_SHORT_BITRATE  80000
 /* From this rate (bps per channel) a two-channel LC band takes M/S somewhat
  * more readily than the plain mid*side < left*right test: the side channel
@@ -45,8 +46,8 @@
 /* Starved rates (bps per channel) from which long windows take real M/S
  * instead of intensity stereo; below them the side channel's bits cost more
  * quality than the image gains. Between the HE tiers only the low band takes
- * it. Short windows take it below MS_SPLIT_HZ only: across a group's shared
- * scalefactors the side channel's noise spreads ahead of the attack. */
+ * it. Short windows take it below MS_SPLIT_HZ only, as above MS_SHORT_BITRATE
+ * explains. */
 #define MS_SPLIT_HE_LOW_BITRATE   20000
 #define MS_SPLIT_HE_LOW_HZ        1000
 #define MS_SPLIT_HE_HIGH_BITRATE  24000
@@ -76,6 +77,11 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
             msHz[0] = sampleRate;
             if (bitRatePerCh >= MS_SHORT_BITRATE)
                 msHz[1] = sampleRate;
+            /* Without a per-channel rate (VBR) an HE stream keeps intensity
+             * stereo on short windows: at a fixed quality the side channel's
+             * bits cost more rate than the image returns. LC gains from M/S. */
+            else if (bitRatePerCh || !sbr)
+                msHz[1] = MS_SPLIT_HZ;
         }
         else if (sbr ? bitRatePerCh >= MS_SPLIT_HE_HIGH_BITRATE : bitRatePerCh >= MS_SPLIT_LC_BITRATE)
             msHz[0] = sampleRate, msHz[1] = MS_SPLIT_HZ;
@@ -84,8 +90,8 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
     }
 
     /* Each window type takes M/S below msEnd, intensity from isStart and plain
-     * L/R between. Without M/S, intensity covers every band past the lowest
-     * except short windows from MS_SHORT_BITRATE, which take M/S on every band. */
+     * L/R between. A window type without M/S takes intensity on every band past
+     * the lowest. */
     cfg->mode = mode;
     cfg->msTestFactor = 4.0f * ((mode == JOINT_MIXED && plainStereo &&
                            bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f);
