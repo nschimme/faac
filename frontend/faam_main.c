@@ -44,10 +44,7 @@
 #include "faam.h"
 #include "adts.h"
 #include "annexb.h"
-#include "faam_engine.h"
-#include "progress.h"
 #include "cli_io.h"
-#include "cli_parse.h"
 #include "charset.h"
 #include "help.h"
 #include "endian.h"
@@ -56,18 +53,6 @@
 #define HAS(s) ((s) && (s)[0])
 
 static int g_verbose = 1;
-
-static bool set_verbosity(const char *text)
-{
-    uint8_t value;
-    if (!cli_parse_verbosity(text, &value)) {
-        fprintf(stderr, "Invalid verbosity '%s' (expected 0, 1, or 2)\n",
-                text ? text : "");
-        return false;
-    }
-    g_verbose = value;
-    return true;
-}
 
 enum {
     HELP_COMMANDS = 1,
@@ -79,23 +64,17 @@ enum {
 
 static const help_t help_commands[] = {
     {"-i <file> ... -o <out>",
-     "Mux elementary streams into an MP4 (no subcommand word); '-' selects stdin/stdout",
-     "Inputs may be ADTS AAC or, in a video-enabled build, Annex-B H.264/H.265. Repeat -i to create multiple tracks, up to eight."},
+     "Mux elementary streams into an MP4 (no subcommand word); '-' selects stdin/stdout", NULL},
     {"info <file>",
-     "Print container, track, tag, chapter and gapless summaries; '-' reads stdin",
-     "Use this to inspect track IDs before selecting a track with demux. JSON output is available with --json."},
+     "Print container, track, tag, chapter and gapless summaries; '-' reads stdin", NULL},
     {"dump <file>",
-     "Print the MP4 atom tree; '-' reads stdin",
-     "The dump lists atom offsets, sizes and nesting, which is useful when diagnosing container layout."},
+     "Print the MP4 atom tree; '-' reads stdin", NULL},
     {"demux <file>",
-     "Extract one track's elementary stream; '-' reads stdin and -o - writes stdout",
-     "The first track is selected by default. AAC can be written as raw access units or ADTS; video is written as Annex-B."},
+     "Extract one track's elementary stream; '-' reads stdin and -o - writes stdout", NULL},
     {"tag <file>",
-     "Edit iTunes metadata tags in place",
-     "Existing modeled and unmodeled metadata is preserved unless --clear or --remove is used. Work on a copy when the edit must be crash-safe."},
+     "Edit iTunes metadata tags in place", NULL},
     {"chapter import|export <file>",
-     "Edit or list chapters of an audiobook",
-     "Import replaces the file's chapters from a tab-separated chapter list; export writes the current chapters to a text file."},
+     "Edit or list chapters of an audiobook", NULL},
     {NULL, NULL, NULL}
 };
 
@@ -104,60 +83,44 @@ static const help_t help_mux[] = {
      "Elementary stream to mux: ADTS AAC, or Annex-B H.264 or H.265 (video needs a build with -Dmuxer-video). "
      "Video is muxed one picture per sample in stream order, and B-frames are not supported: no composition "
      "time offsets are written, so reordered pictures would play out of order. Use - for stdin. "
-     "Repeat for more tracks (max 8)",
-     "AAC input must be ADTS. Video input must be Annex-B and include codec parameter sets; FAAM does not parse dimensions from the stream. Each access unit becomes one MP4 sample."},
+     "Repeat for more tracks (max 8)", NULL},
     {"-o, --output <file>",
-     "Output MP4 file (required); - streams fragmented MP4 when supported; --faststart, --brand m4b or gapless options use progressive MP4",
-     "Progressive files are written by default. With stdout, FAAM uses one-second fragmented MP4 when supported; faststart, M4B branding or gapless metadata require progressive output, which is emitted after muxing finishes."},
+     "Output MP4 file (required); - streams fragmented MP4 when supported; --faststart, --brand m4b or gapless options use progressive MP4", NULL},
     {"-v <verbose>",
-     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
-     "Status and progress are written to stderr when media is sent to stdout. Errors are always reported regardless of verbosity."},
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"--overwrite",
-     "Overwrite an existing output file",
-     "FAAM refuses to replace an existing destination without this option. An output that aliases an input is rejected even when overwrite is enabled."},
+     "Overwrite an existing output file", NULL},
     {"--codec:N <codec>",
      "Codec of the Nth -i, counting from 0: aac, h264 or h265 (default: from the file extension, "
-     ".264/.h264 or .265/.hevc, else aac)",
-     "Use this when an input extension is ambiguous or does not identify its codec. N is the zero-based position of the matching -i option."},
+     ".264/.h264 or .265/.hevc, else aac)", NULL},
     {"--brand <name>",
-     "m4a (default) or m4b, the audiobook brand",
-     "M4B branding is intended for audiobooks and forces progressive output when writing to stdout. Files containing video use the isom brand."},
+     "m4a (default) or m4b, the audiobook brand", NULL},
     {"--faststart",
      "Move the index to the front so the file plays while it downloads; rewrites the whole file "
-     "when muxing ends, so skip it on flash recorders",
-     "Faststart requires seekable progressive output because the movie index is moved ahead of media data after the inputs are read."},
+     "when muxing ends, so skip it on flash recorders", NULL},
     {"--width <pixels>",
-     "Video width; required for video, the stream is not parsed for it",
-     "Set the coded display width from 1 through 65535. FAAM stores it in the video track metadata; it does not inspect the bitstream to infer it."},
+     "Video width; required for video, the stream is not parsed for it", NULL},
     {"--height <pixels>",
-     "Video height; required for video",
-     "Set the coded display height from 1 through 65535. FAAM stores it in the video track metadata; it does not inspect the bitstream to infer it."},
+     "Video height; required for video", NULL},
     {"--rotation <degrees>",
-     "Display rotation of video tracks, clockwise: 0 (default), 90, 180 or 270",
-     "Writes a display matrix for compatible players. The encoded pictures are not rotated or rewritten."},
+     "Display rotation of video tracks, clockwise: 0 (default), 90, 180 or 270", NULL},
     {"--fps <n[/d]>",
-     "Video frame rate, a whole number or a fraction such as 30000/1001 (default: 30)",
-     "The value assigns sample durations in the video track. Fractional rates preserve the exact numerator/denominator timing."},
+     "Video frame rate, a whole number or a fraction such as 30000/1001 (default: 30)", NULL},
     {"--encoder-delay <samples>",
      "Leading priming samples, for gapless playback of audio (needs an audio track); counted in the "
-     "track's sample rate, which for HE-AAC is the core rate, as faam info prints it for a faac file",
-     "Writes gapless metadata and an edit list. The value is in samples at the AAC track's core sample rate, not necessarily the decoded output rate."},
+     "track's sample rate, which for HE-AAC is the core rate, as faam info prints it for a faac file", NULL},
     {"--padding-delay <samples>",
      "Trailing padding samples in the same units as --encoder-delay; the total length is derived from the "
-     "frames muxed",
-     "The programme duration is computed from total AAC frame duration minus encoder delay and trailing padding."},
+     "frames muxed", NULL},
     {"--sbr-signaling <mode>",
      "How the AAC track announces SBR/PS, which ADTS cannot say: none (default, decoder detects), "
-     "compatible, explicit, ps or ps-explicit (HE-AAC v2, which needs a mono core)",
-     "Use compatible for backward-compatible signaling or explicit for hierarchical signaling. The ps modes signal parametric stereo; the core AAC stream must be mono."},
+     "compatible, explicit, ps or ps-explicit (HE-AAC v2, which needs a mono core)", NULL},
     {"--language <code3>",
      "Set ISO 639-2/T 3-letter language code of audio tracks (e.g. eng, ger); default und. "
-     "--lang is the same",
-     "The language is stored on each audio track. Exactly three ASCII letters are accepted, in either case."},
+     "--lang is the same", NULL},
     {"--creation-time <value>",
      "Set creation/modification time (auto, now, or timestamp); without it SOURCE_DATE_EPOCH is used "
-     "when set, else the time is left unset",
-     "auto uses the first input's modification time; now uses the current time; a number is Unix time in seconds and must fit the MP4 32-bit timestamp field."},
+     "when set, else the time is left unset", NULL},
     {NULL,
      "Every option of --help-tag except --remove and --clear also applies when muxing.", NULL},
     {NULL, NULL, NULL}
@@ -166,83 +129,65 @@ static const help_t help_mux[] = {
 static const help_t help_inspect[] = {
     {"-o, --output <file>",
      "demux: output file (default: output.raw); - writes to stdout. A name containing .aac or .adts gets ADTS headers; "
-     "video is written as Annex-B",
-     "For AAC, names containing .aac or .adts select ADTS output; other names select raw access units. Video samples are prefixed with Annex-B start codes."},
+     "video is written as Annex-B", NULL},
     {"-v <verbose>",
-     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
-     "Progress and completion messages go to stderr if extracted media is sent to stdout."},
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"--format <raw|adts>",
-     "demux: choose AAC output format explicitly; default is inferred from the output filename (raw for stdout)",
-     "This option applies only to AAC tracks. ADTS output requires codec configuration that can be represented in an ADTS header."},
+     "demux: choose AAC output format explicitly; default is inferred from the output filename (raw for stdout)", NULL},
     {"-t, --track <id>",
-     "demux: track ID to extract (default: the first track)",
-     "Use the track IDs reported by faam info. If the file has no track with the requested ID, extraction fails."},
+     "demux: track ID to extract (default: the first track)", NULL},
     {"--export-asc <file>",
-     "demux: also write the track's codec configuration (AudioSpecificConfig, avcC or hvcC)",
-     "Writes the selected track's decoder configuration bytes alongside the extracted stream."},
+     "demux: also write the track's codec configuration (AudioSpecificConfig, avcC or hvcC)", NULL},
     {"--overwrite",
-     "demux: overwrite an existing output or --export-asc file",
-     "Both output paths are checked before either is written. An output that aliases the input or the other output is rejected."},
+     "demux: overwrite an existing output or --export-asc file", NULL},
     {NULL, NULL, NULL}
 };
 
 static const help_t help_tag[] = {
-    {"-v <verbose>", "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
-     "The same verbosity setting applies to muxing and tag editing."},
-    {"--title <text>", "Title", "Set the standard iTunes title field. Text is converted to UTF-8."},
-    {"--titlesort <text>", "Title sort name", "Set the sort order text used by media libraries independently of the displayed title."},
-    {"--artist <text>", "Artist", "Set the standard iTunes artist field. Text is converted to UTF-8."},
-    {"--album <text>", "Album", "Set the standard iTunes album field. Text is converted to UTF-8."},
-    {"--albumartist <text>", "Album artist", "Set the album artist field, which can differ from the track artist."},
-    {"--composer <text>", "Composer", "Set the standard iTunes composer field."},
-    {"--artistsort <text>", "Artist sort name", "Set the artist sort key independently of the displayed artist name."},
-    {"--albumsort <text>", "Album sort name", "Set the album sort key independently of the displayed album name."},
-    {"--albumartistsort <text>", "Album artist sort name", "Set the album-artist sort key independently of the displayed album artist."},
-    {"--composersort <text>", "Composer sort name", "Set the composer sort key independently of the displayed composer name."},
-    {"--year <text>", "Year", "Set the release year as text."},
-    {"--comment <text>", "Comment", "Set the standard iTunes comment field."},
+    {"-v <verbose>", "Set verbosity level (-v0 is quiet mode).", NULL},
+    {"--title <text>", "Title", NULL},
+    {"--titlesort <text>", "Title sort name", NULL},
+    {"--artist <text>", "Artist", NULL},
+    {"--album <text>", "Album", NULL},
+    {"--albumartist <text>", "Album artist", NULL},
+    {"--composer <text>", "Composer", NULL},
+    {"--artistsort <text>", "Artist sort name", NULL},
+    {"--albumsort <text>", "Album sort name", NULL},
+    {"--albumartistsort <text>", "Album artist sort name", NULL},
+    {"--composersort <text>", "Composer sort name", NULL},
+    {"--year <text>", "Year", NULL},
+    {"--comment <text>", "Comment", NULL},
     {"--genre <value>",
-     "ID3v1 genre number (0-255) or name; anything else is stored as free text",
-     "A recognized ID3v1 genre sets both the numeric genre atom and its text label. Other values are stored as text only."},
-    {"--compilation", "Mark as part of a compilation", "Sets the compilation flag on the MP4."},
-    {"--track <n[/total]>", "Track number", "Optionally include the total track count after a slash, for example 3/12."},
-    {"--disc <n[/total]>", "Disc number", "Optionally include the total disc count after a slash, for example 1/2."},
-    {"--cover-art <file>", "Cover image, GIF, JPEG or PNG",
-     "FAAM detects GIF, JPEG, PNG or BMP from the file contents. Cover art is limited to 32 MiB."},
+     "ID3v1 genre number (0-255) or name; anything else is stored as free text", NULL},
+    {"--compilation", "Mark as part of a compilation", NULL},
+    {"--track <n[/total]>", "Track number", NULL},
+    {"--disc <n[/total]>", "Disc number", NULL},
+    {"--cover-art <file>", "Cover image, GIF, JPEG or PNG", NULL},
     {"--tag <name=value>",
-     "Custom tag, name and value separated by = or ,; repeat for more",
-     "The first '=' or ',' separates the name from the value. Both must be non-empty."},
+     "Custom tag, name and value separated by = or ,; repeat for more", NULL},
     {"--remove <field>",
      "tag only: remove a field before the other options apply: title, titlesort, artist, artistsort, "
      "album, albumsort, albumartist, albumartistsort, composer, composersort, year, comment, genre, "
-     "compilation, track, disc, cover-art or custom. Repeatable",
-     "Removal runs before setting other supplied fields. The custom field removes all custom tags; at most 32 --remove options are accepted."},
+     "compilation, track, disc, cover-art or custom. Repeatable", NULL},
     {"--clear",
-     "tag only: remove every existing tag before the other options apply (drops all metadata, including preserved/unmodeled tags)",
-     "Unlike updating one modeled field, --clear also removes metadata FAAM does not understand. It runs before adding any new values in the same command."},
+     "tag only: remove every existing tag before the other options apply (drops all metadata, including preserved/unmodeled tags)", NULL},
     {NULL, NULL, NULL}
 };
 
 static const help_t help_chapter[] = {
     {"import <file>",
-     "Replace the chapters of an MP4 with those of the --chapters file; --chapters - reads stdin",
-     "The chapter file contains one timestamp and title per line, separated by a tab. Import replaces existing chapters while preserving tags."},
+     "Replace the chapters of an MP4 with those of the --chapters file; --chapters - reads stdin", NULL},
     {"export <file>",
-     "Write chapters from an MP4 (input - reads stdin); -o - writes stdout",
-     "A file without chapters is an error. The output uses the same timestamp and title format accepted by import."},
+     "Write chapters from an MP4 (input - reads stdin); -o - writes stdout", NULL},
     {"--chapters <file>",
      "Chapter list to import: one \"HH:MM:SS.mmm<TAB>Title\" line per chapter (max 255); the fraction "
-     "is 1 to 3 digits, .5 being 500 ms",
-     "Timestamps are interpreted as chapter start times. The maximum chapter count is 255."},
+     "is 1 to 3 digits, .5 being 500 ms", NULL},
     {"-o, --output <file>",
-     "Chapter list to write, in the same format; - writes stdout",
-     "This option is used by chapter export. When the path is -, chapter text is written to stdout."},
+     "Chapter list to write, in the same format; - writes stdout", NULL},
     {"-v <verbose>",
-     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
-     "At verbosity zero, status confirmations are suppressed; errors are still printed."},
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"--overwrite",
-     "export: overwrite an existing chapter list",
-     "Without this flag, chapter export refuses to replace an existing text file."},
+     "export: overwrite an existing chapter list", NULL},
     {NULL, NULL, NULL}
 };
 
@@ -346,20 +291,6 @@ static void print_usage(int mode)
                     g_help);
 }
 
-static void print_version_banner(void)
-{
-    if (g_verbose == 0) return;
-
-    faam_library_info info = { .struct_size = sizeof(info) };
-    const char *version = "1.0.0";
-    if (faam_get_library_info(&info) == FAAM_OK && info.version)
-        version = info.version;
-
-    char version_buf[128];
-    fprintf(stderr, "Freeware Advanced Audio Muxer\nFAAM %s\n\n",
-            cli_version_string(version_buf, sizeof(version_buf), version));
-}
-
 enum {
     OPT_BRAND = 400,
     OPT_FASTSTART,
@@ -405,6 +336,7 @@ enum {
 #define FAAM_CLI_MAX_CHAPTERS 255 /* what the library stores in a chpl atom */
 #define FAAM_TAG_MAX_REMOVE 32
 #define FAAM_MUX_MAX_TRACKS 8 /* matches faam_muxer_config.tracks[8] in include/faam.h */
+#define FAAM_VIDEO_TIMESCALE 90000
 
 static const char *bad_value(char *buf, size_t size, const char *opt, const char *val, const char *want)
 {
@@ -620,7 +552,7 @@ static int cmd_info(int argc, char **argv)
     optind = 1;
     while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
         switch (opt) {
-        case 'v': if (!set_verbosity(optarg)) return 1; break;
+        case 'v': g_verbose = atoi(optarg); break;
         case 'h': print_usage(HELP_COMMANDS); return 0;
         case 'H': print_usage('H'); return 0;
         default: print_usage('h'); return 1;
@@ -828,7 +760,7 @@ static int cmd_dump(int argc, char **argv)
     int opt;
     optind = 1;
     while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
-        if (opt == 'v') { if (!set_verbosity(optarg)) return 1; continue; }
+        if (opt == 'v') { g_verbose = atoi(optarg); continue; }
         if (opt == 'h') { print_usage(HELP_COMMANDS); return 0; }
         if (opt == 'H') { print_usage('H'); return 0; }
         print_usage('h');
@@ -993,57 +925,97 @@ static const char *adts_probe(FILE *f, adts_info *out)
     return NULL;
 }
 
-typedef struct { progress_throttle_t throttle; } mux_progress_context;
-
-static bool mux_progress(const progress_info_t *info, void *user)
+/* Muxes every ADTS frame of f from its current position. Bytes that are not a frame
+ * header are skipped, so a damaged stream loses the damage and keeps the rest. A header that
+ * disagrees with the stream's first one in profile, rate or channels is as likely to be payload
+ * that looks like a sync word as a frame of something else, and is skipped the same way. A
+ * matching header that announces more than one raw data block is a frame this tool cannot mux
+ * as one sample, so it ends the run: *multi_block is set. */
+static faam_status mux_adts_frames(faam_muxer *m, uint32_t track_id, FILE *f, const adts_params *first,
+                                   const uint8_t *prefix, size_t prefix_len,
+                                   uint32_t *frames, bool *multi_block)
 {
-    mux_progress_context *ctx = (mux_progress_context *)user;
-    if (info->is_final || progress_throttle_tick(&ctx->throttle, info, 0.033))
-        progress_render_cli(info);
-    return true;
+    uint8_t buf[65536];
+    size_t buf_len = prefix_len;
+    if (buf_len) memcpy(buf, prefix, buf_len);
+
+    for (;;) {
+        /* Read only enough for the next header or complete frame. A large fread
+         * on a pipe waits for the whole request, delaying completed fragments
+         * until the input closes or the buffer fills. */
+        size_t read_target = 7;
+        if (buf_len >= 7 && adts_header_ok(buf)) {
+            adts_params p;
+            adts_parse_header(buf, &p);
+            uint32_t len = adts_frame_length(buf);
+            uint32_t hlen = adts_header_length(buf);
+            if (p.profile == first->profile && p.sr_idx == first->sr_idx &&
+                p.channel_cfg == first->channel_cfg && p.raw_blocks == 0 && len >= hlen)
+                read_target = len;
+        }
+        if (read_target > sizeof(buf)) return FAAM_ERR_INVALID_ARG;
+        bool attempted_read = read_target > buf_len;
+        size_t n = attempted_read ? fread(buf + buf_len, 1, read_target - buf_len, f) : 0;
+        buf_len += n;
+
+        size_t off = 0;
+        while (off + 7 <= buf_len) {
+            const uint8_t *h = buf + off;
+            adts_params p;
+            if (!adts_header_ok(h)) { off++; continue; }
+            adts_parse_header(h, &p);
+            if (p.profile != first->profile || p.sr_idx != first->sr_idx || p.channel_cfg != first->channel_cfg) {
+                off++;
+                continue;
+            }
+            uint32_t len = adts_frame_length(h);
+            uint32_t hlen = adts_header_length(h);
+            if (len < hlen) { off++; continue; }
+            if (p.raw_blocks != 0) { *multi_block = true; return FAAM_OK; }
+            if (off + len > buf_len) break;
+            faam_status st = faam_muxer_write_frame(m, track_id, h + hlen, len - hlen, 1024, 0, FAAM_FRAME_KEYFRAME);
+            if (st != FAAM_OK) return st;
+            (*frames)++;
+            off += len;
+        }
+
+        memmove(buf, buf + off, buf_len - off);
+        buf_len -= off;
+        if (ferror(f)) return FAAM_ERR_IO_READ;
+        if (n == 0 && attempted_read) break;
+    }
+    return FAAM_OK;
 }
 
-typedef struct {
-    faam_track_info track;
-    FILE *output;
-    bool adts_output;
-    adts_params adts;
-    bool write_failed;
-    bool frame_too_large;
-} demux_output_context;
-
-static bool demux_write_sample(void *user, const faam_frame_loc *loc,
-                               const uint8_t *frame, uint32_t frame_bytes)
+/* One video access unit; durations follow the frame rate num/den exactly by
+ * rounding the running timestamp, not each interval. */
+static faam_status mux_video_frame(faam_muxer *m, uint32_t track_id, const uint8_t *data, uint32_t len,
+                                   bool key, uint32_t *frames, uint32_t fps_num, uint32_t fps_den)
 {
-    demux_output_context *ctx = (demux_output_context *)user;
-    static const uint8_t annexb_sc[4] = { 0x00, 0x00, 0x00, 0x01 };
+    uint64_t k = *frames;
+    uint64_t from = (k * FAAM_VIDEO_TIMESCALE * fps_den + fps_num / 2) / fps_num;
+    uint64_t to = ((k + 1) * FAAM_VIDEO_TIMESCALE * fps_den + fps_num / 2) / fps_num;
+    faam_status st = faam_muxer_write_frame(m, track_id, data, len, (uint32_t)(to - from), 0, key ? FAAM_FRAME_KEYFRAME : 0);
+    if (st == FAAM_OK) (*frames)++;
+    return st;
+}
 
-    if (ctx->track.track_type == FAAM_TRACK_VIDEO) {
-        uint32_t pos = 0;
-        while (pos + 4 <= frame_bytes) {
-            uint32_t nal_len = ((uint32_t)frame[pos] << 24) | ((uint32_t)frame[pos + 1] << 16) |
-                               ((uint32_t)frame[pos + 2] << 8) | (uint32_t)frame[pos + 3];
-            pos += 4;
-            if (pos + nal_len <= frame_bytes) {
-                ctx->write_failed |= fwrite(annexb_sc, 1, 4, ctx->output) != 4;
-                ctx->write_failed |= fwrite(frame + pos, 1, nal_len, ctx->output) != nal_len;
-                pos += nal_len;
-            } else break;
-        }
-    } else {
-        if (ctx->adts_output && ctx->track.codec_id == FAAM_CODEC_AAC) {
-            if (frame_bytes > ADTS_MAX_FRAME - ADTS_HEADER_SIZE) {
-                ctx->frame_too_large = true;
-                return false;
-            }
-            uint8_t adts[ADTS_HEADER_SIZE];
-            adts_write_header(&ctx->adts, frame_bytes, adts);
-            ctx->write_failed |= fwrite(adts, 1, sizeof(adts), ctx->output) != sizeof(adts);
-        }
-        ctx->write_failed |= fwrite(frame, 1, frame_bytes, ctx->output) != frame_bytes;
-    }
-    (void)loc;
-    return !ctx->write_failed;
+/* annexb_split() hands over one access unit at a time; the status of the write is kept for the
+ * caller, which the split itself only learns as "stopped". */
+typedef struct {
+    faam_muxer *m;
+    uint32_t track_id;
+    uint32_t *frames;
+    uint32_t fps_num;
+    uint32_t fps_den;
+    faam_status st;
+} video_sink;
+
+static bool video_sample(void *user, const uint8_t *sample, uint32_t len, bool key)
+{
+    video_sink *v = (video_sink *)user;
+    v->st = mux_video_frame(v->m, v->track_id, sample, len, key, v->frames, v->fps_num, v->fps_den);
+    return v->st == FAAM_OK;
 }
 
 static int cmd_mux(int argc, char **argv)
@@ -1165,7 +1137,7 @@ static int cmd_mux(int argc, char **argv)
     while (!fail && (opt = getopt_long(fargc, filtered, "v:i:o:hH", long_options, NULL)) != -1) {
         unsigned long long v;
         switch (opt) {
-        case 'v': if (!set_verbosity(optarg)) return 1; break;
+        case 'v': g_verbose = atoi(optarg); break;
         case 'i':
             if (num_inputs >= FAAM_MUX_MAX_TRACKS) {
                 snprintf(errbuf, sizeof(errbuf), "Error: too many -i inputs (max %d)\n", FAAM_MUX_MAX_TRACKS);
@@ -1269,8 +1241,6 @@ static int cmd_mux(int argc, char **argv)
             goto done;
         }
     }
-
-    print_version_banner();
 
     for (int i = 0; i < num_inputs; i++) {
         const char *codec_str = codec_override[i] ? codec_override[i] : mux_infer_codec_from_ext(input_files[i]);
@@ -1456,33 +1426,27 @@ static int cmd_mux(int argc, char **argv)
                 goto done;
             }
             bool multi_block = false;
-            mux_progress_context progress = {0};
-            progress_throttle_reset(&progress.throttle);
-            st = faam_engine_mux_adts_frames(m, track_id[i], fin[i], &adts[i].params,
-                                             adts[i].prefix, adts[i].prefix_len,
-                                             &frames[i], &multi_block,
-                                             g_verbose > 0 ? mux_progress : NULL, &progress);
+            st = mux_adts_frames(m, track_id[i], fin[i], &adts[i].params,
+                                 adts[i].prefix, adts[i].prefix_len,
+                                 &frames[i], &multi_block);
             if (multi_block) {
                 fprintf(stderr, "Error: %s: a frame has more than one raw data block, which is not supported "
                         "(each frame is muxed as one 1024-sample unit)\n", input_files[i]);
                 goto done;
             }
         } else {
-            mux_progress_context progress = {0};
-            progress_throttle_reset(&progress.throttle);
-            st = faam_engine_mux_video_frames(m, track_id[i],
-                                              tc[i].codec_id == FAAM_CODEC_H265 ? ANNEXB_H265 : ANNEXB_H264,
-                                              vbuf_store[i], vbuf_len_store[i], fps_num, fps_den,
-                                              &frames[i], g_verbose > 0 ? mux_progress : NULL, &progress);
+            video_sink sink = { m, track_id[i], &frames[i], fps_num, fps_den, FAAM_OK };
+            annexb_status as = annexb_split(tc[i].codec_id == FAAM_CODEC_H265 ? ANNEXB_H265 : ANNEXB_H264,
+                                            vbuf_store[i], vbuf_len_store[i], video_sample, &sink);
             free(vbuf_store[i]);
             vbuf_store[i] = NULL;
-            if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+            if (as == ANNEXB_NO_MEMORY) {
                 fprintf(stderr, "Error: out of memory\n");
                 goto done;
             }
+            st = sink.st;
         }
 
-        if (st == (faam_status)FAAM_ENGINE_CANCELLED) goto done;
         if (st != FAAM_OK) {
             fprintf(stderr, "Error muxing %s: %s\n", input_files[i], faam_strerror(st));
             goto done;
@@ -1587,7 +1551,7 @@ static int cmd_demux(int argc, char **argv)
     while ((opt = getopt_long(argc, argv, "v:o:t:hH", long_options, NULL)) != -1) {
         unsigned long long v;
         switch (opt) {
-        case 'v': if (!set_verbosity(optarg)) return 1; break;
+        case 'v': g_verbose = atoi(optarg); break;
         case 'o': output_file = optarg; break;
         case 't':
             if (!cli_parse_uint(optarg, UINT32_MAX, &v) || v == 0) {
@@ -1618,7 +1582,6 @@ static int cmd_demux(int argc, char **argv)
         print_usage(HELP_INSPECT);
         return 1;
     }
-    print_version_banner();
     demux_stdout = strcmp(output_file, "-") == 0;
 
     FILE *fin = cli_open_seekable_input(input_file);
@@ -1633,10 +1596,19 @@ static int cmd_demux(int argc, char **argv)
     FILE *fout = NULL;
     bool out_created = false;
     bool asc_created = false;
+    bool write_failed = false;
     faam_demuxer *d = NULL;
     uint32_t num_tracks = 0;
     faam_track_info ti;
     faam_status st;
+    uint8_t *frame = (uint8_t *)malloc(65536);
+
+    if (!frame) {
+        fprintf(stderr, "Error: out of memory\n");
+        fclose(fin);
+        return 1;
+    }
+
     st = faam_demuxer_open(NULL, &io_in, &d);
     if (st != FAAM_OK) {
         fprintf(stderr, "Error initializing demuxer on %s: %s\n", input_file, faam_strerror(st));
@@ -1736,26 +1708,65 @@ static int cmd_demux(int argc, char **argv)
     }
     out_created = !demux_stdout;
 
-    demux_output_context output_ctx = { .track = ti, .output = fout,
-                                        .adts_output = is_adts_out, .adts = adts_p };
-    mux_progress_context progress = {0};
-    progress_throttle_reset(&progress.throttle);
-    st = faam_engine_demux_track(d, &ti, demux_write_sample, &output_ctx,
-                                 g_verbose > 0 ? mux_progress : NULL, &progress);
-    if (st == FAAM_ERR_INSUFFICIENT_MEM) {
-        fprintf(stderr, "Error: out of memory\n");
-        goto done;
-    }
-    if (st == (faam_status)FAAM_ENGINE_CANCELLED && output_ctx.frame_too_large) {
-        fprintf(stderr, "Error: a frame of track %u is too large for an ADTS header\n", ti.track_id);
-        goto done;
-    }
-    if (st != FAAM_OK && st != (faam_status)FAAM_ENGINE_CANCELLED) {
-        fprintf(stderr, "Error reading a frame of track %u from %s: %s\n", ti.track_id, input_file, faam_strerror(st));
-        goto done;
+    uint32_t frame_cap = 65536;
+    uint32_t frame_bytes = 0;
+    static const uint8_t annexb_sc[4] = { 0x00, 0x00, 0x00, 0x01 };
+
+    faam_frame_loc loc = { .struct_size = sizeof(loc) };
+    while (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
+        if (loc.track_id != ti.track_id) {
+            /* Skip frames not belonging to the extracted track */
+            faam_demuxer_read_frame(d, NULL, 0, &frame_bytes);
+            continue;
+        }
+
+        /* A video IDR frame easily exceeds any fixed size; the demuxer reports the
+         * size it needs and stays on the frame, so grow the buffer and read again. */
+        st = faam_demuxer_read_frame(d, frame, frame_cap, &frame_bytes);
+        if (st == FAAM_ERR_OUTPUT_TOO_SMALL) {
+            uint8_t *bigger = (uint8_t *)realloc(frame, frame_bytes);
+            if (!bigger) {
+                fprintf(stderr, "Error: out of memory\n");
+                goto done;
+            }
+            frame = bigger;
+            frame_cap = frame_bytes;
+            st = faam_demuxer_read_frame(d, frame, frame_cap, &frame_bytes);
+        }
+        if (st != FAAM_OK) {
+            fprintf(stderr, "Error reading a frame of track %u from %s: %s\n", ti.track_id, input_file, faam_strerror(st));
+            goto done;
+        }
+        if (frame_bytes == 0) continue;
+
+        if (ti.track_type == FAAM_TRACK_VIDEO) {
+            /* Convert 4-byte BE length prefixed NALUs to Annex-B startcodes (00 00 00 01) */
+            uint32_t pos = 0;
+            while (pos + 4 <= frame_bytes) {
+                uint32_t nal_len = ((uint32_t)frame[pos] << 24) | ((uint32_t)frame[pos+1] << 16) | ((uint32_t)frame[pos+2] << 8) | (uint32_t)frame[pos+3];
+                pos += 4;
+                if (pos + nal_len <= frame_bytes) {
+                    write_failed |= fwrite(annexb_sc, 1, 4, fout) != 4;
+                    write_failed |= fwrite(frame + pos, 1, nal_len, fout) != nal_len;
+                    pos += nal_len;
+                } else break;
+            }
+        } else {
+            if (is_adts_out && ti.codec_id == FAAM_CODEC_AAC) {
+                if (frame_bytes > ADTS_MAX_FRAME - ADTS_HEADER_SIZE) {
+                    fprintf(stderr, "Error: a frame of track %u is too large for an ADTS header\n", ti.track_id);
+                    goto done;
+                }
+                uint8_t adts[ADTS_HEADER_SIZE];
+                adts_write_header(&adts_p, frame_bytes, adts);
+                write_failed |= fwrite(adts, 1, sizeof(adts), fout) != sizeof(adts);
+            }
+            write_failed |= fwrite(frame, 1, frame_bytes, fout) != frame_bytes;
+        }
+        if (write_failed) break;
     }
 
-    bool write_failed = output_ctx.write_failed || !cli_finish_output(&fout);
+    write_failed |= !cli_finish_output(&fout);
     if (write_failed) {
         fprintf(stderr, "Error writing %s\n", output_file);
         goto done;
@@ -1772,6 +1783,7 @@ done:
         if (asc_created) cli_remove(export_asc);
     }
     faam_demuxer_close(&d);
+    free(frame);
     fclose(fin);
     return ret;
 }
@@ -1809,7 +1821,7 @@ static int cmd_tag(int argc, char **argv)
         opterr = 0;
         optind = 1;
         while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
-            if (opt == 'v') { if (!set_verbosity(optarg)) return 1; }
+            if (opt == 'v') { g_verbose = atoi(optarg); }
             else if (opt == 'h') { print_usage(HELP_TAG); return 0; }
             else if (opt == 'H') { print_usage('H'); return 0; }
             else if (opt == OPT_CLEAR) {
@@ -1898,7 +1910,7 @@ static int cmd_tag(int argc, char **argv)
     optind = 1;
     bool bad_option = false;
     while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
-        if (opt == 'v') { if (!set_verbosity(optarg)) return 1; }
+        if (opt == 'v') { g_verbose = atoi(optarg); }
         else if (opt >= OPT_TAG_FIRST && opt <= OPT_TAG_LAST) {
             err_msg = tag_apply(&t, opt, optarg);
         } else if (opt != OPT_REMOVE && opt != OPT_CLEAR && opt != 'h' && opt != 'H') {
@@ -2099,7 +2111,7 @@ static int cmd_chapter(int argc, char **argv)
     optind = 1;
     while ((opt = getopt_long(sub_argc, sub_argv, "v:o:hH", long_options, NULL)) != -1) {
         switch (opt) {
-        case 'v': if (!set_verbosity(optarg)) return 1; break;
+        case 'v': g_verbose = atoi(optarg); break;
         case OPT_CHAPTERS: chapters_path = optarg; break;
         case 'o': output_path = optarg; break;
         case OPT_OVERWRITE: overwrite = true; break;
@@ -2165,7 +2177,7 @@ int main(int argc, char **argv)
         ret = 0;
     } else if (strcmp(cmd, "--license") == 0) {
         faam_library_info info = { .struct_size = sizeof(info) };
-        fprintf(stderr, "FAAM - Freeware Advanced Audio Muxer (https://freewareadvancedaudio.github.io)\n");
+        fprintf(stderr, "FAAM - Freeware Advanced Audio Muxer\n");
         if (faam_get_library_info(&info) == FAAM_OK && info.copyright)
             fprintf(stderr, "%s\n", info.copyright);
         cli_print_patent_notice(stderr);

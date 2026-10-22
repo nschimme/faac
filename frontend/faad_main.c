@@ -36,7 +36,6 @@
 #include "faad3.h"
 #include "charset.h"
 #include "cli_io.h"
-#include "cli_parse.h"
 #include "decode_engine.h"
 #include "help.h"
 
@@ -57,67 +56,51 @@ enum {
 
 static const help_t help_io[] = {
     {"-o, --output <file>",
-     "Set output filename, - for stdout (default: infile.wav, or stdout for stdin input)",
-     "The output extension does not select the encoding format; use --format for WAV or raw PCM. When input is stdin and no output is named, decoded WAV is written to stdout."},
+     "Set output filename, - for stdout (default: infile.wav, or stdout for stdin input)", NULL},
     {"-w, --stdout",
-     "Write output PCM to stdout",
-     "This is shorthand for selecting stdout as the destination. Progress is suppressed automatically when PCM goes to stdout; diagnostics remain on stderr."},
+     "Write output PCM to stdout", NULL},
     {"-f, --format <type>",
-     "Output container format: wav (default, automatic RF64 for large files), raw",
-     "Raw output contains samples only, with no header. Seekable WAV output switches to RF64 when it would exceed the classic RIFF size limit."},
+     "Output container format: wav (default, automatic RF64 for large files), raw", NULL},
     {"-b, --bits <depth>",
-     "Sample depth: 16 (default), 24, 32, 32f (32-bit float)",
-     "Integer depths are signed PCM; 32 is 24-bit integer audio stored in 32-bit samples. 32f writes IEEE 32-bit floating point samples."},
+     "Sample depth: 16 (default), 24, 32, 32f (32-bit float)", NULL},
     {"-a, --adts <file>",
-     "Extract raw ADTS stream from MP4 without decoding",
-     "The selected AAC track's packets are copied and ADTS headers are reconstructed from its codec configuration. This option does not decode audio and requires MP4 input with an AAC track."},
+     "Extract raw ADTS stream from MP4 without decoding", NULL},
     {NULL, NULL, NULL}
 };
 
 static const help_t help_processing[] = {
-    {"--drc-cut N, --drc-boost N", "Dynamic Range Control (DRC) strength 0..127 (default: 0)",
-     "These are separate controls for attenuating loud passages and boosting quiet passages when the stream carries DRC metadata. Both default to zero, so DRC is off unless requested."},
-    {"--drc-target N", "Dynamic Range Control target: 0 off, 40..127 quarter-dB below FS (96 = -24 dBFS)",
-     "The target controls level normalization when DRC metadata is present. Zero leaves normalization off; accepted nonzero targets are 40 through 127."},
+    {"--drc-cut N, --drc-boost N", "Dynamic Range Control (DRC) strength 0..127 (default: 0)", NULL},
+    {"--drc-target N", "Dynamic Range Control target: 0 off, 40..127 quarter-dB below FS (96 = -24 dBFS)", NULL},
     {"-d, --downmix [mode]",
-     "Downmix audio (mono/1 or stereo/2, default: mono)",
-     "Choose one or two output channels. Without a mode, mono is selected. This affects decoded PCM, not ADTS extraction."},
+     "Downmix audio (mono/1 or stereo/2, default: mono)", NULL},
     {"-j, --jump <seconds>",
-     "Start decoding from specified timestamp",
-     "Only applies to MP4 input. A timestamp past the end produces an empty output; ADTS input starts at the beginning."},
+     "Start decoding from specified timestamp", NULL},
     {"-g, --no-gapless",
-     "Disable automatic gapless trim/padding handling",
-     "By default, MP4 encoder delay and end padding are applied so decoded output matches the intended audible duration. This option keeps those samples."},
+     "Disable automatic gapless trim/padding handling", NULL},
     {NULL, NULL, NULL}
 };
 
 static const help_t help_info[] = {
     {"-i, --info",
-     "Display bitstream & container metadata, then exit",
-     "For MP4, reports available track and codec information. Use --track to choose an AAC track when the file contains more than one."},
+     "Display bitstream & container metadata, then exit", NULL},
     {"--json",
-     "Output bitstream info in JSON format",
-     "Emits the information report as JSON for scripts. This is an inspection mode and does not write decoded PCM."},
+     "Output bitstream info in JSON format", NULL},
     {"--track <id>",
-     "MP4: decode the AAC track with this ID (default: the first AAC track); -i lists the tracks",
-     "Track IDs are the IDs reported by the MP4 container, not zero-based positions. The option also selects the track used by inspection and ADTS extraction."},
+     "MP4: decode the AAC track with this ID (default: the first AAC track); -i lists the tracks", NULL},
     {"-v <verbose>",
-     "Set verbosity level: -v0 is quiet; -v1 (default) shows progress; -v2 adds a detailed summary.",
-     "Progress and diagnostic text are written to stderr so decoded audio can be piped through stdout."},
+     "Set verbosity level (-v0 is quiet mode).", NULL},
     {"-q, --quiet",
-     "Same as -v0", "Suppresses the progress display and non-error informational output."},
+     "Same as -v0", NULL},
     {"--overwrite",
-     "Overwrite an existing output file",
-     "Without this option, FAAD refuses to replace an existing output. Input and output paths that refer to the same file are always rejected."},
+     "Overwrite an existing output file", NULL},
     {"--strict",
-     "Strict mode (noisily error and report debug details on failure)",
-     "Treats concealed or degraded frames as decode failures, reports the input offset and frame number, and exits with status 1. Without strict mode, recoverable audio is kept and decoding continues where framing permits."},
+     "Strict mode (noisily error and report debug details on failure)", NULL},
     {NULL, NULL, NULL}
 };
 
 static const help_group_t g_help[] = {
     {HELP_IO, "I/O and format options", "--help-io", help_io, 1},
-    {HELP_PROCESSING, "Processing options", "--help-processing", help_processing, 1},
+    {HELP_PROCESSING, "Processing options (DRC, downmix, jump, gapless)", "--help-processing", help_processing, 1},
     {HELP_INFO, "Information and general options", "--help-info", help_info, 1},
     {0, NULL, NULL, NULL, 0}
 };
@@ -160,10 +143,23 @@ static bool cli_progress_callback(const progress_info_t *info, void *user_data)
     static progress_throttle_t s_throttle = { .last_fired_sec = -1.0 };
     if (info->is_final || progress_throttle_tick(&s_throttle, info, 0.033))
     {
-        progress_render_cli(info);
-        if (info->is_final)
-            fprintf(stderr, "Decoding took %.2f sec. %.2fx real-time.\n",
-                    info->time_elapsed_sec, info->speed_factor);
+        if (info->total_frames > 0)
+        {
+            int percent = (int)(info->current_frame * 100 / info->total_frames);
+            double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
+            double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
+            fprintf(stderr, "\r%7u/%-7u (%3d%%) | %7.1f | %6.1f/%-6.1f | %7.2fx | %.1f ",
+                    info->current_frame, info->total_frames, percent,
+                    bitrate_kbps,
+                    info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,
+                    info->speed_factor, info->eta_sec);
+        }
+        else
+        {
+            fprintf(stderr, "\r %7u | %7.1f | %7.2fx ",
+                    info->current_frame, info->time_elapsed_sec, info->speed_factor);
+        }
+        fflush(stderr);
     }
 
 #ifndef _WIN32
@@ -373,12 +369,12 @@ int main(int argc, char **argv)
         }
         case 'q': opts.verbose = 0; break;
         case 'v': {
-            uint8_t value;
-            if (!cli_parse_verbosity(optarg, &value)) {
-                fprintf(stderr, "Invalid verbosity '%s' (expected 0, 1, or 2)\n", optarg);
+            unsigned long long value;
+            if (!cli_parse_uint(optarg, UINT8_MAX, &value)) {
+                fprintf(stderr, "Invalid verbosity: %s\n", optarg);
                 return 1;
             }
-            opts.verbose = value;
+            opts.verbose = (uint8_t)value;
             break;
         }
         case OPT_STRICT: opts.strict_mode = true; break;
@@ -397,7 +393,7 @@ int main(int argc, char **argv)
         case HELP_IO:
         case HELP_PROCESSING:
         case HELP_INFO: print_usage(opt); return 0;
-        default: print_usage('?'); return 1;
+        default: print_usage('h'); return 1;
         }
     }
 
@@ -406,7 +402,7 @@ int main(int argc, char **argv)
     }
 
     if (!opts.input_filename) {
-        print_usage('?');
+        print_usage('h');
         return 1;
     }
 

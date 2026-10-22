@@ -89,8 +89,8 @@ endif
 
 if get_option('muxer')
     faam = executable('faam',
-        ['faam_main.c', 'faam_engine.c', 'adts.c', 'annexb.c',
-         'faam_engine.h', 'adts.h', 'annexb.h'],
+        ['faam_main.c', 'adts.c', 'annexb.c',
+         'adts.h', 'annexb.h'],
         dependencies: [libshell32, frontend_common_dep],
         install: true
     )

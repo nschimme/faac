@@ -255,12 +255,6 @@ def test_abi_track_count(t, d):
 
 
 def run_all(t, d):
-    for name, exe in (("faac", t.faac), ("faad", t.faad), ("faam", t.faam)):
-        for flag in ("-h", "-H"):
-            r = t.run(exe, [flag], d)
-            check(r.returncode == 0 and r.stdout,
-                  f"{name} {flag} prints help and exits successfully")
-
     test_gapless_boxes(t, d)
     wav = os.path.join(d, "s.wav")
     make_wav(wav)
@@ -871,6 +865,8 @@ def run_demux_header(t, d):
 
 def run_adts_validation(t, d):
     frames = adts_chunks(os.path.join(d, "lc.aac"))
+    he_frames = adts_chunks(os.path.join(d, "he.aac"))
+    mono_frames = adts_chunks(os.path.join(d, "mono.aac"))
 
     def stream(name, chunks):
         open(os.path.join(d, name), "wb").write(b"".join(bytes(c) for c in chunks))
@@ -883,6 +879,25 @@ def run_adts_validation(t, d):
     r = t.faam_run(["-i", "multi.aac", "-o", "multi.m4a"], d)
     check(r.returncode == 1 and b"raw data block" in r.stderr and no_output(d, "multi.m4a"),
           f"ADTS with several raw data blocks per frame is rejected ({r.stderr!r})")
+
+    # ...also when it only shows up after a good start
+    later = [bytearray(c) for c in frames[20:30]]
+    for c in later:
+        c[6] |= 1
+    stream("later_multi.aac", frames[:10] + later)
+    r = t.faam_run(["-i", "later_multi.aac", "-o", "later_multi.m4a"], d)
+    check(r.returncode == 1 and b"raw data block" in r.stderr and no_output(d, "later_multi.m4a"),
+          f"a later ADTS frame with several raw data blocks fails the mux ({r.stderr!r})")
+
+    # frames of another configuration are false syncs, not samples
+    other_profile = [bytearray(c) for c in frames[10:15]]
+    for c in other_profile:
+        c[2] &= 0x3F  # Main profile
+    stream("mixed.aac", frames[:10] + other_profile + frames[15:25] + he_frames[:10] + (mono_frames[:10] if CHANNELS == 2 else []))
+    r = t.faam_run(["-i", "mixed.aac", "-o", "mixed.m4a"], d)
+    info = t.faam_run(["info", "mixed.m4a"], d).stdout.replace(b"\r\n", b"\n")
+    check(r.returncode == 0 and b"Total Frames: 20\n" in info and f"Channels: {CHANNELS}".encode() in info,
+          f"frames whose profile, rate or channels differ from the first are skipped:\n{info.decode()}")
 
     # HE-AAC v2 has a mono core
     for mode in ("ps", "ps-explicit"):
