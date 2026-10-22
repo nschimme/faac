@@ -148,7 +148,7 @@ static bool cli_progress_callback(const progress_info_t *info, void *user_data)
             int percent = (int)(info->current_frame * 100 / info->total_frames);
             double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
             double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
-            fprintf(stderr, "\r%7u/%-7u (%3d%%) |  %5.1f kbps | %6.1fs/%-6.1fs | %7.2fx | ETA %5.1fs ",
+            fprintf(stderr, "\r%7u/%-7u (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
                     info->current_frame, info->total_frames, percent,
                     bitrate_kbps,
                     info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,
@@ -156,7 +156,7 @@ static bool cli_progress_callback(const progress_info_t *info, void *user_data)
         }
         else
         {
-            fprintf(stderr, "\r %7u | %7.1fs | %7.2fx ",
+            fprintf(stderr, "\r %7u | %7.1f | %7.2fx ",
                     info->current_frame, info->time_elapsed_sec, info->speed_factor);
         }
         fflush(stderr);
@@ -187,7 +187,7 @@ static void cli_session_start_callback(const decode_session_info_t *info, void *
     fprintf(stderr, "Decoding %s to %s\n", info->input_filename, info->output_filename ? info->output_filename : "stdout");
     if (info->total_track_frames > 0)
     {
-        fprintf(stderr, "         frame         |   bitrate  |    elapsed/estim   | play/CPU | ETA\n");
+        fprintf(stderr, "         frame         | bitrate | elapsed/estim | play/CPU | ETA\n");
     }
     else
     {
@@ -198,30 +198,20 @@ static void cli_session_start_callback(const decode_session_info_t *info, void *
 static void cli_summary_callback(const decode_summary_t *summary, void *user_data)
 {
     decode_options_t *opts = (decode_options_t *)user_data;
-    if (!opts || opts->verbose == 0 || opts->write_stdout)
+    if (!opts || opts->verbose < 2 || opts->write_stdout)
         return;
 
-    if (opts->verbose >= 2)
-    {
-        fprintf(stderr, "\n--- Decode Summary ---\n");
-        fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
-                summary->frame_count, summary->sample_count);
-        fprintf(stderr, " Output Size & Depth : Size = %" PRIu64 " bytes | Depth = %u-bit %s\n",
-                summary->total_pcm_bytes, summary->bit_depth, summary->is_float ? "float" : "PCM");
-        fprintf(stderr, " Decoding Speed      : Time = %.2f sec | Speed = %.2fx real-time\n",
-                summary->time_elapsed_sec, summary->speed_factor);
-        fprintf(stderr, " Bitrate & Rate      : Avg Bitrate = %.1f kbps | Sample Rate = %u Hz\n",
-                summary->avg_bitrate_kbps, summary->sample_rate);
-        fprintf(stderr, " Output Target       : %s\n", opts->output_filename ? opts->output_filename : "stdout");
-        fprintf(stderr, "----------------------\n");
-    }
-    else
-    {
-        fprintf(stderr, "\nDecoded %" PRIu64 " frames (%" PRIu64 " bytes, %d-bit %s) in %.2f sec (%.2fx real-time) to %s\n",
-                summary->frame_count, summary->total_pcm_bytes, summary->bit_depth,
-                summary->is_float ? "float" : "PCM", summary->time_elapsed_sec,
-                summary->speed_factor, opts->output_filename ? opts->output_filename : "stdout");
-    }
+    fprintf(stderr, "\n--- Decode Summary ---\n");
+    fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
+            summary->frame_count, summary->sample_count);
+    fprintf(stderr, " Output Size & Depth : Size = %" PRIu64 " bytes | Depth = %u-bit %s\n",
+            summary->total_pcm_bytes, summary->bit_depth, summary->is_float ? "float" : "PCM");
+    fprintf(stderr, " Decoding Speed      : Time = %.2f sec | Speed = %.2fx real-time\n",
+            summary->time_elapsed_sec, summary->speed_factor);
+    fprintf(stderr, " Bitrate & Rate      : Avg Bitrate = %.1f kbps | Sample Rate = %u Hz\n",
+            summary->avg_bitrate_kbps, summary->sample_rate);
+    fprintf(stderr, " Output Target       : %s\n", opts->output_filename ? opts->output_filename : "stdout");
+    fprintf(stderr, "----------------------\n");
 }
 
 int main(int argc, char **argv)
@@ -246,6 +236,11 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 #endif
+
+    faad_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    if (faad_get_library_info(&libinfo) != FAAD_OK) {
+        libinfo.version = "3.0.0";
+    }
 
     decode_options_t opts;
     init_decode_options(&opts);
@@ -394,6 +389,12 @@ int main(int argc, char **argv)
         allocated_outfile = out_path;
     }
 
+    if (opts.verbose > 0 && !opts.write_stdout && !opts.info_only && libinfo.version) {
+        char ver_buf[128];
+        fprintf(stderr, "Freeware Advanced Audio Decoder\nFAAD %s\n\n",
+                cli_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
+    }
+
     decode_callbacks_t cbs = {
         .progress_cb = cli_progress_callback,
         .session_start_cb = cli_session_start_callback,
@@ -403,6 +404,10 @@ int main(int argc, char **argv)
     };
 
     int ret_status = run_decoding_session_ext(&opts, &cbs);
+
+    if (opts.verbose && opts.verbose < 2 && !opts.write_stdout && !opts.info_only) {
+        fprintf(stderr, "\n");
+    }
 
     free(allocated_outfile);
 

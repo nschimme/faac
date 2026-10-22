@@ -27,7 +27,7 @@ By default the output is a WAV file named after the input, with the extension
 replaced by
 .BR .wav .
 Input from stdin ("\-") is written to stdout instead.
-Decoding progress updates and completion summary messages are printed to stderr unless
+Decoding progress updates and summary messages are printed to stderr unless
 .B -v0
 or
 .B -q
@@ -107,9 +107,9 @@ lists the tracks of the file.
 .BI -v\  verbose
 Verbosity level;
 .B -v0
-is quiet mode and suppresses decoding progress and summary messages;
+is quiet mode and suppresses decoding progress;
 .B -v1
-(default) shows decoding progress and a concise summary line;
+(default) shows decoding progress;
 .B -v2
 shows decoding progress and a detailed summary block.
 .TP
