@@ -372,7 +372,7 @@ static void cli_summary_callback(const encode_summary_t *summary, void *user_dat
             summary->frame_count, summary->sample_count);
     if (summary->is_mp4)
     {
-        fprintf(stderr, " Bitrate & Frame Size: Avg = %u | Max = %u | Max Frame Size = %u\n",
+        fprintf(stderr, " Bitrate & Frame Size: Avg = %u kbps | Max = %u kbps | Max Frame Size = %u bytes\n",
                 summary->avg_bitrate, summary->max_bitrate, summary->max_frame_size);
     }
     else

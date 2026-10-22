@@ -940,6 +940,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
 
     double start_time = get_wall_time_sec();
     uint64_t current_decoded_samples = 0;
+    uint32_t max_frame_bytes = 0;
 
     if (is_mp4) {
         uint64_t cache_offset = UINT64_MAX;
@@ -997,6 +998,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
                         goto cleanup;
                     }
                 }
+                if (size > max_frame_bytes) max_frame_bytes = size;
                 uint32_t frame_samples = bytes_written / ((is_float ? 4 : bit_depth / 8) * num_channels);
                 duration_sec += (double)frame_samples / sample_rate;
                 current_decoded_samples += frame_samples;
@@ -1072,6 +1074,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
                 continue;
             }
             update_stream_info(dec, &sinfo, flags, &sample_rate, &num_channels, &obj_type);
+            if (bytes_consumed > max_frame_bytes) max_frame_bytes = bytes_consumed;
             uint32_t frame_samples = bytes_written / ((is_float ? 4 : bit_depth / 8) * num_channels);
             double frame_duration = (double)frame_samples / sample_rate;
             if (!info_only && duration_sec + frame_duration > jump_seconds) {
@@ -1120,6 +1123,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
     }
 
     double avg_bitrate_kbps = (file_len * 8.0) / (duration_sec > 0 ? duration_sec * 1000.0 : 1.0);
+    uint32_t max_kbps = (uint32_t)(((uint64_t)max_frame_bytes * 8 * sample_rate / (1024 * 1000.0)) + 0.5);
     const char *brand = track.major_brand[0] ? track.major_brand : "M4A";
 
     if (json_info) {
@@ -1190,6 +1194,8 @@ int run_decoding_session_ext(const decode_options_t *opts,
                 .frame_count = frames_decoded,
                 .sample_count = current_decoded_samples,
                 .total_pcm_bytes = writer.total_pcm_bytes,
+                .max_bitrate_kbps = max_kbps,
+                .max_frame_bytes = max_frame_bytes,
                 .duration_sec = duration_sec,
                 .time_elapsed_sec = total_time_used,
                 .speed_factor = calc_speed(current_decoded_samples, sample_rate, total_time_used),

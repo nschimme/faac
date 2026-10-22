@@ -49,6 +49,7 @@ typedef struct {
     uint32_t delay;
     uint32_t padding;
     uint32_t timescale;
+    uint32_t max_bitrate;
     MP4Sample *samples;
     uint32_t num_samples;
     bool sample_error; /* sample collection failed before end of stream */

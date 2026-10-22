@@ -227,13 +227,22 @@ static void cli_summary_callback(const decode_summary_t *summary, void *user_dat
     fprintf(stderr, "\n--- Decode Summary ---\n");
     fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
             summary->frame_count, summary->sample_count);
-    fprintf(stderr, " Output Size & Depth : Size = %" PRIu64 " bytes | Depth = %u-bit %s\n",
-            summary->total_pcm_bytes, summary->bit_depth, summary->is_float ? "float" : "PCM");
-    fprintf(stderr, " Decoding Speed      : Time = %.2f sec | Speed = %.2fx real-time\n",
-            summary->time_elapsed_sec, summary->speed_factor);
-    fprintf(stderr, " Bitrate & Rate      : Avg Bitrate = %.1f kbps | Sample Rate = %u Hz\n",
-            summary->avg_bitrate_kbps, summary->sample_rate);
-    fprintf(stderr, " Output Target       : %s\n", opts->output_filename ? opts->output_filename : "stdout");
+    fprintf(stderr, " Bitrate & Frame Size: Avg = %u | Max = %u | Max Frame Size = %u\n",
+            (uint32_t)(summary->avg_bitrate_kbps + 0.5), summary->max_bitrate_kbps, summary->max_frame_bytes);
+
+    uint64_t input_size = 0;
+    FILE *fin_stat = cli_fopen(opts->input_filename, "rb");
+    if (fin_stat) {
+        cli_fsize(fin_stat, &input_size);
+        fclose(fin_stat);
+    }
+    uint64_t output_size = summary->total_pcm_bytes;
+    if (input_size > 0 && output_size > 0)
+    {
+        fprintf(stderr, " File Size           : Input = %.2f MB | Output = %.2f MB | Ratio = %.1f:1\n",
+                input_size / (1024.0 * 1024.0), output_size / (1024.0 * 1024.0),
+                (double)output_size / (double)input_size);
+    }
     fprintf(stderr, "----------------------\n");
 }
 

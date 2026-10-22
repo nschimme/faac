@@ -77,6 +77,8 @@ typedef struct {
     uint64_t frame_count;
     uint64_t sample_count;
     uint64_t total_pcm_bytes;
+    uint32_t max_bitrate_kbps;
+    uint32_t max_frame_bytes;
     double duration_sec;
     double time_elapsed_sec;
     double speed_factor;
