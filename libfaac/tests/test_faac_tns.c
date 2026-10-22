@@ -46,7 +46,7 @@ static void test_silence_and_noise_are_skipped(void)
     faacEncStruct *encoder = make_encoder();
     CoderInfo *coder = &encoder->coderInfo[0];
     float spec[BLOCK_LEN_LONG] = { 0 };
-    TnsEncode(coder, spec);
+    TnsEncode(coder, spec, &encoder->tnsWorkspace);
     assert(!coder->tnsInfo.tnsDataPresent);
     assert(coder->tnsInfo.windowData.numFilters == 0);
 
@@ -55,7 +55,7 @@ static void test_silence_and_noise_are_skipped(void)
         state = state * 1664525u + 1013904223u;
         spec[i] = (float)((int32_t)(state >> 8) - 8388608) / 8388608.0f;
     }
-    TnsEncode(coder, spec);
+    TnsEncode(coder, spec, &encoder->tnsWorkspace);
     assert(!coder->tnsInfo.tnsDataPresent);
     assert(coder->tnsInfo.windowData.numFilters == 0);
     free(encoder);
@@ -78,7 +78,7 @@ static void test_tonal_spectrum_emits_stable_filter(void)
                 + 0.05f * cosf((float)i * frequency * 2.3f);
         }
         memcpy(original, spec, sizeof(spec));
-        TnsEncode(&candidate, spec);
+        TnsEncode(&candidate, spec, &encoder->tnsWorkspace);
         if (candidate.tnsInfo.tnsDataPresent) {
             *coder = candidate;
             accepted = 1;

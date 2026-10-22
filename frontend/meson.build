@@ -101,7 +101,7 @@ endif
 
 subdir('tests')
 
-if get_option('encoder') and get_option('decoder') and encoder_ps and get_option('decoder-sbr') and get_option('decoder-ps')
+if get_option('encoder') and get_option('decoder') and get_option('max-channels') >= 2 and encoder_ps and get_option('decoder-sbr') and get_option('decoder-ps')
     test('faac_ps_frontend_test', find_program('python3'),
         args: [files('../tests/faac_ps_frontend_test.py'), faac, faad])
 endif
