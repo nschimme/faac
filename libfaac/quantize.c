@@ -578,8 +578,13 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
 
         int width = ci->sfb_offset[sb + 1] - ci->sfb_offset[sb];
+        if (target[sb] == 0.0f)
+        {
+            ci->book[band] = HCB_ZERO;
+            continue;
+        }
         float avg_per_window = be[sb].sum / (float)gsize;
-        if (avg_per_window < silence * width || target[sb] == 0.0f)
+        if (avg_per_window < silence * width)
         {
             ci->book[band] = HCB_ZERO;
             continue;
