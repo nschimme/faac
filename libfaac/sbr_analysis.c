@@ -124,13 +124,15 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                        slot >= env_border(sa, e + 1, num_slots)) e++;
                 int p = slot * 4 / num_slots;
                 static const unsigned char edges[13] = {3,4,5,6,7,8,9,11,14,18,23,35,64};
+                int band = 8;
                 for (int k = 0; k < 64; k++) {
                     sa->bandE[0][e][k] += lr[k]*lr[k]+li[k]*li[k];
                     sa->bandE[1][e][k] += rr[k]*rr[k]+ri[k]*ri[k];
                     sa->bandCrossE[e][k] += lr[k]*rr[k]+li[k]*ri[k];
                     sa->bandCrossIm[e][k] += li[k]*rr[k]-lr[k]*ri[k];
                     if (k < 3) continue;
-                    int band = 8;
+                    /* Bands only increase with k, so carry the index forward
+                     * instead of restarting the edge search for every bin. */
                     while (k >= edges[band-7]) band++;
                     sa->psE[0][p][band] += lr[k]*lr[k]+li[k]*li[k];
                     sa->psE[1][p][band] += rr[k]*rr[k]+ri[k]*ri[k];
