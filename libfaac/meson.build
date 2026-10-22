@@ -54,7 +54,7 @@ libfaac_src = [
 ]
 
 if encoder_ps
-    libfaac_src += ['ps.c', 'ps.h', '../common/ps_tables.c']
+    libfaac_src += ['ps.c', 'ps.h', 'ps_huff_tables.c', 'ps_huff_tables.h']
 endif
 
 libfaac = disabler()
@@ -116,7 +116,7 @@ pkgconfig.generate(
 subdir('tests')
 
 if encoder_ps
-    test_ps = executable('test_ps', ['test_ps.c', 'ps.c', 'bitstream.c', '../common/ps_tables.c', '../common/fft.c'],
+    test_ps = executable('test_ps', ['test_ps.c', 'ps.c', 'bitstream.c', 'ps_huff_tables.c', '../common/fft.c'],
         include_directories: ['..', '../include', common_inc],
         c_args: c_args + ['-DCOMMON_PREFIX=faac_'] + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG'], dependencies: [libm])
     test('faac_ps_test', test_ps)

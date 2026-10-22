@@ -22,7 +22,7 @@ if get_option('decoder-sbr')
 endif
 
 if get_option('decoder-ps') and get_option('decoder-sbr') and get_option('max-channels') >= 2
-    faad_src += ['../common/ps_tables.c']
+    faad_src += ['ps_tables.c']
 endif
 
 faad_c_args = c_args + ['-DCOMMON_PREFIX=faad_']

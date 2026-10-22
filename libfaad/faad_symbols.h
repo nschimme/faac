@@ -60,6 +60,9 @@
 #define ps_huff_ipd_dt faad_ps_huff_ipd_dt
 #define ps_huff_opd_df faad_ps_huff_opd_df
 #define ps_huff_opd_dt faad_ps_huff_opd_dt
+#define ps_iid_db_default faad_ps_iid_db_default
+#define ps_iid_db_fine faad_ps_iid_db_fine
+#define ps_icc_invq faad_ps_icc_invq
 #define ps_read_data faad_ps_read_data
 #define ps_slot faad_ps_slot
 #define sbr_apply faad_sbr_apply

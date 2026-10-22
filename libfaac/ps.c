@@ -15,7 +15,7 @@
 
 #include <math.h>
 #include "ps.h"
-#include "ps_tables.h"
+#include "ps_huff_tables.h"
 #include "sbr_internal.h"
 #include "sbr_tables.h"
 #include "bitstream.h"
@@ -29,11 +29,15 @@
 #define SBR_EXT_ID_PS 2
 #define PS_HUFF_ICC_NSYMS 15
 #define PS_HUFF_ICC_OFFSET 7
-static int put_huff(BitStream *bs, bool write, const SBRHuffEntry *table, int nsyms, int offset, int delta)
+static int put_huff(BitStream *bs, bool write, const PsHuffPackedEntry *table, int nsyms, int offset, int delta)
 {
     int sym = clamp_int(delta + offset, 0, nsyms - 1);
-    if (write) PutBit(bs, table[sym].code, table[sym].len);
-    return table[sym].len;
+    uint32_t packed = (uint32_t)table[sym].byte[0] |
+                      ((uint32_t)table[sym].byte[1] << 8) |
+                      ((uint32_t)table[sym].byte[2] << 16);
+    int len = (int)(packed & 31u);
+    if (write) PutBit(bs, packed >> 5, len);
+    return len;
 }
 
 
@@ -267,7 +271,7 @@ void PsSpectralDownmix(PsCarrier *state, float *left, float *right, float *carri
 
 static int ps_param_bits(BitStream *bs, bool write, const int *cur,
                          const int *prev, int bands, int wrap,
-                         const SBRHuffEntry *table, int nsyms, int offset)
+                         const PsHuffPackedEntry *table, int nsyms, int offset)
 {
     int bits = 0, ref = 0;
     for (int b = 0; b < bands; b++) {
@@ -283,7 +287,7 @@ static int ps_param_bits(BitStream *bs, bool write, const int *cur,
  * The first envelope is self-contained; later envelopes may reference it. */
 static int write_ps_params(BitStream *bs, bool write, const int *cur,
                            const int *prev, int bands, int wrap,
-                           const SBRHuffEntry *df, const SBRHuffEntry *dt,
+                           const PsHuffPackedEntry *df, const PsHuffPackedEntry *dt,
                            int nsyms, int offset)
 {
     int freq = ps_param_bits(NULL, false, cur, NULL, bands, wrap, df, nsyms, offset);
@@ -311,8 +315,8 @@ static int ps_write_phase(const SbrFrameData *fd, BitStream *bs, bool write)
                     e ? fd->ps_extra[e - 1].opd : fd->opd
                 };
                 const int *prev[2] = { e ? fd->ipd : NULL, e ? fd->opd : NULL };
-                const SBRHuffEntry *df[2] = { ps_huff_ipd_df, ps_huff_opd_df };
-                const SBRHuffEntry *dt[2] = { ps_huff_ipd_dt, ps_huff_opd_dt };
+                const PsHuffPackedEntry *df[2] = { faac_ps_huff_ipd_df_packed, faac_ps_huff_opd_df_packed };
+                const PsHuffPackedEntry *dt[2] = { faac_ps_huff_ipd_dt_packed, faac_ps_huff_opd_dt_packed };
                 for (int p = 0; p < 2; p++)
                     n += write_ps_params(bs, emit, params[p], prev[p], PHASE_BANDS,
                                          1, df[p], dt[p], 8, 0);
@@ -358,14 +362,14 @@ int PsWrite(const SbrFrameData *fd, BitStream *bs, bool write)
             n += write_ps_params(emit ? bs : NULL, emit,
                                  e ? fd->ps_extra[e - 1].iid : fd->iid,
                                  e ? fd->iid : NULL, SBR_PS_BANDS, 0,
-                                 ps_huff_iid_df_fine, ps_huff_iid_dt_fine,
+                                 faac_ps_huff_iid_df_fine_packed, faac_ps_huff_iid_dt_fine_packed,
                                  PS_HUFF_IID_DF_FINE_NSYMS, PS_HUFF_IID_DF_FINE_OFFSET);
         if (fd->enable_icc)
             for (int e = 0; e < n_env; e++)
                 n += write_ps_params(emit ? bs : NULL, emit,
                                      e ? fd->ps_extra[e - 1].icc : fd->icc,
                                      e ? fd->icc : NULL, SBR_PS_BANDS, 0,
-                                     ps_huff_icc_df, ps_huff_icc_dt,
+                                     faac_ps_huff_icc_df_packed, faac_ps_huff_icc_dt_packed,
                                      PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
 
         n += ps_write_phase(fd, bs, emit);

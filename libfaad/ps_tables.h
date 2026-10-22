@@ -2,7 +2,7 @@
 #ifndef PS_TABLES_H
 #define PS_TABLES_H
 #include <stdint.h>
-#include "common_symbols.h"
+#include "faad_symbols.h"
 #define PS_HUFF_IID_DF_FINE_OFFSET 30
 #define PS_HUFF_IID_DF_FINE_NSYMS 61
 typedef struct {
