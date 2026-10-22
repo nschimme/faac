@@ -87,7 +87,8 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
      * L/R between. Without M/S, intensity covers every band past the lowest
      * except short windows from MS_SHORT_BITRATE, which take M/S on every band. */
     cfg->mode = mode;
-    cfg->msBias = (mode == JOINT_MIXED && plainStereo && bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f;
+    cfg->msTestFactor = 4.0f * ((mode == JOINT_MIXED && plainStereo &&
+                           bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f);
     for (int w = 0; w < 2; w++) {
         int n = sfbn[w], n2 = 2 * (w ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG);
         int ms = band_at(sfbOffset[w], n, msHz[w], n2, sampleRate);
@@ -184,7 +185,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                AACElement * restrict element,
                                float * restrict sl0, float * restrict sr0,
                                int * restrict sfcnt, int g, int wstart, int wend,
-                               float inv_isthr, int is_start, int ms_end, float ms_bias)
+                               float inv_isthr, int is_start, int ms_end, float ms_test_factor)
 {
     int sfb, msused = 0;
     const int * restrict sfb_offset = cl->sfb_offset;
@@ -212,7 +213,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
         if (sfb < ms_end) {
             /* es and ed are 4x the mid and side energies. */
-            if (es * ed < 4.0f * ms_bias * el * er) {
+            if (es * ed < ms_test_factor * el * er) {
                 apply_ms_full(sl0, sr0, start, len, wstart, wend);
                 element->msInfo.ms_used[band] = 1;
                 cl->msEl[band] = el;
@@ -296,16 +297,10 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         elem->common_window = false;
         elem->msInfo.is_present = false;
 
-        if (coder[lch].block_type != coder[rch].block_type || coder[lch].groups.n != coder[rch].groups.n)
+        /* frame.c assigns one group to non-short blocks and copies the
+         * left short grouping to its CPE partner in BlocGroup. */
+        if (coder[lch].block_type != coder[rch].block_type)
             continue;
-
-        int ok = 1;
-        for (int g = 0; g < coder[lch].groups.n; g++) {
-            if (coder[lch].groups.len[g] != coder[rch].groups.len[g]) {
-                ok = 0; break;
-            }
-        }
-        if (!ok) continue;
 
         int shortwin = coder[lch].block_type == ONLY_SHORT_WINDOW;
         int ms_end = cfg->msEnd[shortwin];
@@ -321,7 +316,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];
             msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
-                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end, cfg->msBias);
+                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end, cfg->msTestFactor);
             start = end;
         }
         elem->msInfo.is_present = msused;
