@@ -419,7 +419,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
                               hEncoder->config.bitRate, hEncoder->numChannels,
                               hEncoder->config.aacObjectType == HE_V1);
         StereoConfigure(&hEncoder->stereoCfg, (JointMode)hEncoder->config.jointmode, hEncoder->sampleRate,
-                        hEncoder->config.bandWidth, hEncoder->config.bitRate,
+                        hEncoder->config.bitRate, coreChannels,
                         IsHEAAC(hEncoder->config.aacObjectType), sfbOffset, sfbn);
     }
 
