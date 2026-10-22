@@ -579,10 +579,16 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         int width = ci->sfb_offset[sb + 1] - ci->sfb_offset[sb];
         if (target[sb] == 0.0f)
-            goto zero_band;
+        {
+            ci->book[band] = HCB_ZERO;
+            continue;
+        }
         float avg_per_window = be[sb].sum / (float)gsize;
         if (avg_per_window < silence * width)
-            goto zero_band;
+        {
+            ci->book[band] = HCB_ZERO;
+            continue;
+        }
 
         /* Log-domain identity: log10(target/rms) = log10(target) - 0.5*log10(avg) + 0.5*log10(width).
          * Reuses sf_enrg_avg (log10(avg) * SF_STEP_ENRG) shared with PNS to avoid division and sqrtf. */
@@ -626,11 +632,6 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
         }
         band_sf[sb] = ci->sf[band] - sfac;
-        continue;
-
-zero_band:
-        ci->book[band] = HCB_ZERO;
-        continue;
     }
 
     /* All raw neighbours are known before this buffer becomes gain scalefactors. */
