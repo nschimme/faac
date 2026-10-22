@@ -19,7 +19,9 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
+#if FAAC_ENCODER_PS
 #include "ps.h"
+#endif
 
 /* A written frame's last envelope and the layout it was coded in: the
  * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
@@ -75,8 +77,8 @@ typedef struct SbrFrameData {
 } SbrFrameData;
 
 struct SBRInfo {
-    int is_he_v2;
 #if FAAC_ENCODER_PS
+    int is_he_v2;
     PsHybrid psHybrid;
     PsRef psRef[2];
     int psNumEnv, psBandMode;
@@ -147,7 +149,9 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 int build_freq_table(SBRInfo *sbr);
 void SbrEnd(SBRInfo *sbr);
 
+#if FAAC_ENCODER_PS
 void SbrQmfAnalysisComplex(SBRInfo *, const float *, float *, float *, int, int);
+#endif
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);

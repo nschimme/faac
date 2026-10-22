@@ -40,7 +40,6 @@ libfaac_src = [
     'sbr_bitstream.c',
     'sbr_huff_tables.c',
     'sbr_huff_tables.h',
-    'sbr_tables.c',
     'sbr_analysis.c',
     'sbr_analysis.h',
     'resample.c',

@@ -652,6 +652,7 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Tool Allocation     : M/S     = %5.1f%% | I/S = %5.1f%% | PNS = %5.1f%% | TNS = %5.1f%%\n",
                     ms, is, pns, tns);
         }
+#if FAAC_ENCODER_PS
         if (g_faacStats.psFrames > 0)
         {
             unsigned int psf = g_faacStats.psFrames;
@@ -662,6 +663,7 @@ int faacEncClose(faacEncHandle hpEncoder)
                     100.0 * g_faacStats.psIccFrames / psf,
                     100.0 * g_faacStats.psPhaseFrames / psf);
         }
+#endif
         RateControlStatsPrint(stderr);
         fprintf(stderr, "---------------------------\n");
     }

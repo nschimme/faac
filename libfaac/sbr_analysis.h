@@ -48,10 +48,10 @@ typedef struct SignalAnalysis {
        full width. */
     SignalAnalysisChannel ch[MAX_CHANNELS];
 
+#if FAAC_ENCODER_PS
     /* Per-envelope QMF band energy, binned over the grid above; only the first
        numEnvelopes rows are written. */
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
-#if FAAC_ENCODER_PS
     float bandCrossE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
     float bandCrossIm[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
     float psE[2][4][64], psCross[4][64], psCrossIm[4][64];

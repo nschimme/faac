@@ -308,6 +308,7 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
 void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int aacObjectType, int rateLimited)
 {
 #if !FAAC_ENCODER_PS
+    (void)aacObjectType;
     (void)rateLimited;
 #endif
     if (!sCtx) return;
@@ -316,8 +317,8 @@ void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrat
     else
         SbrUpdate(sCtx->sbrInfo, bitrate);
     if (sCtx->sbrInfo) {
-        sCtx->sbrInfo->is_he_v2 = IsHEV2(aacObjectType);
 #if FAAC_ENCODER_PS
+        sCtx->sbrInfo->is_he_v2 = IsHEV2(aacObjectType);
         sCtx->sbrInfo->psNumEnv = rateLimited && bitrate <= PS_LOW_RATE_MAX_BITRATE ? 1 : 2;
         sCtx->sbrInfo->psBandMode = sCtx->sbrInfo->psNumEnv == 1 ? 0 : 1;
         memset(sCtx->sbrInfo->psRef, 0, sizeof(sCtx->sbrInfo->psRef));
@@ -327,7 +328,9 @@ void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrat
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
 {
+#if FAAC_ENCODER_PS
     if (sCtx->sbrInfo->is_he_v2) numChannels = 2;
+#endif
     unsigned int channel;
     Resampler *rs = sCtx->resampler;
     float *fullPtrs[MAX_CHANNELS];
@@ -440,6 +443,7 @@ static inline float fast_log2(float x)
     return (float)(exp - 127) + (float)(m * (FAST_LOG2_A - FAST_LOG2_B * m));
 }
 
+#if FAAC_ENCODER_PS
 /* 64-band subband energy analysis using a 64-point complex FFT.
  * Leverages conjugate symmetry to extract two 64-point real-subsequence
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
@@ -496,6 +500,44 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
     SbrQmfAnalysisComplex(sbr, ovl_pos, real, imag, kx, k2);
     for (int k = kx; k < k2; k++) energy[k] += real[k] * real[k] + imag[k] * imag[k];
 }
+#else
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+{
+    float x[128], y[128];
+    float * restrict xr = x, * restrict xi = x + 64;
+    const float * restrict yr = y, * restrict yi = y + 64;
+    for (int n = 0; n < 128; n++) {
+        y[n] = qmf_c[n] * ovl_pos[639 - n]
+             + qmf_c[128 + n] * ovl_pos[511 - n]
+             + qmf_c[256 + n] * ovl_pos[383 - n]
+             + qmf_c[256 - n] * ovl_pos[255 - n]
+             + qmf_c[128 - n] * ovl_pos[127 - n];
+    }
+    y[0] = qmf_c[0] * ovl_pos[639]
+         + qmf_c[128] * ovl_pos[511]
+         + qmf_c[256] * ovl_pos[383]
+         + (-qmf_c[256]) * ovl_pos[255]
+         + (-qmf_c[128]) * ovl_pos[127];
+    for (int m = 0; m < 64; m++) {
+        float a = y[2 * m], b = y[2 * m + 1];
+        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
+        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
+    }
+    fft(x, y, FFT_LOGM_SHORT);
+    for (int k = kx; k < k2; k++) {
+        int kr = 63 - k;
+        float Ar = 0.5f * (yr[k] + yr[kr]);
+        float Ai = 0.5f * (yi[kr] - yi[k]);
+        float Br = -0.5f * (yi[k] + yi[kr]);
+        float Bi = 0.5f * (yr[kr] - yr[k]);
+        float wr = sbr->oddCos[k];
+        float wi = sbr->oddSin[k];
+        float Sr = Ar + wr * Br - wi * Bi;
+        float Si = Ai + wr * Bi + wi * Br;
+        energy[k] += Sr * Sr + Si * Si;
+    }
+}
+#endif
 
 
 static void sbr_adopt_envelope_grid(const struct SignalAnalysis *sa, SbrFrameData *fd)
@@ -552,9 +594,12 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 
     sbr_adopt_envelope_grid(sa, fd);
 #if FAAC_ENCODER_PS
-    if (sbr->is_he_v2) PsAnalyze(sbr, sa, fd);
+    if (sbr->is_he_v2) {
+        PsAnalyze(sbr, sa, fd);
+        sbr_quantize_envelopes(sbr, 1, isLfe, sa, fd);
+    } else
 #endif
-    sbr_quantize_envelopes(sbr, sbr->is_he_v2 ? 1 : numChannels, isLfe, sa, fd);
+    sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
