@@ -44,6 +44,8 @@
 #include "faam.h"
 #include "adts.h"
 #include "annexb.h"
+#include "faam_engine.h"
+#include "progress.h"
 #include "cli_io.h"
 #include "cli_parse.h"
 #include "charset.h"
@@ -349,7 +351,6 @@ enum {
 #define FAAM_CLI_MAX_CHAPTERS 255 /* what the library stores in a chpl atom */
 #define FAAM_TAG_MAX_REMOVE 32
 #define FAAM_MUX_MAX_TRACKS 8 /* matches faam_muxer_config.tracks[8] in include/faam.h */
-#define FAAM_VIDEO_TIMESCALE 90000
 
 static const char *bad_value(char *buf, size_t size, const char *opt, const char *val, const char *want)
 {
@@ -938,97 +939,57 @@ static const char *adts_probe(FILE *f, adts_info *out)
     return NULL;
 }
 
-/* Muxes every ADTS frame of f from its current position. Bytes that are not a frame
- * header are skipped, so a damaged stream loses the damage and keeps the rest. A header that
- * disagrees with the stream's first one in profile, rate or channels is as likely to be payload
- * that looks like a sync word as a frame of something else, and is skipped the same way. A
- * matching header that announces more than one raw data block is a frame this tool cannot mux
- * as one sample, so it ends the run: *multi_block is set. */
-static faam_status mux_adts_frames(faam_muxer *m, uint32_t track_id, FILE *f, const adts_params *first,
-                                   const uint8_t *prefix, size_t prefix_len,
-                                   uint32_t *frames, bool *multi_block)
+typedef struct { progress_throttle_t throttle; } mux_progress_context;
+
+static bool mux_progress(const progress_info_t *info, void *user)
 {
-    uint8_t buf[65536];
-    size_t buf_len = prefix_len;
-    if (buf_len) memcpy(buf, prefix, buf_len);
-
-    for (;;) {
-        /* Read only enough for the next header or complete frame. A large fread
-         * on a pipe waits for the whole request, delaying completed fragments
-         * until the input closes or the buffer fills. */
-        size_t read_target = 7;
-        if (buf_len >= 7 && adts_header_ok(buf)) {
-            adts_params p;
-            adts_parse_header(buf, &p);
-            uint32_t len = adts_frame_length(buf);
-            uint32_t hlen = adts_header_length(buf);
-            if (p.profile == first->profile && p.sr_idx == first->sr_idx &&
-                p.channel_cfg == first->channel_cfg && p.raw_blocks == 0 && len >= hlen)
-                read_target = len;
-        }
-        if (read_target > sizeof(buf)) return FAAM_ERR_INVALID_ARG;
-        bool attempted_read = read_target > buf_len;
-        size_t n = attempted_read ? fread(buf + buf_len, 1, read_target - buf_len, f) : 0;
-        buf_len += n;
-
-        size_t off = 0;
-        while (off + 7 <= buf_len) {
-            const uint8_t *h = buf + off;
-            adts_params p;
-            if (!adts_header_ok(h)) { off++; continue; }
-            adts_parse_header(h, &p);
-            if (p.profile != first->profile || p.sr_idx != first->sr_idx || p.channel_cfg != first->channel_cfg) {
-                off++;
-                continue;
-            }
-            uint32_t len = adts_frame_length(h);
-            uint32_t hlen = adts_header_length(h);
-            if (len < hlen) { off++; continue; }
-            if (p.raw_blocks != 0) { *multi_block = true; return FAAM_OK; }
-            if (off + len > buf_len) break;
-            faam_status st = faam_muxer_write_frame(m, track_id, h + hlen, len - hlen, 1024, 0, FAAM_FRAME_KEYFRAME);
-            if (st != FAAM_OK) return st;
-            (*frames)++;
-            off += len;
-        }
-
-        memmove(buf, buf + off, buf_len - off);
-        buf_len -= off;
-        if (ferror(f)) return FAAM_ERR_IO_READ;
-        if (n == 0 && attempted_read) break;
-    }
-    return FAAM_OK;
+    mux_progress_context *ctx = (mux_progress_context *)user;
+    if (info->is_final || progress_throttle_tick(&ctx->throttle, info, 0.033))
+        progress_render_cli(info);
+    return true;
 }
 
-/* One video access unit; durations follow the frame rate num/den exactly by
- * rounding the running timestamp, not each interval. */
-static faam_status mux_video_frame(faam_muxer *m, uint32_t track_id, const uint8_t *data, uint32_t len,
-                                   bool key, uint32_t *frames, uint32_t fps_num, uint32_t fps_den)
-{
-    uint64_t k = *frames;
-    uint64_t from = (k * FAAM_VIDEO_TIMESCALE * fps_den + fps_num / 2) / fps_num;
-    uint64_t to = ((k + 1) * FAAM_VIDEO_TIMESCALE * fps_den + fps_num / 2) / fps_num;
-    faam_status st = faam_muxer_write_frame(m, track_id, data, len, (uint32_t)(to - from), 0, key ? FAAM_FRAME_KEYFRAME : 0);
-    if (st == FAAM_OK) (*frames)++;
-    return st;
-}
-
-/* annexb_split() hands over one access unit at a time; the status of the write is kept for the
- * caller, which the split itself only learns as "stopped". */
 typedef struct {
-    faam_muxer *m;
-    uint32_t track_id;
-    uint32_t *frames;
-    uint32_t fps_num;
-    uint32_t fps_den;
-    faam_status st;
-} video_sink;
+    faam_track_info track;
+    FILE *output;
+    bool adts_output;
+    adts_params adts;
+    bool write_failed;
+    bool frame_too_large;
+} demux_output_context;
 
-static bool video_sample(void *user, const uint8_t *sample, uint32_t len, bool key)
+static bool demux_write_sample(void *user, const faam_frame_loc *loc,
+                               const uint8_t *frame, uint32_t frame_bytes)
 {
-    video_sink *v = (video_sink *)user;
-    v->st = mux_video_frame(v->m, v->track_id, sample, len, key, v->frames, v->fps_num, v->fps_den);
-    return v->st == FAAM_OK;
+    demux_output_context *ctx = (demux_output_context *)user;
+    static const uint8_t annexb_sc[4] = { 0x00, 0x00, 0x00, 0x01 };
+
+    if (ctx->track.track_type == FAAM_TRACK_VIDEO) {
+        uint32_t pos = 0;
+        while (pos + 4 <= frame_bytes) {
+            uint32_t nal_len = ((uint32_t)frame[pos] << 24) | ((uint32_t)frame[pos + 1] << 16) |
+                               ((uint32_t)frame[pos + 2] << 8) | (uint32_t)frame[pos + 3];
+            pos += 4;
+            if (pos + nal_len <= frame_bytes) {
+                ctx->write_failed |= fwrite(annexb_sc, 1, 4, ctx->output) != 4;
+                ctx->write_failed |= fwrite(frame + pos, 1, nal_len, ctx->output) != nal_len;
+                pos += nal_len;
+            } else break;
+        }
+    } else {
+        if (ctx->adts_output && ctx->track.codec_id == FAAM_CODEC_AAC) {
+            if (frame_bytes > ADTS_MAX_FRAME - ADTS_HEADER_SIZE) {
+                ctx->frame_too_large = true;
+                return false;
+            }
+            uint8_t adts[ADTS_HEADER_SIZE];
+            adts_write_header(&ctx->adts, frame_bytes, adts);
+            ctx->write_failed |= fwrite(adts, 1, sizeof(adts), ctx->output) != sizeof(adts);
+        }
+        ctx->write_failed |= fwrite(frame, 1, frame_bytes, ctx->output) != frame_bytes;
+    }
+    (void)loc;
+    return !ctx->write_failed;
 }
 
 static int cmd_mux(int argc, char **argv)
@@ -1439,27 +1400,33 @@ static int cmd_mux(int argc, char **argv)
                 goto done;
             }
             bool multi_block = false;
-            st = mux_adts_frames(m, track_id[i], fin[i], &adts[i].params,
-                                 adts[i].prefix, adts[i].prefix_len,
-                                 &frames[i], &multi_block);
+            mux_progress_context progress = {0};
+            progress_throttle_reset(&progress.throttle);
+            st = faam_engine_mux_adts_frames(m, track_id[i], fin[i], &adts[i].params,
+                                             adts[i].prefix, adts[i].prefix_len,
+                                             &frames[i], &multi_block,
+                                             g_verbose > 0 ? mux_progress : NULL, &progress);
             if (multi_block) {
                 fprintf(stderr, "Error: %s: a frame has more than one raw data block, which is not supported "
                         "(each frame is muxed as one 1024-sample unit)\n", input_files[i]);
                 goto done;
             }
         } else {
-            video_sink sink = { m, track_id[i], &frames[i], fps_num, fps_den, FAAM_OK };
-            annexb_status as = annexb_split(tc[i].codec_id == FAAM_CODEC_H265 ? ANNEXB_H265 : ANNEXB_H264,
-                                            vbuf_store[i], vbuf_len_store[i], video_sample, &sink);
+            mux_progress_context progress = {0};
+            progress_throttle_reset(&progress.throttle);
+            st = faam_engine_mux_video_frames(m, track_id[i],
+                                              tc[i].codec_id == FAAM_CODEC_H265 ? ANNEXB_H265 : ANNEXB_H264,
+                                              vbuf_store[i], vbuf_len_store[i], fps_num, fps_den,
+                                              &frames[i], g_verbose > 0 ? mux_progress : NULL, &progress);
             free(vbuf_store[i]);
             vbuf_store[i] = NULL;
-            if (as == ANNEXB_NO_MEMORY) {
+            if (st == FAAM_ERR_INSUFFICIENT_MEM) {
                 fprintf(stderr, "Error: out of memory\n");
                 goto done;
             }
-            st = sink.st;
         }
 
+        if (st == (faam_status)FAAM_ENGINE_CANCELLED) goto done;
         if (st != FAAM_OK) {
             fprintf(stderr, "Error muxing %s: %s\n", input_files[i], faam_strerror(st));
             goto done;
@@ -1609,19 +1576,10 @@ static int cmd_demux(int argc, char **argv)
     FILE *fout = NULL;
     bool out_created = false;
     bool asc_created = false;
-    bool write_failed = false;
     faam_demuxer *d = NULL;
     uint32_t num_tracks = 0;
     faam_track_info ti;
     faam_status st;
-    uint8_t *frame = (uint8_t *)malloc(65536);
-
-    if (!frame) {
-        fprintf(stderr, "Error: out of memory\n");
-        fclose(fin);
-        return 1;
-    }
-
     st = faam_demuxer_open(NULL, &io_in, &d);
     if (st != FAAM_OK) {
         fprintf(stderr, "Error initializing demuxer on %s: %s\n", input_file, faam_strerror(st));
@@ -1721,65 +1679,26 @@ static int cmd_demux(int argc, char **argv)
     }
     out_created = !demux_stdout;
 
-    uint32_t frame_cap = 65536;
-    uint32_t frame_bytes = 0;
-    static const uint8_t annexb_sc[4] = { 0x00, 0x00, 0x00, 0x01 };
-
-    faam_frame_loc loc = { .struct_size = sizeof(loc) };
-    while (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
-        if (loc.track_id != ti.track_id) {
-            /* Skip frames not belonging to the extracted track */
-            faam_demuxer_read_frame(d, NULL, 0, &frame_bytes);
-            continue;
-        }
-
-        /* A video IDR frame easily exceeds any fixed size; the demuxer reports the
-         * size it needs and stays on the frame, so grow the buffer and read again. */
-        st = faam_demuxer_read_frame(d, frame, frame_cap, &frame_bytes);
-        if (st == FAAM_ERR_OUTPUT_TOO_SMALL) {
-            uint8_t *bigger = (uint8_t *)realloc(frame, frame_bytes);
-            if (!bigger) {
-                fprintf(stderr, "Error: out of memory\n");
-                goto done;
-            }
-            frame = bigger;
-            frame_cap = frame_bytes;
-            st = faam_demuxer_read_frame(d, frame, frame_cap, &frame_bytes);
-        }
-        if (st != FAAM_OK) {
-            fprintf(stderr, "Error reading a frame of track %u from %s: %s\n", ti.track_id, input_file, faam_strerror(st));
-            goto done;
-        }
-        if (frame_bytes == 0) continue;
-
-        if (ti.track_type == FAAM_TRACK_VIDEO) {
-            /* Convert 4-byte BE length prefixed NALUs to Annex-B startcodes (00 00 00 01) */
-            uint32_t pos = 0;
-            while (pos + 4 <= frame_bytes) {
-                uint32_t nal_len = ((uint32_t)frame[pos] << 24) | ((uint32_t)frame[pos+1] << 16) | ((uint32_t)frame[pos+2] << 8) | (uint32_t)frame[pos+3];
-                pos += 4;
-                if (pos + nal_len <= frame_bytes) {
-                    write_failed |= fwrite(annexb_sc, 1, 4, fout) != 4;
-                    write_failed |= fwrite(frame + pos, 1, nal_len, fout) != nal_len;
-                    pos += nal_len;
-                } else break;
-            }
-        } else {
-            if (is_adts_out && ti.codec_id == FAAM_CODEC_AAC) {
-                if (frame_bytes > ADTS_MAX_FRAME - ADTS_HEADER_SIZE) {
-                    fprintf(stderr, "Error: a frame of track %u is too large for an ADTS header\n", ti.track_id);
-                    goto done;
-                }
-                uint8_t adts[ADTS_HEADER_SIZE];
-                adts_write_header(&adts_p, frame_bytes, adts);
-                write_failed |= fwrite(adts, 1, sizeof(adts), fout) != sizeof(adts);
-            }
-            write_failed |= fwrite(frame, 1, frame_bytes, fout) != frame_bytes;
-        }
-        if (write_failed) break;
+    demux_output_context output_ctx = { .track = ti, .output = fout,
+                                        .adts_output = is_adts_out, .adts = adts_p };
+    mux_progress_context progress = {0};
+    progress_throttle_reset(&progress.throttle);
+    st = faam_engine_demux_track(d, &ti, demux_write_sample, &output_ctx,
+                                 g_verbose > 0 ? mux_progress : NULL, &progress);
+    if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+        fprintf(stderr, "Error: out of memory\n");
+        goto done;
+    }
+    if (st == (faam_status)FAAM_ENGINE_CANCELLED && output_ctx.frame_too_large) {
+        fprintf(stderr, "Error: a frame of track %u is too large for an ADTS header\n", ti.track_id);
+        goto done;
+    }
+    if (st != FAAM_OK && st != (faam_status)FAAM_ENGINE_CANCELLED) {
+        fprintf(stderr, "Error reading a frame of track %u from %s: %s\n", ti.track_id, input_file, faam_strerror(st));
+        goto done;
     }
 
-    write_failed |= !cli_finish_output(&fout);
+    bool write_failed = output_ctx.write_failed || !cli_finish_output(&fout);
     if (write_failed) {
         fprintf(stderr, "Error writing %s\n", output_file);
         goto done;
@@ -1796,7 +1715,6 @@ done:
         if (asc_created) cli_remove(export_asc);
     }
     faam_demuxer_close(&d);
-    free(frame);
     fclose(fin);
     return ret;
 }

@@ -27,6 +27,15 @@ test_output = executable('test_output', ['test_output.c', '../output.c'],
     include_directories: ['..', '../..', '../../include'])
 test('test_unit_frontend_output_helpers', test_output)
 
+if get_option('muxer') and not meson.is_cross_build()
+    test_faam_engine = executable('test_faam_engine',
+        ['test_faam_engine.c', '../faam_engine.c', '../adts.c', '../annexb.c'],
+        c_args: c_args_list,
+        include_directories: ['..', '../..', '../../include', '../../common'],
+        dependencies: [frontend_common_dep])
+    test('test_unit_frontend_faam_engine', test_faam_engine)
+endif
+
 if get_option('encoder') and not meson.is_cross_build()
     test_encode_engine = executable('test_encode_engine', 'test_encode_engine.c',
         c_args: c_args_list,

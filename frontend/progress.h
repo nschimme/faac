@@ -56,6 +56,9 @@ void progress_throttle_reset(progress_throttle_t *t);
 bool progress_throttle_tick(progress_throttle_t *t, const progress_info_t *info,
                              double interval_sec);
 
+/* Render the standard CLI progress row shared by FAAC, FAAD and FAAM. */
+void progress_render_cli(const progress_info_t *info);
+
 #ifdef __cplusplus
 }
 #endif
