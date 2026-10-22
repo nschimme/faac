@@ -140,6 +140,7 @@ jobs:
         uses: nschimme/faac-benchmark@master
         with:
           faac-bin: ./baseline/build_base/frontend/faac
+          faad-bin: ./baseline/build_base/frontend/faad
           libfaac-so: ./baseline/build_base/libfaac/libfaac.so
           rate-control: ${{ matrix.rate_control }}
           run-name: ${{ matrix.arch }}_${{ matrix.rate_control }}_base
@@ -152,6 +153,7 @@ jobs:
         uses: nschimme/faac-benchmark@master
         with:
           faac-bin: ./baseline/build_base/frontend/faac
+          faad-bin: ./baseline/build_base/frontend/faad
           libfaac-so: ./baseline/build_base/libfaac/libfaac.so
           rate-control: ${{ matrix.rate_control }}
           run-name: ${{ matrix.arch }}_${{ matrix.rate_control }}_base
@@ -187,7 +189,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: nschimme/faac-benchmark@master
         with:
-          faad-bin: ${{ steps.decoder-diff.outputs.faad-bin }}
+          faad-bin: ./candidate/build_cand/frontend/faad
           faad-ref-bin: ${{ steps.decoder-diff.outputs.faad-ref-bin }}
           faac-bin: ./candidate/build_cand/frontend/faac
           libfaac-so: ./candidate/build_cand/libfaac/libfaac.so
