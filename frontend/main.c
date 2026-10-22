@@ -268,7 +268,7 @@ static bool cli_progress_callback(const progress_info_t *info, void *user_data)
             int percent = (int)(info->current_frame * 100 / info->total_frames);
             double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
             double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
-            fprintf(stderr, "\r%7u/%-7u (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
+            fprintf(stderr, "\r%7u/%-7u (%3d%%) | %7.1f | %6.1f/%-6.1f | %7.2fx | %.1f ",
                     info->current_frame, info->total_frames, percent,
                     bitrate_kbps,
                     info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,

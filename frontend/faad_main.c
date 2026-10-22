@@ -148,7 +148,7 @@ static bool cli_progress_callback(const progress_info_t *info, void *user_data)
             int percent = (int)(info->current_frame * 100 / info->total_frames);
             double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
             double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
-            fprintf(stderr, "\r%7u/%-7u (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
+            fprintf(stderr, "\r%7u/%-7u (%3d%%) | %7.1f | %6.1f/%-6.1f | %7.2fx | %.1f ",
                     info->current_frame, info->total_frames, percent,
                     bitrate_kbps,
                     info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,
@@ -227,7 +227,7 @@ static void cli_summary_callback(const decode_summary_t *summary, void *user_dat
     fprintf(stderr, "\n--- Decode Summary ---\n");
     fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
             summary->frame_count, summary->sample_count);
-    fprintf(stderr, " Bitrate & Frame Size: Avg = %u | Max = %u | Max Frame Size = %u\n",
+    fprintf(stderr, " Bitrate & Frame Size: Avg = %u kbps | Max = %u kbps | Max Frame Size = %u bytes\n",
             (uint32_t)(summary->avg_bitrate_kbps + 0.5), summary->max_bitrate_kbps, summary->max_frame_bytes);
 
     uint64_t input_size = 0;
