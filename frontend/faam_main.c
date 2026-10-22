@@ -2165,7 +2165,7 @@ int main(int argc, char **argv)
         ret = 0;
     } else if (strcmp(cmd, "--license") == 0) {
         faam_library_info info = { .struct_size = sizeof(info) };
-        fprintf(stderr, "FAAM - Freeware Advanced Audio Muxer\n");
+        fprintf(stderr, "FAAM - Freeware Advanced Audio Muxer (https://freewareadvancedaudio.github.io)\n");
         if (faam_get_library_info(&info) == FAAM_OK && info.copyright)
             fprintf(stderr, "%s\n", info.copyright);
         cli_print_patent_notice(stderr);
