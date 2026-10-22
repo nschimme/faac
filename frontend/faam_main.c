@@ -2160,7 +2160,7 @@ int main(int argc, char **argv)
 #endif
 
     if (argc < 2) {
-        print_usage('h');
+        print_usage('?');
         return 1;
     }
 
@@ -2213,7 +2213,7 @@ int main(int argc, char **argv)
         }
     } else {
         fprintf(stderr, "Unknown subcommand: %s\n", cmd);
-        print_usage('h');
+        print_usage('?');
         ret = 1;
     }
 

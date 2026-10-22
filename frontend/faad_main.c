@@ -393,7 +393,7 @@ int main(int argc, char **argv)
         case HELP_IO:
         case HELP_PROCESSING:
         case HELP_INFO: print_usage(opt); return 0;
-        default: print_usage('h'); return 1;
+        default: print_usage('?'); return 1;
         }
     }
 
@@ -402,7 +402,7 @@ int main(int argc, char **argv)
     }
 
     if (!opts.input_filename) {
-        print_usage('h');
+        print_usage('?');
         return 1;
     }
 
