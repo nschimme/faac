@@ -48,9 +48,11 @@ struct BitStream;
 #define SBR_QMF_BANDS_64     64
 #define SBR_QMF_OVL_LEN_64   576
 /* A decoder applies a frame's envelopes to QMF slots six slots later than the
-   input frame they are paired with here, so they are measured over input
-   delayed by that much. Whole slots keep the analysis on the decoder's grid. */
-#define SBR_ANALYSIS_DELAY   (6 * SBR_QMF_BANDS_64)
+   input frame they are paired with here. Measuring over input delayed by two
+   more slots keeps an attack's high-frequency energy out of the envelope
+   before it; a further slot costs several times the MOS. Whole slots keep the
+   analysis on the decoder's grid. */
+#define SBR_ANALYSIS_DELAY   (8 * SBR_QMF_BANDS_64)
 #define SBR_QMF_HIST_LEN     (SBR_QMF_OVL_LEN_64 + SBR_ANALYSIS_DELAY)
 /* All encoded envelopes use the high-resolution master band table. */
 #define SBR_FREQ_RES_HIGH     1
