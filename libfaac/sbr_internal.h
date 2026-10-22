@@ -66,6 +66,7 @@ typedef struct SbrFrameData {
     int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
     int enable_phase;
     int ps_num_env;
+    int ps_band_mode;
     struct {
         int iid[PS_BANDS], icc[PS_BANDS];
         int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
@@ -77,6 +78,8 @@ struct SBRInfo {
     int is_he_v2;
 #if FAAC_ENCODER_PS
     PsHybrid psHybrid;
+    PsRef psRef[2];
+    int psNumEnv, psBandMode;
 #endif
     /* Coupled rendition of a conventional stereo SBR pair: level, then balance. */
     SbrEnvData cpl[2];

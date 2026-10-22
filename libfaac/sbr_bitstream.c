@@ -203,12 +203,33 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
     for (int ch = 0; ch < nch; ch++) PutBit(bs, 0, 1); /* bs_add_harmonic_flag */
 #if FAAC_ENCODER_PS
     if (sbr->is_he_v2) {
-        int psBits = PsWrite(fd, NULL, false);
+        /* Mirror the SBR envelope reference parity: dry runs and core retries
+         * may overwrite the current slot but never the previous access unit. */
+        const PsRef *ref = &sbr->psRef[~sbr->frameCount & 1];
+        if (!ref->valid || sbr->sendHeaderThisFrame || ref->band_mode != fd->ps_band_mode)
+            ref = NULL;
+        int psBits = PsWrite(fd, NULL, false, ref);
         int psBytes = (psBits + 7) / 8;
         PutBit(bs, 1, 1); /* bs_extended_data */
         PutBit(bs, psBytes < 15 ? psBytes : 15, 4);
         if (psBytes >= 15) PutBit(bs, psBytes - 15, 8);
-        PsWrite(fd, bs, true);
+        PsWrite(fd, bs, true, ref);
+        PsRef *cur = &sbr->psRef[sbr->frameCount & 1];
+        int e = fd->ps_num_env == 2;
+        memcpy(cur->iid, e ? fd->ps_extra[0].iid : fd->iid, sizeof(cur->iid));
+        if (fd->enable_icc)
+            memcpy(cur->icc, e ? fd->ps_extra[0].icc : fd->icc, sizeof(cur->icc));
+        else
+            memset(cur->icc, 0, sizeof(cur->icc));
+        if (fd->enable_phase) {
+            memcpy(cur->ipd, e ? fd->ps_extra[0].ipd : fd->ipd, sizeof(cur->ipd));
+            memcpy(cur->opd, e ? fd->ps_extra[0].opd : fd->opd, sizeof(cur->opd));
+        } else {
+            memset(cur->ipd, 0, sizeof(cur->ipd));
+            memset(cur->opd, 0, sizeof(cur->opd));
+        }
+        cur->band_mode = fd->ps_band_mode;
+        cur->valid = 1;
     } else
 #endif
     PutBit(bs, 0, 1); /* bs_extended_data */

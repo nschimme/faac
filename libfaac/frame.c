@@ -361,7 +361,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     if (IsHEAAC(hEncoder->config.aacObjectType)) {
         SBRContext *sCtx = hEncoder->sbrContext;
         unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
-        SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, hEncoder->config.aacObjectType);
+        SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate,
+                               hEncoder->config.aacObjectType, hEncoder->config.bitRate != 0);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth = SbrContextGetXOverBandwidth(sCtx);

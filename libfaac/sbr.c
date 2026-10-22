@@ -305,14 +305,24 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int aacObjectType)
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int aacObjectType, int rateLimited)
 {
+#if !FAAC_ENCODER_PS
+    (void)rateLimited;
+#endif
     if (!sCtx) return;
     if (!sCtx->sbrInfo)
         sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
     else
         SbrUpdate(sCtx->sbrInfo, bitrate);
-    if (sCtx->sbrInfo) sCtx->sbrInfo->is_he_v2 = IsHEV2(aacObjectType);
+    if (sCtx->sbrInfo) {
+        sCtx->sbrInfo->is_he_v2 = IsHEV2(aacObjectType);
+#if FAAC_ENCODER_PS
+        sCtx->sbrInfo->psNumEnv = rateLimited && bitrate <= PS_LOW_RATE_MAX_BITRATE ? 1 : 2;
+        sCtx->sbrInfo->psBandMode = sCtx->sbrInfo->psNumEnv == 1 ? 0 : 1;
+        memset(sCtx->sbrInfo->psRef, 0, sizeof(sCtx->sbrInfo->psRef));
+#endif
+    }
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
@@ -321,7 +331,9 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
     unsigned int channel;
     Resampler *rs = sCtx->resampler;
     float *fullPtrs[MAX_CHANNELS];
+#if FAAC_ENCODER_PS
     float spectralCarrier[2 * FRAME_LEN];
+#endif
 
     /* SbrEncode quantizes into the new head; SbrWrite (via SbrContextGetBits)
      * emits the oldest slot, which is the payload for this frame's core audio. */
