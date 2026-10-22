@@ -30,8 +30,13 @@ bool progress_throttle_tick(progress_throttle_t *t, const progress_info_t *info,
     if (at_end)
         t->reached_end = true;
 
-    bool fire = fire_edge || t->last_fired_sec < 0.0 ||
-                (info->time_elapsed_sec - t->last_fired_sec) >= interval_sec;
+    /* Avoid drawing the startup row with zero elapsed time/speed. Final
+       progress is always delivered, including for sessions shorter than the
+       throttle interval. */
+    bool elapsed_ready = info->time_elapsed_sec >= interval_sec;
+    bool fire = info->is_final ||
+                (elapsed_ready && (fire_edge || t->last_fired_sec < 0.0 ||
+                 (info->time_elapsed_sec - t->last_fired_sec) >= interval_sec));
     if (fire)
         t->last_fired_sec = info->time_elapsed_sec;
     return fire;

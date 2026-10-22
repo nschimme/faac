@@ -43,6 +43,7 @@
 #include "output.h"
 #include "charset.h"
 #include "cli_io.h"
+#include "cli_parse.h"
 #include "encode_engine.h"
 #include "help.h"
 
@@ -118,7 +119,7 @@ static const help_t help_io[] = {
      "Use stdin/stdout",
      "If you simply use a hyphen/minus sign instead of a filename, FAAC can encode directly from stdin, thus enabling piping from other applications and utilities. The same works for stdout as well, so FAAC can pipe its output to other apps such as a server."},
     {"-v <verbose>",
-     "Set verbosity level (-v0 is quiet mode).",
+     "Set verbosity level: -v0 is quiet; -v1 (default) shows progress; -v2 adds a detailed summary.",
      NULL},
     {"-r",
      "Use RAW AAC output file.",
@@ -265,11 +266,12 @@ static bool cli_progress_callback(const progress_info_t *info, void *user_data)
     {
         if (info->total_frames > 0)
         {
-            int percent = (int)(info->current_frame * 100 / info->total_frames);
+            uint64_t percent = (uint64_t)info->current_frame * 100 / info->total_frames;
+            if (percent > 100) percent = 100;
             double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
             double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
             fprintf(stderr, "\r%7u/%-7u (%3d%%) | %7.1f | %6.1f/%-6.1f | %7.2fx | %.1f ",
-                    info->current_frame, info->total_frames, percent,
+                    info->current_frame, info->total_frames, (int)percent,
                     bitrate_kbps,
                     info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,
                     info->speed_factor, info->eta_sec);
@@ -280,6 +282,8 @@ static bool cli_progress_callback(const progress_info_t *info, void *user_data)
                     info->current_frame, info->time_elapsed_sec, info->speed_factor);
         }
         fflush(stderr);
+        if (info->is_final)
+            fputc('\n', stderr);
     }
 #ifndef _WIN32
     return running != 0;
@@ -714,12 +718,12 @@ int main(int argc, char *argv[])
             opts.max_bit_rate = atoi(optarg) * 1000;
             break;
         case 'v': {
-            unsigned long long value;
-            if (!cli_parse_uint(optarg, UINT8_MAX, &value)) {
-                fprintf(stderr, "Invalid verbosity: %s\n", optarg);
+            uint8_t value;
+            if (!cli_parse_verbosity(optarg, &value)) {
+                fprintf(stderr, "Invalid verbosity '%s' (expected 0, 1, or 2)\n", optarg);
                 return 1;
             }
-            opts.verbose = (uint8_t)value;
+            opts.verbose = value;
             break;
         }
         case HELP_QUAL:
@@ -729,7 +733,7 @@ int main(int argc, char *argv[])
         case 'H':
         case 'h':
             help(c, libinfo.version);
-            ret = 1;
+            ret = 0;
             goto cleanup;
         case '?':
         default:

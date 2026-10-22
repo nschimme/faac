@@ -255,6 +255,12 @@ def test_abi_track_count(t, d):
 
 
 def run_all(t, d):
+    for name, exe in (("faac", t.faac), ("faad", t.faad), ("faam", t.faam)):
+        for flag in ("-h", "-H"):
+            r = t.run(exe, [flag], d)
+            check(r.returncode == 0 and r.stdout,
+                  f"{name} {flag} prints help and exits successfully")
+
     test_gapless_boxes(t, d)
     wav = os.path.join(d, "s.wav")
     make_wav(wav)

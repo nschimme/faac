@@ -25,6 +25,7 @@
 
 #include "cli_parse.h"
 #include "cli_io.h"
+#include "progress.h"
 
 static void test_uint(void)
 {
@@ -39,6 +40,39 @@ static void test_uint(void)
     assert(!cli_parse_uint("1x", 10, &value));
     assert(!cli_parse_uint("11", 10, &value));
     assert(!cli_parse_uint("18446744073709551616", ULLONG_MAX, &value));
+}
+
+static void test_verbosity(void)
+{
+    uint8_t value = 99;
+    assert(cli_parse_verbosity("0", &value) && value == 0);
+    assert(cli_parse_verbosity("1", &value) && value == 1);
+    assert(cli_parse_verbosity("2", &value) && value == 2);
+    assert(!cli_parse_verbosity("3", &value));
+    assert(!cli_parse_verbosity("-1", &value));
+    assert(!cli_parse_verbosity("1x", &value));
+    assert(!cli_parse_verbosity(NULL, &value));
+    assert(!cli_parse_verbosity("1", NULL));
+}
+
+static void test_progress_throttle(void)
+{
+    progress_throttle_t throttle;
+    progress_throttle_reset(&throttle);
+    progress_info_t info = { .time_elapsed_sec = 0.001 };
+    assert(!progress_throttle_tick(&throttle, &info, 0.033));
+
+    info.time_elapsed_sec = 0.033;
+    assert(progress_throttle_tick(&throttle, &info, 0.033));
+    info.time_elapsed_sec = 0.050;
+    assert(!progress_throttle_tick(&throttle, &info, 0.033));
+    info.time_elapsed_sec = 0.067;
+    assert(progress_throttle_tick(&throttle, &info, 0.033));
+
+    progress_throttle_reset(&throttle);
+    info.time_elapsed_sec = 0.001;
+    info.is_final = true;
+    assert(progress_throttle_tick(&throttle, &info, 0.033));
 }
 
 static void test_fps(void)
@@ -172,6 +206,8 @@ static void test_creation_time(void)
 int main(void)
 {
     test_uint();
+    test_verbosity();
+    test_progress_throttle();
     test_fps();
     test_chapter_line();
     test_creation_time();

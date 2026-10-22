@@ -31,6 +31,15 @@ bool cli_parse_uint(const char *text, unsigned long long max, unsigned long long
     return true;
 }
 
+bool cli_parse_verbosity(const char *text, uint8_t *out)
+{
+    unsigned long long value;
+    if (!out || !cli_parse_uint(text, CLI_VERBOSITY_MAX, &value))
+        return false;
+    *out = (uint8_t)value;
+    return true;
+}
+
 bool cli_parse_fps(const char *text, uint32_t *num, uint32_t *den)
 {
     char buf[64];

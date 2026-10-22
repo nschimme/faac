@@ -45,6 +45,7 @@
 #include "adts.h"
 #include "annexb.h"
 #include "cli_io.h"
+#include "cli_parse.h"
 #include "charset.h"
 #include "help.h"
 #include "endian.h"
@@ -53,6 +54,18 @@
 #define HAS(s) ((s) && (s)[0])
 
 static int g_verbose = 1;
+
+static bool set_verbosity(const char *text)
+{
+    uint8_t value;
+    if (!cli_parse_verbosity(text, &value)) {
+        fprintf(stderr, "Invalid verbosity '%s' (expected 0, 1, or 2)\n",
+                text ? text : "");
+        return false;
+    }
+    g_verbose = value;
+    return true;
+}
 
 enum {
     HELP_COMMANDS = 1,
@@ -87,7 +100,7 @@ static const help_t help_mux[] = {
     {"-o, --output <file>",
      "Output MP4 file (required); - streams fragmented MP4 when supported; --faststart, --brand m4b or gapless options use progressive MP4", NULL},
     {"-v <verbose>",
-     "Set verbosity level (-v0 is quiet mode).", NULL},
+     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
     {"--overwrite",
      "Overwrite an existing output file", NULL},
     {"--codec:N <codec>",
@@ -131,7 +144,7 @@ static const help_t help_inspect[] = {
      "demux: output file (default: output.raw); - writes to stdout. A name containing .aac or .adts gets ADTS headers; "
      "video is written as Annex-B", NULL},
     {"-v <verbose>",
-     "Set verbosity level (-v0 is quiet mode).", NULL},
+     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
     {"--format <raw|adts>",
      "demux: choose AAC output format explicitly; default is inferred from the output filename (raw for stdout)", NULL},
     {"-t, --track <id>",
@@ -144,7 +157,7 @@ static const help_t help_inspect[] = {
 };
 
 static const help_t help_tag[] = {
-    {"-v <verbose>", "Set verbosity level (-v0 is quiet mode).", NULL},
+    {"-v <verbose>", "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
     {"--title <text>", "Title", NULL},
     {"--titlesort <text>", "Title sort name", NULL},
     {"--artist <text>", "Artist", NULL},
@@ -185,7 +198,7 @@ static const help_t help_chapter[] = {
     {"-o, --output <file>",
      "Chapter list to write, in the same format; - writes stdout", NULL},
     {"-v <verbose>",
-     "Set verbosity level (-v0 is quiet mode).", NULL},
+     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
     {"--overwrite",
      "export: overwrite an existing chapter list", NULL},
     {NULL, NULL, NULL}
@@ -552,7 +565,7 @@ static int cmd_info(int argc, char **argv)
     optind = 1;
     while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
         switch (opt) {
-        case 'v': g_verbose = atoi(optarg); break;
+        case 'v': if (!set_verbosity(optarg)) return 1; break;
         case 'h': print_usage(HELP_COMMANDS); return 0;
         case 'H': print_usage('H'); return 0;
         default: print_usage('h'); return 1;
@@ -760,7 +773,7 @@ static int cmd_dump(int argc, char **argv)
     int opt;
     optind = 1;
     while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
-        if (opt == 'v') { g_verbose = atoi(optarg); continue; }
+        if (opt == 'v') { if (!set_verbosity(optarg)) return 1; continue; }
         if (opt == 'h') { print_usage(HELP_COMMANDS); return 0; }
         if (opt == 'H') { print_usage('H'); return 0; }
         print_usage('h');
@@ -1137,7 +1150,7 @@ static int cmd_mux(int argc, char **argv)
     while (!fail && (opt = getopt_long(fargc, filtered, "v:i:o:hH", long_options, NULL)) != -1) {
         unsigned long long v;
         switch (opt) {
-        case 'v': g_verbose = atoi(optarg); break;
+        case 'v': if (!set_verbosity(optarg)) return 1; break;
         case 'i':
             if (num_inputs >= FAAM_MUX_MAX_TRACKS) {
                 snprintf(errbuf, sizeof(errbuf), "Error: too many -i inputs (max %d)\n", FAAM_MUX_MAX_TRACKS);
@@ -1551,7 +1564,7 @@ static int cmd_demux(int argc, char **argv)
     while ((opt = getopt_long(argc, argv, "v:o:t:hH", long_options, NULL)) != -1) {
         unsigned long long v;
         switch (opt) {
-        case 'v': g_verbose = atoi(optarg); break;
+        case 'v': if (!set_verbosity(optarg)) return 1; break;
         case 'o': output_file = optarg; break;
         case 't':
             if (!cli_parse_uint(optarg, UINT32_MAX, &v) || v == 0) {
@@ -1821,7 +1834,7 @@ static int cmd_tag(int argc, char **argv)
         opterr = 0;
         optind = 1;
         while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
-            if (opt == 'v') { g_verbose = atoi(optarg); }
+            if (opt == 'v') { if (!set_verbosity(optarg)) return 1; }
             else if (opt == 'h') { print_usage(HELP_TAG); return 0; }
             else if (opt == 'H') { print_usage('H'); return 0; }
             else if (opt == OPT_CLEAR) {
@@ -1910,7 +1923,7 @@ static int cmd_tag(int argc, char **argv)
     optind = 1;
     bool bad_option = false;
     while ((opt = getopt_long(argc, argv, "v:hH", long_options, NULL)) != -1) {
-        if (opt == 'v') { g_verbose = atoi(optarg); }
+        if (opt == 'v') { if (!set_verbosity(optarg)) return 1; }
         else if (opt >= OPT_TAG_FIRST && opt <= OPT_TAG_LAST) {
             err_msg = tag_apply(&t, opt, optarg);
         } else if (opt != OPT_REMOVE && opt != OPT_CLEAR && opt != 'h' && opt != 'H') {
@@ -2111,7 +2124,7 @@ static int cmd_chapter(int argc, char **argv)
     optind = 1;
     while ((opt = getopt_long(sub_argc, sub_argv, "v:o:hH", long_options, NULL)) != -1) {
         switch (opt) {
-        case 'v': g_verbose = atoi(optarg); break;
+        case 'v': if (!set_verbosity(optarg)) return 1; break;
         case OPT_CHAPTERS: chapters_path = optarg; break;
         case 'o': output_path = optarg; break;
         case OPT_OVERWRITE: overwrite = true; break;
