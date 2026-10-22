@@ -257,6 +257,12 @@ static void WindowAndMdct(faacEncStruct* hEncoder, CoderInfo *coderInfo, int blo
         float * restrict dst = p_out_mdct;
 
         OnsetGains(src, coderInfo->temporal_gain);
+        /* The HE core takes the gain to the power 3/4: at the same rate the full
+         * boost costs more than it returns, and this keeps most of the drop in
+         * pre-echo. That caps the HE gain at ~5.6. */
+        if (hEncoder->config.aacObjectType == HE_V1)
+            for (k = 0; k < MAX_SHORT_WINDOWS; k++)
+                coderInfo->temporal_gain[k] = sqrtf(coderInfo->temporal_gain[k] * sqrtf(coderInfo->temporal_gain[k]));
 
         for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
             ApplyWindowDirect(dst, src, win, BLOCK_LEN_SHORT);
