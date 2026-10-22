@@ -79,17 +79,23 @@ enum {
 
 static const help_t help_commands[] = {
     {"-i <file> ... -o <out>",
-     "Mux elementary streams into an MP4 (no subcommand word); '-' selects stdin/stdout", NULL},
+     "Mux elementary streams into an MP4 (no subcommand word); '-' selects stdin/stdout",
+     "Inputs may be ADTS AAC or, in a video-enabled build, Annex-B H.264/H.265. Repeat -i to create multiple tracks, up to eight."},
     {"info <file>",
-     "Print container, track, tag, chapter and gapless summaries; '-' reads stdin", NULL},
+     "Print container, track, tag, chapter and gapless summaries; '-' reads stdin",
+     "Use this to inspect track IDs before selecting a track with demux. JSON output is available with --json."},
     {"dump <file>",
-     "Print the MP4 atom tree; '-' reads stdin", NULL},
+     "Print the MP4 atom tree; '-' reads stdin",
+     "The dump lists atom offsets, sizes and nesting, which is useful when diagnosing container layout."},
     {"demux <file>",
-     "Extract one track's elementary stream; '-' reads stdin and -o - writes stdout", NULL},
+     "Extract one track's elementary stream; '-' reads stdin and -o - writes stdout",
+     "The first track is selected by default. AAC can be written as raw access units or ADTS; video is written as Annex-B."},
     {"tag <file>",
-     "Edit iTunes metadata tags in place", NULL},
+     "Edit iTunes metadata tags in place",
+     "Existing modeled and unmodeled metadata is preserved unless --clear or --remove is used. Work on a copy when the edit must be crash-safe."},
     {"chapter import|export <file>",
-     "Edit or list chapters of an audiobook", NULL},
+     "Edit or list chapters of an audiobook",
+     "Import replaces the file's chapters from a tab-separated chapter list; export writes the current chapters to a text file."},
     {NULL, NULL, NULL}
 };
 
@@ -98,44 +104,60 @@ static const help_t help_mux[] = {
      "Elementary stream to mux: ADTS AAC, or Annex-B H.264 or H.265 (video needs a build with -Dmuxer-video). "
      "Video is muxed one picture per sample in stream order, and B-frames are not supported: no composition "
      "time offsets are written, so reordered pictures would play out of order. Use - for stdin. "
-     "Repeat for more tracks (max 8)", NULL},
+     "Repeat for more tracks (max 8)",
+     "AAC input must be ADTS. Video input must be Annex-B and include codec parameter sets; FAAM does not parse dimensions from the stream. Each access unit becomes one MP4 sample."},
     {"-o, --output <file>",
-     "Output MP4 file (required); - streams fragmented MP4 when supported; --faststart, --brand m4b or gapless options use progressive MP4", NULL},
+     "Output MP4 file (required); - streams fragmented MP4 when supported; --faststart, --brand m4b or gapless options use progressive MP4",
+     "Progressive files are written by default. With stdout, FAAM uses one-second fragmented MP4 when supported; faststart, M4B branding or gapless metadata require progressive output, which is emitted after muxing finishes."},
     {"-v <verbose>",
-     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
+     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
+     "Status and progress are written to stderr when media is sent to stdout. Errors are always reported regardless of verbosity."},
     {"--overwrite",
-     "Overwrite an existing output file", NULL},
+     "Overwrite an existing output file",
+     "FAAM refuses to replace an existing destination without this option. An output that aliases an input is rejected even when overwrite is enabled."},
     {"--codec:N <codec>",
      "Codec of the Nth -i, counting from 0: aac, h264 or h265 (default: from the file extension, "
-     ".264/.h264 or .265/.hevc, else aac)", NULL},
+     ".264/.h264 or .265/.hevc, else aac)",
+     "Use this when an input extension is ambiguous or does not identify its codec. N is the zero-based position of the matching -i option."},
     {"--brand <name>",
-     "m4a (default) or m4b, the audiobook brand", NULL},
+     "m4a (default) or m4b, the audiobook brand",
+     "M4B branding is intended for audiobooks and forces progressive output when writing to stdout. Files containing video use the isom brand."},
     {"--faststart",
      "Move the index to the front so the file plays while it downloads; rewrites the whole file "
-     "when muxing ends, so skip it on flash recorders", NULL},
+     "when muxing ends, so skip it on flash recorders",
+     "Faststart requires seekable progressive output because the movie index is moved ahead of media data after the inputs are read."},
     {"--width <pixels>",
-     "Video width; required for video, the stream is not parsed for it", NULL},
+     "Video width; required for video, the stream is not parsed for it",
+     "Set the coded display width from 1 through 65535. FAAM stores it in the video track metadata; it does not inspect the bitstream to infer it."},
     {"--height <pixels>",
-     "Video height; required for video", NULL},
+     "Video height; required for video",
+     "Set the coded display height from 1 through 65535. FAAM stores it in the video track metadata; it does not inspect the bitstream to infer it."},
     {"--rotation <degrees>",
-     "Display rotation of video tracks, clockwise: 0 (default), 90, 180 or 270", NULL},
+     "Display rotation of video tracks, clockwise: 0 (default), 90, 180 or 270",
+     "Writes a display matrix for compatible players. The encoded pictures are not rotated or rewritten."},
     {"--fps <n[/d]>",
-     "Video frame rate, a whole number or a fraction such as 30000/1001 (default: 30)", NULL},
+     "Video frame rate, a whole number or a fraction such as 30000/1001 (default: 30)",
+     "The value assigns sample durations in the video track. Fractional rates preserve the exact numerator/denominator timing."},
     {"--encoder-delay <samples>",
      "Leading priming samples, for gapless playback of audio (needs an audio track); counted in the "
-     "track's sample rate, which for HE-AAC is the core rate, as faam info prints it for a faac file", NULL},
+     "track's sample rate, which for HE-AAC is the core rate, as faam info prints it for a faac file",
+     "Writes gapless metadata and an edit list. The value is in samples at the AAC track's core sample rate, not necessarily the decoded output rate."},
     {"--padding-delay <samples>",
      "Trailing padding samples in the same units as --encoder-delay; the total length is derived from the "
-     "frames muxed", NULL},
+     "frames muxed",
+     "The programme duration is computed from total AAC frame duration minus encoder delay and trailing padding."},
     {"--sbr-signaling <mode>",
      "How the AAC track announces SBR/PS, which ADTS cannot say: none (default, decoder detects), "
-     "compatible, explicit, ps or ps-explicit (HE-AAC v2, which needs a mono core)", NULL},
+     "compatible, explicit, ps or ps-explicit (HE-AAC v2, which needs a mono core)",
+     "Use compatible for backward-compatible signaling or explicit for hierarchical signaling. The ps modes signal parametric stereo; the core AAC stream must be mono."},
     {"--language <code3>",
      "Set ISO 639-2/T 3-letter language code of audio tracks (e.g. eng, ger); default und. "
-     "--lang is the same", NULL},
+     "--lang is the same",
+     "The language is stored on each audio track. Exactly three ASCII letters are accepted, in either case."},
     {"--creation-time <value>",
      "Set creation/modification time (auto, now, or timestamp); without it SOURCE_DATE_EPOCH is used "
-     "when set, else the time is left unset", NULL},
+     "when set, else the time is left unset",
+     "auto uses the first input's modification time; now uses the current time; a number is Unix time in seconds and must fit the MP4 32-bit timestamp field."},
     {NULL,
      "Every option of --help-tag except --remove and --clear also applies when muxing.", NULL},
     {NULL, NULL, NULL}
@@ -144,65 +166,83 @@ static const help_t help_mux[] = {
 static const help_t help_inspect[] = {
     {"-o, --output <file>",
      "demux: output file (default: output.raw); - writes to stdout. A name containing .aac or .adts gets ADTS headers; "
-     "video is written as Annex-B", NULL},
+     "video is written as Annex-B",
+     "For AAC, names containing .aac or .adts select ADTS output; other names select raw access units. Video samples are prefixed with Annex-B start codes."},
     {"-v <verbose>",
-     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
+     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
+     "Progress and completion messages go to stderr if extracted media is sent to stdout."},
     {"--format <raw|adts>",
-     "demux: choose AAC output format explicitly; default is inferred from the output filename (raw for stdout)", NULL},
+     "demux: choose AAC output format explicitly; default is inferred from the output filename (raw for stdout)",
+     "This option applies only to AAC tracks. ADTS output requires codec configuration that can be represented in an ADTS header."},
     {"-t, --track <id>",
-     "demux: track ID to extract (default: the first track)", NULL},
+     "demux: track ID to extract (default: the first track)",
+     "Use the track IDs reported by faam info. If the file has no track with the requested ID, extraction fails."},
     {"--export-asc <file>",
-     "demux: also write the track's codec configuration (AudioSpecificConfig, avcC or hvcC)", NULL},
+     "demux: also write the track's codec configuration (AudioSpecificConfig, avcC or hvcC)",
+     "Writes the selected track's decoder configuration bytes alongside the extracted stream."},
     {"--overwrite",
-     "demux: overwrite an existing output or --export-asc file", NULL},
+     "demux: overwrite an existing output or --export-asc file",
+     "Both output paths are checked before either is written. An output that aliases the input or the other output is rejected."},
     {NULL, NULL, NULL}
 };
 
 static const help_t help_tag[] = {
-    {"-v <verbose>", "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
-    {"--title <text>", "Title", NULL},
-    {"--titlesort <text>", "Title sort name", NULL},
-    {"--artist <text>", "Artist", NULL},
-    {"--album <text>", "Album", NULL},
-    {"--albumartist <text>", "Album artist", NULL},
-    {"--composer <text>", "Composer", NULL},
-    {"--artistsort <text>", "Artist sort name", NULL},
-    {"--albumsort <text>", "Album sort name", NULL},
-    {"--albumartistsort <text>", "Album artist sort name", NULL},
-    {"--composersort <text>", "Composer sort name", NULL},
-    {"--year <text>", "Year", NULL},
-    {"--comment <text>", "Comment", NULL},
+    {"-v <verbose>", "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
+     "The same verbosity setting applies to muxing and tag editing."},
+    {"--title <text>", "Title", "Set the standard iTunes title field. Text is converted to UTF-8."},
+    {"--titlesort <text>", "Title sort name", "Set the sort order text used by media libraries independently of the displayed title."},
+    {"--artist <text>", "Artist", "Set the standard iTunes artist field. Text is converted to UTF-8."},
+    {"--album <text>", "Album", "Set the standard iTunes album field. Text is converted to UTF-8."},
+    {"--albumartist <text>", "Album artist", "Set the album artist field, which can differ from the track artist."},
+    {"--composer <text>", "Composer", "Set the standard iTunes composer field."},
+    {"--artistsort <text>", "Artist sort name", "Set the artist sort key independently of the displayed artist name."},
+    {"--albumsort <text>", "Album sort name", "Set the album sort key independently of the displayed album name."},
+    {"--albumartistsort <text>", "Album artist sort name", "Set the album-artist sort key independently of the displayed album artist."},
+    {"--composersort <text>", "Composer sort name", "Set the composer sort key independently of the displayed composer name."},
+    {"--year <text>", "Year", "Set the release year as text."},
+    {"--comment <text>", "Comment", "Set the standard iTunes comment field."},
     {"--genre <value>",
-     "ID3v1 genre number (0-255) or name; anything else is stored as free text", NULL},
-    {"--compilation", "Mark as part of a compilation", NULL},
-    {"--track <n[/total]>", "Track number", NULL},
-    {"--disc <n[/total]>", "Disc number", NULL},
-    {"--cover-art <file>", "Cover image, GIF, JPEG or PNG", NULL},
+     "ID3v1 genre number (0-255) or name; anything else is stored as free text",
+     "A recognized ID3v1 genre sets both the numeric genre atom and its text label. Other values are stored as text only."},
+    {"--compilation", "Mark as part of a compilation", "Sets the compilation flag on the MP4."},
+    {"--track <n[/total]>", "Track number", "Optionally include the total track count after a slash, for example 3/12."},
+    {"--disc <n[/total]>", "Disc number", "Optionally include the total disc count after a slash, for example 1/2."},
+    {"--cover-art <file>", "Cover image, GIF, JPEG or PNG",
+     "FAAM detects GIF, JPEG, PNG or BMP from the file contents. Cover art is limited to 32 MiB."},
     {"--tag <name=value>",
-     "Custom tag, name and value separated by = or ,; repeat for more", NULL},
+     "Custom tag, name and value separated by = or ,; repeat for more",
+     "The first '=' or ',' separates the name from the value. Both must be non-empty."},
     {"--remove <field>",
      "tag only: remove a field before the other options apply: title, titlesort, artist, artistsort, "
      "album, albumsort, albumartist, albumartistsort, composer, composersort, year, comment, genre, "
-     "compilation, track, disc, cover-art or custom. Repeatable", NULL},
+     "compilation, track, disc, cover-art or custom. Repeatable",
+     "Removal runs before setting other supplied fields. The custom field removes all custom tags; at most 32 --remove options are accepted."},
     {"--clear",
-     "tag only: remove every existing tag before the other options apply (drops all metadata, including preserved/unmodeled tags)", NULL},
+     "tag only: remove every existing tag before the other options apply (drops all metadata, including preserved/unmodeled tags)",
+     "Unlike updating one modeled field, --clear also removes metadata FAAM does not understand. It runs before adding any new values in the same command."},
     {NULL, NULL, NULL}
 };
 
 static const help_t help_chapter[] = {
     {"import <file>",
-     "Replace the chapters of an MP4 with those of the --chapters file; --chapters - reads stdin", NULL},
+     "Replace the chapters of an MP4 with those of the --chapters file; --chapters - reads stdin",
+     "The chapter file contains one timestamp and title per line, separated by a tab. Import replaces existing chapters while preserving tags."},
     {"export <file>",
-     "Write chapters from an MP4 (input - reads stdin); -o - writes stdout", NULL},
+     "Write chapters from an MP4 (input - reads stdin); -o - writes stdout",
+     "A file without chapters is an error. The output uses the same timestamp and title format accepted by import."},
     {"--chapters <file>",
      "Chapter list to import: one \"HH:MM:SS.mmm<TAB>Title\" line per chapter (max 255); the fraction "
-     "is 1 to 3 digits, .5 being 500 ms", NULL},
+     "is 1 to 3 digits, .5 being 500 ms",
+     "Timestamps are interpreted as chapter start times. The maximum chapter count is 255."},
     {"-o, --output <file>",
-     "Chapter list to write, in the same format; - writes stdout", NULL},
+     "Chapter list to write, in the same format; - writes stdout",
+     "This option is used by chapter export. When the path is -, chapter text is written to stdout."},
     {"-v <verbose>",
-     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.", NULL},
+     "Set verbosity level: -v0 is quiet; -v1 (default) shows status; -v2 adds detailed summaries where available.",
+     "At verbosity zero, status confirmations are suppressed; errors are still printed."},
     {"--overwrite",
-     "export: overwrite an existing chapter list", NULL},
+     "export: overwrite an existing chapter list",
+     "Without this flag, chapter export refuses to replace an existing text file."},
     {NULL, NULL, NULL}
 };
 
@@ -304,6 +344,20 @@ static void print_usage(int mode)
                     "faam -i <input> [-i <input>...] -o <out.mp4> [options]\n"
                     "       faam <info|dump|demux|tag|chapter> [options] <file>",
                     g_help);
+}
+
+static void print_version_banner(void)
+{
+    if (g_verbose == 0) return;
+
+    faam_library_info info = { .struct_size = sizeof(info) };
+    const char *version = "1.0.0";
+    if (faam_get_library_info(&info) == FAAM_OK && info.version)
+        version = info.version;
+
+    char version_buf[128];
+    fprintf(stderr, "Freeware Advanced Audio Muxer\nFAAM %s\n\n",
+            cli_version_string(version_buf, sizeof(version_buf), version));
 }
 
 enum {
@@ -1216,6 +1270,8 @@ static int cmd_mux(int argc, char **argv)
         }
     }
 
+    print_version_banner();
+
     for (int i = 0; i < num_inputs; i++) {
         const char *codec_str = codec_override[i] ? codec_override[i] : mux_infer_codec_from_ext(input_files[i]);
         bool streaming_aac = !strcmp(input_files[i], "-") && strcmp(codec_str, "aac") == 0;
@@ -1562,6 +1618,7 @@ static int cmd_demux(int argc, char **argv)
         print_usage(HELP_INSPECT);
         return 1;
     }
+    print_version_banner();
     demux_stdout = strcmp(output_file, "-") == 0;
 
     FILE *fin = cli_open_seekable_input(input_file);
