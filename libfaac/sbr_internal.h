@@ -58,9 +58,7 @@ typedef struct SbrFrameData {
     uint8_t tEnv[SBR_MAX_ENVELOPES + 1];
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
-    struct {
-        int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
-    } ch[MAX_CHANNELS];
+    SbrEnvData ch[MAX_CHANNELS];
 #if FAAC_ENCODER_PS
     int iid[PS_BANDS];
     int icc[PS_BANDS];
