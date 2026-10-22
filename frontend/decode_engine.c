@@ -900,17 +900,40 @@ int run_decoding_session_ext(const decode_options_t *opts,
     uint64_t total_track_samples = is_mp4 ? track.num_samples * 1024 : 0;
     uint32_t total_track_frames = is_mp4 ? track.num_samples : 0;
 
+    faad_stream_info init_sinfo = { .struct_size = sizeof(init_sinfo) };
+    if (faad_decoder_get_info(dec, &init_sinfo) == FAAD_OK) {
+        if (init_sinfo.sample_rate > 0) sample_rate = init_sinfo.sample_rate;
+        if (init_sinfo.channels > 0) num_channels = init_sinfo.channels;
+        obj_type = init_sinfo.object_type;
+    }
+
+    double est_duration_sec = 0.0;
+    if (is_mp4 && total_track_samples > 0 && sample_rate > 0) {
+        est_duration_sec = (double)total_track_samples / (double)sample_rate;
+    }
+
+    double est_avg_bitrate_kbps = (file_len * 8.0) / (est_duration_sec > 0.0 ? est_duration_sec * 1000.0 : 1.0);
+
+    uint16_t out_channels = (downmix == FAAD_DOWNMIX_MONO) ? 1 :
+                            (downmix == FAAD_DOWNMIX_STEREO && num_channels > 2) ? 2 : num_channels;
+
     if (session_start_cb) {
         decode_session_info_t sess_info = {
             .input_filename = infile,
             .output_filename = outfile,
             .sample_rate = sample_rate,
-            .num_channels = num_channels,
+            .num_channels = out_channels,
             .total_track_samples = total_track_samples,
             .total_track_frames = total_track_frames,
+            .duration_sec = est_duration_sec,
+            .avg_bitrate_kbps = est_avg_bitrate_kbps,
             .is_mp4 = is_mp4,
+            .raw_format = raw_format,
+            .bit_depth = bit_depth,
+            .is_float = is_float,
             .object_type = obj_type,
-            .downmix = downmix
+            .downmix = downmix,
+            .profile_name = object_type_name(obj_type)
         };
         session_start_cb(&sess_info, user_data);
     }

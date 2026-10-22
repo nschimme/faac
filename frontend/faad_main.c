@@ -184,7 +184,30 @@ static void cli_session_start_callback(const decode_session_info_t *info, void *
     if (!opts || opts->verbose < 1 || opts->write_stdout || opts->info_only)
         return;
 
-    fprintf(stderr, "Decoding %s to %s\n", info->input_filename, info->output_filename ? info->output_filename : "stdout");
+    fprintf(stderr, "Container:   %s\n", info->is_mp4 ? "MPEG-4 File Format (MP4)" : "ADTS Transport Stream");
+    if (info->profile_name && info->profile_name[0]) {
+        fprintf(stderr, "Audio:       %s, %.1f kHz, %u channel%s\n",
+                info->profile_name, info->sample_rate / 1000.0f,
+                info->num_channels, info->num_channels == 1 ? " (Mono)" : info->num_channels == 2 ? " (Stereo)" : "");
+    }
+    if (info->duration_sec > 0.0) {
+        int dur_m = (int)info->duration_sec / 60;
+        double dur_s = info->duration_sec - (dur_m * 60);
+        if (info->avg_bitrate_kbps > 0.0) {
+            fprintf(stderr, "Duration:    %02d:%05.2f (%.2f sec), ~%.1f kbps\n",
+                    dur_m, dur_s, info->duration_sec, info->avg_bitrate_kbps);
+        } else {
+            fprintf(stderr, "Duration:    %02d:%05.2f (%.2f sec)\n",
+                    dur_m, dur_s, info->duration_sec);
+        }
+    }
+
+    const char *out_fmt = info->raw_format ? "raw PCM" : "WAV";
+    fprintf(stderr, "Decoding %s to %s (%u-bit %s%s)\n",
+            info->input_filename,
+            info->output_filename ? info->output_filename : "stdout",
+            info->bit_depth, info->is_float ? "float " : "", out_fmt);
+
     if (info->total_track_frames > 0)
     {
         fprintf(stderr, "         frame         | bitrate | elapsed/estim | play/CPU | ETA\n");
@@ -198,20 +221,30 @@ static void cli_session_start_callback(const decode_session_info_t *info, void *
 static void cli_summary_callback(const decode_summary_t *summary, void *user_data)
 {
     decode_options_t *opts = (decode_options_t *)user_data;
-    if (!opts || opts->verbose < 2 || opts->write_stdout)
+    if (!opts || opts->verbose == 0 || opts->write_stdout)
         return;
 
-    fprintf(stderr, "\n--- Decode Summary ---\n");
-    fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
-            summary->frame_count, summary->sample_count);
-    fprintf(stderr, " Output Size & Depth : Size = %" PRIu64 " bytes | Depth = %u-bit %s\n",
-            summary->total_pcm_bytes, summary->bit_depth, summary->is_float ? "float" : "PCM");
-    fprintf(stderr, " Decoding Speed      : Time = %.2f sec | Speed = %.2fx real-time\n",
-            summary->time_elapsed_sec, summary->speed_factor);
-    fprintf(stderr, " Bitrate & Rate      : Avg Bitrate = %.1f kbps | Sample Rate = %u Hz\n",
-            summary->avg_bitrate_kbps, summary->sample_rate);
-    fprintf(stderr, " Output Target       : %s\n", opts->output_filename ? opts->output_filename : "stdout");
-    fprintf(stderr, "----------------------\n");
+    if (opts->verbose >= 2)
+    {
+        fprintf(stderr, "\n--- Decode Summary ---\n");
+        fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
+                summary->frame_count, summary->sample_count);
+        fprintf(stderr, " Output Size & Depth : Size = %" PRIu64 " bytes | Depth = %u-bit %s\n",
+                summary->total_pcm_bytes, summary->bit_depth, summary->is_float ? "float" : "PCM");
+        fprintf(stderr, " Decoding Speed      : Time = %.2f sec | Speed = %.2fx real-time\n",
+                summary->time_elapsed_sec, summary->speed_factor);
+        fprintf(stderr, " Bitrate & Rate      : Avg Bitrate = %.1f kbps | Sample Rate = %u Hz\n",
+                summary->avg_bitrate_kbps, summary->sample_rate);
+        fprintf(stderr, " Output Target       : %s\n", opts->output_filename ? opts->output_filename : "stdout");
+        fprintf(stderr, "----------------------\n");
+    }
+    else
+    {
+        fprintf(stderr, "\nDecoded %" PRIu64 " frames (%" PRIu64 " bytes, %d-bit %s) in %.2f sec (%.2fx real-time) to %s\n",
+                summary->frame_count, summary->total_pcm_bytes, summary->bit_depth,
+                summary->is_float ? "float" : "PCM", summary->time_elapsed_sec,
+                summary->speed_factor, opts->output_filename ? opts->output_filename : "stdout");
+    }
 }
 
 int main(int argc, char **argv)
@@ -404,10 +437,6 @@ int main(int argc, char **argv)
     };
 
     int ret_status = run_decoding_session_ext(&opts, &cbs);
-
-    if (opts.verbose && opts.verbose < 2 && !opts.write_stdout && !opts.info_only) {
-        fprintf(stderr, "\n");
-    }
 
     free(allocated_outfile);
 

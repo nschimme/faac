@@ -62,9 +62,15 @@ typedef struct {
     uint16_t num_channels;
     uint64_t total_track_samples;
     uint32_t total_track_frames;
+    double duration_sec;
+    double avg_bitrate_kbps;
     bool is_mp4;
+    bool raw_format;
+    uint32_t bit_depth;
+    bool is_float;
     enum faad_object_type object_type;
     enum faad_downmix_mode downmix;
+    const char *profile_name;
 } decode_session_info_t;
 
 typedef struct {
