@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -1075,7 +1076,7 @@ static int cmd_mux(int argc, char **argv)
 
     /* Video tracks: file is read into memory once here (during codec_data
      * harvesting) and the same buffer is reused by the AU-packetizer pass
-     * below, instead of reading the file from disk a second time. Freed
+     * below, instead of reading the file starting from disk a second time. Freed
      * as each track's packetizer pass finishes (or on early error exit). */
     uint8_t *vbuf_store[FAAM_MUX_MAX_TRACKS] = {0};
     size_t vbuf_len_store[FAAM_MUX_MAX_TRACKS] = {0};
@@ -1412,7 +1413,13 @@ static int cmd_mux(int argc, char **argv)
     }
     for (int i = 0; i < num_inputs; i++) faam_muxer_get_track_id(m, (uint32_t)i, &track_id[i]);
 
+    uint64_t total_input_bytes = 0;
     for (int i = 0; i < num_inputs; i++) {
+        if (fin[i] && fin[i] != stdin) {
+            uint64_t sz = 0;
+            if (cli_fsize(fin[i], &sz)) total_input_bytes += sz;
+        }
+
         if (tc[i].track_type == FAAM_TRACK_AUDIO) {
             if (fin[i] != stdin && !cli_fseek(fin[i], adts[i].start)) {
                 fprintf(stderr, "Error reading %s\n", input_files[i]);
@@ -1480,6 +1487,29 @@ static int cmd_mux(int argc, char **argv)
 
     if (g_verbose > 0)
         fprintf(mux_stdout ? stderr : stdout, "Successfully muxed %d input(s) -> %s\n", num_inputs, output_file);
+
+    if (g_verbose >= 2 && !mux_stdout) {
+        uint64_t output_size = 0;
+        FILE *fout_stat = cli_fopen(output_file, "rb");
+        if (fout_stat) {
+            cli_fsize(fout_stat, &output_size);
+            fclose(fout_stat);
+        }
+
+        fprintf(stderr, "\n--- Mux Summary ---\n");
+        fprintf(stderr, " Tracks Muxed       : %d track(s)\n", num_inputs);
+        for (int i = 0; i < num_inputs; i++) {
+            fprintf(stderr, "   Track #%d           : %s | %u frame(s)\n",
+                    i + 1, tc[i].track_type == FAAM_TRACK_AUDIO ? "AAC Audio" : "Video", frames[i]);
+        }
+        if (total_input_bytes > 0 && output_size > 0) {
+            fprintf(stderr, " File Size           : Input = %.2f MB | Output = %.2f MB | Ratio = %.2f:1\n",
+                    total_input_bytes / (1024.0 * 1024.0), output_size / (1024.0 * 1024.0),
+                    (double)total_input_bytes / (double)output_size);
+        }
+        fprintf(stderr, "--------------------\n");
+    }
+
     ret = 0;
 
 done:

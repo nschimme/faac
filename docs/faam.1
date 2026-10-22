@@ -104,8 +104,13 @@ Display copyright and license information.
 
 .SH VERBOSITY
 .BR \-v\ <\fIverbose\fP>
-Set verbosity level (-v0 is quiet mode). This option applies to muxing and
-each subcommand. Errors are still written to stderr.
+Set verbosity level:
+.B -v0
+is quiet mode and suppresses success confirmation messages;
+.B -v1
+(default) prints standard status and completion messages;
+.B -v2
+shows a detailed summary block upon completion. Errors are always written to stderr.
 
 .SH MUX OPTIONS
 .TP
