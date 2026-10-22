@@ -326,7 +326,7 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate;
 }
 
-// masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
+/* Masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist. */
 static float treble_rolloff(int lo, int hi, float slope_per_line)
 {
     return 10.0f / (1.0f + (float)(lo + hi) * slope_per_line);
@@ -352,7 +352,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int grou
                 group_gain = ci->temporal_gain[win];
     }
 
-    // whole group below the silence gate: force every band to a zero target
+    /* A whole group below the silence gate gets a zero target in every band. */
     if (group_total < silence_energy(ci) * (float)(gsize * total_len))
     {
         for (sfb = 0; sfb < ci->sfbn; sfb++)
@@ -378,7 +378,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int grou
         float ref_win = ref / (float)gsize;
         float target;
 
-        // floor before pow(): formula is monotonic, so this floors the output too
+        /* The formula is monotonic, so flooring before pow() floors its output. */
         if (avg < ref * masking_model.avg_floor) avg = ref * masking_model.avg_floor;
         if (peak < ref_win * cfg->peak_floor) peak = ref_win * cfg->peak_floor;
 
@@ -404,7 +404,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int grou
     }
 }
 
-// per-band codebook assignment: zero / PNS / regular+Huffman
+/* Per-band codebook assignment: zero, PNS, or regular Huffman. */
 
 /* Re-derives gain after each clamp stage since scalefactor and gain are
  * coupled. Reports the final relative (bitstream-delta) and absolute
@@ -717,12 +717,12 @@ static void ResolveIntensityNoise(const CoderInfo *left, CoderInfo *right)
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *aacquantCfg,
+              int *qs)
 {
     /* These arrays hold one group; MAX_SCFAC_BANDS spans all short groups. */
     float target[NSFB_LONG];
     BandEnergy be[NSFB_LONG];
-    int qs[FRAME_LEN];
     int i, lastsf = SF_CHAIN_UNSET, qlen = 0;
     float *gxr = xr;
     int group_start = 0;
@@ -745,9 +745,9 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     }
     huffbook(coder, qs);
 
-    // global_gain must come from a regular band: it's an 8-bit bitstream field,
-    // and intensity/PNS bands store stereo-position/noise-energy on a different
-    // (possibly negative) scale that would truncate and desync the decoder.
+    /* Global gain is an 8-bit field and must come from a regular band.
+     * Intensity/PNS bands store stereo-position/noise energy on a different
+     * scale that may be negative, which would truncate and desynchronize decode. */
     coder->global_gain = 0;
     for (i = 0; i < coder->bandcnt; i++)
     {
@@ -812,10 +812,10 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
     *bw = (float)l * rate / (BLOCK_LEN_LONG << 1);
 }
 
-// short-window grouping: keep spectrally-similar windows together so they
-// share scalefactors; a transient onset starts a fresh group instead
-#define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
-#define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
+/* Short-window grouping keeps spectrally similar windows together so they
+ * share scalefactors; a transient onset starts a fresh group. */
+#define GROUP_MIN_SFB     2    /* bands below this are too coarse/DC-heavy to inform grouping */
+#define GROUP_ONSET_RATIO 3.0f  /* running max/min energy ratio that counts as a transient */
 
 /* Four independent lanes: strict FP forbids reordering one float accumulator,
  * so a single-sum loop can never vectorize. n4 is the width in quads. */

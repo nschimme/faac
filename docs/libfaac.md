@@ -343,8 +343,21 @@ Input and output buffers remain caller-owned; PCM is copied into internal
 storage during encode. ASC remains library-owned until close; copy it if the
 muxer needs it longer. Version/copyright and error strings are static and must
 not be freed. Closing a NULL handle via `faac_encoder_close(&enc)` succeeds.
-Independent handles may run concurrently; serialize all access to one handle.
-The optional `stats` build prints diagnostics on close.
+Independent handles may run concurrently in ordinary builds; serialize all
+access to one handle. With `-Dstats=true`, encoder diagnostics use process-global
+counters: opening an encoder resets the counters, all encoded handles contribute
+to the same totals, and closing any handle while the global frame count is
+nonzero prints the current totals to stderr. Close does not reset them; the next
+open does. Stats builds therefore require external serialization of encoder
+opens, encoding, and closes across all handles. This low-overhead
+instrumentation reports aggregate process-wide behavior and cannot attribute
+counters to individual handles; its stderr output is a side effect of close.
+When PS frames were encoded, the banner also reports average PS payload bits
+per frame and the percentages using the low-band mode, one envelope, ICC, and
+phase. These count emitted frames once despite rate-control retries; payload
+bits exclude the enclosing SBR fill-element framing. This diagnostic performs
+one additional PS sizing pass per emitted PS frame; all PS stats code compiles
+out when `-Dstats=false`, and no PS line appears unless PS frames were encoded.
 
 ### Custom allocators
 
@@ -353,7 +366,9 @@ The encoder allocates its state on the heap through the `AllocMemory` /
 example with `-DAllocMemory=my_alloc -DFreeMemory=my_free` (provide the
 function declarations when compiling). There is no caller-owned-state path, so the allocator is the only control
 over where encoder memory lives. The allocator need not clear the memory it returns;
-16-byte-aligned storage is sufficient for the current implementation.
+16-byte-aligned storage is sufficient for the current implementation. The
+experimental PS encoder's large frame scratch is allocated with the handle at
+open, so an override can place it in external memory such as ESP32-S3 PSRAM.
 
 ### Memory budget and embedded targets
 
@@ -363,8 +378,12 @@ in an 8-byte array inside the handle: 2 bytes for LC, 5 bytes for multichannel
 HE-AAC, or 7 bytes for mono HE-AAC. `faac_encoder_asc()` returns that storage
 without allocating. Closing the handle releases all of it.
 
-The following are indicative measurements from an arm64 build at 48000 Hz
-with default build options, not storage requirements guaranteed across builds:
+The following are indicative measurements from a PS-enabled arm64 build at
+48000 Hz, before large frame workspaces moved from stack to handle state. For
+the current code, add 12 KiB to each row for TNS and quantizer workspaces, and
+8.5 KiB to HE rows for resampler scratch. HE v2 in a PS-enabled build uses a
+further 53.6 KiB for PS frame scratch. These figures are not storage
+requirements guaranteed across builds:
 
 | Configuration | Encoder heap | Frame samples/channel | 16-bit PCM input per call |
 |---|---|---|---|
@@ -390,9 +409,9 @@ The core uses single-precision float; double precision appears only in
 one-time table generation at open.
 
 A port can direct dynamically allocated encoder state into a specific
-region, for example external RAM, by overriding `AllocMemory` as
-described above. Check the speed cost of that placement on your target before
-committing to it.
+region, for example external RAM, by overriding `AllocMemory` as described
+above. This includes the workspaces above, so an ESP32-S3 port can place them
+in PSRAM. Check the speed cost of that placement on your target.
 
 #### Running without a heap
 

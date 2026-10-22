@@ -110,8 +110,14 @@ static int ps_phase(float real, float imag)
 }
 
 /* Estimate stereo parameters in the decoder's hybrid-band layout. */
+typedef struct {
+    int iid[PS_BANDS], icc[PS_BANDS];
+    int ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
+    int enable_icc, enable_phase;
+} PsFrameParams;
+
 static void ps_analyze_frame(const float energy[2][64], const float crossReal[64],
-                             const float crossImag[64], SbrFrameData *fd, int bands, int phases)
+                             const float crossImag[64], PsFrameParams *fd, int bands, int phases)
 {
     float l = 0, r = 0, cross = 0;
     for (int k = 0; k < PS_BANDS; k++) {
@@ -186,7 +192,7 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
      * parameter bands; richer cores retain two envelopes and twenty bands. */
     fd->ps_num_env = sbr->psNumEnv;
     float energy[2][64], crossReal[64], crossImag[64];
-    SbrFrameData params = {0};
+    PsFrameParams params = {0};
     fd->enable_icc = fd->enable_phase = 0;
     for (int e = 0; e < fd->ps_num_env; e++) {
         memset(energy, 0, sizeof(energy));
@@ -233,7 +239,9 @@ void PsDownmix(float *left, const float *right, int n)
 
 void PsSpectralDownmix(PsCarrier *state, float *left, float *right, float *carrier, int n)
 {
-    float work[1024], lf[1024], rf[1024];
+    float *work = state->work;
+    float *lf = state->leftSpectrum;
+    float *rf = state->rightSpectrum;
     if (!state->initialized) {
         for (int i = 0; i < 512; i++)
             state->window[i] = 0.5f - 0.5f * cosf(2.0f * 3.14159265358979323846f * i / 512);

@@ -135,6 +135,8 @@ struct SBRContext {
     int          frameHead;
 #if FAAC_ENCODER_PS
     PsCarrier psCarrier;
+    float psSpectralCarrier[2 * FRAME_LEN];
+    float psOriginal[2 * FRAME_LEN];
 #endif
 };
 

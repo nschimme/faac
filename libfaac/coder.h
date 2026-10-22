@@ -75,6 +75,11 @@ typedef struct {
     TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
 } TnsInfo;
 
+typedef struct {
+    float wspec[BLOCK_LEN_LONG];
+    float trial[BLOCK_LEN_LONG];
+} TnsWorkspace;
+
 typedef struct CoderInfo {
     int block_type;
     int desired_block_type;

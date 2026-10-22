@@ -332,7 +332,8 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
     Resampler *rs = sCtx->resampler;
     float *fullPtrs[MAX_CHANNELS];
 #if FAAC_ENCODER_PS
-    float spectralCarrier[2 * FRAME_LEN];
+    float *spectralCarrier = sCtx->psSpectralCarrier;
+    float *original = sCtx->psOriginal;
 #endif
 
     /* SbrEncode quantizes into the new head; SbrWrite (via SbrContextGetBits)
@@ -370,8 +371,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
 #if FAAC_ENCODER_PS
         if (sCtx->sbrInfo->is_he_v2) {
             PsSpectralDownmix(&sCtx->psCarrier, fullPtrs[0], fullPtrs[1], spectralCarrier, 2 * FRAME_LEN);
-            float original[2 * FRAME_LEN];
-            memcpy(original, fullPtrs[0], sizeof(original));
+            memcpy(original, fullPtrs[0], sizeof(sCtx->psOriginal));
             PsDownmix(original, fullPtrs[1], 2 * FRAME_LEN);
             double l = 0, r = 0, cross = 0;
             for (int i = 0; i < 2 * FRAME_LEN; i++) {
@@ -396,7 +396,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         /* Dual-rate decimation: produces the halved-rate core signal. */
 #if FAAC_ENCODER_PS
         if (sCtx->sbrInfo->is_he_v2)
-            memcpy(rs->fullRate[0], spectralCarrier, sizeof(spectralCarrier));
+            memcpy(rs->fullRate[0], spectralCarrier, sizeof(sCtx->psSpectralCarrier));
 #endif
         Resample(rs, 2 * FRAME_LEN);
     }

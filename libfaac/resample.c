@@ -64,11 +64,9 @@ int Resample(Resampler *r, int input_len)
         float *out = r->halfRate[ch];
         float * __restrict hist = r->buf[ch];
 
-        /* Fixed-size buffers to avoid VLA (MSVC portability): history + one
-         * full-rate HE frame (2 * FRAME_LEN input samples). */
-        float even[FRAME_LEN + RESAMPLE_FILTER_LEN / 2];
-        float odd[FRAME_LEN + RESAMPLE_FILTER_LEN / 2];
-        float next_hist[RESAMPLE_FILTER_LEN - 1];
+        float *even = r->even;
+        float *odd = r->odd;
+        float *next_hist = r->next_hist;
         int save_hist = input_len - H < output_len;
 
         /* De-interleave before any aliased output write, so adjacent outputs

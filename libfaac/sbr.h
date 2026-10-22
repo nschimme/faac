@@ -27,7 +27,6 @@ typedef enum SbrFrameClass {
 #include "coder.h"
 #include "channels.h"
 #include "fft.h"
-#include "sbr_analysis.h"
 
 #define LOOKAHEAD_DEPTH 2
 
@@ -67,6 +66,8 @@ struct BitStream;
  * (ISO 14496-3 §4.6.18.3: numTimeSlots = 16). All bs_rel_bord/t_env values
  * written in a variable grid live in [0, SBR_NUM_TIME_SLOTS]. */
 #define SBR_NUM_TIME_SLOTS   16
+
+#include "sbr_analysis.h"
 
 /* SBR extension types (ISO 14496-3 §4.6.18). */
 #define SBR_EXT_TYPE_SBR     0xd

@@ -1,7 +1,7 @@
 # HE-AAC v2 quality and AUTO selection
 
-The encoder PS option is enabled by default; disable it with
-`-Dencoder-ps=false`. These measurements describe the implementation;
+Encoder PS is experimental and disabled by default in the release build. Enable
+it with `-Dencoder-ps=true`. These measurements describe the implementation;
 they do not establish a patent or licensing conclusion.
 
 ## Low-rate PS bit allocation

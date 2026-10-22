@@ -110,6 +110,10 @@ typedef struct faacEncStruct {
 
     RateControl rc;
 
+    /* Reused while channels are encoded serially. */
+    TnsWorkspace tnsWorkspace;
+    int quantScratch[FRAME_LEN];
+
     /* Keep frame controls before the large coder state, sized at open to
        omit unused channels. */
     CoderInfo coderInfo[];

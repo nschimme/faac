@@ -35,7 +35,11 @@ static inline int env_border(const SignalAnalysis *sa, int e, int num_slots)
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
+#if FAAC_ENCODER_PS
+    float *workspace = sa->workspace[0];
+#else
     float workspace[SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
+#endif
 
     float frameStrength = 0.0f;
 
@@ -93,7 +97,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     if (sbr) {
 #if FAAC_ENCODER_PS
         if (sbr->is_he_v2) {
-            float right[SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
+            float *right = sa->workspace[1];
             memcpy(workspace, sbr->ch[0].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
             memcpy(workspace + SBR_QMF_HIST_LEN, fullPtrs[0], numSamples * sizeof(float));
             memcpy(right, sbr->ch[1].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
@@ -105,7 +109,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             memset(sa->psE, 0, sizeof(sa->psE));
             memset(sa->psCross, 0, sizeof(sa->psCross));
             memset(sa->psCrossIm, 0, sizeof(sa->psCrossIm));
-            float low[2][3][44][2];
+            float (*low)[3][44][2] = sa->psLow;
             for (int ch = 0; ch < 2; ch++)
                 for (int k = 0; k < 3; k++)
                     memcpy(low[ch][k], sbr->psHybrid.history[ch][k], sizeof(sbr->psHybrid.history[ch][k]));

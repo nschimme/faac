@@ -25,6 +25,7 @@
 #include "channels.h"
 #include "util.h"
 #include "faac_internal.h"
+#include "stats.h"
 
 static void put_header(const SBRInfo *sbr, BitStream *bs)
 {
@@ -320,6 +321,20 @@ int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, i
             if (!sbr->headerDecided) {
                 sbr->sendHeaderThisFrame = (sbr->frameCount++ % SBR_HEADER_PERIOD == 0);
                 sbr->headerDecided = 1;
+#if FAAC_ENCODER_PS && defined(FAAC_STATS)
+                if (sbr->is_he_v2 && id_aac == ID_CPE) {
+                    const PsRef *ref = &sbr->psRef[~sbr->frameCount & 1];
+                    if (!ref->valid || sbr->sendHeaderThisFrame ||
+                        ref->band_mode != fd->ps_band_mode)
+                        ref = NULL;
+                    g_faacStats.psFrames++;
+                    g_faacStats.psPayloadBits += PsWrite(fd, NULL, false, ref);
+                    if (fd->ps_band_mode == 0) g_faacStats.psLowBandFrames++;
+                    if (fd->ps_num_env == 1) g_faacStats.psOneEnvelopeFrames++;
+                    if (fd->enable_icc) g_faacStats.psIccFrames++;
+                    if (fd->enable_phase) g_faacStats.psPhaseFrames++;
+                }
+#endif
             }
             return SbrWrite(sbr, fd, bs, id_aac, elem->channels[0]);
         }

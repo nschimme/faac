@@ -34,6 +34,11 @@ typedef struct Resampler {
     float *fullRate[MAX_CHANNELS];                    /* borrowed input FIFO */
     float *halfRate[MAX_CHANNELS];                    /* aliases the consumed FIFO front */
     int        channels;
+    /* One channel is resampled at a time; keep the frame work buffers in the
+     * open-time state so small audio task stacks do not need full-frame arrays. */
+    float even[FRAME_LEN + RESAMPLE_FILTER_LEN / 2];
+    float odd[FRAME_LEN + RESAMPLE_FILTER_LEN / 2];
+    float next_hist[RESAMPLE_FILTER_LEN - 1];
     /* FIR overlap needs storage only for the fixed channel count. */
     float buf[][RESAMPLE_FILTER_LEN];
 } Resampler;

@@ -80,13 +80,15 @@ Force the AAC object type:
 .B he-aac-v2
 (HE-AAC v1 plus Parametric Stereo; requires an encoder built with
 .B encoder-ps=true
-and stereo input), or
+and stereo input; encoder PS is experimental and disabled in the release
+build by default), or
 .B auto
 (default), which selects LC or HE-AAC v1 from the bitrate and sample rate.
 HE-AAC v1 targets low bitrates; its core is coded at half the input sample
 rate and reconstructed to full rate by SBR in the decoder.
-With encoder PS enabled, MPEG-4 stereo AUTO uses HE-AAC v2 at total target
-bitrates of 8-12 kb/s for 32/44.1 kHz input, and 8-16 kb/s for 48 kHz input.
+When built with encoder PS enabled, MPEG-4 stereo AUTO may use HE-AAC v2 at
+total target bitrates of 8-12 kb/s for 32/44.1 kHz input, and 8-16 kb/s for
+48 kHz input.
 The adjacent low-rate range uses HE-AAC v1. Other input rates and VBR retain
 the existing AUTO policy. These thresholds reflect measured music averages;
 the best profile can vary with the material.

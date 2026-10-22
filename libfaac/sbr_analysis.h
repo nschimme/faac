@@ -55,6 +55,10 @@ typedef struct SignalAnalysis {
     float bandCrossE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
     float bandCrossIm[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
     float psE[2][4][64], psCross[4][64], psCrossIm[4][64];
+    /* Large frame scratch is allocated with the encoder handle, not on its
+     * caller's thread stack. */
+    float workspace[2][SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
+    float psLow[2][3][44][2];
 #endif
 } SignalAnalysis;
 

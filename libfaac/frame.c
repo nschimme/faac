@@ -239,10 +239,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
             (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE &&
              hEncoder->config.mpegVersion != MPEG2) ? HE_V1 : LOW;
 #if FAAC_ENCODER_PS
-        /* The measured low-rate stereo ladder supports PS through 12 kb/s
-         * at 32/44.1 kHz and 16 kb/s at 48 kHz. Keep the adjacent range on
-         * HE v1, including rates below its legacy AUTO floor, so crossing
-         * the PS ceiling does not send low-rate stereo back to LC. */
+        /* Keep the adjacent range on HE v1, including rates below its legacy
+         * AUTO floor, so crossing the PS ceiling does not send low-rate
+         * stereo back to LC. */
         unsigned long ps_ceiling = hEncoder->sampleRate == 48000 ? 8000 :
             (hEncoder->sampleRate == 32000 || hEncoder->sampleRate == 44100) ? 6000 : 0;
         if (ps_ceiling && hEncoder->numChannels == 2 &&
@@ -329,7 +328,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         config->bandWidth = (hEncoder->sampleRate > 48000 && config->quantqual >= DEFQUAL)
             ? (unsigned int)(hEncoder->sampleRate / 2) : BANDWIDTH_CEILING;
 
-    // check bandwidth
+    /* Enforce a nonempty band and the Nyquist ceiling. */
     if (hEncoder->config.bandWidth < 100)
 		hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
@@ -424,12 +423,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
                         IsHEAAC(hEncoder->config.aacObjectType), sfbOffset, sfbn);
     }
 
-    // reset psymodel
+    /* Reset the psychoacoustic model. */
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
     PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, coreChannels,
 			hEncoder->sampleRate, IsHEAAC(hEncoder->config.aacObjectType));
 
-	/* load channel_map */
+    /* Load the channel map. */
 	for( i = 0; i < MAX_CHANNELS; i++ )
 		hEncoder->config.channel_map[i] = config->channel_map[i];
 
@@ -652,6 +651,16 @@ int faacEncClose(faacEncHandle hpEncoder)
         {
             fprintf(stderr, " Tool Allocation     : M/S     = %5.1f%% | I/S = %5.1f%% | PNS = %5.1f%% | TNS = %5.1f%%\n",
                     ms, is, pns, tns);
+        }
+        if (g_faacStats.psFrames > 0)
+        {
+            unsigned int psf = g_faacStats.psFrames;
+            fprintf(stderr, " PS Allocation       : Payload = %.1f bits/frame | Low bands = %5.1f%% | 1 env = %5.1f%% | ICC = %5.1f%% | Phase = %5.1f%%\n",
+                    (double)g_faacStats.psPayloadBits / psf,
+                    100.0 * g_faacStats.psLowBandFrames / psf,
+                    100.0 * g_faacStats.psOneEnvelopeFrames / psf,
+                    100.0 * g_faacStats.psIccFrames / psf,
+                    100.0 * g_faacStats.psPhaseFrames / psf);
         }
         RateControlStatsPrint(stderr);
         fprintf(stderr, "---------------------------\n");
@@ -944,7 +953,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 continue;
             }
 
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->tnsWorkspace);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
         }
@@ -1031,7 +1040,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     {
         for (channel = 0; channel < numChannels; channel++) {
             BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                      &(hEncoder->aacquantCfg));
+                      &(hEncoder->aacquantCfg), hEncoder->quantScratch);
         }
 
         /* A common window shares one max_sfb between the two channels. */

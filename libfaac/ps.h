@@ -24,6 +24,7 @@ void PsHybridAnalyze(PsHybrid *, const float [2][3][44][2],
                      float [2][4][64], float [4][64], float [4][64], int);
 typedef struct PsCarrier {
     float history[2][256], overlap[256], window[512];
+    float work[1024], leftSpectrum[1024], rightSpectrum[1024];
     int initialized;
     double smoothL, smoothR, smoothCross;
 } PsCarrier;
