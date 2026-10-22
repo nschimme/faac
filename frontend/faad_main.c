@@ -188,7 +188,7 @@ static void cli_session_start_callback(const decode_session_info_t *info, void *
     if (info->profile_name && info->profile_name[0]) {
         fprintf(stderr, "Audio:       %s, %.1f kHz, %u channel%s\n",
                 info->profile_name, info->sample_rate / 1000.0f,
-                info->num_channels, info->num_channels == 1 ? " (Mono)" : info->num_channels == 2 ? " (Stereo)" : "");
+                info->num_channels, info->num_channels == 1 ? " (Mono)" : info->num_channels == 2 ? "s (Stereo)" : "s");
     }
     if (info->duration_sec > 0.0) {
         int dur_m = (int)info->duration_sec / 60;
@@ -221,30 +221,20 @@ static void cli_session_start_callback(const decode_session_info_t *info, void *
 static void cli_summary_callback(const decode_summary_t *summary, void *user_data)
 {
     decode_options_t *opts = (decode_options_t *)user_data;
-    if (!opts || opts->verbose == 0 || opts->write_stdout)
+    if (!opts || opts->verbose < 2 || opts->write_stdout)
         return;
 
-    if (opts->verbose >= 2)
-    {
-        fprintf(stderr, "\n--- Decode Summary ---\n");
-        fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
-                summary->frame_count, summary->sample_count);
-        fprintf(stderr, " Output Size & Depth : Size = %" PRIu64 " bytes | Depth = %u-bit %s\n",
-                summary->total_pcm_bytes, summary->bit_depth, summary->is_float ? "float" : "PCM");
-        fprintf(stderr, " Decoding Speed      : Time = %.2f sec | Speed = %.2fx real-time\n",
-                summary->time_elapsed_sec, summary->speed_factor);
-        fprintf(stderr, " Bitrate & Rate      : Avg Bitrate = %.1f kbps | Sample Rate = %u Hz\n",
-                summary->avg_bitrate_kbps, summary->sample_rate);
-        fprintf(stderr, " Output Target       : %s\n", opts->output_filename ? opts->output_filename : "stdout");
-        fprintf(stderr, "----------------------\n");
-    }
-    else
-    {
-        fprintf(stderr, "\nDecoded %" PRIu64 " frames (%" PRIu64 " bytes, %d-bit %s) in %.2f sec (%.2fx real-time) to %s\n",
-                summary->frame_count, summary->total_pcm_bytes, summary->bit_depth,
-                summary->is_float ? "float" : "PCM", summary->time_elapsed_sec,
-                summary->speed_factor, opts->output_filename ? opts->output_filename : "stdout");
-    }
+    fprintf(stderr, "\n--- Decode Summary ---\n");
+    fprintf(stderr, " Frames & Samples    : Frames = %" PRIu64 " | Samples = %" PRIu64 "\n",
+            summary->frame_count, summary->sample_count);
+    fprintf(stderr, " Output Size & Depth : Size = %" PRIu64 " bytes | Depth = %u-bit %s\n",
+            summary->total_pcm_bytes, summary->bit_depth, summary->is_float ? "float" : "PCM");
+    fprintf(stderr, " Decoding Speed      : Time = %.2f sec | Speed = %.2fx real-time\n",
+            summary->time_elapsed_sec, summary->speed_factor);
+    fprintf(stderr, " Bitrate & Rate      : Avg Bitrate = %.1f kbps | Sample Rate = %u Hz\n",
+            summary->avg_bitrate_kbps, summary->sample_rate);
+    fprintf(stderr, " Output Target       : %s\n", opts->output_filename ? opts->output_filename : "stdout");
+    fprintf(stderr, "----------------------\n");
 }
 
 int main(int argc, char **argv)
@@ -437,6 +427,10 @@ int main(int argc, char **argv)
     };
 
     int ret_status = run_decoding_session_ext(&opts, &cbs);
+
+    if (opts.verbose > 0 && !opts.write_stdout && !opts.info_only) {
+        fprintf(stderr, "\n");
+    }
 
     free(allocated_outfile);
 
