@@ -148,7 +148,7 @@ void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
 
 static double calc_speed(uint64_t current_sample, unsigned int sample_rate, double time_used)
 {
-    if (time_used <= 0.0 || sample_rate == 0)
+    if (time_used < 0.001 || sample_rate == 0)
         return 0.0;
 
     return ((double)current_sample / (double)sample_rate) / time_used;
@@ -156,7 +156,7 @@ static double calc_speed(uint64_t current_sample, unsigned int sample_rate, doub
 
 static double calc_eta(uint64_t current_sample, uint64_t total_samples, double time_used)
 {
-    if (current_sample == 0 || time_used <= 0.0 || total_samples < current_sample)
+    if (current_sample == 0 || time_used < 0.001 || total_samples < current_sample)
         return 0.0;
 
     return time_used * (double)(total_samples - current_sample) / (double)current_sample;
