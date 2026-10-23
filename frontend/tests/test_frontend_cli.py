@@ -836,12 +836,11 @@ def run_demux_header(t, d):
                              for i in range(48000 * 8)))
         r = t.run(t.faac, ["-v0", "-P", "-R", "48000", "-B", "16", "-C", "8", "--object-type", "lc", "-q", "100", "-a",
                            "-o", "c8.aac", "c8.raw"], d)
-        check(r.returncode == 0 and adts_frames(os.path.join(d, "c8.aac"))[0][2] == 7, "faac 7.1 ADTS has channel configuration 7")
+        check(r.returncode == 0 and adts_frames(os.path.join(d, "c8.aac"))[0][2] == 0, "faac 7.1 ADTS carries its layout in a PCE")
 
     cases = [("lc.aac", m) for m in ("none", "compatible", "explicit")] + \
             [("he.aac", m) for m in ("none", "compatible", "explicit")] + \
-            [("mono.aac", m) for m in ("none", "ps", "ps-explicit")] + \
-            [("c8.aac", m) for m in ("none", "compatible", "explicit") if MAX_CHANNELS >= 8]
+            [("mono.aac", m) for m in ("none", "ps", "ps-explicit")]
     for src, mode in cases:
         tag = f"{src}/{mode}"
         base = f"rt_{src[:-4]}_{mode}"

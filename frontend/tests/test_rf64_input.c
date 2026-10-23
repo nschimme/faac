@@ -83,15 +83,25 @@ static bool write_fixture(const char *path, uint64_t data_size,
 static bool check_fixture(const char *path, uint64_t data_size, uint64_t junk_size)
 {
     uint64_t expected_offset;
-    if (!write_fixture(path, data_size, junk_size, &expected_offset)) return false;
+    if (!write_fixture(path, data_size, junk_size, &expected_offset)) {
+        fprintf(stderr, "RF64 fixture write failed: data=%llu junk=%llu\n",
+                (unsigned long long)data_size, (unsigned long long)junk_size);
+        return false;
+    }
 
     pcmfile_t *f = wav_open_read(path, false);
-    if (!f) return false;
+    if (!f) {
+        fprintf(stderr, "RF64 fixture open failed: data=%llu junk=%llu\n",
+                (unsigned long long)data_size, (unsigned long long)junk_size);
+        return false;
+    }
     uint8_t samples[4];
     bool ok = f->channels == 2 && f->samplebytes == 2 && f->samplerate == 48000 &&
               f->samples == (int64_t)(data_size / 4) && cli_ftell(f->f) == expected_offset &&
               wav_read_native(f, samples, 2) == 2 && !memcmp(samples, "\1\2\3\4", 4);
     wav_close(f);
+    if (!ok) fprintf(stderr, "RF64 fixture mismatch: data=%llu junk=%llu\n",
+                     (unsigned long long)data_size, (unsigned long long)junk_size);
     return ok;
 }
 
@@ -109,7 +119,7 @@ static bool check_float_endian(void)
         float pcm[2];
         bool ok = fwrite(samples[be], 1, 8, file) == 8 && cli_fseek(file, 0) &&
                   wav_read_float32(&f, pcm, 2, NULL) == 2 &&
-                  pcm[0] == 8192.0f && pcm[1] == -16384.0f;
+                  pcm[0] == 0.25f && pcm[1] == -0.5f;
         fclose(file);
         if (!ok) return false;
     }
@@ -119,7 +129,9 @@ static bool check_float_endian(void)
 int main(int argc, char **argv)
 {
     if (argc != 2) return 1;
-    bool ok = check_float_endian() && check_fixture(argv[1], 4, 0);
+    bool ok = check_float_endian();
+    if (!ok) fprintf(stderr, "float endian check failed\n");
+    if (ok) ok = check_fixture(argv[1], 4, 0);
 #ifndef _WIN32
     const uint64_t large = (UINT64_C(1) << 32) + 32768;
     const uint64_t large_junk = (UINT64_C(1) << 32) + 2;

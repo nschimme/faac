@@ -389,11 +389,11 @@ def main():
                     eight_he_adts = os.path.join(d, "eight_he.aac")
                     subprocess.run([faac, "-a", "--object-type", "he-aac-v1", "-b", "512",
                                     "-o", eight_he_adts, eight_ch_wav], check=True, capture_output=True)
-                    eight_he_mp4 = os.path.join(d, "eight_he.m4a")
-                    subprocess.run([faam, "-i", eight_he_adts, "--encoder-delay", "0",
-                                    "--padding-delay", "0", "-o", eight_he_mp4],
-                                   check=True, capture_output=True)
-                    check_downmix_cli_shapes(eight_he_mp4, 8, check_mono=False)
+                    # Eight-channel AAC uses channel_configuration=0 and a
+                    # PCE in the access units. FAAM's ADTS importer requires
+                    # a channel configuration in the header; exercise the
+                    # decoder directly with the PCE-bearing ADTS stream.
+                    check_downmix_cli_shapes(eight_he_adts, 8, check_mono=False)
 
             # faam skips headers whose channel configuration changes. Keep
             # the initial ADTS configuration while preserving the six-channel
