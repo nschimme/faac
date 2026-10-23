@@ -37,9 +37,9 @@ libfaam_args = {
 
 default_lib = get_option('default_library')
 
-# Always built: the tests link its internals directly, and the frontend can
-# link it statically. LTO on the archive ships unportable compiler bytecode,
-# so keep it off.
+# The tests link FAAM internals directly, so this archive is always built.
+# The frontend also uses it when frontend-static is enabled. LTO on the
+# archive ships unportable compiler bytecode, so keep it off.
 libfaam_static = static_library(
   'faam',
   libfaam_sources,
@@ -62,26 +62,28 @@ if default_lib == 'shared' or default_lib == 'both'
   )
 endif
 
-# Prefer the LTO shared library for the frontend and pkgconfig.
+# Select the library used by the frontend and pkg-config according to
+# default_library, matching FAAR, FAAC, and FAAD.
 if default_lib == 'static'
-  libfaam_lib = libfaam_static
+  libfaam = libfaam_static
 else
-  libfaam_lib = libfaam_shared
+  libfaam = libfaam_shared
 endif
 
 libfaam_dep = declare_dependency(
   include_directories: libfaam_inc,
-  link_with: libfaam_lib,
+  link_with: libfaam,
 )
 
 install_headers(libfaam_headers)
 
-pkg = import('pkgconfig')
-pkg.generate(
-  libfaam_lib,
-  name: 'faam',
+pkgconfig = import('pkgconfig')
+pkgconfig.generate(
+  libfaam,
+  name: 'FAAM',
   description: 'Freeware Advanced Audio Muxer',
   version: meson.project_version(),
+  filebase: 'faam',
 )
 
 subdir('tests')

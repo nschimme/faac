@@ -40,6 +40,7 @@
 #include "mp4write.h"
 #include "charset.h"
 #include "cli_io.h"
+#include <faar.h>
 
 void init_encode_options(encode_options_t *opts)
 {
@@ -59,6 +60,8 @@ void init_encode_options(encode_options_t *opts)
     opts->use_lfe = -1;
     opts->quant_quality = 0;
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
+    opts->rate_auto = true;
+    opts->resample_rate = UINT32_MAX;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
     opts->raw_bits = 16;
@@ -287,6 +290,7 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
     if (opts->max_bit_rate > 0)
         ADD(", cap %ukbps", (opts->max_bit_rate + 500) / 1000);
 
+    ADD(", %uHz", info->sample_rate);
     ADD(", cutoff %uHz", info->bandwidth);
     ADD(", %s", info->object_type == FAAC_OBJ_HE_AAC_V1 ? "HE-AAC" : "LC");
 
@@ -467,6 +471,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder *hEncoder = NULL;
     FILE *outfile = NULL;
 
+    faar_resampler *resampler = NULL;
+    faar_status resample_status = FAAR_OK;
+    float *resample_in_buf = NULL;
+    float *resample_out_buf = NULL;
+
     float *pcmbuf = NULL;
     unsigned char *bitbuf = NULL;
     int *chanmap = NULL;
@@ -515,8 +524,24 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->ignore_wav_length) infile->bounded_data = false;
 
-    uint32_t sample_rate = infile->samplerate;
+    uint32_t raw_sample_rate = infile->samplerate;
     uint16_t num_channels = (uint16_t)infile->channels;
+
+    uint32_t target_rate = raw_sample_rate;
+    if (!opts->rate_auto && opts->resample_rate > 0 && opts->resample_rate != UINT32_MAX)
+        target_rate = opts->resample_rate;
+
+    if (opts->resample_rate > 0 && opts->resample_rate != UINT32_MAX && opts->resample_rate >= raw_sample_rate)
+    {
+        FAIL("Resampling target rate (%u Hz) must be less than input sample rate (%u Hz).\n", opts->resample_rate, raw_sample_rate);
+    }
+
+    /* Ensure target sample rate is within ISO/IEC 14496-3 valid AAC rates (7350 Hz to 96000 Hz) */
+    if (target_rate < 7350) target_rate = 7350;
+    if (target_rate > 96000) target_rate = 96000;
+
+    bool resample_active = (target_rate != raw_sample_rate && target_rate > 0);
+    uint32_t sample_rate = target_rate;
 
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);
@@ -556,27 +581,105 @@ int run_encoding_session_ext(const encode_options_t *opts,
         params.rate_control = FAAC_RC_CBR;
     }
 
+    params.bandwidth = opts->bandwidth;
+    params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
+
+    if (opts->rate_auto && params.bit_rate > 0)
+    {
+        /* Both engines gain on most clips through 18 kbps/ch at 48k and
+           10 kbps/ch at 44.1k, not at 20 and 12; bracket centres. */
+        const uint32_t lc_48k_bps = 19000;
+        const uint32_t lc_44k_bps = 11000;
+        if (raw_sample_rate > 48000)
+            target_rate = (raw_sample_rate % 44100 == 0) ? 44100 : 48000;
+        else if (raw_sample_rate > 32000 &&
+                 ((raw_sample_rate % 8000 == 0 && params.bit_rate <= lc_48k_bps) ||
+                  (raw_sample_rate % 11025 == 0 && params.bit_rate <= lc_44k_bps)))
+        {
+            faac_status st = faac_encoder_open(&params, &hEncoder);
+            if (st != FAAC_OK)
+                FAIL("Couldn't open encoder instance for %s: %s\n",
+                     opts->input_filename, faac_strerror(st));
+            faac_encoder_info native_info = { .struct_size = sizeof(native_info) };
+            faac_encoder_get_info(hEncoder, &native_info);
+            faac_encoder_close(&hEncoder);
+            if (native_info.object_type == FAAC_OBJ_LOW)
+            {
+                target_rate = 32000;
+                /* Keep AUTO from switching to HE at the new rate. */
+                params.object_type = FAAC_OBJ_LOW;
+            }
+        }
+        sample_rate = target_rate;
+        params.sample_rate = sample_rate;
+        resample_active = (target_rate != raw_sample_rate);
+    }
+
+    faar_quality_t resampler_quality = FAAR_QUALITY_GOOD;
+    if (resample_active && raw_sample_rate > 48000)
+    {
+        faar_library_info resampler_info = { .struct_size = sizeof(resampler_info) };
+        resample_status = faar_get_library_info(&resampler_info);
+        if (resample_status != FAAR_OK)
+            FAIL("Couldn't query resampler capabilities: %s\n",
+                 faar_strerror(resample_status));
+        if (!(resampler_info.quality_mask & FAAR_QUALITY_MASK_HIGH))
+            FAIL("Downsampling input above 48000 Hz requires FAAR High quality, which this float-precision build does not support; rebuild with -Dfaar-precision=double.\n");
+        resampler_quality = FAAR_QUALITY_HIGH;
+    }
+
     if (log_cb)
     {
         if (opts->shortctl == FAAC_SHORTCTL_NOSHORT)
             log_cb(1, "disabling short blocks\n", user_data);
         else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
             log_cb(1, "disabling long blocks\n", user_data);
+        if (resample_active)
+        {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Resampling input: %u Hz -> %u Hz (FAAR %s)\n",
+                     raw_sample_rate, target_rate,
+                     resampler_quality == FAAR_QUALITY_HIGH ? "High" : "Good");
+            log_cb(1, msg, user_data);
+        }
     }
-
-    params.bandwidth = opts->bandwidth;
-    params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
     /* Hand integer PCM to the encoder as it is: one conversion pass instead of
        two, and nothing for it to sanitise. The encoder applies the channel map. */
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
-    bool native = wav_native_ok(infile);
-    params.input_format = !native ? FAAC_INPUT_FLOAT :
-                          infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;
+    bool native = wav_native_ok(infile) && !resample_active;
+    params.input_format = resample_active ? FAAC_INPUT_FLOAT :
+                          (!native ? FAAC_INPUT_FLOAT :
+                           infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT);
     if (native && chanmap)
     {
         params.channel_map = chanmap;
         params.channel_map_count = num_channels;
+    }
+
+    size_t resample_in_cap = 0;
+    size_t resample_out_cap = 0;
+
+    if (resample_active)
+    {
+        faar_config resample_config;
+        resample_status = faar_config_init(&resample_config, sizeof(resample_config));
+        resample_config.in_rate = raw_sample_rate;
+        resample_config.out_rate = target_rate;
+        resample_config.channels = (uint16_t)num_channels;
+        resample_config.quality = resampler_quality;
+        if (resample_status == FAAR_OK)
+            resample_status = faar_resampler_open(&resample_config, &resampler);
+        if (resample_status != FAAR_OK)
+            FAIL("Couldn't create resampler instance for %u Hz -> %u Hz: %s\n",
+                 raw_sample_rate, target_rate, faar_strerror(resample_status));
+
+        resample_in_cap = 16384 * (size_t)num_channels;
+        resample_out_cap = 16384 * (size_t)num_channels;
+        resample_in_buf = (float *)malloc(resample_in_cap * sizeof(float));
+        resample_out_buf = (float *)malloc(resample_out_cap * sizeof(float));
+        if (!resample_in_buf || !resample_out_buf)
+            FAIL("Out of memory for resampler buffers!\n");
     }
 
     {
@@ -703,12 +806,14 @@ int run_encoding_session_ext(const encode_options_t *opts,
     uint32_t current_frame = 0;
     uint64_t total_bytes_written = 0;
     uint64_t current_input_samples = 0;
+    uint64_t current_encoder_samples = 0;
     uint16_t max_frame_bytes = 0;
     int samples_read = 0;
 
     double start_time = get_wall_time_sec();
 
     bool input_eof = false;
+    bool resampler_eof = false;
 
 #define read_pcm() (native ? wav_read_native(infile, pcmbuf, samples_per_frame) \
                            : wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap))
@@ -718,7 +823,71 @@ int run_encoding_session_ext(const encode_options_t *opts,
         int bytes_written = 0;
         const void *input_pcm = pcmbuf;
 
-        if (!input_eof)
+        if (resample_active)
+        {
+            size_t enc_samples_needed = samples_per_frame;
+            size_t resample_out_produced = 0;
+            resample_status = faar_resampler_process(resampler, NULL, 0, resample_out_buf,
+                    enc_samples_needed / num_channels, &resample_out_produced);
+            if (resample_status != FAAR_OK) FAIL("Resampling failed: %s\n", faar_strerror(resample_status));
+
+            while (resample_out_produced < enc_samples_needed / num_channels)
+            {
+                if (!input_eof)
+                {
+                    bool should_read = opts->ignore_wav_length ||
+                                       current_input_samples < total_input_samples ||
+                                       total_input_samples == 0;
+                    int raw_read = 0;
+                    if (should_read)
+                    {
+                        raw_read = (int)wav_read_float32(infile, resample_in_buf, samples_per_frame, chanmap);
+                        const char *read_error = wav_read_error(infile, (size_t)raw_read);
+                        if (read_error) FAIL("%s: %s\n", read_error, opts->input_filename);
+                    }
+
+                    if (!opts->ignore_wav_length && total_input_samples > 0 &&
+                        current_input_samples + (raw_read / num_channels) > total_input_samples)
+                    {
+                        raw_read = (int)((total_input_samples - current_input_samples) * num_channels);
+                    }
+
+                    if (raw_read == 0)
+                    {
+                        input_eof = true;
+                    }
+                    else
+                    {
+                        current_input_samples += (raw_read / num_channels);
+                        size_t made = 0;
+                        resample_status = faar_resampler_process(resampler, resample_in_buf, raw_read / num_channels,
+                                resample_out_buf + resample_out_produced * num_channels,
+                                (enc_samples_needed / num_channels) - resample_out_produced, &made);
+                        if (resample_status != FAAR_OK) FAIL("Resampling failed: %s\n", faar_strerror(resample_status));
+                        resample_out_produced += made;
+                    }
+                }
+
+                if (input_eof)
+                {
+                    size_t flushed = 0;
+                    resample_status = faar_resampler_flush(resampler,
+                            resample_out_buf + resample_out_produced * num_channels,
+                            (enc_samples_needed / num_channels) - resample_out_produced, &flushed);
+                    if (resample_status != FAAR_OK) FAIL("Resampler flush failed: %s\n", faar_strerror(resample_status));
+                    resample_out_produced += flushed;
+                    if (flushed == 0)
+                    {
+                        resampler_eof = true;
+                        break;
+                    }
+                }
+            }
+
+            samples_read = (int)(resample_out_produced * num_channels);
+            input_pcm = resample_out_buf;
+        }
+        else if (!input_eof)
         {
             bool should_read = opts->ignore_wav_length ||
                                current_input_samples < total_input_samples ||
@@ -758,8 +927,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
         uint32_t nbytes = 0;
         faac_status st = faac_encoder_encode(hEncoder,
-                                             input_eof ? NULL : input_pcm,
-                                             input_eof ? 0 : (uint32_t)samples_read,
+                                             ((input_eof && !resample_active) ||
+                                              (resample_active && resampler_eof && samples_read == 0)) ? NULL : input_pcm,
+                                             ((input_eof && !resample_active) ||
+                                              (resample_active && resampler_eof && samples_read == 0)) ? 0 : (uint32_t)samples_read,
                                              bitbuf,
                                              (uint32_t)max_output_bytes,
                                              &nbytes);
@@ -773,7 +944,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 max_frame_bytes = (uint16_t)bytes_written;
         }
 
-        if (input_eof && bytes_written <= 0)
+        if (resample_active)
+            current_encoder_samples += (uint64_t)(samples_read / num_channels);
+
+        if (((input_eof && !resample_active) || (resample_active && resampler_eof)) &&
+            samples_read == 0 && bytes_written <= 0)
             break;
 
         if (bytes_written < 0)
@@ -831,11 +1006,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
         uint32_t priming = info.encoder_delay;
         uint64_t total_output_samples = (uint64_t)current_frame * frame_size;
         uint64_t padding = 0;
-        if (total_output_samples > (uint64_t)priming + current_input_samples)
-            padding = total_output_samples - (uint64_t)priming - current_input_samples;
+        uint64_t gapless_samples = resample_active ? current_encoder_samples : current_input_samples;
+        if (total_output_samples > (uint64_t)priming + gapless_samples)
+            padding = total_output_samples - (uint64_t)priming - gapless_samples;
 
         mp4_set_gapless(rc_scalar(rc, priming), rc_scalar(rc, padding),
-                         rc_scalar(rc, current_input_samples));
+                         rc_scalar(rc, gapless_samples));
 
         if (!finalize_mp4(hEncoder, opts, num_channels, log_cb, user_data))
         {
@@ -873,6 +1049,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
 cleanup:
+    if (resampler) faar_resampler_close(&resampler);
+    if (resample_in_buf) free(resample_in_buf);
+    if (resample_out_buf) free(resample_out_buf);
     if (pcmbuf) free(pcmbuf);
     if (bitbuf) free(bitbuf);
     if (chanmap) free(chanmap);

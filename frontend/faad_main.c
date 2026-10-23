@@ -61,7 +61,7 @@ static const help_t help_io[] = {
      "The output extension does not select the encoding format; use --format for WAV or raw PCM. When input is stdin and no output is named, decoded WAV is written to stdout."},
     {"-w, --stdout",
      "Write output PCM to stdout",
-     "This is shorthand for selecting stdout as the destination. Progress is suppressed automatically when PCM goes to stdout; diagnostics remain on stderr."},
+     "This is shorthand for selecting stdout as the destination. Progress and summaries stay on stderr, so PCM output remains clean."},
     {"-f, --format <type>",
      "Output container format: wav (default, automatic RF64 for large files), raw",
      "Raw output contains samples only, with no header. Seekable WAV output switches to RF64 when it would exceed the classic RIFF size limit."},
@@ -180,7 +180,7 @@ static void cli_log_callback(int level, const char *message, void *user_data)
 static void cli_session_start_callback(const decode_session_info_t *info, void *user_data)
 {
     decode_options_t *opts = (decode_options_t *)user_data;
-    if (!opts || opts->verbose < 1 || opts->write_stdout || opts->info_only)
+    if (!opts || opts->verbose < 1 || opts->info_only)
         return;
 
     fprintf(stderr, "Container:   %s\n", info->is_mp4 ? "MPEG-4 File Format (MP4)" : "ADTS Transport Stream");
@@ -220,7 +220,7 @@ static void cli_session_start_callback(const decode_session_info_t *info, void *
 static void cli_summary_callback(const decode_summary_t *summary, void *user_data)
 {
     decode_options_t *opts = (decode_options_t *)user_data;
-    if (!opts || opts->verbose < 2 || opts->write_stdout)
+    if (!opts || opts->verbose < 2)
         return;
 
     fprintf(stderr, "\n--- Decode Summary ---\n");
@@ -398,6 +398,11 @@ int main(int argc, char **argv)
 
     if (optind < argc) {
         opts.input_filename = argv[optind];
+        if (optind + 1 < argc) {
+            fprintf(stderr, "Unexpected argument '%s'\n", argv[optind + 1]);
+            fprintf(stderr, "Try '%s --help' for usage.\n", argv[0]);
+            return 1;
+        }
     }
 
     if (!opts.input_filename) {
@@ -420,7 +425,7 @@ int main(int argc, char **argv)
         allocated_outfile = out_path;
     }
 
-    if (opts.verbose > 0 && !opts.write_stdout && !opts.info_only && libinfo.version) {
+    if (opts.verbose > 0 && !opts.info_only && libinfo.version) {
         char ver_buf[128];
         fprintf(stderr, "Freeware Advanced Audio Decoder\nFAAD %s\n\n",
                 cli_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
@@ -436,7 +441,7 @@ int main(int argc, char **argv)
 
     int ret_status = run_decoding_session_ext(&opts, &cbs);
 
-    if (opts.verbose > 0 && !opts.write_stdout && !opts.info_only) {
+    if (opts.verbose > 0 && !opts.info_only) {
         fprintf(stderr, "\n");
     }
 

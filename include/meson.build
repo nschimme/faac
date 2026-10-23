@@ -6,6 +6,7 @@ version_headers = {
     'FAAC': 'faac.h',
     'FAAD': 'faad3.h',
     'FAAM': 'faam.h',
+    'FAAR': 'faar.h',
 }
 foreach library, header: version_headers
     header_text = fs.read(header)
@@ -15,7 +16,7 @@ foreach library, header: version_headers
     endforeach
 endforeach
 
-headers = ['faam.h']
+headers = ['faam.h', 'faar.h']
 if get_option('encoder')
     headers += ['faac.h']
 endif

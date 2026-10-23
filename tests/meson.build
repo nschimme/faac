@@ -19,6 +19,12 @@ if host_machine.system() == 'windows'
     if is_variable('libfaam_static')
         link_checks += [['faam', 'static', libfaam_static]]
     endif
+    if is_variable('libfaar_shared')
+        link_checks += [['faar', 'shared', libfaar_shared]]
+    endif
+    if is_variable('libfaar_static')
+        link_checks += [['faar', 'static', libfaar_static]]
+    endif
     foreach c : link_checks
         test('test_link_' + c[0] + '_' + c[1],
             executable('link_check_' + c[0] + '_' + c[1], 'test_link_check.c',
