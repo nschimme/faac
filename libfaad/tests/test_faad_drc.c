@@ -109,10 +109,10 @@ static bytes encode_fixture(unsigned channels, unsigned kind)
     faac_encoder_info info = { .struct_size = sizeof(info) };
     assert(faac_params_init(&p, sizeof(p)) == FAAC_OK);
     p.sample_rate = 44100;
-    p.num_channels = channels;
-    p.object_type = FAAC_OBJ_LOW;
+    p.channels = channels;
+    p.object_type = FAAC_OBJ_LC;
     p.bit_rate = 96000;
-    p.output_format = FAAC_STREAM_ADTS;
+    p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     assert(faac_encoder_open(&p, &enc) == FAAC_OK);
     assert(faac_encoder_get_info(enc, &info) == FAAC_OK);

@@ -50,11 +50,10 @@ static uint32_t encode(enum faac_object_type obj, uint32_t channels, uint8_t *ou
     faac_params p;
     if (faac_params_init(&p, sizeof(p)) != FAAC_OK) return 0;
     p.sample_rate = RATE;
-    p.num_channels = channels;
-    p.use_lfe = channels == 6;
+    p.channels = channels;
     p.object_type = obj;
     p.bit_rate = 48000;
-    p.output_format = FAAC_STREAM_ADTS;
+    p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     faac_encoder *enc = NULL;
     if (faac_encoder_open(&p, &enc) != FAAC_OK) return 0;
@@ -129,7 +128,7 @@ static int test_retry_and_flush(const uint8_t *stream, uint32_t channels,
         }
         faad_stream_info current = { .struct_size = sizeof(current) };
         faad_decoder_get_info(retry, &current);
-        if (!current.format_known || current.max_output_bytes != cap
+        if (!(current.flags & FAAD_STREAM_FORMAT_KNOWN) || current.max_output_bytes != cap
             || current.decoder_delay != ((fi & FAAD_FRAME_SBR) ? 962u : 0u)) return fail("runtime format/delay");
         pos += packet;
     }
@@ -172,7 +171,7 @@ static int test_pcm_formats(const uint8_t *stream)
     faad_decoder *dec[4];
     uint32_t cap[4];
     const enum faad_output_format formats[] = {
-        FAAD_OUTPUT_16BIT, FAAD_OUTPUT_24BIT, FAAD_OUTPUT_32BIT, FAAD_OUTPUT_FLOAT };
+        FAAD_OUTPUT_16BIT, FAAD_OUTPUT_24BIT, FAAD_OUTPUT_24IN32, FAAD_OUTPUT_FLOAT };
     void *pcm[4];
     for (int f = 0; f < 4; f++) {
         faad_config cfg;
@@ -481,10 +480,10 @@ static int test_stereo_downmix_matrix(const uint8_t *stream, uint32_t len, uint3
 static int run_stream_case(int t, const faad_library_info *lib, const faac_library_info *enc)
 {
     static uint8_t intact[1 << 20], damaged[1 << 20];
-    const enum faac_object_type objs[2] = { FAAC_OBJ_LOW, FAAC_OBJ_HE_AAC_V1 };
+    const enum faac_object_type objs[2] = { FAAC_OBJ_LC, FAAC_OBJ_HE_AAC_V1 };
     uint32_t channels = t == 0 ? 1 : t == 3 ? 6 : 2;
     enum faac_object_type obj = objs[t == 2 ? 1 : 0];
-    if (channels > lib->max_channels || (t == 2 && !lib->sbr_supported)
+    if (channels > lib->max_channels || (t == 2 && !(lib->flags & FAAD_LIB_SBR))
         || channels > enc->max_channels) return 0;
     uint32_t len = encode(obj, channels, intact, sizeof(intact));
     if (len == 0) return fail("encode");
@@ -500,7 +499,7 @@ static int run_stream_case(int t, const faad_library_info *lib, const faac_libra
     }
     /* the intact stream itself must decode within its own frame count */
     static const enum faad_output_format formats[] = {
-        FAAD_OUTPUT_16BIT, FAAD_OUTPUT_24BIT, FAAD_OUTPUT_32BIT, FAAD_OUTPUT_FLOAT };
+        FAAD_OUTPUT_16BIT, FAAD_OUTPUT_24BIT, FAAD_OUTPUT_24IN32, FAAD_OUTPUT_FLOAT };
     for (int f = 0; f < 4; f++)
         for (int d = 0; d < 3; d++)
             for (int raw = 0; raw < 2; raw++)
@@ -522,8 +521,8 @@ static int run_matrix_case(uint32_t channels, const faad_library_info *lib, cons
 {
     static uint8_t intact[1 << 20];
     if (channels > lib->max_channels || channels > enc->max_channels
-        || (channels == 8 && !lib->sbr_supported)) return 0;
-    enum faac_object_type obj = channels == 8 ? FAAC_OBJ_HE_AAC_V1 : FAAC_OBJ_LOW;
+        || (channels == 8 && !(lib->flags & FAAD_LIB_SBR))) return 0;
+    enum faac_object_type obj = channels == 8 ? FAAC_OBJ_HE_AAC_V1 : FAAC_OBJ_LC;
     uint32_t len = encode(obj, channels, intact, sizeof(intact));
     return !len || test_stereo_downmix_matrix(intact, len, channels) ? 1 : 0;
 }

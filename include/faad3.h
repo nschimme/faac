@@ -48,6 +48,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define FAAD_VERSION_MAJOR 3

@@ -82,7 +82,7 @@ static void test_lazy_allocations(bool ps)
             assert(status == FAAD_OK);
             optional_calls = calls - before;
         } else {
-            assert(status == FAAD_ERR_INSUFFICIENT_MEM);
+            assert(status == FAAD_ERR_NO_MEMORY);
             fail_at = 0;
 #ifndef FAAD_DISABLE_PS
             if (ps) assert(faad_ensure_ps(dec) == FAAD_OK);
@@ -110,7 +110,7 @@ static void test_coupling_allocation(void)
     BitReader bs;
     bits_init(&bs, zero_cce, sizeof(zero_cce));
     fail_at = calls + 1;
-    assert(decode_cce(&bs, dec) == FAAD_ERR_INSUFFICIENT_MEM);
+    assert(decode_cce(&bs, dec) == FAAD_ERR_NO_MEMORY);
     assert(!dec->coupling);
     fail_at = 0;
     bits_init(&bs, zero_cce, sizeof(zero_cce));
@@ -165,7 +165,7 @@ int main(void)
     for (size_t failure = 1; failure <= allocs; failure++) {
         calls = live = total = largest = 0;
         fail_at = failure;
-        assert(faad_decoder_open(&cfg, he_asc, sizeof(he_asc), &dec) == FAAD_ERR_INSUFFICIENT_MEM);
+        assert(faad_decoder_open(&cfg, he_asc, sizeof(he_asc), &dec) == FAAD_ERR_NO_MEMORY);
         assert(!dec && !live);
     }
 #ifndef FAAD_DISABLE_PS
@@ -179,7 +179,7 @@ int main(void)
     for (size_t failure = 1; failure <= allocs; failure++) {
         calls = live = total = largest = 0;
         fail_at = failure;
-        assert(faad_decoder_open(&cfg, ps_asc, sizeof(ps_asc), &dec) == FAAD_ERR_INSUFFICIENT_MEM);
+        assert(faad_decoder_open(&cfg, ps_asc, sizeof(ps_asc), &dec) == FAAD_ERR_NO_MEMORY);
         assert(!dec && !live);
     }
 #endif
