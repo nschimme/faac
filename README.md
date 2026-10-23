@@ -61,6 +61,7 @@ Lesser General Public License for more details.
 | `decoder` | true | Build `libfaad` and the `faad` frontend |
 | `frontend` | true | Build the command-line tools |
 | `frontend-static` | false | Link the frontend executables to the static libraries |
+| `encoder-sbr` | true | HE-AAC v1 (SBR) support in `libfaac`; false builds an LC-only encoder |
 | `decoder-sbr` | true | SBR (HE-AAC v1) support in `libfaad` |
 | `decoder-ps` | true | Parametric Stereo (HE-AAC v2) support in `libfaad`; needs `decoder-sbr` |
 | `max-channels` | 8 | Maximum number of channels (1-8) |

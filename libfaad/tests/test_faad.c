@@ -181,7 +181,7 @@ static void test_struct_sizes_and_enums(void)
     assert(faad_decoder_open(&c.cfg, NULL, 0, &dec) == FAAD_OK);
     struct { faad_stream_info info; uint32_t guard; } out;
     memset(&out, 0xa5, sizeof(out));
-    out.info.struct_size = offsetof(faad_stream_info, reserved) + sizeof(out.info.reserved) - 1;
+    out.info.struct_size = offsetof(faad_stream_info, flags) + sizeof(out.info.flags) - 1;
     assert(faad_decoder_get_info(dec, &out.info) == FAAD_ERR_INVALID_ARGUMENT);
     assert(out.info.sample_rate == 0xa5a5a5a5u);
     out.info.struct_size = sizeof(out);
@@ -219,7 +219,7 @@ int main(void)
     faad_stream_info info = { .struct_size = sizeof(faad_stream_info) };
     st = faad_decoder_get_info(dec, &info);
     assert(st == FAAD_OK);
-    assert(!info.format_known && info.channels == 0);
+    assert(!(info.flags & FAAD_STREAM_FORMAT_KNOWN) && info.channels == 0);
 
     const uint8_t packet[] = { 0xff, 0xf1, 0x50, 0x40, 0x01, 0x1f, 0xfc, 0xe0 };
     void *pcm = malloc(info.max_output_bytes);

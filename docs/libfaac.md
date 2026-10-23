@@ -22,6 +22,7 @@
 
 - [Porting from the legacy faacEnc* API](#porting-from-the-legacy-faacenc-api)
 - [Porting from libfaac ABI 1](#porting-from-libfaac-abi-1)
+- [Porting from libfaac ABI 2 to ABI 3](#porting-from-libfaac-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 
 ## Scope
@@ -88,15 +89,18 @@ otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8), `FAAC_SBR_DECIMATION`
 | AAC-LC | Supported by every encoder build; 1024 samples/channel per frame |
 | HE-AAC v1 | Dual-rate SBR; input rate at least 32000 Hz; 2048 samples/channel per frame |
 | HE-AAC v2, MAIN, SSR, LTP, LD, ELD, USAC | Unsupported |
-| ADTS | Library supplies each frame's header |
+| ADTS | Library supplies each frame's header; `FAAC_STREAM_ADTS` writes MPEG-4 headers, `FAAC_STREAM_ADTS_MPEG2` MPEG-2 headers |
 | RAW AAC | One access unit per emitted frame; MPEG-4 ASC available separately |
 | MP4/M4A | Mux outside the library using RAW access units and ASC |
-| MPEG-2 | AAC-LC; no ASC; explicit HE-AAC resolves to MPEG-4 |
+| MPEG-2 | `FAAC_STREAM_ADTS_MPEG2` only (no RAW form); AAC-LC; no ASC; HE-AAC resolves to `FAAC_STREAM_ADTS` |
 | Channels | 1–6 or 8, within the compiled `max-channels` ceiling; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float; see below |
 
 Query `faac_get_library_info()` for `max_channels`, version/copyright and
-`sbr_decimation` (build-time SBR analysis density; 1 is full density).
+`sbr_decimation` (build-time SBR analysis density; 1 is full density) and
+`flags`. `FAAC_LIB_SBR` is clear in an LC-only build (`-Dencoder-sbr=false`),
+where `FAAC_OBJ_HE_AAC_V1` returns `FAAC_ERR_UNSUPPORTED` and
+`FAAC_OBJ_AUTO` resolves to LC.
 `max-channels` defaults to 8; `sbr-decimation` defaults to 1.
 Use standard AAC sample rates (8000, 11025, 12000, 16000, 22050, 24000,
 32000, 44100, 48000, 64000, 88200 or 96000 Hz). Validation accepts
@@ -112,8 +116,8 @@ half-configured state, and every derived quantity (frame size, output-buffer
 bound, effective sample rate, resolved object type) is known and queryable the
 instant open returns. Every fallible call returns a `faac_status` code;
 fixed-width integer types and width-pinned enums keep the ABI identical across
-64-bit platforms (LP64 and LLP64), regardless of -fshort-enums. 32-bit targets
-have their own layout because of pointer fields.
+64-bit platforms (LP64 and LLP64), regardless of -fshort-enums. `faac_params`
+is pointer-free; other structs follow target pointer alignment.
 See [ABI compatibility](#abi-compatibility).
 
 ### Calling sequence
@@ -124,21 +128,22 @@ See [ABI compatibility](#abi-compatibility).
   compatible as it grows in future releases; the size argument keeps a newer
   library from writing past an older caller's struct.
 - Set the fields you care about (at minimum `sample_rate` and
-  `num_channels`), then call `faac_encoder_open()`.
+  `channels`), then call `faac_encoder_open()`.
 - Fill a `faac_encoder_info` with `faac_encoder_get_info()` (set its
   `struct_size` first) and size your buffers from it: input PCM holds
-  `info.frame_samples` × `num_channels` samples; the output buffer
+  `info.frame_samples` × `channels` samples; the output buffer
   must be at least `info.max_output_bytes`. The same struct also reports the
   resolved sample rate, object type, and rate-control settings. If you write a
-  raw stream, fetch the AudioSpecificConfig with `faac_encoder_asc()`
-  (library-owned — do **not** free it).
+  raw stream, take the AudioSpecificConfig from `info.asc` / `info.asc_size`
+  (valid right after open; copy it if you need it longer) or from
+  `faac_encoder_asc()` (library-owned — do **not** free it).
 - Call `faac_encoder_encode()` for each block of input; it emits at most
   one frame per call and reports the byte count via an out-parameter.
   `in_samples` counts samples across all channels, not bytes or samples/channel.
-  Supply at most `info.frame_samples * num_channels`, in whole channel groups.
+  Supply at most `info.frame_samples * channels`, in whole channel groups.
   Smaller blocks accumulate internally; zero output during normal input means
   accumulation or priming, not end of stream.
-- Pass `in_samples` == 0 to flush; keep calling until
+- Pass `in_samples` == 0 to drain; keep calling until
   `bytes_written` is 0.
 - Call `faac_encoder_close()`, passing the address of your handle; it is
   set to NULL on success.
@@ -154,13 +159,13 @@ object type this build does not implement, or a request with no ASC),
 `FAAC_ERR_OUTPUT_TOO_SMALL`, and `FAAC_ERR_INPUT_OVERFLOW`.
 
 Always provide a non-NULL output buffer with at least `info.max_output_bytes`,
-including while flushing. `bytes_written` must also be non-NULL; input may be
+including while draining. `bytes_written` must also be non-NULL; input may be
 NULL only when `in_samples` is zero. Argument, capacity and per-call sample-limit
 checks happen before consuming input, so correct those errors and retry the
 same block. `FAAC_ERR_INTERNAL` may occur after state has advanced; do not
 assume replay is safe. Close and reopen to start a new stream.
-Flush is an end-of-stream drain, not a reset or seek operation. Submit the final
-partial block first, then flush until zero output; close does not drain audio.
+Draining is an end-of-stream operation, not a reset or seek. Submit the final
+partial block first, then drain until zero output; close does not drain audio.
 
 ### Function reference
 
@@ -173,10 +178,10 @@ faac_status faac_encoder_open(const faac_params *p, faac_encoder **out);
 faac_status faac_encoder_close(faac_encoder **enc);   /* sets *enc = NULL */
 
 /* resolved properties, valid after open; set out.struct_size first */
-faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *out);
+faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out);
 
 /* AudioSpecificConfig: library-owned, valid until close, do NOT free */
-faac_status faac_encoder_asc(faac_encoder *enc, const uint8_t **buf, uint32_t *len);
+faac_status faac_encoder_asc(const faac_encoder *enc, const uint8_t **buf, uint32_t *len);
 
 faac_status faac_encoder_encode(faac_encoder *enc,
                                 const void *in, uint32_t in_samples,
@@ -187,9 +192,9 @@ const char *faac_strerror(faac_status status);
 ```
 
 The `object_type` field of `faac_params` uses MPEG-4 Audio Object Type
-numbers: `FAAC_OBJ_LOW` (2) is AAC-LC and `FAAC_OBJ_HE_AAC_V1` (5) is
+numbers: `FAAC_OBJ_LC` (2) is AAC-LC and `FAAC_OBJ_HE_AAC_V1` (5) is
 HE-AAC v1 (AAC-LC core + SBR). `FAAC_OBJ_AUTO` (0) lets the library choose
-LC or HE-AAC from the bitrate, or from `quant_quality` when there is none. `FAAC_OBJ_HE_AAC_V2` (29) is defined but not
+LC or HE-AAC from the bitrate, or from `quality` when there is none. `FAAC_OBJ_HE_AAC_V2` (29) is defined but not
 implemented; requesting it returns `FAAC_ERR_UNSUPPORTED`.
 
 For an HE-AAC encoder the SBR core runs at half the input rate and codes a
@@ -224,14 +229,14 @@ int main(void)
     st = faac_params_init(&p, sizeof(p));
     if (st < 0) goto api_error;
     p.sample_rate = 48000;
-    p.num_channels = 2;
-    p.bit_rate = 64000; /* per channel */
+    p.channels = 2;
+    p.bit_rate = 128000; /* whole-stream bits/sec */
     st = faac_encoder_open(&p, &enc);
     if (st < 0) goto api_error;
     st = faac_encoder_get_info(enc, &info);
     if (st < 0) goto api_error;
 
-    uint32_t capacity = info.frame_samples * p.num_channels;
+    uint32_t capacity = info.frame_samples * p.channels;
     size_t input_bytes = (size_t)capacity * sizeof(*pcm);
     pcm = malloc(input_bytes);
     out = malloc(info.max_output_bytes);
@@ -249,7 +254,7 @@ int main(void)
             }
         }
         if (used == 0) break;
-        if (used % (sizeof(*pcm) * p.num_channels)) {
+        if (used % (sizeof(*pcm) * p.channels)) {
             fputs("incomplete PCM channel group\n", stderr);
             goto cleanup;
         }
@@ -288,56 +293,75 @@ cleanup:
 ### Defaults and PCM input
 
 `faac_params_init()` defaults to MPEG-4 AAC-LC, mixed joint stereo, TNS and
-PNS enabled, LFE disabled, ADTS, signed 16-bit input, normal block switching,
-64000 bits/sec/channel, automatic rate control, no user peak cap and automatic
-bandwidth/quality. Only sample rate and channel count must be supplied.
+PNS enabled, automatic LFE for six or eight channels, AAC input order, ADTS,
+signed 16-bit input, normal block switching, ABR rate control, `bit_rate` 0
+(64000 bits/sec/channel), `quality` 0, no user peak cap and automatic bandwidth.
+Only sample rate and channel count must be supplied.
 `FAAC_OBJ_AUTO` is an explicit choice, not the initialization default.
 
-For VBR, clear the default bitrate:
+For VBR, set `rate_control = FAAC_RC_VBR`:
 
 ```c
-p.bit_rate = 0;
 p.rate_control = FAAC_RC_VBR;
-p.quant_quality = 100; /* higher means higher quality; 0 selects the default */
+p.quality = 100; /* higher means higher quality; 0 selects the default */
 ```
 
-Quality is clamped by the core to 1–5000; bandwidth is resolved and
+VBR quality must be 1–5000, or 0 for the library default; bandwidth is resolved and
 clamped to the available range. Read effective values with `get_info()`.
 
 | Input format | Representation | Storage alignment |
 |---|---|---|
 | `FAAC_INPUT_16BIT` | Native-endian signed `int16_t`, full scale | `int16_t` |
 | `FAAC_INPUT_24BIT` | Native-endian packed signed three-byte samples, full scale | Any |
-| `FAAC_INPUT_32BIT` | Native-endian `int32_t` containing sign-extended 24-bit values, not full-scale 32-bit PCM | `int32_t` |
-| `FAAC_INPUT_FLOAT` | 32-bit float on the signed-16-bit scale (approximately −32768 to +32767) | `float` |
+| `FAAC_INPUT_24IN32` | 24 significant bits in a native-endian 32-bit word, ALSA S24_LE style | `int32_t` |
+| `FAAC_INPUT_FLOAT` | 32-bit float, unity full scale (±1.0) | `float` |
 
-All formats are interleaved. Convert normalized float PCM by multiplying by
-32768; convert full-scale 32-bit PCM to 24-bit scale before passing it.
-In particular, FAAD's float and 32-bit outputs require conversion for FAAC.
-NaN, infinity and float magnitudes at least 8388608 are replaced with silence;
+All formats are interleaved. Pass normalized floats directly; FAAD float
+output can be fed back directly, as can its 24-in-32 output. Convert full-scale
+32-bit PCM to 24-bit scale before passing it.
+NaN, infinity and float magnitudes at least 256 are replaced with silence;
 this is not a clipping or normalization service.
 
 ### Channel ordering and ownership
 
-Mono and stereo use mono and L/R order. Multichannel input follows AAC element
-order, with the center first, channel pairs next and the final unpaired channel
-last. For conventional 5.1 use C, L, R, Ls, Rs, LFE and set `use_lfe = true`.
-For source order L, R, C, LFE, Ls, Rs:
+`channel_layout` defaults to `FAAC_LAYOUT_AAC`: mono or L/R for stereo,
+then AAC element order for multichannel PCM. For 5.1 this is C, L, R, Ls, Rs,
+LFE. The last channel is LFE only for six or eight channels; four-channel
+input ends with a plain back-centre SCE. For eight channels, AAC order is
+C, front L/R, side L/R, back L/R, LFE.
+
+The supported standard layouts are:
+
+| Channels | Layout | WAVE order | WAVE mask |
+|---|---|---|---|
+| 1 | mono | FC | `0x004` |
+| 2 | stereo | FL FR | `0x003` |
+| 3 | 3.0 | FL FR FC | `0x007` |
+| 4 | 4.0 | FL FR FC BC | `0x107` |
+| 5 | 5.0 | FL FR FC BL BR | `0x037` |
+| 6 | 5.1 | FL FR FC LFE BL BR | `0x03f` |
+| 8 | 7.1 | FL FR FC LFE BL BR SL SR | `0x63f` |
+
+Four channels are always coded and labelled as 4.0, including quad
+(FL FR BL BR) and 3.1 (FL FR FC LFE) input. Seven channels and more than eight
+are rejected with `FAAC_ERR_INVALID_ARGUMENT`. Eight-channel streams are
+signalled with channelConfiguration 0 and a program config element that lists
+the pairs as front, side, back, so Apple, FDK, FFmpeg and libfaad all read the
+same 7.1. AAC channel configuration 7 is not used because ISO/IEC 14496-3
+defines it as 7.1 wide. ADTS streams carry the PCE in the first frame and
+repeat it every 32 frames so a decoder that joins late learns the layout;
+RAW streams carry it in the AudioSpecificConfig only.
+
+Select `FAAC_LAYOUT_WAV` for WAVE interleave. The library derives the
+permutation; arbitrary channel maps are not accepted. For 5.1 input ordered
+L, R, C, LFE, Ls, Rs:
 
 ```c
-int32_t map[6] = { 2, 0, 1, 4, 5, 3 };
-p.channel_map = map;
-p.channel_map_count = 6;
-p.use_lfe = true;
+p.channels = 6;
+p.channel_layout = FAAC_LAYOUT_WAV;
 ```
 
-`channel_map[destination_channel]` selects the source PCM channel; entries must
-be in `0..num_channels-1`, with at least `num_channels` entries supplied.
-NULL selects identity order. Use a permutation to reorder channels; the map
-does not mix or downmix audio. For the conventional six- and eight-channel layouts, LFE selection applies
-to the trailing unpaired channel; it does not locate an LFE within the source layout automatically.
-
-Open copies parameters and the map; their storage may be released after open.
+Open copies the parameters; their storage may be released after open.
 Input and output buffers remain caller-owned; PCM is copied into internal
 storage during encode. ASC remains library-owned until close; copy it if the
 muxer needs it longer. Version/copyright and error strings are static and must
@@ -357,10 +381,11 @@ over where encoder memory lives. The allocator need not clear the memory it retu
 ### Memory budget and embedded targets
 
 The encoder instance is heap-allocated at `faac_encoder_open()` and does not
-allocate again while encoding or flushing. AudioSpecificConfig is built at open
-in an 8-byte array inside the handle: 2 bytes for LC, 5 bytes for multichannel
-HE-AAC, or 7 bytes for mono HE-AAC. `faac_encoder_asc()` returns that storage
-without allocating. Closing the handle releases all of it.
+allocate again while encoding or draining. AudioSpecificConfig is built at open
+in a 14-byte array inside the handle: 2 bytes for LC, 5 bytes for multichannel
+HE-AAC, 7 bytes for mono HE-AAC, and up to 14 bytes for eight channels, whose
+PCE is part of it. `faac_encoder_info.asc` copies it and
+`faac_encoder_asc()` returns that storage without allocating. Closing the handle releases all of it.
 
 The following are indicative measurements from an arm64 build at 48000 Hz
 with default build options, not storage requirements guaranteed across builds:
@@ -383,7 +408,7 @@ on your target separately.
 Use these figures for a first sizing, then measure your own build: sizes follow
 pointer width and alignment, and build options such as `-Dmax-channels` may
 change them. HE-AAC roughly doubles the heap because it runs a core at half
-the sample rate plus the SBR analysis state, so choose `FAAC_OBJ_LOW` when RAM
+the sample rate plus the SBR analysis state, so choose `FAAC_OBJ_LC` when RAM
 is tight.
 The core uses single-precision float; double precision appears only in
 one-time table generation at open.
@@ -396,7 +421,7 @@ committing to it.
 #### Running without a heap
 
 A fixed-pool override can avoid the system heap. Allocations occur during open
-and the first successful ASC request; encoding and flushing allocate nothing.
+only; encoding and draining allocate nothing.
 A bump allocator must also reserve space for allocations freed during open,
 because it cannot reuse them.
 
@@ -454,10 +479,13 @@ these values; ADTS alone does not preserve gapless metadata. See
 
 ### Rate control modes
 
-`faac_params.rate_control` selects how a rate is held. `FAAC_RC_AUTO`,
-the default, keeps the legacy meaning of the two rate fields: a `bit_rate`
-is ABR, none is VBR. `FAAC_RC_ABR` holds `bit_rate` as an average:
-frames are bounded only by the ISO/IEC 14496-3 ceiling of 6144 bits per channel,
+`faac_params.rate_control` explicitly selects the mode. `FAAC_RC_ABR`,
+the default (and zero), holds `bit_rate` as an average. In ABR and CBR,
+`bit_rate` is whole-stream bits/sec; 0 selects 64000 bits/sec per channel.
+The library divides the whole-stream target by the channel count using integer
+division. `faac_encoder_info.bit_rate` reports the resolved per-channel rate
+multiplied by the channel count, so six channels at 128000 report 127998.
+In ABR, frames are bounded only by the ISO/IEC 14496-3 ceiling of 6144 bits per channel,
 a transient may take several times the mean, and silence stays small.
 `FAAC_RC_CBR` holds it as a constant-rate stream: a bit reservoir models the
 decoder's input buffer, every frame fits `mean + fill`, a frame that would
@@ -467,17 +495,18 @@ VBR write the 0x7FF sentinel); MP4 output declares `bufferSizeDB` = 768
 bytes per channel and `maxBitrate` == `avgBitrate`. CBR is for
 constant-rate channels and matched-bitrate comparisons; on a file or a packet
 network its stuffing is bytes for nothing, and a transient may take only what
-the buffer holds. `FAAC_RC_VBR` or `FAAC_RC_ABR`/`FAAC_RC_CBR`
-with, respectively, a `bit_rate` set or unset is rejected by
-`faac_encoder_open()` with `FAAC_ERR_INVALID_ARGUMENT`.
+the buffer holds. `FAAC_RC_VBR` requires `bit_rate = 0` and uses `quality`
+(1–5000, or 0 for the library default). ABR and CBR require `quality = 0`. In all modes,
+`faac_encoder_info.quality` reports the resolved/seeded starting quality,
+including ABR and CBR.
+Conflicting fields are rejected by `faac_encoder_open()` with
+`FAAC_ERR_INVALID_ARGUMENT`.
 `faac_encoder_info.rate_control` reports the resolved mode.
 
 In ABR and CBR the cutoff follows `bit_rate`; in VBR it is the top of
 that curve, 18750 Hz, except that input above 48 kHz at the default quality
 (100) or higher keeps the full band (half the sample rate). A non-zero
-`bandwidth` overrides either. A non-zero `quant_quality` given
-together with a `bit_rate` is not rejected: it is the rate loop's starting
-quality, and the loop moves on from it. `faac_encoder_info.bandwidth`
+`bandwidth` overrides either. `faac_encoder_info.bandwidth`
 reports the cutoff in use.
 
 ### Capping the peak frame size
@@ -485,15 +514,15 @@ reports the cutoff in use.
 Packet-oriented transports often cannot fragment a frame: one that overruns the
 link MTU is dropped, not split. `bit_rate` cannot prevent that, being an
 average individual frames are free to exceed — a transient easily produces
-a frame several times the mean. `faac_params.max_bit_rate` puts a hard
+a frame several times the mean. `faac_params.peak_bit_rate` puts a hard
 ceiling on any single frame; 0, the default, means none beyond the encoder's
 own ISO/IEC 14496-3 peak ceiling of 6144 bits per channel per frame, enforced
 unconditionally to guarantee decoder compatibility across portable devices.
-Unlike `bit_rate` it is a whole-stream rate, so it stays independent of
-`num_channels` and follows directly from the payload one packet can carry:
+Both `bit_rate` and `peak_bit_rate` are whole-stream bits/sec. The peak stays
+independent of `channels` and follows directly from the payload one packet can carry:
 
 ```text
-    max_bit_rate = payload_bytes * 8 * info.sample_rate / info.frame_samples
+    peak_bit_rate = payload_bytes * 8 * info.sample_rate / info.frame_samples
 ```
 
 Use 64-bit arithmetic, round down, and query the resolved frame size/rate
@@ -501,9 +530,10 @@ first (1024 for LC, 2048 for HE-AAC). The cap budgets the AAC payload; reserve
 seven more bytes for ADTS and any transport headers when deriving an MTU budget.
 The output allocation still needs `info.max_output_bytes`, regardless of cap.
 
-It must be at least `bit_rate` × `num_channels` — a peak
+In ABR and CBR it must be at least the requested whole-stream `bit_rate`
+(or 64000 × `channels` when `bit_rate` is 0) — a peak
 below the average is unsatisfiable — and at most
-`FAAC_MAX_BIT_RATE`; `faac_encoder_open()` returns
+`FAAC_MAX_PEAK_BIT_RATE`; `faac_encoder_open()` returns
 `FAAC_ERR_INVALID_ARGUMENT` otherwise. More headroom means fewer retries.
 
 It is a ceiling, not a second average: frames that already fit are untouched, so
@@ -534,7 +564,7 @@ shim — callers must move to `faac_*`. The changes are mechanical:
 - **Buffer sizing.** Where you previously read `inputSamples` and
   `maxOutputBytes` from `faacEncOpen()`, call
   `faac_encoder_get_info()` after `faac_encoder_open()` and use
-  `info.frame_samples` × `num_channels` and
+  `info.frame_samples` × `channels` and
   `info.max_output_bytes` instead.
 - **Version info.** `faacEncGetVersion()` is replaced by
   `faac_get_library_info()`, which also reports `max_channels`; the
@@ -548,8 +578,8 @@ shim — callers must move to `faac_*`. The changes are mechanical:
 - **Encoding loop.** `faacEncEncode()` becomes
   `faac_encoder_encode()` with the byte count returned via an
   out-parameter (`bytes_written`) instead of the return value; the return
-  value is now a `faac_status`. Flush and end-of-stream detection are
-  unchanged: pass `in_samples` == 0 to flush, and keep calling until
+  value is now a `faac_status`. Draining and end-of-stream detection are
+  unchanged: pass `in_samples` == 0 to drain, and keep calling until
   `bytes_written` is 0.
 - **Close.** `faacEncClose(hEncoder)` becomes
   `faac_encoder_close(&enc)` — pass the address of your handle,
@@ -560,28 +590,34 @@ shim — callers must move to `faac_*`. The changes are mechanical:
 - **Configuration field renames.** `faacEncConfiguration` fields map
   onto `faac_params` fields as follows:
 
+  - `numChannels` (passed to `faacEncOpen()`) → `channels`.
   - `aacObjectType` → `object_type` (now uses
-    `FAAC_OBJ_*` constants, numbered per the MPEG-4 AOT registry, rather
-    than the old MAIN/LOW/SSR/LTP enum — MAIN, SSR, and LTP are retired,
+    `FAAC_OBJ_*` constants (`FAAC_OBJ_LC` for AAC-LC), numbered per the
+    MPEG-4 AOT registry, rather than the old MAIN/LOW/SSR/LTP enum — MAIN,
+    SSR, and LTP are retired,
     unimplemented object types).
-  - `mpegVersion` → `mpeg_version` (`FAAC_MPEG4` /
-    `FAAC_MPEG2`).
-  - `jointmode` → `joint_mode` (`FAAC_JOINT_*`).
+  - `mpegVersion` → the stream format: `FAAC_STREAM_ADTS_MPEG2` selects
+    MPEG-2; MPEG-4 is the default for `FAAC_STREAM_ADTS` and
+    `FAAC_STREAM_RAW`. MPEG-2 RAW has no ID bit and is no longer a
+    separate setting.
+  - `jointmode` → `stereo_mode` (`FAAC_STEREO_*`).
     `allowMidside` was a compatibility alias sharing storage with
     `jointmode` in a union; it has no separate replacement, use
-    `joint_mode` directly.
-  - `useLfe` → `use_lfe`; `useTns` → `use_tns`
-    (now `bool`).
+    `stereo_mode` directly.
+  - `useLfe` → automatic LFE for six or eight channels; no switch.
+    `useTns` → `flags & FAAC_FLAG_TNS`.
   - `shortctl` → `short_control` (`FAAC_SHORTCTL_*`).
-  - `bitRate` → `bit_rate`; `bandWidth` →
-    `bandwidth`; `quantqual` → `quant_quality`.
-  - `pnslevel` → `use_pns`: the level is now chosen by the
+  - `bitRate` → `bit_rate` (multiply the per-channel rate by `channels`);
+    `bandWidth` → `bandwidth`; `quantqual` → `quality` (VBR only).
+  - `maxBitRate` → `peak_bit_rate` (whole-stream bits/sec).
+  - `rateControl` → `rate_control` (`FAAC_RC_ABR`, `FAAC_RC_VBR`, or
+    `FAAC_RC_CBR`); select the mode explicitly.
+  - `pnslevel` → `flags & FAAC_FLAG_PNS`: the level is now chosen by the
     encoder, leaving the caller an on/off switch.
-  - `outputFormat` → `output_format` (`FAAC_STREAM_*`);
+  - `outputFormat` and `mpegVersion` → `stream_format` (`FAAC_STREAM_*`);
     `inputFormat` → `input_format` (`FAAC_INPUT_*`).
-  - `channel_map[64]` → `channel_map` plus an explicit
-    `channel_map_count` (the old fixed-size array was implicitly sized by
-    `numChannels`).
+  - `channel_map[64]` → `channel_layout` (`FAAC_LAYOUT_AAC` or
+    `FAAC_LAYOUT_WAV`). Apply custom permutations before encoding.
   - `version`, `name`, and `copyright` were unused or
     library-populated informational fields in the legacy config struct; their
     closest analogs are `faac_params.struct_size` (for `version`-style
@@ -612,11 +648,32 @@ against ABI 2. To compile source against either header:
 ```
 
 `FAAC_VERSION_MAJOR` identifies the library ABI, not the project release.
-Version 3.0 moved FAAC, FAAD and FAAM to one project version and SONAME 3 without changing
-the `faac_*` API, so code written for ABI 2 builds and runs unchanged.
+Version 3.0 uses SONAME 3; see the ABI 2 to ABI 3 table below. Rebuild against
+the new header: ABI 2 parameter layouts are incompatible.
 An ABI 1 binary must not load ABI 2 as a drop-in replacement. Do not cast
 legacy configuration or handle types to the new public types; migrate the
 calls and rebuild.
+
+## Porting from libfaac ABI 2 to ABI 3
+
+| ABI 2 | ABI 3 / caller action |
+|---|---|
+| `faac_params.num_channels` | `channels`. |
+| `use_lfe`, `channel_map`, `channel_map_count` | `channel_layout`: `FAAC_LAYOUT_AAC` or `FAAC_LAYOUT_WAV`. LFE is automatic for six or eight channels; other permutations must be applied before encoding. |
+| `rate_control` with an implicit AUTO | Explicit `FAAC_RC_ABR` (default), `FAAC_RC_VBR` or `FAAC_RC_CBR`. VBR needs `bit_rate = 0`; ABR and CBR need `quality = 0`. |
+| per-channel `bit_rate` | Whole-stream bits/sec; multiply an old value by `channels`. `faac_encoder_info.bit_rate` is whole-stream too. |
+| `quant_quality` | `quality` (VBR only). |
+| `max_bit_rate`, `FAAC_MAX_BIT_RATE` | `peak_bit_rate`, `FAAC_MAX_PEAK_BIT_RATE`. |
+| `joint_mode`, `FAAC_JOINT_*` | `stereo_mode`, `FAAC_STEREO_LR`, `_MS`, `_IS`, `_AUTO` (was MIXED). |
+| `FAAC_OBJ_LOW` | `FAAC_OBJ_LC`. |
+| `output_format` | `stream_format`. |
+| `mpeg_version` | `FAAC_STREAM_ADTS_MPEG2`; raw MPEG-2 is no longer expressible. `faac_encoder_info.stream_format` reports the resolved format. |
+| `use_tns`, `use_pns`, `reserved` | Set `flags` with `FAAC_FLAG_TNS` and `FAAC_FLAG_PNS`; both are enabled by default, and unknown bits are rejected. |
+| `faac_library_info` field order | `struct_size`, `version`, `copyright`, `max_channels`, `sbr_decimation`, `flags`; query writes back the populated size. |
+| `FAAC_INPUT_32BIT` | `FAAC_INPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
+| `FAAC_INPUT_FLOAT` on the signed-16-bit scale | Pass unity-full-scale floats (±1.0); remove the multiplication by 32768 for normalized input. |
+| `faac_encoder_asc()` allocating on first call | The ASC is built at open and also in `faac_encoder_info.asc`/`asc_size`; the getters take a const handle. |
+| `FAAC_ERR_NO_MEMORY` from `faac_encoder_asc()` | No longer returned there. |
 
 ## ABI compatibility
 

@@ -34,14 +34,9 @@ libfaac_src = [
     'quantize.h',
     'ratecontrol.c',
     'ratecontrol.h',
-    'sbr.c',
     'sbr.h',
     'sbr_internal.h',
-    'sbr_bitstream.c',
-    'sbr_huff_tables.c',
-    'sbr_analysis.c',
     'sbr_analysis.h',
-    'resample.c',
     'resample.h',
     'stereo.c',
     'stereo.h',
@@ -51,12 +46,21 @@ libfaac_src = [
     'util.h',
 ]
 
+encoder_args = []
+encoder_codec_dep = codec_lc_dep
+if get_option('encoder-sbr')
+    libfaac_src += files('sbr.c', 'sbr_analysis.c', 'sbr_bitstream.c', 'sbr_huff_tables.c', 'resample.c')
+    encoder_codec_dep = codec_dep
+else
+    encoder_args += ['-DFAAC_DISABLE_SBR']
+endif
+
 libfaac = disabler()
 
 common_args = {
     'include_directories' : ['..', '../include', common_inc],
-    'c_args' : c_args + ['-DCOMMON_PREFIX=faac_'],
-    'dependencies' : [libm, codec_dep],
+    'c_args' : c_args + encoder_args + ['-DCOMMON_PREFIX=faac_'],
+    'dependencies' : [libm, encoder_codec_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',

@@ -43,10 +43,20 @@ static inline int asc_codec_sr_idx(uint32_t rate)
     return -1;
 }
 
+/* Tags in config-7 native order: center, front, side, back, LFE.
+ * Unrecognized PCEs retain only their channel count. */
+typedef struct {
+    uint8_t channels;
+    uint8_t tags[5];
+    bool wave71;
+} AscPce;
+
 typedef struct {
     uint8_t  object_type;     /* core AOT (2 = AAC-LC) */
     uint32_t sample_rate;     /* core sample rate, Hz */
     uint8_t  num_channels;
+    uint8_t  channel_config;
+    AscPce   pce;
     bool     sbr_present;
     uint32_t sbr_sample_rate; /* post-SBR (extension) rate, Hz; == 2*sample_rate if not explicitly signaled */
     bool     ps_present;
@@ -58,15 +68,18 @@ typedef struct { const uint8_t *buf; uint32_t len_bits; uint32_t pos; } asc_bitr
 static inline uint32_t asc_br_get(asc_bitreader *br, uint32_t n)
 {
     uint32_t val = 0;
-    for (uint32_t i = 0; i < n; i++) {
-        uint32_t bitpos = br->pos + i;
-        uint32_t bit = 0;
-        if (bitpos < br->len_bits) {
-            bit = (br->buf[bitpos >> 3] >> (7 - (bitpos & 7))) & 1;
-        }
-        val = (val << 1) | bit;
+    /* Byte-sized chunks keep fixed-width reads compact without unrolling
+     * one bounds check and extraction for every bit of a PCE field. */
+    while (n) {
+        uint32_t room = 8 - (br->pos & 7);
+        uint32_t take = n < room ? n : room;
+        uint32_t byte = br->pos < br->len_bits ? br->buf[br->pos >> 3] : 0;
+        uint32_t available = br->pos < br->len_bits ? br->len_bits - br->pos : 0;
+        if (available < room) byte &= 0xffu << (room - available);
+        val = (val << take) | ((byte >> (room - take)) & ((1u << take) - 1));
+        br->pos += take;
+        n -= take;
     }
-    br->pos += n;
     return val;
 }
 
@@ -90,6 +103,60 @@ static inline uint32_t asc_parse_sample_rate(asc_bitreader *br)
     return idx == 15 ? asc_br_get(br, 24) : asc_codec_sample_rates[idx];
 }
 
+/* Two back pairs use the rear-surround convention: first side, then back.
+ * Pair tags must be distinct, since tags select elements, not positions. */
+static inline bool asc_pce_wave71(const AscPce *pce, uint32_t front,
+                                uint32_t side, uint32_t back, uint32_t lfe,
+                                bool pairs)
+{
+    return pairs && front == 2 && lfe == 1
+        && ((side == 0 && back == 2) || (side == 1 && back == 1))
+        && pce->tags[1] != pce->tags[2] && pce->tags[1] != pce->tags[3]
+        && pce->tags[2] != pce->tags[3];
+}
+
+/* PCE lists carry element tags rather than PCM positions. Count only audio
+ * elements, but skip every optional field so SBR starts at the correct bit. */
+static inline uint8_t asc_parse_pce(asc_bitreader *br, AscPce *pce)
+{
+    memset(pce, 0, sizeof(*pce));
+    if (asc_br_remaining(br) < 34) return 0;
+    asc_br_get(br, 10);
+    uint32_t front = asc_br_get(br, 4);
+    uint32_t side = asc_br_get(br, 4);
+    uint32_t back = asc_br_get(br, 4);
+    uint32_t lfe = asc_br_get(br, 2);
+    uint32_t assoc = asc_br_get(br, 3);
+    uint32_t cc = asc_br_get(br, 4);
+    bool pairs = true;
+    if (asc_br_get(br, 1)) asc_br_get(br, 4);
+    if (asc_br_get(br, 1)) asc_br_get(br, 4);
+    if (asc_br_get(br, 1)) asc_br_get(br, 3);
+    uint32_t channels = lfe, elements = front + side + back;
+    if (br->pos > br->len_bits || asc_br_remaining(br) < elements * 5 + lfe * 4 + assoc * 4 + cc * 5)
+        return 0;
+    for (uint32_t i = 0; i < elements; i++) {
+        uint32_t pair = asc_br_get(br, 1);
+        uint8_t tag = (uint8_t)asc_br_get(br, 4);
+        channels += 1 + pair;
+        if (i < 4) pce->tags[i] = tag;
+        pairs = pairs && pair == (i != 0);
+    }
+    for (uint32_t i = 0; i < lfe; i++) {
+        uint8_t tag = (uint8_t)asc_br_get(br, 4);
+        if (i == 0) pce->tags[4] = tag;
+    }
+    br->pos += assoc * 4 + cc * 5;
+    asc_br_get(br, (8 - (br->pos & 7)) & 7);
+    if (asc_br_remaining(br) < 8) return 0;
+    uint32_t comment_bits = asc_br_get(br, 8) * 8;
+    if (asc_br_remaining(br) < comment_bits) return 0;
+    br->pos += comment_bits;
+    pce->channels = (uint8_t)channels;
+    pce->wave71 = asc_pce_wave71(pce, front, side, back, lfe, pairs);
+    return pce->channels;
+}
+
 /*
  * Parses aot/sample_rate/channels, then either the "explicit" nested-AOT
  * HE-AAC form (top-level AOT==5) or, for a plain-LC ASC, walks
@@ -98,15 +165,13 @@ static inline uint32_t asc_parse_sample_rate(asc_bitreader *br)
  * trailing 0x2b7/0x548 sync-extension -- the form real MP4/M4A muxers
  * (including this project's own) actually write. asc_len is in bytes.
  *
- * PCE parsing (needed only when channelConfiguration==0, i.e. a
- * program_config_element carries the real channel layout) is intentionally
- * not implemented here; num_channels is left 0 and the implicit-extension
- * scan is skipped in that case.
+ * PCE audio lists supply the channel count when channelConfiguration is zero;
+ * optional fields and comments are skipped before the sync-extension scan.
  */
 static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *out)
 {
     memset(out, 0, sizeof(*out));
-    if (!buf || len < 2) return;
+    if (!buf || len < 2 || len > UINT32_MAX / 8) return;
 
     asc_bitreader br = { buf, len * 8, 0 };
 
@@ -115,7 +180,7 @@ static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *ou
     out->object_type = (uint8_t)aot;
 
     out->sample_rate = asc_parse_sample_rate(&br);
-    out->num_channels = (uint8_t)asc_br_get(&br, 4);
+    out->channel_config = out->num_channels = (uint8_t)asc_br_get(&br, 4);
 
     if (aot == 5 || aot == 29) {
         /* Explicit hierarchical form: the SBR (29: SBR+PS) object wraps the
@@ -127,16 +192,19 @@ static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *ou
         if (real_aot == 31) real_aot = 32 + asc_br_get(&br, 6);
         out->object_type = (uint8_t)real_aot;
         aot = real_aot;
-    } else {
-        out->sbr_sample_rate = out->sample_rate * 2;
     }
+
+    if (!out->sbr_present) out->sbr_sample_rate = out->sample_rate * 2;
 
     if (aot != 2) return; /* GASpecificConfig only walked here for AAC-LC */
 
     out->frame_length_flag = asc_br_get(&br, 1) != 0; /* frameLengthFlag */
     if (asc_br_get(&br, 1)) asc_skip_core_coder_delay(&br); /* coreCoderDelay */
     bool extension_flag = asc_br_get(&br, 1) != 0;
-    if (out->num_channels == 0) return; /* PCE follows; not handled here */
+    if (out->num_channels == 0) {
+        out->num_channels = asc_parse_pce(&br, &out->pce);
+        if (!out->num_channels) return;
+    }
     if (extension_flag) {
         asc_br_get(&br, 1); /* extensionFlag3 (reserved for AOT LC) */
     }

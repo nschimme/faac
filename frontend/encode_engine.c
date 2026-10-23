@@ -49,14 +49,13 @@ void init_encode_options(encode_options_t *opts)
     memset(opts, 0, sizeof(*opts));
     opts->container_mp4 = true;
     opts->stream_format = FAAC_STREAM_ADTS;
-    opts->mpeg_version = FAAC_MPEG4;
+    opts->mpeg_version = 4;
     opts->object_type = FAAC_OBJ_AUTO;
-    opts->joint_mode = FAAC_JOINT_MIXED;
+    opts->joint_mode = FAAC_STEREO_AUTO;
     opts->stream_format = FAAC_STREAM_ADTS;
     opts->shortctl = FAAC_SHORTCTL_NORMAL;
     opts->use_tns = true;
     opts->use_pns = true;
-    opts->use_lfe = -1;
     opts->quant_quality = 0;
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
@@ -261,7 +260,7 @@ static uint32_t rc_advance(rate_conv_t *rc, uint64_t new_pos)
 
 /* Settings for the (c)too atom, in fdkaac's style: ", "-separated fields, each
    a short phrase ("ABR 64kbps", "cutoff 14500Hz"). Rates are the whole stream,
-   as -b takes them; info->bit_rate is per channel.
+   as -b takes them; info->bit_rate is the whole stream.
    Rate, object type and cutoff are always written: the build resolves them, so
    their defaults aren't stable. Options the user sets are written only when
    they differ from init_encode_options(). */
@@ -278,9 +277,9 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
     } while (0)
 
     if (info->rate_control == FAAC_RC_VBR) {
-        ADD("VBR quality %u", info->quant_quality);
+        ADD("VBR quality %u", info->quality);
     } else {
-        uint32_t total = info->bit_rate * (num_channels ? num_channels : 1);
+        uint32_t total = info->bit_rate;
         ADD("%s %ukbps", info->rate_control == FAAC_RC_CBR ? "CBR" : "ABR", (total + 500) / 1000);
     }
 
@@ -294,9 +293,9 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
        never ran. */
     if (num_channels >= 2) {
         switch (opts->joint_mode) {
-        case FAAC_JOINT_NONE:  ADD(", stereo L/R"); break;
-        case FAAC_JOINT_MS:    ADD(", stereo M/S"); break;
-        case FAAC_JOINT_IS:    ADD(", stereo IS"); break;
+        case FAAC_STEREO_LR:  ADD(", stereo L/R"); break;
+        case FAAC_STEREO_MS:  ADD(", stereo M/S"); break;
+        case FAAC_STEREO_IS:  ADD(", stereo IS"); break;
         default: break;
         }
     }
@@ -527,28 +526,28 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_params params;
     faac_params_init(&params, sizeof(params));
     params.sample_rate = sample_rate;
-    params.num_channels = num_channels;
-    params.mpeg_version = opts->mpeg_version;
+    params.channels = num_channels;
     params.object_type = opts->object_type;
-    params.joint_mode = opts->joint_mode;
-    params.use_tns = opts->use_tns;
-    params.use_pns = opts->use_pns;
-    params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
+    params.stereo_mode = opts->joint_mode;
+    params.flags = (opts->use_tns ? FAAC_FLAG_TNS : 0)
+                 | (opts->use_pns ? FAAC_FLAG_PNS : 0);
     params.short_control = opts->shortctl;
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {
-        params.quant_quality = opts->quant_quality;
+        params.rate_control = FAAC_RC_VBR;
+        params.quality = opts->quant_quality;
         params.bit_rate = 0;
     }
     else if (opts->bit_rate > 0)
     {
-        params.bit_rate = opts->bit_rate / (num_channels ? num_channels : 1);
-        params.quant_quality = 0;
+        params.rate_control = FAAC_RC_ABR;
+        params.bit_rate = opts->bit_rate;
+        params.quality = 0;
     }
 
     if (opts->max_bit_rate > 0)
-        params.max_bit_rate = opts->max_bit_rate;
+        params.peak_bit_rate = opts->max_bit_rate;
     if (opts->cbr)
     {
         if (opts->bit_rate == 0)
@@ -565,19 +564,28 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
     params.bandwidth = opts->bandwidth;
-    params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
+    params.stream_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
-    /* Hand integer PCM to the encoder as it is: one conversion pass instead of
-       two, and nothing for it to sanitise. The encoder applies the channel map. */
+    if (!opts->container_mp4 && opts->mpeg_version == 2) {
+        if (params.stream_format == FAAC_STREAM_ADTS)
+            params.stream_format = FAAC_STREAM_ADTS_MPEG2;
+        else {
+            /* RAW has no MPEG ID; preserve MPEG-2's LC selection and PNS gate. */
+            if (params.object_type == FAAC_OBJ_AUTO)
+                params.object_type = FAAC_OBJ_LC;
+            if (params.object_type != FAAC_OBJ_HE_AAC_V1)
+                params.flags &= ~FAAC_FLAG_PNS;
+        }
+    }
+
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
-    bool native = wav_native_ok(infile);
+    bool standard_layout = num_channels < 3 ||
+        (opts->center_channel == 3 && opts->lfe_channel == 4);
+    params.channel_layout = standard_layout ? FAAC_LAYOUT_WAV : FAAC_LAYOUT_AAC;
+    /* Custom channel positions need the frontend's float permutation. */
+    bool native = standard_layout && wav_native_ok(infile);
     params.input_format = !native ? FAAC_INPUT_FLOAT :
                           infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;
-    if (native && chanmap)
-    {
-        params.channel_map = chanmap;
-        params.channel_map_count = num_channels;
-    }
 
     {
         faac_status st = faac_encoder_open(&params, &hEncoder);
@@ -590,7 +598,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder_get_info(hEncoder, &info);
 
     /* MPEG-2 AAC has no PNS. */
-    bool use_pns = params.use_pns && info.mpeg_version != FAAC_MPEG2;
+    bool use_pns = (params.flags & FAAC_FLAG_PNS) && info.stream_format != FAAC_STREAM_ADTS_MPEG2;
 
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;
@@ -683,13 +691,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .frame_size = frame_size,
 
             .container_mp4 = opts->container_mp4,
-            .stream_format = opts->stream_format,
-            .mpeg_version = info.mpeg_version,
+            .stream_format = info.stream_format,
             .object_type = info.object_type,
             .use_pns = use_pns,
             .bandwidth = info.bandwidth,
-            .quant_quality = (uint16_t)info.quant_quality,
-            .bit_rate = info.bit_rate,
+            .quant_quality = (uint16_t)info.quality,
+            .bit_rate = info.bit_rate / (num_channels ? num_channels : 1),
             .rate_control = info.rate_control,
 
             .remapping_channels = (chanmap != NULL),
@@ -711,7 +718,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     bool input_eof = false;
 
 #define read_pcm() (native ? wav_read_native(infile, pcmbuf, samples_per_frame) \
-                           : wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap))
+                           : wav_read_float32(infile, pcmbuf, samples_per_frame, standard_layout ? NULL : chanmap))
 
     for (;;)
     {

@@ -59,7 +59,7 @@ int main(void)
 
     check("no coreCoderDelay", no_delay, sizeof(no_delay), FAAD_OK, 44100);
     check("coreCoderDelay present", with_delay, sizeof(with_delay), FAAD_OK, 44100);
-    check("coreCoderDelay then SBR extension", with_delay_sbr, sizeof(with_delay_sbr), FAAD_OK, library.sbr_supported ? 88200 : 44100);
+    check("coreCoderDelay then SBR extension", with_delay_sbr, sizeof(with_delay_sbr), FAAD_OK, (library.flags & FAAD_LIB_SBR) ? 88200 : 44100);
     check("plain LC", plain, sizeof(plain), FAAD_OK, 44100);
     return failures ? 1 : 0;
 }

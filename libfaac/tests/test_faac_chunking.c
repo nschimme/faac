@@ -31,10 +31,10 @@ static size_t encode_chunked(const config *cfg, const int16_t *pcm, uint32_t fra
     faac_encoder_info info = { .struct_size = sizeof(info) };
     FT_REQUIRE(faac_params_init(&p, sizeof(p)) == FAAC_OK);
     p.sample_rate = cfg->rate;
-    p.num_channels = cfg->channels;
+    p.channels = cfg->channels;
     p.object_type = cfg->object;
     p.bit_rate = cfg->bit_rate;
-    p.output_format = FAAC_STREAM_ADTS;
+    p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);
     FT_REQUIRE(faac_encoder_get_info(enc, &info) == FAAC_OK);
@@ -67,8 +67,8 @@ int main(void)
     faac_library_info lib = { .struct_size = sizeof(lib) };
     FT_REQUIRE(faac_get_library_info(&lib) == FAAC_OK);
     static const config configs[] = {
-        { "LC stereo 44.1k", FAAC_OBJ_LOW, 44100, 2, 64000 },
-        { "LC mono 48k", FAAC_OBJ_LOW, 48000, 1, 48000 },
+        { "LC stereo 44.1k", FAAC_OBJ_LC, 44100, 2, 64000 },
+        { "LC mono 48k", FAAC_OBJ_LC, 48000, 1, 48000 },
         { "HE stereo 48k", FAAC_OBJ_HE_AAC_V1, 48000, 2, 32000 },
     };
     static const uint32_t chunks[] = { 1, 17, 333, 1024, 2048 };

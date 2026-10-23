@@ -1,3 +1,30 @@
+Unreleased
+
+	[ Nils Schimmelmann ]
+	* Add -Dencoder-sbr=false for an LC-only libfaac; faac_library_info.flags
+	  reports FAAC_LIB_SBR
+	* Use flags for encoder tools, decoder capabilities and stream discovery;
+	  reorder encoder library info and expose FAAC_VERSION_STRING
+	* Use explicit ABR/VBR/CBR modes and whole-stream bitrate; rename
+	  quant_quality to quality (VBR only) and max_bit_rate to peak_bit_rate
+	* Rename faac_params.num_channels to channels
+	* Decode eight-channel streams signalled by a program config element in
+	  WAVE order and clear every channel's spectrum in such ADTS frames
+	* Signal eight-channel streams with a program config element (fdkaac
+	  compatible) in the AudioSpecificConfig and in every 32nd ADTS frame
+	* Add the AudioSpecificConfig to faac_encoder_info, take a const handle
+	  in faac_encoder_get_info and faac_encoder_asc, and call the end-of-stream
+	  flush a drain
+	* Replace faac_params.mpeg_version with FAAC_STREAM_ADTS_MPEG2 and
+	  report the resolved stream_format in faac_encoder_info
+	* Rename joint_mode to stereo_mode (FAAC_STEREO_*), FAAC_OBJ_LOW to
+	  FAAC_OBJ_LC, and faac_params.output_format to stream_format
+	* Replace LFE selection and custom channel maps with AAC/WAVE channel
+	  layouts; derive LFE automatically for six or eight channels
+	* Rename 24-in-32 PCM formats to FAAC_INPUT_24IN32 and
+	  FAAD_OUTPUT_24IN32; normalize float input to +-1.0 and use
+	  FAAD_ERR_NO_MEMORY for decoder allocation failures
+
 2.2 (Sep 29, 2026)
 
 	[ Robert Kausch ]

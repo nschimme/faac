@@ -270,7 +270,7 @@ int main(int argc, char **argv)
 
     faad_library_info libinfo = { .struct_size = sizeof(libinfo) };
     if (faad_get_library_info(&libinfo) != FAAD_OK) {
-        libinfo.version = "3.0.0";
+        libinfo.version = FAAD_VERSION_STRING;
     }
 
     decode_options_t opts;

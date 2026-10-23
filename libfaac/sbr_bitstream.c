@@ -278,7 +278,11 @@ static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
 
 int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, int aacObjectType)
 {
+#if MAX_CHANNELS >= 6
     if (aacObjectType == HE_V1 && sCtx && elem->type != ID_LFE) {
+#else
+    if (aacObjectType == HE_V1 && sCtx) {
+#endif
         if (sCtx->sbrInfo) {
             int id_aac = (elem->type == ID_CPE) ? ID_CPE : ID_SCE;
             /* One step past the newest slot is the oldest: the payload whose

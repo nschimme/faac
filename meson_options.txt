@@ -51,6 +51,11 @@ option('muxer-fragmented',
     type: 'boolean',
     value: true)
 
+option('encoder-sbr',
+    description: 'Enable HE-AAC v1 (SBR) support in libfaac',
+    type: 'boolean',
+    value: true)
+
 # Encoder tuning
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.

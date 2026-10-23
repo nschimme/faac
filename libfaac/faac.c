@@ -37,35 +37,31 @@
  * verify the compiler honored that so the ABI matches the documented layout. */
 _Static_assert(sizeof(enum faac_status)        == 4, "faac_status must be 32-bit");
 _Static_assert(sizeof(enum faac_object_type)   == 4, "faac_object_type must be 32-bit");
-_Static_assert(sizeof(enum faac_mpeg_version)  == 4, "faac_mpeg_version must be 32-bit");
 _Static_assert(sizeof(enum faac_rate_control)  == 4, "faac_rate_control must be 32-bit");
-_Static_assert((int)FAAC_RC_AUTO == RATE_AUTO && (int)FAAC_RC_VBR == RATE_VBR
-            && (int)FAAC_RC_ABR == RATE_ABR && (int)FAAC_RC_CBR == RATE_CBR, "rate control drift");
-_Static_assert(sizeof(enum faac_joint_mode)    == 4, "faac_joint_mode must be 32-bit");
+_Static_assert(sizeof(enum faac_stereo_mode)   == 4, "faac_stereo_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_shortctl_mode) == 4, "faac_shortctl_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_stream_format) == 4, "faac_stream_format must be 32-bit");
+_Static_assert(sizeof(enum faac_channel_layout) == 4, "faac_channel_layout must be 32-bit");
 _Static_assert(sizeof(enum faac_input_format)  == 4, "faac_input_format must be 32-bit");
 
-/* The modern enums mirror the legacy numeric values one-for-one, so parameter
- * translation is a plain field copy. Guard that assumption. */
-_Static_assert((int)FAAC_MPEG4 == MPEG4 && (int)FAAC_MPEG2 == MPEG2, "mpeg version drift");
-_Static_assert((int)FAAC_OBJ_AUTO == AUTO && (int)FAAC_OBJ_LOW == LOW
+/* These enums retain the internal numeric values, unlike rate control. */
+_Static_assert((int)FAAC_OBJ_AUTO == AUTO && (int)FAAC_OBJ_LC == LOW
                && (int)FAAC_OBJ_HE_AAC_V1 == HE_V1, "object type drift");
-_Static_assert((int)FAAC_JOINT_NONE == JOINT_NONE && (int)FAAC_JOINT_MIXED == JOINT_MIXED, "joint mode drift");
+_Static_assert((int)FAAC_STEREO_LR == JOINT_NONE && (int)FAAC_STEREO_AUTO == JOINT_MIXED, "stereo mode drift");
 _Static_assert((int)FAAC_SHORTCTL_NORMAL == SHORTCTL_NORMAL && (int)FAAC_SHORTCTL_NOLONG == SHORTCTL_NOLONG, "shortctl drift");
 _Static_assert((int)FAAC_STREAM_RAW == RAW_STREAM && (int)FAAC_STREAM_ADTS == ADTS_STREAM, "stream format drift");
+_Static_assert(sizeof(((faac_encoder_info *)0)->asc) >= sizeof(((faacEncStruct *)0)->asc),
+               "info.asc must hold the handle's ASC");
 _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == INPUT_16BIT
-            && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_32BIT == INPUT_32BIT
+            && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_24IN32 == INPUT_32BIT
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 
-/* Baseline layout as shipped in SONAME 2. Frozen by the append-only rule:
- * fields cannot move, so this offset never moves. Not sizeof(), which
- * grows with every appended field and would reject older callers' binaries.
- * A literal would be wrong too: the layout depends on pointer width. */
+/* The minimum parameter layout ends at rate_control so appended fields do
+ * not raise the minimum caller size. */
 #define PARAMS_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_params, rate_control) + sizeof(enum faac_rate_control)))
 
-/* Same pattern as PARAMS_BASELINE_SIZE above. */
+/* Query baselines end at their last field so appended fields remain optional. */
 #define LIBRARY_INFO_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_library_info, sbr_decimation) + sizeof(uint32_t)))
 #define ENCODER_INFO_BASELINE_SIZE \
@@ -89,10 +85,13 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out)
     faacEncGetVersion(&vid, &vcopy);
 
     memset(&info, 0, sizeof(info));
-    info.max_channels   = (uint32_t)MAX_CHANNELS;
     info.version        = vid;
     info.copyright      = vcopy;
+    info.max_channels   = (uint32_t)MAX_CHANNELS;
     info.sbr_decimation = (uint32_t)FAAC_SBR_DECIMATION;
+#ifndef FAAC_DISABLE_SBR
+    info.flags          = FAAC_LIB_SBR;
+#endif
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_library_info; report the byte count actually set. */
@@ -113,18 +112,15 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
         return FAAC_ERR_INVALID_ARGUMENT;
 
     memset(&tmp, 0, sizeof(tmp));
-    tmp.mpeg_version  = FAAC_MPEG4;
-    tmp.object_type   = FAAC_OBJ_LOW;
-    tmp.joint_mode    = FAAC_JOINT_MIXED;
-    tmp.use_lfe       = false;
-    tmp.use_tns       = true;
-    tmp.use_pns       = true;
-    tmp.bit_rate      = 64000;          /* per channel; 0 would defer to quant_quality */
+    tmp.object_type   = FAAC_OBJ_LC;
+    tmp.stereo_mode   = FAAC_STEREO_AUTO;
+    tmp.flags         = FAAC_FLAG_TNS | FAAC_FLAG_PNS;
+    tmp.bit_rate      = 0;
     tmp.bandwidth     = 0;              /* derive from bit_rate */
-    tmp.quant_quality = 0;              /* derive from bit_rate */
-    tmp.max_bit_rate  = 0;              /* no per-frame peak cap */
-    tmp.rate_control  = FAAC_RC_AUTO;   /* ABR when bit_rate is set, else VBR */
-    tmp.output_format = FAAC_STREAM_ADTS;
+    tmp.quality       = 0;
+    tmp.peak_bit_rate = 0;              /* no per-frame peak cap */
+    tmp.rate_control  = FAAC_RC_ABR;
+    tmp.stream_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
 
@@ -139,26 +135,32 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
 #define FAAC_MIN_SAMPLE_RATE 7350u
 #define FAAC_MAX_SAMPLE_RATE 96000u
 
+static uint64_t resolved_bit_rate(const faac_params *p)
+{
+    return p->rate_control == FAAC_RC_VBR ? 0 :
+        (p->bit_rate ? p->bit_rate : (uint64_t)64000u * p->channels);
+}
+
 /* Validate the enumerated/range fields the caller supplied. Returns FAAC_OK,
  * FAAC_ERR_INVALID_ARGUMENT for out-of-range values, or FAAC_ERR_UNSUPPORTED
  * for values that are valid but not implemented in this build. */
-static faac_status validate_params(const faac_params *p)
+static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_channel)
 {
-    switch (p->mpeg_version) {
-        case FAAC_MPEG4: case FAAC_MPEG2: break;
-        default: return FAAC_ERR_INVALID_ARGUMENT;
-    }
     switch (p->object_type) {
-        case FAAC_OBJ_AUTO: case FAAC_OBJ_LOW: case FAAC_OBJ_HE_AAC_V1:
+        case FAAC_OBJ_HE_AAC_V1:
+#ifdef FAAC_DISABLE_SBR
+            return FAAC_ERR_UNSUPPORTED;
+#endif
+        case FAAC_OBJ_AUTO: case FAAC_OBJ_LC:
             break;
         case FAAC_OBJ_HE_AAC_V2:
             return FAAC_ERR_UNSUPPORTED;   /* parametric stereo not implemented */
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
     }
-    switch (p->joint_mode) {
-        case FAAC_JOINT_NONE: case FAAC_JOINT_MS:
-        case FAAC_JOINT_IS:   case FAAC_JOINT_MIXED: break;
+    switch (p->stereo_mode) {
+        case FAAC_STEREO_LR: case FAAC_STEREO_MS:
+        case FAAC_STEREO_IS: case FAAC_STEREO_AUTO: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
     switch (p->short_control) {
@@ -166,12 +168,12 @@ static faac_status validate_params(const faac_params *p)
         case FAAC_SHORTCTL_NOLONG: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
-    switch (p->output_format) {
-        case FAAC_STREAM_RAW: case FAAC_STREAM_ADTS: break;
+    switch (p->stream_format) {
+        case FAAC_STREAM_RAW: case FAAC_STREAM_ADTS: case FAAC_STREAM_ADTS_MPEG2: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
     switch (p->input_format) {
-        case FAAC_INPUT_16BIT: case FAAC_INPUT_24BIT: case FAAC_INPUT_32BIT: case FAAC_INPUT_FLOAT:
+        case FAAC_INPUT_16BIT: case FAAC_INPUT_24BIT: case FAAC_INPUT_24IN32: case FAAC_INPUT_FLOAT:
             break;
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
@@ -181,45 +183,44 @@ static faac_status validate_params(const faac_params *p)
      * it. */
     if (p->sample_rate < FAAC_MIN_SAMPLE_RATE || p->sample_rate > FAAC_MAX_SAMPLE_RATE)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (GetChannelConfig((int)p->num_channels) == 0)
+    if (GetChannelConfig((int)p->channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (p->channel_map) {
-        uint32_t i;
-        if (p->channel_map_count < p->num_channels)
-            return FAAC_ERR_INVALID_ARGUMENT;
-        for (i = 0; i < p->num_channels; i++)
-            if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->num_channels)
-                return FAAC_ERR_INVALID_ARGUMENT;
-    }
-    /* bit_rate is per channel, as is the bound. Only a ceiling: it is the
-     * ISO/IEC 14496-3 per-frame limit and therefore real, whereas the format
-     * sets no minimum and the encoder's own floor already ends the descent. */
-    if (p->bit_rate && (p->bit_rate > MaxBitrate(p->sample_rate)))
+    if (p->channels > MAX_CHANNELS)
+        return FAAC_ERR_UNSUPPORTED;
+    if (p->channel_layout != FAAC_LAYOUT_AAC && p->channel_layout != FAAC_LAYOUT_WAV)
         return FAAC_ERR_INVALID_ARGUMENT;
+    uint64_t bit_rate = resolved_bit_rate(p);
+    *bit_rate_per_channel = bit_rate / p->channels;
     switch (p->rate_control) {
-    case FAAC_RC_AUTO: break;
-    case FAAC_RC_VBR:  if (p->bit_rate)  return FAAC_ERR_INVALID_ARGUMENT; break;
+    case FAAC_RC_VBR:
+        if (p->bit_rate || p->quality > 5000)
+            return FAAC_ERR_INVALID_ARGUMENT;
+        break;
     case FAAC_RC_ABR:
-    case FAAC_RC_CBR:  if (!p->bit_rate) return FAAC_ERR_INVALID_ARGUMENT; break;
-    default:           return FAAC_ERR_INVALID_ARGUMENT;
+    case FAAC_RC_CBR:
+        if (p->quality || !*bit_rate_per_channel)
+            return FAAC_ERR_INVALID_ARGUMENT;
+        if (*bit_rate_per_channel > MaxBitrate(p->sample_rate))
+            return FAAC_ERR_INVALID_ARGUMENT;
+        break;
+    default:
+        return FAAC_ERR_INVALID_ARGUMENT;
     }
-    if (p->max_bit_rate) {
+    if (p->peak_bit_rate) {
         /* Bounded because it is converted into a per-frame bit budget; an
          * absurd value is a caller error, not a request for an unlimited
          * frame. */
-        if (p->max_bit_rate > FAAC_MAX_BIT_RATE)
+        if (p->peak_bit_rate > FAAC_MAX_PEAK_BIT_RATE)
             return FAAC_ERR_INVALID_ARGUMENT;
         /* A peak below the average is unsatisfiable by definition, and the two
          * controllers actively fight: rate control raises quality to reach
          * bit_rate while the limiter cuts it to stay under the cap, so frames
          * end up larger the tighter the cap gets. Reject it rather than emit a
-         * stream that quietly busts the ceiling it was asked to respect.
-         * bit_rate is per channel and max_bit_rate is not, so scale to compare. */
-        if (p->bit_rate && p->max_bit_rate < (uint64_t)p->bit_rate * p->num_channels)
+         * stream that quietly busts the ceiling it was asked to respect. */
+        if (p->peak_bit_rate < bit_rate)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
-    /* reserved padding must be zero so future fields can claim it safely */
-    if (p->reserved[0])
+    if (p->flags & ~(FAAC_FLAG_TNS | FAAC_FLAG_PNS))
         return FAAC_ERR_INVALID_ARGUMENT;
     return FAAC_OK;
 }
@@ -231,6 +232,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     unsigned long inSamples = 0, maxOut = 0;
     faac_status st;
     int applied;
+    uint64_t bit_rate_per_channel;
 
     if (!out)
         return FAAC_ERR_INVALID_ARGUMENT;
@@ -242,40 +244,66 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     if (p->struct_size < PARAMS_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
 
-    st = validate_params(p);
+    st = validate_params(p, &bit_rate_per_channel);
     if (st != FAAC_OK)
         return st;
 
-    h = (faacEncStruct *)faacEncOpen(p->sample_rate, p->num_channels,
+    h = (faacEncStruct *)faacEncOpen(p->sample_rate, p->channels,
                                      &inSamples, &maxOut);
     if (!h)
         return FAAC_ERR_NO_MEMORY;
 
     /* Install validated parameters before the core's one-time initialization. */
     cfg = &h->config;
-    cfg->mpegVersion   = (unsigned int)p->mpeg_version;
+    cfg->mpegVersion   = p->stream_format == FAAC_STREAM_ADTS_MPEG2 ? MPEG2 : MPEG4;
     cfg->aacObjectType = (unsigned int)p->object_type;  /* LOW / HE_V1 / AUTO */
-    cfg->jointmode     = (unsigned int)p->joint_mode;
-    cfg->useLfe        = p->use_lfe ? 1 : 0;
-    cfg->useTns        = p->use_tns ? 1 : 0;
-    cfg->bitRate       = p->bit_rate;
+    cfg->jointmode     = (unsigned int)p->stereo_mode;
+#if MAX_CHANNELS >= 6
+    cfg->useLfe        = (p->channels == 6 || p->channels == 8);
+#else
+    cfg->useLfe        = 0;
+#endif
+    cfg->useTns        = (p->flags & FAAC_FLAG_TNS) ? 1 : 0;
+    cfg->bitRate       = (unsigned long)bit_rate_per_channel;
     cfg->bandWidth     = p->bandwidth;
-    cfg->quantqual     = p->quant_quality;
-    cfg->outputFormat  = (unsigned int)p->output_format;
+    cfg->quantqual     = p->rate_control == FAAC_RC_VBR ? p->quality : 0;
+    cfg->outputFormat  = p->stream_format == FAAC_STREAM_RAW ? RAW_STREAM : ADTS_STREAM;
     cfg->inputFormat   = (unsigned int)p->input_format;
     cfg->shortctl      = (int)p->short_control;
-    cfg->usePns        = p->use_pns ? 1 : 0;
-    cfg->maxBitRate    = p->max_bit_rate;
-    /* AUTO depends only on whether the caller supplied a bitrate. The core's
-     * HE-AAC clamp preserves that distinction. */
-    cfg->rateControl   = p->rate_control == FAAC_RC_AUTO
-        ? (p->bit_rate ? RATE_ABR : RATE_VBR) : (unsigned int)p->rate_control;
-    if (p->channel_map) {
-        uint32_t i;
-        for (i = 0; i < p->num_channels; i++)
-            cfg->channel_map[i] = p->channel_map[i];
+    cfg->usePns        = (p->flags & FAAC_FLAG_PNS) ? 1 : 0;
+    cfg->maxBitRate    = p->peak_bit_rate;
+    switch (p->rate_control) {
+    case FAAC_RC_ABR: cfg->rateControl = RATE_ABR; break;
+    case FAAC_RC_VBR: cfg->rateControl = RATE_VBR; break;
+    case FAAC_RC_CBR: cfg->rateControl = RATE_CBR; break;
+    default: break; /* validate_params rejected other modes */
     }
-    /* else: faacEncOpen already installed the identity map */
+    /* WAVE order must become AAC element order. */
+#if MAX_CHANNELS >= 3
+    if (p->channel_layout == FAAC_LAYOUT_WAV && p->channels >= 3) {
+        static const uint8_t wav_to_aac[][8] = {
+            {2, 0, 1},
+#if MAX_CHANNELS >= 4
+            {2, 0, 1, 3},
+#endif
+#if MAX_CHANNELS >= 5
+            {2, 0, 1, 3, 4},
+#endif
+#if MAX_CHANNELS >= 6
+            {2, 0, 1, 4, 5, 3},
+#endif
+#if MAX_CHANNELS >= 7
+            {0},
+#endif
+#if MAX_CHANNELS >= 8
+            {2, 0, 1, 6, 7, 4, 5, 3}
+#endif
+        };
+        for (uint32_t i = 0; i < p->channels; ++i)
+            cfg->channel_map[i] = wav_to_aac[p->channels - 3][i];
+    }
+#endif
+    /* AAC input retains the identity map installed by faacEncOpen. */
 
     applied = faacEncApplyConfig(h);
     if (applied != 1) {
@@ -316,10 +344,10 @@ static uint32_t faacEncoderDelay(const faacEncStruct *h)
     return FRAME_LEN;
 }
 
-FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *out)
+FAACAPI faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out)
 {
     faac_encoder_info info;
-    faacEncStruct *h;
+    const faacEncStruct *h;
     uint32_t caller_size, n;
 
     if (!enc || !out)
@@ -327,7 +355,7 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
     caller_size = out->struct_size;
     if (caller_size < ENCODER_INFO_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
-    h = unwrap(enc);
+    h = (const faacEncStruct *)enc;
 
     memset(&info, 0, sizeof(info));
     info.frame_samples    = faacFrameSamples(h);
@@ -336,13 +364,21 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
      * decoder reconstructs. */
     info.sample_rate      = (uint32_t)SbrContextGetFullRate(h->sbrContext, h->sampleRate);
     info.object_type      = (enum faac_object_type)h->config.aacObjectType;
-    info.bit_rate         = (uint32_t)h->config.bitRate;
+    info.bit_rate         = (uint32_t)((uint64_t)h->config.bitRate * h->numChannels);
     info.bandwidth        = (uint32_t)h->config.bandWidth;
-    info.quant_quality    = (uint32_t)h->config.quantqual;
-    info.mpeg_version     = (enum faac_mpeg_version)h->config.mpegVersion;
-    info.max_bit_rate     = (uint32_t)h->config.maxBitRate;
+    info.quality          = (uint32_t)h->config.quantqual;
+    info.stream_format    = h->config.outputFormat == RAW_STREAM ? FAAC_STREAM_RAW :
+        h->config.mpegVersion == MPEG2 ? FAAC_STREAM_ADTS_MPEG2 : FAAC_STREAM_ADTS;
+    info.peak_bit_rate     = (uint32_t)h->config.maxBitRate;
     info.encoder_delay    = faacEncoderDelay(h);
-    info.rate_control     = (enum faac_rate_control)h->config.rateControl;
+    info.asc_size         = h->ascLen;
+    memcpy(info.asc, h->asc, h->ascLen);
+    switch (h->config.rateControl) {
+    case RATE_ABR: info.rate_control = FAAC_RC_ABR; break;
+    case RATE_VBR: info.rate_control = FAAC_RC_VBR; break;
+    case RATE_CBR: info.rate_control = FAAC_RC_CBR; break;
+    default: return FAAC_ERR_INVALID_ARGUMENT;
+    }
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_encoder_info; report the byte count actually set. */
@@ -352,14 +388,14 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_encoder_asc(faac_encoder *enc,
+FAACAPI faac_status faac_encoder_asc(const faac_encoder *enc,
                                      const uint8_t **buf, uint32_t *len)
 {
-    faacEncStruct *h;
+    const faacEncStruct *h;
 
     if (!enc || !buf || !len)
         return FAAC_ERR_INVALID_ARGUMENT;
-    h = unwrap(enc);
+    h = (const faacEncStruct *)enc;
 
     if (h->config.mpegVersion == MPEG2) {
         *buf = NULL;
