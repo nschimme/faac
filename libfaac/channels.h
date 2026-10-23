@@ -111,16 +111,16 @@ static inline int GetChannelConfig(int numChannels)
 }
 
 /* Configuration 7 declares 7.1 wide; a PCE states the side/back layout. */
-static inline bool HasPCE(int channels)
-{
-    return channels == 8;
-}
+#if MAX_CHANNELS >= 8
+static inline bool HasPCE(int channels) { return channels == 8; }
+#endif
 
 static inline int SignalledChannelConfig(int channels)
 {
     return (channels >= 1 && channels <= 6) ? channels : 0;
 }
 
+#if MAX_CHANNELS >= 8
 enum {
     /* Periodic ADTS layout recovery for decoders joining after frame 0. */
     PCE_REPEAT_FRAMES = 32,
@@ -131,6 +131,7 @@ enum {
 };
 
 int WritePCE(BitStream *bs, int sampleRateIdx);
+#endif
 
 int InitElements(AACElement * __restrict elements, int *numElements, int numChannels, bool useLfe);
 

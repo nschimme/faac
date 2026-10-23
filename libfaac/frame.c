@@ -110,10 +110,14 @@ static unsigned int CalcBandwidth(unsigned long bitRate)
 static void RefreshLfeMap(faacEncStruct *hEncoder)
 {
     memset(hEncoder->isLfeChannel, 0, sizeof(hEncoder->isLfeChannel));
+#if MAX_CHANNELS >= 6
     for (int e = 0; e < hEncoder->numElements; e++) {
         if (hEncoder->elements[e].type == ID_LFE)
             hEncoder->isLfeChannel[hEncoder->elements[e].channels[0]] = true;
     }
+#else
+    (void)hEncoder;
+#endif
 }
 
 int faacEncGetVersion( char **faac_id_string,
@@ -129,6 +133,7 @@ int faacEncGetVersion( char **faac_id_string,
 }
 
 
+#if MAX_CHANNELS >= 8
 /* The configuration is fixed at open, so LC and HE share one non-allocating
  * writer. The longest ASC is an eight-channel HE one: the PCE form of the
  * core followed by the SBR extension. */
@@ -136,6 +141,7 @@ _Static_assert(sizeof(((faacEncStruct *)0)->asc) >= PCE_HE_ASC_BYTES,
                "ASC buffer must hold the PCE and SBR extensions");
 _Static_assert(sizeof(((faacEncStruct *)0)->pce) >= PCE_ADTS_BYTES,
                "PCE buffer must hold the in-band element");
+#endif
 
 int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 {
@@ -144,12 +150,14 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 
     if (hEncoder == NULL || buf == NULL)
         return -1;
+#if MAX_CHANNELS >= 8
     if (HasPCE((int)hEncoder->numChannels)) {
         /* The raw block starts byte aligned, so this image is reusable. */
         InitBitStream(&bs, hEncoder->pce, sizeof(hEncoder->pce));
         PutBit(&bs, ID_PCE, LEN_SE_ID);
         WritePCE(&bs, hEncoder->sampleRateIdx);
     }
+#endif
     if (hEncoder->config.mpegVersion == MPEG2)
         return -2; /* not supported */
 
@@ -159,7 +167,9 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
     PutBit(&bs, hEncoder->sampleRateIdx, 4);
     PutBit(&bs, SignalledChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels)), 4);
     PutBit(&bs, 0, 3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
+#if MAX_CHANNELS >= 8
     if (HasPCE((int)hEncoder->numChannels)) WritePCE(&bs, hEncoder->sampleRateIdx);
+#endif
     if (he) {
         /* Backward-compatible sync extension: AAC-LC at Fs/2, SBR at full Fs. */
         PutBit(&bs, 0x2b7, 11);
@@ -782,7 +792,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
             /* LFE's block_type is always forced to ONLY_LONG_WINDOW in PsyCalculate,
              * and forced short windows neither switch nor run TNS, so the
              * transient analysis below would be discarded -- skip it. */
+#if MAX_CHANNELS >= 6
             if (!hEncoder->isLfeChannel[channel] && shortctl != SHORTCTL_NOLONG)
+#else
+            if (shortctl != SHORTCTL_NOLONG)
+#endif
             {
                 PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
                     hEncoder->audioFIFO[channel][FIFO_AHEAD1],
@@ -818,7 +832,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* force block type; LFE must stay ONLY_LONG_SEQUENCE (ISO/IEC 14496-3) */
     for (channel = 0; channel < numChannels; channel++)
     {
+#if MAX_CHANNELS >= 6
         if (hEncoder->isLfeChannel[channel] || shortctl == SHORTCTL_NOSHORT)
+#else
+        if (shortctl == SHORTCTL_NOSHORT)
+#endif
             coderInfo[channel].block_type = ONLY_LONG_WINDOW;
         else if ((hEncoder->frameNum <= (LOOKAHEAD_DEPTH + 1)) || (shortctl == SHORTCTL_NOLONG))
             coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
@@ -884,7 +902,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
+#if MAX_CHANNELS >= 6
         if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+#else
+        if (useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+#endif
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
 #ifdef FAAC_STATS
@@ -911,6 +933,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
+#if MAX_CHANNELS >= 6
     for (channel = 0; channel < numChannels; channel++) {
         if (hEncoder->isLfeChannel[channel]) {
             /* CalcBW only initializes offsets through max_cbl. */
@@ -918,6 +941,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].sfbn = max_cbl < 3 ? max_cbl : 3;
         }
     }
+#endif
 
     /* Clear each channel's section state before AACstereo pre-loads intensity
      * bands and BlocQuant resolves the rest. */
