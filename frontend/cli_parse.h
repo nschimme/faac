@@ -27,6 +27,8 @@ extern "C" {
 #endif
 
 bool cli_parse_uint(const char *text, unsigned long long max, unsigned long long *out);
+bool cli_parse_rate(const char *text, uint32_t min_rate, uint32_t max_rate, uint32_t *out);
+bool cli_is_aac_sample_rate(uint32_t rate);
 bool cli_parse_verbosity(const char *text, uint8_t *out);
 bool cli_parse_fps(const char *text, uint32_t *num, uint32_t *den);
 bool cli_parse_chapter_line(const char *line, uint64_t *start_ms, char *title, size_t title_size);

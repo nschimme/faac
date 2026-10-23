@@ -19,7 +19,7 @@ git_version_h = vcs_tag(
 c_args_list = (has_iconv ? ['-DHAVE_ICONV'] : []) + ['-D_FILE_OFFSET_BITS=64']
 
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
-libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam_lib
+libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam
 
 frontend_common = static_library('frontend_common',
     ['input.c', 'cli_io.c', 'cli_parse.c', 'charset.c', 'help.c', 'progress.c',
@@ -36,11 +36,12 @@ frontend_common_dep = declare_dependency(
 
 if get_option('encoder')
     libfaac_for_frontend = get_option('frontend-static') ? libfaac_static : libfaac
+    libfaar_for_frontend = get_option('frontend-static') ? libfaar_static : libfaar
 
     libfrontend = static_library('frontend',
         ['mp4write.c', 'output.c', 'encode_engine.c',
          'mp4write.h', 'output.h', 'encode_engine.h'],
-        link_with: [libfaac_for_frontend],
+        link_with: [libfaac_for_frontend, libfaar_for_frontend],
         dependencies: [frontend_common_dep]
     )
 
@@ -48,8 +49,8 @@ if get_option('encoder')
         ['main.c'],
         c_args: c_args_list,
         include_directories: ['..', '../include', common_inc],
-        link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
-        dependencies: [libshell32],
+        link_with: [libfaac_for_frontend, libfaar_for_frontend, libfrontend, libfaam_for_frontend],
+        dependencies: [libshell32, cc.find_library('m', required: false)],
         install: true
     )
 
@@ -62,7 +63,7 @@ if get_option('encoder')
             ['maingui.c', 'resource.h'] + resource_src,
             c_args: c_args_list,
             include_directories: ['..', '../include', common_inc],
-            link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
+        link_with: [libfaac_for_frontend, libfaar_for_frontend, libfrontend, libfaam_for_frontend],
             dependencies: [libcomctl32],
             win_subsystem: 'windows',
             install: true
@@ -92,6 +93,18 @@ if get_option('muxer')
         ['faam_main.c', 'faam_engine.c', 'adts.c', 'annexb.c',
          'faam_engine.h', 'adts.h', 'annexb.h'],
         dependencies: [libshell32, frontend_common_dep],
+        install: true
+    )
+endif
+
+if get_option('resampler')
+    libfaar_for_faar_cli = get_option('frontend-static') ? libfaar_static : libfaar
+    faar_cli = executable('faar',
+        ['faar_main.c', 'faar_engine.c', 'faar_engine.h', 'input.c', 'cli_io.c', 'cli_parse.c', 'charset.c', 'help.c', 'progress.c', 'input.h', 'cli_io.h', 'cli_parse.h', 'charset.h', 'help.h', 'progress.h', git_version_h],
+        include_directories: ['..', '../include', common_inc],
+        link_with: [libfaar_for_faar_cli, libfaam_for_frontend],
+        c_args: c_args_list,
+        dependencies: [libshell32, libiconv],
         install: true
     )
 endif

@@ -1,0 +1,67 @@
+libfaar_sources = files(
+  'polyresample.c',
+  'dft_coeffs.c',
+  'dft_prefilter.c',
+  'dft_fir.c',
+  'fft_real.c',
+)
+
+libfaar_args = []
+if get_option('faar-precision') == 'float'
+  libfaar_args += ['-DFAAR_FLOAT']
+endif
+
+# Real-transform wrappers are exercised only by FFT verification.
+libfaar_args += '-DFAAR_FFT_LEAN'
+
+m_dep = cc.find_library('m', required: false)
+
+default_lib = get_option('default_library')
+
+# The FAAC frontend can be requested as a static executable even when the
+# project's default library type is shared, so keep a static FAAR target for it.
+if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') and get_option('frontend-static'))
+  libfaar_static = static_library('faar',
+    libfaar_sources,
+    include_directories: inc,
+    c_args: libfaar_args,
+    dependencies: [m_dep],
+    override_options: ['b_lto=false'],
+    install: default_lib != 'shared',
+  )
+endif
+
+if default_lib == 'shared' or default_lib == 'both'
+  libfaar_shared = shared_library('faar',
+    libfaar_sources,
+    include_directories: inc,
+    c_args: libfaar_args + ['-DFAAR_BUILDING'],
+    dependencies: [m_dep],
+    kwargs: shared_library_args,
+    gnu_symbol_visibility: 'hidden',
+    vs_module_defs: 'libfaar.def',
+    install: true,
+  )
+endif
+
+if default_lib == 'static'
+  libfaar = libfaar_static
+else
+  libfaar = libfaar_shared
+endif
+
+libfaar_dep = declare_dependency(
+  include_directories: inc,
+  link_with: libfaar,
+)
+
+pkgconfig = import('pkgconfig')
+pkgconfig.generate(
+  libfaar,
+  name: 'FAAR',
+  description: 'Freeware Advanced Audio Resampler',
+  version: meson.project_version(),
+  filebase: 'faar',
+)
+
+subdir('tests')

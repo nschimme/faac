@@ -27,6 +27,13 @@ jobs:
               shell: bash,
             }
           - {
+              name: Linux GCC (FAAR float),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dfaar-precision=float,
+            }
+          - {
               name: Linux GCC (max 1 channel),
               os: ubuntu-latest,
               compiler: gcc,
@@ -162,21 +169,21 @@ jobs:
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
 
-          for exe in ../temp/bin/faac.exe ../temp/bin/faacgui.exe ../temp/bin/faad.exe ../temp/bin/faam.exe; do
+          for exe in ../temp/bin/faac.exe ../temp/bin/faacgui.exe ../temp/bin/faad.exe ../temp/bin/faam.exe ../temp/bin/faar.exe; do
             test -f "$exe"
-            if objdump -p "$exe" | grep -iE 'DLL Name:.*fa(ac|ad|am).*\.dll'; then
-              echo "Unexpected FAAC/FAAD/FAAM DLL dependency in $exe" >&2
+            if objdump -p "$exe" | grep -iE 'DLL Name:.*fa(ac|ad|am|ar).*\.dll'; then
+              echo "Unexpected FAAC/FAAD/FAAM/FAAR DLL dependency in $exe" >&2
               exit 1
             fi
             # A static link must not re-export the libraries' API from the program.
-            if objdump -p "$exe" | grep -E 'fa(ac|ad|am)_[a-z]'; then
-              echo "Unexpected FAAC/FAAD/FAAM export in $exe" >&2
+            if objdump -p "$exe" | grep -E 'fa(ac|ad|am|ar)_[a-z]'; then
+              echo "Unexpected FAAC/FAAD/FAAM/FAAR export in $exe" >&2
               exit 1
             fi
           done
           meson test --print-errorlogs
           # Keep all shared libraries in lib/ for applications that link to them.
-          for dll in faac faad faam; do
+          for dll in faac faad faam faar; do
             compgen -G "../temp/lib/*${dll}*.dll" > /dev/null
           done
 
@@ -198,17 +205,17 @@ jobs:
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
 
-          foreach ($exe in @('faac.exe', 'faacgui.exe', 'faad.exe', 'faam.exe')) {
+          foreach ($exe in @('faac.exe', 'faacgui.exe', 'faad.exe', 'faam.exe', 'faar.exe')) {
             $imports = dumpbin /DEPENDENTS "temp/bin/$exe"
             if ($LASTEXITCODE -ne 0) { throw "Cannot inspect $exe imports" }
-            if ($imports -match 'fa(ac|ad|am).*\.dll') { throw "$exe imports a FAAC/FAAD/FAAM DLL" }
+            if ($imports -match 'fa(ac|ad|am|ar).*\.dll') { throw "$exe imports a FAAC/FAAD/FAAM/FAAR DLL" }
             $exports = dumpbin /EXPORTS "temp/bin/$exe"
             if ($LASTEXITCODE -ne 0) { throw "Cannot inspect $exe exports" }
-            if ($exports -match 'fa(ac|ad|am)_[a-z]') { throw "$exe exports a FAAC/FAAD/FAAM function" }
+            if ($exports -match 'fa(ac|ad|am|ar)_[a-z]') { throw "$exe exports a FAAC/FAAD/FAAM/FAAR function" }
           }
           meson test -C build --print-errorlogs
           if ($LASTEXITCODE -ne 0) { throw 'Meson tests failed' }
-          foreach ($lib in @('faac', 'faad', 'faam')) {
+          foreach ($lib in @('faac', 'faad', 'faam', 'faar')) {
             if (-not (Get-ChildItem "temp/lib/*$lib*.dll")) { throw "$lib DLL is missing from the package" }
           }
 
@@ -415,7 +422,8 @@ jobs:
           meson compile -C build-s390x
 
       - name: Test s390x (big-endian)
-        run: meson test -C build-s390x --print-errorlogs
+        # The s390x binaries run under QEMU, so use a longer per-test limit.
+        run: meson test -C build-s390x --print-errorlogs --timeout-multiplier 4
 
       - name: Encode natively and under qemu, compare
         run: |

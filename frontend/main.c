@@ -83,7 +83,8 @@ enum flags
     OPT_IGNORE_LENGTH,
     OPT_NO_ENCODER_INFO,
     OPT_FASTSTART,
-    LANG_FLAG
+    LANG_FLAG,
+    RATE_FLAG
 };
 
 static const help_t help_qual[] = {
@@ -127,6 +128,9 @@ static const help_t help_io[] = {
     {"-P",
      "Raw PCM input mode (default 44100 Hz, 16-bit, stereo).",
      "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
+    {"--rate <auto|keep|hz>",
+     "Choose output sample rate (default: auto; use keep to preserve input rate).",
+     "With ABR or CBR, auto selects the output rate from the input rate and bitrate; with VBR, it keeps the input rate when supported. Downsampling input above 48000 Hz uses FAAR High and requires a double-precision build. A numeric value requests a lower AAC standard rate from 7350 to 96000 Hz."},
     {"-R <samplerate>",
      "Raw PCM input rate.",
      "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},
@@ -299,6 +303,7 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
     }
     if (opts->max_bit_rate)
         fprintf(stderr, "Peak bitrate: %u kbps\n", (opts->max_bit_rate + 500) / 1000);
+    fprintf(stderr, "Sample rate: %u Hz\n", info->sample_rate);
     fprintf(stderr, "Bandwidth: %u Hz\n", info->bandwidth);
 
     const char *jm_str = "";
@@ -501,6 +506,7 @@ int main(int argc, char *argv[])
             {"cbr", 0, 0, CBR_FLAG},
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
+            {"rate", 1, 0, RATE_FLAG},
             {0, 0, 0, 0}
         };
 
@@ -707,6 +713,29 @@ int main(int argc, char *argv[])
             opts.verbose = value;
             break;
         }
+        case RATE_FLAG:
+            if (!strcmp(optarg, "auto"))
+            {
+                opts.rate_auto = true;
+                opts.resample_rate = UINT32_MAX;
+            }
+            else if (!strcmp(optarg, "keep"))
+            {
+                opts.rate_auto = false;
+                opts.resample_rate = 0;
+            }
+            else
+            {
+                uint32_t rate;
+                if (!cli_parse_rate(optarg, 7350, 96000, &rate) ||
+                    !cli_is_aac_sample_rate(rate)) {
+                    fprintf(stderr, "Invalid --rate '%s' (choose auto, keep, or an AAC sample rate from 7350 to 96000 Hz)\n", optarg);
+                    return 1;
+                }
+                opts.resample_rate = rate;
+                opts.rate_auto = false;
+            }
+            break;
         case HELP_QUAL:
         case HELP_IO:
         case HELP_MP4:
@@ -727,8 +756,13 @@ int main(int argc, char *argv[])
     if (optind < argc)
     {
         opts.input_filename = argv[optind];
-        if ((argc - optind) > 1 && aacFileNameGiven)
-            dieMessage = "Cannot encode several input files to one output file.\n";
+        if (!dieMessage && (argc - optind) > 1)
+        {
+            if (aacFileNameGiven)
+                dieMessage = "Cannot encode several input files to one output file.\n";
+            else
+                dieMessage = "Unexpected argument after input file.\n";
+        }
     }
     else
     {

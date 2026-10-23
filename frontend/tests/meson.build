@@ -32,6 +32,15 @@ test_output = executable('test_output', ['test_output.c', '../output.c'],
     include_directories: ['..', '../..', '../../include'])
 test('test_unit_frontend_output_helpers', test_output)
 
+if not meson.is_cross_build()
+    test_faar_engine = executable('test_faar_engine',
+        ['test_faar_engine.c', '../faar_engine.c'],
+        c_args: c_args_list,
+        include_directories: ['..', '../..', '../../include'],
+        dependencies: [frontend_common_dep, libfaar_dep])
+    test('test_unit_frontend_faar_engine', test_faar_engine)
+endif
+
 if get_option('muxer') and not meson.is_cross_build()
     test_faam_engine = executable('test_faam_engine',
         ['test_faam_engine.c', '../faam_engine.c', '../adts.c', '../annexb.c'],
@@ -88,6 +97,8 @@ endif
 if get_option('encoder') and get_option('decoder') and not meson.is_cross_build()
     test('test_e2e_faad_large_input', find_program('python3'),
         args: [files('test_faad_large_input.py'), faac, faad, get_option('max-channels').to_string()], timeout: 120)
+    test('test_e2e_faac_resample_cli', find_program('python3'),
+        args: [files('test_faac_resample_cli.py'), faac, faad], timeout: 120)
 endif
 
 if get_option('encoder') and get_option('decoder') and not meson.is_cross_build()
@@ -111,4 +122,9 @@ if get_option('muxer') and get_option('encoder') and get_option('decoder') and n
         args: [files('test_faam_metadata_cli.py'), faam, test_faam_metadata])
     test('test_e2e_faam_metadata_mutagen', find_program('python3'),
         args: [files('test_faam_metadata_mutagen.py'), faam, test_faam_metadata])
+endif
+
+if get_option('resampler') and not meson.is_cross_build()
+    test('test_e2e_faar_cli', find_program('python3'),
+        args: [files('test_faar_cli.py'), faar_cli], timeout: 60)
 endif

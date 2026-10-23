@@ -79,9 +79,11 @@ extra_args = cc.get_supported_arguments([
 ])
 add_project_arguments(extra_args, language: 'c')
 
+inc = include_directories('include')
 subdir('docs')
 subdir('include')
 subdir('common')
+subdir('libfaar')
 
 subdir('tests/fuzz')
 
