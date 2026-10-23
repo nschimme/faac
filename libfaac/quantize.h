@@ -33,6 +33,8 @@ typedef struct
     float avg_weight;
     float loud_exponent;
     float peak_floor;
+    /* The HE core at a set rate takes the onset gain to the power 3/4. */
+    int onset_soften;
 } AACQuantCfg;
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054f minimizes average

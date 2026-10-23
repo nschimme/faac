@@ -324,6 +324,9 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
     /* Any set rate (VBR has none) at or above the nudge's measured floor. */
     cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate;
+    /* VBR has no rate to re-spend what the softer boost saves, so there it
+     * only smears attacks. */
+    cfg->onset_soften = is_he && bitrate_per_ch;
 }
 
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
@@ -350,6 +353,11 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int grou
         for (win = group_start; win < group_start + gsize; win++)
             if (ci->temporal_gain[win] > group_gain)
                 group_gain = ci->temporal_gain[win];
+        /* At the same rate the HE core gets less back from the full boost than
+         * it costs; the power keeps most of the drop in pre-echo and caps the
+         * gain at ~5.6. */
+        if (cfg->onset_soften)
+            group_gain = sqrtf(group_gain * sqrtf(group_gain));
     }
 
     // whole group below the silence gate: force every band to a zero target
