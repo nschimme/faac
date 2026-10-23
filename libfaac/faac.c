@@ -185,6 +185,8 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         return FAAC_ERR_INVALID_ARGUMENT;
     if (GetChannelConfig((int)p->channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
+    if (p->channels > MAX_CHANNELS)
+        return FAAC_ERR_UNSUPPORTED;
     if (p->channel_layout != FAAC_LAYOUT_AAC && p->channel_layout != FAAC_LAYOUT_WAV)
         return FAAC_ERR_INVALID_ARGUMENT;
     uint64_t bit_rate = resolved_bit_rate(p);
@@ -256,7 +258,11 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->mpegVersion   = p->stream_format == FAAC_STREAM_ADTS_MPEG2 ? MPEG2 : MPEG4;
     cfg->aacObjectType = (unsigned int)p->object_type;  /* LOW / HE_V1 / AUTO */
     cfg->jointmode     = (unsigned int)p->stereo_mode;
+#if MAX_CHANNELS >= 6
     cfg->useLfe        = (p->channels == 6 || p->channels == 8);
+#else
+    cfg->useLfe        = 0;
+#endif
     cfg->useTns        = (p->flags & FAAC_FLAG_TNS) ? 1 : 0;
     cfg->bitRate       = (unsigned long)bit_rate_per_channel;
     cfg->bandWidth     = p->bandwidth;
@@ -273,18 +279,30 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     default: break; /* validate_params rejected other modes */
     }
     /* WAVE order must become AAC element order. */
+#if MAX_CHANNELS >= 3
     if (p->channel_layout == FAAC_LAYOUT_WAV && p->channels >= 3) {
-        static const uint8_t wav_to_aac[6][8] = {
+        static const uint8_t wav_to_aac[][8] = {
             {2, 0, 1},
+#if MAX_CHANNELS >= 4
             {2, 0, 1, 3},
+#endif
+#if MAX_CHANNELS >= 5
             {2, 0, 1, 3, 4},
+#endif
+#if MAX_CHANNELS >= 6
             {2, 0, 1, 4, 5, 3},
+#endif
+#if MAX_CHANNELS >= 7
             {0},
+#endif
+#if MAX_CHANNELS >= 8
             {2, 0, 1, 6, 7, 4, 5, 3}
+#endif
         };
         for (uint32_t i = 0; i < p->channels; ++i)
             cfg->channel_map[i] = wav_to_aac[p->channels - 3][i];
     }
+#endif
     /* AAC input retains the identity map installed by faacEncOpen. */
 
     applied = faacEncApplyConfig(h);
