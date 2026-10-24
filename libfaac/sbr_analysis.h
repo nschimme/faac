@@ -44,6 +44,13 @@ typedef struct SignalAnalysis {
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int envSampled[SBR_MAX_ENVELOPES];
 
+#if FAAC_ENCODER_PS
+    float psE[2][4][64], psCross[4][64], psCrossIm[4][64];
+    /* Large frame scratch is allocated with the encoder handle, not on its
+     * caller's thread stack. */
+    float workspace[2][SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
+    float psLow[2][3][44][2];
+#endif
     SignalAnalysisChannel ch[];
 } SignalAnalysis;
 

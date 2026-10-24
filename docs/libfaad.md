@@ -391,8 +391,16 @@ PCM. Writable tables are initialized on first open and remain in static storage.
 Their placement depends on the linker configuration. Per-frame scratch is stored
 in the instance, but measure stack requirements on your target separately.
 
-Independent handles can run concurrently; one handle is owned by one thread at a time. Instrumented
-stats builds use process-global diagnostics and require external serialization.
+Independent handles can run concurrently in ordinary builds; one handle is
+owned by one thread at a time. With `-Dstats=true`, decoder diagnostics use
+process-global counters: opening a decoder resets the counters, all decoded
+handles contribute to the same totals, and closing any handle while the global
+frame count is nonzero prints the current totals to stderr. Close does not reset
+them; the next open does. Stats builds therefore require external serialization
+of decoder opens, decoding, and closes across all handles. This low-overhead
+instrumentation reports aggregate process-wide
+behavior and cannot attribute counters to individual handles; its stderr
+output is a side effect of close.
 
 If this pool is shared across libraries, reset it only after every pool-backed
 handle is closed and no operation still uses its storage.

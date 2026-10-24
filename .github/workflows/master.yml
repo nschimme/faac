@@ -41,6 +41,13 @@ jobs:
               options: -Dmax-channels=2,
             }
           - {
+              name: Linux GCC (encoder PS and stats),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dencoder-ps=true -Dstats=true,
+            }
+          - {
               name: Linux GCC (SBR decimation 4),
               os: ubuntu-latest,
               compiler: gcc,
@@ -228,7 +235,7 @@ jobs:
 
       - name: Build fuzz harnesses
         run: |
-          meson setup build
+          meson setup build -Dencoder-ps=true
           FUZZ_BUILD_ONLY=1 tests/fuzz/run.sh build
 
       - name: Test

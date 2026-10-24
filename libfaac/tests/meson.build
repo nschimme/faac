@@ -25,3 +25,18 @@ if is_variable('libfaac_static') and config_h.get('HAVE_SSE2')
             link_with: [libfaac_static, quantize_sse],
             dependencies: [libm, codec_dep]))
 endif
+
+if encoder_ps
+    test('test_unit_faac_ps',
+        executable('test_faac_ps', ['test_faac_ps.c', '../ps.c', '../bitstream.c',
+                                    '../ps_huff_tables.c', '../../common/fft.c'],
+            include_directories: ['..', '../..', '../../include', common_inc],
+            c_args: common_args['c_args'] + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG'],
+            dependencies: [libm]))
+endif
+
+test('test_unit_faac_ps_api',
+    executable('test_faac_ps_api', 'test_faac_ps_api.c',
+        include_directories: ['..', '../..', '../../include'],
+        link_with: libfaac,
+        c_args: c_args + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG']))

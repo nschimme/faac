@@ -598,7 +598,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     /* Implicit SBR signaling expects the container declared at the core
        (pre-SBR) rate, half the reconstructed output rate. */
-    rate_conv_t rc = { .div = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? 2 : 1 };
+    rate_conv_t rc = { .div = (info.object_type == FAAC_OBJ_HE_AAC_V1 || info.object_type == FAAC_OBJ_HE_AAC_V2) ? 2 : 1 };
 
     enum { NATIVE_READ_AHEAD_FRAMES = 8 };
     bool native_read_ahead = native && infile->f != stdin;

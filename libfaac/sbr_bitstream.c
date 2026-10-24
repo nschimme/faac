@@ -20,10 +20,12 @@
 #include "sbr.h"
 #include "sbr_internal.h"
 #include "sbr_huff_tables.h"
+#include "sbr_tables.h"
 #include "bitstream.h"
 #include "channels.h"
 #include "util.h"
 #include "faac_internal.h"
+#include "stats.h"
 
 static void put_header(const SBRInfo *sbr, BitStream *bs)
 {
@@ -200,7 +202,10 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
         }
     }
     for (int ch = 0; ch < nch; ch++) PutBit(bs, 0, 1); /* bs_add_harmonic_flag */
-    PutBit(bs, 0, 1); /* bs_extended_data */
+    if (PsIsActive(sbr))
+        PsWriteExtension(sbr, fd, bs);
+    else
+        PutBit(bs, 0, 1); /* bs_extended_data */
 
     for (int ch = 0; ch < nch; ch++) {
         SbrEnvRef *cur = &sbr->ch[ch0 + ch].ref[sbr->frameCount & 1];
@@ -278,7 +283,7 @@ static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
 
 int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, int aacObjectType)
 {
-    if (aacObjectType == HE_V1 && sCtx && elem->type != ID_LFE) {
+    if (IsSBR(aacObjectType) && sCtx && elem->type != ID_LFE) {
         if (sCtx->sbrInfo) {
             int id_aac = (elem->type == ID_CPE) ? ID_CPE : ID_SCE;
             /* One step past the newest slot is the oldest: the payload whose
@@ -288,6 +293,7 @@ int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, i
             if (!sbr->headerDecided) {
                 sbr->sendHeaderThisFrame = (sbr->frameCount++ % SBR_HEADER_PERIOD == 0);
                 sbr->headerDecided = 1;
+                PsCountFrame(sbr, fd, id_aac);
             }
             return SbrWrite(sbr, fd, bs, id_aac, elem->channels[0]);
         }
