@@ -562,6 +562,12 @@ int faacEncClose(faacEncHandle hpEncoder)
                     grp_avg, split, g_faacStats.shortChannels);
         }
 
+        if (g_faacStats.shortChannels > 0)
+            fprintf(stderr, " Short TNS           : Late win = %u | Filtered = %u | TNS ch = %5.1f%% of %u short ch\n",
+                    g_faacStats.shortWindowsLate, g_faacStats.shortWindowsTNS,
+                    100.0 * g_faacStats.shortChannelsTNS / g_faacStats.shortChannels,
+                    g_faacStats.shortChannels);
+
 
         if (g_faacStats.sbrFrames > 0)
         {
@@ -865,8 +871,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
 
             TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+        } else if (!hEncoder->isLfeChannel[channel] && useTns &&
+                   coderInfo[channel].block_type == ONLY_SHORT_WINDOW &&
+                   hEncoder->config.aacObjectType != HE_V1) {
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 
