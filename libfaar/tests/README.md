@@ -70,6 +70,44 @@ high-water mark, not live library allocation. Open only the handles required
 for the measurement; the arrays and filter work buffers contribute to process
 memory too.
 
+`bench_faar_latency` is an optional POSIX-only native API-call timing probe.
+Build and run it with:
+
+```sh
+meson compile -C build bench_faar_latency
+build/libfaar/tests/bench_faar_latency 48000 44100 8 2 64 17 1
+```
+
+The arguments are input rate, output rate, channels, quality, input block,
+output capacity, and prepared mode (`0` or `1`). The CSV columns are:
+
+```text
+in_rate,out_rate,channels,quality,input_block,output_capacity,prepared,prepare_ms,process_call_count,callback_p50_us,callback_p99_us,callback_max_us,flush_max_us,peak_process_RSS_KiB
+```
+
+It times each public `process()` input and drain call; flush calls are timed
+separately. It allocates timing storage before streaming and uses no allocator
+hooks, so these are native API-call durations rather than instrumented
+allocation timings. `prepare_ms` excludes open time. The observed maximum is
+not an end-to-end host callback measurement or a real-time deadline guarantee;
+FFT block costs and their bursts remain. See
+[`preparation-results.md`](preparation-results.md) for the final comparison.
+
+`test_faar_prepare` checks the no-allocation contract by failing all library
+allocations after preparation and verifying that prepared processing and
+flushing make zero allocation and free calls. It contrasts this with unprepared
+allocation snapshots (0–19 allocation calls in the tested cases), injects
+failures at each preparation allocation point and checks recovery, verifies a
+failed reprepare retains the old usable bound, and exercises undrained queue
+budget exhaustion. In `compare_quality.py`, `--prepare` prepares the candidate
+for 8192 input frames and drains both reference and candidate between chunks;
+the baseline library does not need to export the new prepare symbol:
+
+```sh
+python3 libfaar/tests/compare_quality.py /path/to/baseline/libfaar.dylib \
+  /path/to/candidate/libfaar.dylib --report /tmp/prepared-quality.json --prepare
+```
+
 The `test_faar_fft_threads` test races first initialization for several table
 sizes, checks that FFT work buffers remain private, then clears and reopens
 plans and exercises the dynamic larger-size fallback. To run it under
@@ -126,3 +164,6 @@ open and throughput comparisons of the lazy shared tables.
 
 See [the shared-spectrum measurements](shared-spectrum-results.md) for the
 per-channel sharing results and test coverage.
+
+See [the preparation measurements](preparation-results.md) for allocator
+checks and native API-call timing results.

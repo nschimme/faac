@@ -40,6 +40,7 @@ static void *aligned_malloc(size_t size) {
     if (posix_memalign(&ptr, POLYRESAMPLE_ALIGNMENT, size) != 0) return NULL;
     return ptr;
 #else
+    if (size > SIZE_MAX - POLYRESAMPLE_ALIGNMENT - sizeof(void *)) return NULL;
     void *ptr = malloc(size + POLYRESAMPLE_ALIGNMENT + sizeof(void *));
     if (!ptr) return NULL;
     uintptr_t addr = (uintptr_t)ptr + sizeof(void *) + POLYRESAMPLE_ALIGNMENT - 1;
@@ -114,6 +115,8 @@ struct faar_resampler_struct {
     size_t hist_offset;         /* Frames before the moving history pointers */
     size_t hist_len;            /* Unconsumed frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
+    bool prepared;
+    size_t prepared_max_input;
 
     size_t delay;
     size_t history_pad;
@@ -155,6 +158,7 @@ static size_t polyresample_process_planar(faar_resampler * r,
 
 static int ensure_dft_intermediate(faar_resampler * r, size_t frames) {
     if (frames <= r->dft_intermediate_capacity) return 0;
+    if (r->prepared) return -1;
     if (frames > SIZE_MAX / r->channels / sizeof(float)) return -1;
     float *next = (float *)realloc(r->dft_intermediate,
             frames * r->channels * sizeof(float));
@@ -872,7 +876,7 @@ static const faar_sample_t exact_phase_eps = (faar_sample_t)1e-6;
 
 /* Keep history contiguous for the FIR, but move it only when an append
  * exhausts the trailing space. Draining output never copies queued audio. */
-static int reserve_history(faar_resampler *r, size_t additional) {
+static int reserve_history(faar_resampler *r, size_t additional, bool exact) {
     if (additional > SIZE_MAX - r->hist_len) {
         r->last_error = FAAR_ERR_INVALID_ARGUMENT;
         return -1;
@@ -888,11 +892,16 @@ static int reserve_history(faar_resampler *r, size_t additional) {
         r->hist_offset = 0;
     }
     if (needed <= r->hist_cap_per_ch) return 0;
-    if (needed > (SIZE_MAX - 15) / 2) {
+    if (r->prepared) {
+        r->last_error = FAAR_ERR_NO_MEMORY;
+        return -1;
+    }
+    size_t growth = exact ? 1 : 2;
+    if (needed > (SIZE_MAX - 15) / growth) {
         r->last_error = FAAR_ERR_INVALID_ARGUMENT;
         return -1;
     }
-    size_t capacity = (needed * 2 + 15) & ~((size_t)15);
+    size_t capacity = (needed * growth + 15) & ~((size_t)15);
     if (capacity > SIZE_MAX / sizeof(faar_sample_t)) {
         r->last_error = FAAR_ERR_INVALID_ARGUMENT;
         return -1;
@@ -914,6 +923,69 @@ static int reserve_history(faar_resampler *r, size_t additional) {
     return 0;
 }
 
+static void set_prepared(faar_resampler *r, bool prepared) {
+    if (!r) return;
+    r->prepared = prepared;
+    faar_dft_prefilter_set_prepared(r->dft_prefilter, prepared);
+    set_prepared(r->stage1, prepared);
+    set_prepared(r->stage2, prepared);
+}
+
+/* Ceil(frames * numerator / denominator), without a size_t product overflow. */
+static int scaled_frames(size_t frames, uint32_t numerator, uint32_t denominator,
+                         size_t *out) {
+    size_t whole = frames / denominator;
+    uint64_t tail = (uint64_t)(frames % denominator) * numerator;
+    uint64_t extra = tail / denominator + (tail % denominator != 0);
+    if (whole > SIZE_MAX / numerator || extra > SIZE_MAX - whole * numerator)
+        return -1;
+    *out = whole * numerator + (size_t)extra;
+    return 0;
+}
+
+/* Burst bounds include retained filter support, transform blocks and flush
+ * padding. A downstream stage may receive an entire upstream burst before
+ * the caller's small output buffer has drained it. */
+static faar_status prepare_internal(faar_resampler *r, size_t max_input,
+                                    size_t *output_bound) {
+    if (r->dft_prefilter) {
+        if (max_input > (SIZE_MAX - 8192) / r->dft_expansion)
+            return FAAR_ERR_INVALID_ARGUMENT;
+        size_t intermediate = max_input * r->dft_expansion + 8192;
+        if (intermediate > SIZE_MAX / r->channels / sizeof(float))
+            return FAAR_ERR_INVALID_ARGUMENT;
+        if (ensure_dft_intermediate(r, intermediate)) return FAAR_ERR_NO_MEMORY;
+        memset(r->dft_intermediate, 0,
+               r->dft_intermediate_capacity * r->channels * sizeof(float));
+        size_t step = r->stage2
+            ? r->stage2->in_rate / r->stage2->out_rate
+                + (r->stage2->in_rate % r->stage2->out_rate != 0) : 0;
+        size_t filtered;
+        faar_status st = faar_dft_prefilter_prepare(r->dft_prefilter,
+                max_input, step, &filtered);
+        if (st != FAAR_OK) return st;
+        if (r->stage2) return prepare_internal(r->stage2, filtered, output_bound);
+        *output_bound = filtered;
+        return FAAR_OK;
+    }
+    if (r->stage1 && r->stage2) {
+        memset(r->cascade_buf, 0, r->cascade_cap * sizeof(float));
+        size_t middle;
+        faar_status st = prepare_internal(r->stage1, max_input, &middle);
+        return st == FAAR_OK ? prepare_internal(r->stage2, middle, output_bound) : st;
+    }
+    /* Retained support, a pending discard, and the final boundary tail. */
+    size_t support = 3 * r->filter_len;
+    if (max_input > SIZE_MAX - support) return FAAR_ERR_INVALID_ARGUMENT;
+    size_t frames = max_input + support;
+    if (reserve_history(r, frames, true)) return r->last_error;
+    for (uint16_t c = 0; c < r->channels; ++c)
+        memset(r->hist[c], 0, r->hist_cap_per_ch * sizeof(faar_sample_t));
+    if (scaled_frames(frames, r->out_rate, r->in_rate, output_bound))
+        return FAAR_ERR_INVALID_ARGUMENT;
+    return FAAR_OK;
+}
+
 static size_t polyresample_process_single(faar_resampler * restrict r, const float * restrict in_samples, size_t in_count,
                                            float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
@@ -925,7 +997,7 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
     assert(filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
 
     if (in_samples && in_count > 0) {
-        if (reserve_history(r, in_count)) return 0;
+        if (reserve_history(r, in_count, false)) return 0;
 
         if (r->channels == 2) {
             faar_sample_t * restrict h0 = r->hist[0] + r->hist_len;
@@ -1228,7 +1300,7 @@ static size_t polyresample_process_planar(faar_resampler * r,
         float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples || (in_count && !in_samples)) return 0;
     if (in_count) {
-        if (reserve_history(r, in_count)) return 0;
+        if (reserve_history(r, in_count, false)) return 0;
         for (uint16_t c = 0; c < r->channels; ++c) {
             const float * restrict channel_input = in_samples + (size_t)c * in_count;
             faar_sample_t * restrict channel_history =
@@ -1269,7 +1341,7 @@ static size_t polyresample_flush_single(faar_resampler * r, float *out_samples, 
     if (!r->flushed) {
         size_t tail_len = (r->filter_len - 1) / 2 + 1;
         if (r->filter_len == 20) ++tail_len;
-        if (reserve_history(r, tail_len)) return 0;
+        if (reserve_history(r, tail_len, false)) return 0;
         for (uint16_t c = 0; c < r->channels; ++c) {
             faar_sample_t last = r->boundary == FAAR_BOUNDARY_HOLD && r->input_frames
                 ? r->last_input[c] : 0.0f;
@@ -1439,6 +1511,21 @@ FAARAPI faar_status faar_resampler_open(const faar_config *config,
     return FAAR_OK;
 }
 
+FAARAPI faar_status faar_resampler_prepare(faar_resampler *r,
+                                           size_t max_input_frames) {
+    if (!r || !max_input_frames || r->input_frames || r->flushed
+            || max_input_frames > SIZE_MAX / r->channels / sizeof(float))
+        return FAAR_ERR_INVALID_ARGUMENT;
+    bool was_prepared = r->prepared;
+    set_prepared(r, false);
+    clear_error(r);
+    size_t output_bound;
+    faar_status st = prepare_internal(r, max_input_frames, &output_bound);
+    if (st == FAAR_OK) r->prepared_max_input = max_input_frames;
+    set_prepared(r, st == FAAR_OK || was_prepared);
+    return st;
+}
+
 FAARAPI faar_status faar_resampler_close(faar_resampler **resampler) {
     if (!resampler) return FAAR_ERR_INVALID_ARGUMENT;
     destroy_internal(*resampler);
@@ -1473,6 +1560,7 @@ FAARAPI faar_status faar_resampler_process(faar_resampler *resampler,
     *out_count = 0;
     if (!resampler || !out_samples || (in_count && !in_samples)
             || (resampler->flushed && in_count)
+            || (resampler->prepared && in_count > resampler->prepared_max_input)
             || in_count > SIZE_MAX / resampler->channels / sizeof(float)
             || max_out_count > SIZE_MAX / resampler->channels / sizeof(float))
         return FAAR_ERR_INVALID_ARGUMENT;

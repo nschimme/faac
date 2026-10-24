@@ -196,6 +196,20 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
     return 0;
 }
 
+void faar_dft_fir_prepare(faar_dft_fir *stage) {
+    if (!stage) return;
+    if (stage->halfband)
+        memset(stage->work, 0, (stage->fft_size + 2) * sizeof(faar_sample_t));
+    else {
+        faar_fft_prepare(&stage->in, !stage->out.size);
+        faar_fft_prepare(&stage->out, 0);
+    }
+    memset(stage->overlap, 0, stage->lanes * overlap_stride(stage) * sizeof(faar_sample_t));
+    memset(stage->input_block, 0, stage->lanes * stage->stream_in * sizeof(faar_sample_t));
+    size_t output = stage->halfband ? stage->block_size : stage->lanes * stage->stream_out;
+    memset(stage->output_block, 0, output * sizeof(faar_sample_t));
+}
+
 void faar_dft_fir_clear(faar_dft_fir *stage) {
     if (!stage) return;
     if (!stage->shared_coeffs) {

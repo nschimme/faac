@@ -29,6 +29,9 @@ typedef struct faar_rfftf_plan {
 
 int faar_rfftf_init(faar_rfftf_plan *plan, int size);
 void faar_rfftf_clear(faar_rfftf_plan *plan);
+/* Touch private workspace before the first transform; no stream data yet.
+ * Set both_buffers when one plan serves both forward and inverse filtering. */
+void faar_rfftf_prepare(faar_rfftf_plan *plan, int both_buffers);
 void faar_rfftf_execute(const faar_rfftf_plan *plan, float *data, int inverse);
 
 /* Complex transform of n points, 16 through 4194304, on the same plan type.
@@ -51,6 +54,7 @@ typedef struct faar_rfftd_plan {
 
 int faar_rfftd_init(faar_rfftd_plan *plan, int size);
 void faar_rfftd_clear(faar_rfftd_plan *plan);
+void faar_rfftd_prepare(faar_rfftd_plan *plan, int both_buffers);
 void faar_rfftd_execute(const faar_rfftd_plan *plan, double *data, int inverse);
 int faar_rfftd_cinit(faar_rfftd_plan *plan, int n);
 int faar_rfftd_cinit_shared(faar_rfftd_plan *plan, int n,

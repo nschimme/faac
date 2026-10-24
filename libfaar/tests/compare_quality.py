@@ -31,8 +31,10 @@ FLOAT_PTR = ct.POINTER(ct.c_float)
 
 
 class Library:
-    def __init__(self, path):
+    def __init__(self, path, prepare=False, drain_each_input=False):
         self.lib = ct.CDLL(str(Path(path).resolve()))
+        self.prepare = prepare
+        self.drain_each_input = drain_each_input
         signatures = {
             "faar_config_init": [ct.POINTER(Config), ct.c_size_t],
             "faar_resampler_open": [ct.POINTER(Config), ct.POINTER(ct.c_void_p)],
@@ -45,6 +47,9 @@ class Library:
         for name, args in signatures.items():
             fn = getattr(self.lib, name)
             fn.argtypes, fn.restype = args, ct.c_int32
+        if prepare:
+            self.lib.faar_resampler_prepare.argtypes = [ct.c_void_p, ct.c_size_t]
+            self.lib.faar_resampler_prepare.restype = ct.c_int32
 
     @staticmethod
     def check(status):
@@ -79,6 +84,8 @@ class Library:
             written += made.value
 
         try:
+            if self.prepare:
+                self.check(self.lib.faar_resampler_prepare(handle, 8192))
             position, step = 0, 0
             while position < frames:
                 # The queued schedule appends again before draining, exercising
@@ -92,11 +99,13 @@ class Library:
                 save()
                 position += count
                 step += 1
-                if schedule == "regular":
-                    while made.value:
+                if schedule == "regular" or self.drain_each_input:
+                    while made.value or self.drain_each_input:
                         self.check(self.lib.faar_resampler_process(
-                            handle, None, 0, ptr, capacity, ct.byref(made)))
+                            handle, None, 0, ptr, 16384, ct.byref(made)))
                         save()
+                        if not made.value:
+                            break
             # Bound the loop so broken flush behavior fails instead of hanging.
             for _ in range(expected + 2):
                 self.check(self.lib.faar_resampler_flush(
@@ -143,8 +152,11 @@ def main():
     parser.add_argument("candidate", help="optimized shared library")
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--qualities", nargs="+", type=int, default=[0, 1, 2], choices=[0, 1, 2])
+    parser.add_argument("--prepare", action="store_true",
+                        help="prepare candidate for 8192 frames; drain both streams between input chunks")
     args = parser.parse_args()
-    reference, candidate = Library(args.reference), Library(args.candidate)
+    reference = Library(args.reference, drain_each_input=args.prepare)
+    candidate = Library(args.candidate, prepare=args.prepare, drain_each_input=args.prepare)
     records = []
 
     def compare(name, data, ir, out, q, boundary=1, schedule="regular", dither=0):
@@ -198,7 +210,8 @@ def main():
     finally:
         args.report.write_text(json.dumps(dict(
             reference=str(Path(args.reference).resolve()),
-            candidate=str(Path(args.candidate).resolve()), cases=records), indent=2) + "\n")
+            candidate=str(Path(args.candidate).resolve()),
+            candidate_prepared=args.prepare, cases=records), indent=2) + "\n")
     print(f"PASS: {len(records)} cases, all output PCM bit-identical")
 
 

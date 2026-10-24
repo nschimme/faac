@@ -36,6 +36,7 @@ typedef double faar_sample_t;
 #define faar_fft_cbuffer faar_rfftf_cbuffer
 #define faar_fft_cforward faar_rfftf_cforward
 #define faar_fft_clear faar_rfftf_clear
+#define faar_fft_prepare faar_rfftf_prepare
 #else
 #define faar_fft_plan faar_rfftd_plan
 #define faar_fft_cinit faar_rfftd_cinit
@@ -43,6 +44,7 @@ typedef double faar_sample_t;
 #define faar_fft_cbuffer faar_rfftd_cbuffer
 #define faar_fft_cforward faar_rfftd_cforward
 #define faar_fft_clear faar_rfftd_clear
+#define faar_fft_prepare faar_rfftd_prepare
 #endif
 
 #endif /* LIBFAAR_INTERNAL_H */
