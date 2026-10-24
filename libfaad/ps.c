@@ -311,6 +311,33 @@ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left)
             FILE *df = faad_dump_file();
             if (df) fprintf(df, "P %u %d %d %d\n", g_faadStats.totalFrames,
                             (int)ps->enable_iid, (int)ps->enable_icc, (int)ps->num_env);
+            if (df) {
+                int iid_mode = ps->enable_iid
+                    ? (ps->iid_quant ? 3 : 0) + (ps->nr_iid_par == 20 ? 1 : ps->nr_iid_par == 34 ? 2 : 0)
+                    : -1;
+                int iid_n = ps->enable_iid ? ps->nr_iid_par : 0;
+                int icc_n = ps->enable_icc ? ps->nr_icc_par : 0;
+                int ipd_n = ps->enable_ipdopd ? ps->nr_ipdopd_par : 0;
+                if (iid_n > PS_NR_PAR) iid_n = PS_NR_PAR;
+                if (icc_n > PS_NR_PAR) icc_n = PS_NR_PAR;
+                if (ipd_n > PS_NR_PAR) ipd_n = PS_NR_PAR;
+                fprintf(df, "PM %u %d %d %d %d %d %d %d\n", g_faadStats.totalFrames,
+                        iid_mode, ps->enable_icc ? (int)ps->icc_mode : -1,
+                        (int)ps->enable_ipdopd, iid_n, icc_n, ipd_n,
+                        (int)ps->frame_class);
+                for (int e = 0; e < ps->num_env && e < PS_MAX_ENV; e++) {
+                    fprintf(df, "PE %u %d %d", g_faadStats.totalFrames, e,
+                            (int)ps->border[e + 1]);
+                    for (int b = 0; b < iid_n; b++) fprintf(df, " %d", (int)ps->iid_par[e][b]);
+                    fprintf(df, " |");
+                    for (int b = 0; b < icc_n; b++) fprintf(df, " %d", (int)ps->icc_par[e][b]);
+                    fprintf(df, " |");
+                    for (int b = 0; b < ipd_n; b++) fprintf(df, " %d", (int)ps->ipd_par[e][b]);
+                    fprintf(df, " |");
+                    for (int b = 0; b < ipd_n; b++) fprintf(df, " %d", (int)ps->opd_par[e][b]);
+                    fputc('\n', df);
+                }
+            }
         }
 #endif
     } else {

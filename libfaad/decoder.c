@@ -766,6 +766,10 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
  *   F frame ch class L_E L_Q freq_res amp_res invf harm_flag n_harm coupling -1 E_dB Q_dB
  *   G frame ch class L_E pointer t_E...
  *   P frame iid icc num_env
+ *   PM frame iid_mode icc_mode phase iid_count icc_count phase_count frame_class
+ *       mode is -1 when disabled; IID modes 0..2 are coarse and 3..5 fine
+ *   PE frame env border iid... | icc... | ipd... | opd...
+ *       each vector contains only its enabled parameter count from PM
  *   B frame total hdr sect sf spec aux sbr ps fill
  *       bits by syntax part; sect/sf/spec/aux (pulse, TNS) sum over the ics,
  *       sbr excludes ps, fill is pad after the SBR payload, and the

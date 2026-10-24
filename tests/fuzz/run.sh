@@ -62,6 +62,11 @@ faam_src="$root/libfaam/atom_patch.c $root/libfaam/chapter.c $root/libfaam/demux
 # Source files for libfaac
 faac_src="$root/libfaac/bitstream.c $root/libfaac/blockswitch.c $root/libfaac/channels.c $root/libfaac/cpu_compute.c $root/libfaac/faac.c $root/libfaac/filtbank.c $root/libfaac/frame.c $root/libfaac/huff2.c $root/libfaac/huffdata.c $root/libfaac/quantize.c $root/libfaac/ratecontrol.c $root/libfaac/resample.c $root/libfaac/sbr_analysis.c $root/libfaac/sbr_bitstream.c $root/libfaac/sbr.c $root/libfaac/sbr_huff_tables.c $root/libfaac/stereo.c $root/libfaac/tns.c $root/libfaac/util.c"
 
+# Match the Meson feature setting; PS is opt-in and its sources are optional.
+if grep -q '^#define FAAC_ENCODER_PS 1$' "$bd/config.h"; then
+    faac_src="$faac_src $root/libfaac/ps.c $root/libfaac/ps_huff_tables.c"
+fi
+
 # Compile quantize_sse.c with gcc if available to bypass clang bug on immintrin.h
 q_sse_obj=""
 if [ -n "$sse" ]; then
@@ -183,7 +188,11 @@ for t in $run_list; do
     max_len=65536
     case $t in
         fuzz_wav) max_len=4096 ;;
-        fuzz_encode) max_len=70000 ;;
+        fuzz_encode)
+            max_len=70000
+            if grep -q '^#define FAAC_ENCODER_PS 1$' "$bd/config.h"; then
+                python3 "$root/tests/fuzz/seed_encode.py" "corpus_$t"
+            fi ;;
         fuzz_faam_annexb)
             # A sample must outgrow the splitter's initial buffer to exercise its growth path,
             # which the default input limit cannot reach.
