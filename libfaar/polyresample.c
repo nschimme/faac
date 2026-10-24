@@ -17,6 +17,9 @@
 #include "libfaar_internal.h"
 #include "dft_coeffs.h"
 #include "dft_prefilter.h"
+#ifdef FAAR_FLOAT
+#include "fft_float2.h"
+#endif
 #include <stdalign.h>
 #include <stdio.h>
 
@@ -109,6 +112,9 @@ struct faar_resampler_struct {
     double beta;
     faar_sample_t *polyphase_table; /* Half-bank and interpolation guards, shared by all channels */
     faar_sample_t *polyphase_reverse_table; /* Reversed exact rows, avoids per-output coefficient copies */
+#ifdef FAAR_FLOAT
+    float *polyphase_low_table; /* Low words of High's filter coefficients. */
+#endif
 
     faar_sample_t *hist[MAX_CHANNELS]; /* Keeps sample and coefficient arithmetic at the selected width */
     faar_sample_t last_input[MAX_CHANNELS]; /* Retained even when history is fully consumed */
@@ -474,7 +480,8 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
     r->dft_expansion = expansion;
     size_t decimation = plan.decimation;
     r->dft_prefilter = faar_dft_prefilter_create_stage(channels, taps,
-            tap_count, fft_size, expansion, decimation, selected->fft == 0);
+            tap_count, fft_size, expansion, decimation, selected->fft == 0,
+            sizeof(faar_sample_t) == sizeof(float) && quality == FAAR_QUALITY_HIGH);
     free(taps);
     if (!r->dft_prefilter) { free(r); return NULL; }
     size_t phase_bank_len = plan.bank;
@@ -616,10 +623,6 @@ static faar_resampler * short_cascade(uint32_t in, uint32_t out,
 static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out_rate,
         uint16_t channels, faar_quality_t quality, uint32_t decimate_factor,
         size_t filter_len_override, bool force_polyphase) {
-#ifdef FAAR_FLOAT
-    /* Float arithmetic cannot meet High's rejection masks or improve on Good. */
-    if (quality == FAAR_QUALITY_HIGH) return NULL;
-#endif
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
     const struct short_route_entry *entry = short_dedicated_route(in_rate, out_rate);
@@ -718,12 +721,23 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
     /* The short exact banks (up to the 41-tap upsampling banks) repay a
      * second oriented copy; keep generic banks compact and let their
      * uncommon exact reverse phase use the stack path. */
-    if (r->exact_phase_bank && r->filter_len <= reverse_table_max_len) {
+#ifdef FAAR_FLOAT
+    if (quality == FAAR_QUALITY_HIGH) {
+        size_t bytes = stored_phases * r->filter_len * sizeof(float);
+        r->polyphase_low_table = aligned_malloc(bytes);
+        if (!r->polyphase_low_table) { destroy_internal(r); return NULL; }
+        memset(r->polyphase_low_table, 0, bytes);
+    }
+#endif
+    if (r->exact_phase_bank && r->filter_len <= reverse_table_max_len
+#ifdef FAAR_FLOAT
+            && !r->polyphase_low_table
+#endif
+            ) {
         r->polyphase_reverse_table = (faar_sample_t *)aligned_malloc(
                 stored_phases * r->filter_len * sizeof(*r->polyphase_reverse_table));
         if (!r->polyphase_reverse_table) {
-            aligned_free(r->polyphase_table);
-            free(r);
+            destroy_internal(r);
             return NULL;
         }
     }
@@ -771,6 +785,11 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
                     : bessel_i0(r->beta * sqrt(radicand)) / bessel_i0(r->beta);
                 double val = sinc * win * prototype_scale;
                 phase_coeffs[j] = (faar_sample_t)val;
+#ifdef FAAR_FLOAT
+                if (r->polyphase_low_table)
+                    r->polyphase_low_table[p * r->filter_len + j]
+                        = (float)(val - (double)phase_coeffs[j]);
+#endif
                 sum += val;
                 continue;
             }
@@ -780,6 +799,11 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
                                        (double)r->filter_len - 1.0, r->beta);
             double val = sinc * win;
             phase_coeffs[j] = (faar_sample_t)val;
+#ifdef FAAR_FLOAT
+            if (r->polyphase_low_table)
+                r->polyphase_low_table[p * r->filter_len + j]
+                    = (float)(val - (double)phase_coeffs[j]);
+#endif
             sum += val;
         }
 
@@ -794,7 +818,14 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
 #ifndef FAAR_FLOAT
                 phase_coeffs[j] = (faar_sample_t)(phase_coeffs[j] / sum);
 #else
-                phase_coeffs[j] /= (float)sum;
+                if (r->polyphase_low_table) {
+                    size_t at = p * r->filter_len + j;
+                    double val = ((double)phase_coeffs[j] + r->polyphase_low_table[at]) / sum;
+                    phase_coeffs[j] = (float)val;
+                    r->polyphase_low_table[at] = (float)(val - (double)phase_coeffs[j]);
+                } else {
+                    phase_coeffs[j] /= (float)sum;
+                }
 #endif
             }
         }
@@ -817,10 +848,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         r->hist[c] = (faar_sample_t *)aligned_malloc(
                 r->hist_cap_per_ch * sizeof(*r->hist[c]));
         if (!r->hist[c]) {
-            for (uint16_t k = 0; k < c; k++) aligned_free(r->hist[k]);
-            aligned_free(r->polyphase_reverse_table);
-            aligned_free(r->polyphase_table);
-            free(r);
+            destroy_internal(r);
             return NULL;
         }
         memset(r->hist[c], 0, r->hist_cap_per_ch * sizeof(*r->hist[c]));
@@ -873,6 +901,8 @@ static int set_dither_internal(faar_resampler * r, faar_dither_t dither, uint8_t
  * correction would shift the evaluated position by under 1e-6 of a row
  * spacing, far below the stopband floor. */
 static const faar_sample_t exact_phase_eps = (faar_sample_t)1e-6;
+
+#include "polyresample_float2.inc"
 
 /* Keep history contiguous for the FIR, but move it only when an append
  * exhausts the trailing space. Draining output never copies queued audio. */
@@ -1095,6 +1125,9 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
         bool reverse;
         size_t p_idx;
         faar_sample_t delta;
+#ifdef FAAR_FLOAT
+        faar_float2 precise_delta = ff2(0);
+#endif
         if (r->exact_phase_bank) {
             /* The doubled grid represents the 20-tap bank's half-sample
                  * origin; all other exact banks use the ordinary reduced grid. */
@@ -1113,7 +1146,25 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
                 p_idx = r->num_phases / 2 - 1;
                 delta = 1;
             }
-        } else {
+        }
+#ifdef FAAR_FLOAT
+        else if (r->polyphase_low_table) {
+            reverse = 2 * phase_remainder > r->out_rate;
+            uint32_t numerator = (uint32_t)(reverse ? r->out_rate - phase_remainder : phase_remainder);
+            if (reverse) sample_base_idx++;
+            faar_float2 position = ff2_mulf(ff2_div(ff2_uint32(numerator),
+                    ff2_uint32(r->out_rate)), (float)r->num_phases);
+            p_idx = (size_t)position.hi;
+            if (p_idx >= r->num_phases / 2) p_idx = r->num_phases / 2 - 1;
+            precise_delta = ff2_sub(position, ff2((float)p_idx));
+            if (ff2_round(precise_delta) < 0.0f && p_idx) {
+                --p_idx;
+                precise_delta = ff2_add(precise_delta, ff2(1));
+            }
+            delta = ff2_round(precise_delta);
+        }
+#endif
+        else {
             frac = (faar_sample_t)phase_remainder / r->out_rate;
             /* Reflection changes the sign of fractional delay. Anchor negative
                phases at the next input sample so the evaluated position agrees. */
@@ -1132,6 +1183,14 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
             break;
         }
 
+#ifdef FAAR_FLOAT
+        if (r->polyphase_low_table) {
+            if (r->exact_phase_bank) precise_delta = ff2(delta);
+            filter_precise_phase(r, sample_base_idx, p_idx, precise_delta, reverse,
+                                 out_samples + out_frames * r->channels);
+            goto advance_output;
+        }
+#endif
         if ((filter_len & 1) && p_idx == 0 && delta < exact_phase_eps) {
             const faar_sample_t * restrict coeffs = poly_table;
             const faar_sample_t center_coeff = coeffs[half_len];
@@ -1203,6 +1262,9 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
             }
         }
 
+#ifdef FAAR_FLOAT
+advance_output:
+#endif
         out_frames++;
         base_idx += (size_t)step_whole;
         phase_remainder += step_remainder;
@@ -1428,6 +1490,9 @@ static void destroy_internal(faar_resampler * r) {
     }
     if (r->polyphase_reverse_table) aligned_free(r->polyphase_reverse_table);
     if (r->polyphase_table) aligned_free(r->polyphase_table);
+#ifdef FAAR_FLOAT
+    if (r->polyphase_low_table) aligned_free(r->polyphase_low_table);
+#endif
     free(r);
 }
 
@@ -1452,9 +1517,7 @@ FAARAPI faar_status faar_get_library_info(faar_library_info *out) {
     faar_library_info info = {0};
     info.max_channels = MAX_CHANNELS;
     info.quality_mask = FAAR_QUALITY_MASK_FAST | FAAR_QUALITY_MASK_GOOD;
-#ifndef FAAR_FLOAT
     info.quality_mask |= FAAR_QUALITY_MASK_HIGH;
-#endif
     info.version = FAAR_VERSION_STRING;
     info.copyright =
         "FAAR - Freeware Advanced Audio Resampler (https://freewareadvancedaudio.github.io)\n"
@@ -1496,9 +1559,6 @@ FAARAPI faar_status faar_resampler_open(const faar_config *config,
             || (cfg.dither != FAAR_DITHER_OFF
                 && cfg.dither_bits != 16 && cfg.dither_bits != 24))
         return FAAR_ERR_INVALID_ARGUMENT;
-#ifdef FAAR_FLOAT
-    if (cfg.quality == FAAR_QUALITY_HIGH) return FAAR_ERR_UNSUPPORTED;
-#endif
     faar_resampler * r = create_resampler_internal(cfg.in_rate, cfg.out_rate,
             cfg.channels, cfg.quality, cfg.decimate_factor, 0, false);
     if (!r) return FAAR_ERR_NO_MEMORY;

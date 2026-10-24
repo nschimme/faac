@@ -23,11 +23,7 @@
 #include <faar.h>
 #include "faar_test_api.h"
 
-#ifdef FAAR_FLOAT
-#define TEST_QUALITY FAAR_QUALITY_GOOD
-#else
 #define TEST_QUALITY FAAR_QUALITY_HIGH
-#endif
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -310,7 +306,6 @@ static int test_impulses(void) {
     return 0;
 }
 
-#ifndef FAAR_FLOAT
 static int test_staged_short_impulse_symmetry(void) {
     static const uint32_t rates[][2] = {
         {96000,44100}, {48000,44100}, {192000,44100}, {44100,48000},
@@ -353,8 +348,6 @@ static int test_staged_short_impulse_symmetry(void) {
     puts("staged-short centered High impulse responses are symmetric");
     return 0;
 }
-
-#endif
 
 /* Least-squares fit y ~= a*sin(wt)+b*cos(wt), giving phase-independent gain and residual. */
 static int test_passband(void) {
@@ -563,7 +556,6 @@ static int test_dither_streams(void) {
 }
 
 /* Measure total output energy above Nyquist; do not project onto a presumed alias tone. */
-#ifndef FAAR_FLOAT
 static int test_alias_energy(void) {
     static const struct {
         uint32_t in_rate, out_rate;
@@ -629,7 +621,53 @@ static int test_alias_energy(void) {
     return 0;
 }
 
-#endif
+/* The 150 dB High probe from compare_quality.py, including a loud neighbouring
+ * channel to expose leakage from the two-real-channels-in-one-complex FFT. */
+static int test_high_stopband(void) {
+    const uint32_t ir = 96000, orate = 44100;
+    const size_t n = 3 * (size_t)ir;
+    const double peak = 0.6309573444801932; /* -4 dBFS */
+    static const uint16_t channel_counts[] = {1, 2, 3, 8};
+    faar_library_info library = {.struct_size = sizeof(library)};
+    if (faar_get_library_info(&library) != FAAR_OK) return fail("library query failed");
+    for (size_t k = 0; k < sizeof(channel_counts)/sizeof(channel_counts[0]); ++k) {
+        uint16_t channels = channel_counts[k];
+        if (channels > library.max_channels) continue;
+        float *in = malloc(n * channels * sizeof(*in));
+        if (!in) return fail("High stopband input allocation failed");
+        for (size_t i = 0; i < n; ++i) {
+            for (uint16_t c = 0; c < channels; ++c) {
+                double frequency = c & 1 ? 1000.0 : 23000.0;
+                in[i * channels + c] = (float)(32768.0 * peak
+                    * sin(2.0 * PI * frequency * i / ir));
+            }
+        }
+        samples out;
+        int rc = convert(in, n, ir, orate, channels, 4096, 8192, &out);
+        free(in);
+        if (rc) return rc;
+        if (out.frames != 3 * (size_t)orate) {
+            free(out.data); return fail("High stopband output frame count");
+        }
+        size_t guard = orate / 2, end = out.frames - guard;
+        for (uint16_t c = 0; c < channels; c += 2) {
+            double energy = 0;
+            for (size_t i = guard; i < end; ++i) {
+                double x = out.data[i * channels + c] / 32768.0;
+                energy += x * x;
+            }
+            double rms = sqrt(energy / (end - guard));
+            double rejection = rms == 0 ? INFINITY : 20 * log10(peak / sqrt(2.0) / rms);
+            printf("High stopband channels=%u channel=%u rejection=%.3f dB\n",
+                   channels, c, rejection);
+            if (!isfinite(energy) || rejection < 150.0) {
+                free(out.data); return fail("High stopband rejection below 150 dB");
+            }
+        }
+        free(out.data);
+    }
+    return 0;
+}
 
 static int test_empty_flush(void) {
     faar_test_handle * h = faar_test_create(48000, 44100, 1, TEST_QUALITY);
@@ -648,15 +686,12 @@ int main(int argc, char **argv) {
         {"boundary", test_boundary_modes}, {"lengths", test_lengths},
         {"streaming-0", test_streaming_0},
         {"streaming-1", test_streaming_1}, {"impulses", test_impulses},
-#ifndef FAAR_FLOAT
         {"staged_short_symmetry", test_staged_short_impulse_symmetry},
-#endif
         {"passband", test_passband},
         {"48k_96k_wideband", test_48k_96k_wideband},
         {"48k_32k_wideband", test_48k_32k_wideband},
-#ifndef FAAR_FLOAT
         {"alias", test_alias_energy},
-#endif
+        {"high_stopband", test_high_stopband},
         {"empty", test_empty_flush}, {"dither", test_dither_streams}
     };
     return faar_run_groups(argc, argv, groups, sizeof(groups) / sizeof(groups[0]));

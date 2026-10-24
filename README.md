@@ -65,7 +65,7 @@ meson install -C build
 | `muxer-video` | true | `libfaam`: H.264/H.265 video tracks |
 | `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
-| `faar-precision` | double | FAAR arithmetic precision (`double` or `float`); the High preset needs `double` |
+| `faar-precision` | double | FAAR arithmetic precision (`double` or `float`); float High uses compensated float arithmetic and more CPU |
 | `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
 
 ## Library APIs

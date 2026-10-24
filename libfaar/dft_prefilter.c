@@ -190,7 +190,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                size_t fft_size,
                                                size_t expansion,
                                                size_t decimation,
-                                               int halfband) {
+                                               int halfband, int compensated) {
     if (halfband) {
         if (tap_count > SIZE_MAX - FAAR_HALFBAND_BLOCK) return NULL;
         fft_size = FAAR_HALFBAND_BLOCK + tap_count - 1;
@@ -237,6 +237,9 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
             /* Every channel uses the same filter. Keep the first stage as
              * its owner and give the remaining stages private working state. */
             bad = faar_dft_fir_init_shared(&s->fir[f], &s->fir[0], lanes, stacked);
+        } else if (compensated) {
+            bad = faar_dft_fir_init_compensated(&s->fir[f], taps, tap_count,
+                           fft_size, expansion, decimation, lanes, stacked, halfband);
         } else if (halfband) {
             bad = faar_dft_fir_init_halfband(&s->fir[f], taps, tap_count);
         } else {
@@ -258,7 +261,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                                                size_t expansion,
                                                size_t decimation) {
     return faar_dft_prefilter_create_stage(channels, taps, tap_count, fft_size,
-                                           expansion, decimation, 0);
+                                           expansion, decimation, 0, 0);
 }
 
 void faar_dft_prefilter_destroy(faar_dft_prefilter *s) {

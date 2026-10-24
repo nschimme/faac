@@ -21,9 +21,7 @@ faar_quality_groups = [
   'boundary', 'lengths', 'impulses', 'passband',
   '48k_96k_wideband', '48k_32k_wideband', 'empty', 'dither',
 ]
-if get_option('faar-precision') != 'float'
-  faar_quality_groups += ['staged_short_symmetry', 'alias']
-endif
+faar_quality_groups += ['staged_short_symmetry', 'alias', 'high_stopband']
 foreach group : faar_quality_groups
   test('test_faar_quality_' + group, test_faar_quality, args: [group])
 endforeach
@@ -43,7 +41,7 @@ foreach group : ['matrix-0', 'matrix-1', 'matrix-2', 'equal-rate', 'channels', '
 endforeach
 
 test_faar_dft_fir = executable('test_faar_dft_fir',
-  ['test_faar_dft_fir.c', '../dft_coeffs.c', '../dft_fir.c', '../fft_real.c'],
+  ['test_faar_dft_fir.c', '../dft_coeffs.c', '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -51,7 +49,7 @@ test_faar_dft_fir = executable('test_faar_dft_fir',
 test('test_faar_dft_fir', test_faar_dft_fir)
 
 test_faar_dft_shared = executable('test_faar_dft_shared',
-  ['test_faar_dft_shared.c', '../dft_fir.c', '../fft_real.c'],
+  ['test_faar_dft_shared.c', '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -70,7 +68,7 @@ test('test_faar_prepare', test_faar_prepare, timeout: 120)
 
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   ['test_faar_dft_prefilter.c', '../dft_coeffs.c', '../dft_prefilter.c',
-   '../dft_fir.c', '../fft_real.c'],
+   '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -121,4 +119,14 @@ if host_machine.system() != 'windows'
     dependencies: [m_dep, threads_dep],
   )
   test('test_faar_fft_threads', test_faar_fft_threads, timeout: 120)
+endif
+
+if get_option('faar-precision') == 'float'
+  test_faar_float2 = executable('test_faar_float2',
+    ['test_faar_float2.c', '../fft_float2.c', '../fft_real.c'],
+    c_args: ['-DFAAR_FFT_LEAN'],
+    include_directories: ['..', inc],
+    dependencies: [m_dep],
+  )
+  test('test_faar_float2', test_faar_float2)
 endif

@@ -77,7 +77,7 @@ extern "C" {
 typedef enum faar_quality_t {
     FAAR_QUALITY_FAST = 0, /**< Lower-cost filter; narrower passband */
     FAAR_QUALITY_GOOD = 1, /**< Default profile: wide passband and strong rejection */
-    FAAR_QUALITY_HIGH = 2, /**< Stronger stopband rejection; higher CPU and setup memory */
+    FAAR_QUALITY_HIGH = 2, /**< Stronger rejection, higher cost; float builds use compensated arithmetic */
     FAAR_QUALITY_MAX  = 0x7fffffff
 } faar_quality_t;
 

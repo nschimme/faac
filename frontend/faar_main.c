@@ -38,7 +38,7 @@ static const help_t core_help[] = {
     {"-R, --in-rate <Hz>", "Raw input sample rate [default: 44100 Hz]",
      "Sets the sample rate for raw PCM input. WAV input always uses the rate stored in its header."},
     {"--quality <preset>", "Filter profile: fast (lower cost), good (default), or high (stronger rejection)",
-     "Fast uses less processing at the cost of a narrower passband and weaker alias rejection. Good is the default profile with a wide passband and strong alias suppression. High keeps Good's passband while further reducing aliasing, at greater CPU and setup-memory cost. High is available in double builds; float builds support Fast and Good."},
+     "Fast uses less processing at the cost of a narrower passband and weaker alias rejection. Good is the default profile with a wide passband and strong alias suppression. High keeps Good's passband while further reducing aliasing, at greater CPU and setup-memory cost. Float builds support High with compensated float arithmetic, which uses more CPU; filter coefficients and FFT twiddles are still prepared with the existing double-precision calculations."},
     {"--boundary <mode>", "Stream endpoint behavior: hold (default) or zero",
      "Hold extends the first and last input sample beyond the stream; zero extends with silence. This affects the beginning and end of each input stream."},
     {"-c, --channels <num>", "Raw input channel count [default: 2]",

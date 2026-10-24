@@ -39,8 +39,6 @@ with tempfile.TemporaryDirectory() as tmp:
         )
         output = result.stdout + result.stderr
         if result.returncode:
-            if "requires FAAR High quality" in output:
-                continue  # High is unavailable in float-precision builds.
             print(output, file=sys.stderr)
             raise SystemExit(f"FAAC failed unexpectedly for {input_rate} Hz input")
 

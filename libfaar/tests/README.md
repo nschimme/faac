@@ -135,8 +135,14 @@ python3 libfaar/tests/compare_quality.py /path/to/baseline/libfaar.dylib \
   /path/to/candidate/libfaar.dylib --report /tmp/quality-report.json
 ```
 
-The default quality IDs are `0 1 2`. For float builds, select the supported
-qualities explicitly, for example `--qualities 0 1`.
+The default quality IDs are `0 1 2`; both float and double builds support all
+three. Use `--qualities 0 1` when comparing float Fast/Good against a baseline
+that predates compensated High. The strict bit comparison is intended for
+unchanged arithmetic, rather than comparisons across float and double builds.
+The `high_stopband` Meson group independently checks High's 150 dB rejection
+with one, two, three, and eight channels, including loud neighbouring channels.
+`test_faar_float2` compares the compensated FFT against the double FFT and
+checks inverse round trips, shared twiddles, and phase arithmetic.
 
 The comparison is a strict baseline regression gate: any changed float32
 sample bit fails, including signed-zero changes. Incorrect output counts,
@@ -167,3 +173,6 @@ per-channel sharing results and test coverage.
 
 See [the preparation measurements](preparation-results.md) for allocator
 checks and native API-call timing results.
+
+See [the compensated float High results](float-high-results.md) for quality,
+throughput, and requested heap measurements.

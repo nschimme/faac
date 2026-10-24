@@ -15,11 +15,7 @@ int main(void) {
     assert(library.max_channels >= 1 && library.max_channels <= 8);
     assert(library.quality_mask & FAAR_QUALITY_MASK_GOOD);
     assert(strcmp(library.version, FAAR_VERSION_STRING) == 0);
-#ifdef FAAR_FLOAT
-    assert(!(library.quality_mask & FAAR_QUALITY_MASK_HIGH));
-#else
     assert(library.quality_mask & FAAR_QUALITY_MASK_HIGH);
-#endif
 
     config.in_rate = 48000;
     config.out_rate = 44100;
@@ -69,12 +65,12 @@ int main(void) {
            == FAAR_ERR_INVALID_ARGUMENT);
     assert(resampler == NULL);
     config.dither = FAAR_DITHER_OFF;
-#ifdef FAAR_FLOAT
     config.channels = 1;
     config.quality = FAAR_QUALITY_HIGH;
-    assert(faar_resampler_open(&config, &resampler) == FAAR_ERR_UNSUPPORTED);
+    assert(faar_resampler_open(&config, &resampler) == FAAR_OK);
+    assert(resampler != NULL);
+    assert(faar_resampler_close(&resampler) == FAAR_OK);
     assert(resampler == NULL);
-#endif
     assert(strcmp(faar_strerror(FAAR_ERR_NO_MEMORY), "out of memory") == 0);
     return 0;
 }

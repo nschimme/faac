@@ -167,9 +167,6 @@ static int test_rate_matrix_partition(size_t partition) {
         uint32_t in_rate = pairs[p][0], out_rate = pairs[p][1];
         for (int preset = FAAR_QUALITY_FAST; preset <= FAAR_QUALITY_HIGH;
              ++preset) {
-#ifdef FAAR_FLOAT
-            if (preset == FAAR_QUALITY_HIGH) continue;
-#endif
             /* Exercise every standard pair at GOOD quality. The one-hertz
              * boundary pairs run at each available preset. */
             if (p < 289 && preset != FAAR_QUALITY_GOOD) continue;
