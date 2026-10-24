@@ -81,6 +81,8 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
 int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
                       size_t tap_count);
 void faar_dft_fir_clear(faar_dft_fir *stage);
+/* Touch private work buffers before the first input. */
+void faar_dft_fir_prepare(faar_dft_fir *stage);
 
 /* Consumes and produces exactly stage->block_size mono samples per call. */
 int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,

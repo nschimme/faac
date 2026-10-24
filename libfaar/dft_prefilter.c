@@ -41,6 +41,9 @@ struct faar_dft_prefilter {
     size_t fifo_read;
     size_t fifo_count;
     size_t fifo_capacity;
+    float *endpoint;
+    size_t endpoint_capacity;
+    int prepared;
     size_t input_count;
     size_t released_count;
     int have_input;
@@ -63,6 +66,7 @@ static int fifo_reserve(faar_dft_prefilter *s, size_t additional) {
         }
         return 0;
     }
+    if (s->prepared) return -1;
     size_t capacity = s->fifo_capacity ? s->fifo_capacity : 4096;
     while (capacity < needed) {
         if (capacity > SIZE_MAX / 2) { capacity = needed; break; }
@@ -150,13 +154,16 @@ static int feed_raw(faar_dft_prefilter *s, const float *input, size_t frames) {
 
 static int feed_endpoint(faar_dft_prefilter *s, const float *values,
                          size_t frames) {
-    float *block = (float *)malloc(frames * s->channels * sizeof(float));
+    int temporary = frames > s->endpoint_capacity;
+    if (temporary && s->prepared) return -1;
+    float *block = temporary
+        ? (float *)malloc(frames * s->channels * sizeof(float)) : s->endpoint;
     if (!block) return -1;
     for (size_t i = 0; i < frames; ++i)
         memcpy(block + i * s->channels, values,
                s->channels * sizeof(float));
     int result = feed_raw(s, block, frames);
-    free(block);
+    if (temporary) free(block);
     return result;
 }
 
@@ -265,7 +272,53 @@ void faar_dft_prefilter_destroy(faar_dft_prefilter *s) {
     free(s->channel_input);
     free(s->channel_output);
     free(s->fifo);
+    free(s->endpoint);
     free(s);
+}
+
+faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *s,
+        size_t max_input, size_t extra_output, size_t *output_bound) {
+    if (!s || !output_bound || s->prefix_added || s->have_input
+            || s->finishing || s->finished || s->half % s->expansion)
+        return FAAR_ERR_INVALID_ARGUMENT;
+    size_t prefix = s->half / s->expansion;
+    size_t block = s->fir[0].stream_in;
+    /* Normal calls can complete one retained partial block plus max_input.
+     * At flush, the remaining centered output spans at most one block plus
+     * the suffix: the prefix has already been removed by prefix_drop. These
+     * are alternative bursts, not simultaneous ones. Reserve two extra output
+     * frames for rounding and a cascade's final sampling-step span. */
+    size_t extension = max_input > prefix ? max_input : prefix;
+    if (extension > SIZE_MAX - block) return FAAR_ERR_INVALID_ARGUMENT;
+    size_t frames = extension + block;
+    if (frames > SIZE_MAX / s->expansion) return FAAR_ERR_INVALID_ARGUMENT;
+    frames *= s->expansion;
+    frames = frames / s->decimation + (frames % s->decimation != 0);
+    if (frames > SIZE_MAX - 2 || extra_output > SIZE_MAX - frames - 2)
+        return FAAR_ERR_INVALID_ARGUMENT;
+    frames += extra_output + 2;
+    if (frames > SIZE_MAX / s->channels / sizeof(float)
+            || prefix > SIZE_MAX / s->channels / sizeof(float))
+        return FAAR_ERR_INVALID_ARGUMENT;
+    if (fifo_reserve(s, frames)) return FAAR_ERR_NO_MEMORY;
+    if (prefix > s->endpoint_capacity) {
+        float *next = realloc(s->endpoint, prefix * s->channels * sizeof(float));
+        if (!next) return FAAR_ERR_NO_MEMORY;
+        s->endpoint = next;
+        s->endpoint_capacity = prefix;
+    }
+    memset(s->fifo, 0, s->fifo_capacity * s->channels * sizeof(float));
+    if (s->endpoint)
+        memset(s->endpoint, 0, s->endpoint_capacity * s->channels * sizeof(float));
+    memset(s->channel_input, 0, s->lanes * s->block_size * sizeof(faar_sample_t));
+    memset(s->channel_output, 0, s->channel_output_capacity * s->channels * sizeof(faar_sample_t));
+    for (uint16_t f = 0; f < s->stages; ++f) faar_dft_fir_prepare(&s->fir[f]);
+    *output_bound = frames;
+    return FAAR_OK;
+}
+
+void faar_dft_prefilter_set_prepared(faar_dft_prefilter *s, int prepared) {
+    if (s) s->prepared = prepared;
 }
 
 int faar_dft_prefilter_set_boundary(faar_dft_prefilter *s, int hold) {

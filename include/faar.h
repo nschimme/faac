@@ -170,6 +170,15 @@ FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size);
 FAARAPI faar_status faar_get_library_info(faar_library_info *out);
 FAARAPI const char *faar_strerror(faar_status status);
 FAARAPI faar_status faar_resampler_open(const faar_config *config, faar_resampler **out);
+/* Reserve streaming storage before any input or flush. Process calls may
+ * supply at most max_input_frames; drain with NULL/0 and nonzero output
+ * capacity until no frames are made before feeding more input.
+ * Prepared process/flush never allocate or free heap storage.
+ * Exceeding reserved queue capacity is a processing error;
+ * close that stream. Preparation can be repeated before input, and a failed
+ * preparation leaves the stream usable. FFT block costs are unchanged. */
+FAARAPI faar_status faar_resampler_prepare(faar_resampler *resampler,
+                                          size_t max_input_frames);
 /* Frees *resampler and sets it to NULL. A NULL *resampler is a no-op. */
 FAARAPI faar_status faar_resampler_close(faar_resampler **resampler);
 FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,

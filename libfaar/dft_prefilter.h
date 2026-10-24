@@ -17,6 +17,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "faar.h"
 
 typedef struct faar_dft_prefilter faar_dft_prefilter;
 
@@ -47,6 +48,10 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                size_t decimation,
                                                int halfband);
 void faar_dft_prefilter_destroy(faar_dft_prefilter *stage);
+/* Reserve before feeding input; returns a conservative output burst bound. */
+faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *stage,
+        size_t max_input, size_t extra_output, size_t *output_bound);
+void faar_dft_prefilter_set_prepared(faar_dft_prefilter *stage, int prepared);
 int faar_dft_prefilter_set_boundary(faar_dft_prefilter *stage, int hold);
 int faar_dft_prefilter_process(faar_dft_prefilter *stage, const float *input,
                                size_t frames, float *output,

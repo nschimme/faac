@@ -58,6 +58,16 @@ test_faar_dft_shared = executable('test_faar_dft_shared',
 )
 test('test_faar_dft_shared', test_faar_dft_shared)
 
+faar_force_include = (cc.get_argument_syntax() == 'msvc') ? '/FI' : '-include'
+test_faar_prepare = executable('test_faar_prepare',
+  ['test_faar_prepare.c', 'faar_alloc_hooks.c'] + libfaar_sources,
+  c_args: libfaar_args + [faar_force_include,
+    meson.current_source_dir() / 'faar_alloc_hooks.h'],
+  include_directories: ['.', '..', inc],
+  dependencies: [m_dep],
+)
+test('test_faar_prepare', test_faar_prepare, timeout: 120)
+
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   ['test_faar_dft_prefilter.c', '../dft_coeffs.c', '../dft_prefilter.c',
    '../dft_fir.c', '../fft_real.c'],
@@ -95,6 +105,11 @@ if host_machine.system() != 'windows'
     build_by_default: false,
   )
   executable('bench_faar_open', 'bench_faar_open.c',
+    include_directories: inc,
+    dependencies: [libfaar_dep, m_dep],
+    build_by_default: false,
+  )
+  executable('bench_faar_latency', 'bench_faar_latency.c',
     include_directories: inc,
     dependencies: [libfaar_dep, m_dep],
     build_by_default: false,

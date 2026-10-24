@@ -8,6 +8,7 @@
 - [Quality profiles](#quality-profiles)
 - [API](#api)
   - [Complete streaming example](#complete-streaming-example)
+  - [Preparing bounded streams](#preparing-bounded-streams)
   - [Function reference](#function-reference)
 - [ABI compatibility](#abi-compatibility)
 - [Command-line tool](#command-line-tool)
@@ -146,6 +147,39 @@ supplying more input. At end of input, call `faar_resampler_flush()` until it
 returns `FAAR_OK` with zero frames. The total output is
 `ceil(input_frames * out_rate / in_rate)`.
 
+### Preparing bounded streams
+
+For streams with a known maximum input chunk, prepare storage after opening and
+before processing or flushing:
+
+```c
+faar_status status = faar_resampler_prepare(resampler, 1024);
+if (status != FAAR_OK) {
+    fprintf(stderr, "%s\n", faar_strerror(status));
+    /* Handle the error. */
+}
+```
+
+The bound must be nonzero. It may be changed by calling prepare again before
+any input; a failed call leaves the prior prepared mode and bound usable,
+though it may retain larger allocations. After successful preparation, every
+input chunk must be at most the bound. Drain with `faar_resampler_process()`
+using `in_samples == NULL`, `in_count == 0`, and nonzero output capacity until
+it produces zero frames before supplying the next chunk; flush until it
+produces zero frames at end of stream. Prepared process, drain, and flush calls
+do not allocate or free heap storage. Exceeding the bound returns
+`FAAR_ERR_INVALID_ARGUMENT` before consuming input. If queued output is not
+drained and its reserved capacity is exhausted, processing may return
+`FAAR_ERR_NO_MEMORY` or `FAAR_ERR_PROCESSING`; discard and close that stream.
+
+Preparation reserves storage across the cascade, including endpoint padding
+and FFT workspace prefill; it can increase persistent memory and may return
+`FAAR_ERR_NO_MEMORY` or `FAAR_ERR_INVALID_ARGUMENT`. Pages initialized during
+preparation can still be paged out later by the operating system, so this is
+not a hard real-time guarantee. FFT block costs are unchanged. Streams that do
+not need a fixed input bound can continue using the regular open/process/flush
+flow without preparing.
+
 ### Function reference
 
 | Function | Purpose |
@@ -154,6 +188,7 @@ returns `FAAR_OK` with zero frames. The total output is
 | `faar_get_library_info()` | Reports the build's channel ceiling, supported quality mask, version, and copyright. |
 | `faar_strerror()` | Returns a static message for a `faar_status` value. |
 | `faar_resampler_open()` | Validates the configuration and creates a resampler handle. |
+| `faar_resampler_prepare()` | Reserves streaming storage for a maximum input chunk before processing begins. |
 | `faar_resampler_get_info()` | Reports the settings resolved for an open handle, including filter delay. |
 | `faar_resampler_process()` | Consumes input frames or drains queued output and reports produced frames. |
 | `faar_resampler_flush()` | Produces the remaining filter tail at end of stream. |
@@ -191,6 +226,8 @@ grow by appending fields; initialize configurations with
 `faar_config_init(&config, sizeof(config))` and set `struct_size` on query
 structures. Reserved fields remain zero and are never reused. The structure
 size passed to `faar_config_init()` must cover the current baseline fields.
+`faar_resampler_prepare()` is an additive function; it does not change public
+structure layouts or the SONAME.
 
 Query functions write back the number of bytes populated in `struct_size`.
 Reset `struct_size` and zero your storage before reusing a structure as a query

@@ -415,6 +415,19 @@ void FN(clear)(PLAN *plan)
     memset(plan, 0, sizeof(*plan));
 }
 
+void FN(prepare)(PLAN *plan, int both_buffers)
+{
+    if (!plan || !plan->work) return;
+    int m = plan->size / 2;
+    int padded = m >= (sizeof(REAL) == sizeof(float) ? 4096 : 2048);
+    /* Padded transforms return in their input buffer; a separate inverse
+     * plan never needs buffer 1. Small transforms ping-pong through both. */
+    size_t count = (both_buffers || !padded ? 4 : 2) * (size_t)m;
+    memset(plan->work, 0, count * sizeof(REAL));
+    if (padded && plan->scratch == plan->work + 4 * (size_t)m)
+        memset(plan->scratch, 0, 4 * (size_t)PAD_IM(m) * sizeof(REAL));
+}
+
 /* m complex points; the real wrapper additionally needs the split table.
  * FAAR_FFT_LEAN builds only the complex transforms libfaar uses. */
 static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch)
