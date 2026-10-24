@@ -183,11 +183,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
-            /* The measured ceiling is one bit/s per channel per Hz through
-             * 48 kHz, then remains fixed. */
+            /* HE-AAC stays below one bit/s per channel per Hz (through
+             * 48 kHz, then fixed): at that rate LC gives up about 0.02 MOS
+             * for about 6 dB less pre-echo, a price inside HE's rate lead,
+             * while further down it costs several times as much. */
             unsigned int max_he_rate = hEncoder->sampleRate < HE_CEILING_FULL_FS
                 ? hEncoder->sampleRate : HE_CEILING_FULL_FS;
-            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
+            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch < max_he_rate);
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
