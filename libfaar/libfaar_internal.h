@@ -22,19 +22,17 @@
 #include <stdbool.h>
 #include <assert.h>
 
-/* Mixed routes High to double, so its float backend needs no compensation. */
-#if defined(FAAR_FLOAT) && !defined(FAAR_BACKEND_FLOAT)
+/* High's sensitive kernels need more than float precision. Float builds
+ * emulate it with float2 so targets without a double FPU still run High;
+ * mixed runs the same kernels in native double, which is ten times faster. */
+#ifndef FAAR_WIDE_HIGH
 #define FAAR_COMPENSATED_FLOAT
 #endif
 
-#ifdef FAAR_FLOAT
+/* Sample planes; distinct from the API's float so storage stays greppable. */
 typedef float faar_sample_t;
-#else
-typedef double faar_sample_t;
-#endif
 
 #include "fft_real.h"
-#ifdef FAAR_FLOAT
 #define faar_fft_plan faar_rfftf_plan
 #define faar_fft_cinit faar_rfftf_cinit
 #define faar_fft_cinit_shared faar_rfftf_cinit_shared
@@ -43,15 +41,5 @@ typedef double faar_sample_t;
 #define faar_fft_cforward faar_rfftf_cforward
 #define faar_fft_clear faar_rfftf_clear
 #define faar_fft_prepare faar_rfftf_prepare
-#else
-#define faar_fft_plan faar_rfftd_plan
-#define faar_fft_cinit faar_rfftd_cinit
-#define faar_fft_cinit_shared faar_rfftd_cinit_shared
-#define faar_fft_cinit_shared_single faar_rfftd_cinit_shared_single
-#define faar_fft_cbuffer faar_rfftd_cbuffer
-#define faar_fft_cforward faar_rfftd_cforward
-#define faar_fft_clear faar_rfftd_clear
-#define faar_fft_prepare faar_rfftd_prepare
-#endif
 
 #endif /* LIBFAAR_INTERNAL_H */

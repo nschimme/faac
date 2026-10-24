@@ -397,15 +397,10 @@ static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {44100,48000},
             printf("tone %u->%u %.0f Hz: gain %.8f residual_rms %.3g\n", ir, orate, freqs[f], gain, rms);
             free(out.data);
             /* The contract is a 0.25 dB response tolerance. Wanted-tone
-               residuals below the measured float32 projection floor are
-               numerical noise, so use the independently calibrated ceiling
-               of -144.684142 dB relative to unit-sine RMS. */
+               residuals below the float FFT and accumulation floor are
+               numerical noise. */
             double gain_db = 20.0 * log10(gain);
-            double residual_limit = sqrt(0.5) * pow(10.0, -144.684142 / 20.0);
-#ifdef FAAR_FLOAT
-            /* Float FFT and accumulation have a higher arithmetic floor. */
-            residual_limit = 4e-7;
-#endif
+            double residual_limit = 4e-7;
             if (!isfinite(rms) || !isfinite(gain_db)
                     || fabs(gain_db) > 0.25 || rms > residual_limit) {
                 fprintf(stderr, "passband failure at %u->%u %.0f Hz: gain=%g (%g dB) residual=%g limit=%g\n",

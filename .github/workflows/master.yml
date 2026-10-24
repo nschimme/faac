@@ -24,10 +24,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-13 meson ninja-build python3
 
-      - name: Configure and build float, double, and mixed variants
+      - name: Configure and build float and mixed variants
         run: |
           test "$(uname -m)" = x86_64
-          for mode in float double mixed; do
+          for mode in float mixed; do
             meson setup "build-faar-$mode" \
               -Dencoder=false -Ddecoder=false -Dfrontend=false \
               -Dbuildtype=release -Db_lto=true -Dfaar-precision="$mode"

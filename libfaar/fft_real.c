@@ -24,7 +24,6 @@
 #define JOIN_(a, b) a##b
 #define JOIN(a, b) JOIN_(a, b)
 #define FN(name) JOIN(PREFIX, name)
-#if defined(FAAR_FLOAT) || !defined(FAAR_FFT_LEAN)
 #define REAL float
 #define PLAN faar_rfftf_plan
 #define PREFIX faar_rfftf_
@@ -32,8 +31,8 @@
 #undef REAL
 #undef PLAN
 #undef PREFIX
-#endif
-#if !defined(FAAR_FLOAT) || !defined(FAAR_FFT_LEAN)
+/* Double transforms serve mixed High and FFT verification. */
+#if defined(FAAR_WIDE_HIGH) || !defined(FAAR_FFT_LEAN)
 #define REAL double
 #define PLAN faar_rfftd_plan
 #define PREFIX faar_rfftd_

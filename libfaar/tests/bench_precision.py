@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare float, double, and mixed libfaar builds on one host."""
+"""Compare float and mixed libfaar builds on one host."""
 
 import argparse
 import csv
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 
-MODES = ("float", "double", "mixed")
+MODES = ("float", "mixed")
 ROUTES = ((48000, 44100), (96000, 44100), (192000, 44100))
 CHANNELS = (1, 2, 8)
 
@@ -23,7 +23,6 @@ def run(executable, arguments):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--float-build", type=Path, default=Path("build-faar-float"))
-    parser.add_argument("--double-build", type=Path, default=Path("build-faar-double"))
     parser.add_argument("--mixed-build", type=Path, default=Path("build-faar-mixed"))
     parser.add_argument("--repeats", type=int, default=7)
     parser.add_argument("--prepare-frames", type=int, default=8192)
@@ -37,7 +36,6 @@ def main():
 
     builds = {
         "float": args.float_build,
-        "double": args.double_build,
         "mixed": args.mixed_build,
     }
     benchmarks = {
@@ -66,7 +64,7 @@ def main():
 
     writer = csv.writer(sys.stdout, lineterminator="\n")
     writer.writerow(("kind", "in_rate", "out_rate", "channels", "quality",
-                     "float", "double", "mixed", "units"))
+                     "float", "mixed", "units"))
     for in_rate, out_rate in ROUTES:
         for channels in CHANNELS:
             for quality in range(3):

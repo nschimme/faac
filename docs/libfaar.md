@@ -33,27 +33,27 @@ meson install -C build-faar
 
 Omit `-Dfrontend=false` to build the `faar` command-line tool; it is built
 when both `-Dfrontend` and `-Dresampler` are enabled (the default). The default
-precision policy is mixed: float for Fast/Good and double for High.
-`-Dfaar-precision=double` selects double arithmetic for all qualities.
+precision policy is mixed.
 `-Dfaar-precision=float` selects float arithmetic and supports Fast, Good, and
 High quality. Float High uses compensated float arithmetic and more CPU.
-Mixed includes both engines, so its code and FFT table reservation are larger.
-Keep `float` for microcontrollers that favor a single float engine. Filter
+Mixed is the float engine with High's filter kernels in native double: its
+output matches float at Fast/Good and double arithmetic at High. Use `float`
+for microcontrollers without a double-precision FPU. Filter
 coefficients and FFT twiddles still use double-precision setup calculations.
 The channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
 The FFT engine lazily initializes shared twiddle tables for common complex
 transform sizes from 16 through 65,536. Their bounded static BSS reservation
-is about 2 MiB in double builds, 1 MiB in float builds, or 3 MiB in mixed
-builds; only tables for used sizes are initialized. On hosted systems this is
+is about 1 MiB in float builds or 3 MiB in mixed builds; only tables for used
+sizes are initialized. On hosted systems this is
 demand-zero virtual storage, and only touched pages become resident; on
 bare-metal targets the linker reserves the full BSS in RAM. This distinction
-is important for the mixed build, which includes both table sets. Float High
+is important for the mixed build, which reserves both table sets. Float High
 additionally allocates expansion FFT workspaces and twiddles per handle;
 channels within the handle share immutable twiddles and filter spectra. See the
 [float High measurements](../libfaar/tests/float-high-results.md) for measured
 quality, CPU, and heap tradeoffs.
 
-The current float/double tradeoffs and precision-policy measurements are
+The current float/mixed tradeoffs and precision-policy measurements are
 recorded in [precision-policy-results.md](../libfaar/tests/precision-policy-results.md).
 
 Compile an application against an installed library with:

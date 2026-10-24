@@ -223,3 +223,69 @@ versus 49.404, 49.302 and 27.991 before these workspace changes. This finds no
 material native arm64 throughput loss in the measured matrix; native x86_64
 performance remains unmeasured. The original FFT processing loop is unchanged;
 workspace sizing and preparation contain the new decisions.
+
+## Single-engine mixed build
+
+Mixed previously linked complete float and double engines behind a dispatch
+facade. It is now the float engine compiled with `FAAR_WIDE_HIGH`. High's
+sensitive kernels then run in native double over float sample planes, where
+standalone float uses float2 compensation:
+
+- the paired overlap-save convolution, through a double instantiation of
+  `dft_fir_pair.inc` on `faar_rfftd_*`;
+- the sparse half-band;
+- the polyphase bank, including the exact reversed rows.
+
+The double build already passes float buffers between stages, so these
+kernels reproduce its arithmetic exactly. Against the preceding mixed library,
+output was bit identical in every case:
+
+- 136 rate pairs (8–192 kHz, ratio up to 8);
+- 1, 2 and 3 channels;
+- all three qualities, dither off and shaped;
+- prepared and unprepared streaming;
+- that is 4,896 cases, plus the 480-case `compare_quality.py` gate, both with
+  and without `--prepare`.
+
+Standalone float and double stayed bit identical to their previous builds over
+the same matrix.
+
+GCC 13 amd64 release/LTO, Berkeley `size` text:
+
+| Build | Before | After | Change |
+|---|---:|---:|---:|
+| Mixed | 126,195 bytes | 87,066 bytes | −39,129 bytes (−31.0%) |
+| Float | 85,983 bytes | 86,127 bytes | +144 bytes |
+| Double | 62,806 bytes | 63,062 bytes | +256 bytes |
+
+Mixed's BSS is unchanged at 3,147,080 bytes, because High still needs the
+double twiddle cache. The float and double deltas are within the LTO variation
+seen for semantically neutral edits.
+
+Prepared peak requested heap at High falls by 17–22% across the 48/96/192 kHz,
+1/2/8-channel matrix. Stereo 48,000 → 44,100 Hz drops from 5,972,848 to
+4,836,376 bytes, because sample planes are float. Fast/Good gain 120–1,456
+bytes: the wide fields in each FIR stage, less the removed 16-byte dispatch
+handle.
+
+Native arm64 throughput, median of nine alternating runs against the
+preceding mixed library, as a ratio of new to old:
+
+- High: 1.002–1.161 across 48/96/192 kHz to 44.1 kHz at 1/2/8 channels, plus
+  22.05→44.1, 44.1→48, 44.1→32, 44.1→96 and 88.2→48 kHz.
+- Stereo 48,000 → 44,100 Hz: Fast 1.007, Good 0.987, High 1.018.
+
+Leaving out the double reversed rows cost 3–4% on the exact 20-tap routes, so
+wide mode keeps them. These macOS timings are a screen only; native x86_64
+throughput comes from CI.
+
+The mixed suite passed 52 checks, and the mixed AddressSanitizer and
+UndefinedBehaviorSanitizer suite passed 51. Float and double passed 53 and 52.
+
+## Removing the double option
+
+Mixed now matches or beats the double build's throughput at every measured
+quality (local arm64, 39 cases: Fast 1.24-1.70x, Good 1.23-1.66x, High
+1.01-1.15x), equals its High output bit for bit, and uses less heap. Double's
+only remaining advantage was ~24 KB less text and 1 MiB less BSS, which `float`
+covers for constrained targets, so the option was removed.

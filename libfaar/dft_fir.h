@@ -15,7 +15,6 @@
 #ifndef FAAR_DFT_FIR_H
 #define FAAR_DFT_FIR_H
 
-#include "backend_rename.h"
 #include "fft_real.h"
 #include "libfaar_internal.h"
 #ifdef FAAR_COMPENSATED_FLOAT
@@ -27,7 +26,7 @@
 /* Block overlap-save FIR stage; filter coefficients are supplied by caller. */
 typedef struct faar_dft_fir {
     int shared_coeffs; /* Borrowed immutable coefficients; source outlives stage. */
-    int compensated; /* High in float builds: float expansions in sensitive stages. */
+    int compensated; /* High in float builds: wider arithmetic in sensitive stages. */
     int halfband; /* Sparse time-domain 2:1 FIR; otherwise paired FFT. */
     size_t fft_size;
     size_t tap_count;
@@ -50,6 +49,11 @@ typedef struct faar_dft_fir {
     faar_float2_plan precise_in, precise_out;
     float *spec_low;
     faar_float2 *precise_half_coeffs, *precise_half_work;
+#endif
+#ifdef FAAR_WIDE_HIGH
+    faar_rfftd_plan in_wide, out_wide;
+    double *spec_wide;
+    double *wide_half_coeffs, *wide_half_work;
 #endif
     faar_sample_t *spec;
     size_t input_fill;

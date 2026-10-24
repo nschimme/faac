@@ -86,9 +86,9 @@ option('max-channels',
     value: 8)
 
 option('faar-precision',
-    description: 'FAAR arithmetic policy (mixed uses float for Fast/Good and double for High)',
+    description: 'FAAR arithmetic policy (mixed runs High filter kernels in double; float is double-free in the sample path for FPU-less targets)',
     type: 'combo',
-    choices: ['double', 'float', 'mixed'],
+    choices: ['float', 'mixed'],
     value: 'mixed')
 
 # End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints

@@ -85,18 +85,16 @@ bytes, open peak bytes, post-prepare live bytes, peak bytes including prepare,
 and live bytes after close. Caller buffers, allocator bookkeeping, and static
 BSS are excluded; the close field should be zero.
 
-`bench_precision.py` compares float, double, and mixed builds on the same host.
+`bench_precision.py` compares float and mixed builds on the same host.
 Configure separate release builds, then compile both optional benchmark targets
 in each build:
 
 ```sh
 meson setup build-faar-float -Dencoder=false -Ddecoder=false -Dfrontend=false \
   -Dbuildtype=release -Db_lto=true -Dfaar-precision=float
-meson setup build-faar-double -Dencoder=false -Ddecoder=false -Dfrontend=false \
-  -Dbuildtype=release -Db_lto=true -Dfaar-precision=double
 meson setup build-faar-mixed -Dencoder=false -Ddecoder=false -Dfrontend=false \
   -Dbuildtype=release -Db_lto=true -Dfaar-precision=mixed
-for build in build-faar-float build-faar-double build-faar-mixed; do
+for build in build-faar-float build-faar-mixed; do
   meson compile -C "$build" bench_faar bench_faar_heap
 done
 python3 libfaar/tests/bench_precision.py
@@ -179,10 +177,10 @@ python3 libfaar/tests/compare_quality.py /path/to/baseline/libfaar.dylib \
   /path/to/candidate/libfaar.dylib --report /tmp/quality-report.json
 ```
 
-The default quality IDs are `0 1 2`; both float and double builds support all
+The default quality IDs are `0 1 2`; both float and mixed builds support all
 three. Use `--qualities 0 1` when comparing float Fast/Good against a baseline
 that predates compensated High. The strict bit comparison is intended for
-unchanged arithmetic, rather than comparisons across float and double builds.
+unchanged arithmetic, rather than comparisons across float and mixed builds.
 The `high_stopband` Meson group independently checks High's 150 dB rejection
 with one, two, three, and eight channels, including loud neighbouring channels.
 `test_faar_float2` compares the compensated FFT against the double FFT and

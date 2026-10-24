@@ -64,7 +64,23 @@ static size_t overlap_stride(const faar_dft_fir *stage) {
 #define PAIR_TAG
 #define PAIR_FFT faar_fft_
 #include "dft_fir_pair.inc"
+#undef PAIR_REAL
+#undef PAIR_PLAN
+#undef PAIR_TAG
+#undef PAIR_FFT
+#ifdef FAAR_WIDE_HIGH
+#define PAIR_REAL double
+#define PAIR_PLAN faar_rfftd_plan
+#define PAIR_TAG _wide
+#define PAIR_FFT faar_rfftd_
+#include "dft_fir_pair.inc"
+#undef PAIR_REAL
+#undef PAIR_PLAN
+#undef PAIR_TAG
+#undef PAIR_FFT
+#endif
 #include "dft_fir_float2.inc"
+#include "dft_fir_wide.inc"
 
 static int init_paired_buffers(faar_dft_fir *stage) {
     stage->overlap = (faar_sample_t *)calloc(stage->lanes * overlap_stride(stage),
@@ -77,32 +93,24 @@ static int init_paired_buffers(faar_dft_fir *stage) {
         ? 0 : -1;
 }
 
-/* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
- * and decimation averaging. Both scales are powers of two, so exact. It is
- * computed once in the selected precision. */
+/* High's wide stages keep their spectrum only in double. */
+static const void *paired_spectrum(const faar_dft_fir *stage) {
+#ifdef FAAR_WIDE_HIGH
+    if (stage->compensated) return stage->spec_wide;
+#endif
+    return stage->spec;
+}
+
 static int init_paired(faar_dft_fir *stage, const double *taps) {
 #ifdef FAAR_COMPENSATED_FLOAT
     if (stage->compensated)
         return init_precise_spectrum(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
 #endif
-    const size_t n = stage->fft_size, nout = n / stage->decimation;
-    const faar_sample_t scale = 1.0 / ((faar_sample_t)nout * (faar_sample_t)stage->decimation);
-    faar_fft_plan plan;
-    faar_sample_t *h, *spectrum;
-    int bad;
-    if (n > (size_t)INT_MAX || faar_fft_cinit(&plan, (int)n)) return -1;
-    h = faar_fft_cbuffer(&plan, 0);
-    memset(h, 0, 2 * n * sizeof(faar_sample_t));
-    for (size_t i = 0; i < stage->tap_count; ++i) h[i] = taps[i];
-    spectrum = (faar_sample_t *)malloc(2 * n * sizeof(faar_sample_t));
-    if (!spectrum) { faar_fft_clear(&plan); return -1; }
-    h = faar_fft_cforward(&plan, h);
-    for (size_t i = 0; i < 2 * n; ++i) spectrum[i] = h[i] * scale;
-    faar_fft_clear(&plan);
-    bad = init_transforms(stage, spectrum);
-    free(spectrum);
-    if (bad) return -1;
-    return init_paired_buffers(stage);
+#ifdef FAAR_WIDE_HIGH
+    if (stage->compensated)
+        return init_spectrum_wide(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
+#endif
+    return init_spectrum(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
 }
 
 static int init_geometry(faar_dft_fir *stage, size_t tap_count,
@@ -155,6 +163,12 @@ static int init_halfband_buffers(faar_dft_fir *stage) {
         if (!stage->precise_half_work) return -1;
     }
 #endif
+#ifdef FAAR_WIDE_HIGH
+    if (stage->compensated) {
+        stage->wide_half_work = calloc(stage->block_size / 2, sizeof(double));
+        if (!stage->wide_half_work) return -1;
+    }
+#endif
     stage->work = (faar_sample_t *)calloc(stage->fft_size + 2, sizeof(faar_sample_t));
     stage->overlap = (faar_sample_t *)calloc(stage->tap_count - 1, sizeof(faar_sample_t));
     stage->input_block = (faar_sample_t *)calloc(stage->input_block_size,
@@ -182,6 +196,15 @@ static int init_halfband(faar_dft_fir *stage, const double *taps,
         stage->precise_half_coeffs[tap_count / 4] = ff2_setup(taps[tap_count / 2]);
     }
 #endif
+#ifdef FAAR_WIDE_HIGH
+    if (compensated) {
+        stage->wide_half_coeffs = malloc((tap_count / 4 + 1) * sizeof(double));
+        if (!stage->wide_half_coeffs) { faar_dft_fir_clear(stage); return -1; }
+        for (size_t j = 0; j < tap_count / 4; ++j)
+            stage->wide_half_coeffs[j] = taps[2 * j + 1];
+        stage->wide_half_coeffs[tap_count / 4] = taps[tap_count / 2];
+    }
+#endif
     /* Odd taps and the centre: the even non-centre taps are zero. */
     stage->filter_spectrum = (faar_sample_t *)calloc(tap_count / 4 + 1,
                                                      sizeof(faar_sample_t));
@@ -204,7 +227,7 @@ int faar_dft_fir_init_compensated(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation, size_t lanes, int stacked, int halfband) {
     int compensated = false;
-#ifdef FAAR_COMPENSATED_FLOAT
+#if defined(FAAR_COMPENSATED_FLOAT) || defined(FAAR_WIDE_HIGH)
     compensated = true;
 #endif
     return halfband ? init_halfband(stage, taps, tap_count, compensated)
@@ -218,7 +241,7 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
             || (lanes != 1 && lanes != 2)
             || (stacked != 0 && stacked != 1) || (stacked && lanes != 1)
             || (source->halfband && (lanes != 1 || stacked))
-            || !(source->halfband ? source->filter_spectrum : source->spec)
+            || !(source->halfband ? source->filter_spectrum : paired_spectrum(source))
             || init_geometry(stage, source->tap_count, source->fft_size,
                              source->expansion, source->decimation, lanes, stacked))
         return -1;
@@ -229,12 +252,21 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
     stage->spec_low = source->spec_low;
     stage->precise_half_coeffs = source->precise_half_coeffs;
 #endif
+#ifdef FAAR_WIDE_HIGH
+    stage->spec_wide = source->spec_wide;
+    stage->wide_half_coeffs = source->wide_half_coeffs;
+#endif
     stage->filter_spectrum = source->filter_spectrum;
     stage->spec = source->spec;
     int bad;
 #ifdef FAAR_COMPENSATED_FLOAT
     if (stage->compensated && !stage->halfband)
         bad = init_precise_plans(stage, source) || init_paired_buffers(stage);
+    else
+#endif
+#ifdef FAAR_WIDE_HIGH
+    if (stage->compensated && !stage->halfband)
+        bad = init_fft_plans_wide(stage) || init_paired_buffers(stage);
     else
 #endif
         bad = stage->halfband ? init_halfband_buffers(stage)
@@ -255,11 +287,22 @@ void faar_dft_fir_prepare(faar_dft_fir *stage) {
             memset(stage->precise_half_work, 0,
                     stage->block_size / 2 * sizeof(*stage->precise_half_work));
 #endif
+#ifdef FAAR_WIDE_HIGH
+        if (stage->wide_half_work)
+            memset(stage->wide_half_work, 0,
+                    stage->block_size / 2 * sizeof(*stage->wide_half_work));
+#endif
     }
 #ifdef FAAR_COMPENSATED_FLOAT
     else if (stage->compensated) {
         faar_float2_prepare(&stage->precise_in);
         faar_float2_prepare(&stage->precise_out);
+    }
+#endif
+#ifdef FAAR_WIDE_HIGH
+    else if (stage->compensated) {
+        faar_rfftd_prepare(&stage->in_wide, !stage->out_wide.size);
+        faar_rfftd_prepare(&stage->out_wide, 0);
     }
 #endif
     else {
@@ -281,6 +324,10 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
         free(stage->spec_low);
         free(stage->precise_half_coeffs);
 #endif
+#ifdef FAAR_WIDE_HIGH
+        free(stage->spec_wide);
+        free(stage->wide_half_coeffs);
+#endif
     }
     free(stage->work);
     free(stage->overlap);
@@ -290,6 +337,11 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
     free(stage->precise_half_work);
     faar_float2_clear(&stage->precise_in);
     faar_float2_clear(&stage->precise_out);
+#endif
+#ifdef FAAR_WIDE_HIGH
+    free(stage->wide_half_work);
+    faar_rfftd_clear(&stage->in_wide);
+    faar_rfftd_clear(&stage->out_wide);
 #endif
     faar_fft_clear(&stage->in);
     faar_fft_clear(&stage->out);
@@ -330,6 +382,13 @@ int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
             return 0;
         }
 #endif
+#ifdef FAAR_WIDE_HIGH
+        if (stage->compensated) {
+            process_wide_halfband(stage, output);
+            memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
+            return 0;
+        }
+#endif
         for (size_t i = 0; i < block / 2; ++i)
             output[i] = stage->filter_spectrum[n / 4] * stage->work[2 * i + n / 2];
         /* Vectorize across independent outputs, without reassociating a
@@ -344,10 +403,14 @@ int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
         memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
         return 0;
     }
-    if (!stage || !input || !output || !stage->overlap || !stage->spec)
+    if (!stage || !input || !output || !stage->overlap || !paired_spectrum(stage))
         return -1;
 #ifdef FAAR_COMPENSATED_FLOAT
     if (stage->compensated) convolve_precise(stage, input, output);
+    else
+#endif
+#ifdef FAAR_WIDE_HIGH
+    if (stage->compensated) convolve_paired_wide(stage, input, output);
     else
 #endif
         convolve_paired(stage, input, output);
