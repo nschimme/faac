@@ -33,19 +33,28 @@ meson install -C build-faar
 
 Omit `-Dfrontend=false` to build the `faar` command-line tool; it is built
 when both `-Dfrontend` and `-Dresampler` are enabled (the default). The default
-arithmetic precision is double. `-Dfaar-precision=float` selects float
-arithmetic and supports Fast, Good, and High quality. Float High uses
-compensated float arithmetic and more CPU. Filter coefficients and FFT
-twiddles still use the existing double-precision setup calculations. The
-channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
+precision policy is mixed: float for Fast/Good and double for High.
+`-Dfaar-precision=double` selects double arithmetic for all qualities.
+`-Dfaar-precision=float` selects float arithmetic and supports Fast, Good, and
+High quality. Float High uses compensated float arithmetic and more CPU.
+Mixed includes both engines, so its code and FFT table reservation are larger.
+Keep `float` for microcontrollers that favor a single float engine. Filter
+coefficients and FFT twiddles still use double-precision setup calculations.
+The channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
 The FFT engine lazily initializes shared twiddle tables for common complex
-transform sizes from 16 through 65,536. Their bounded static BSS reservation is about
-2 MiB in double builds or 1 MiB in float builds; only tables for sizes actually
-used are initialized. This describes reserved virtual storage, not a measured
-change in resident memory. Float High additionally allocates expansion FFT
-workspaces and twiddles per handle; channels within the handle share immutable
-twiddles and filter spectra. See the [float High measurements](../libfaar/tests/float-high-results.md)
-for measured quality, CPU, and heap tradeoffs.
+transform sizes from 16 through 65,536. Their bounded static BSS reservation
+is about 2 MiB in double builds, 1 MiB in float builds, or 3 MiB in mixed
+builds; only tables for used sizes are initialized. On hosted systems this is
+demand-zero virtual storage, and only touched pages become resident; on
+bare-metal targets the linker reserves the full BSS in RAM. This distinction
+is important for the mixed build, which includes both table sets. Float High
+additionally allocates expansion FFT workspaces and twiddles per handle;
+channels within the handle share immutable twiddles and filter spectra. See the
+[float High measurements](../libfaar/tests/float-high-results.md) for measured
+quality, CPU, and heap tradeoffs.
+
+The current float/double tradeoffs and precision-policy measurements are
+recorded in [precision-policy-results.md](../libfaar/tests/precision-policy-results.md).
 
 Compile an application against an installed library with:
 
