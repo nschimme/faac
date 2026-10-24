@@ -68,6 +68,12 @@ scratch remain private to each plan. Sizes above 65,536 continue to allocate
 twiddles per plan, and static tables remain available until library unload or
 process exit.
 
+Within each multichannel prefilter, channel stages share one immutable filter
+spectrum (or sparse halfband coefficient set). Their FFT work buffers, overlap
+history, and streaming queues remain separate. The prefilter owns the shared
+coefficients and releases them when it closes; this adds no global cache or
+public API requirement.
+
 ## Quality profiles
 
 Fast reduces processing cost with a narrower passband and weaker alias

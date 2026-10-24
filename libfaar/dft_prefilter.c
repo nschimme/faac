@@ -222,17 +222,21 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
     if (!s->fir || !s->channel_input || !s->channel_output)
         goto fail;
     for (uint16_t f = 0; f < s->stages; ++f) {
-        if (s->lanes > 1) {
-            size_t lanes = channels - f * s->lanes < s->lanes
-                ? channels - f * s->lanes : s->lanes;
-            if (faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
-                    fft_size, expansion, decimation, lanes, 0)) goto fail;
-            continue;
+        size_t lanes = channels - f * s->lanes < s->lanes
+            ? channels - f * s->lanes : s->lanes;
+        int stacked = channels == 1 && !halfband;
+        int bad;
+        if (f) {
+            /* Every channel uses the same filter. Keep the first stage as
+             * its owner and give the remaining stages private working state. */
+            bad = faar_dft_fir_init_shared(&s->fir[f], &s->fir[0], lanes, stacked);
+        } else if (halfband) {
+            bad = faar_dft_fir_init_halfband(&s->fir[f], taps, tap_count);
+        } else {
+            bad = faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
+                           fft_size, expansion, decimation, lanes, stacked);
         }
-        if (halfband ? faar_dft_fir_init_halfband(&s->fir[f], taps, tap_count)
-                     : faar_dft_fir_init_paired(&s->fir[f], taps, tap_count,
-                           fft_size, expansion, decimation, 1, 1))
-            goto fail;
+        if (bad) goto fail;
     }
     return s;
 fail:
@@ -253,8 +257,9 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
 void faar_dft_prefilter_destroy(faar_dft_prefilter *s) {
     if (!s) return;
     if (s->fir) {
-        for (uint16_t f = 0; f < s->stages; ++f)
-            faar_dft_fir_clear(&s->fir[f]);
+        /* Borrowers are destroyed before the stage owning their filter. */
+        for (uint16_t f = s->stages; f > 0; --f)
+            faar_dft_fir_clear(&s->fir[f - 1]);
     }
     free(s->fir);
     free(s->channel_input);

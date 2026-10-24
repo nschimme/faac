@@ -189,7 +189,7 @@ def main():
         for ir, out in ((48000, 44100), (44100, 48000), (192000, 44100),
                         (96000, 48000), (48000, 48000), (47999, 44100)):
             for q in args.qualities:
-                for channels in (1, 2, 8):
+                for channels in (1, 2, 3, 8):
                     pcm = np.stack([16000 * np.sin(t * (.137 + c * .019))
                                     for c in range(channels)], axis=1)
                     for boundary in (0, 1):

@@ -50,6 +50,14 @@ test_faar_dft_fir = executable('test_faar_dft_fir',
 )
 test('test_faar_dft_fir', test_faar_dft_fir)
 
+test_faar_dft_shared = executable('test_faar_dft_shared',
+  ['test_faar_dft_shared.c', '../dft_fir.c', '../fft_real.c'],
+  c_args: libfaar_args,
+  include_directories: ['..', inc],
+  dependencies: [m_dep],
+)
+test('test_faar_dft_shared', test_faar_dft_shared)
+
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   ['test_faar_dft_prefilter.c', '../dft_coeffs.c', '../dft_prefilter.c',
    '../dft_fir.c', '../fft_real.c'],
