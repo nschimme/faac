@@ -7,8 +7,11 @@ libfaar_sources = files(
 )
 
 libfaar_args = []
+libfaar_float2_sources = []
 if get_option('faar-precision') == 'float'
   libfaar_args += ['-DFAAR_FLOAT']
+  libfaar_float2_sources = files('fft_float2.c')
+  libfaar_sources += libfaar_float2_sources
 endif
 
 # Real-transform wrappers are exercised only by FFT verification.

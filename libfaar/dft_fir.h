@@ -17,12 +17,16 @@
 
 #include "fft_real.h"
 #include "libfaar_internal.h"
+#ifdef FAAR_FLOAT
+#include "fft_float2.h"
+#endif
 
 #include <stddef.h>
 
 /* Block overlap-save FIR stage; filter coefficients are supplied by caller. */
 typedef struct faar_dft_fir {
     int shared_coeffs; /* Borrowed immutable coefficients; source outlives stage. */
+    int compensated; /* High in float builds: float expansions in sensitive stages. */
     int halfband; /* Sparse time-domain 2:1 FIR; otherwise paired FFT. */
     size_t fft_size;
     size_t tap_count;
@@ -41,6 +45,11 @@ typedef struct faar_dft_fir {
     size_t stream_out;
     size_t lanes;
     faar_fft_plan in, out;
+#ifdef FAAR_FLOAT
+    faar_float2_plan precise_in, precise_out;
+    float *spec_low;
+    faar_float2 *precise_half_coeffs, *precise_half_work;
+#endif
     faar_sample_t *spec;
     size_t input_fill;
     size_t output_count;
@@ -80,6 +89,10 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
  * taps zero. */
 int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
                       size_t tap_count);
+/* Float-expansion variant for High. Internal arithmetic remains float. */
+int faar_dft_fir_init_compensated(faar_dft_fir *stage, const double *taps,
+                      size_t tap_count, size_t fft_size, size_t expansion,
+                      size_t decimation, size_t lanes, int stacked, int halfband);
 void faar_dft_fir_clear(faar_dft_fir *stage);
 /* Touch private work buffers before the first input. */
 void faar_dft_fir_prepare(faar_dft_fir *stage);

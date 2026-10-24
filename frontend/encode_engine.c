@@ -624,7 +624,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             FAIL("Couldn't query resampler capabilities: %s\n",
                  faar_strerror(resample_status));
         if (!(resampler_info.quality_mask & FAAR_QUALITY_MASK_HIGH))
-            FAIL("Downsampling input above 48000 Hz requires FAAR High quality, which this float-precision build does not support; rebuild with -Dfaar-precision=double.\n");
+            FAIL("Downsampling input above 48000 Hz requires FAAR High quality, which is unavailable in this build.\n");
         resampler_quality = FAAR_QUALITY_HIGH;
     }
 

@@ -297,6 +297,37 @@ static int test_budget_exhaustion(void) {
     return 0;
 }
 
+static int test_high_open_failures(void) {
+    const uint32_t rates[][2] = {{44100,48000}, {192000,44100}};
+    faar_library_info info = {.struct_size = sizeof(info)};
+    if (faar_get_library_info(&info) != FAAR_OK) return fail("library query failed", 98);
+    for (size_t pair = 0; pair < sizeof(rates) / sizeof(rates[0]); ++pair) {
+        faar_config config;
+        if (faar_config_init(&config, sizeof(config)) != FAAR_OK) return 1;
+        config.in_rate = rates[pair][0]; config.out_rate = rates[pair][1];
+        config.quality = FAAR_QUALITY_HIGH;
+        config.channels = (uint16_t)(info.max_channels < 3 ? info.max_channels : 3);
+        faar_resampler *r = NULL;
+        size_t live_before = faar_alloc_live();
+        faar_alloc_reset_counters();
+        if (faar_resampler_open(&config, &r) != FAAR_OK) return fail("High open failed", 98);
+        size_t calls = faar_alloc_calls();
+        faar_resampler_close(&r);
+        for (size_t nth = 1; nth <= calls; ++nth) {
+            faar_alloc_reset_counters();
+            faar_alloc_fail_nth(nth);
+            faar_status status = faar_resampler_open(&config, &r);
+            faar_alloc_fail_nth(0);
+            int returned_handle = r != NULL;
+            faar_resampler_close(&r);
+            if (status != FAAR_ERR_NO_MEMORY || returned_handle
+                    || faar_alloc_live() != live_before)
+                return fail("High allocation failure leaked or returned a handle", nth);
+        }
+    }
+    return 0;
+}
+
 int main(void) {
     static const test_case cases[] = {
         {48000,44100,1,FAAR_QUALITY_GOOD,0,64,1,1},
@@ -316,15 +347,12 @@ int main(void) {
     faar_library_info library = {.struct_size = sizeof(library)};
     if (faar_get_library_info(&library) != FAAR_OK) return fail("library info query failed", 0);
     for (size_t i = 0; i < sizeof(cases)/sizeof(cases[0]); ++i) {
-#ifdef FAAR_FLOAT
-        if (cases[i].quality == FAAR_QUALITY_HIGH) continue;
-#endif
         test_case selected = cases[i];
         if (selected.channels > library.max_channels)
             selected.channels = (uint16_t)library.max_channels;
         pcm_t reference = {0};
         if (run_comparison(&selected, i, &reference)) return 1;
-        if ((i == 0 || i == 2) && test_prepare_failures(&selected, &reference)) {
+        if ((i == 0 || i == 1 || i == 2) && test_prepare_failures(&selected, &reference)) {
             free(reference.data); return 1;
         }
         if (i == 0 && test_failed_reprepare(&selected, &reference)) {
@@ -332,6 +360,6 @@ int main(void) {
         }
         free(reference.data);
     }
-    if (test_budget_exhaustion()) return 1;
+    if (test_budget_exhaustion() || test_high_open_failures()) return 1;
     return 0;
 }

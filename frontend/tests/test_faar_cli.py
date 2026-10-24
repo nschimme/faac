@@ -60,7 +60,8 @@ def main():
     assert b"subject to the configured build limit" in long_text
     assert b"Use -H for detailed descriptions" in long_text
     assert b"--decimate[=<factor>]" in long_text
-    assert b"float builds support Fast and Good" in long_text
+    assert b"Float builds support High with compensated float arithmetic" in long_text
+    assert b"filter coefficients and FFT twiddles are still prepared with the existing double-precision calculations" in long_text
     assert b"narrower passband" in long_text
     assert b"weaker alias rejection" in long_text
     assert b"greater CPU and setup-memory cost" in long_text

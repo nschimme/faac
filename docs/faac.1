@@ -188,7 +188,7 @@ the input rate and rate-control mode. With ABR or CBR, it can downsample
 high-rate input to 44.1 or 48 kHz and low-bitrate LC input to 32 kHz. With
 VBR, it keeps the input rate when supported, capped at 96 kHz. This is separate
 from \fB--object-type auto\fP, which selects AAC-LC or HE-AAC v1. Downsampling
-input above 48 kHz uses FAAR High and requires a double-precision build. Use
+input above 48 kHz uses FAAR High. Float builds use compensated float arithmetic for High, with greater CPU cost; filter coefficients and FFT twiddles retain the existing double-precision setup calculations. Use
 \fBkeep\fP to bypass automatic selection and preserve the input rate when
 supported. A numeric rate explicitly requests an output rate in Hz; it must
 be lower than the input rate and one of the AAC-supported rates from 7350 to

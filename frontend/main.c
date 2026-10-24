@@ -130,7 +130,7 @@ static const help_t help_io[] = {
      "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
     {"--rate <auto|keep|hz>",
      "Choose output sample rate (default: auto; use keep to preserve input rate).",
-     "With ABR or CBR, auto selects the output rate from the input rate and bitrate; with VBR, it keeps the input rate when supported. Downsampling input above 48000 Hz uses FAAR High and requires a double-precision build. A numeric value requests a lower AAC standard rate from 7350 to 96000 Hz."},
+     "With ABR or CBR, auto selects the output rate from the input rate and bitrate; with VBR, it keeps the input rate when supported. Downsampling input above 48000 Hz uses FAAR High. Float builds use compensated float arithmetic for High, with greater CPU cost. A numeric value requests a lower AAC standard rate from 7350 to 96000 Hz."},
     {"-R <samplerate>",
      "Raw PCM input rate.",
      "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},

@@ -46,7 +46,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                size_t fft_size,
                                                size_t expansion,
                                                size_t decimation,
-                                               int halfband);
+                                               int halfband, int compensated);
 void faar_dft_prefilter_destroy(faar_dft_prefilter *stage);
 /* Reserve before feeding input; returns a conservative output burst bound. */
 faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *stage,

@@ -34,13 +34,18 @@ meson install -C build-faar
 Omit `-Dfrontend=false` to build the `faar` command-line tool; it is built
 when both `-Dfrontend` and `-Dresampler` are enabled (the default). The default
 arithmetic precision is double. `-Dfaar-precision=float` selects float
-arithmetic and supports Fast and Good quality; High requires double. The
+arithmetic and supports Fast, Good, and High quality. Float High uses
+compensated float arithmetic and more CPU. Filter coefficients and FFT
+twiddles still use the existing double-precision setup calculations. The
 channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
 The FFT engine lazily initializes shared twiddle tables for common complex
 transform sizes from 16 through 65,536. Their bounded static BSS reservation is about
 2 MiB in double builds or 1 MiB in float builds; only tables for sizes actually
 used are initialized. This describes reserved virtual storage, not a measured
-change in resident memory.
+change in resident memory. Float High additionally allocates expansion FFT
+workspaces and twiddles per handle; channels within the handle share immutable
+twiddles and filter spectra. See the [float High measurements](../libfaar/tests/float-high-results.md)
+for measured quality, CPU, and heap tradeoffs.
 
 Compile an application against an installed library with:
 
@@ -80,10 +85,11 @@ public API requirement.
 Fast reduces processing cost with a narrower passband and weaker alias
 rejection. Good is the default profile, with a wide passband and strong alias
 suppression. High keeps Good's passband while further reducing aliasing, at
-greater CPU and setup-memory cost. High requires double arithmetic; float
-builds support Fast and Good. These profiles describe different filter and
-resource tradeoffs, so the best choice depends on the source material and the
-application's CPU and memory budget.
+greater CPU and setup-memory cost. Float builds support High using
+compensated float arithmetic. Filter coefficients and FFT twiddles still use
+the existing double-precision setup calculations. These profiles describe
+different filter and resource tradeoffs, so the best choice depends on the
+source material and the application's CPU and memory budget.
 
 ## API
 
@@ -203,8 +209,7 @@ stream.
 boundary extension, and no dither. Set the rates and channel count before
 opening. When dither is enabled, `dither_bits` must be 16 or 24; it is ignored
 otherwise. `reserved` and `reserved1` must be zero or open fails with
-`FAAR_ERR_INVALID_ARGUMENT`. `faar_resampler_open()` returns `FAAR_ERR_UNSUPPORTED` for High
-quality in float builds. `faar_get_library_info()` reports the compiled
+`FAAR_ERR_INVALID_ARGUMENT`. `faar_get_library_info()` reports the compiled
 channel ceiling and quality mask; `faar_resampler_get_info()` reports resolved
 settings and delay. Initialize each query structure's `struct_size` to
 `sizeof(structure)` first.

@@ -20,26 +20,11 @@
 #include <faar.h>
 #include "faar_test_api.h"
 
-#ifdef FAAR_FLOAT
-#define TEST_QUALITY FAAR_QUALITY_GOOD
-#else
 #define TEST_QUALITY FAAR_QUALITY_HIGH
-#endif
 
 int main(void) {
     const uint16_t channels = MAX_CHANNELS < 2 ? MAX_CHANNELS : 2;
     printf("Testing libfaar API...\n");
-#ifdef FAAR_FLOAT
-    static const uint32_t rates[][2] = {
-        {96000, 44100}, {44100, 48000}, {48000, 48000}
-    };
-    for (size_t i = 0; i < sizeof(rates) / sizeof(rates[0]); ++i) {
-        assert(faar_test_create(rates[i][0], rates[i][1], channels,
-                           FAAR_QUALITY_HIGH) == NULL);
-        assert(faar_test_create_ext(rates[i][0], rates[i][1], channels,
-                               FAAR_QUALITY_HIGH, 2) == NULL);
-    }
-#endif
 
     uint32_t in_rate = 96000;
     uint32_t out_rate = 44100;
