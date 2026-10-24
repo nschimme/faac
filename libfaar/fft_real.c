@@ -13,10 +13,11 @@
  * Lesser General Public License for more details.
  */
 
-/* Generalized from FAAC 17fbbf8a; real split wrapper and per-plan tables. */
+/* Generalized from FAAC 17fbbf8a; real split wrapper and lazily shared twiddles. */
 #ifndef FAAR_RFFT_TEMPLATE
 #define FAAR_RFFT_TEMPLATE
 #include "fft_real.h"
+#include "../common/atomic.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -338,33 +339,14 @@ static REAL *FN(core)(const PLAN *plan, REAL *in)
     return src;
 }
 
-void FN(clear)(PLAN *plan)
-{
-    if (!plan) return;
-    free(plan->twiddle);
-    free(plan->split);
-    free(plan->work);
-    memset(plan, 0, sizeof(*plan));
-}
-
-/* m complex points; the real wrapper additionally needs the split table.
- * FAAR_FFT_LEAN builds only the complex transforms libfaar uses. */
-static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch)
+/* Common transform sizes have fixed geometry, as in the codec libraries.
+ * Reserve a bounded BSS table per size, initialize only requested sizes, and
+ * publish through the shared once helper. Larger transforms remain dynamic.
+ * Each plan continues to own its work buffers and scratch. Cache-line alignment
+ * avoids the weaker scalar alignment of ordinary BSS arrays in FFT loads. */
+static void FN(build_twiddle)(REAL *tw, int m)
 {
     int n2, j, b;
-    REAL *tw;
-
-    plan->size = 2 * m;
-    for (j = m; j > 1; j >>= 1) plan->logm++;
-    plan->twiddle = malloc(2 * m * sizeof(REAL));
-    plan->split = split ? malloc(2 * m * sizeof(REAL)) : NULL;
-    plan->work = malloc((4 * m + (scratch ? 0 : 4 * PAD_IM(m))) * sizeof(REAL));
-    plan->scratch = scratch ? scratch : plan->work ? plan->work + 4 * m : NULL;
-    if (!plan->twiddle || (split && !plan->split) || !plan->work) {
-        FN(clear)(plan);
-        return -1;
-    }
-    tw = plan->twiddle;
     for (n2 = m / 4; n2 >= 1; n2 >>= 2) {
         for (j = 0; j < n2; j++) {
             for (b = 1; b <= 3; b++) {
@@ -375,6 +357,84 @@ static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch)
             }
         }
         tw += 6 * n2;
+    }
+}
+
+#define STATIC_TWIDDLE(bits) \
+    static _Alignas(64) REAL FN(twiddle_##bits)[2u << (bits)]; \
+    static faac_once_t FN(once_##bits) = FAAC_ONCE_INIT; \
+    static void FN(init_twiddle_##bits)(void) { \
+        FN(build_twiddle)(FN(twiddle_##bits), 1 << (bits)); \
+    }
+STATIC_TWIDDLE(4)
+STATIC_TWIDDLE(5)
+STATIC_TWIDDLE(6)
+STATIC_TWIDDLE(7)
+STATIC_TWIDDLE(8)
+STATIC_TWIDDLE(9)
+STATIC_TWIDDLE(10)
+STATIC_TWIDDLE(11)
+STATIC_TWIDDLE(12)
+STATIC_TWIDDLE(13)
+STATIC_TWIDDLE(14)
+STATIC_TWIDDLE(15)
+STATIC_TWIDDLE(16)
+#undef STATIC_TWIDDLE
+
+static REAL *FN(shared_twiddle)(int logm)
+{
+#define TWIDDLE_CASE(bits) \
+    case bits: \
+        faac_once_run(&FN(once_##bits), FN(init_twiddle_##bits)); \
+        return FN(twiddle_##bits);
+    switch (logm) {
+        TWIDDLE_CASE(4)
+        TWIDDLE_CASE(5)
+        TWIDDLE_CASE(6)
+        TWIDDLE_CASE(7)
+        TWIDDLE_CASE(8)
+        TWIDDLE_CASE(9)
+        TWIDDLE_CASE(10)
+        TWIDDLE_CASE(11)
+        TWIDDLE_CASE(12)
+        TWIDDLE_CASE(13)
+        TWIDDLE_CASE(14)
+        TWIDDLE_CASE(15)
+        TWIDDLE_CASE(16)
+    default: return NULL;
+    }
+#undef TWIDDLE_CASE
+}
+
+void FN(clear)(PLAN *plan)
+{
+    if (!plan) return;
+    if (plan->twiddle_owned) free(plan->twiddle);
+    free(plan->split);
+    free(plan->work);
+    memset(plan, 0, sizeof(*plan));
+}
+
+/* m complex points; the real wrapper additionally needs the split table.
+ * FAAR_FFT_LEAN builds only the complex transforms libfaar uses. */
+static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch)
+{
+    int j;
+
+    plan->size = 2 * m;
+    for (j = m; j > 1; j >>= 1) plan->logm++;
+    plan->twiddle = FN(shared_twiddle)(plan->logm);
+    plan->twiddle_owned = plan->twiddle == NULL;
+    if (plan->twiddle_owned) {
+        plan->twiddle = malloc(2 * m * sizeof(REAL));
+        if (plan->twiddle) FN(build_twiddle)(plan->twiddle, m);
+    }
+    plan->split = split ? malloc(2 * m * sizeof(REAL)) : NULL;
+    plan->work = malloc((4 * m + (scratch ? 0 : 4 * PAD_IM(m))) * sizeof(REAL));
+    plan->scratch = scratch ? scratch : plan->work ? plan->work + 4 * m : NULL;
+    if (!plan->twiddle || (split && !plan->split) || !plan->work) {
+        FN(clear)(plan);
+        return -1;
     }
     for (j = 0; split && j < m; j++) {
         double a = 3.1415926535897932384626433832795 * j / m;

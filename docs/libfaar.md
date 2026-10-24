@@ -35,6 +35,11 @@ when both `-Dfrontend` and `-Dresampler` are enabled (the default). The default
 arithmetic precision is double. `-Dfaar-precision=float` selects float
 arithmetic and supports Fast and Good quality; High requires double. The
 channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
+The FFT engine lazily initializes shared twiddle tables for common complex
+transform sizes from 16 through 65,536. Their bounded static BSS reservation is about
+2 MiB in double builds or 1 MiB in float builds; only tables for sizes actually
+used are initialized. This describes reserved virtual storage, not a measured
+change in resident memory.
 
 Compile an application against an installed library with:
 
@@ -53,7 +58,15 @@ The planner selects a filter based on the rates and quality preset. Polyphase
 FIR filters use Kaiser windows and interpolation between stored phases. Some
 conversions use overlap-save DFT FIR stages; large downsampling ratios can use
 cascaded stages. `faar_resampler_get_info()` reports filter lookahead in input
-frames, including cascaded stages.
+frames, including cascaded stages. Common complex FFT sizes share immutable
+twiddle tables initialized once per process on first use; unused size tables
+remain uninitialized. This one-time initialization is protected when the
+toolchain provides atomics, so concurrent independent handles remain safe under
+the normal API threading rules. On toolchains without atomic support, serialize
+concurrent opens as required by the codec libraries. FFT work buffers and
+scratch remain private to each plan. Sizes above 65,536 continue to allocate
+twiddles per plan, and static tables remain available until library unload or
+process exit.
 
 ## Quality profiles
 
