@@ -15,13 +15,15 @@
 #ifndef FAAR_FFT_REAL_H
 #define FAAR_FFT_REAL_H
 
-/* Plans have mutable scratch: executions sharing one must be serialized.
+/* Common twiddle tables are immutable after once initialization.
+ * Plans have mutable scratch: executions sharing one must be serialized.
  * Sizes are powers of two, 256 through 65536; init returns 0 on success and
  * needs a fresh or cleared plan, and clear accepts a zero-initialized one.
  * Data is N scalars packed as DC, Nyquist, then (real, positive-sine
  * imaginary) bins. The inverse is normalized. */
 typedef struct faar_rfftf_plan {
     int size, logm;
+    int twiddle_owned; /* Larger transforms own tables; common sizes share BSS. */
     float *twiddle, *split, *work, *scratch;
 } faar_rfftf_plan;
 
@@ -43,6 +45,7 @@ float *faar_rfftf_cforward(const faar_rfftf_plan *plan, float *in);
 
 typedef struct faar_rfftd_plan {
     int size, logm;
+    int twiddle_owned; /* Larger transforms own tables; common sizes share BSS. */
     double *twiddle, *split, *work, *scratch;
 } faar_rfftd_plan;
 
