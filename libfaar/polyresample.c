@@ -111,6 +111,7 @@ struct faar_resampler_struct {
 
     faar_sample_t *hist[MAX_CHANNELS]; /* Keeps sample and coefficient arithmetic at the selected width */
     faar_sample_t last_input[MAX_CHANNELS]; /* Retained even when history is fully consumed */
+    size_t hist_offset;         /* Frames before the moving history pointers */
     size_t hist_len;            /* Unconsumed frames in hist */
     size_t hist_cap_per_ch;     /* Allocated capacity per channel in frames */
 
@@ -869,6 +870,50 @@ static int set_dither_internal(faar_resampler * r, faar_dither_t dither, uint8_t
  * spacing, far below the stopband floor. */
 static const faar_sample_t exact_phase_eps = (faar_sample_t)1e-6;
 
+/* Keep history contiguous for the FIR, but move it only when an append
+ * exhausts the trailing space. Draining output never copies queued audio. */
+static int reserve_history(faar_resampler *r, size_t additional) {
+    if (additional > SIZE_MAX - r->hist_len) {
+        r->last_error = FAAR_ERR_INVALID_ARGUMENT;
+        return -1;
+    }
+    size_t needed = r->hist_len + additional;
+    if (needed <= r->hist_cap_per_ch - r->hist_offset) return 0;
+    if (r->hist_offset) {
+        for (uint16_t c = 0; c < r->channels; ++c) {
+            faar_sample_t *base = r->hist[c] - r->hist_offset;
+            memmove(base, r->hist[c], r->hist_len * sizeof(*base));
+            r->hist[c] = base;
+        }
+        r->hist_offset = 0;
+    }
+    if (needed <= r->hist_cap_per_ch) return 0;
+    if (needed > (SIZE_MAX - 15) / 2) {
+        r->last_error = FAAR_ERR_INVALID_ARGUMENT;
+        return -1;
+    }
+    size_t capacity = (needed * 2 + 15) & ~((size_t)15);
+    if (capacity > SIZE_MAX / sizeof(faar_sample_t)) {
+        r->last_error = FAAR_ERR_INVALID_ARGUMENT;
+        return -1;
+    }
+    /* All pointers now have the same origin. Grow one channel at a time to
+     * limit peak memory; on failure every channel still has at least the old
+     * capacity, and destruction remains safe. */
+    for (uint16_t c = 0; c < r->channels; ++c) {
+        faar_sample_t *next = aligned_malloc(capacity * sizeof(*next));
+        if (!next) {
+            r->last_error = FAAR_ERR_NO_MEMORY;
+            return -1;
+        }
+        memcpy(next, r->hist[c], r->hist_len * sizeof(*next));
+        aligned_free(r->hist[c]);
+        r->hist[c] = next;
+    }
+    r->hist_cap_per_ch = capacity;
+    return 0;
+}
+
 static size_t polyresample_process_single(faar_resampler * restrict r, const float * restrict in_samples, size_t in_count,
                                            float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples) return 0;
@@ -880,32 +925,7 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
     assert(filter_len <= POLYRESAMPLE_MAX_FILTER_LEN);
 
     if (in_samples && in_count > 0) {
-        if (in_count > SIZE_MAX - r->hist_len) {
-            r->last_error = FAAR_ERR_INVALID_ARGUMENT;
-            return 0;
-        }
-        size_t needed_cap = r->hist_len + in_count;
-        if (needed_cap > r->hist_cap_per_ch) {
-            if (needed_cap > (SIZE_MAX - 15) / 2) {
-                r->last_error = FAAR_ERR_INVALID_ARGUMENT;
-                return 0;
-            }
-            size_t new_cap = (needed_cap * 2 + 15) & ~((size_t)15);
-            if (new_cap > SIZE_MAX / sizeof(faar_sample_t)) {
-                r->last_error = FAAR_ERR_INVALID_ARGUMENT;
-                return 0;
-            }
-
-            for (uint16_t c = 0; c < r->channels; c++) {
-                faar_sample_t *new_buf = (faar_sample_t *)aligned_malloc(
-                        new_cap * sizeof(*new_buf));
-                if (!new_buf) { r->last_error = FAAR_ERR_NO_MEMORY; return 0; }
-                memcpy(new_buf, r->hist[c], r->hist_len * sizeof(*new_buf));
-                aligned_free(r->hist[c]);
-                r->hist[c] = new_buf;
-            }
-            r->hist_cap_per_ch = new_cap;
-        }
+        if (reserve_history(r, in_count)) return 0;
 
         if (r->channels == 2) {
             faar_sample_t * restrict h0 = r->hist[0] + r->hist_len;
@@ -962,9 +982,9 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
             for (size_t j = 0; j < frames; j++) {
                 out_samples[j * r->channels + c] = (float)r->hist[c][j];
             }
-            memmove(r->hist[c], r->hist[c] + frames,
-                    (r->hist_len - frames) * sizeof(*r->hist[c]));
+            r->hist[c] += frames;
         }
+        r->hist_offset += frames;
         r->hist_len -= frames;
         r->output_frames += frames;
         apply_dither(r, out_samples, frames);
@@ -1135,8 +1155,8 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
     if (discard && (discard >= filter_len / 2
                 || r->hist_len - discard < filter_len)) {
         for (uint16_t c = 0; c < r->channels; ++c)
-            memmove(r->hist[c], r->hist[c] + discard,
-                    (r->hist_len - discard) * sizeof(*r->hist[c]));
+            r->hist[c] += discard;
+        r->hist_offset += discard;
         r->hist_len -= discard;
         r->phase -= (uint64_t)discard * r->out_rate;
     }
@@ -1208,31 +1228,7 @@ static size_t polyresample_process_planar(faar_resampler * r,
         float * restrict out_samples, size_t max_out_count) {
     if (!r || !out_samples || (in_count && !in_samples)) return 0;
     if (in_count) {
-        if (in_count > SIZE_MAX - r->hist_len) {
-            r->last_error = FAAR_ERR_INVALID_ARGUMENT;
-            return 0;
-        }
-        size_t needed_cap = r->hist_len + in_count;
-        if (needed_cap > r->hist_cap_per_ch) {
-            if (needed_cap > (SIZE_MAX - 15) / 2) {
-                r->last_error = FAAR_ERR_INVALID_ARGUMENT;
-                return 0;
-            }
-            size_t new_cap = (needed_cap * 2 + 15) & ~((size_t)15);
-            if (new_cap > SIZE_MAX / sizeof(faar_sample_t)) {
-                r->last_error = FAAR_ERR_INVALID_ARGUMENT;
-                return 0;
-            }
-            for (uint16_t c = 0; c < r->channels; ++c) {
-                faar_sample_t *new_buf = (faar_sample_t *)aligned_malloc(
-                        new_cap * sizeof(*new_buf));
-                if (!new_buf) { r->last_error = FAAR_ERR_NO_MEMORY; return 0; }
-                memcpy(new_buf, r->hist[c], r->hist_len * sizeof(*new_buf));
-                aligned_free(r->hist[c]);
-                r->hist[c] = new_buf;
-            }
-            r->hist_cap_per_ch = new_cap;
-        }
+        if (reserve_history(r, in_count)) return 0;
         for (uint16_t c = 0; c < r->channels; ++c) {
             const float * restrict channel_input = in_samples + (size_t)c * in_count;
             faar_sample_t * restrict channel_history =
@@ -1273,19 +1269,15 @@ static size_t polyresample_flush_single(faar_resampler * r, float *out_samples, 
     if (!r->flushed) {
         size_t tail_len = (r->filter_len - 1) / 2 + 1;
         if (r->filter_len == 20) ++tail_len;
-        float *tail = (float *)malloc(tail_len * r->channels * sizeof(float));
-        if (!tail) { r->last_error = FAAR_ERR_NO_MEMORY; return 0; }
-        if (tail) {
-            for (uint16_t c = 0; c < r->channels; c++) {
-                faar_sample_t last = r->boundary == FAAR_BOUNDARY_HOLD && r->input_frames
-                    ? r->last_input[c] : 0.0f;
-                for (size_t j = 0; j < tail_len; j++) tail[j * r->channels + c] = last;
-            }
-            r->flushed = true;
-            size_t written = polyresample_process_single(r, tail, tail_len, out_samples, max_out_count);
-            free(tail);
-            return written;
+        if (reserve_history(r, tail_len)) return 0;
+        for (uint16_t c = 0; c < r->channels; ++c) {
+            faar_sample_t last = r->boundary == FAAR_BOUNDARY_HOLD && r->input_frames
+                ? r->last_input[c] : 0.0f;
+            for (size_t j = 0; j < tail_len; ++j)
+                r->hist[c][r->hist_len + j] = last;
         }
+        r->hist_len += tail_len;
+        r->flushed = true;
     }
 
     return polyresample_process_single(r, NULL, 0, out_samples, max_out_count);
@@ -1360,7 +1352,7 @@ static void destroy_internal(faar_resampler * r) {
     free(r->dft_intermediate);
     if (r->cascade_buf) aligned_free(r->cascade_buf);
     for (uint16_t c = 0; c < r->channels && c < MAX_CHANNELS; c++) {
-        if (r->hist[c]) aligned_free(r->hist[c]);
+        if (r->hist[c]) aligned_free(r->hist[c] - r->hist_offset);
     }
     if (r->polyphase_reverse_table) aligned_free(r->polyphase_reverse_table);
     if (r->polyphase_table) aligned_free(r->polyphase_table);
