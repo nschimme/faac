@@ -86,10 +86,10 @@ option('max-channels',
     value: 8)
 
 option('faar-precision',
-    description: 'FAAR runtime arithmetic precision',
+    description: 'FAAR arithmetic policy (mixed uses float for Fast/Good and double for High)',
     type: 'combo',
-    choices: ['double', 'float'],
-    value: 'double')
+    choices: ['double', 'float', 'mixed'],
+    value: 'mixed')
 
 # End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
 # Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();

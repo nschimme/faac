@@ -15,6 +15,7 @@
 #ifndef FAAR_DFT_PREFILTER_H
 #define FAAR_DFT_PREFILTER_H
 
+#include "backend_rename.h"
 #include <stddef.h>
 #include <stdint.h>
 #include "faar.h"

@@ -27,6 +27,8 @@ void faar_alloc_fail_all(int enabled);
 size_t faar_alloc_calls(void);
 size_t faar_alloc_frees(void);
 size_t faar_alloc_live(void);
+size_t faar_alloc_live_bytes(void);
+size_t faar_alloc_peak_bytes(void);
 #ifdef __cplusplus
 }
 #endif

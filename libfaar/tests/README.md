@@ -70,6 +70,50 @@ high-water mark, not live library allocation. Open only the handles required
 for the measurement; the arrays and filter work buffers contribute to process
 memory too.
 
+`bench_faar_heap` measures requested libfaar heap with allocator hooks, so it
+excludes process RSS noise and allocator metadata. Run it with:
+
+```sh
+meson compile -C build bench_faar_heap
+build/libfaar/tests/bench_faar_heap 48000 44100 2 1 8192
+```
+
+The arguments are input rate, output rate, channels, quality, and frames to
+reserve with `faar_resampler_prepare()` (`0` skips preparation). The CSV fields
+are input rate, output rate, channels, quality, prepared frames, open live
+bytes, open peak bytes, post-prepare live bytes, peak bytes including prepare,
+and live bytes after close. Caller buffers, allocator bookkeeping, and static
+BSS are excluded; the close field should be zero.
+
+`bench_precision.py` compares float, double, and mixed builds on the same host.
+Configure separate release builds, then compile both optional benchmark targets
+in each build:
+
+```sh
+meson setup build-faar-float -Dencoder=false -Ddecoder=false -Dfrontend=false \
+  -Dbuildtype=release -Db_lto=true -Dfaar-precision=float
+meson setup build-faar-double -Dencoder=false -Ddecoder=false -Dfrontend=false \
+  -Dbuildtype=release -Db_lto=true -Dfaar-precision=double
+meson setup build-faar-mixed -Dencoder=false -Ddecoder=false -Dfrontend=false \
+  -Dbuildtype=release -Db_lto=true -Dfaar-precision=mixed
+for build in build-faar-float build-faar-double build-faar-mixed; do
+  meson compile -C "$build" bench_faar bench_faar_heap
+done
+python3 libfaar/tests/bench_precision.py
+```
+
+Run this on a native target machine for architecture-specific throughput. The
+script rotates build order and reports median throughput for each quality,
+channel count, and 48/96/192 kHz input route; it also reports prepared peak
+requested heap. Before measuring, it checks that each Meson build has the
+expected precision and LTO enabled. It fails if a heap benchmark leaves
+tracked bytes live. Use `--repeats` to change the number of timing samples.
+Timing output is
+input-Mframes/s, so larger is faster; setup and heap are separate measurements.
+The `FAAR precision benchmark (GCC 13 amd64)` CI job runs this same comparison
+on a native x86_64 runner and uploads the CSV together with compiler and host
+information.
+
 `bench_faar_latency` is an optional POSIX-only native API-call timing probe.
 Build and run it with:
 

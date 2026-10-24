@@ -15,6 +15,7 @@
 #ifndef FAAR_DFT_FIR_H
 #define FAAR_DFT_FIR_H
 
+#include "backend_rename.h"
 #include "fft_real.h"
 #include "libfaar_internal.h"
 #ifdef FAAR_FLOAT

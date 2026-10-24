@@ -57,14 +57,61 @@ test_faar_dft_shared = executable('test_faar_dft_shared',
 test('test_faar_dft_shared', test_faar_dft_shared)
 
 faar_force_include = (cc.get_argument_syntax() == 'msvc') ? '/FI' : '-include'
-test_faar_prepare = executable('test_faar_prepare',
-  ['test_faar_prepare.c', 'faar_alloc_hooks.c'] + libfaar_sources,
-  c_args: libfaar_args + [faar_force_include,
-    meson.current_source_dir() / 'faar_alloc_hooks.h'],
-  include_directories: ['.', '..', inc],
-  dependencies: [m_dep],
-)
+faar_alloc_include = meson.current_source_dir() / 'faar_alloc_hooks.h'
+if get_option('faar-precision') == 'mixed'
+  faar_prepare_float_backend = static_library('faar_prepare_backend_float',
+    ['../polyresample.c', '../dft_prefilter.c', '../dft_fir.c',
+     '../fft_float2.c', '../backend_adapters.c'],
+    include_directories: ['..', inc],
+    c_args: libfaar_float_args + [faar_force_include, faar_alloc_include],
+    pic: true,
+  )
+  faar_prepare_double_backend = static_library('faar_prepare_backend_double',
+    ['../polyresample.c', '../dft_prefilter.c', '../dft_fir.c',
+     '../backend_adapters.c'],
+    include_directories: ['..', inc],
+    c_args: libfaar_double_args + [faar_force_include, faar_alloc_include],
+    pic: true,
+  )
+  test_faar_prepare = executable('test_faar_prepare',
+    ['test_faar_prepare.c', 'faar_alloc_hooks.c', '../backend_dispatch.c',
+     '../dft_coeffs.c', '../fft_real.c'],
+    c_args: [faar_force_include, faar_alloc_include],
+    include_directories: ['.', '..', inc],
+    dependencies: [m_dep],
+    link_whole: [faar_prepare_float_backend, faar_prepare_double_backend],
+  )
+else
+  test_faar_prepare = executable('test_faar_prepare',
+    ['test_faar_prepare.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
+    c_args: libfaar_args + [faar_force_include, faar_alloc_include],
+    include_directories: ['.', '..', inc],
+    dependencies: [m_dep],
+  )
+endif
 test('test_faar_prepare', test_faar_prepare, timeout: 120)
+
+if host_machine.system() != 'windows'
+  if get_option('faar-precision') == 'mixed'
+    executable('bench_faar_heap',
+      ['bench_faar_heap.c', 'faar_alloc_hooks.c', '../backend_dispatch.c',
+       '../dft_coeffs.c', '../fft_real.c'],
+      c_args: [faar_force_include, faar_alloc_include],
+      include_directories: ['.', '..', inc],
+      dependencies: [m_dep],
+      link_whole: [faar_prepare_float_backend, faar_prepare_double_backend],
+      build_by_default: false,
+    )
+  else
+    executable('bench_faar_heap',
+      ['bench_faar_heap.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
+      c_args: libfaar_args + [faar_force_include, faar_alloc_include],
+      include_directories: ['.', '..', inc],
+      dependencies: [m_dep],
+      build_by_default: false,
+    )
+  endif
+endif
 
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   ['test_faar_dft_prefilter.c', '../dft_coeffs.c', '../dft_prefilter.c',

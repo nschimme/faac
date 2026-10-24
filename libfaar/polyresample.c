@@ -13,6 +13,7 @@
  * Lesser General Public License for more details.
  */
 
+#include "backend_rename.h"
 #include "faar.h"
 #include "libfaar_internal.h"
 #include "dft_coeffs.h"
@@ -1496,6 +1497,7 @@ static void destroy_internal(faar_resampler * r) {
     free(r);
 }
 
+#ifndef FAAR_BACKEND_SYMBOL
 FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size) {
     faar_config defaults;
     if (!config || caller_size < FAAR_CONFIG_BASELINE)
@@ -1538,6 +1540,7 @@ FAARAPI const char *faar_strerror(faar_status status) {
         default: return "unknown FAAR status";
     }
 }
+#endif
 
 FAARAPI faar_status faar_resampler_open(const faar_config *config,
                                          faar_resampler **out) {
