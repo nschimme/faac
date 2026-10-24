@@ -423,14 +423,16 @@ void FN(prepare)(PLAN *plan, int both_buffers)
     /* Padded transforms return in their input buffer; a separate inverse
      * plan never needs buffer 1. Small transforms ping-pong through both. */
     size_t count = (both_buffers || !padded ? 4 : 2) * (size_t)m;
+    size_t work_count = plan->work_buffers * (size_t)plan->size;
+    if (count > work_count) count = work_count;
     memset(plan->work, 0, count * sizeof(REAL));
-    if (padded && plan->scratch == plan->work + 4 * (size_t)m)
+    if (padded && plan->scratch == plan->work + work_count)
         memset(plan->scratch, 0, 4 * (size_t)PAD_IM(m) * sizeof(REAL));
 }
 
 /* m complex points; the real wrapper additionally needs the split table.
  * FAAR_FFT_LEAN builds only the complex transforms libfaar uses. */
-static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch)
+static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single)
 {
     int j;
 
@@ -443,8 +445,16 @@ static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch)
         if (plan->twiddle) FN(build_twiddle)(plan->twiddle, m);
     }
     plan->split = split ? malloc(2 * m * sizeof(REAL)) : NULL;
-    plan->work = malloc((4 * m + (scratch ? 0 : 4 * PAD_IM(m))) * sizeof(REAL));
-    plan->scratch = scratch ? scratch : plan->work ? plan->work + 4 * m : NULL;
+    int padded = m >= (sizeof(REAL) == sizeof(float) ? 4096 : 2048);
+    plan->work_buffers = single && padded ? 1 : 2;
+    size_t work_count = plan->work_buffers * (size_t)plan->size;
+    /* Small transforms do not use scratch. Tiny plans retain it to keep
+     * the core's second scratch pointer within the allocation. */
+    int separate_scratch = padded || 2 * (size_t)PAD_IM(m) > work_count;
+    size_t scratch_count = separate_scratch && !scratch ? 4 * (size_t)PAD_IM(m) : 0;
+    plan->work = malloc((work_count + scratch_count) * sizeof(REAL));
+    plan->scratch = scratch ? scratch : plan->work
+        ? plan->work + (separate_scratch ? work_count : 0) : NULL;
     if (!plan->twiddle || (split && !plan->split) || !plan->work) {
         FN(clear)(plan);
         return -1;
@@ -463,7 +473,7 @@ int FN(init)(PLAN *plan, int size)
     if (!plan) return -1;
     memset(plan, 0, sizeof(*plan));
     if (size < 256 || size > 65536 || (size & (size - 1))) return -1;
-    return FN(setup)(plan, size / 2, 1, NULL);
+    return FN(setup)(plan, size / 2, 1, NULL, 0);
 }
 
 #endif
@@ -473,7 +483,7 @@ int FN(cinit)(PLAN *plan, int n)
     if (!plan) return -1;
     memset(plan, 0, sizeof(*plan));
     if (n < 16 || n > (1 << 22) || (n & (n - 1))) return -1;
-    return FN(setup)(plan, n, 0, NULL);
+    return FN(setup)(plan, n, 0, NULL, 0);
 }
 
 /* The owner must outlive this plan; their executions must be serialized. */
@@ -482,7 +492,17 @@ int FN(cinit_shared)(PLAN *plan, int n, const PLAN *owner)
     if (!plan || !owner || n < 16 || n > owner->size / 2
             || (n & (n - 1))) return -1;
     memset(plan, 0, sizeof(*plan));
-    return FN(setup)(plan, n, 0, owner->scratch);
+    return FN(setup)(plan, n, 0, owner->scratch, 0);
+}
+
+/* Different-sized FIR plans consume the forward spectrum in a separate plan,
+ * so a padded borrower never needs a second complex buffer. */
+int FN(cinit_shared_single)(PLAN *plan, int n, const PLAN *owner)
+{
+    if (!plan || !owner || n < 16 || n >= owner->size / 2
+            || (n & (n - 1))) return -1;
+    memset(plan, 0, sizeof(*plan));
+    return FN(setup)(plan, n, 0, owner->scratch, 1);
 }
 
 REAL *FN(cbuffer)(const PLAN *plan, int which)

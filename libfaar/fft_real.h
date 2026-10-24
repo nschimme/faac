@@ -23,6 +23,7 @@
  * imaginary) bins. The inverse is normalized. */
 typedef struct faar_rfftf_plan {
     int size, logm;
+    int work_buffers;
     int twiddle_owned; /* Larger transforms own tables; common sizes share BSS. */
     float *twiddle, *split, *work, *scratch;
 } faar_rfftf_plan;
@@ -43,11 +44,17 @@ void faar_rfftf_execute(const faar_rfftf_plan *plan, float *data, int inverse);
 int faar_rfftf_cinit(faar_rfftf_plan *plan, int n);
 int faar_rfftf_cinit_shared(faar_rfftf_plan *plan, int n,
                               const faar_rfftf_plan *owner);
+/* Private paired-FIR variant for the smaller side of a padded plan. Only
+ * cbuffer 0 is valid for padded plans initialized this way; the existing
+ * cinit_shared function retains its two-buffer contract. */
+int faar_rfftf_cinit_shared_single(faar_rfftf_plan *plan, int n,
+                                     const faar_rfftf_plan *owner);
 float *faar_rfftf_cbuffer(const faar_rfftf_plan *plan, int which);
 float *faar_rfftf_cforward(const faar_rfftf_plan *plan, float *in);
 
 typedef struct faar_rfftd_plan {
     int size, logm;
+    int work_buffers;
     int twiddle_owned; /* Larger transforms own tables; common sizes share BSS. */
     double *twiddle, *split, *work, *scratch;
 } faar_rfftd_plan;
@@ -59,6 +66,8 @@ void faar_rfftd_execute(const faar_rfftd_plan *plan, double *data, int inverse);
 int faar_rfftd_cinit(faar_rfftd_plan *plan, int n);
 int faar_rfftd_cinit_shared(faar_rfftd_plan *plan, int n,
                               const faar_rfftd_plan *owner);
+int faar_rfftd_cinit_shared_single(faar_rfftd_plan *plan, int n,
+                                     const faar_rfftd_plan *owner);
 double *faar_rfftd_cbuffer(const faar_rfftd_plan *plan, int which);
 double *faar_rfftd_cforward(const faar_rfftd_plan *plan, double *in);
 

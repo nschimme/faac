@@ -55,11 +55,11 @@ static int PAIR_FN(init_fft_plans)(faar_dft_fir *stage) {
     const size_t nin = n / stage->expansion;
     if (nout > nin) {
         if (PAIR_FFT_FN(cinit)(&stage->PAIR_FN(out), (int)nout)
-                || PAIR_FFT_FN(cinit_shared)(&stage->PAIR_FN(in), (int)nin,
+                || PAIR_FFT_FN(cinit_shared_single)(&stage->PAIR_FN(in), (int)nin,
                                              &stage->PAIR_FN(out))) return -1;
     } else {
         if (PAIR_FFT_FN(cinit)(&stage->PAIR_FN(in), (int)nin)) return -1;
-        if (nout != nin && PAIR_FFT_FN(cinit_shared)(&stage->PAIR_FN(out),
+        if (nout != nin && PAIR_FFT_FN(cinit_shared_single)(&stage->PAIR_FN(out),
                 (int)nout, &stage->PAIR_FN(in))) return -1;
     }
     return 0;
