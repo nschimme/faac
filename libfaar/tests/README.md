@@ -2,7 +2,8 @@
 
 The library tests live in this directory and are registered by its local
 `meson.build`. They cover the public streaming API, signal quality controls,
-rate-matrix invariants, DFT filtering, prefilter setup, and the real FFT.
+rate-matrix invariants, DFT filtering and shared spectra, prefilter setup, and
+the real FFT.
 `frontend/tests/test_faar_cli.py` covers command-line and file-format behavior.
 The public API is also exercised by `tests/fuzz/fuzz_faar.c` through the
 repository fuzz runner.
@@ -80,6 +81,11 @@ meson setup build-tsan -Dencoder=false -Ddecoder=false -Dfrontend=false \
 meson test -C build-tsan test_faar_fft_threads
 ```
 
+`test_faar_dft_shared` checks per-channel sharing of immutable DFT spectra and
+halfband coefficients within one prefilter, while history, queues, and FFT
+work remain private to each channel. It also checks cleanup ordering for the
+shared stages.
+
 ## Quality regression comparison
 
 `compare_quality.py` requires Python and NumPy. It loads two separately built
@@ -101,7 +107,7 @@ test additionally requires at least 100/130/150 dB rejection for
 Fast/Good/High. Its independently generated category coverage includes a
 20-second sweep; 30-second 23 kHz tone, tone-plus-noise, and two-tone signals;
 impulse positions covering every rational phase; independently processed
-track edges; and a route matrix with 1, 2, and 8 channels, both boundary
+track edges; and a route matrix with 1, 2, 3, and 8 channels, both boundary
 modes, dither modes, and queued scheduling. The signal categories are informed
 by [Hydrogenaudio technical material](https://src.hydrogenaudio.org/technical)
 and [dBpoweramp's sample-rate conversion discussion](https://www.dbpoweramp.com/sample_rate_conversion).
@@ -117,3 +123,6 @@ See [the measured history-buffering results](optimization-results.md) for the
 
 See [the static FFT-table measurements](static-tables-results.md) for repeated
 open and throughput comparisons of the lazy shared tables.
+
+See [the shared-spectrum measurements](shared-spectrum-results.md) for the
+per-channel sharing results and test coverage.

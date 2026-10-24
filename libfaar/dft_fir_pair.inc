@@ -48,14 +48,10 @@ static void PAIR_FN(load_window)(PAIR_REAL *z, const faar_sample_t *overlap,
                                              : input[from + i - stored]);
 }
 
-/* spectrum is the scaled filter response, n real parts then n imaginary. */
-static int PAIR_FN(init_transforms)(faar_dft_fir *stage,
-                                    const faar_sample_t *spectrum) {
+/* Transform buffers belong to one channel stage even when coefficients
+ * are shared with other stages in the same prefilter. */
+static int PAIR_FN(init_fft_plans)(faar_dft_fir *stage) {
     const size_t n = stage->fft_size, nout = n / stage->decimation;
-    PAIR_REAL *h = (PAIR_REAL *)malloc(2 * n * sizeof(PAIR_REAL));
-    if (!h) return -1;
-    for (size_t i = 0; i < 2 * n; ++i) h[i] = (PAIR_REAL)spectrum[i];
-    stage->PAIR_FN(spec) = h;
     const size_t nin = n / stage->expansion;
     if (nout > nin) {
         if (PAIR_FFT_FN(cinit)(&stage->PAIR_FN(out), (int)nout)
@@ -67,6 +63,17 @@ static int PAIR_FN(init_transforms)(faar_dft_fir *stage,
                 (int)nout, &stage->PAIR_FN(in))) return -1;
     }
     return 0;
+}
+
+/* spectrum is the scaled filter response, n real parts then n imaginary. */
+static int PAIR_FN(init_transforms)(faar_dft_fir *stage,
+                                    const faar_sample_t *spectrum) {
+    const size_t n = stage->fft_size;
+    PAIR_REAL *h = (PAIR_REAL *)malloc(2 * n * sizeof(PAIR_REAL));
+    if (!h) return -1;
+    for (size_t i = 0; i < 2 * n; ++i) h[i] = (PAIR_REAL)spectrum[i];
+    stage->PAIR_FN(spec) = h;
+    return PAIR_FN(init_fft_plans)(stage);
 }
 
 /* The imaginary part carries a second channel, or for a lone channel the

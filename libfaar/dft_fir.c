@@ -65,6 +65,17 @@ static size_t overlap_stride(const faar_dft_fir *stage) {
 #define PAIR_FFT faar_fft_
 #include "dft_fir_pair.inc"
 
+static int init_paired_buffers(faar_dft_fir *stage) {
+    stage->overlap = (faar_sample_t *)calloc(stage->lanes * overlap_stride(stage),
+                                      sizeof(faar_sample_t));
+    stage->input_block = (faar_sample_t *)calloc(stage->lanes
+            * stage->stream_in, sizeof(faar_sample_t));
+    stage->output_block = (faar_sample_t *)calloc(stage->lanes
+            * stage->stream_out, sizeof(faar_sample_t));
+    return stage->overlap && stage->input_block && stage->output_block
+        ? 0 : -1;
+}
+
 /* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
  * and decimation averaging. Both scales are powers of two, so exact. It is
  * computed once in the selected precision. */
@@ -86,14 +97,7 @@ static int init_paired(faar_dft_fir *stage, const double *taps) {
     bad = init_transforms(stage, spectrum);
     free(spectrum);
     if (bad) return -1;
-    stage->overlap = (faar_sample_t *)calloc(stage->lanes * overlap_stride(stage),
-                                      sizeof(faar_sample_t));
-    stage->input_block = (faar_sample_t *)calloc(stage->lanes
-            * stage->stream_in, sizeof(faar_sample_t));
-    stage->output_block = (faar_sample_t *)calloc(stage->lanes
-            * stage->stream_out, sizeof(faar_sample_t));
-    return stage->overlap && stage->input_block && stage->output_block
-        ? 0 : -1;
+    return init_paired_buffers(stage);
 }
 
 static int init_geometry(faar_dft_fir *stage, size_t tap_count,
@@ -138,6 +142,16 @@ static int init_stage(faar_dft_fir *stage, const double *taps,
     return 0;
 }
 
+static int init_halfband_buffers(faar_dft_fir *stage) {
+    stage->work = (faar_sample_t *)calloc(stage->fft_size + 2, sizeof(faar_sample_t));
+    stage->overlap = (faar_sample_t *)calloc(stage->tap_count - 1, sizeof(faar_sample_t));
+    stage->input_block = (faar_sample_t *)calloc(stage->input_block_size,
+                                          sizeof(faar_sample_t));
+    stage->output_block = (faar_sample_t *)calloc(stage->block_size, sizeof(faar_sample_t));
+    return stage->work && stage->overlap && stage->input_block
+        && stage->output_block ? 0 : -1;
+}
+
 int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
                       size_t tap_count) {
     if (!taps || tap_count < 5 || (tap_count - 1) % 4
@@ -149,13 +163,7 @@ int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
     /* Odd taps and the centre: the even non-centre taps are zero. */
     stage->filter_spectrum = (faar_sample_t *)calloc(tap_count / 4 + 1,
                                                      sizeof(faar_sample_t));
-    stage->work = (faar_sample_t *)calloc(stage->fft_size + 2, sizeof(faar_sample_t));
-    stage->overlap = (faar_sample_t *)calloc(tap_count - 1, sizeof(faar_sample_t));
-    stage->input_block = (faar_sample_t *)calloc(stage->input_block_size,
-                                          sizeof(faar_sample_t));
-    stage->output_block = (faar_sample_t *)calloc(stage->block_size, sizeof(faar_sample_t));
-    if (!stage->filter_spectrum || !stage->work || !stage->overlap
-            || !stage->input_block || !stage->output_block) {
+    if (!stage->filter_spectrum || init_halfband_buffers(stage)) {
         faar_dft_fir_clear(stage);
         return -1;
     }
@@ -165,16 +173,41 @@ int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
     return 0;
 }
 
+int faar_dft_fir_init_shared(faar_dft_fir *stage,
+                      const faar_dft_fir *source, size_t lanes, int stacked) {
+    if (!stage || !source || stage == source
+            || (lanes != 1 && lanes != 2)
+            || (stacked != 0 && stacked != 1) || (stacked && lanes != 1)
+            || (source->halfband && (lanes != 1 || stacked))
+            || !(source->halfband ? source->filter_spectrum : source->spec)
+            || init_geometry(stage, source->tap_count, source->fft_size,
+                             source->expansion, source->decimation, lanes, stacked))
+        return -1;
+    stage->shared_coeffs = 1;
+    stage->halfband = source->halfband;
+    stage->filter_spectrum = source->filter_spectrum;
+    stage->spec = source->spec;
+    int bad = stage->halfband ? init_halfband_buffers(stage)
+        : init_fft_plans(stage) || init_paired_buffers(stage);
+    if (bad) {
+        faar_dft_fir_clear(stage);
+        return -1;
+    }
+    return 0;
+}
+
 void faar_dft_fir_clear(faar_dft_fir *stage) {
     if (!stage) return;
-    free(stage->filter_spectrum);
+    if (!stage->shared_coeffs) {
+        free(stage->filter_spectrum);
+        free(stage->spec);
+    }
     free(stage->work);
     free(stage->overlap);
     free(stage->input_block);
     free(stage->output_block);
     faar_fft_clear(&stage->in);
     faar_fft_clear(&stage->out);
-    free(stage->spec);
     memset(stage, 0, sizeof(*stage));
 }
 
