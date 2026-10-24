@@ -22,6 +22,11 @@
 #include <stdbool.h>
 #include <assert.h>
 
+/* Mixed routes High to double, so its float backend needs no compensation. */
+#if defined(FAAR_FLOAT) && !defined(FAAR_BACKEND_FLOAT)
+#define FAAR_COMPENSATED_FLOAT
+#endif
+
 #ifdef FAAR_FLOAT
 typedef float faar_sample_t;
 #else
@@ -33,6 +38,7 @@ typedef double faar_sample_t;
 #define faar_fft_plan faar_rfftf_plan
 #define faar_fft_cinit faar_rfftf_cinit
 #define faar_fft_cinit_shared faar_rfftf_cinit_shared
+#define faar_fft_cinit_shared_single faar_rfftf_cinit_shared_single
 #define faar_fft_cbuffer faar_rfftf_cbuffer
 #define faar_fft_cforward faar_rfftf_cforward
 #define faar_fft_clear faar_rfftf_clear
@@ -41,6 +47,7 @@ typedef double faar_sample_t;
 #define faar_fft_plan faar_rfftd_plan
 #define faar_fft_cinit faar_rfftd_cinit
 #define faar_fft_cinit_shared faar_rfftd_cinit_shared
+#define faar_fft_cinit_shared_single faar_rfftd_cinit_shared_single
 #define faar_fft_cbuffer faar_rfftd_cbuffer
 #define faar_fft_cforward faar_rfftd_cforward
 #define faar_fft_clear faar_rfftd_clear

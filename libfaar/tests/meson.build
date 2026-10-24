@@ -61,7 +61,7 @@ faar_alloc_include = meson.current_source_dir() / 'faar_alloc_hooks.h'
 if get_option('faar-precision') == 'mixed'
   faar_prepare_float_backend = static_library('faar_prepare_backend_float',
     ['../polyresample.c', '../dft_prefilter.c', '../dft_fir.c',
-     '../fft_float2.c', '../backend_adapters.c'],
+     '../backend_adapters.c'],
     include_directories: ['..', inc],
     c_args: libfaar_float_args + [faar_force_include, faar_alloc_include],
     pic: true,
@@ -137,6 +137,7 @@ foreach case : [
   ['test_faar_fft_complex_64', 'complex', '64'],
   ['test_faar_fft_complex_512', 'complex', '512'],
   ['test_faar_fft_complex_2048', 'complex', '2048'],
+  ['test_faar_fft_complex_4096', 'complex', '4096'],
   ['test_faar_fft_complex_8192', 'complex', '8192'],
 ]
   test(case[0], test_faar_fft_real, args: [case[1], case[2]], timeout: 60)

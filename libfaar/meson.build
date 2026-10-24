@@ -9,7 +9,7 @@ if get_option('faar-precision') == 'mixed'
   libfaar_float_args = ['-DFAAR_FLOAT', '-DFAAR_BACKEND_FLOAT'] + libfaar_hide_args
   libfaar_double_args = ['-DFAAR_BACKEND_DOUBLE'] + libfaar_hide_args
   backend_float = static_library('faar_backend_float',
-    ['polyresample.c', 'dft_prefilter.c', 'dft_fir.c', 'fft_float2.c',
+    ['polyresample.c', 'dft_prefilter.c', 'dft_fir.c',
      'backend_adapters.c'],
     include_directories: [inc, '.'],
     c_args: libfaar_float_args,

@@ -106,7 +106,7 @@ static void reference(const double *x, long double *ref, int n)
 
 /* Complex transform against a direct DFT, plus the conjugation round trip
  * the resampler uses as its inverse. */
-#define CHECK_COMPLEX(T, P, INIT, BUF, FWD, CLEAR, LABEL, TOL) do { \
+#define CHECK_COMPLEX(T, P, INIT, SINGLE, PREPARE, BUF, FWD, CLEAR, LABEL, TOL) do { \
     P plan = {0}; \
     long double err = 0, energy = 0; \
     double trip = 0; \
@@ -119,6 +119,14 @@ static void reference(const double *x, long double *ref, int n)
         long double dr = out[j] - rr[j], di = out[n + j] - ri[j]; \
         err += dr * dr + di * di; energy += rr[j] * rr[j] + ri[j] * ri[j]; \
     } \
+    { P owner = {0}, single = {0}; \
+      if (INIT(&owner, 2 * n) || SINGLE(&single, n, &owner)) exit(2); \
+      PREPARE(&single, 1); \
+      T *input = BUF(&single, 0); \
+      for (j = 0; j < n; j++) { input[j] = (T)xr[j]; input[n + j] = (T)xi[j]; } \
+      T *actual = FWD(&single, input); \
+      if (memcmp(actual, out, 2 * (size_t)n * sizeof(T))) failed = 1; \
+      CLEAR(&single); CLEAR(&owner); } \
     /* Inverse: conjugate, forward into the other buffer, conjugate, scale. */ \
     { T *dst = out == w0 ? w1 : w0; \
       for (j = 0; j < n; j++) { dst[j] = out[j]; dst[n + j] = -out[n + j]; } \
@@ -136,7 +144,7 @@ static void reference(const double *x, long double *ref, int n)
 
 static int check_complex(int selected)
 {
-    const int sizes[] = {16, 64, 512, 2048, 8192};
+    const int sizes[] = {16, 64, 512, 2048, 4096, 8192};
     int failed = 0, t, j, k;
     uint32_t state = 7;
     const long double tau = 6.283185307179586476925286766559005768L;
@@ -144,7 +152,7 @@ static int check_complex(int selected)
 
     if (!faar_rfftf_cinit(&invalid, 8) || !faar_rfftf_cinit(&invalid, 48)
             || !faar_rfftf_cinit(&invalid, 1 << 23)) return 1;
-    for (t = 0; t < 5; t++) {
+    for (t = 0; t < 6; t++) {
         if (selected >= 0 && t != selected) continue;
         int n = sizes[t];
         double *xr = malloc(n * sizeof(double)), *xi = malloc(n * sizeof(double));
@@ -170,9 +178,11 @@ static int check_complex(int selected)
             rr[k] = re; ri[k] = im;
         }
         CHECK_COMPLEX(float, faar_rfftf_plan, faar_rfftf_cinit,
+                      faar_rfftf_cinit_shared_single, faar_rfftf_prepare,
                       faar_rfftf_cbuffer, faar_rfftf_cforward,
                       faar_rfftf_clear, "float", 2e-6);
         CHECK_COMPLEX(double, faar_rfftd_plan, faar_rfftd_cinit,
+                      faar_rfftd_cinit_shared_single, faar_rfftd_prepare,
                       faar_rfftd_cbuffer, faar_rfftd_cforward,
                       faar_rfftd_clear, "double", 2e-12);
         free(xr); free(xi); free(rr); free(ri);
@@ -191,12 +201,12 @@ int main(int argc, char **argv)
         return 2;
     t = atoi(argv[2]);
     if (strcmp(argv[1], "complex") == 0) {
-        const int complex_sizes[] = {16, 64, 512, 2048, 8192};
+        const int complex_sizes[] = {16, 64, 512, 2048, 4096, 8192};
         int i;
-        for (i = 0; i < 5 && complex_sizes[i] != t; i++) {
+        for (i = 0; i < 6 && complex_sizes[i] != t; i++) {
             /* Find the selected transform size. */
         }
-        if (i == 5) return 2;
+        if (i == 6) return 2;
         return check_complex(i);
     }
     if (t != 256 && t != 1024 && t != 8192 && t != 65536) return 2;

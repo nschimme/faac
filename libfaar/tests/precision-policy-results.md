@@ -121,3 +121,105 @@ reservation. The GCC 13 amd64 build confirms the mixed binary footprint, but
 native amd64 performance from the CI benchmark and representative embedded RAM
 limits remain follow-up measurements before treating this as optimal for every
 target.
+
+## Mixed float-backend specialization experiment
+
+The checkpoint before this experiment is `bd4bf536`. Mixed's float backend
+never receives High, so it can omit compensated High arithmetic and
+`fft_float2.c`. Standalone float retains compensated High. This experiment
+keeps the public double build option as a comparison baseline; removing the
+option itself would not change what the mixed target links.
+
+A fresh GCC 13 amd64 release/LTO build in the same `faac-fp:latest` image
+reproduced the checkpoint's section sizes exactly, then measured:
+
+| Mixed build | GNU size text | Data | BSS |
+|---|---:|---:|---:|
+| Checkpoint | 143,911 bytes | 752 bytes | 3,147,080 bytes |
+| Float backend without compensated High | 124,739 bytes | 744 bytes | 3,147,080 bytes |
+
+The text column falls by 19,172 bytes (13.3%). Both FFT precisions still
+reserve their shared twiddle caches, so BSS does not fall. This is a GCC
+binary-footprint comparison under amd64 emulation, not native amd64 timing.
+
+The native mixed and standalone float suites passed all 51 and 52 checks.
+An independent public-API comparison against the checkpoint passed 1,080
+cases bit for bit: ten rate pairs, 1/2/8 channels, all three qualities, both
+boundary modes, all three dither modes, and prepared/unprepared streaming.
+Each stream used 4,097 input frames, input blocks up to 1,024 frames, output
+capacity 137, and flush to completion.
+
+The same native 27-case rate/channel/quality matrix used seven alternating
+checkpoint/specialized timing runs per case. Specialized/checkpoint median
+throughput ratios ranged from 0.982 to 1.038. These exploratory macOS timings
+do not establish a performance improvement or replace native x86_64 CI.
+
+Requested prepared peak heap at stereo 48,000 → 44,100 Hz became 804,096
+bytes for Fast, 972,064 for Good, and 6,234,992 for High. Across the 27-case
+matrix, removing compensation-only fields saved 120–1,280 bytes for Fast/Good
+relative to the checkpoint; High retained its 16-byte dispatch overhead over
+double. All closes returned tracked live heap to zero.
+
+This specialization reduces mixed's code footprint while preserving the
+standalone float build and the double comparison option. Further BSS savings
+require changing the FFT table-cache policy; reducing the exposed precision
+choices alone does not achieve them.
+
+## FFT workspace reduction experiment
+
+On top of the float-backend specialization, two unused workspaces can be
+removed without changing arithmetic or FFT geometry:
+
+- Small, nonpadded transforms need their two complex ping-pong buffers but
+  never use padded scratch. They now omit the scratch allocation when the
+  ordinary work allocation also bounds the core's scratch-pointer arithmetic.
+  Tiny plans retain scratch so the processing loop can remain unchanged.
+- The smaller plan in an unequal-sized forward/inverse FIR pair needs only
+  buffer 0 when padded. It now uses a private single-buffer initializer;
+  ordinary FFT initializers keep their existing two-buffer contract.
+
+The FFT plan records its buffer count so preparation stays within the
+allocation. Both small-transform ping-pong buffers and shared padded scratch
+remain available where used. No FFT twiddle cache is changed.
+
+Prepared peak requested heap, compared with the preceding specialization:
+
+| Stereo 48,000 → 44,100 Hz quality | Before | After | Saved |
+|---|---:|---:|---:|
+| Fast | 804,096 bytes | 765,696 bytes | 38,400 bytes |
+| Good | 972,064 bytes | 972,064 bytes | 0 bytes |
+| High | 6,234,992 bytes | 5,972,848 bytes | 262,144 bytes |
+
+Across the same 27-case 48/96/192 kHz, 1/2/8-channel matrix, savings were
+0–153,600 bytes for Fast (up to 10.6%) and 0–1,048,576 bytes for High
+(up to 4.8%). Good's peak was unchanged. Every close returned tracked live
+heap to zero. These are actual requested-heap reductions, not a transfer of
+BSS reservation into heap.
+
+The final GCC 13 amd64 release/LTO library measured 126,195 text bytes,
+744 data bytes, 3,147,080 BSS bytes, and 142,992 linked file bytes. The workspace
+changes add 1,456 text bytes over the preceding specialization while retaining
+a 17,716-byte text saving over the committed mixed checkpoint. BSS is unchanged.
+
+The final mixed suite passed all 52 checks and the final
+AddressSanitizer/UndefinedBehaviorSanitizer suite passed all 51 checks
+available in that configuration. Standalone float and double passed their
+52 and 51 checks before adding the further 4,096-point FFT case.
+The complex FFT checks now compare the smaller single-buffer plan bit for bit
+with an ordinary plan, including preparation requesting both buffers. The
+4,096-point case explicitly covers the float padded-transform threshold.
+The 1,080 public-API cases also remained bit identical to the preceding
+specialization.
+
+A separate attempt to exclude mixed's unused real-FFT wrappers produced no
+useful shared-LTO footprint saving and was removed.
+
+The final native performance comparison used eleven alternating runs per
+case, after other builds had finished. Across all 27 cases, the ratio of
+median throughput to the preceding specialization was 0.986–1.020. The
+geometric mean by quality was 0.996 for Fast, 0.999 for Good, and 1.002 for
+High. Stereo 48,000 → 44,100 Hz measured 49.101, 49.201 and 28.073 Mframes/s,
+versus 49.404, 49.302 and 27.991 before these workspace changes. This finds no
+material native arm64 throughput loss in the measured matrix; native x86_64
+performance remains unmeasured. The original FFT processing loop is unchanged;
+workspace sizing and preparation contain the new decisions.
