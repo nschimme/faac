@@ -232,7 +232,7 @@ static int test_lengths(void) {
 
 static int test_streaming_range(size_t first_rate, size_t last_rate) {
     const size_t n = 40000;
-    static const uint32_t rates[][2] = {{48000,44100}, {192000,44100}, {48000,96000}, {192000,48000}, {48000,32000}, {88200,44100}, {32000,44100}, {32000,48000}, {88200,96000}, {48000,48000}};
+    static const uint32_t rates[][2] = {{48000,44100}, {192000,44100}, {48000,96000}, {192000,48000}, {48000,32000}, {88200,44100}, {32000,44100}, {32000,48000}, {88200,96000}, {48000,48000}, {47999,44100}};
     const size_t blocks[] = {1, 17, 257, 4096};
     const size_t caps[] = {1, 17, 257, 16384};
     if (last_rate > sizeof(rates)/sizeof(rates[0]) || first_rate >= last_rate)
@@ -276,7 +276,7 @@ static int test_streaming_range(size_t first_rate, size_t last_rate) {
 }
 
 static int test_streaming_0(void) { return test_streaming_range(0, 5); }
-static int test_streaming_1(void) { return test_streaming_range(5, 10); }
+static int test_streaming_1(void) { return test_streaming_range(5, 11); }
 
 static int test_impulses(void) {
     static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {192000,44100}, {48000,96000}, {192000,48000}, {32000,44100}, {32000,48000}, {88200,96000}, {48000,48000}};

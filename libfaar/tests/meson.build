@@ -78,3 +78,12 @@ foreach case : [
 ]
   test(case[0], test_faar_fft_real, args: [case[1], case[2]], timeout: 60)
 endforeach
+
+# Opt-in timing tool: no timing thresholds in the correctness suite.
+if host_machine.system() != 'windows'
+  executable('bench_faar', 'bench_faar.c',
+    include_directories: inc,
+    dependencies: [libfaar_dep, m_dep],
+    build_by_default: false,
+  )
+endif
