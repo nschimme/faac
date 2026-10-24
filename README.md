@@ -9,16 +9,77 @@ FAAC is an open-source, dependency-free AAC encoder, with FAAD as its decoder, a
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
 - Flexible output options: ADTS and raw AAC streams
+- PCM sample-rate conversion with Fast, Good, and High presets; downsampling
+  input above 48 kHz uses High
 
 ### Command-line tools:
 
-- `faac` and `faad` write and read MP4/M4A with gapless playback info, as well as raw ADTS
-- `faac` reads WAV and raw PCM; `faad` writes WAV and raw PCM, with stdin/stdout piping
+- `faac` encodes WAV or raw PCM to AAC in ADTS or MP4/M4A; MP4 output includes
+  gapless playback info
+- `faad` decodes ADTS or MP4/M4A AAC to WAV or raw PCM, with optional mono or
+  stereo downmixing and stdin/stdout support
+- `faar` changes the sample rate of WAV or raw PCM audio, with adjustable
+  quality and optional dithering when converting to integer PCM
 - `faam` muxes, demuxes and tags MP4/M4A/M4B (AAC, H.264/H.265)
+
+> **Important:** The use of this software may require the payment of patent royalties. You need to consider this issue before you start building derivative works. We are not warranting or indemnifying you in any way for patent royalties! **YOU ARE SOLELY RESPONSIBLE FOR YOUR OWN ACTIONS!**
+
+## Usage
+
+```sh
+faac input.wav -o output.m4a          # encode PCM to AAC in MP4
+faad output.m4a -o decoded.wav        # decode AAC to PCM
+faad -i output.m4a                    # show stream information
+faar -r 48000 in_96k.wav out_48k.wav  # resample to 48 kHz
+faam -i output.aac -o output.m4a      # mux ADTS into MP4
+faam tag output.m4a --title Song      # edit tags in place
+```
+
+## Build
+
+Install Meson and Ninja, then build and install the suite:
+
+```sh
+meson setup build
+meson compile -C build
+meson test -C build --print-errorlogs
+meson install -C build
+```
+
+### Build options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `encoder` | true | Build `libfaac` and the `faac` frontend |
+| `decoder` | true | Build `libfaad` and the `faad` frontend |
+| `frontend` | true | Build the command-line tools |
+| `frontend-static` | false | Link the frontend executables to the static libraries |
+| `decoder-sbr` | true | SBR (HE-AAC v1) support in `libfaad` |
+| `decoder-ps` | true | Parametric Stereo (HE-AAC v2) support in `libfaad`; needs `decoder-sbr` |
+| `decoder-dab` | true | DAB+ (960/120 frame length) support in `libfaad` |
+| `decoder-drc` | true | Dynamic range control support in `libfaad` |
+| `max-channels` | 8 | Maximum number of channels (1-8) |
+| `muxer` | true | Build the `faam` command-line tool (`libfaam` is always built) |
+| `resampler` | true | Build the `faar` command-line tool (`libfaar` is always built) |
+| `muxer-video` | true | `libfaam`: H.264/H.265 video tracks |
+| `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
+| `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
+| `faar-precision` | double | FAAR arithmetic precision (`double` or `float`); float High uses compensated float arithmetic and more CPU |
+| `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
+
+## Library APIs
+
+Applications can link the component libraries directly. Their public C APIs,
+build instructions, and usage details are documented here:
+
+- [FAAC encoder API](docs/libfaac.md)
+- [FAAD decoder API](docs/libfaad.md)
+- [FAAR resampler API](docs/libfaar.md)
+- [FAAM MP4 muxer and demuxer API](docs/libfaam.md)
 
 ## Copyrights
 
-FAAC, FAAD and FAAM are free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
+FAAC, FAAD, FAAR and FAAM are free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later:
 
 ```
 FAAC - Freeware Advanced Audio Coder
@@ -38,57 +99,3 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 Lesser General Public License for more details.
 ```
-
-> **Important:** The use of this software may require the payment of patent royalties. You need to consider this issue before you start building derivative works. We are not warranting or indemnifying you in any way for patent royalties! **YOU ARE SOLELY RESPONSIBLE FOR YOUR OWN ACTIONS!**
-
-## Compiling Instructions
-
-1. Make sure you have recent versions of meson and ninja installed.
-2. cd to the source dir
-3. Run:
-   ```bash
-   meson setup build
-   ninja -C build
-   meson test -C build --print-errorlogs
-   meson install -C build
-   ```
-
-### Build options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `encoder` | true | Build `libfaac` and the `faac` frontend |
-| `decoder` | true | Build `libfaad` and the `faad` frontend |
-| `frontend` | true | Build the command-line tools |
-| `frontend-static` | false | Link the frontend executables to the static libraries |
-| `decoder-sbr` | true | SBR (HE-AAC v1) support in `libfaad` |
-| `decoder-ps` | true | Parametric Stereo (HE-AAC v2) support in `libfaad`; needs `decoder-sbr` |
-| `max-channels` | 8 | Maximum number of channels (1-8) |
-| `muxer` | true | Build the `faam` command-line tool |
-| `muxer-video` | true | `libfaam`: H.264/H.265 video tracks |
-| `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
-| `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
-| `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
-
-Library integration: [FAAC encoder API](docs/libfaac.md), [FAAD decoder API](docs/libfaad.md) and
-[FAAM MP4 muxer/demuxer API](docs/libfaam.md).
-
-## Usage
-
-```bash
-faac input.wav -o output.m4a        # encode
-faad output.m4a -o decoded.wav      # decode
-faad -i output.m4a                  # show stream info
-faam -i output.aac -o output.m4a    # mux ADTS into MP4
-faam tag output.m4a --title Song    # edit tags in place
-faam tag output.m4a --lyrics-file lyrics.txt --bpm 120
-```
-
-FAAM supports embedded UTF-8 lyrics, grouping, copyright, descriptions, and
-classical work/movement tags. `libfaam` exposes a single typed metadata API for
-native and freeform atoms, including binary and repeated values; new keys need
-no library changes. See the [metadata API](docs/libfaam.md#reading-and-editing-tags-without-remuxing)
-and `faam --help-tag`.
-
-Run checks with `meson test -C build --print-errorlogs`. Python enables CLI
-checks; installing Mutagen also enables the optional interoperability test.

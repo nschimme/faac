@@ -29,6 +29,13 @@ int main(void)
     faad_config c;
     return faad_config_init(&c, sizeof c) == FAAD_OK ? 0 : 1;
 }
+#elif defined(CHECK_FAAR)
+#include <faar.h>
+int main(void)
+{
+    faar_config c;
+    return faar_config_init(&c, sizeof c) == FAAR_OK ? 0 : 1;
+}
 #else
 #include <faam.h>
 int main(void)

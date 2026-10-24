@@ -31,6 +31,27 @@ bool cli_parse_uint(const char *text, unsigned long long max, unsigned long long
     return true;
 }
 
+bool cli_parse_rate(const char *text, uint32_t min_rate, uint32_t max_rate, uint32_t *out)
+{
+    unsigned long long value;
+    if (!out || min_rate == 0 || max_rate < min_rate ||
+        !cli_parse_uint(text, max_rate, &value) || value < min_rate)
+        return false;
+    *out = (uint32_t)value;
+    return true;
+}
+
+bool cli_is_aac_sample_rate(uint32_t rate)
+{
+    static const uint32_t rates[] = {
+        96000, 88200, 64000, 48000, 44100, 32000, 24000,
+        22050, 16000, 12000, 11025, 8000, 7350
+    };
+    for (size_t i = 0; i < sizeof(rates) / sizeof(rates[0]); i++)
+        if (rate == rates[i]) return true;
+    return false;
+}
+
 bool cli_parse_verbosity(const char *text, uint8_t *out)
 {
     unsigned long long value;

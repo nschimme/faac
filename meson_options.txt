@@ -41,6 +41,11 @@ option('muxer',
     type: 'boolean',
     value: true)
 
+option('resampler',
+    description: 'Build the faar CLI tool (libfaar itself is always built)',
+    type: 'boolean',
+    value: true)
+
 option('muxer-video',
     description: 'libfaam: H.264/H.265 video tracks (avc1/hvc1 entries, stss, ctts, Annex-B conversion); off leaves an audio-only muxer/demuxer',
     type: 'boolean',
@@ -74,6 +79,12 @@ option('max-channels',
     min: 1,
     max: 8,
     value: 8)
+
+option('faar-precision',
+    description: 'FAAR arithmetic policy (mixed uses float for Fast/Good and double for High)',
+    type: 'combo',
+    choices: ['double', 'float', 'mixed'],
+    value: 'mixed')
 
 # End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
 # Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();

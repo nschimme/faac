@@ -62,6 +62,9 @@ faam_src="$root/libfaam/atom_patch.c $root/libfaam/chapter.c $root/libfaam/demux
 # Source files for libfaac
 faac_src="$root/libfaac/bitstream.c $root/libfaac/blockswitch.c $root/libfaac/channels.c $root/libfaac/cpu_compute.c $root/libfaac/faac.c $root/libfaac/filtbank.c $root/libfaac/frame.c $root/libfaac/huff2.c $root/libfaac/huffdata.c $root/libfaac/quantize.c $root/libfaac/ratecontrol.c $root/libfaac/resample.c $root/libfaac/sbr_analysis.c $root/libfaac/sbr_bitstream.c $root/libfaac/sbr.c $root/libfaac/sbr_huff_tables.c $root/libfaac/stereo.c $root/libfaac/tns.c $root/libfaac/util.c"
 
+# Source files for libfaar
+faar_src="$root/libfaar/polyresample.c $root/libfaar/dft_coeffs.c $root/libfaar/dft_prefilter.c $root/libfaar/dft_fir.c $root/libfaar/fft_real.c"
+
 # Compile quantize_sse.c with gcc if available to bypass clang bug on immintrin.h
 q_sse_obj=""
 if [ -n "$sse" ]; then
@@ -72,19 +75,25 @@ if [ -n "$sse" ]; then
     fi
 fi
 
-# 1. fuzz_encode
+# 1. fuzz_faar
+build_target "fuzz_faar" \
+    -include "$bd/config.h" -DFAAR_BUILDING -DFAAR_FFT_LEAN \
+    -I"$root/include" -I"$root/libfaar" \
+    "$root/tests/fuzz/fuzz_faar.c" $faar_src -lm
+
+# 2. fuzz_encode
 build_target "fuzz_encode" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faac_ -I"$root/include" -I"$root/common" -I"$root/libfaac" \
     "$root/tests/fuzz/fuzz_encode.c" $faac_src $q_sse_obj \
     "$root/common/fft.c" "$root/common/sbr_tables.c" "$root/common/sfb_tables.c" -lm
 
-# 2. fuzz_wav
+# 3. fuzz_wav
 build_target "fuzz_wav" \
     -include "$bd/config.h" -I"$root/include" -I"$root/common" -I"$root/frontend" -I"$bd/frontend" \
     "$root/tests/fuzz/fuzz_wav.c" "$root/frontend/input.c" "$root/frontend/charset.c" \
     "$root/frontend/cli_io.c" -lm
 
-# 3. fuzz_faad_adts
+# 4. fuzz_faad_adts
 build_target "fuzz_faad_adts" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faad_ -I"$root/include" -I"$root/common" -I"$root/libfaad" \
     "$root/tests/fuzz/fuzz_faad_adts.c" $faad_src $(ls "$root"/common/*.c 2>/dev/null) -lm
@@ -94,7 +103,7 @@ build_target "fuzz_faad_raw960" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faad_ -I"$root/include" -I"$root/common" -I"$root/libfaad" \
     "$root/tests/fuzz/fuzz_faad_raw960.c" $faad_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
-# 4. fuzz_faad_mp4 (with and without FAAM flags)
+# 5. fuzz_faad_mp4 (with and without FAAM flags)
 build_target "fuzz_faad_mp4" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faad_ -I"$root/include" -I"$root/common" -I"$root/libfaad" -I"$root/libfaam" -I"$root/frontend" -I"$bd/frontend" \
     "$root/tests/fuzz/fuzz_faad_mp4.c" "$root/frontend/mp4read.c" \
@@ -106,7 +115,7 @@ build_target "fuzz_faad_mp4_full" \
     "$root/tests/fuzz/fuzz_faad_mp4.c" "$root/frontend/mp4read.c" \
     "$root/frontend/cli_io.c" "$root/frontend/charset.c" $faad_src $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
-# 5. fuzz_faam_demux (with and without FAAM flags)
+# 6. fuzz_faam_demux (with and without FAAM flags)
 build_target "fuzz_faam_demux" \
     -include "$bd/config.h" -DCOMMON_PREFIX=fuzz_ -I"$root/include" -I"$root/common" -I"$root/libfaam" \
     "$root/tests/fuzz/fuzz_faam_demux.c" $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
@@ -116,24 +125,24 @@ build_target "fuzz_faam_demux_full" \
     -DFAAM_MUXER_FRAGMENTED=1 -DFAAM_MUXER_VIDEO=1 \
     "$root/tests/fuzz/fuzz_faam_demux.c" $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
-# 6. fuzz_faam_tags
+# 7. fuzz_faam_tags
 build_target "fuzz_faam_tags" \
     -include "$bd/config.h" -DCOMMON_PREFIX=fuzz_ -I"$root/include" -I"$root/common" -I"$root/libfaam" \
     "$root/tests/fuzz/fuzz_faam_tags.c" $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
-# 7. fuzz_faam_roundtrip
+# 8. fuzz_faam_roundtrip
 build_target "fuzz_faam_roundtrip" \
     -include "$bd/config.h" -DCOMMON_PREFIX=fuzz_ -I"$root/include" -I"$root/common" -I"$root/libfaam" \
     -DFAAM_MUXER_FRAGMENTED=1 -DFAAM_MUXER_VIDEO=1 \
     "$root/tests/fuzz/fuzz_faam_roundtrip.c" $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
-# 8. fuzz_faam_annexb
+# 9. fuzz_faam_annexb
 build_target "fuzz_faam_annexb" \
     -include "$bd/config.h" -DCOMMON_PREFIX=fuzz_ -I"$root/include" -I"$root/common" -I"$root/frontend" -I"$root/libfaam" \
     -DFAAM_MUXER_FRAGMENTED=1 -DFAAM_MUXER_VIDEO=1 \
     "$root/tests/fuzz/fuzz_faam_annexb.c" "$root/frontend/annexb.c" $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
-# 9. fuzz_adts_header
+# 10. fuzz_adts_header
 build_target "fuzz_adts_header" \
     -include "$bd/config.h" -I"$root/include" -I"$root/common" -I"$root/frontend" \
     "$root/tests/fuzz/fuzz_adts_header.c" "$root/frontend/adts.c" -lm
@@ -146,7 +155,7 @@ fi
 
 cd "$out"
 
-all_targets="fuzz_encode fuzz_wav fuzz_faad_adts fuzz_faad_raw960 fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_adts_header"
+all_targets="fuzz_faar fuzz_encode fuzz_wav fuzz_faad_adts fuzz_faad_raw960 fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_adts_header"
 
 if [ -z "$targets" ]; then
     run_list="$all_targets"
