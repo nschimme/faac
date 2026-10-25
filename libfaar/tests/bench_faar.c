@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     c.in_rate = (uint32_t)strtoul(argv[1], NULL, 10);
     c.out_rate = (uint32_t)strtoul(argv[2], NULL, 10);
     c.channels = (uint16_t)strtoul(argv[3], NULL, 10);
-    c.quality = (faar_quality_t)atoi(argv[4]);
+    c.quality = (faar_quality)atoi(argv[4]);
     size_t block = strtoul(argv[5], NULL, 10), cap = strtoul(argv[6], NULL, 10);
     if (!block || !cap || !c.channels || !c.in_rate) return 1;
     float *in = calloc(block * c.channels, sizeof(*in));
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
             } while (made);
         }
         size_t made;
-        do { check(faar_resampler_flush(r, out, cap, &made)); produced += made; } while (made);
+        do { check(faar_resampler_finish(r, out, cap, &made)); produced += made; } while (made);
         elapsed += now() - t;
         if (produced != ((uint64_t)frames * c.out_rate + c.in_rate - 1) / c.in_rate) return 1;
         total += frames;

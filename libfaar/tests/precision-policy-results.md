@@ -450,10 +450,10 @@ both boundary policies. It passed in both release modes and float sanitizers.
 
 ## Reusable immutable filter plans
 
-`faar_plan_open()` resolves the full configuration once. Its internal design
+`faar_design_open()` resolves the full configuration once. Its internal design
 retains stage geometry, filter spectra, sparse half-band coefficients,
 polyphase banks and immutable FFT twiddles. Temporary mutable setup buffers
-are released before returning. `faar_resampler_open_from_plan()` allocates
+are released before returning. `faar_resampler_open_from_design()` allocates
 independent histories, queues and FFT work, and borrows only immutable arrays.
 Channel pairs within each stream still share their serialized workspace.
 
@@ -487,7 +487,7 @@ Seven warm repetitions alternate ordinary and plan measurement order:
 | Float | 8 | High | 45.910 | 2.858 | 0.418 |
 
 Times are separate medians per phase; include design cost when comparing a
-batch of new streams. `bench_faar_plan` reproduces these observations with
+batch of new streams. `bench_faar_design` reproduces these observations with
 allocator hooks. It verifies all tracked allocations are returned after each
 measurement. Heap excludes allocator metadata, static BSS and caller buffers.
 A single stream has little sharing benefit; this API targets repeated opens

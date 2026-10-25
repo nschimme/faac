@@ -17,7 +17,7 @@ typedef struct {
 typedef struct {
     uint32_t in_rate, out_rate;
     uint16_t channels;
-    faar_quality_t quality;
+    faar_quality quality;
     uint32_t decimate;
     size_t block, output_cap;
     int repeat_prepare;
@@ -92,7 +92,7 @@ static int stream_all(faar_resampler *r, const test_case *tc, size_t bound,
     }
     for (size_t guard = 0; guard < 100000; ++guard) {
         size_t made = 0;
-        if (faar_resampler_flush(r, out, tc->output_cap, &made) != FAAR_OK ||
+        if (faar_resampler_finish(r, out, tc->output_cap, &made) != FAAR_OK ||
             made > tc->output_cap || !append(pcm, out, made, tc->channels)) return 0;
         if (!made) return 1;
     }
@@ -164,7 +164,7 @@ static int run_comparison(const test_case *tc, size_t which, pcm_t *reference_ou
         faar_resampler_close(&late); goto error;
     }
     do {
-        if (faar_resampler_flush(late, scratch, OUT_MAX, &made) != FAAR_OK) {
+        if (faar_resampler_finish(late, scratch, OUT_MAX, &made) != FAAR_OK) {
             faar_resampler_close(&late); goto error;
         }
     } while (made);
@@ -213,7 +213,7 @@ static int test_prepare_failures(const test_case *tc, const pcm_t *expected) {
         faar_alloc_fail_nth(nth);
         faar_status status = faar_resampler_prepare(r, tc->block);
         faar_alloc_fail_nth(0);
-        if (status != FAAR_ERR_NO_MEMORY || faar_alloc_calls() < nth ||
+        if (status != FAAR_ERR_INSUFFICIENT_MEM || faar_alloc_calls() < nth ||
             faar_resampler_prepare(r, tc->block) != FAAR_OK ||
             !stream_all(r, tc, tc->block, input, &actual) ||
             actual.frames != expected->frames ||
@@ -246,7 +246,7 @@ static int test_failed_reprepare(const test_case *tc, const pcm_t *expected) {
     faar_alloc_fail_nth(1);
     faar_status status = faar_resampler_prepare(r, 65536);
     faar_alloc_fail_nth(0);
-    if (status != FAAR_ERR_NO_MEMORY) goto error;
+    if (status != FAAR_ERR_INSUFFICIENT_MEM) goto error;
     faar_alloc_fail_all(1);
     size_t before = faar_alloc_calls();
     int streamed = stream_all(r, tc, 64, input, &actual);
@@ -282,7 +282,7 @@ static int test_budget_exhaustion(void) {
     size_t calls = faar_alloc_calls();
     faar_alloc_fail_all(0);
     faar_resampler_close(&r);
-    if ((status != FAAR_ERR_NO_MEMORY && status != FAAR_ERR_PROCESSING) || calls)
+    if ((status != FAAR_ERR_INSUFFICIENT_MEM && status != FAAR_ERR_PROCESSING) || calls)
         return fail("undrained bounded output did not exhaust without allocation", 97);
     return 0;
 }
@@ -310,7 +310,7 @@ static int test_high_open_failures(void) {
             faar_alloc_fail_nth(0);
             int returned_handle = r != NULL;
             faar_resampler_close(&r);
-            if (status != FAAR_ERR_NO_MEMORY || returned_handle
+            if (status != FAAR_ERR_INSUFFICIENT_MEM || returned_handle
                     || faar_alloc_live() != live_before)
                 return fail("High allocation failure leaked or returned a handle", nth);
         }

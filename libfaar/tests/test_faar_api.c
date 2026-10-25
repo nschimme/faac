@@ -37,7 +37,7 @@ int main(void) {
     size_t total = produced;
     size_t flushed = 0;
     do {
-        assert(faar_resampler_flush(resampler, output + total,
+        assert(faar_resampler_finish(resampler, output + total,
                                     512 - total, &flushed) == FAAR_OK);
         total += flushed;
     } while (flushed != 0);
@@ -71,6 +71,6 @@ int main(void) {
     assert(resampler != NULL);
     assert(faar_resampler_close(&resampler) == FAAR_OK);
     assert(resampler == NULL);
-    assert(strcmp(faar_strerror(FAAR_ERR_NO_MEMORY), "out of memory") == 0);
+    assert(strcmp(faar_strerror(FAAR_ERR_INSUFFICIENT_MEM), "out of memory") == 0);
     return 0;
 }

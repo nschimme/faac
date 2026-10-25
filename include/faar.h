@@ -23,8 +23,8 @@
  *   - Initialize faar_config with faar_config_init() and open an opaque handle
  *     with faar_resampler_open(). Fallible calls return faar_status; process
  *     and flush write frame counts through output parameters. Reusable
- *     faar_plan designs can supply coefficients to multiple independent
- *     resamplers opened with faar_resampler_open_from_plan().
+ *     faar_design designs can supply coefficients to multiple independent
+ *     resamplers opened with faar_resampler_open_from_design().
  *   - Versioned public structures begin with struct_size and grow only by
  *     appending fields at or after the previous sizeof(struct), never into
  *     compiler padding. Explicit reserved fields must be zero on input and are
@@ -78,36 +78,36 @@ extern "C" {
 /**
  * @brief Resampler quality presets
  */
-typedef enum faar_quality_t {
+typedef enum faar_quality {
     FAAR_QUALITY_FAST = 0, /**< Lower-cost filter; narrower passband */
     FAAR_QUALITY_GOOD = 1, /**< Default profile: wide passband and strong rejection */
     FAAR_QUALITY_HIGH = 2, /**< Stronger rejection, higher cost; float builds use compensated arithmetic */
     FAAR_QUALITY_MAX  = 0x7fffffff
-} faar_quality_t;
+} faar_quality;
 
 /**
  * @brief Dither modes for bit-depth truncation / quantization
  */
-typedef enum faar_dither_t {
+typedef enum faar_dither {
     FAAR_DITHER_OFF    = 0, /**< No dithering (direct truncation / rounding) */
     FAAR_DITHER_TPDF   = 1, /**< Triangular Probability Density Function dither */
     FAAR_DITHER_SHAPED = 2, /**< TPDF dither with high-pass noise shaping error feedback */
     FAAR_DITHER_MAX    = 0x7fffffff
-} faar_dither_t;
+} faar_dither;
 
 /** Samples assumed outside an independently supplied stream. */
-typedef enum faar_boundary_t {
+typedef enum faar_boundary {
     FAAR_BOUNDARY_ZERO = 0, /**< Silence outside the stream */
     FAAR_BOUNDARY_HOLD = 1, /**< Continue the first/last sample (default) */
     FAAR_BOUNDARY_MAX = 0x7fffffff
-} faar_boundary_t;
+} faar_boundary;
 
 /* Status codes for the versioned resampler API. */
 typedef enum faar_status {
     FAAR_OK = 0,
     FAAR_ERR_INVALID_ARGUMENT = -1,
     FAAR_ERR_UNSUPPORTED = -2,
-    FAAR_ERR_NO_MEMORY = -3,
+    FAAR_ERR_INSUFFICIENT_MEM = -3,
     FAAR_ERR_PROCESSING = -4,
     FAAR_STATUS_MAX = 0x7fffffff
 } faar_status;
@@ -127,9 +127,9 @@ typedef struct faar_config {
     uint32_t out_rate;
     uint16_t channels;
     uint16_t reserved;
-    faar_quality_t quality;
-    faar_boundary_t boundary;
-    faar_dither_t dither;
+    faar_quality quality;
+    faar_boundary boundary;
+    faar_dither dither;
     uint8_t dither_bits; /* 16 or 24 when dither is not OFF; ignored otherwise */
     uint8_t reserved1[3];
     uint32_t decimate_factor;
@@ -151,9 +151,9 @@ typedef struct faar_resampler_info {
     uint32_t in_rate;
     uint32_t out_rate;
     uint32_t channels;
-    faar_quality_t quality;
-    faar_boundary_t boundary;
-    faar_dither_t dither;
+    faar_quality quality;
+    faar_boundary boundary;
+    faar_dither dither;
     uint8_t dither_bits;
     uint8_t reserved[3];
     size_t delay;
@@ -170,7 +170,7 @@ typedef struct faar_resampler_info {
  */
 typedef struct faar_resampler_struct faar_resampler;
 /* Immutable filter design, reusable by independent streams. */
-typedef struct faar_plan_struct faar_plan;
+typedef struct faar_design_struct faar_design;
 
 FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size);
 FAARAPI faar_status faar_get_library_info(faar_library_info *out);
@@ -184,9 +184,9 @@ FAARAPI faar_status faar_resampler_open(const faar_config *config, faar_resample
  * another thread is using it. On toolchains without atomics, serialize plan
  * and associated stream open/close operations. Process/flush on independent
  * streams remain concurrent. Ordinary open() needs no plan. */
-FAARAPI faar_status faar_plan_open(const faar_config *config, faar_plan **out);
-FAARAPI faar_status faar_plan_close(faar_plan **plan);
-FAARAPI faar_status faar_resampler_open_from_plan(faar_plan *plan,
+FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **out);
+FAARAPI faar_status faar_design_close(faar_design **plan);
+FAARAPI faar_status faar_resampler_open_from_design(faar_design *plan,
                                                 faar_resampler **out);
 /* Reserve streaming storage before any input or flush. Process calls may
  * supply at most max_input_frames; drain with NULL/0 and nonzero output
@@ -204,7 +204,7 @@ FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
 FAARAPI faar_status faar_resampler_process(faar_resampler *resampler,
         const float *in_samples, size_t in_count, float *out_samples,
         size_t max_out_count, size_t *out_count);
-FAARAPI faar_status faar_resampler_flush(faar_resampler *resampler,
+FAARAPI faar_status faar_resampler_finish(faar_resampler *resampler,
         float *out_samples, size_t max_out_count, size_t *out_count);
 
 #ifdef __cplusplus

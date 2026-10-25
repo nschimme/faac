@@ -75,7 +75,7 @@ static int append(samples *s, const float *src, size_t n) {
 /* Process every input frame, draining between calls and flushing until empty. */
 static int convert_boundary(const float *input, size_t in_frames, uint32_t in_rate,
                    uint32_t out_rate, uint16_t channels, size_t block,
-                   size_t out_cap, samples *out, faar_boundary_t boundary) {
+                   size_t out_cap, samples *out, faar_boundary boundary) {
     faar_test_handle * h = faar_test_create(in_rate, out_rate, channels, TEST_QUALITY);
     if (!h) return fail("faar_test_create returned NULL");
     if (faar_test_set_boundary(h, boundary)) {faar_test_close(h);return fail("boundary configuration failed");}
@@ -183,7 +183,7 @@ static int test_boundary_modes(void) {
     float out[4];
     float input[1]={.5f};
     if(!h)return fail("boundary state create failed");
-    if(faar_test_set_boundary(NULL,FAAR_BOUNDARY_HOLD)!=-1 || faar_test_set_boundary(h,(faar_boundary_t)7)!=-1) {
+    if(faar_test_set_boundary(NULL,FAAR_BOUNDARY_HOLD)!=-1 || faar_test_set_boundary(h,(faar_boundary)7)!=-1) {
         faar_test_close(h);return fail("invalid boundary setting accepted");
     }
     faar_test_process(h,input,1,out,4);

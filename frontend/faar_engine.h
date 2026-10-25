@@ -30,10 +30,10 @@ typedef enum {
 
 typedef struct {
     uint32_t output_rate;
-    faar_quality_t quality;
+    faar_quality quality;
     faar_pcm_format_t format;
-    faar_dither_t dither;
-    faar_boundary_t boundary;
+    faar_dither dither;
+    faar_boundary boundary;
     uint32_t decimate_factor;
     uint8_t verbosity;
     bool write_wav;

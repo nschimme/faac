@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     config.in_rate = (uint32_t)in_rate;
     config.out_rate = (uint32_t)out_rate;
     config.channels = (uint16_t)channels;
-    config.quality = (faar_quality_t)quality;
+    config.quality = (faar_quality)quality;
 
     faar_resampler *resampler = NULL;
     faar_alloc_reset_counters();

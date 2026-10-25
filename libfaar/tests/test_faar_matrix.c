@@ -80,7 +80,7 @@ static float input_sample(size_t index) {
 }
 
 static int convert(const float *input, uint32_t input_rate,
-                   uint32_t output_rate, faar_quality_t quality,
+                   uint32_t output_rate, faar_quality quality,
                    int chunked, result_t *result) {
     faar_test_handle * handle = faar_test_create(input_rate, output_rate, 1, quality);
     if (!handle) return fail("resampler creation failed", input_rate, output_rate);
@@ -171,9 +171,9 @@ static int test_rate_matrix_partition(size_t partition) {
              * boundary pairs run at each available preset. */
             if (p < 289 && preset != FAAR_QUALITY_GOOD) continue;
             result_t whole = {0}, chunked = {0};
-            if (convert(input, in_rate, out_rate, (faar_quality_t)preset, 0,
+            if (convert(input, in_rate, out_rate, (faar_quality)preset, 0,
                         &whole) ||
-                convert(input, in_rate, out_rate, (faar_quality_t)preset, 1,
+                convert(input, in_rate, out_rate, (faar_quality)preset, 1,
                         &chunked)) {
                 free(whole.data); free(chunked.data);
                 return 1;

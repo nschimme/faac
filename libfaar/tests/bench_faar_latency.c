@@ -111,7 +111,7 @@ static int timed_flush(faar_resampler *resampler,
         perror("clock_gettime");
         return 0;
     }
-    status = faar_resampler_flush(resampler, output, output_capacity, &made);
+    status = faar_resampler_finish(resampler, output, output_capacity, &made);
     elapsed = now() - start;
     if (elapsed < 0.0) {
         perror("clock_gettime");
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
     config.in_rate = (uint32_t)in_rate;
     config.out_rate = (uint32_t)out_rate;
     config.channels = (uint16_t)channels;
-    config.quality = (faar_quality_t)quality;
+    config.quality = (faar_quality)quality;
 
     input = calloc(block * (size_t)channels, sizeof(*input));
     output = calloc(output_capacity * (size_t)channels, sizeof(*output));

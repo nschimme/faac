@@ -103,11 +103,11 @@ static void print_faar_help(int mode) {
 int main(int argc, char **argv) {
     uint32_t target_rate = 0;
     uint32_t raw_in_rate = 44100;
-    faar_quality_t quality = FAAR_QUALITY_GOOD;
+    faar_quality quality = FAAR_QUALITY_GOOD;
     uint16_t channels = 2;
     faar_pcm_format_t fmt = FAAR_PCM_F32LE;
-    faar_dither_t dither = FAAR_DITHER_OFF;
-    faar_boundary_t boundary = FAAR_BOUNDARY_HOLD;
+    faar_dither dither = FAAR_DITHER_OFF;
+    faar_boundary boundary = FAAR_BOUNDARY_HOLD;
     const char *input_path = NULL;
     const char *output_path = NULL;
 

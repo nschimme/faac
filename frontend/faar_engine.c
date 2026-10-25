@@ -288,7 +288,7 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
 
     for (;;) {
         size_t flushed = 0;
-        api_status = faar_resampler_flush(r, float_out_buf, out_cap, &flushed);
+        api_status = faar_resampler_finish(r, float_out_buf, out_cap, &flushed);
         if (api_status != FAAR_OK) { fprintf(stderr, "Error: Resampler flush failed: %s\n", faar_strerror(api_status)); goto cleanup; }
         if (flushed == 0)
             break;

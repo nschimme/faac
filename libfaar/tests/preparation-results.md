@@ -5,7 +5,7 @@ input bound before input or flush begins. Prepared process, drain, and flush
 calls make no heap allocations or frees. Drain with `process(NULL, 0, ...)`
 using nonzero output capacity until it returns zero frames before adding more
 input; otherwise the bounded output queue can exhaust and return
-`FAAR_ERR_NO_MEMORY` or `FAAR_ERR_PROCESSING`. Repreparation is allowed before
+`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`. Repreparation is allowed before
 streaming; if it fails, the previous mode and bound remain usable. The normal
 unprepared flow is unchanged.
 

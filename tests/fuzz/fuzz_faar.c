@@ -52,7 +52,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     uint16_t channels = 1 + data[2] % channel_limit;
     uint32_t input_rate = choose_rate(data[0]);
     uint32_t output_rate = choose_rate(data[1]);
-    faar_quality_t quality = (faar_quality_t)(data[3] % 3);
+    faar_quality quality = (faar_quality)(data[3] % 3);
     unsigned cascade_selector = data[4] % 3;
     uint32_t cascade = cascade_selector == 0 ? 0 : (cascade_selector == 1 ? 2 : 4);
 
@@ -72,7 +72,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     config.quality = quality;
     config.decimate_factor = cascade;
     config.boundary = (data[0] & 0x10) ? FAAR_BOUNDARY_HOLD : FAAR_BOUNDARY_ZERO;
-    config.dither = (faar_dither_t)(data[1] % 3);
+    config.dither = (faar_dither)(data[1] % 3);
     config.dither_bits = (data[2] & 1) ? 16 : 24;
     faar_resampler *handle = NULL;
     if (faar_resampler_open(&config, &handle) != FAAR_OK) return 0;
@@ -89,7 +89,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     }
     for (unsigned guard = 0; guard < 64; ++guard) {
         size_t produced = 0;
-        if (faar_resampler_flush(handle, output, MAX_OUTPUT_FRAMES,
+        if (faar_resampler_finish(handle, output, MAX_OUTPUT_FRAMES,
                 &produced) != FAAR_OK || produced == 0) break;
     }
     faar_resampler_close(&handle);

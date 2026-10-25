@@ -82,9 +82,9 @@ struct faar_resampler_struct {
     uint32_t in_rate;
     uint32_t out_rate;
     uint16_t channels;
-    faar_quality_t quality;
-    faar_dither_t dither;
-    faar_boundary_t boundary;
+    faar_quality quality;
+    faar_dither dither;
+    faar_boundary boundary;
     uint8_t dither_bits;
     uint32_t prng_state[MAX_CHANNELS];
     float error_history[MAX_CHANNELS];
@@ -131,17 +131,17 @@ struct faar_resampler_struct {
     size_t dft_intermediate_capacity;
     faar_status last_error;
     bool shared_coeffs; /* Plan retains immutable banks for this stream. */
-    faar_plan *plan; /* Only the root of a plan-backed stream owns a reference. */
+    faar_design *plan; /* Only the root of a plan-backed stream owns a reference. */
 };
 
-struct faar_plan_struct {
+struct faar_design_struct {
     faac_once_t references; /* Atomic refcount, using the platform atomic type. */
     faar_resampler *prototype; /* Immutable geometry, coefficients and twiddles. */
 };
 
-static void plan_release(faar_plan *plan);
+static void plan_release(faar_design *plan);
 
-static int plan_retain(faar_plan *plan) {
+static int plan_retain(faar_design *plan) {
 #if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
     int count = atomic_load_explicit(&plan->references, memory_order_relaxed);
     while (count < INT_MAX) {
@@ -197,7 +197,7 @@ static int ensure_dft_intermediate(faar_resampler * r, size_t frames) {
 }
 
 static faar_resampler * create_resampler_internal(uint32_t in_rate,
-        uint32_t out_rate, uint16_t channels, faar_quality_t quality,
+        uint32_t out_rate, uint16_t channels, faar_quality quality,
         uint32_t decimate_factor, size_t filter_len_override,
         bool force_polyphase, size_t max_phases);
 static void destroy_internal(faar_resampler *r);
@@ -282,7 +282,7 @@ static const struct preset_spec preset_specs[] = {
     [FAAR_QUALITY_HIGH] = {0.96, 1.04, 150.0, 511, 38.0f},
 };
 
-static const struct preset_spec *preset_spec(faar_quality_t quality) {
+static const struct preset_spec *preset_spec(faar_quality quality) {
     return &preset_specs[quality <= FAAR_QUALITY_HIGH ? (size_t)quality
                                                       : FAAR_QUALITY_GOOD];
 }
@@ -328,7 +328,7 @@ static void design_band(const struct preset_spec *spec, double pb, double sb,
 
 /* Kaiser length and beta for a preset spec at filter_rate. alignment is the
  * divisor N-1 must meet so the DFT stage stays centred on input zero. */
-static void design_from_spec(faar_quality_t quality, uint32_t out_rate,
+static void design_from_spec(faar_quality quality, uint32_t out_rate,
         uint32_t filter_rate, double stopband, size_t alignment, double reserve_db,
         size_t *tap_count, double *beta, double *cutoff) {
     const struct preset_spec *spec = preset_spec(quality);
@@ -418,7 +418,7 @@ static const size_t short_up_bank = 21;
 static const size_t general_up_max_phases = 512;
 
 static struct short_plan short_plan(uint32_t in, uint32_t out,
-        faar_quality_t quality, bool general) {
+        faar_quality quality, bool general) {
     struct short_plan p = {0, 1, 1, 1, 21, 19.078143572239966, 0.0, 0};
     enum short_route route = short_half_rate_route(in, out) ? HALF : GENERAL;
     enum short_design design = route == HALF ? FIXED_HALF : SPEC;
@@ -491,7 +491,7 @@ selected:
 }
 
 static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
-        uint16_t channels, faar_quality_t quality,
+        uint16_t channels, faar_quality quality,
         const struct short_plan *selected) {
     struct short_plan plan = *selected;
     size_t tap_count = plan.taps;
@@ -558,7 +558,7 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
 
 /* The final bank must not exceed the GENERAL plan's rate or arithmetic cost;
  * the sharp filter moves to the lowest viable rate. */
-static unsigned short_max_halvings(uint32_t in, uint32_t out, faar_quality_t q) {
+static unsigned short_max_halvings(uint32_t in, uint32_t out, faar_quality q) {
     if (in <= out || short_half_rate_route(in, out)
             || short_dedicated_route(in, out)) return 0;
     struct short_plan original = short_plan(in, out, q, true);
@@ -581,7 +581,7 @@ static const struct {
 
 /* Estimate relative work from FIR operations, FFT size, bank length, and
  * input frames visited per output sample. */
-static double short_work(uint32_t in, uint32_t out, faar_quality_t quality,
+static double short_work(uint32_t in, uint32_t out, faar_quality quality,
         unsigned k, double fir_work, double visited) {
     struct short_plan p = short_plan(in, out, quality, k != 0);
     size_t n = p.fft;
@@ -597,7 +597,7 @@ static double short_work(uint32_t in, uint32_t out, faar_quality_t quality,
 }
 
 static struct short_plan short_preplan(uint32_t in, uint32_t out,
-        faar_quality_t quality) {
+        faar_quality quality) {
     struct short_plan pre = {0, 0, 1, 2, 1, 0, 0, 0};
     /* Symmetric edges cover the preset pass edge and reject aliases before
      * they can land inside 1.04 times FINAL output Nyquist. */
@@ -607,7 +607,7 @@ static struct short_plan short_preplan(uint32_t in, uint32_t out,
     return pre;
 }
 
-static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality_t q,
+static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality q,
         const struct short_route_entry *entry) {
     bool reference = entry && entry->route == REFERENCE;
     /* On these routes sparse half-bands down to below 4:1 measured cheaper
@@ -640,7 +640,7 @@ static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality_t q,
 }
 
 static faar_resampler * short_cascade(uint32_t in, uint32_t out,
-        uint16_t channels, faar_quality_t quality, unsigned k, bool dedicated) {
+        uint16_t channels, faar_quality quality, unsigned k, bool dedicated) {
     if (!k) {
         struct short_plan p = short_plan(in, out, quality, !dedicated);
         return create_staged(in, out, channels, quality, &p);
@@ -681,7 +681,7 @@ static void store_coefficient(faar_resampler *r, size_t at, double val) {
 }
 
 static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out_rate,
-        uint16_t channels, faar_quality_t quality, uint32_t decimate_factor,
+        uint16_t channels, faar_quality quality, uint32_t decimate_factor,
         size_t filter_len_override, bool force_polyphase, size_t max_phases) {
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
@@ -964,7 +964,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
     return r;
 }
 
-static int set_boundary_internal(faar_resampler * r, faar_boundary_t boundary) {
+static int set_boundary_internal(faar_resampler * r, faar_boundary boundary) {
     if (!r || (boundary != FAAR_BOUNDARY_ZERO && boundary != FAAR_BOUNDARY_HOLD)
         || r->input_frames || r->flushed) return -1;
     if (r->dft_prefilter
@@ -978,7 +978,7 @@ static int set_boundary_internal(faar_resampler * r, faar_boundary_t boundary) {
     return 0;
 }
 
-static int set_dither_internal(faar_resampler * r, faar_dither_t dither, uint8_t target_bits) {
+static int set_dither_internal(faar_resampler * r, faar_dither dither, uint8_t target_bits) {
     if (!r) return -1;
     if (dither != FAAR_DITHER_OFF && dither != FAAR_DITHER_TPDF
             && dither != FAAR_DITHER_SHAPED) return -1;
@@ -1023,7 +1023,7 @@ static int reserve_history(faar_resampler *r, size_t additional, bool exact) {
     }
     if (needed <= r->hist_cap_per_ch) return 0;
     if (r->prepared) {
-        r->last_error = FAAR_ERR_NO_MEMORY;
+        r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
         return -1;
     }
     size_t growth = exact ? 1 : 2;
@@ -1042,7 +1042,7 @@ static int reserve_history(faar_resampler *r, size_t additional, bool exact) {
     for (uint16_t c = 0; c < r->channels; ++c) {
         faar_sample_t *next = aligned_malloc(capacity * sizeof(*next));
         if (!next) {
-            r->last_error = FAAR_ERR_NO_MEMORY;
+            r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
             return -1;
         }
         memcpy(next, r->hist[c], r->hist_len * sizeof(*next));
@@ -1085,7 +1085,7 @@ static faar_status prepare_internal(faar_resampler *r, size_t max_input,
         if (intermediate > SIZE_MAX / r->channels / sizeof(float))
             return FAAR_ERR_INVALID_ARGUMENT;
         if (!r->stage2) {
-            if (ensure_dft_intermediate(r, intermediate)) return FAAR_ERR_NO_MEMORY;
+            if (ensure_dft_intermediate(r, intermediate)) return FAAR_ERR_INSUFFICIENT_MEM;
             memset(r->dft_intermediate, 0,
                    r->dft_intermediate_capacity * r->channels * sizeof(float));
         }
@@ -1444,7 +1444,7 @@ static size_t process_internal(faar_resampler * restrict r, const float * restri
         }
         size_t temp_capacity = in_count * r->dft_expansion + 8192;
         if (!r->stage2 && ensure_dft_intermediate(r, temp_capacity)) {
-            r->last_error = FAAR_ERR_NO_MEMORY;
+            r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
             return 0;
         }
         size_t filtered = 0;
@@ -1551,7 +1551,7 @@ static size_t flush_internal(faar_resampler * r, float *out_samples, size_t max_
         max_out_count = output_capacity(r, max_out_count);
         const size_t temp_capacity = 8192;
         if (!r->stage2 && ensure_dft_intermediate(r, temp_capacity)) {
-            r->last_error = FAAR_ERR_NO_MEMORY;
+            r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
             return 0;
         }
         size_t produced = 0, filtered;
@@ -1626,12 +1626,12 @@ static void destroy_internal(faar_resampler * r) {
         if (r->polyphase_low_table) aligned_free(r->polyphase_low_table);
 #endif
     }
-    faar_plan *plan = r->plan;
+    faar_design *plan = r->plan;
     FreeMemory(r);
     if (plan) plan_release(plan);
 }
 
-static void plan_release(faar_plan *plan) {
+static void plan_release(faar_design *plan) {
 #if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
     int last = atomic_fetch_sub_explicit(&plan->references, 1, memory_order_acq_rel) == 1;
 #elif defined(_MSC_VER)
@@ -1695,14 +1695,14 @@ fail:
     return NULL;
 }
 
-FAARAPI faar_status faar_plan_open(const faar_config *config, faar_plan **out) {
+FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **out) {
     if (!out) return FAAR_ERR_INVALID_ARGUMENT;
     *out = NULL;
     faar_resampler *prototype = NULL;
     faar_status status = faar_resampler_open(config, &prototype);
     if (status != FAAR_OK) return status;
-    faar_plan *plan = AllocMemory(sizeof(*plan));
-    if (!plan) { destroy_internal(prototype); return FAAR_ERR_NO_MEMORY; }
+    faar_design *plan = AllocMemory(sizeof(*plan));
+    if (!plan) { destroy_internal(prototype); return FAAR_ERR_INSUFFICIENT_MEM; }
 #if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
     atomic_init(&plan->references, 1);
 #else
@@ -1714,21 +1714,21 @@ FAARAPI faar_status faar_plan_open(const faar_config *config, faar_plan **out) {
     return FAAR_OK;
 }
 
-FAARAPI faar_status faar_plan_close(faar_plan **plan) {
+FAARAPI faar_status faar_design_close(faar_design **plan) {
     if (!plan) return FAAR_ERR_INVALID_ARGUMENT;
     if (*plan) plan_release(*plan);
     *plan = NULL;
     return FAAR_OK;
 }
 
-FAARAPI faar_status faar_resampler_open_from_plan(faar_plan *plan,
+FAARAPI faar_status faar_resampler_open_from_design(faar_design *plan,
                                                 faar_resampler **out) {
     if (!out) return FAAR_ERR_INVALID_ARGUMENT;
     *out = NULL;
     if (!plan) return FAAR_ERR_INVALID_ARGUMENT;
-    if (plan_retain(plan)) return FAAR_ERR_NO_MEMORY;
+    if (plan_retain(plan)) return FAAR_ERR_INSUFFICIENT_MEM;
     faar_resampler *r = clone_plan_internal(plan->prototype);
-    if (!r) { plan_release(plan); return FAAR_ERR_NO_MEMORY; }
+    if (!r) { plan_release(plan); return FAAR_ERR_INSUFFICIENT_MEM; }
     r->plan = plan;
     *out = r;
     return FAAR_OK;
@@ -1771,7 +1771,7 @@ FAARAPI const char *faar_strerror(faar_status status) {
         case FAAR_OK: return "success";
         case FAAR_ERR_INVALID_ARGUMENT: return "invalid argument or state";
         case FAAR_ERR_UNSUPPORTED: return "unsupported configuration";
-        case FAAR_ERR_NO_MEMORY: return "out of memory";
+        case FAAR_ERR_INSUFFICIENT_MEM: return "out of memory";
         case FAAR_ERR_PROCESSING: return "resampling failed; discard this stream";
         default: return "unknown FAAR status";
     }
@@ -1799,7 +1799,7 @@ FAARAPI faar_status faar_resampler_open(const faar_config *config,
         return FAAR_ERR_INVALID_ARGUMENT;
     faar_resampler * r = create_resampler_internal(cfg.in_rate, cfg.out_rate,
             cfg.channels, cfg.quality, cfg.decimate_factor, 0, false, 0);
-    if (!r) return FAAR_ERR_NO_MEMORY;
+    if (!r) return FAAR_ERR_INSUFFICIENT_MEM;
     if (set_boundary_internal(r, cfg.boundary) != 0
             || set_dither_internal(r, cfg.dither, cfg.dither_bits) != 0) {
         destroy_internal(r);
@@ -1870,7 +1870,7 @@ FAARAPI faar_status faar_resampler_process(faar_resampler *resampler,
     return status;
 }
 
-FAARAPI faar_status faar_resampler_flush(faar_resampler *resampler,
+FAARAPI faar_status faar_resampler_finish(faar_resampler *resampler,
         float *out_samples, size_t max_out_count, size_t *out_count) {
     if (!out_count) return FAAR_ERR_INVALID_ARGUMENT;
     *out_count = 0;

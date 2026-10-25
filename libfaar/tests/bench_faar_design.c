@@ -27,7 +27,7 @@ typedef struct {
   uint32_t in_rate;
   uint32_t out_rate;
   uint16_t channels;
-  faar_quality_t quality;
+  faar_quality quality;
 } bench_case;
 
 typedef struct {
@@ -60,20 +60,20 @@ static int close_handles(faar_resampler **handles, size_t count) {
 static int warm_up(const faar_config *config) {
   faar_resampler *ordinary = NULL;
   faar_resampler *planned = NULL;
-  faar_plan *plan = NULL;
+  faar_design *plan = NULL;
 
   if (faar_resampler_open(config, &ordinary) != FAAR_OK)
     return 0;
   if (faar_resampler_close(&ordinary) != FAAR_OK)
     return 0;
-  if (faar_plan_open(config, &plan) != FAAR_OK)
+  if (faar_design_open(config, &plan) != FAAR_OK)
     return 0;
-  if (faar_resampler_open_from_plan(plan, &planned) != FAAR_OK) {
-    faar_plan_close(&plan);
+  if (faar_resampler_open_from_design(plan, &planned) != FAAR_OK) {
+    faar_design_close(&plan);
     return 0;
   }
   faar_resampler_close(&planned);
-  faar_plan_close(&plan);
+  faar_design_close(&plan);
   return 1;
 }
 
@@ -103,13 +103,13 @@ static int time_ordinary(const faar_config *config, size_t handle_count,
 static int time_plan(const faar_config *config, size_t handle_count,
                      bench_result *result) {
   faar_resampler *handles[MAX_HANDLE_COUNT] = {0};
-  faar_plan *plan = NULL;
+  faar_design *plan = NULL;
   double start = now_seconds();
-  if (start < 0.0 || faar_plan_open(config, &plan) != FAAR_OK)
+  if (start < 0.0 || faar_design_open(config, &plan) != FAAR_OK)
     return 0;
   double designed = now_seconds();
   if (designed < start) {
-    faar_plan_close(&plan);
+    faar_design_close(&plan);
     return 0;
   }
   result->plan_design_ms = (designed - start) * 1000.0;
@@ -117,25 +117,25 @@ static int time_plan(const faar_config *config, size_t handle_count,
 
   start = now_seconds();
   if (start < 0.0) {
-    faar_plan_close(&plan);
+    faar_design_close(&plan);
     return 0;
   }
   size_t opened = 0;
   for (; opened < handle_count; ++opened) {
-    if (faar_resampler_open_from_plan(plan, &handles[opened]) != FAAR_OK)
+    if (faar_resampler_open_from_design(plan, &handles[opened]) != FAAR_OK)
       break;
   }
   double finish = now_seconds();
   if (opened != handle_count || finish < start) {
     close_handles(handles, opened);
-    faar_plan_close(&plan);
+    faar_design_close(&plan);
     return 0;
   }
 
   result->plan_streams_ms = (finish - start) * 1000.0;
   result->plan_all_bytes = faar_alloc_live_bytes();
   int failed = close_handles(handles, opened);
-  failed |= faar_plan_close(&plan) != FAAR_OK;
+  failed |= faar_design_close(&plan) != FAAR_OK;
   return !failed;
 }
 
@@ -262,6 +262,6 @@ int main(int argc, char **argv) {
     return 2;
   }
   bench_case custom = {(uint32_t)in_rate, (uint32_t)out_rate,
-                       (uint16_t)channels, (faar_quality_t)quality};
+                       (uint16_t)channels, (faar_quality)quality};
   return benchmark_case(&custom, (size_t)handles) ? 0 : 1;
 }

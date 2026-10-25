@@ -615,7 +615,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         resample_active = (target_rate != raw_sample_rate);
     }
 
-    faar_quality_t resampler_quality = FAAR_QUALITY_GOOD;
+    faar_quality resampler_quality = FAAR_QUALITY_GOOD;
     if (resample_active && raw_sample_rate > 48000)
     {
         faar_library_info resampler_info = { .struct_size = sizeof(resampler_info) };
@@ -871,7 +871,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 if (input_eof)
                 {
                     size_t flushed = 0;
-                    resample_status = faar_resampler_flush(resampler,
+                    resample_status = faar_resampler_finish(resampler,
                             resample_out_buf + resample_out_produced * num_channels,
                             (enc_samples_needed / num_channels) - resample_out_produced, &flushed);
                     if (resample_status != FAAR_OK) FAIL("Resampler flush failed: %s\n", faar_strerror(resample_status));

@@ -105,22 +105,22 @@ buffer and copy. Preparation reserves those histories before streaming.
 
 ## Reusing a filter design
 
-For multiple streams with identical settings, create a `faar_plan` once and
-open each stream with `faar_resampler_open_from_plan()`. The plan stores the
+For multiple streams with identical settings, create a `faar_design` once and
+open each stream with `faar_resampler_open_from_design()`. The plan stores the
 resolved stage geometry, filter spectra, polyphase banks and immutable FFT
 twiddles. Each stream allocates separate histories, queues and FFT workspace;
 streams can be processed concurrently. Ordinary `faar_resampler_open()` remains
 available for standalone streams.
 
 ```c
-faar_plan *plan = NULL;
+faar_design *plan = NULL;
 faar_resampler *left = NULL, *right = NULL;
-faar_status status = faar_plan_open(&config, &plan);
+faar_status status = faar_design_open(&config, &plan);
 if (status == FAAR_OK)
-    status = faar_resampler_open_from_plan(plan, &left);
+    status = faar_resampler_open_from_design(plan, &left);
 if (status == FAAR_OK)
-    status = faar_resampler_open_from_plan(plan, &right);
-faar_plan_close(&plan); /* Open streams retain the immutable design. */
+    status = faar_resampler_open_from_design(plan, &right);
+faar_design_close(&plan); /* Open streams retain the immutable design. */
 if (status != FAAR_OK) {
     faar_resampler_close(&left);
     faar_resampler_close(&right);
@@ -199,7 +199,7 @@ int main(void) {
     }
     while (status == FAAR_OK && written < 4800) {
         size_t made = 0;
-        status = faar_resampler_flush(resampler, output + written * 2,
+        status = faar_resampler_finish(resampler, output + written * 2,
                 4800 - written, &made);
         written += made;
         if (made == 0) break;
@@ -214,7 +214,7 @@ int main(void) {
 The example reserves enough output space for the complete result. For
 streaming with smaller output buffers, retain and drain queued output by calling
 `faar_resampler_process()` with `in_samples == NULL` and `in_count == 0` before
-supplying more input. At end of input, call `faar_resampler_flush()` until it
+supplying more input. At end of input, call `faar_resampler_finish()` until it
 returns `FAAR_OK` with zero frames. The total output is
 `ceil(input_frames * out_rate / in_rate)`.
 
@@ -241,11 +241,11 @@ produces zero frames at end of stream. Prepared process, drain, and flush calls
 do not allocate or free heap storage. Exceeding the bound returns
 `FAAR_ERR_INVALID_ARGUMENT` before consuming input. If queued output is not
 drained and its reserved capacity is exhausted, processing may return
-`FAAR_ERR_NO_MEMORY` or `FAAR_ERR_PROCESSING`; discard and close that stream.
+`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`; discard and close that stream.
 
 Preparation reserves storage across the cascade, including endpoint padding
 and FFT workspace prefill; it can increase persistent memory and may return
-`FAAR_ERR_NO_MEMORY` or `FAAR_ERR_INVALID_ARGUMENT`. Pages initialized during
+`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_INVALID_ARGUMENT`. Pages initialized during
 preparation can still be paged out later by the operating system, so this is
 not a hard real-time guarantee. FFT block costs are unchanged. Streams that do
 not need a fixed input bound can continue using the regular open/process/flush
@@ -262,7 +262,7 @@ flow without preparing.
 | `faar_resampler_prepare()` | Reserves streaming storage for a maximum input chunk before processing begins. |
 | `faar_resampler_get_info()` | Reports the settings resolved for an open handle, including filter delay. |
 | `faar_resampler_process()` | Consumes input frames or drains queued output and reports produced frames. |
-| `faar_resampler_flush()` | Produces the remaining filter tail at end of stream. |
+| `faar_resampler_finish()` | Produces the remaining filter tail at end of stream. |
 | `faar_resampler_close()` | Releases a handle and sets the caller's pointer to `NULL`. |
 
 Every fallible function returns `FAAR_OK` on success or a negative
