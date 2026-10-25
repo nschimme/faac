@@ -400,7 +400,7 @@ static const struct short_route_entry {
     /* Wider support suppresses phase modulation near input Nyquist. */
     {32000, 44100, UP, 2, 41, SPEC},
     {32000, 48000, UP, 2, 41, SPEC},
-    {88200, 96000, UP, 2, 41, FIXED_UP},
+    {88200, 96000, UP, 2, 21, FIXED_UP},
 };
 
 static const struct short_route_entry *short_dedicated_route(uint32_t in,
@@ -838,7 +838,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
     double half_len = (r->filter_len - 1) / 2.0;
     const bool sampled_long_prototype = filter_len_override == 20
         || (filter_len_override == 21
-            && r->in_rate == 88200 && r->out_rate == 48000);
+            && (uint64_t)r->in_rate * 80 == (uint64_t)r->out_rate * 147);
     const double window_denominator = r->beta <= 0.0 ? 1.0 : bessel_i0(r->beta);
     double window[POLYRESAMPLE_MAX_FILTER_LEN];
     if (r->filter_len > 1 && !sampled_long_prototype) {
