@@ -44,9 +44,13 @@ The channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
 The FFT engine lazily initializes shared twiddle tables for common complex
 transform sizes from 16 through 65,536. Their bounded static BSS reservation
 is about 1 MiB in float builds or 3 MiB in mixed builds; only tables for used
-sizes are initialized. On hosted systems this is
-demand-zero virtual storage, and only touched pages become resident; on
-bare-metal targets the linker reserves the full BSS in RAM. This distinction
+sizes are initialized. On hosted systems this is demand-zero virtual storage,
+and only touched pages become resident; on bare-metal targets the linker
+reserves the full BSS in RAM. Set `-Dfaar-twiddle-cache-bits=N` to cache only
+complex sizes through `2^N` (default 16), or use `0` to disable static tables.
+Larger sizes allocate twiddles per plan during setup; this trades more setup
+work and heap allocation for a smaller static RAM reservation. The transform
+arithmetic is unchanged. The distinction between reserved and resident memory
 is important for the mixed build, which reserves both table sets. Float High
 additionally allocates expansion FFT workspaces and twiddles per handle;
 channels within the handle share immutable twiddles and filter spectra. See the

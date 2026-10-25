@@ -340,3 +340,43 @@ independent histories, reset, and use of the owner after borrower cleanup.
 
 AddressSanitizer and UndefinedBehaviorSanitizer suites passed 51 checks in
 mixed and 52 in float, including the expanded shared-workspace tests.
+
+
+## Configurable static FFT twiddle reservation
+
+`-Dfaar-twiddle-cache-bits=N` caches complex FFT sizes through `2^N` in
+static storage. The default 16 preserves the existing policy; 0 disables
+static tables. Uncached transforms use the existing per-plan setup allocation
+path. Channel-pair borrowers share the owner's complete plans, including any
+owned twiddle allocation, and never free them independently.
+
+macOS arm64 release/LTO mixed library, Mach-O `size -m` BSS:
+
+| Cache bits | BSS bytes | Reduction from default |
+|---|---:|---:|
+| 16 | 3,147,008 | — |
+| 12 | 197,376 | 93.7% |
+| 0 | 0 | 100% |
+
+This moves storage from a fixed reservation to setup-time heap allocation;
+it does not eliminate the twiddles required by a live handle. Stereo High at
+48,000 → 44,100 Hz, prepared for 8,192 input frames, uses 4,819,728 live heap
+bytes at the default and 5,606,160 bytes at either 12 or 0 (+786,432 bytes).
+All tracked allocations return to zero after close. Setup costs can increase
+because uncached tables are rebuilt per owning plan. The default remains
+appropriate for hosted builds; constrained builds can choose a lower ceiling
+based on their routes and simultaneous handle count.
+
+Mixed cache-0 and cache-12 suites each passed 52 checks, including concurrent
+initialization, owned-table uniqueness, reopen, and shared-FIR cleanup. Each
+configuration passed 480 strict PCM cases against the default, plus another
+480 with preparation. Default mixed passed 102 checks with one skip; default
+float passed 53. Float cache-0 passed 52 checks under AddressSanitizer and
+UndefinedBehaviorSanitizer. Mixed High's calibrated passband residual ceiling
+was restored and passed; standalone float retains its higher arithmetic-noise
+ceiling.
+
+An output-tiled mixed High half-band experiment was rejected: seven alternating
+runs per case showed roughly 9–11% slower 192,000 → 44,100 Hz processing at
+1/2/8 channels, with no consistent gain elsewhere. The existing half-band
+kernel is retained.

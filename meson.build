@@ -55,6 +55,7 @@ config_h.set('FAAC_STATS', get_option('stats'))
 config_h.set('FAAD_STATS', get_option('stats'))
 
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
+config_h.set('FAAR_FFT_CACHE_BITS', get_option('faar-twiddle-cache-bits'))
 
 c_args = []
 if cc.get_argument_syntax() == 'msvc'

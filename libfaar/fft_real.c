@@ -18,6 +18,9 @@
 #define FAAR_RFFT_TEMPLATE
 #include "fft_real.h"
 #include "../common/atomic.h"
+#ifndef FAAR_FFT_CACHE_BITS
+#define FAAR_FFT_CACHE_BITS 16
+#endif
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -365,19 +368,45 @@ static void FN(build_twiddle)(REAL *tw, int m)
     static void FN(init_twiddle_##bits)(void) { \
         FN(build_twiddle)(FN(twiddle_##bits), 1 << (bits)); \
     }
+#if FAAR_FFT_CACHE_BITS >= 4
 STATIC_TWIDDLE(4)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 5
 STATIC_TWIDDLE(5)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 6
 STATIC_TWIDDLE(6)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 7
 STATIC_TWIDDLE(7)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 8
 STATIC_TWIDDLE(8)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 9
 STATIC_TWIDDLE(9)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 10
 STATIC_TWIDDLE(10)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 11
 STATIC_TWIDDLE(11)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 12
 STATIC_TWIDDLE(12)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 13
 STATIC_TWIDDLE(13)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 14
 STATIC_TWIDDLE(14)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 15
 STATIC_TWIDDLE(15)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 16
 STATIC_TWIDDLE(16)
+#endif
 #undef STATIC_TWIDDLE
 
 static REAL *FN(shared_twiddle)(int logm)
@@ -387,19 +416,45 @@ static REAL *FN(shared_twiddle)(int logm)
         faac_once_run(&FN(once_##bits), FN(init_twiddle_##bits)); \
         return FN(twiddle_##bits);
     switch (logm) {
+#if FAAR_FFT_CACHE_BITS >= 4
         TWIDDLE_CASE(4)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 5
         TWIDDLE_CASE(5)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 6
         TWIDDLE_CASE(6)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 7
         TWIDDLE_CASE(7)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 8
         TWIDDLE_CASE(8)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 9
         TWIDDLE_CASE(9)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 10
         TWIDDLE_CASE(10)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 11
         TWIDDLE_CASE(11)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 12
         TWIDDLE_CASE(12)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 13
         TWIDDLE_CASE(13)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 14
         TWIDDLE_CASE(14)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 15
         TWIDDLE_CASE(15)
+#endif
+#if FAAR_FFT_CACHE_BITS >= 16
         TWIDDLE_CASE(16)
+#endif
     default: return NULL;
     }
 #undef TWIDDLE_CASE

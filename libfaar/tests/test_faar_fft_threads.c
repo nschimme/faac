@@ -6,10 +6,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef FAAR_FFT_CACHE_BITS
+#define FAAR_FFT_CACHE_BITS 16
+#endif
+
 #define WORKERS 8
 #define STATIC_CASES 4
 #define FALLBACK_N 131072
 static const int sizes[STATIC_CASES] = {16, 256, 8192, 65536};
+
+static int has_static_twiddle(int n) {
+    int bits = 0;
+    while (n > 1) { n >>= 1; ++bits; }
+    return bits >= 4 && bits <= FAAR_FFT_CACHE_BITS;
+}
 
 typedef struct {
     pthread_mutex_t mutex;
@@ -102,9 +112,11 @@ static int check_##MEMBER(worker_t *workers) { \
     for (int k = 0; k < STATIC_CASES; ++k) { \
         for (int t = 0; t < WORKERS; ++t) { \
             PLAN *p = &workers[t].MEMBER[k]; \
-            if (!p->twiddle || p->twiddle_owned || !p->work || !p->scratch) return 0; \
+            int cached = has_static_twiddle(sizes[k]); \
+            if (!p->twiddle || p->twiddle_owned == cached || !p->work || !p->scratch) return 0; \
             for (int u = 0; u < t; ++u) { \
-                if (p->twiddle != workers[u].MEMBER[k].twiddle || \
+                if ((cached && p->twiddle != workers[u].MEMBER[k].twiddle) || \
+                    (!cached && p->twiddle == workers[u].MEMBER[k].twiddle) || \
                     p->work == workers[u].MEMBER[k].work || \
                     p->scratch == workers[u].MEMBER[k].scratch) return 0; \
             } \
@@ -139,18 +151,22 @@ static int run_workers(worker_t *workers, test_barrier *barrier,
         barrier_wait(barrier); /* race first initialization of this size */
     barrier_wait(barrier); /* all plans initialized and still live */
     int ok = is_float ? check_fp(workers) : check_dp(workers);
+    int reopen_cached = has_static_twiddle(sizes[1]);
     void *cached = is_float ? (void *)workers[0].fp[1].twiddle
                             : (void *)workers[0].dp[1].twiddle;
     barrier_wait(barrier); /* permit transforms and clear/reopen */
     barrier_wait(barrier); /* reopened plans are live */
     for (int i = 0; i < WORKERS; ++i) {
-        if (is_float) {
-            if (!workers[i].freopen.twiddle ||
-                workers[i].freopen.twiddle != cached)
-                ok = 0;
-        } else if (!workers[i].dreopen.twiddle ||
-                   workers[i].dreopen.twiddle != cached) {
-            ok = 0;
+        void *twiddle = is_float ? (void *)workers[i].freopen.twiddle
+                                 : (void *)workers[i].dreopen.twiddle;
+        int owned = is_float ? workers[i].freopen.twiddle_owned
+                             : workers[i].dreopen.twiddle_owned;
+        if (!twiddle || owned == reopen_cached ||
+            (reopen_cached && twiddle != cached)) ok = 0;
+        for (int u = 0; u < i && !reopen_cached; ++u) {
+            void *other = is_float ? (void *)workers[u].freopen.twiddle
+                                   : (void *)workers[u].dreopen.twiddle;
+            if (twiddle == other) ok = 0;
         }
         if (workers[i].failed) ok = 0;
     }
