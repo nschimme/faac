@@ -20,6 +20,7 @@
 #include "dft_fir.h"
 
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -101,6 +102,66 @@ static const void *paired_spectrum(const faar_dft_fir *stage) {
     return stage->spec;
 }
 
+/* Spectrum of the taps in the e^{-j} convention, split into real then
+ * imaginary parts. A float transform leaves about 2^-24 of absolute error
+ * in every stopband bin, which caps image rejection near 145 dB, so this
+ * setup-only radix-2 transform runs in double and rounds once. */
+static int double_spectrum(faar_sample_t *out, const double *taps,
+                           size_t tap_count, size_t n, double scale) {
+    double *re = (double *)calloc(3 * n, sizeof(*re));
+    if (!re) return -1;
+    double *im = re + n, *tw = im + n;
+    memcpy(re, taps, tap_count * sizeof(*re));
+    for (size_t k = 0; k < n / 2; ++k) {
+        const double angle = -2.0 * 3.14159265358979323846 * (double)k / (double)n;
+        tw[2 * k] = cos(angle);
+        tw[2 * k + 1] = sin(angle);
+    }
+    for (size_t i = 1, j = 0; i < n; ++i) {
+        size_t bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) {
+            double t = re[i]; re[i] = re[j]; re[j] = t;
+        }
+    }
+    for (size_t len = 2; len <= n; len <<= 1) {
+        const size_t step = n / len;
+        for (size_t i = 0; i < n; i += len)
+            for (size_t k = 0; k < len / 2; ++k) {
+                const double wr = tw[2 * k * step], wi = tw[2 * k * step + 1];
+                const size_t a = i + k, b = a + len / 2;
+                const double xr = re[b] * wr - im[b] * wi;
+                const double xi = re[b] * wi + im[b] * wr;
+                re[b] = re[a] - xr; im[b] = im[a] - xi;
+                re[a] += xr; im[a] += xi;
+            }
+    }
+    for (size_t i = 0; i < n; ++i) {
+        out[i] = (faar_sample_t)(re[i] * scale);
+        out[n + i] = (faar_sample_t)(im[i] * scale);
+    }
+    free(re);
+    return 0;
+}
+
+/* Float-sample counterpart of init_spectrum_wide; the stored spectrum is
+ * float but computed in double. Other transform sizes keep the float path. */
+static int init_spectrum_rounded(faar_dft_fir *stage, const double *taps) {
+    const size_t n = stage->fft_size;
+    if (n < 2 || (n & (n - 1)) || n > (size_t)INT_MAX)
+        return init_spectrum(stage, taps);
+    const double scale = 1.0 / ((double)(n / stage->decimation) * (double)stage->decimation);
+    faar_sample_t *spectrum = (faar_sample_t *)malloc(2 * n * sizeof(*spectrum));
+    if (!spectrum) return -1;
+    if (double_spectrum(spectrum, taps, stage->tap_count, n, scale)) {
+        free(spectrum);
+        return -1;
+    }
+    stage->spec = spectrum;
+    return init_fft_plans(stage);
+}
+
 static int init_paired(faar_dft_fir *stage, const double *taps) {
 #ifdef FAAR_COMPENSATED_FLOAT
     if (stage->compensated)
@@ -110,7 +171,7 @@ static int init_paired(faar_dft_fir *stage, const double *taps) {
     if (stage->compensated)
         return init_spectrum_wide(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
 #endif
-    return init_spectrum(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
+    return init_spectrum_rounded(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
 }
 
 static int init_geometry(faar_dft_fir *stage, size_t tap_count,
