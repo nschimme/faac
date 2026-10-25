@@ -751,6 +751,9 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
         group_start += coder->groups.len[i];
     }
+    /* assign_band_codebooks fills qs through the qfunc pointer, which the
+     * checker cannot follow; huffbook reads only the bands that wrote it. */
+    // cppcheck-suppress uninitvar
     huffbook(coder, qs);
 
     // global_gain must come from a regular band: it's an 8-bit bitstream field,

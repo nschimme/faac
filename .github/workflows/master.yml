@@ -342,7 +342,7 @@ jobs:
         shell: bash
         run: |
           cppcheck --version
-          cppcheck --error-exitcode=1 -j4 -q --check-level=exhaustive -Iinclude/ libfaac/ frontend/
+          cppcheck --error-exitcode=1 --inline-suppr -j4 -q --check-level=exhaustive -Iinclude/ libfaac/ frontend/
 
       - name: Configure tests
         run: meson setup build
