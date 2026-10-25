@@ -31,6 +31,10 @@
 #include "help.h"
 #include "cli_parse.h"
 #include "faar_engine.h"
+#include <sys/stat.h>
+#ifndef S_ISDIR
+# define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
 
 static const help_t core_help[] = {
     {"-r, --rate <Hz>", "Target output sample rate (required)",
@@ -63,8 +67,8 @@ static const help_t core_help[] = {
      "Without this option, FAAR refuses to replace an existing output. Input and output paths that refer to the same file are always rejected."},
     {"--license", "Display copyright and license information",
      "Prints copyright, patent, and LGPL information, then exits."},
-    {"-o, --output <path>", "Write output to a path; use - for stdout",
-     "If omitted, output goes to stdout. Stdout contains raw PCM only; progress and messages are written to stderr."},
+    {"-o, --output <path>", "Write output to a path or an existing directory; use - for stdout",
+     "If omitted, output goes to stdout. Stdout contains raw PCM only; progress and messages are written to stderr. When the path is an existing directory, every positional argument is an input and each result is written there under the input's file name (batch mode)."},
     {"<input> [output]", "Read a WAV or raw PCM file; output defaults to stdout",
      "Use - as the input path for stdin and as the output path for stdout. WAV input is detected from its header unless --raw is given. A named output is WAV when the input is WAV or its name ends in .wav (case-insensitive); otherwise it is raw PCM."},
     {"-h, --help", "Show short help and exit",
@@ -91,13 +95,149 @@ static void print_faar_help(int mode) {
     char version[128];
     show_help_usage("faar", mode,
                     cli_version_string(version, sizeof(version), "3.0.0"),
-                    "faar [options] <input> [output]", help_groups);
+                    "faar [options] <input> [output]\n       faar [options] -o <dir> <input>...", help_groups);
     printf(
         "\nExamples:\n"
         "  faar -r 48000 input_96k.wav output_48k.wav\n"
         "  faar -r 48000 --quality high -d tpdf -f s16le input.wav output.wav\n"
+        "  faar -r 48000 -o converted/ a.wav b.wav c.wav\n"
         "  cat input.raw | faar --raw -r 48000 -c 2 -f f32le - - | aplay -f FLOAT_LE -r 48000 -c 2\n"
     );
+}
+
+typedef struct {
+    uint32_t target_rate, raw_in_rate;
+    faar_quality quality;
+    uint16_t raw_channels;
+    faar_pcm_format_t fmt;
+    faar_dither dither;
+    faar_boundary boundary;
+    uint32_t decimate_factor;
+    uint8_t verbose;
+    bool ignore_wav_length, force_raw_input, overwrite;
+} job_t;
+
+static bool is_directory(const char *path) {
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+/* Output path for one input of a batch: the input's file name inside dir. */
+static char *batch_output_path(const char *dir, const char *input) {
+    const char *name = input;
+    for (const char *c = input; *c; ++c)
+        if (*c == '/' || *c == '\\') name = c + 1;
+    size_t dlen = strlen(dir);
+    bool slash = dlen && (dir[dlen - 1] == '/' || dir[dlen - 1] == '\\');
+    char *out = malloc(dlen + 1 + strlen(name) + 1);
+    if (!out) return NULL;
+    sprintf(out, "%s%s%s", dir, slash ? "" : "/", name);
+    return out;
+}
+
+/* Convert one input to one output path (NULL or "-" is stdout). Returns zero
+   on success. */
+static int convert_file(const job_t *job, const char *input_path,
+                        const char *output_path, faar_design_cache *cache,
+                        faar_engine_stats_t *engine_stats) {
+    uint32_t target_rate = job->target_rate;
+    uint32_t raw_in_rate = job->raw_in_rate;
+    faar_quality quality = job->quality;
+    uint16_t channels = job->raw_channels;
+    faar_pcm_format_t fmt = job->fmt;
+    faar_dither dither = job->dither;
+    faar_boundary boundary = job->boundary;
+    uint32_t decimate_factor = job->decimate_factor;
+    uint8_t verbose = job->verbose;
+    bool ignore_wav_length = job->ignore_wav_length;
+    bool force_raw_input = job->force_raw_input;
+    bool overwrite = job->overwrite;
+
+    if (output_path && strcmp(output_path, "-") != 0 && strcmp(input_path, "-") != 0 &&
+        cli_same_file(input_path, output_path)) {
+        fprintf(stderr, "Error: Input and output refer to the same file\n");
+        return 1;
+    }
+
+    if (output_path && strcmp(output_path, "-") != 0 && !overwrite &&
+        cli_file_exists(output_path)) {
+        fprintf(stderr, "Error: Output file %s already exists (use --overwrite)\n", output_path);
+        return 1;
+    }
+
+    pcmfile_t *infile = force_raw_input ? NULL : wav_open_read(input_path, false);
+    bool is_wav_input = (infile != NULL);
+
+    if (is_wav_input) {
+        if (ignore_wav_length) infile->bounded_data = false;
+        channels = infile->channels;
+    } else {
+        infile = wav_open_read(input_path, true);
+        if (!infile) {
+            fprintf(stderr, "Error: Couldn't open input file %s\n", input_path);
+            return 1;
+        }
+        infile->channels = channels;
+        infile->samplebytes = (fmt == FAAR_PCM_F32LE) ? 4 : (fmt == FAAR_PCM_S24LE ? 3 : 2);
+        infile->samplerate = raw_in_rate;
+        infile->isfloat = (fmt == FAAR_PCM_F32LE);
+        /* All raw formats exposed by this CLI are little-endian. */
+        infile->bigendian = false;
+    }
+
+    FILE *fout = NULL;
+    if (!output_path || strcmp(output_path, "-") == 0) {
+        fout = stdout;
+        if (!cli_binary_stream(fout)) {
+            fprintf(stderr, "Error: Couldn't set stdout to binary mode\n");
+            if (infile) wav_close(infile);
+            return 1;
+        }
+    } else {
+        fout = cli_fopen(output_path, "wb");
+        if (!fout) {
+            fprintf(stderr, "Error: Couldn't open output file %s\n", output_path);
+            if (infile) wav_close(infile);
+            return 1;
+        }
+    }
+
+    bool write_wav_out = fout != stdout &&
+                         (is_wav_input || path_has_wav_suffix(output_path));
+
+    faar_engine_options_t engine_options = {
+        .output_rate = target_rate,
+        .quality = quality,
+        .format = fmt,
+        .dither = dither,
+        .boundary = boundary,
+        .decimate_factor = decimate_factor,
+        .verbosity = verbose,
+        .write_wav = write_wav_out,
+        .designs = cache,
+    };
+    int engine_result = faar_engine_run(infile, fout, &engine_options,
+                                        engine_stats);
+    if (infile) wav_close(infile);
+    if (engine_result != 0) {
+        if (fout != stdout) fclose(fout);
+        return engine_result;
+    }
+
+    if (!cli_finish_output(&fout)) {
+        fprintf(stderr, "Error: Couldn't finish writing output\n");
+        return 1;
+    }
+
+    if (verbose >= 2) {
+        fprintf(stderr, "Completed: %llu input frames -> %llu output frames (%.3f s)\n",
+                (unsigned long long)engine_stats->input_frames,
+                (unsigned long long)engine_stats->output_frames,
+                (double)engine_stats->output_frames / target_rate);
+    }
+
+
+    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -108,7 +248,8 @@ int main(int argc, char **argv) {
     faar_pcm_format_t fmt = FAAR_PCM_F32LE;
     faar_dither dither = FAAR_DITHER_OFF;
     faar_boundary boundary = FAAR_BOUNDARY_HOLD;
-    const char *input_path = NULL;
+    const char **inputs = NULL;
+    size_t n_inputs = 0;
     const char *output_path = NULL;
 
     uint8_t verbose = 1;
@@ -203,17 +344,31 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (optind < argc && !input_path) input_path = argv[optind++];
-    if (optind < argc && !output_path) output_path = argv[optind++];
-
-    if (optind < argc) {
-        fprintf(stderr, "Error: Unexpected argument '%s'\n", argv[optind]);
-        fprintf(stderr, "Try '%s --help' for usage.\n", argv[0]);
+    inputs = calloc((size_t)argc, sizeof(*inputs));
+    if (!inputs) {
+        fprintf(stderr, "Error: Out of memory\n");
         return 1;
     }
+    while (optind < argc) inputs[n_inputs++] = argv[optind++];
 
-    if (!input_path || target_rate == 0) {
+    /* An output directory switches to batch mode: every positional argument
+       is an input, written to that directory under its own file name. */
+    bool batch = output_path && strcmp(output_path, "-") != 0 && is_directory(output_path);
+    if (!batch) {
+        if (n_inputs == 2 && !output_path) {
+            output_path = inputs[1];
+            n_inputs = 1;
+        } else if (n_inputs > 1) {
+            fprintf(stderr, "Error: Unexpected argument '%s'\n", inputs[1]);
+            fprintf(stderr, "Try '%s --help' for usage.\n", argv[0]);
+            free(inputs);
+            return 1;
+        }
+    }
+
+    if (n_inputs == 0 || target_rate == 0) {
         print_faar_help('?');
+        free(inputs);
         return 1;
     }
 
@@ -228,51 +383,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (output_path && strcmp(output_path, "-") != 0 && strcmp(input_path, "-") != 0 &&
-        cli_same_file(input_path, output_path)) {
-        fprintf(stderr, "Error: Input and output refer to the same file\n");
-        return 1;
-    }
-
-    if (output_path && strcmp(output_path, "-") != 0 && !overwrite &&
-        cli_file_exists(output_path)) {
-        fprintf(stderr, "Error: Output file %s already exists (use --overwrite)\n", output_path);
-        return 1;
-    }
-
-    pcmfile_t *infile = force_raw_input ? NULL : wav_open_read(input_path, false);
-    bool is_wav_input = (infile != NULL);
-
-    if (is_wav_input) {
-        if (ignore_wav_length) infile->bounded_data = false;
-        channels = infile->channels;
-    } else {
-        infile = wav_open_read(input_path, true);
-        if (!infile) {
-            fprintf(stderr, "Error: Couldn't open input file %s\n", input_path);
-            return 1;
-        }
-        infile->channels = channels;
-        infile->samplebytes = (fmt == FAAR_PCM_F32LE) ? 4 : (fmt == FAAR_PCM_S24LE ? 3 : 2);
-        infile->samplerate = raw_in_rate;
-        infile->isfloat = (fmt == FAAR_PCM_F32LE);
-        /* All raw formats exposed by this CLI are little-endian. */
-        infile->bigendian = false;
-    }
-
-    FILE *fout = NULL;
-    if (!output_path || strcmp(output_path, "-") == 0) {
-        fout = stdout;
-        if (!cli_binary_stream(fout)) {
-            fprintf(stderr, "Error: Couldn't set stdout to binary mode\n");
-            if (infile) wav_close(infile);
-            return 1;
-        }
-    } else {
-        fout = cli_fopen(output_path, "wb");
-        if (!fout) {
-            fprintf(stderr, "Error: Couldn't open output file %s\n", output_path);
-            if (infile) wav_close(infile);
+    for (size_t i = 0; batch && i < n_inputs; ++i) {
+        if (strcmp(inputs[i], "-") == 0) {
+            fprintf(stderr, "Error: Batch mode cannot read stdin\n");
+            free(inputs);
             return 1;
         }
     }
@@ -283,40 +397,31 @@ int main(int argc, char **argv) {
                 cli_version_string(version, sizeof(version), "3.0.0"));
     }
 
-    bool write_wav_out = fout != stdout &&
-                         (is_wav_input || path_has_wav_suffix(output_path));
-
-    faar_engine_options_t engine_options = {
-        .output_rate = target_rate,
-        .quality = quality,
-        .format = fmt,
-        .dither = dither,
-        .boundary = boundary,
-        .decimate_factor = decimate_factor,
-        .verbosity = verbose,
-        .write_wav = write_wav_out,
+    const job_t job = {
+        .target_rate = target_rate, .raw_in_rate = raw_in_rate,
+        .quality = quality, .raw_channels = channels, .fmt = fmt,
+        .dither = dither, .boundary = boundary,
+        .decimate_factor = decimate_factor, .verbose = verbose,
+        .ignore_wav_length = ignore_wav_length,
+        .force_raw_input = force_raw_input, .overwrite = overwrite,
     };
-    faar_engine_stats_t engine_stats;
-    int engine_result = faar_engine_run(infile, fout, &engine_options,
-                                        &engine_stats);
-    if (infile) wav_close(infile);
-    if (engine_result != 0) {
-        if (fout != stdout) fclose(fout);
-        return engine_result;
+    faar_design_cache *cache = batch && n_inputs > 1 ? faar_design_cache_new() : NULL;
+    faar_engine_stats_t stats;
+    int failed = 0;
+    for (size_t i = 0; i < n_inputs; ++i) {
+        char *target = batch ? batch_output_path(output_path, inputs[i]) : NULL;
+        if (batch && !target) {
+            fprintf(stderr, "Error: Out of memory\n");
+            failed = 1;
+            break;
+        }
+        if (verbose > 0 && batch)
+            fprintf(stderr, "%s -> %s\n", inputs[i], target);
+        if (convert_file(&job, inputs[i], batch ? target : output_path, cache, &stats))
+            failed = 1;
+        free(target);
     }
-
-    if (!cli_finish_output(&fout)) {
-        fprintf(stderr, "Error: Couldn't finish writing output\n");
-        return 1;
-    }
-
-    if (verbose >= 2) {
-        fprintf(stderr, "Completed: %llu input frames -> %llu output frames (%.3f s)\n",
-                (unsigned long long)engine_stats.input_frames,
-                (unsigned long long)engine_stats.output_frames,
-                (double)engine_stats.output_frames / target_rate);
-    }
-
-
-    return 0;
+    faar_design_cache_free(cache);
+    free(inputs);
+    return failed;
 }

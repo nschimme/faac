@@ -4,6 +4,9 @@ faar \- Freeware Advanced Audio Resampler
 .SH SYNOPSIS
 .B faar
 [\fIoptions\fR] \fIinput\fR [\fIoutput\fR]
+.br
+.B faar
+[\fIoptions\fR] \fB\-o\fR \fIdir\fR \fIinput\fR...
 .SH DESCRIPTION
 .B faar
 resamples WAV or raw PCM audio. WAV input is detected from its header; raw PCM input uses the rate, channel count, and format options below. A named output file is WAV when the input is WAV or the output name ends in .wav (case-insensitive). Output to stdout is raw PCM. Status and progress are written to stderr, so stdout can carry audio data. Existing output files are not replaced unless \fB--overwrite\fR is given; input and output paths that refer to the same file are always rejected.
@@ -52,7 +55,7 @@ Ignore the WAV data length in the input header and read until end-of-file.
 Treat input as raw PCM instead of detecting WAV. This is required for raw PCM piped to stdin; specify its format, channel count, and input rate as needed.
 .TP
 .BR \-o ", " \-\-output " " \fIpath\fR
-Specify output file path (use \fB\-\fR for stdout).
+Specify output file path (use \fB\-\fR for stdout). When the path is an existing directory, every positional argument is an input and each result is written there under the input's file name; inputs with the same sample rate and channel count share one filter design.
 .TP
 .BR \-v " " \fIlevel\fR
 Set status verbosity: 0 suppresses informational output, 1 (default) shows progress, and 2 shows progress with a completion summary. Errors are always written to stderr.
@@ -78,6 +81,9 @@ Resample a 96 kHz WAV file to 48 kHz WAV:
 .TP
 Resample with High Quality and TPDF dithering to 16-bit WAV in quiet mode:
 .B faar -r 48000 --quality high -d tpdf -f s16le -v0 input.wav output.wav
+.TP
+Resample several files into a directory:
+.B faar -r 48000 -o converted/ a.wav b.wav c.wav
 .TP
 Stream raw float PCM through a shell pipeline:
 .B cat input.raw | faar --raw -r 48000 -c 2 -f f32le - - | aplay -f FLOAT_LE -r 48000 -c 2

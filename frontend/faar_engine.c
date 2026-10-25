@@ -177,6 +177,47 @@ static int write_wav_header(FILE *f, uint32_t rate, uint16_t channels, faar_pcm_
     }
 }
 
+#define DESIGN_CACHE_MAX 16
+
+struct faar_design_cache {
+    size_t count;
+    struct {
+        uint32_t in_rate;
+        uint16_t channels;
+        faar_design *design;
+    } entry[DESIGN_CACHE_MAX];
+};
+
+faar_design_cache *faar_design_cache_new(void) {
+    return calloc(1, sizeof(faar_design_cache));
+}
+
+void faar_design_cache_free(faar_design_cache *cache) {
+    if (!cache) return;
+    for (size_t i = 0; i < cache->count; ++i)
+        faar_design_close(&cache->entry[i].design);
+    free(cache);
+}
+
+/* Open a stream for config, sharing a cached design when the same input rate
+   and channel count was seen before. The other settings are fixed for a run. */
+static faar_status open_stream(faar_design_cache *cache, const faar_config *config,
+                               faar_resampler **r) {
+    if (!cache) return faar_resampler_open(config, r);
+    for (size_t i = 0; i < cache->count; ++i)
+        if (cache->entry[i].in_rate == config->in_rate &&
+            cache->entry[i].channels == config->channels)
+            return faar_resampler_open_from_design(cache->entry[i].design, r);
+    if (cache->count == DESIGN_CACHE_MAX) return faar_resampler_open(config, r);
+    faar_design *design = NULL;
+    faar_status status = faar_design_open(config, &design);
+    if (status != FAAR_OK) return status;
+    cache->entry[cache->count].in_rate = config->in_rate;
+    cache->entry[cache->count].channels = config->channels;
+    cache->entry[cache->count++].design = design;
+    return faar_resampler_open_from_design(design, r);
+}
+
 int faar_engine_run(pcmfile_t *infile, FILE *fout,
                     const faar_engine_options_t *options,
                     faar_engine_stats_t *stats) {
@@ -208,7 +249,7 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
         config.dither_bits = fmt == FAAR_PCM_S16LE ? 16 : 24;
     }
     faar_resampler *r = NULL;
-    faar_status api_status = faar_resampler_open(&config, &r);
+    faar_status api_status = open_stream(options->designs, &config, &r);
     if (api_status != FAAR_OK) {
         fprintf(stderr, "Error: Couldn't create resampler instance for %u Hz -> %u Hz: %s\n",
                 in_rate, target_rate, faar_strerror(api_status));

@@ -97,6 +97,26 @@ def main():
             assert wav.getsampwidth() == 2
             assert wav.getnframes() == (257 * 44100 + 96000 - 1) // 96000
 
+        # An output directory converts every input there; inputs sharing a
+        # rate and channel count share one filter design, with the same result
+        # as converting each file alone.
+        second = os.path.join(directory, "second.wav")
+        third = os.path.join(directory, "third.wav")
+        make_wav(second, frames=300)
+        make_wav(third, frames=199, rate=48000, channels=2)
+        batch_dir = os.path.join(directory, "batch")
+        os.mkdir(batch_dir)
+        batch = run(faar, "--rate", "44100", "-q", "-o", batch_dir, source, second, third)
+        assert batch.returncode == 0, batch.stderr.decode(errors="replace")
+        for name, path in (("source.wav", source), ("second.wav", second), ("third.wav", third)):
+            alone = os.path.join(directory, "alone-" + name)
+            single = run(faar, "--rate", "44100", "-q", path, alone)
+            assert single.returncode == 0, single.stderr.decode(errors="replace")
+            assert open(alone, "rb").read() == open(os.path.join(batch_dir, name), "rb").read()
+        again = run(faar, "--rate", "44100", "-q", "-o", batch_dir, source)
+        assert again.returncode != 0 and b"already exists" in again.stderr
+        assert run(faar, "--rate", "44100", "-q", "-o", batch_dir, "-").returncode != 0
+
         # Raw float input/output stays headerless and uses little-endian samples.
         raw_in = os.path.join(directory, "source.f32")
         raw_out = os.path.join(directory, "converted.f32")

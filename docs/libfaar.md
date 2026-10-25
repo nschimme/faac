@@ -412,7 +412,7 @@ SONAME major; minor and patch macros track the project release.
 `faar` reads WAV input automatically or raw PCM from a file. Use `--raw` when
 the input is raw PCM on stdin, so format detection does not consume stream
 data. Named output is WAV when the input is WAV or the output path ends in
-`.wav`; stdout always carries raw PCM. See [`faar(1)`](faar.1) or run
+`.wav`; stdout always carries raw PCM. With `-o <dir>` it converts several inputs into a directory, sharing one filter design among inputs with the same rate and channel count. See [`faar(1)`](faar.1) or run
 `faar --help` for options and examples. `-h` shows the short option summary;
 `-H` adds detailed descriptions for every option.
 

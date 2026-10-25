@@ -28,6 +28,13 @@ typedef enum {
     FAAR_PCM_S24LE = 2
 } faar_pcm_format_t;
 
+/* Filter designs shared by the streams of one batch, one per distinct input
+   rate and channel count. Optional; the engine opens plain resamplers
+   without it. */
+typedef struct faar_design_cache faar_design_cache;
+faar_design_cache *faar_design_cache_new(void);
+void faar_design_cache_free(faar_design_cache *cache);
+
 typedef struct {
     uint32_t output_rate;
     faar_quality quality;
@@ -37,6 +44,7 @@ typedef struct {
     uint32_t decimate_factor;
     uint8_t verbosity;
     bool write_wav;
+    faar_design_cache *designs; /* may be NULL */
 } faar_engine_options_t;
 
 typedef struct {
