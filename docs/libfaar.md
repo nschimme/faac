@@ -1,15 +1,20 @@
-# FAAR resampler library
+# FAAR - Resampler Library
 
 ## Contents
 
 - [Scope](#scope)
+- [Interface description](#interface-description)
 - [Building and linking](#building-and-linking)
+  - [Build options](#build-options)
 - [Resampling model](#resampling-model)
 - [Quality profiles](#quality-profiles)
-- [API](#api)
+- [API (faar.h)](#api-faarh)
+  - [Calling sequence](#calling-sequence)
+  - [Error handling](#error-handling)
+  - [Function reference](#function-reference)
   - [Complete streaming example](#complete-streaming-example)
   - [Bounded streams](#bounded-streams)
-  - [Function reference](#function-reference)
+  - [Reusing a filter design](#reusing-a-filter-design)
   - [Custom allocators](#custom-allocators)
 - [ABI compatibility](#abi-compatibility)
 - [Command-line tool](#command-line-tool)
@@ -21,10 +26,19 @@ handles file and container I/O, timestamps, and playback. The library accepts
 and returns 32-bit float PCM on the FAAC integer scale: `-32768.0` to
 `32768.0`. It does not read or write audio files.
 
+## Interface description
+
+Include `<faar.h>` and link against `libfaar` (`-lfaar`). Installed builds
+provide the `faar` pkg-config module.
+
+The shared library is `libfaar` (`libfaar.so.3` on Linux, `libfaar.3.dylib` on
+macOS, or `libfaar.dll` on Windows). The default build also produces a static
+archive. The `faar` command-line tool in `frontend/` is an example of using the
+API.
+
 ## Building and linking
 
-Include `<faar.h>` and link against `libfaar`. Installed builds provide the
-`faar` pkg-config module. Build and install with Meson:
+Build and install the library with Meson:
 
 ```sh
 meson setup build-faar -Dencoder=false -Ddecoder=false -Dfrontend=false
@@ -33,9 +47,22 @@ meson install -C build-faar
 ```
 
 Omit `-Dfrontend=false` to build the `faar` command-line tool; it is built
-when both `-Dfrontend` and `-Dresampler` are enabled (the default). The default
-precision policy is mixed.
-`-Dfaar-precision=float` selects float arithmetic and supports Fast, Good, and
+when both `-Dfrontend` and `-Dresampler` are enabled (the default).
+
+Compile an application against an installed library with:
+
+```sh
+cc -std=c11 -Wall -Wextra app.c -o app $(pkg-config --cflags --libs faar)
+```
+
+For a custom prefix, add its pkg-config directory to `PKG_CONFIG_PATH` and
+configure the platform runtime library path for shared linking. Static linking
+uses `pkg-config --cflags --libs --static faar` and the toolchain's archive
+selection options.
+
+### Build options
+
+The default precision policy is mixed. `-Dfaar-precision=float` selects float arithmetic and supports Fast, Good, and
 High quality. Float High uses compensated float arithmetic and more CPU.
 Mixed is the float engine with High's filter kernels in native double: its
 output matches float at Fast/Good and double arithmetic at High. Use `float`
@@ -60,17 +87,6 @@ quality, CPU, and heap tradeoffs.
 
 The current float/mixed tradeoffs and precision-policy measurements are
 recorded in [precision-policy-results.md](../libfaar/tests/precision-policy-results.md).
-
-Compile an application against an installed library with:
-
-```sh
-cc -std=c11 -Wall -Wextra app.c -o app $(pkg-config --cflags --libs faar)
-```
-
-For a custom prefix, add its pkg-config directory to `PKG_CONFIG_PATH` and
-configure the platform runtime library path for shared linking. Static linking
-uses `pkg-config --cflags --libs --static faar` and the toolchain's archive
-selection options.
 
 ## Resampling model
 
@@ -103,48 +119,6 @@ Staged routes with a downstream polyphase bank drain prefilter output directly
 into the bank's channel histories, avoiding a separate intermediate sample
 buffer and copy. A bounded stream reserves those histories in open.
 
-## Reusing a filter design
-
-For multiple streams with identical settings, create a `faar_design` once and
-open each stream with `faar_resampler_open_from_design()`. The plan stores the
-resolved stage geometry, filter spectra, polyphase banks and immutable FFT
-twiddles. Each stream allocates separate histories, queues and FFT workspace;
-streams can be processed concurrently. Ordinary `faar_resampler_open()` remains
-available for standalone streams.
-
-```c
-faar_design *plan = NULL;
-faar_resampler *left = NULL, *right = NULL;
-faar_status status = faar_design_open(&config, &plan);
-if (status == FAAR_OK)
-    status = faar_resampler_open_from_design(plan, &left);
-if (status == FAAR_OK)
-    status = faar_resampler_open_from_design(plan, &right);
-faar_design_close(&plan); /* Open streams retain the immutable design. */
-if (status != FAAR_OK) {
-    faar_resampler_close(&left);
-    faar_resampler_close(&right);
-    return status;
-}
-/* Process/flush each stream, then close both handles. */
-faar_resampler_close(&left);
-faar_resampler_close(&right);
-```
-
-A plan fixes the complete configuration, including channel count, boundary
-policy and dither settings. 
-Plan creation uses the normal designer and temporarily allocates its setup
-workspace, then releases that workspace. Subsequent stream opens allocate
-mutable storage without regenerating filters. There is no global cache of
-filter designs.
-
-Streams retain the plan automatically; the design is released after the last
-stream and the caller's plan reference are closed. A live plan reference may
-be used for concurrent stream opens. As with resampler handles, do not close
-the same caller reference while another thread is using it. On toolchains
-without atomic support, serialize plan and associated stream open/close
-operations; independent stream processing can still run concurrently.
-
 ## Quality profiles
 
 Fast reduces processing cost with a narrower passband and weaker alias
@@ -156,13 +130,98 @@ the existing double-precision setup calculations. These profiles describe
 different filter and resource tradeoffs, so the best choice depends on the
 source material and the application's CPU and memory budget.
 
-## API
+## API (faar.h)
 
-The status-returning `faar_resampler_*` API is the public interface. Create
+Supply configuration once, when opening the resampler. Every fallible call
+returns a `faar_status`; frame counts are returned through out-parameters. Create
 one handle for each continuous stream. Independent handles may be used
 concurrently; a single handle belongs to one thread at a time. Buffers contain
 interleaved float samples; counts are frames (samples per channel). The caller
 owns all buffers and the handle.
+
+### Calling sequence
+
+1. Initialize a `faar_config` with `faar_config_init(&config, sizeof(config))`,
+   then set `in_rate`, `out_rate` and `channels`. Defaults are Good quality,
+   HOLD boundary extension and no dither.
+2. Call `faar_resampler_open()`. It validates the configuration and allocates
+   the handle.
+3. Optionally call `faar_resampler_get_info()` with `struct_size` set to
+   `sizeof(info)` for the resolved settings and the filter delay.
+4. Call `faar_resampler_process()` for each chunk of input. Drain queued output
+   with `in_samples == NULL` and `in_count == 0` whenever the output buffer
+   was smaller than the result.
+5. At end of input, call `faar_resampler_finish()` until it returns `FAAR_OK`
+   with zero frames. It emits the filter tail; it does not discard history.
+6. Call `faar_resampler_close(&resampler)`. It frees the handle and sets the
+   pointer to `NULL`.
+
+Two refinements are optional and need no extra calls in the sequence above:
+
+| You want | Do this |
+|---|---|
+| One stream | Nothing extra: the steps above. |
+| Many streams with identical settings | Create a `faar_design` once with `faar_design_open()` and open each stream with `faar_resampler_open_from_design()`; see [Reusing a filter design](#reusing-a-filter-design). |
+| Real-time or allocation-free streaming | Set `config.max_input_frames` to your largest input chunk before opening; see [Bounded streams](#bounded-streams). |
+
+### Error handling
+
+`FAAR_OK` is 0; all error codes are negative. `faar_strerror()` maps a status to
+a static, human-readable string and never returns NULL.
+
+| Status | Meaning |
+|---|---|
+| `FAAR_ERR_INVALID_ARGUMENT` | NULL pointer, bad argument or bad configuration, including nonzero reserved fields. |
+| `FAAR_ERR_UNSUPPORTED` | A well-formed configuration the planner cannot realize. |
+| `FAAR_ERR_INSUFFICIENT_MEM` | An allocation failed, or a bounded stream exhausted its reserved output queue. |
+| `FAAR_ERR_PROCESSING` | Resampling failed. Discard and close that handle. |
+
+Open functions set their output pointer to `NULL` before anything else, so it is
+always safe to pass to `faar_resampler_close()`. Process and finish set the
+output frame count to zero when they return an error.
+
+### Function reference
+
+```c
+/* Fill defaults; pass sizeof(config). Set the rates and channels afterwards. */
+faar_status faar_config_init(faar_config *config, uint32_t caller_size);
+
+/* Channel ceiling, supported quality mask, version, copyright.
+ * Set out->struct_size before calling. */
+faar_status faar_get_library_info(faar_library_info *out);
+const char *faar_strerror(faar_status status);
+
+faar_status faar_resampler_open(const faar_config *config, faar_resampler **out);
+faar_status faar_resampler_close(faar_resampler **resampler); /* sets *resampler = NULL */
+
+/* Resolved settings and filter delay; set out->struct_size. */
+faar_status faar_resampler_get_info(const faar_resampler *resampler,
+                                    faar_resampler_info *out);
+faar_status faar_resampler_process(faar_resampler *resampler,
+        const float *in_samples, size_t in_count, float *out_samples,
+        size_t max_out_count, size_t *out_count);
+faar_status faar_resampler_finish(faar_resampler *resampler,
+        float *out_samples, size_t max_out_count, size_t *out_count);
+
+/* Optional: share a filter design among identical streams. */
+faar_status faar_design_open(const faar_config *config, faar_design **out);
+faar_status faar_design_close(faar_design **design);   /* sets *design = NULL */
+faar_status faar_resampler_open_from_design(faar_design *design,
+                                            faar_resampler **out);
+```
+
+`faar_config_init()` zeroes the structure and selects Good quality, HOLD
+boundary extension and no dither. When dither is enabled, `dither_bits` must be
+16 or 24; it is ignored otherwise. Dither adds TPDF or shaped noise for later
+16-bit or 24-bit integer quantization; FAAR does not convert samples to
+integers. Set `decimate_factor` to zero for automatic planning or to a value of
+two or greater to request an explicit cascade. `reserved` and `reserved1` must
+be zero or open fails with `FAAR_ERR_INVALID_ARGUMENT`.
+`faar_get_library_info()` reports the compiled channel ceiling and quality mask;
+`faar_resampler_get_info()` reports resolved settings and delay. Initialize each
+query structure's `struct_size` to `sizeof(structure)` first. Closing frees the
+handle and sets the caller's pointer to NULL; closing an already-NULL pointer is
+a no-op that returns `FAAR_OK`.
 
 ### Complete streaming example
 
@@ -252,39 +311,47 @@ not a hard real-time guarantee. FFT block costs are unchanged. A design opened
 with a nonzero `max_input_frames` reserves each stream's storage in
 `faar_resampler_open_from_design()`.
 
-### Function reference
+### Reusing a filter design
 
-| Function | Purpose |
-|---|---|
-| `faar_config_init()` | Initializes a versioned configuration with default quality, boundary, and dither settings. |
-| `faar_get_library_info()` | Reports the build's channel ceiling, supported quality mask, version, and copyright. |
-| `faar_strerror()` | Returns a static message for a `faar_status` value. |
-| `faar_resampler_open()` | Validates the configuration and creates a resampler handle. |
-| `faar_resampler_get_info()` | Reports the settings resolved for an open handle, including filter delay. |
-| `faar_resampler_process()` | Consumes input frames or drains queued output and reports produced frames. |
-| `faar_resampler_finish()` | Produces the remaining filter tail at end of stream. |
-| `faar_resampler_close()` | Releases a handle and sets the caller's pointer to `NULL`. |
+For multiple streams with identical settings, create a `faar_design` once and
+open each stream with `faar_resampler_open_from_design()`. The design stores the
+resolved stage geometry, filter spectra, polyphase banks and immutable FFT
+twiddles. Each stream allocates separate histories, queues and FFT workspace;
+streams can be processed concurrently. Ordinary `faar_resampler_open()` remains
+available for standalone streams.
 
-Every fallible function returns `FAAR_OK` on success or a negative
-`faar_status` on error. Process and flush set the output frame count to zero
-when they return an error; after a processing error, discard and close that
-stream.
+```c
+faar_design *design = NULL;
+faar_resampler *left = NULL, *right = NULL;
+faar_status status = faar_design_open(&config, &design);
+if (status == FAAR_OK)
+    status = faar_resampler_open_from_design(design, &left);
+if (status == FAAR_OK)
+    status = faar_resampler_open_from_design(design, &right);
+faar_design_close(&design); /* Open streams retain the immutable design. */
+if (status != FAAR_OK) {
+    faar_resampler_close(&left);
+    faar_resampler_close(&right);
+    return status;
+}
+/* Process/finish each stream, then close both handles. */
+faar_resampler_close(&left);
+faar_resampler_close(&right);
+```
 
-`faar_config_init()` zeroes the structure and selects Good quality, HOLD
-boundary extension, and no dither. Set the rates and channel count before
-opening. When dither is enabled, `dither_bits` must be 16 or 24; it is ignored
-otherwise. `reserved` and `reserved1` must be zero or open fails with
-`FAAR_ERR_INVALID_ARGUMENT`. `faar_get_library_info()` reports the compiled
-channel ceiling and quality mask; `faar_resampler_get_info()` reports resolved
-settings and delay. Initialize each query structure's `struct_size` to
-`sizeof(structure)` first.
+A design fixes the complete configuration, including channel count, boundary
+policy, dither settings and `max_input_frames`.
+Design creation uses the normal designer and temporarily allocates its setup
+workspace, then releases that workspace. Subsequent stream opens allocate
+mutable storage without regenerating filters. There is no global cache of
+filter designs.
 
-Dither adds TPDF or shaped noise for later 16-bit or 24-bit integer
-quantization; FAAR does not convert samples to integers. Boundary and dither
-settings are selected in `faar_config` before opening. Set `decimate_factor`
-to zero for automatic planning or to a value of two or greater to request an
-explicit cascade. Closing frees the handle and sets the caller's pointer to
-NULL; closing an already-NULL pointer is a no-op that returns `FAAR_OK`.
+Streams retain the design automatically; the design is released after the last
+stream and the caller's design reference are closed. A live design reference may
+be used for concurrent stream opens. As with resampler handles, do not close
+the same caller reference while another thread is using it. On toolchains
+without atomic support, serialize design and associated stream open/close
+operations; independent stream processing can still run concurrently.
 
 ### Custom allocators
 
@@ -316,29 +383,29 @@ allocator cannot reuse them. Bounded process and finish calls allocate nothing.
 ## ABI compatibility
 
 The shared library uses SONAME 3. The API and ABI are stable within that major
-SONAME on a given platform ABI. Fixed-width types are used for configuration;
-`size_t` and pointers follow the target platform ABI. Enum sentinels pin enum
-storage to at least 32 bits, including with `-fshort-enums`. Public structures
-grow by appending fields; initialize configurations with
-`faar_config_init(&config, sizeof(config))` and set `struct_size` on query
-structures. Reserved fields remain zero and are never reused. The structure
-size passed to `faar_config_init()` must cover the current baseline fields.
+SONAME on a given platform ABI. Initialize configuration with
+`faar_config_init(&config, sizeof(config))` and each info struct with
+`.struct_size = sizeof(info)`. Query functions update `struct_size` to the
+number of bytes populated. Reset `struct_size` and zero your storage before
+reusing a structure as a query destination, and check the returned size before
+reading an appended field when supporting older libraries.
 
-Query functions write back the number of bytes populated in `struct_size`.
-Reset `struct_size` and zero your storage before reusing a structure as a query
-destination, and check the returned size before reading an appended field when
-supporting older libraries. The library accepts its frozen baseline sizes,
-reads only the configuration bytes the caller's `struct_size` covers, and
-writes at most `struct_size` bytes to query structures.
+The library accepts its frozen baseline struct sizes, reads only the
+configuration bytes the caller's `struct_size` covers, and writes at most the
+caller's capacity in initialization and queries. Absent input fields take their
+zero value, which keeps the previous behavior. New fields are appended at or
+after the previous `sizeof(struct)`; compiler padding is never reused. Explicit
+`reserved` fields must be zero on input and are zero on output until they gain a
+meaning; they may later be reused with their storage and offsets preserved and
+zero retaining the previous behavior. Callers must check library support before
+requesting new behavior.
 
-New fields are appended at or after the previous `sizeof(struct)`; compiler
-padding is never reused. Explicit `reserved` fields must be zero on input and
-are zero on output until they gain a meaning. Layouts follow the platform's
-pointer width and alignment and are not serialization formats.
-
-Incompatible signatures or type changes require a new SONAME. `FAAR_VERSION_MAJOR`
-matches the library SONAME major; minor and patch macros track the project
-release. `faar_get_library_info()` reports the linked version.
+Fixed-width integers and width-pinned enums support `-fshort-enums` on a given
+platform ABI. `size_t` and pointer fields follow the target's width and
+alignment; layouts are not serialization formats. Incompatible signature or
+layout changes require a new SONAME. `FAAR_VERSION_MAJOR` matches the library
+SONAME major; minor and patch macros track the project release.
+`faar_get_library_info()` reports the linked version.
 
 ## Command-line tool
 
