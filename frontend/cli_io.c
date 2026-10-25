@@ -283,6 +283,22 @@ bool cli_file_exists(const char *path)
     return true;
 }
 
+bool cli_is_directory(const char *path)
+{
+#ifdef _WIN32
+    wchar_t *wpath = win32_utf8_to_utf16(path);
+    if (!wpath)
+        return false;
+    struct _stat64 st;
+    int ret = _wstat64(wpath, &st);
+    free(wpath);
+    return ret == 0 && (st.st_mode & _S_IFDIR) != 0;
+#else
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+#endif
+}
+
 bool cli_same_file(const char *path1, const char *path2)
 {
 #ifdef _WIN32

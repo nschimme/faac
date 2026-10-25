@@ -83,6 +83,9 @@ bool cli_copy_stream(FILE *src, FILE *dst);
 /* True if path can be opened for reading, i.e. writing there would overwrite. */
 bool cli_file_exists(const char *path);
 
+/* True if path (UTF-8) names an existing directory. */
+bool cli_is_directory(const char *path);
+
 /* True if both paths exist and are one file: the same path spelled two ways, through a
    symbolic link, or a hard link. Writing the output over such an input would destroy it. */
 bool cli_same_file(const char *path1, const char *path2);

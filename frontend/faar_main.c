@@ -31,10 +31,7 @@
 #include "help.h"
 #include "cli_parse.h"
 #include "faar_engine.h"
-#include <sys/stat.h>
-#ifndef S_ISDIR
-# define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
-#endif
+
 
 static const help_t core_help[] = {
     {"-r, --rate <Hz>", "Target output sample rate (required)",
@@ -116,11 +113,6 @@ typedef struct {
     uint8_t verbose;
     bool ignore_wav_length, force_raw_input, overwrite;
 } job_t;
-
-static bool is_directory(const char *path) {
-    struct stat st;
-    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
-}
 
 /* Output path for one input of a batch: the input's file name inside dir. */
 static char *batch_output_path(const char *dir, const char *input) {
@@ -353,7 +345,7 @@ int main(int argc, char **argv) {
 
     /* An output directory switches to batch mode: every positional argument
        is an input, written to that directory under its own file name. */
-    bool batch = output_path && strcmp(output_path, "-") != 0 && is_directory(output_path);
+    bool batch = output_path && strcmp(output_path, "-") != 0 && cli_is_directory(output_path);
     if (!batch) {
         if (n_inputs == 2 && !output_path) {
             output_path = inputs[1];
