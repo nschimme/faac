@@ -199,8 +199,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         /* Keep the adjacent range on HE v1, including rates below its legacy
          * AUTO floor, so crossing the PS ceiling does not send low-rate
          * stereo back to LC. */
-        unsigned long ps_ceiling = hEncoder->sampleRate == 48000 ? 8000 :
-            (hEncoder->sampleRate == 32000 || hEncoder->sampleRate == 44100) ? 6000 : 0;
+        unsigned long ps_ceiling = (hEncoder->sampleRate >= 44100) ? 16000 :
+            (hEncoder->sampleRate == 32000 ? 12000 : 0);
         if (ps_ceiling && hEncoder->numChannels == 2 &&
             hEncoder->config.mpegVersion != MPEG2 && rate_per_ch >= 4000) {
             if (rate_per_ch <= ps_ceiling)
