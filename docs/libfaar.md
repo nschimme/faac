@@ -172,8 +172,8 @@ a static, human-readable string and never returns NULL.
 | Status | Meaning |
 |---|---|
 | `FAAR_ERR_INVALID_ARGUMENT` | NULL pointer, bad argument or bad configuration, including nonzero reserved fields. |
-| `FAAR_ERR_UNSUPPORTED` | A well-formed configuration the planner cannot realize. |
-| `FAAR_ERR_INSUFFICIENT_MEM` | An allocation failed, or a bounded stream exhausted its reserved output queue. |
+| `FAAR_ERR_UNSUPPORTED` | Reserved for a configuration a build refuses on purpose; this release does not return it. |
+| `FAAR_ERR_INSUFFICIENT_MEM` | An allocation failed, the planner could not build the filter design, or a bounded stream exhausted its reserved output queue. |
 | `FAAR_ERR_PROCESSING` | Resampling failed. Discard and close that handle. |
 
 Open functions set their output pointer to `NULL` before anything else, so it is
