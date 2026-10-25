@@ -13,15 +13,11 @@
  * Lesser General Public License for more details.
  */
 
-/* Generalized from FAAC 17fbbf8a; real split wrapper and lazily shared twiddles. */
+/* Generalized from FAAC 17fbbf8a; real split wrapper. */
 #ifndef FAAR_RFFT_TEMPLATE
 #define FAAR_RFFT_TEMPLATE
 #include "fft_real.h"
 #include "libfaar_internal.h"
-#include "../common/atomic.h"
-#ifndef FAAR_FFT_CACHE_BITS
-#define FAAR_FFT_CACHE_BITS 16
-#endif
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -342,11 +338,7 @@ static REAL *FN(core)(const PLAN *plan, REAL *in)
     return src;
 }
 
-/* Common transform sizes have fixed geometry, as in the codec libraries.
- * Reserve a bounded BSS table per size, initialize only requested sizes, and
- * publish through the shared once helper. Larger transforms remain dynamic.
- * Each plan continues to own its work buffers and scratch. Cache-line alignment
- * avoids the weaker scalar alignment of ordinary BSS arrays in FFT loads. */
+/* Each plan owns its twiddles; plans that share a filter borrow the owner's. */
 static void FN(build_twiddle)(REAL *tw, int m)
 {
     int n2, j, b;
@@ -361,104 +353,6 @@ static void FN(build_twiddle)(REAL *tw, int m)
         }
         tw += 6 * n2;
     }
-}
-
-#define STATIC_TWIDDLE(bits) \
-    static _Alignas(64) REAL FN(twiddle_##bits)[2u << (bits)]; \
-    static faac_once_t FN(once_##bits) = FAAC_ONCE_INIT; \
-    static void FN(init_twiddle_##bits)(void) { \
-        FN(build_twiddle)(FN(twiddle_##bits), 1 << (bits)); \
-    }
-#if FAAR_FFT_CACHE_BITS >= 4
-STATIC_TWIDDLE(4)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 5
-STATIC_TWIDDLE(5)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 6
-STATIC_TWIDDLE(6)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 7
-STATIC_TWIDDLE(7)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 8
-STATIC_TWIDDLE(8)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 9
-STATIC_TWIDDLE(9)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 10
-STATIC_TWIDDLE(10)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 11
-STATIC_TWIDDLE(11)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 12
-STATIC_TWIDDLE(12)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 13
-STATIC_TWIDDLE(13)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 14
-STATIC_TWIDDLE(14)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 15
-STATIC_TWIDDLE(15)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 16
-STATIC_TWIDDLE(16)
-#endif
-#undef STATIC_TWIDDLE
-
-static REAL *FN(shared_twiddle)(int logm)
-{
-#define TWIDDLE_CASE(bits) \
-    case bits: \
-        faac_once_run(&FN(once_##bits), FN(init_twiddle_##bits)); \
-        return FN(twiddle_##bits);
-    switch (logm) {
-#if FAAR_FFT_CACHE_BITS >= 4
-        TWIDDLE_CASE(4)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 5
-        TWIDDLE_CASE(5)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 6
-        TWIDDLE_CASE(6)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 7
-        TWIDDLE_CASE(7)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 8
-        TWIDDLE_CASE(8)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 9
-        TWIDDLE_CASE(9)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 10
-        TWIDDLE_CASE(10)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 11
-        TWIDDLE_CASE(11)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 12
-        TWIDDLE_CASE(12)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 13
-        TWIDDLE_CASE(13)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 14
-        TWIDDLE_CASE(14)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 15
-        TWIDDLE_CASE(15)
-#endif
-#if FAAR_FFT_CACHE_BITS >= 16
-        TWIDDLE_CASE(16)
-#endif
-    default: return NULL;
-    }
-#undef TWIDDLE_CASE
 }
 
 void FN(clear)(PLAN *plan)
@@ -494,8 +388,8 @@ static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single,
 
     plan->size = 2 * m;
     for (j = m; j > 1; j >>= 1) plan->logm++;
-    plan->twiddle = filter_owner ? filter_owner->twiddle : FN(shared_twiddle)(plan->logm);
-    plan->twiddle_owned = !filter_owner && plan->twiddle == NULL;
+    plan->twiddle = filter_owner ? filter_owner->twiddle : NULL;
+    plan->twiddle_owned = !filter_owner;
     if (plan->twiddle_owned) {
         plan->twiddle = AllocMemory(2 * m * sizeof(REAL));
         if (plan->twiddle) FN(build_twiddle)(plan->twiddle, m);

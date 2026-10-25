@@ -24,7 +24,7 @@
 typedef struct faar_rfftf_plan {
     int size, logm;
     int work_buffers;
-    int twiddle_owned; /* Larger transforms own tables; common sizes share BSS. */
+    int twiddle_owned; /* Set unless the plan borrows a filter owner's table. */
     float *twiddle, *split, *work, *scratch;
 } faar_rfftf_plan;
 
@@ -60,7 +60,7 @@ float *faar_rfftf_cforward(const faar_rfftf_plan *plan, float *in);
 typedef struct faar_rfftd_plan {
     int size, logm;
     int work_buffers;
-    int twiddle_owned; /* Larger transforms own tables; common sizes share BSS. */
+    int twiddle_owned; /* Set unless the plan borrows a filter owner's table. */
     double *twiddle, *split, *work, *scratch;
 } faar_rfftd_plan;
 

@@ -66,7 +66,6 @@ meson install -C build
 | `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
 | `sbr-decimation` | 1 | Encoder SBR analysis density (1 = full quality, up to 8 = faster) |
 | `faar-precision` | mixed | FAAR arithmetic policy (`mixed` or `float`); mixed runs High filter kernels in double, float uses compensated float arithmetic for FPU-less targets at more CPU |
-| `faar-twiddle-cache-bits` | 16 | FAAR static FFT twiddle cache ceiling (`2^N` complex points); `0` disables static tables |
 | `stats` | false | End-of-stream diagnostics on stderr (instrumentation only) |
 
 ## Library APIs

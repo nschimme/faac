@@ -91,13 +91,6 @@ option('faar-precision',
     choices: ['float', 'mixed'],
     value: 'mixed')
 
-option('faar-twiddle-cache-bits',
-    description: 'Maximum log2 complex FFT size with static twiddles (0 disables; default 16)',
-    type: 'integer',
-    min: 0,
-    max: 16,
-    value: 16)
-
 # End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
 # Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();
 # the decoder (FAAD_STATS) prints its own on close.

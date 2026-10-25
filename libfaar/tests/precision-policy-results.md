@@ -138,8 +138,7 @@ reproduced the checkpoint's section sizes exactly, then measured:
 | Checkpoint | 143,911 bytes | 752 bytes | 3,147,080 bytes |
 | Float backend without compensated High | 124,739 bytes | 744 bytes | 3,147,080 bytes |
 
-The text column falls by 19,172 bytes (13.3%). Both FFT precisions still
-reserve their shared twiddle caches, so BSS does not fall. This is a GCC
+The text column falls by 19,172 bytes (13.3%). This is a GCC
 binary-footprint comparison under amd64 emulation, not native amd64 timing.
 
 The native mixed and standalone float suites passed all 51 and 52 checks.
@@ -161,9 +160,7 @@ relative to the checkpoint; High retained its 16-byte dispatch overhead over
 double. All closes returned tracked live heap to zero.
 
 This specialization reduces mixed's code footprint while preserving the
-standalone float build and the double comparison option. Further BSS savings
-require changing the FFT table-cache policy; reducing the exposed precision
-choices alone does not achieve them.
+standalone float build and the double comparison option.
 
 ## FFT workspace reduction experiment
 
@@ -180,7 +177,7 @@ removed without changing arithmetic or FFT geometry:
 
 The FFT plan records its buffer count so preparation stays within the
 allocation. Both small-transform ping-pong buffers and shared padded scratch
-remain available where used. No FFT twiddle cache is changed.
+remain available where used.
 
 Prepared peak requested heap, compared with the preceding specialization:
 
@@ -258,9 +255,8 @@ GCC 13 amd64 release/LTO, Berkeley `size` text:
 | Float | 85,983 bytes | 86,127 bytes | +144 bytes |
 | Double | 62,806 bytes | 63,062 bytes | +256 bytes |
 
-Mixed's BSS is unchanged at 3,147,080 bytes, because High still needs the
-double twiddle cache. The float and double deltas are within the LTO variation
-seen for semantically neutral edits.
+The float and double deltas are within the LTO variation seen for
+semantically neutral edits.
 
 Prepared peak requested heap at High falls by 17–22% across the 48/96/192 kHz,
 1/2/8-channel matrix. Stereo 48,000 → 44,100 Hz drops from 5,972,848 to
@@ -342,39 +338,7 @@ AddressSanitizer and UndefinedBehaviorSanitizer suites passed 51 checks in
 mixed and 52 in float, including the expanded shared-workspace tests.
 
 
-## Configurable static FFT twiddle reservation
-
-`-Dfaar-twiddle-cache-bits=N` caches complex FFT sizes through `2^N` in
-static storage. The default 16 preserves the existing policy; 0 disables
-static tables. Uncached transforms use the existing per-plan setup allocation
-path. Channel-pair borrowers share the owner's complete plans, including any
-owned twiddle allocation, and never free them independently.
-
-macOS arm64 release/LTO mixed library, Mach-O `size -m` BSS:
-
-| Cache bits | BSS bytes | Reduction from default |
-|---|---:|---:|
-| 16 | 3,147,008 | — |
-| 12 | 197,376 | 93.7% |
-| 0 | 0 | 100% |
-
-This moves storage from a fixed reservation to setup-time heap allocation;
-it does not eliminate the twiddles required by a live handle. Stereo High at
-48,000 → 44,100 Hz, prepared for 8,192 input frames, uses 4,819,728 live heap
-bytes at the default and 5,606,160 bytes at either 12 or 0 (+786,432 bytes).
-All tracked allocations return to zero after close. Setup costs can increase
-because uncached tables are rebuilt per owning plan. The default remains
-appropriate for hosted builds; constrained builds can choose a lower ceiling
-based on their routes and simultaneous handle count.
-
-Mixed cache-0 and cache-12 suites each passed 52 checks, including concurrent
-initialization, owned-table uniqueness, reopen, and shared-FIR cleanup. Each
-configuration passed 480 strict PCM cases against the default, plus another
-480 with preparation. Default mixed passed 102 checks with one skip; default
-float passed 53. Float cache-0 passed 52 checks under AddressSanitizer and
-UndefinedBehaviorSanitizer. Mixed High's calibrated passband residual ceiling
-was restored and passed; standalone float retains its higher arithmetic-noise
-ceiling.
+## Output-tiled half-band experiment
 
 An output-tiled mixed High half-band experiment was rejected: seven alternating
 runs per case showed roughly 9–11% slower 192,000 → 44,100 Hz processing at
@@ -508,11 +472,10 @@ half-band, cascaded and equal-rate routes are included. Allocation failure
 sweeps cover High, cascaded Good and generic Fast, with cleanup and plan reuse.
 A start gate exercises concurrent plan opens, independent processing and close.
 
-The full default suite passed 105 checks with one skip; float passed 56. With
-static twiddle caching disabled, the full mixed AddressSanitizer and
+The full default suite passed 105 checks with one skip; float passed 56. The full mixed AddressSanitizer and
 UndefinedBehaviorSanitizer suite passed 54 checks, and the three float plan
 checks passed under the same sanitizers. The concurrent mixed plan test also
-passed ThreadSanitizer with dynamically owned design twiddles.
+passed ThreadSanitizer.
 
 Prepared plan processing and flushing were separately verified to make no
 allocator calls and no frees in both arithmetic modes. The float allocation

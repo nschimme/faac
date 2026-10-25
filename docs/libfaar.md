@@ -69,18 +69,8 @@ output matches float at Fast/Good and double arithmetic at High. Use `float`
 for microcontrollers without a double-precision FPU. Filter
 coefficients and FFT twiddles still use double-precision setup calculations.
 The channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
-The FFT engine lazily initializes shared twiddle tables for common complex
-transform sizes from 16 through 65,536. Their bounded static BSS reservation
-is about 1 MiB in float builds or 3 MiB in mixed builds; only tables for used
-sizes are initialized. On hosted systems this is demand-zero virtual storage,
-and only touched pages become resident; on bare-metal targets the linker
-reserves the full BSS in RAM. Set `-Dfaar-twiddle-cache-bits=N` to cache only
-complex sizes through `2^N` (default 16), or use `0` to disable static tables.
-Larger sizes allocate twiddles per plan during setup; this trades more setup
-work and heap allocation for a smaller static RAM reservation. The transform
-arithmetic is unchanged. The distinction between reserved and resident memory
-is important for the mixed build, which reserves both table sets. Float High
-additionally allocates expansion FFT workspaces and twiddles per handle;
+The FFT engine keeps no static tables: each handle allocates its twiddles at
+setup. Float High additionally allocates expansion FFT workspaces per handle;
 channels within the handle share immutable twiddles and filter spectra. See the
 [float High measurements](../libfaar/tests/float-high-results.md) for measured
 quality, CPU, and heap tradeoffs.
@@ -94,15 +84,9 @@ The planner selects a filter based on the rates and quality preset. Polyphase
 FIR filters use Kaiser windows and interpolation between stored phases. Some
 conversions use overlap-save DFT FIR stages; large downsampling ratios can use
 cascaded stages. `faar_resampler_get_info()` reports filter lookahead in input
-frames, including cascaded stages. Common complex FFT sizes share immutable
-twiddle tables initialized once per process on first use; unused size tables
-remain uninitialized. This one-time initialization is protected when the
-toolchain provides atomics, so concurrent independent handles remain safe under
-the normal API threading rules. On toolchains without atomic support, serialize
-concurrent opens as required by the codec libraries. FFT work buffers and
-scratch remain private to each handle. Sizes above 65,536 continue to allocate
-twiddles per plan, and static tables remain available until library unload or
-process exit.
+frames, including cascaded stages. FFT twiddles, work buffers and scratch are
+private to each handle, so
+concurrent independent handles share no mutable state.
 
 Within each multichannel prefilter, channel stages share one immutable filter
 spectrum (or sparse halfband coefficient set). Their overlap histories and
@@ -365,10 +349,8 @@ internally. `FreeMemory` must accept NULL. Default builds grow the two
 resizable buffers with libc `realloc`; custom-allocator builds allocate, copy
 and free so growth stays in the custom allocator's memory.
 
-Static FFT twiddle tables stay in static storage; `-Dfaar-twiddle-cache-bits`
-bounds them, and larger sizes allocate twiddles per plan through
-`AllocMemory`. Check the speed cost of external-RAM placement on your target
-before committing to it.
+Check the speed cost of external-RAM placement on your target before
+committing to it.
 
 #### Running without a heap
 

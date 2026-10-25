@@ -153,17 +153,6 @@ python3 libfaar/tests/compare_quality.py /path/to/baseline/libfaar.dylib \
   /path/to/candidate/libfaar.dylib --report /tmp/prepared-quality.json --prepare
 ```
 
-The `test_faar_fft_threads` test races first initialization for several table
-sizes, checks that FFT work buffers remain private, then clears and reopens
-plans and exercises the dynamic larger-size fallback. To run it under
-ThreadSanitizer in a separate build:
-
-```sh
-meson setup build-tsan -Dencoder=false -Ddecoder=false -Dfrontend=false \
-  -Db_sanitize=thread -Db_lto=false -Db_lundef=false
-meson test -C build-tsan test_faar_fft_threads
-```
-
 `test_faar_dft_shared` checks per-channel sharing of immutable DFT spectra and
 halfband coefficients within one prefilter. Paired stages share FFT workspace
 while histories and queues remain private. Coverage includes small and padded
@@ -187,7 +176,7 @@ unchanged arithmetic, rather than comparisons across float and mixed builds.
 The `high_stopband` Meson group independently checks High's 150 dB rejection
 with one, two, three, and eight channels, including loud neighbouring channels.
 `test_faar_float2` compares the compensated FFT against the double FFT and
-checks inverse round trips, shared twiddles, and phase arithmetic.
+checks inverse round trips and phase arithmetic.
 
 The comparison is a strict baseline regression gate: any changed float32
 sample bit fails, including signed-zero changes. Incorrect output counts,
@@ -212,9 +201,6 @@ See [the measured history-buffering results](optimization-results.md) for the
 
 See [the FFT-size selection experiment](fft-size-results.md) for the 3×/4×/5×
 geometry tradeoffs, quality results, and retained sizing decision.
-
-See [the static FFT-table measurements](static-tables-results.md) for repeated
-open and throughput comparisons of the lazy shared tables.
 
 See [the shared-spectrum measurements](shared-spectrum-results.md) for the
 per-channel sharing results and test coverage.

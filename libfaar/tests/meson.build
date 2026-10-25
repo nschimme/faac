@@ -154,13 +154,6 @@ if host_machine.system() != 'windows'
     dependencies: [libfaar_dep, m_dep],
     build_by_default: false,
   )
-  threads_dep = dependency('threads')
-  test_faar_fft_threads = executable('test_faar_fft_threads',
-    ['test_faar_fft_threads.c', '../fft_real.c'],
-    include_directories: ['..', inc],
-    dependencies: [m_dep, threads_dep],
-  )
-  test('test_faar_fft_threads', test_faar_fft_threads, timeout: 120)
 endif
 
 if get_option('faar-precision') == 'float'

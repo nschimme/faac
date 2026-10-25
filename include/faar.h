@@ -51,7 +51,7 @@
  *   - FAAR_VERSION_MAJOR tracks the libfaar SONAME, not the project release.
  *     size_t and pointer types follow the platform ABI.
  *   - Independent handles may be used concurrently; one handle is owned by one
- *     thread at a time. Shared FFT tables are built once per process.
+ *     thread at a time.
  *
  * Status contract:
  *   - A NULL pointer, NULL out parameter or otherwise invalid argument or
