@@ -102,6 +102,48 @@ Staged routes with a downstream polyphase bank drain prefilter output directly
 into the bank's channel histories, avoiding a separate intermediate sample
 buffer and copy. Preparation reserves those histories before streaming.
 
+## Reusing a filter design
+
+For multiple streams with identical settings, create a `faar_plan` once and
+open each stream with `faar_resampler_open_from_plan()`. The plan stores the
+resolved stage geometry, filter spectra, polyphase banks and immutable FFT
+twiddles. Each stream allocates separate histories, queues and FFT workspace;
+streams can be processed concurrently. Ordinary `faar_resampler_open()` remains
+available for standalone streams.
+
+```c
+faar_plan *plan = NULL;
+faar_resampler *left = NULL, *right = NULL;
+faar_status status = faar_plan_open(&config, &plan);
+if (status == FAAR_OK)
+    status = faar_resampler_open_from_plan(plan, &left);
+if (status == FAAR_OK)
+    status = faar_resampler_open_from_plan(plan, &right);
+faar_plan_close(&plan); /* Open streams retain the immutable design. */
+if (status != FAAR_OK) {
+    faar_resampler_close(&left);
+    faar_resampler_close(&right);
+    return status;
+}
+/* Process/flush each stream, then close both handles. */
+faar_resampler_close(&left);
+faar_resampler_close(&right);
+```
+
+A plan fixes the complete configuration, including channel count, boundary
+policy and dither settings. Preparing one stream does not prepare another.
+Plan creation uses the normal designer and temporarily allocates its setup
+workspace, then releases that workspace. Subsequent stream opens allocate
+mutable storage without regenerating filters. There is no global cache of
+filter designs.
+
+Streams retain the plan automatically; the design is released after the last
+stream and the caller's plan reference are closed. A live plan reference may
+be used for concurrent stream opens. As with resampler handles, do not close
+the same caller reference while another thread is using it. On toolchains
+without atomic support, serialize plan and associated stream open/close
+operations; independent stream processing can still run concurrently.
+
 ## Quality profiles
 
 Fast reduces processing cost with a narrower passband and weaker alias

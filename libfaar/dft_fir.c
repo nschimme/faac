@@ -235,8 +235,9 @@ int faar_dft_fir_init_compensated(faar_dft_fir *stage, const double *taps,
                       lanes, stacked, compensated);
 }
 
-int faar_dft_fir_init_shared(faar_dft_fir *stage,
-                      const faar_dft_fir *source, size_t lanes, int stacked) {
+static int init_shared_internal(faar_dft_fir *stage,
+                      const faar_dft_fir *source, size_t lanes, int stacked,
+                      int private_workspace) {
     if (!stage || !source || stage == source
             || (lanes != 1 && lanes != 2)
             || (stacked != 0 && stacked != 1) || (stacked && lanes != 1)
@@ -258,9 +259,9 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
 #endif
     stage->filter_spectrum = source->filter_spectrum;
     stage->spec = source->spec;
-    /* Channel stages execute sequentially, including flush. Only overlap and
-     * pending input/output survive a call; FFT buffers can be borrowed. */
-    stage->shared_fft = !stage->halfband;
+    /* Ordinary channel stages execute sequentially and borrow FFT work.
+     * Reusable filter clones instead build independent execution plans. */
+    stage->shared_fft = !stage->halfband && !private_workspace;
     if (stage->shared_fft) {
         stage->in = source->in;
         stage->out = source->out;
@@ -273,13 +274,98 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
         stage->out_wide = source->out_wide;
 #endif
     }
-    int bad = stage->halfband ? init_halfband_buffers(stage)
-        : init_paired_buffers(stage);
+    int bad;
+    if (stage->halfband) {
+        bad = init_halfband_buffers(stage);
+    } else if (private_workspace) {
+        int plan_bad;
+#ifdef FAAR_COMPENSATED_FLOAT
+        if (stage->compensated)
+            plan_bad = init_precise_plans(stage, source);
+        else
+#endif
+#ifdef FAAR_WIDE_HIGH
+        if (stage->compensated)
+            plan_bad = init_fft_plans_filter_shared_wide(stage, source);
+        else
+#endif
+            plan_bad = init_fft_plans_filter_shared(stage, source);
+        bad = plan_bad || init_paired_buffers(stage);
+    } else {
+        bad = init_paired_buffers(stage);
+    }
     if (bad) {
         faar_dft_fir_clear(stage);
         return -1;
     }
     return 0;
+}
+
+int faar_dft_fir_init_shared(faar_dft_fir *stage,
+                      const faar_dft_fir *source, size_t lanes, int stacked) {
+    return init_shared_internal(stage, source, lanes, stacked, 0);
+}
+
+int faar_dft_fir_init_filter_shared(faar_dft_fir *stage,
+                      const faar_dft_fir *source, size_t lanes, int stacked) {
+    return init_shared_internal(stage, source, lanes, stacked, 1);
+}
+
+void faar_dft_fir_release_workspace(faar_dft_fir *stage) {
+    if (!stage) return;
+    free(stage->work);
+    stage->work = NULL;
+#ifdef FAAR_COMPENSATED_FLOAT
+    free(stage->precise_half_work);
+    stage->precise_half_work = NULL;
+    if (stage->shared_fft) {
+        stage->precise_in.work = NULL;
+        stage->precise_out.work = NULL;
+    } else {
+        free(stage->precise_in.work);
+        free(stage->precise_out.work);
+        stage->precise_in.work = NULL;
+        stage->precise_out.work = NULL;
+    }
+#endif
+#ifdef FAAR_WIDE_HIGH
+    free(stage->wide_half_work);
+    stage->wide_half_work = NULL;
+    if (stage->shared_fft) {
+        stage->in_wide.work = NULL;
+        stage->in_wide.scratch = NULL;
+        stage->out_wide.work = NULL;
+        stage->out_wide.scratch = NULL;
+    } else {
+        free(stage->in_wide.work);
+        free(stage->out_wide.work);
+        stage->in_wide.work = NULL;
+        stage->in_wide.scratch = NULL;
+        stage->out_wide.work = NULL;
+        stage->out_wide.scratch = NULL;
+    }
+#endif
+    if (stage->shared_fft) {
+        stage->in.work = NULL;
+        stage->in.scratch = NULL;
+        stage->out.work = NULL;
+        stage->out.scratch = NULL;
+    } else {
+        free(stage->in.work);
+        free(stage->out.work);
+        stage->in.work = NULL;
+        stage->in.scratch = NULL;
+        stage->out.work = NULL;
+        stage->out.scratch = NULL;
+    }
+    free(stage->overlap);
+    free(stage->input_block);
+    free(stage->output_block);
+    stage->overlap = NULL;
+    stage->input_block = NULL;
+    stage->output_block = NULL;
+    stage->input_fill = stage->output_count = stage->output_offset = 0;
+    stage->finishing = stage->finished = 0;
 }
 
 void faar_dft_fir_prepare(faar_dft_fir *stage) {

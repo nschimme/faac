@@ -17,6 +17,8 @@
 #include "libfaar_internal.h"
 #include "dft_coeffs.h"
 #include "dft_prefilter.h"
+#include "../common/atomic.h"
+#include <limits.h>
 #ifdef FAAR_COMPENSATED_FLOAT
 #include "fft_float2.h"
 #endif
@@ -141,7 +143,36 @@ struct faar_resampler_struct {
     float *dft_intermediate;
     size_t dft_intermediate_capacity;
     faar_status last_error;
+    bool shared_coeffs; /* Plan retains immutable banks for this stream. */
+    faar_plan *plan; /* Only the root of a plan-backed stream owns a reference. */
 };
+
+struct faar_plan_struct {
+    faac_once_t references; /* Atomic refcount, using the platform atomic type. */
+    faar_resampler *prototype; /* Immutable geometry, coefficients and twiddles. */
+};
+
+static void plan_release(faar_plan *plan);
+
+static int plan_retain(faar_plan *plan) {
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+    int count = atomic_load_explicit(&plan->references, memory_order_relaxed);
+    while (count < INT_MAX) {
+        if (atomic_compare_exchange_weak_explicit(&plan->references, &count,
+                count + 1, memory_order_relaxed, memory_order_relaxed)) return 0;
+    }
+#elif defined(_MSC_VER)
+    long count = _InterlockedCompareExchange(&plan->references, 0, 0);
+    while (count < LONG_MAX) {
+        long seen = _InterlockedCompareExchange(&plan->references, count + 1, count);
+        if (seen == count) return 0;
+        count = seen;
+    }
+#else
+    if (plan->references < INT_MAX) { ++plan->references; return 0; }
+#endif
+    return -1;
+}
 
 static void clear_error(faar_resampler * r) {
     if (!r) return;
@@ -1569,16 +1600,123 @@ static void destroy_internal(faar_resampler * r) {
     for (uint16_t c = 0; c < r->channels && c < MAX_CHANNELS; c++) {
         if (r->hist[c]) aligned_free(r->hist[c] - r->hist_offset);
     }
-    if (r->polyphase_reverse_table) aligned_free(r->polyphase_reverse_table);
-    if (r->polyphase_table) aligned_free(r->polyphase_table);
+    if (!r->shared_coeffs) {
+        if (r->polyphase_reverse_table) aligned_free(r->polyphase_reverse_table);
+        if (r->polyphase_table) aligned_free(r->polyphase_table);
 #ifdef FAAR_WIDE_HIGH
-    aligned_free(r->polyphase_wide_table);
-    aligned_free(r->polyphase_wide_reverse);
+        aligned_free(r->polyphase_wide_table);
+        aligned_free(r->polyphase_wide_reverse);
 #endif
 #ifdef FAAR_COMPENSATED_FLOAT
-    if (r->polyphase_low_table) aligned_free(r->polyphase_low_table);
+        if (r->polyphase_low_table) aligned_free(r->polyphase_low_table);
 #endif
+    }
+    faar_plan *plan = r->plan;
     free(r);
+    if (plan) plan_release(plan);
+}
+
+static void plan_release(faar_plan *plan) {
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+    int last = atomic_fetch_sub_explicit(&plan->references, 1, memory_order_acq_rel) == 1;
+#elif defined(_MSC_VER)
+    int last = _InterlockedDecrement(&plan->references) == 0;
+#else
+    int last = --plan->references == 0;
+#endif
+    if (last) {
+        destroy_internal(plan->prototype);
+        free(plan);
+    }
+}
+
+/* Retain only immutable design state. Capacities and initial stream counters
+ * remain as geometry for clones; every mutable allocation is released. */
+static void release_plan_workspace(faar_resampler *r) {
+    if (r->stage1) release_plan_workspace(r->stage1);
+    if (r->stage2) release_plan_workspace(r->stage2);
+    if (r->dft_prefilter) faar_dft_prefilter_release_workspace(r->dft_prefilter);
+    free(r->dft_intermediate);
+    r->dft_intermediate = NULL;
+    aligned_free(r->cascade_buf);
+    r->cascade_buf = NULL;
+    for (uint16_t c = 0; c < r->channels; ++c) {
+        if (r->hist[c]) aligned_free(r->hist[c] - r->hist_offset);
+        r->hist[c] = NULL;
+    }
+    r->hist_offset = 0;
+}
+
+static faar_resampler *clone_plan_internal(const faar_resampler *source) {
+    faar_resampler *r = malloc(sizeof(*r));
+    if (!r) return NULL;
+    *r = *source;
+    r->shared_coeffs = true;
+    r->plan = NULL;
+    r->stage1 = r->stage2 = NULL;
+    r->dft_prefilter = NULL;
+    r->cascade_buf = NULL;
+    r->dft_intermediate = NULL;
+    r->hist_offset = 0;
+    memset(r->hist, 0, sizeof(r->hist));
+    if (source->stage1 && !(r->stage1 = clone_plan_internal(source->stage1))) goto fail;
+    if (source->stage2 && !(r->stage2 = clone_plan_internal(source->stage2))) goto fail;
+    if (source->dft_prefilter && !(r->dft_prefilter =
+                faar_dft_prefilter_clone_filter(source->dft_prefilter))) goto fail;
+    if (r->cascade_cap) {
+        r->cascade_buf = aligned_malloc(r->cascade_cap * sizeof(float));
+        if (!r->cascade_buf) goto fail;
+    }
+    if (r->hist_cap_per_ch) {
+        for (uint16_t c = 0; c < r->channels; ++c) {
+            r->hist[c] = aligned_malloc(r->hist_cap_per_ch * sizeof(*r->hist[c]));
+            if (!r->hist[c]) goto fail;
+            memset(r->hist[c], 0, r->hist_cap_per_ch * sizeof(*r->hist[c]));
+        }
+    }
+    return r;
+fail:
+    destroy_internal(r);
+    return NULL;
+}
+
+FAARAPI faar_status faar_plan_open(const faar_config *config, faar_plan **out) {
+    if (!out) return FAAR_ERR_INVALID_ARGUMENT;
+    *out = NULL;
+    faar_resampler *prototype = NULL;
+    faar_status status = faar_resampler_open(config, &prototype);
+    if (status != FAAR_OK) return status;
+    faar_plan *plan = malloc(sizeof(*plan));
+    if (!plan) { destroy_internal(prototype); return FAAR_ERR_NO_MEMORY; }
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+    atomic_init(&plan->references, 1);
+#else
+    plan->references = 1;
+#endif
+    plan->prototype = prototype;
+    release_plan_workspace(prototype);
+    *out = plan;
+    return FAAR_OK;
+}
+
+FAARAPI faar_status faar_plan_close(faar_plan **plan) {
+    if (!plan) return FAAR_ERR_INVALID_ARGUMENT;
+    if (*plan) plan_release(*plan);
+    *plan = NULL;
+    return FAAR_OK;
+}
+
+FAARAPI faar_status faar_resampler_open_from_plan(faar_plan *plan,
+                                                faar_resampler **out) {
+    if (!out) return FAAR_ERR_INVALID_ARGUMENT;
+    *out = NULL;
+    if (!plan) return FAAR_ERR_INVALID_ARGUMENT;
+    if (plan_retain(plan)) return FAAR_ERR_NO_MEMORY;
+    faar_resampler *r = clone_plan_internal(plan->prototype);
+    if (!r) { plan_release(plan); return FAAR_ERR_NO_MEMORY; }
+    r->plan = plan;
+    *out = r;
+    return FAAR_OK;
 }
 
 FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size) {

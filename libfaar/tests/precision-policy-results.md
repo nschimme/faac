@@ -446,3 +446,75 @@ expanded prefilter regression test additionally verifies direct drains into
 separate channel destinations, partial drains and pending-frame accounting,
 centered convolution, and repeated flush across short and long filters and
 both boundary policies. It passed in both release modes and float sanitizers.
+
+
+## Reusable immutable filter plans
+
+`faar_plan_open()` resolves the full configuration once. Its internal design
+retains stage geometry, filter spectra, sparse half-band coefficients,
+polyphase banks and immutable FFT twiddles. Temporary mutable setup buffers
+are released before returning. `faar_resampler_open_from_plan()` allocates
+independent histories, queues and FFT work, and borrows only immutable arrays.
+Channel pairs within each stream still share their serialized workspace.
+
+Streams retain the plan through an atomic reference count. Closing the caller's
+plan reference before processing or closing its streams is supported. Without
+atomics, plan/stream open and close operations require caller serialization;
+independent processing remains concurrent. There is no global filter-design
+cache, and ordinary `faar_resampler_open()` remains available.
+
+Native macOS arm64 release/LTO, requested live heap for 16 simultaneous handles,
+48,000 → 44,100 Hz. The plan column includes the retained design and all streams:
+
+| Arithmetic | Channels | Quality | Ordinary bytes | Plan + streams bytes | Reduction |
+|---|---:|---|---:|---:|---:|
+| Mixed | 2 | Fast | 2,827,904 | 2,221,512 | 21.4% |
+| Mixed | 2 | Good | 5,893,760 | 5,041,608 | 14.5% |
+| Mixed | 2 | High | 60,384,896 | 51,799,944 | 14.2% |
+| Mixed | 8 | High | 88,866,944 | 80,283,192 | 9.7% |
+| Float | 2 | High | 38,492,288 | 26,335,144 | 31.6% |
+| Float | 8 | High | 66,973,568 | 54,817,576 | 18.2% |
+
+Seven warm repetitions alternate ordinary and plan measurement order:
+
+| Arithmetic | Channels | Quality | Ordinary 16 opens ms | Design ms | 16 plan-stream opens ms |
+|---|---:|---|---:|---:|---:|
+| Mixed | 2 | Fast | 3.213 | 0.199 | 0.042 |
+| Mixed | 2 | Good | 2.761 | 0.173 | 0.039 |
+| Mixed | 2 | High | 7.627 | 0.459 | 0.089 |
+| Mixed | 8 | High | 7.556 | 0.461 | 0.315 |
+| Float | 2 | High | 45.444 | 2.848 | 0.119 |
+| Float | 8 | High | 45.910 | 2.858 | 0.418 |
+
+Times are separate medians per phase; include design cost when comparing a
+batch of new streams. `bench_faar_plan` reproduces these observations with
+allocator hooks. It verifies all tracked allocations are returned after each
+measurement. Heap excludes allocator metadata, static BSS and caller buffers.
+A single stream has little sharing benefit; this API targets repeated opens
+and multiple concurrent streams with identical settings.
+
+The new API adds 3,104 bytes to the local mixed Mach-O text section
+(60,584 → 63,688); BSS stays at 3,147,008 bytes. Ordinary stereo handles gain
+16 requested bytes in the measured route. Existing ordinary output remains bit
+identical across 480 normal and 480 prepared strict comparisons. An 18-case
+ordinary throughput screen had median candidate/baseline 1.000, range
+0.988–1.009, across 48/96/192 kHz → 44.1 kHz at stereo/eight channels and all
+qualities. These local arm64 timings do not establish native x86_64 results.
+
+The plan tests cover 384 rate/quality/channel/boundary/dither configurations,
+comparing four plan streams with independent normal references in each case,
+including preparation and early caller-plan close. Dedicated, generic,
+half-band, cascaded and equal-rate routes are included. Allocation failure
+sweeps cover High, cascaded Good and generic Fast, with cleanup and plan reuse.
+A start gate exercises concurrent plan opens, independent processing and close.
+
+The full default suite passed 105 checks with one skip; float passed 56. With
+static twiddle caching disabled, the full mixed AddressSanitizer and
+UndefinedBehaviorSanitizer suite passed 54 checks, and the three float plan
+checks passed under the same sanitizers. The concurrent mixed plan test also
+passed ThreadSanitizer with dynamically owned design twiddles.
+
+Prepared plan processing and flushing were separately verified to make no
+allocator calls and no frees in both arithmetic modes. The float allocation
+and lifecycle test also passed with atomics disabled and the build channel
+limit set to one; the single-channel concurrent test passed ThreadSanitizer.

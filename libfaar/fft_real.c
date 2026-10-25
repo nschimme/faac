@@ -486,14 +486,15 @@ void FN(prepare)(PLAN *plan, int both_buffers)
 
 /* m complex points; the real wrapper additionally needs the split table.
  * FAAR_FFT_LEAN builds only the complex transforms libfaar uses. */
-static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single)
+static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single,
+                     const PLAN *filter_owner)
 {
     int j;
 
     plan->size = 2 * m;
     for (j = m; j > 1; j >>= 1) plan->logm++;
-    plan->twiddle = FN(shared_twiddle)(plan->logm);
-    plan->twiddle_owned = plan->twiddle == NULL;
+    plan->twiddle = filter_owner ? filter_owner->twiddle : FN(shared_twiddle)(plan->logm);
+    plan->twiddle_owned = !filter_owner && plan->twiddle == NULL;
     if (plan->twiddle_owned) {
         plan->twiddle = malloc(2 * m * sizeof(REAL));
         if (plan->twiddle) FN(build_twiddle)(plan->twiddle, m);
@@ -527,7 +528,7 @@ int FN(init)(PLAN *plan, int size)
     if (!plan) return -1;
     memset(plan, 0, sizeof(*plan));
     if (size < 256 || size > 65536 || (size & (size - 1))) return -1;
-    return FN(setup)(plan, size / 2, 1, NULL, 0);
+    return FN(setup)(plan, size / 2, 1, NULL, 0, NULL);
 }
 
 #endif
@@ -537,7 +538,7 @@ int FN(cinit)(PLAN *plan, int n)
     if (!plan) return -1;
     memset(plan, 0, sizeof(*plan));
     if (n < 16 || n > (1 << 22) || (n & (n - 1))) return -1;
-    return FN(setup)(plan, n, 0, NULL, 0);
+    return FN(setup)(plan, n, 0, NULL, 0, NULL);
 }
 
 /* The owner must outlive this plan; their executions must be serialized. */
@@ -546,7 +547,7 @@ int FN(cinit_shared)(PLAN *plan, int n, const PLAN *owner)
     if (!plan || !owner || n < 16 || n > owner->size / 2
             || (n & (n - 1))) return -1;
     memset(plan, 0, sizeof(*plan));
-    return FN(setup)(plan, n, 0, owner->scratch, 0);
+    return FN(setup)(plan, n, 0, owner->scratch, 0, NULL);
 }
 
 /* Different-sized FIR plans consume the forward spectrum in a separate plan,
@@ -556,7 +557,25 @@ int FN(cinit_shared_single)(PLAN *plan, int n, const PLAN *owner)
     if (!plan || !owner || n < 16 || n >= owner->size / 2
             || (n & (n - 1))) return -1;
     memset(plan, 0, sizeof(*plan));
-    return FN(setup)(plan, n, 0, owner->scratch, 1);
+    return FN(setup)(plan, n, 0, owner->scratch, 1, NULL);
+}
+
+/* Borrow an immutable same-size filter plan's twiddles, with private work.
+ * Only workspace_owner belongs to this stream; filter_owner may be a shared
+ * prototype with its mutable workspace already released. */
+int FN(cinit_filter_shared)(PLAN *plan, int n, const PLAN *filter_owner,
+                           const PLAN *workspace_owner, int single)
+{
+    if (!plan || !filter_owner || plan == filter_owner || plan == workspace_owner
+            || n < 16 || n > (1 << 22) || (n & (n - 1))
+            || filter_owner->size / 2 != n || !filter_owner->twiddle
+            || (workspace_owner && (n > workspace_owner->size / 2
+                                     || !workspace_owner->scratch))
+            || (single && (!workspace_owner || n >= workspace_owner->size / 2)))
+        return -1;
+    memset(plan, 0, sizeof(*plan));
+    return FN(setup)(plan, n, 0,
+            workspace_owner ? workspace_owner->scratch : NULL, single, filter_owner);
 }
 
 REAL *FN(cbuffer)(const PLAN *plan, int which)

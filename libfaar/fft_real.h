@@ -49,6 +49,11 @@ int faar_rfftf_cinit_shared(faar_rfftf_plan *plan, int n,
  * cinit_shared function retains its two-buffer contract. */
 int faar_rfftf_cinit_shared_single(faar_rfftf_plan *plan, int n,
                                      const faar_rfftf_plan *owner);
+/* Shared filter twiddles with private work; workspace_owner is an optional
+ * larger plan in the same stream. Both owners must outlive this plan. */
+int faar_rfftf_cinit_filter_shared(faar_rfftf_plan *plan, int n,
+        const faar_rfftf_plan *filter_owner,
+        const faar_rfftf_plan *workspace_owner, int single);
 float *faar_rfftf_cbuffer(const faar_rfftf_plan *plan, int which);
 float *faar_rfftf_cforward(const faar_rfftf_plan *plan, float *in);
 
@@ -68,6 +73,11 @@ int faar_rfftd_cinit_shared(faar_rfftd_plan *plan, int n,
                               const faar_rfftd_plan *owner);
 int faar_rfftd_cinit_shared_single(faar_rfftd_plan *plan, int n,
                                      const faar_rfftd_plan *owner);
+/* Shared filter twiddles with private work; workspace_owner is an optional
+ * larger plan in the same stream. Both owners must outlive this plan. */
+int faar_rfftd_cinit_filter_shared(faar_rfftd_plan *plan, int n,
+        const faar_rfftd_plan *filter_owner,
+        const faar_rfftd_plan *workspace_owner, int single);
 double *faar_rfftd_cbuffer(const faar_rfftd_plan *plan, int which);
 double *faar_rfftd_cforward(const faar_rfftd_plan *plan, double *in);
 

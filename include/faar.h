@@ -20,7 +20,9 @@
  * API and ABI notes:
  *   - Initialize faar_config with faar_config_init() and open an opaque handle
  *     with faar_resampler_open(). Fallible calls return faar_status; process
- *     and flush write frame counts through output parameters.
+ *     and flush write frame counts through output parameters. Reusable
+ *     faar_plan designs can supply coefficients to multiple independent
+ *     resamplers opened with faar_resampler_open_from_plan().
  *   - Versioned public structures begin with struct_size and grow only by
  *     appending fields at or after the previous sizeof(struct), never into
  *     compiler padding. Explicit reserved fields must be zero on input and are
@@ -165,11 +167,25 @@ typedef struct faar_resampler_info {
  * @brief Opaque resampler handle type
  */
 typedef struct faar_resampler_struct faar_resampler;
+/* Immutable filter design, reusable by independent streams. */
+typedef struct faar_plan_struct faar_plan;
 
 FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size);
 FAARAPI faar_status faar_get_library_info(faar_library_info *out);
 FAARAPI const char *faar_strerror(faar_status status);
 FAARAPI faar_status faar_resampler_open(const faar_config *config, faar_resampler **out);
+/* Design once, then open streams with the same configuration. A plan retains
+ * coefficients and immutable setup tables, but no streaming workspace.
+ * Each stream owns its mutable storage and retains the plan, so the caller
+ * may close its plan reference before closing streams. The plan may be used
+ * concurrently to open streams; do not close the same caller reference while
+ * another thread is using it. On toolchains without atomics, serialize plan
+ * and associated stream open/close operations. Process/flush on independent
+ * streams remain concurrent. Ordinary open() needs no plan. */
+FAARAPI faar_status faar_plan_open(const faar_config *config, faar_plan **out);
+FAARAPI faar_status faar_plan_close(faar_plan **plan);
+FAARAPI faar_status faar_resampler_open_from_plan(faar_plan *plan,
+                                                faar_resampler **out);
 /* Reserve streaming storage before any input or flush. Process calls may
  * supply at most max_input_frames; drain with NULL/0 and nonzero output
  * capacity until no frames are made before feeding more input.

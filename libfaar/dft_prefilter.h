@@ -47,6 +47,13 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                size_t expansion,
                                                size_t decimation,
                                                int halfband, int compensated);
+/* Clone immutable filter data from source with private transform and stream
+ * workspace. The source must outlive the clone. */
+faar_dft_prefilter *faar_dft_prefilter_clone_filter(
+        const faar_dft_prefilter *source);
+/* Release mutable stream and transform workspace while retaining filter data
+ * for future clones. Safe to call more than once; the stage cannot process. */
+void faar_dft_prefilter_release_workspace(faar_dft_prefilter *stage);
 void faar_dft_prefilter_destroy(faar_dft_prefilter *stage);
 /* Reserve before feeding input; returns a conservative output burst bound. */
 faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *stage,

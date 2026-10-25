@@ -277,6 +277,73 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                                            expansion, decimation, 0, 0);
 }
 
+faar_dft_prefilter *faar_dft_prefilter_clone_filter(
+        const faar_dft_prefilter *source) {
+    if (!source || !source->fir || !source->stages || !source->channels
+            || !source->lanes || !source->block_size
+            || !source->channel_output_capacity)
+        return NULL;
+    faar_dft_prefilter *s = (faar_dft_prefilter *)calloc(1, sizeof(*s));
+    if (!s) return NULL;
+    s->channels = source->channels;
+    s->expansion = source->expansion;
+    s->decimation = source->decimation;
+    s->half = source->half;
+    s->block_size = source->block_size;
+    s->lanes = source->lanes;
+    s->stages = source->stages;
+    s->channel_output_capacity = source->channel_output_capacity;
+    s->prefix_drop = 2 * s->half / s->decimation;
+    s->hold = source->hold;
+    if (s->lanes > SIZE_MAX / s->block_size / sizeof(faar_sample_t)
+            || s->channel_output_capacity > SIZE_MAX / s->channels
+                    / sizeof(faar_sample_t))
+        goto fail;
+    s->fir = (faar_dft_fir *)calloc(s->stages, sizeof(*s->fir));
+    s->channel_input = (faar_sample_t *)malloc(s->lanes * s->block_size
+                                            * sizeof(faar_sample_t));
+    s->channel_output = (faar_sample_t *)malloc(s->channel_output_capacity
+            * s->channels * sizeof(faar_sample_t));
+    if (!s->fir || !s->channel_input || !s->channel_output) goto fail;
+    for (uint16_t f = 0; f < s->stages; ++f) {
+        const faar_dft_fir *source_fir = &source->fir[f];
+        int bad = f == 0
+            ? faar_dft_fir_init_filter_shared(&s->fir[f], source_fir,
+                    source_fir->lanes, source_fir->stacked)
+            : faar_dft_fir_init_shared(&s->fir[f], &s->fir[0],
+                    source_fir->lanes, source_fir->stacked);
+        if (bad) goto fail;
+    }
+    return s;
+fail:
+    faar_dft_prefilter_destroy(s);
+    return NULL;
+}
+
+void faar_dft_prefilter_release_workspace(faar_dft_prefilter *s) {
+    if (!s) return;
+    if (s->fir)
+        for (uint16_t f = s->stages; f > 0; --f)
+            faar_dft_fir_release_workspace(&s->fir[f - 1]);
+    free(s->channel_input);
+    free(s->channel_output);
+    free(s->fifo);
+    free(s->endpoint);
+    s->channel_input = NULL;
+    s->channel_output = NULL;
+    s->fifo = NULL;
+    s->endpoint = NULL;
+    s->fifo_read = s->fifo_count = s->fifo_capacity = 0;
+    s->endpoint_capacity = 0;
+    s->prepared = 0;
+    s->input_count = s->released_count = 0;
+    s->have_input = s->prefix_added = 0;
+    s->finishing = s->finished = 0;
+    s->prefix_drop = 2 * s->half / s->decimation;
+    memset(s->first, 0, sizeof(s->first));
+    memset(s->last, 0, sizeof(s->last));
+}
+
 void faar_dft_prefilter_destroy(faar_dft_prefilter *s) {
     if (!s) return;
     if (s->fir) {

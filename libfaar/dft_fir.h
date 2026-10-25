@@ -91,6 +91,10 @@ int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
  * stages owned by one prefilter, not for sharing across public handles. */
 int faar_dft_fir_init_shared(faar_dft_fir *stage,
                       const faar_dft_fir *source, size_t lanes, int stacked);
+/* Share immutable filter data while allocating private transform workspace.
+ * The source must outlive the stage; per-stage execution needs no serialization. */
+int faar_dft_fir_init_filter_shared(faar_dft_fir *stage,
+                      const faar_dft_fir *source, size_t lanes, int stacked);
 /* Sparse time-domain 2:1 stage: N = 4m+1 taps with the even non-centre
  * taps zero. */
 int faar_dft_fir_init_halfband(faar_dft_fir *stage, const double *taps,
@@ -100,6 +104,9 @@ int faar_dft_fir_init_compensated(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation, size_t lanes, int stacked, int halfband);
 void faar_dft_fir_clear(faar_dft_fir *stage);
+/* Drop mutable execution storage but retain filter and twiddle metadata for
+ * constructing another private-workspace clone. Safe to call more than once. */
+void faar_dft_fir_release_workspace(faar_dft_fir *stage);
 /* Touch private work buffers before the first input. */
 void faar_dft_fir_prepare(faar_dft_fir *stage);
 

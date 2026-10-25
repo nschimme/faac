@@ -65,6 +65,27 @@ static int PAIR_FN(init_fft_plans)(faar_dft_fir *stage) {
     return 0;
 }
 
+/* A reusable filter clone owns FFT work but borrows the source's immutable
+ * twiddle table. A smaller transform can also borrow scratch from this
+ * clone's newly initialized larger plan. */
+static int PAIR_FN(init_fft_plans_filter_shared)(faar_dft_fir *stage,
+                                                  const faar_dft_fir *source) {
+    const size_t n = stage->fft_size, nout = n / stage->decimation;
+    const size_t nin = n / stage->expansion;
+    if (nout > nin) {
+        if (PAIR_FFT_FN(cinit_filter_shared)(&stage->PAIR_FN(out), (int)nout,
+                    &source->PAIR_FN(out), NULL, 0)
+                || PAIR_FFT_FN(cinit_filter_shared)(&stage->PAIR_FN(in), (int)nin,
+                    &source->PAIR_FN(in), &stage->PAIR_FN(out), 1)) return -1;
+    } else {
+        if (PAIR_FFT_FN(cinit_filter_shared)(&stage->PAIR_FN(in), (int)nin,
+                    &source->PAIR_FN(in), NULL, 0)) return -1;
+        if (nout != nin && PAIR_FFT_FN(cinit_filter_shared)(&stage->PAIR_FN(out),
+                (int)nout, &source->PAIR_FN(out), &stage->PAIR_FN(in), 1)) return -1;
+    }
+    return 0;
+}
+
 /* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
  * and decimation averaging. Both scales are powers of two, so exact. It is
  * computed once in the selected precision. */

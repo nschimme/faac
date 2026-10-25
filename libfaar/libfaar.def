@@ -8,3 +8,6 @@ EXPORTS
     faar_resampler_get_info
     faar_resampler_process
     faar_resampler_flush
+    faar_plan_open
+    faar_plan_close
+    faar_resampler_open_from_plan

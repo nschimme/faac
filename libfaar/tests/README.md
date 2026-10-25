@@ -221,3 +221,29 @@ checks and native API-call timing results.
 
 See [the compensated float High results](float-high-results.md) for quality,
 throughput, and requested heap measurements.
+
+
+## Reusable filter plans
+
+`test_faar_plan` compares plan-backed streams with independent normal opens
+across dedicated, generic, cascaded, half-band and equal-rate routes. It checks
+prepared streaming, both boundary policies, shaped dither, independent sample
+histories, and closing the caller's plan reference before processing streams.
+`test_faar_plan_alloc` injects every setup/clone allocation failure for High,
+cascaded Good and generic Fast plans, verifies cleanup, then reuses the plan.
+On pthread platforms, `test_faar_plan_threads` opens, processes and closes
+independent streams concurrently from one plan.
+
+`bench_faar_plan` measures ordinary opens versus plan design plus stream opens,
+including total requested live heap for the plan and all open streams. It uses
+seven repetitions, warms both paths and alternates measurement order:
+
+```sh
+meson compile -C build bench_faar_plan
+build/libfaar/tests/bench_faar_plan
+# Optional: input rate, output rate, channels, quality, number of handles
+build/libfaar/tests/bench_faar_plan 48000 44100 2 2 16
+```
+
+The default matrix includes stereo Fast/Good/High and eight-channel High.
+Reported heap excludes allocator metadata, static BSS and caller buffers.

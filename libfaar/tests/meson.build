@@ -66,6 +66,37 @@ test_faar_prepare = executable('test_faar_prepare',
 )
 test('test_faar_prepare', test_faar_prepare, timeout: 120)
 
+test_faar_plan = executable('test_faar_plan', 'test_faar_plan.c',
+  c_args: libfaar_args,
+  include_directories: ['..', inc],
+  dependencies: [libfaar_dep, m_dep],
+)
+test('test_faar_plan', test_faar_plan, timeout: 180)
+
+test_faar_plan_alloc = executable('test_faar_plan_alloc',
+  ['test_faar_plan.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
+  c_args: libfaar_args + [faar_force_include, faar_alloc_include, '-DFAAR_PLAN_ALLOC_TEST'],
+  include_directories: ['.', '..', inc],
+  dependencies: [m_dep],
+)
+test('test_faar_plan_alloc', test_faar_plan_alloc, timeout: 180)
+
+if host_machine.system() != 'windows'
+  threads_dep = dependency('threads')
+  test_faar_plan_threads = executable('test_faar_plan_threads', 'test_faar_plan.c',
+    c_args: libfaar_args + ['-DFAAR_PLAN_PTHREAD'],
+    include_directories: ['..', inc],
+    dependencies: [libfaar_dep, m_dep, threads_dep],
+  )
+  test('test_faar_plan_threads', test_faar_plan_threads, timeout: 180)
+  executable('bench_faar_plan', ['bench_faar_plan.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
+    c_args: libfaar_args + [faar_force_include, faar_alloc_include],
+    include_directories: ['.', '..', inc],
+    dependencies: [m_dep],
+    build_by_default: false,
+  )
+endif
+
 if host_machine.system() != 'windows'
   executable('bench_faar_heap',
     ['bench_faar_heap.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
