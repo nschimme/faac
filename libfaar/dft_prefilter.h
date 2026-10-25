@@ -58,6 +58,12 @@ int faar_dft_prefilter_process(faar_dft_prefilter *stage, const float *input,
                                size_t output_capacity, size_t *produced);
 int faar_dft_prefilter_flush(faar_dft_prefilter *stage, float *output,
                              size_t output_capacity, size_t *produced);
+/* Internal downstream handoff: feed/finish with zero output capacity, then
+ * drain directly into channel histories. Destination planes must each hold
+ * output_capacity floats and must not overlap this prefilter's storage. */
+size_t faar_dft_prefilter_pending(const faar_dft_prefilter *stage);
+size_t faar_dft_prefilter_drain_planes(faar_dft_prefilter *stage,
+        float *const output[], size_t output_capacity);
 void faar_dft_prefilter_reset(faar_dft_prefilter *stage);
 
 #endif

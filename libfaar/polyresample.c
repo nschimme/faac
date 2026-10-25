@@ -76,12 +76,12 @@ static double bessel_i0(double x) {
     return sum;
 }
 
-static double kaiser_window(double n, double N, double beta) {
+static double kaiser_window(double n, double N, double beta, double denominator) {
     if (beta <= 0.0) return 1.0;
     double arg = 2.0 * n / N - 1.0;
     double sq = 1.0 - arg * arg;
     if (sq <= 0.0) return 0.0;
-    return bessel_i0(beta * sqrt(sq)) / bessel_i0(beta);
+    return bessel_i0(beta * sqrt(sq)) / denominator;
 }
 
 static uint32_t rate_gcd(uint32_t a, uint32_t b) {
@@ -162,9 +162,8 @@ static size_t polyresample_process_single(faar_resampler * r, const float * rest
 
 static size_t polyresample_flush_single(faar_resampler * r, float *out_samples, size_t max_out_count);
 
-static size_t polyresample_process_planar(faar_resampler * r,
-        const float * restrict in_samples, size_t in_count,
-        float * restrict out_samples, size_t max_out_count);
+static size_t process_prefilter_output(faar_resampler *r, size_t capacity,
+        float *out_samples, size_t max_out_count);
 
 static int ensure_dft_intermediate(faar_resampler * r, size_t frames) {
     if (frames <= r->dft_intermediate_capacity) return 0;
@@ -788,6 +787,17 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         ? (filter_len_override ? legacy_cutoff_custom_len : legacy_cutoff * r->ratio)
         : legacy_cutoff;
     double half_len = (r->filter_len - 1) / 2.0;
+    const bool sampled_long_prototype = filter_len_override == 20
+        || (filter_len_override == 21
+            && r->in_rate == 88200 && r->out_rate == 48000);
+    const double window_denominator = r->beta <= 0.0 ? 1.0 : bessel_i0(r->beta);
+    double window[POLYRESAMPLE_MAX_FILTER_LEN];
+    if (r->filter_len > 1 && !sampled_long_prototype) {
+        for (size_t j = 0; j < r->filter_len; j++)
+            window[j] = kaiser_window((double)j,
+                                      (double)r->filter_len - 1.0, r->beta,
+                                      window_denominator);
+    }
 
     /* Store phases -1..N/2+1, including guards for cubic interpolation. */
     for (size_t p = 0; p < stored_phases; p++) {
@@ -802,9 +812,6 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
                 sum = 1.0;
                 continue;
             }
-            bool sampled_long_prototype = filter_len_override == 20
-                || (filter_len_override == 21
-                    && r->in_rate == 88200 && r->out_rate == 48000);
             if (sampled_long_prototype) {
                 /* Rows are samples of one long prototype; windowing each
                  * as its own FIR would shift the even phase origin. */
@@ -825,7 +832,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
                 double sinc = fabs(z) < 1e-14 ? prototype_fc
                     : sin(M_PI * prototype_fc * z) / (M_PI * z);
                 double win = radicand <= 0.0 ? 0.0
-                    : bessel_i0(r->beta * sqrt(radicand)) / bessel_i0(r->beta);
+                    : bessel_i0(r->beta * sqrt(radicand)) / window_denominator;
                 double val = sinc * win * prototype_scale;
                 store_coefficient(r, p * r->filter_len + j, val);
                 sum += val;
@@ -833,17 +840,13 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
             }
             double n = (double)j - half_len - frac;
             double sinc = (fabs(n) < sinc_origin_eps) ? (2.0 * cutoff) : sin(2.0 * M_PI * cutoff * n) / (M_PI * n);
-            double win = kaiser_window((double)j,
-                                       (double)r->filter_len - 1.0, r->beta);
+            double win = window[j];
             double val = sinc * win;
             store_coefficient(r, p * r->filter_len + j, val);
             sum += val;
         }
 
         bool normalize_phase = true;
-        bool sampled_long_prototype = filter_len_override == 20
-            || (filter_len_override == 21
-                && r->in_rate == 88200 && r->out_rate == 48000);
         if (sampled_long_prototype)
             normalize_phase = false;
 #ifdef FAAR_WIDE_HIGH
@@ -1035,9 +1038,11 @@ static faar_status prepare_internal(faar_resampler *r, size_t max_input,
         size_t intermediate = max_input * r->dft_expansion + 8192;
         if (intermediate > SIZE_MAX / r->channels / sizeof(float))
             return FAAR_ERR_INVALID_ARGUMENT;
-        if (ensure_dft_intermediate(r, intermediate)) return FAAR_ERR_NO_MEMORY;
-        memset(r->dft_intermediate, 0,
-               r->dft_intermediate_capacity * r->channels * sizeof(float));
+        if (!r->stage2) {
+            if (ensure_dft_intermediate(r, intermediate)) return FAAR_ERR_NO_MEMORY;
+            memset(r->dft_intermediate, 0,
+                   r->dft_intermediate_capacity * r->channels * sizeof(float));
+        }
         size_t step = r->stage2
             ? r->stage2->in_rate / r->stage2->out_rate
                 + (r->stage2->in_rate % r->stage2->out_rate != 0) : 0;
@@ -1392,20 +1397,20 @@ static size_t process_internal(faar_resampler * restrict r, const float * restri
             return 0;
         }
         size_t temp_capacity = in_count * r->dft_expansion + 8192;
-        if (ensure_dft_intermediate(r, temp_capacity)) {
+        if (!r->stage2 && ensure_dft_intermediate(r, temp_capacity)) {
             r->last_error = FAAR_ERR_NO_MEMORY;
             return 0;
         }
         size_t filtered = 0;
         if (in_samples) r->input_frames += in_count;
         if (faar_dft_prefilter_process(r->dft_prefilter, in_samples, in_count,
-                r->dft_intermediate, r->stage2 ? temp_capacity
+                r->dft_intermediate, r->stage2 ? 0
                     : (max_out_count < temp_capacity ? max_out_count : temp_capacity),
                 &filtered)) { r->last_error = FAAR_ERR_PROCESSING; return 0; }
         size_t produced;
         if (r->stage2) {
-            produced = polyresample_process_planar(r->stage2,
-                    r->dft_intermediate, filtered, out_samples, max_out_count);
+            produced = process_prefilter_output(r, temp_capacity,
+                    out_samples, max_out_count);
         } else {
             produced = filtered;
             for (size_t i = 0; i < filtered; ++i)
@@ -1436,19 +1441,20 @@ static size_t process_internal(faar_resampler * restrict r, const float * restri
     return polyresample_process_single(r, in_samples, in_count, out_samples, max_out_count);
 }
 
-static size_t polyresample_process_planar(faar_resampler * r,
-        const float * restrict in_samples, size_t in_count,
-        float * restrict out_samples, size_t max_out_count) {
-    if (!r || !out_samples || (in_count && !in_samples)) return 0;
+/* The prefilter FIFO is already planar. Drain directly into the downstream
+ * append area, then advance the same history and boundary state as an input
+ * copy would. Reserve only the actual burst, including during flush. */
+static size_t process_prefilter_output(faar_resampler *parent, size_t capacity,
+        float *out_samples, size_t max_out_count) {
+    faar_resampler *r = parent->stage2;
+    size_t in_count = faar_dft_prefilter_pending(parent->dft_prefilter);
+    if (in_count > capacity) in_count = capacity;
     if (in_count) {
         if (reserve_history(r, in_count, false)) return 0;
-        for (uint16_t c = 0; c < r->channels; ++c) {
-            const float * restrict channel_input = in_samples + (size_t)c * in_count;
-            faar_sample_t * restrict channel_history =
-                r->hist[c] + r->hist_len;
-            memcpy(channel_history, channel_input,
-                   in_count * sizeof(*channel_history));
-        }
+        float *planes[MAX_CHANNELS];
+        for (uint16_t c = 0; c < r->channels; ++c)
+            planes[c] = r->hist[c] + r->hist_len;
+        faar_dft_prefilter_drain_planes(parent->dft_prefilter, planes, in_count);
         if (!r->input_frames && !r->flushed
                 && r->boundary == FAAR_BOUNDARY_HOLD) {
             for (uint16_t c = 0; c < r->channels; ++c) {
@@ -1498,7 +1504,7 @@ static size_t flush_internal(faar_resampler * r, float *out_samples, size_t max_
         r->flushed = true;
         max_out_count = output_capacity(r, max_out_count);
         const size_t temp_capacity = 8192;
-        if (ensure_dft_intermediate(r, temp_capacity)) {
+        if (!r->stage2 && ensure_dft_intermediate(r, temp_capacity)) {
             r->last_error = FAAR_ERR_NO_MEMORY;
             return 0;
         }
@@ -1516,14 +1522,15 @@ static size_t flush_internal(faar_resampler * r, float *out_samples, size_t max_
         }
         do {
             filtered = 0;
-            if (faar_dft_prefilter_flush(r->dft_prefilter, r->dft_intermediate,
-                    temp_capacity, &filtered)) {
+            if (faar_dft_prefilter_flush(r->dft_prefilter, NULL, 0, &filtered)) {
                 r->last_error = FAAR_ERR_PROCESSING;
                 return 0;
             }
-            produced += polyresample_process_planar(r->stage2, r->dft_intermediate,
-                    filtered, out_samples + produced * r->channels,
-                    max_out_count - produced);
+            filtered = faar_dft_prefilter_pending(r->dft_prefilter);
+            if (filtered > temp_capacity) filtered = temp_capacity;
+            produced += process_prefilter_output(r, temp_capacity,
+                    out_samples + produced * r->channels, max_out_count - produced);
+            if (r->stage2->last_error != FAAR_OK) return 0;
         } while (filtered == temp_capacity);
         produced += flush_internal(r->stage2,
                 out_samples + produced * r->channels,

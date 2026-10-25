@@ -98,6 +98,10 @@ Their overlap histories and streaming queues remain separate. This sharing
 assumes the normal per-handle rule that calls are serialized; independent
 handles keep separate workspaces.
 
+Staged routes with a downstream polyphase bank drain prefilter output directly
+into the bank's channel histories, avoiding a separate intermediate sample
+buffer and copy. Preparation reserves those histories before streaming.
+
 ## Quality profiles
 
 Fast reduces processing cost with a narrower passband and weaker alias

@@ -26,10 +26,30 @@ static int fail(const char *message) {
     return 1;
 }
 
+static int drain_direct(faar_dft_prefilter *stage, float *output,
+                        size_t frames, size_t channels, size_t capacity,
+                        size_t *out_at) {
+    while (faar_dft_prefilter_pending(stage)) {
+        size_t pending = faar_dft_prefilter_pending(stage);
+        size_t count = pending < capacity ? pending : capacity;
+        if (count > frames - *out_at)
+            return fail("direct prefilter drain exceeds output buffer");
+        float *planes[8];
+        for (size_t c = 0; c < channels; ++c)
+            planes[c] = output + c * frames + *out_at;
+        size_t produced = faar_dft_prefilter_drain_planes(stage, planes, count);
+        if (produced != count
+                || faar_dft_prefilter_pending(stage) != pending - produced)
+            return fail("direct prefilter drain count mismatch");
+        *out_at += produced;
+    }
+    return 0;
+}
+
 static int run_boundary(int hold, size_t tap_count, size_t fft_size,
                         size_t frames, size_t input_chunk,
                         size_t output_capacity,
-                        size_t channels) {
+                        size_t channels, int direct_planes) {
     const size_t CHANNELS = channels;
     double *taps = (double *)malloc(tap_count * sizeof(*taps));
     float *input = (float *)malloc(frames * CHANNELS * sizeof(*input));
@@ -60,29 +80,49 @@ static int run_boundary(int hold, size_t tap_count, size_t fft_size,
         if (count > input_chunk) count = input_chunk;
         size_t produced = 0;
         if (faar_dft_prefilter_process(stage, input + in_at * CHANNELS,
-                count, chunk, output_capacity, &produced)) {
+                count, direct_planes ? NULL : chunk,
+                direct_planes ? 0 : output_capacity, &produced)) {
             faar_dft_prefilter_destroy(stage);
             free(taps); free(input); free(output); free(chunk);
             return fail("prefilter process failed");
         }
-        for (size_t c = 0; c < CHANNELS; ++c)
-            memcpy(output + c * frames + out_at,
-                   chunk + c * produced, produced * sizeof(*output));
+        if (direct_planes) {
+            if (produced || drain_direct(stage, output, frames, CHANNELS,
+                                         output_capacity, &out_at)) {
+                faar_dft_prefilter_destroy(stage);
+                free(taps); free(input); free(output); free(chunk);
+                return fail("direct prefilter process drain failed");
+            }
+        } else {
+            for (size_t c = 0; c < CHANNELS; ++c)
+                memcpy(output + c * frames + out_at,
+                       chunk + c * produced, produced * sizeof(*output));
+            out_at += produced;
+        }
         in_at += count;
-        out_at += produced;
     }
     for (;;) {
         size_t produced = 0;
-        if (faar_dft_prefilter_flush(stage, chunk,
-                                     output_capacity, &produced)) {
+        if (faar_dft_prefilter_flush(stage, direct_planes ? NULL : chunk,
+                direct_planes ? 0 : output_capacity, &produced)) {
             faar_dft_prefilter_destroy(stage);
             free(taps); free(input); free(output); free(chunk);
             return fail("prefilter flush failed");
         }
-        for (size_t c = 0; c < CHANNELS; ++c)
-            memcpy(output + c * frames + out_at,
-                   chunk + c * produced, produced * sizeof(*output));
-        out_at += produced;
+        if (direct_planes) {
+            if (produced || drain_direct(stage, output, frames, CHANNELS,
+                                         output_capacity, &out_at)) {
+                faar_dft_prefilter_destroy(stage);
+                free(taps); free(input); free(output); free(chunk);
+                return fail("direct prefilter flush drain failed");
+            }
+        } else {
+            for (size_t c = 0; c < CHANNELS; ++c)
+                memcpy(output + c * frames + out_at,
+                       chunk + c * produced, produced * sizeof(*output));
+            out_at += produced;
+        }
+        if (direct_planes && !faar_dft_prefilter_pending(stage)) break;
         if (!produced) break;
     }
     if (out_at != frames) {
@@ -113,7 +153,9 @@ static int run_boundary(int hold, size_t tap_count, size_t fft_size,
         }
     }
     size_t produced = 1;
-    if (faar_dft_prefilter_flush(stage, chunk, output_capacity, &produced) || produced) {
+    if (faar_dft_prefilter_flush(stage, direct_planes ? NULL : chunk,
+            direct_planes ? 0 : output_capacity, &produced) || produced
+            || faar_dft_prefilter_pending(stage)) {
         faar_dft_prefilter_destroy(stage);
         free(taps); free(input); free(output); free(chunk);
         return fail("repeated prefilter flush was not empty");
@@ -128,11 +170,12 @@ int main(void) {
     /* With float pairs, one channel stacks blocks, two share a transform and
      * three make a pair plus a lone lane. */
         for (size_t channels = 1; channels <= 3; ++channels)
-            if (run_boundary(0, 31, 128, 257, 17, 7, channels)
-                    || run_boundary(1, 31, 128, 257, 17, 7, channels)
-                    || run_boundary(0, 601, 4096, 4000, 257, 97, channels)
-                    || run_boundary(1, 601, 4096, 4000, 257, 97, channels))
-                return 1;
-    puts("DFT prefilter: centered alignment, short/601-tap plans, multi-channel isolation, boundaries, chunking and drain passed");
+            for (int direct = 0; direct <= 1; ++direct)
+                if (run_boundary(0, 31, 128, 257, 17, 7, channels, direct)
+                        || run_boundary(1, 31, 128, 257, 17, 7, channels, direct)
+                        || run_boundary(0, 601, 4096, 4000, 257, 97, channels, direct)
+                        || run_boundary(1, 601, 4096, 4000, 257, 97, channels, direct))
+                    return 1;
+    puts("DFT prefilter: centered alignment, short/601-tap plans, packed/direct multi-channel isolation, boundaries, chunking and drain passed");
     return 0;
 }

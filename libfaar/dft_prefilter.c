@@ -87,18 +87,31 @@ static int fifo_reserve(faar_dft_prefilter *s, size_t additional) {
     return 0;
 }
 
-static size_t fifo_drain(faar_dft_prefilter *s, float *output,
-                         size_t capacity) {
+size_t faar_dft_prefilter_pending(const faar_dft_prefilter *s) {
+    return s->fifo_count;
+}
+
+size_t faar_dft_prefilter_drain_planes(faar_dft_prefilter *s,
+        float *const output[], size_t capacity) {
     size_t n = s->fifo_count < capacity ? s->fifo_count : capacity;
     if (n)
         for (uint16_t c = 0; c < s->channels; ++c)
-            memcpy(output + (size_t)c * n,
+            memcpy(output[c],
                    s->fifo + (size_t)c * s->fifo_capacity + s->fifo_read,
                    n * sizeof(float));
     s->fifo_read += n;
     s->fifo_count -= n;
     if (!s->fifo_count) s->fifo_read = 0;
     return n;
+}
+
+static size_t fifo_drain(faar_dft_prefilter *s, float *output,
+                         size_t capacity) {
+    size_t n = s->fifo_count < capacity ? s->fifo_count : capacity;
+    float *planes[8];
+    for (uint16_t c = 0; c < s->channels; ++c)
+        planes[c] = output ? output + (size_t)c * n : NULL;
+    return faar_dft_prefilter_drain_planes(s, planes, capacity);
 }
 
 static int fifo_push_planes(faar_dft_prefilter *s, const faar_sample_t *planes,

@@ -380,3 +380,69 @@ An output-tiled mixed High half-band experiment was rejected: seven alternating
 runs per case showed roughly 9–11% slower 192,000 → 44,100 Hz processing at
 1/2/8 channels, with no consistent gain elsewhere. The existing half-band
 kernel is retained.
+
+
+## Kaiser setup reuse and direct history handoff
+
+Polyphase setup computes its Kaiser denominator once. Ordinary banks compute
+one window value per tap and reuse it across phases; sampled long-prototype
+banks retain their phase-dependent numerator. Sinc evaluation, division,
+coefficient storage and normalization order are unchanged. The temporary
+window uses at most 4 KiB of setup stack and adds no persistent heap.
+
+Native macOS arm64 release/LTO mixed setup, median of seven alternating runs,
+16 stereo handles per process. Subsequent-open time excludes the first handle:
+
+| Route | Quality | Before ms/open | After ms/open | Speedup |
+|---|---|---:|---:|---:|
+| 48,000 → 44,100 | Fast | 0.261 | 0.147 | 1.78× |
+| 48,000 → 44,100 | Good | 0.283 | 0.163 | 1.74× |
+| 48,000 → 44,100 | High | 0.730 | 0.610 | 1.20× |
+| 32,000 → 44,100 | Fast | 1.358 | 0.127 | 10.69× |
+| 32,000 → 44,100 | Good | 1.354 | 0.161 | 8.41× |
+| 32,000 → 44,100 | High | 1.401 | 0.169 | 8.29× |
+
+First-open timings also improved in this matrix. Additional 44.1→48 kHz and
+12,345→45,678 Hz routes improved at all qualities. These measurements isolate
+Kaiser reuse by loading saved baseline and candidate libraries through the
+same benchmark executable.
+
+The downstream polyphase bank now reserves space for the actual prefilter
+FIFO burst and drains directly into its planar history. Boundary padding,
+last-sample retention, frame counters and filtering retain their prior order.
+Process and flush both use this handoff; routes without a downstream bank
+retain their intermediate output buffer. This removes one sample copy and
+one prepared intermediate buffer per staged route.
+
+Mixed live requested heap at 48,000 → 44,100 Hz, prepared for 8,192 frames,
+relative to the preceding committed code:
+
+| Channels | Quality | Before bytes | After bytes | Reduction |
+|---|---|---:|---:|---:|
+| 2 | Fast | 749,184 | 552,576 | 26.2% |
+| 2 | Good | 955,552 | 758,944 | 20.6% |
+| 2 | High | 4,819,728 | 4,623,120 | 4.1% |
+| 8 | Fast | 2,680,344 | 1,893,912 | 29.3% |
+| 8 | Good | 3,040,792 | 2,254,360 | 25.9% |
+| 8 | High | 9,736,920 | 8,950,488 | 8.1% |
+
+The 72-case float/mixed heap matrix at 48/96/192 kHz → 44.1 kHz,
+1/2/3/8 channels and all qualities returned all tracked allocations on close.
+Kaiser reuse and the combined changes each passed strict PCM comparisons in
+both arithmetic policies: 480 normal cases and 480 prepared cases per policy.
+The combined mixed suite passed 102 checks with one skip; float passed 53.
+Mixed AddressSanitizer and UndefinedBehaviorSanitizer passed 51 checks.
+
+
+Isolating the history handoff against the saved Kaiser-only library, seven
+alternating native arm64 runs per case at 1,024-frame input/output blocks
+found candidate/baseline throughput ratios of 1.002–1.037 (median 1.018)
+across 48/96/192 kHz → 44.1 kHz, 2/8 channels, and all qualities. An unchanged
+no-bank 48→24 kHz High route screened at 1.034 for stereo and 1.027 for eight
+channels. These are local observations, not native x86_64 measurements.
+
+Float AddressSanitizer and UndefinedBehaviorSanitizer passed 52 checks. The
+expanded prefilter regression test additionally verifies direct drains into
+separate channel destinations, partial drains and pending-frame accounting,
+centered convolution, and repeated flush across short and long filters and
+both boundary policies. It passed in both release modes and float sanitizers.
