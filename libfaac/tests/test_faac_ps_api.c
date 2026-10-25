@@ -72,7 +72,7 @@ int main(void)
     const unsigned auto_rates[] = {32000, 44100, 48000};
     for (unsigned i = 0; i < 3; i++) {
         p.sample_rate = auto_rates[i];
-        unsigned ceiling = p.sample_rate >= 44100 ? 16000 : 12000;
+        unsigned ceiling = p.sample_rate == 48000 ? 8000 : 6000;
         const unsigned bits[] = {3999, 4000, ceiling, ceiling + 1};
         for (unsigned j = 0; j < 4; j++) {
             p.bit_rate = bits[j];

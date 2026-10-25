@@ -199,8 +199,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         /* Keep the adjacent range on HE v1, including rates below its legacy
          * AUTO floor, so crossing the PS ceiling does not send low-rate
          * stereo back to LC. */
-        unsigned long ps_ceiling = (hEncoder->sampleRate >= 44100) ? 16000 :
-            (hEncoder->sampleRate == 32000 ? 12000 : 0);
+        unsigned long ps_ceiling = hEncoder->sampleRate == 48000 ? 8000 :
+            (hEncoder->sampleRate == 32000 || hEncoder->sampleRate == 44100) ? 6000 : 0;
         if (ps_ceiling && hEncoder->numChannels == 2 &&
             hEncoder->config.mpegVersion != MPEG2 && rate_per_ch >= 4000) {
             if (rate_per_ch <= ps_ceiling)
@@ -264,7 +264,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
             }
             /* Boost initial seed for mono speech streams */
             if (hEncoder->numChannels == 1 && bps >= 32000.0f) q_seed *= 2.5f;
-            config->quantqual = q_seed * (float)hEncoder->numChannels * rateFactor;
+            config->quantqual = q_seed * (float)CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels) * rateFactor;
             if (config->quantqual > DEFQUAL)
                 config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
         }
@@ -303,7 +303,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         if (IsSBR(hEncoder->config.aacObjectType))
             outputRate *= 2;
         hEncoder->aacquantCfg.pnslevel = !config->usePns ? 0 :
-            (outputRate <= 16000 && hEncoder->numChannels == 1)
+            (outputRate <= 16000 && CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels) == 1)
                 ? PNSLEVEL_NARROWBAND_MONO : PNSLEVEL_DEFAULT;
     }
     /* set quantization quality */
