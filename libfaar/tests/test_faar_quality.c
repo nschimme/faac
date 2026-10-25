@@ -396,11 +396,15 @@ static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {44100,48000},
             double rms = sqrt(sse / m);
             printf("tone %u->%u %.0f Hz: gain %.8f residual_rms %.3g\n", ir, orate, freqs[f], gain, rms);
             free(out.data);
-            /* The contract is a 0.25 dB response tolerance. Wanted-tone
-               residuals below the float FFT and accumulation floor are
-               numerical noise. */
+            /* The contract is a 0.25 dB response tolerance. Mixed High
+               retains the calibrated float32 projection ceiling; standalone
+               float needs the higher FFT and accumulation noise ceiling. */
             double gain_db = 20.0 * log10(gain);
+#ifdef FAAR_WIDE_HIGH
+            double residual_limit = sqrt(0.5) * pow(10.0, -144.684142 / 20.0);
+#else
             double residual_limit = 4e-7;
+#endif
             if (!isfinite(rms) || !isfinite(gain_db)
                     || fabs(gain_db) > 0.25 || rms > residual_limit) {
                 fprintf(stderr, "passband failure at %u->%u %.0f Hz: gain=%g (%g dB) residual=%g limit=%g\n",
