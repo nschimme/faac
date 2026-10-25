@@ -1,4 +1,4 @@
-/* Regression coverage for borrowed immutable DFT FIR coefficients. */
+/* Regression coverage for serialized FIR stages sharing coefficients and FFTs. */
 #include "../dft_fir.h"
 #include <math.h>
 #include <stdio.h>
@@ -47,33 +47,51 @@ static int process_exact(faar_dft_fir *stage, const faar_sample_t *input,
     return faar_dft_fir_process(stage, input, output) == 0;
 }
 
+static int init_case(faar_dft_fir *stage, const double *taps, size_t fft,
+        size_t expansion, size_t decimation, size_t lanes, int stacked,
+        int compensated) {
+    return compensated
+        ? faar_dft_fir_init_compensated(stage, taps, TAPS, fft, expansion,
+                                       decimation, lanes, stacked, 0)
+        : faar_dft_fir_init_paired(stage, taps, TAPS, fft, expansion,
+                                  decimation, lanes, stacked);
+}
+
 static int run_paired_case(size_t expansion, size_t decimation,
                            size_t source_lanes, size_t borrower_lanes,
-                           int stacked) {
+                           int stacked, size_t fft, int compensated) {
     double taps[TAPS];
     faar_dft_fir owner = {0}, owner_ref = {0}, borrower = {0}, borrower_ref = {0};
     faar_sample_t *si = NULL, *sr = NULL, *sref = NULL;
     faar_sample_t *bi = NULL, *br = NULL, *bref = NULL;
     make_taps(taps);
-    if (faar_dft_fir_init_paired(&owner, taps, TAPS, FFT, expansion,
-                                 decimation, source_lanes, stacked) ||
-        faar_dft_fir_init_paired(&owner_ref, taps, TAPS, FFT, expansion,
-                                 decimation, source_lanes, stacked) ||
-        faar_dft_fir_init_paired(&borrower_ref, taps, TAPS, FFT, expansion,
-                                 decimation, borrower_lanes, stacked) ||
+    if (init_case(&owner, taps, fft, expansion,
+                                 decimation, source_lanes, stacked, compensated) ||
+        init_case(&owner_ref, taps, fft, expansion,
+                                 decimation, source_lanes, stacked, compensated) ||
+        init_case(&borrower_ref, taps, fft, expansion,
+                                 decimation, borrower_lanes, stacked, compensated) ||
         faar_dft_fir_init_shared(&borrower, &owner, borrower_lanes, stacked))
         goto error;
-    if (owner.spec != borrower.spec || !borrower.shared_coeffs ||
+    if (owner.spec != borrower.spec || !borrower.shared_coeffs || !borrower.shared_fft ||
         owner.overlap == borrower.overlap ||
         owner.input_block == borrower.input_block ||
         owner.output_block == borrower.output_block ||
-        owner.in.work == borrower.in.work ||
-        owner.in.scratch == borrower.in.scratch ||
-        (owner.out.size && (owner.out.work == borrower.out.work ||
-                            owner.out.scratch == borrower.out.scratch)) ||
+        owner.in.work != borrower.in.work ||
+        owner.in.scratch != borrower.in.scratch ||
+        (owner.out.size && (owner.out.work != borrower.out.work ||
+                            owner.out.scratch != borrower.out.scratch)) ||
         owner.in.twiddle != borrower.in.twiddle ||
         owner.out.twiddle != borrower.out.twiddle) goto error;
 
+#ifdef FAAR_WIDE_HIGH
+    if (compensated && (owner.in_wide.work != borrower.in_wide.work ||
+                        owner.out_wide.work != borrower.out_wide.work)) goto error;
+#endif
+#ifdef FAAR_COMPENSATED_FLOAT
+    if (compensated && (owner.precise_in.work != borrower.precise_in.work ||
+                        owner.precise_out.work != borrower.precise_out.work)) goto error;
+#endif
     const size_t source_in = owner.stream_in, source_out = owner.stream_out;
     const size_t borrow_in = borrower.stream_in, borrow_out = borrower.stream_out;
     si = malloc(source_lanes * source_in * sizeof(*si));
@@ -178,9 +196,15 @@ static int invalid_cases(void) {
 }
 
 int main(void) {
-    if (!run_paired_case(1, 1, 1, 1, 0)) return fail("1x/1x sharing failed");
-    if (!run_paired_case(2, 4, 2, 1, 0)) return fail("two-lane to mono sharing failed");
-    if (!run_paired_case(2, 2, 1, 1, 1)) return fail("stacked sharing failed");
+    if (!run_paired_case(1, 1, 1, 1, 0, FFT, 0)) return fail("1x/1x sharing failed");
+    if (!run_paired_case(2, 4, 2, 1, 0, FFT, 0)) return fail("two-lane to mono sharing failed");
+    if (!run_paired_case(2, 2, 1, 1, 1, FFT, 0)) return fail("stacked sharing failed");
+    for (int wide = 0; wide <= 1; ++wide) {
+        if (!run_paired_case(1, 1, 2, 1, 0, 8192, wide) ||
+            !run_paired_case(2, 4, 2, 2, 0, 16384, wide) ||
+            !run_paired_case(2, 1, 2, 1, 0, 8192, wide))
+            return fail("padded or High workspace sharing failed");
+    }
     if (!run_halfband()) return fail("halfband sharing failed");
     if (!invalid_cases()) return fail("invalid arguments damaged or accepted a plan");
     return 0;

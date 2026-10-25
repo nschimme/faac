@@ -289,3 +289,54 @@ quality (local arm64, 39 cases: Fast 1.24-1.70x, Good 1.23-1.66x, High
 1.01-1.15x), equals its High output bit for bit, and uses less heap. Double's
 only remaining advantage was ~24 KB less text and 1 MiB less BSS, which `float`
 covers for constrained targets, so the option was removed.
+
+
+## Sharing FFT workspace across channel pairs
+
+After e23e3003, paired FIR stages within one prefilter borrow the first
+stage's FFT plans and workspace. Processing and flushing execute these stages
+sequentially. Each stage retains its own overlap, pending input and output,
+and stream counters; independent public handles retain separate workspace.
+This applies to ordinary float, mixed High double, and compensated float High.
+Half-band stages retain private working buffers. Borrowers must be cleared
+before their owner, as with the existing shared coefficients.
+
+Paired spectrum setup also transfers ownership of the scaled spectrum rather
+than allocating and copying a second spectrum. At stereo 48,000 → 44,100 Hz
+High, open peak requested heap falls from 3,918,936 to 3,774,040 bytes;
+open live heap is unchanged.
+
+Native macOS arm64 requested heap, mixed, 48,000 → 44,100 Hz, prepared for
+8,192 input frames:
+
+| Channels | Quality | Before live bytes | After live bytes | Reduction |
+|---|---|---:|---:|---:|
+| 3 | Fast | 1,120,396 | 1,071,244 | 4.4% |
+| 3 | Good | 1,476,860 | 1,303,292 | 11.8% |
+| 3 | High | 8,032,292 | 5,639,460 | 29.8% |
+| 8 | Fast | 2,827,800 | 2,680,344 | 5.2% |
+| 8 | Good | 3,561,496 | 3,040,792 | 14.6% |
+| 8 | High | 16,915,416 | 9,736,920 | 42.4% |
+
+Mono and stereo have only one paired FFT stage, so their prepared live heap
+is unchanged. The 48/96/192 kHz → 44.1 kHz matrix at 1/2/3/8 channels and all
+qualities returned tracked live heap to zero after close. These measurements
+exclude static BSS, allocator metadata and caller buffers.
+
+Seven alternating baseline/candidate timing runs at 48,000 → 44,100 Hz,
+1,024-frame input blocks and output capacity, yielded candidate/baseline
+median throughput ratios:
+
+| Channels | Fast | Good | High |
+|---|---:|---:|---:|
+| 2 | 1.003 | 1.000 | 1.000 |
+| 8 | 1.001 | 0.998 | 1.019 |
+
+These are local arm64 observations; native x86_64 throughput remains unmeasured.
+Both float and mixed passed the 480-case strict PCM comparison against HEAD,
+and another 480 cases each with preparation. Shared-FIR regression coverage
+also exercises small and padded transforms, expansion/decimation, High,
+independent histories, reset, and use of the owner after borrower cleanup.
+
+AddressSanitizer and UndefinedBehaviorSanitizer suites passed 51 checks in
+mixed and 52 in float, including the expanded shared-workspace tests.

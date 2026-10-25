@@ -258,19 +258,23 @@ int faar_dft_fir_init_shared(faar_dft_fir *stage,
 #endif
     stage->filter_spectrum = source->filter_spectrum;
     stage->spec = source->spec;
-    int bad;
+    /* Channel stages execute sequentially, including flush. Only overlap and
+     * pending input/output survive a call; FFT buffers can be borrowed. */
+    stage->shared_fft = !stage->halfband;
+    if (stage->shared_fft) {
+        stage->in = source->in;
+        stage->out = source->out;
 #ifdef FAAR_COMPENSATED_FLOAT
-    if (stage->compensated && !stage->halfband)
-        bad = init_precise_plans(stage, source) || init_paired_buffers(stage);
-    else
+        stage->precise_in = source->precise_in;
+        stage->precise_out = source->precise_out;
 #endif
 #ifdef FAAR_WIDE_HIGH
-    if (stage->compensated && !stage->halfband)
-        bad = init_fft_plans_wide(stage) || init_paired_buffers(stage);
-    else
+        stage->in_wide = source->in_wide;
+        stage->out_wide = source->out_wide;
 #endif
-        bad = stage->halfband ? init_halfband_buffers(stage)
-            : init_fft_plans(stage) || init_paired_buffers(stage);
+    }
+    int bad = stage->halfband ? init_halfband_buffers(stage)
+        : init_paired_buffers(stage);
     if (bad) {
         faar_dft_fir_clear(stage);
         return -1;
@@ -335,16 +339,22 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
     free(stage->output_block);
 #ifdef FAAR_COMPENSATED_FLOAT
     free(stage->precise_half_work);
-    faar_float2_clear(&stage->precise_in);
-    faar_float2_clear(&stage->precise_out);
+    if (!stage->shared_fft) {
+        faar_float2_clear(&stage->precise_in);
+        faar_float2_clear(&stage->precise_out);
+    }
 #endif
 #ifdef FAAR_WIDE_HIGH
     free(stage->wide_half_work);
-    faar_rfftd_clear(&stage->in_wide);
-    faar_rfftd_clear(&stage->out_wide);
+    if (!stage->shared_fft) {
+        faar_rfftd_clear(&stage->in_wide);
+        faar_rfftd_clear(&stage->out_wide);
+    }
 #endif
-    faar_fft_clear(&stage->in);
-    faar_fft_clear(&stage->out);
+    if (!stage->shared_fft) {
+        faar_fft_clear(&stage->in);
+        faar_fft_clear(&stage->out);
+    }
     memset(stage, 0, sizeof(*stage));
 }
 

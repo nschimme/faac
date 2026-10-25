@@ -3,7 +3,10 @@
 The library tests live in this directory and are registered by its local
 `meson.build`. They cover the public streaming API, signal quality controls,
 rate-matrix invariants, DFT filtering and shared spectra, prefilter setup, and
-the real FFT.
+the real FFT. Shared-workspace tests cover serialized channel-pair processing
+at padded and High quality settings, verify that overlap histories and
+streaming queues remain independent, and check workspace lifetime across
+processing and close.
 `frontend/tests/test_faar_cli.py` covers command-line and file-format behavior.
 The public API is also exercised by `tests/fuzz/fuzz_faar.c` through the
 repository fuzz runner.
@@ -162,9 +165,9 @@ meson test -C build-tsan test_faar_fft_threads
 ```
 
 `test_faar_dft_shared` checks per-channel sharing of immutable DFT spectra and
-halfband coefficients within one prefilter, while history, queues, and FFT
-work remain private to each channel. It also checks cleanup ordering for the
-shared stages.
+halfband coefficients within one prefilter. Paired stages share FFT workspace
+while histories and queues remain private. Coverage includes small and padded
+transforms, High arithmetic, reset, and owner use after borrower cleanup.
 
 ## Quality regression comparison
 

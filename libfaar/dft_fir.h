@@ -26,6 +26,7 @@
 /* Block overlap-save FIR stage; filter coefficients are supplied by caller. */
 typedef struct faar_dft_fir {
     int shared_coeffs; /* Borrowed immutable coefficients; source outlives stage. */
+    int shared_fft; /* Borrowed workspace; executions with source are serialized. */
     int compensated; /* High in float builds: wider arithmetic in sensitive stages. */
     int halfband; /* Sparse time-domain 2:1 FIR; otherwise paired FFT. */
     size_t fft_size;
@@ -85,8 +86,8 @@ int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
 int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
                       size_t tap_count, size_t fft_size, size_t expansion,
                       size_t decimation, size_t lanes, int stacked);
-/* Initialize private streaming/FFT state using source's immutable filter.
- * Source must remain alive while this stage is used. This is for channel
+/* Initialize private streaming state using source's filter and FFT workspace.
+ * Executions must be serialized; source must outlive this stage. This is for channel
  * stages owned by one prefilter, not for sharing across public handles. */
 int faar_dft_fir_init_shared(faar_dft_fir *stage,
                       const faar_dft_fir *source, size_t lanes, int stacked);

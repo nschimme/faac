@@ -79,15 +79,20 @@ remain uninitialized. This one-time initialization is protected when the
 toolchain provides atomics, so concurrent independent handles remain safe under
 the normal API threading rules. On toolchains without atomic support, serialize
 concurrent opens as required by the codec libraries. FFT work buffers and
-scratch remain private to each plan. Sizes above 65,536 continue to allocate
+scratch remain private to each handle. Sizes above 65,536 continue to allocate
 twiddles per plan, and static tables remain available until library unload or
 process exit.
 
 Within each multichannel prefilter, channel stages share one immutable filter
-spectrum (or sparse halfband coefficient set). Their FFT work buffers, overlap
-history, and streaming queues remain separate. The prefilter owns the shared
+spectrum (or sparse halfband coefficient set). Their overlap histories and
+streaming queues remain separate. The prefilter owns the shared
 coefficients and releases them when it closes; this adds no global cache or
 public API requirement.
+
+Within a handle, serialized channel pairs also share FFT workspace storage.
+Their overlap histories and streaming queues remain separate. This sharing
+assumes the normal per-handle rule that calls are serialized; independent
+handles keep separate workspaces.
 
 ## Quality profiles
 

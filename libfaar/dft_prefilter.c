@@ -235,7 +235,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
         int bad;
         if (f) {
             /* Every channel uses the same filter. Keep the first stage as
-             * its owner and give the remaining stages private working state. */
+             * its owner and share FFT workspace between serialized channel stages. */
             bad = faar_dft_fir_init_shared(&s->fir[f], &s->fir[0], lanes, stacked);
         } else if (compensated) {
             bad = faar_dft_fir_init_compensated(&s->fir[f], taps, tap_count,

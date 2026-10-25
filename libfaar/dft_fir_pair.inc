@@ -65,17 +65,6 @@ static int PAIR_FN(init_fft_plans)(faar_dft_fir *stage) {
     return 0;
 }
 
-/* spectrum is the scaled filter response, n real parts then n imaginary. */
-static int PAIR_FN(init_transforms)(faar_dft_fir *stage,
-                                    const PAIR_REAL *spectrum) {
-    const size_t n = stage->fft_size;
-    PAIR_REAL *h = (PAIR_REAL *)malloc(2 * n * sizeof(PAIR_REAL));
-    if (!h) return -1;
-    for (size_t i = 0; i < 2 * n; ++i) h[i] = (PAIR_REAL)spectrum[i];
-    stage->PAIR_FN(spec) = h;
-    return PAIR_FN(init_fft_plans)(stage);
-}
-
 /* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
  * and decimation averaging. Both scales are powers of two, so exact. It is
  * computed once in the selected precision. */
@@ -84,7 +73,6 @@ static int PAIR_FN(init_spectrum)(faar_dft_fir *stage, const double *taps) {
     const PAIR_REAL scale = 1.0 / ((PAIR_REAL)nout * (PAIR_REAL)stage->decimation);
     PAIR_PLAN plan;
     PAIR_REAL *h, *spectrum;
-    int bad;
     if (n > (size_t)INT_MAX || PAIR_FFT_FN(cinit)(&plan, (int)n)) return -1;
     h = PAIR_FFT_FN(cbuffer)(&plan, 0);
     memset(h, 0, 2 * n * sizeof(PAIR_REAL));
@@ -94,9 +82,8 @@ static int PAIR_FN(init_spectrum)(faar_dft_fir *stage, const double *taps) {
     h = PAIR_FFT_FN(cforward)(&plan, h);
     for (size_t i = 0; i < 2 * n; ++i) spectrum[i] = h[i] * scale;
     PAIR_FFT_FN(clear)(&plan);
-    bad = PAIR_FN(init_transforms)(stage, spectrum);
-    free(spectrum);
-    return bad;
+    stage->PAIR_FN(spec) = spectrum;
+    return PAIR_FN(init_fft_plans)(stage);
 }
 
 /* The imaginary part carries a second channel, or for a lone channel the
