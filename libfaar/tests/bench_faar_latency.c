@@ -169,12 +169,6 @@ int main(int argc, char **argv)
                 argv[0]);
         return 1;
     }
-#ifdef FAAR_BENCH_NO_PREPARE
-    if (prepared_arg != 0) {
-        fprintf(stderr, "this build does not support prepared mode\n");
-        return 1;
-    }
-#endif
     if (in_rate > SIZE_MAX / 4u || out_rate > SIZE_MAX / 4u) {
         fprintf(stderr, "rate is too large for this platform\n");
         return 1;
@@ -223,16 +217,8 @@ int main(int argc, char **argv)
             input[frame * (size_t)channels + channel] = sample;
     }
 
+    if (prepared_arg) config.max_input_frames = (uint32_t)block;
     {
-        faar_status status = faar_resampler_open(&config, &resampler);
-        if (status != FAAR_OK) {
-            fprintf(stderr, "open: %s\n", faar_strerror(status));
-            failed = 1;
-            goto cleanup;
-        }
-    }
-#ifndef FAAR_BENCH_NO_PREPARE
-    if (prepared_arg) {
         double start = now();
         faar_status status;
         if (start < 0.0) {
@@ -240,20 +226,21 @@ int main(int argc, char **argv)
             failed = 1;
             goto cleanup;
         }
-        status = faar_resampler_prepare(resampler, block);
-        prepare_ms = (now() - start) * 1000.0;
-        if (prepare_ms < 0.0) {
-            perror("clock_gettime");
-            failed = 1;
-            goto cleanup;
+        status = faar_resampler_open(&config, &resampler);
+        if (prepared_arg) {
+            prepare_ms = (now() - start) * 1000.0;
+            if (prepare_ms < 0.0) {
+                perror("clock_gettime");
+                failed = 1;
+                goto cleanup;
+            }
         }
         if (status != FAAR_OK) {
-            fprintf(stderr, "prepare: %s\n", faar_strerror(status));
+            fprintf(stderr, "open: %s\n", faar_strerror(status));
             failed = 1;
             goto cleanup;
         }
     }
-#endif
 
     for (size_t pos = 0; pos < input_frames;) {
         size_t count = input_frames - pos < block ? input_frames - pos : block;

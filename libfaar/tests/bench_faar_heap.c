@@ -52,10 +52,12 @@ int main(int argc, char **argv) {
     size_t prepared_live = open_live;
     size_t prepared_peak = open_peak;
     if (prepare_frames) {
-        status = faar_resampler_prepare(resampler, prepare_frames);
+        faar_resampler_close(&resampler);
+        config.max_input_frames = (uint32_t)prepare_frames;
+        faar_alloc_reset_counters();
+        status = faar_resampler_open(&config, &resampler);
         if (status != FAAR_OK) {
-            fprintf(stderr, "prepare: %s\n", faar_strerror(status));
-            faar_resampler_close(&resampler);
+            fprintf(stderr, "open with reservation: %s\n", faar_strerror(status));
             return 1;
         }
         prepared_live = faar_alloc_live_bytes();

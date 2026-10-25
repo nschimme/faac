@@ -102,12 +102,12 @@ static int compare(const faar_config *c) {
   faar_resampler *a = NULL, *b = NULL;
   float x[MAX_FRAMES * CH], y[MAX_FRAMES * CH];
   size_t nx = 0, ny = 0;
-  if (faar_design_open(c, &p) != FAAR_OK || !p)
+  faar_config reserved = *c;
+  reserved.max_input_frames = N; /* the design reserves each stream's storage */
+  if (faar_design_open(&reserved, &p) != FAAR_OK || !p)
     return 0;
   if (faar_resampler_open(c, &a) != FAAR_OK ||
       faar_resampler_open_from_design(p, &b) != FAAR_OK)
-    return 0;
-  if (faar_resampler_prepare(b, N) != FAAR_OK)
     return 0;
   if (!stream(a, c->channels, 19, x, &nx))
     return 0;

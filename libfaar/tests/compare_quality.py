@@ -23,7 +23,7 @@ class Config(ct.Structure):
         ("reserved", ct.c_uint16), ("quality", ct.c_int32),
         ("boundary", ct.c_int32), ("dither", ct.c_int32),
         ("dither_bits", ct.c_uint8), ("reserved1", ct.c_uint8 * 3),
-        ("decimate_factor", ct.c_uint32),
+        ("decimate_factor", ct.c_uint32), ("max_input_frames", ct.c_uint32),
     ]
 
 
@@ -47,9 +47,6 @@ class Library:
         for name, args in signatures.items():
             fn = getattr(self.lib, name)
             fn.argtypes, fn.restype = args, ct.c_int32
-        if prepare:
-            self.lib.faar_resampler_prepare.argtypes = [ct.c_void_p, ct.c_size_t]
-            self.lib.faar_resampler_prepare.restype = ct.c_int32
 
     @staticmethod
     def check(status):
@@ -67,6 +64,8 @@ class Library:
         config.in_rate, config.out_rate = in_rate, out_rate
         config.channels, config.quality = channels, quality
         config.boundary, config.dither, config.dither_bits = boundary, dither, 16
+        if self.prepare:
+            config.max_input_frames = 8192
         handle = ct.c_void_p()
         self.check(self.lib.faar_resampler_open(ct.byref(config), ct.byref(handle)))
         expected = (frames * out_rate + in_rate - 1) // in_rate
@@ -84,8 +83,6 @@ class Library:
             written += made.value
 
         try:
-            if self.prepare:
-                self.check(self.lib.faar_resampler_prepare(handle, 8192))
             position, step = 0, 0
             while position < frames:
                 # The queued schedule appends again before draining, exercising

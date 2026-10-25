@@ -119,6 +119,12 @@ typedef enum faar_status {
 /* Versioned configuration for faar_resampler_open(). Initialize with
  * faar_config_init() before setting fields. decimate_factor is zero for
  * automatic planning; values of two or greater request an explicit cascade.
+ * max_input_frames bounds the frames per process call: nonzero reserves all
+ * streaming storage in open(), so process and finish never allocate or free
+ * heap storage. Drain with NULL/0 input and nonzero output capacity until no
+ * frames are made before feeding more input; a larger chunk is rejected with
+ * FAAR_ERR_INVALID_ARGUMENT, and exhausting the reserved output queue is a
+ * processing error (close that stream). Zero grows storage on demand.
  * New releases append fields only; reserved and reserved1 must be zero or
  * faar_resampler_open() fails with FAAR_ERR_INVALID_ARGUMENT. */
 typedef struct faar_config {
@@ -133,6 +139,7 @@ typedef struct faar_config {
     uint8_t dither_bits; /* 16 or 24 when dither is not OFF; ignored otherwise */
     uint8_t reserved1[3];
     uint32_t decimate_factor;
+    uint32_t max_input_frames; /* 0 grows storage on demand; else reserved in open() */
 } faar_config;
 
 /* Global capabilities for this build. Set struct_size before querying. */
@@ -161,7 +168,7 @@ typedef struct faar_resampler_info {
 
 #define FAAR_STRUCT_END(type, field) \
     ((uint32_t)(offsetof(type, field) + sizeof(((type *)0)->field)))
-#define FAAR_CONFIG_BASELINE FAAR_STRUCT_END(faar_config, decimate_factor)
+#define FAAR_CONFIG_BASELINE FAAR_STRUCT_END(faar_config, max_input_frames)
 #define FAAR_LIBRARY_INFO_BASELINE FAAR_STRUCT_END(faar_library_info, copyright)
 #define FAAR_RESAMPLER_INFO_BASELINE FAAR_STRUCT_END(faar_resampler_info, delay)
 
@@ -188,15 +195,6 @@ FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **ou
 FAARAPI faar_status faar_design_close(faar_design **plan);
 FAARAPI faar_status faar_resampler_open_from_design(faar_design *plan,
                                                 faar_resampler **out);
-/* Reserve streaming storage before any input or flush. Process calls may
- * supply at most max_input_frames; drain with NULL/0 and nonzero output
- * capacity until no frames are made before feeding more input.
- * Prepared process/flush never allocate or free heap storage.
- * Exceeding reserved queue capacity is a processing error;
- * close that stream. Preparation can be repeated before input, and a failed
- * preparation leaves the stream usable. FFT block costs are unchanged. */
-FAARAPI faar_status faar_resampler_prepare(faar_resampler *resampler,
-                                          size_t max_input_frames);
 /* Frees *resampler and sets it to NULL. A NULL *resampler is a no-op. */
 FAARAPI faar_status faar_resampler_close(faar_resampler **resampler);
 FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,

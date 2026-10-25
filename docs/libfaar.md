@@ -8,7 +8,7 @@
 - [Quality profiles](#quality-profiles)
 - [API](#api)
   - [Complete streaming example](#complete-streaming-example)
-  - [Preparing bounded streams](#preparing-bounded-streams)
+  - [Bounded streams](#bounded-streams)
   - [Function reference](#function-reference)
   - [Custom allocators](#custom-allocators)
 - [ABI compatibility](#abi-compatibility)
@@ -101,7 +101,7 @@ handles keep separate workspaces.
 
 Staged routes with a downstream polyphase bank drain prefilter output directly
 into the bank's channel histories, avoiding a separate intermediate sample
-buffer and copy. Preparation reserves those histories before streaming.
+buffer and copy. A bounded stream reserves those histories in open.
 
 ## Reusing a filter design
 
@@ -132,7 +132,7 @@ faar_resampler_close(&right);
 ```
 
 A plan fixes the complete configuration, including channel count, boundary
-policy and dither settings. Preparing one stream does not prepare another.
+policy and dither settings. 
 Plan creation uses the normal designer and temporarily allocates its setup
 workspace, then releases that workspace. Subsequent stream opens allocate
 mutable storage without regenerating filters. There is no global cache of
@@ -218,38 +218,39 @@ supplying more input. At end of input, call `faar_resampler_finish()` until it
 returns `FAAR_OK` with zero frames. The total output is
 `ceil(input_frames * out_rate / in_rate)`.
 
-### Preparing bounded streams
+### Bounded streams
 
-For streams with a known maximum input chunk, prepare storage after opening and
-before processing or flushing:
+For streams with a known maximum input chunk, set `max_input_frames` in the
+configuration before opening:
 
 ```c
-faar_status status = faar_resampler_prepare(resampler, 1024);
+config.max_input_frames = 1024;
+faar_status status = faar_resampler_open(&config, &resampler);
 if (status != FAAR_OK) {
     fprintf(stderr, "%s\n", faar_strerror(status));
     /* Handle the error. */
 }
 ```
 
-The bound must be nonzero. It may be changed by calling prepare again before
-any input; a failed call leaves the prior prepared mode and bound usable,
-though it may retain larger allocations. After successful preparation, every
-input chunk must be at most the bound. Drain with `faar_resampler_process()`
-using `in_samples == NULL`, `in_count == 0`, and nonzero output capacity until
-it produces zero frames before supplying the next chunk; flush until it
-produces zero frames at end of stream. Prepared process, drain, and flush calls
-do not allocate or free heap storage. Exceeding the bound returns
-`FAAR_ERR_INVALID_ARGUMENT` before consuming input. If queued output is not
-drained and its reserved capacity is exhausted, processing may return
-`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`; discard and close that stream.
+Zero, the default, grows storage on demand. A nonzero bound reserves all
+streaming storage inside `faar_resampler_open()`. Every input chunk must then
+be at most the bound. Drain with `faar_resampler_process()` using
+`in_samples == NULL`, `in_count == 0`, and nonzero output capacity until it
+produces zero frames before supplying the next chunk; finish with
+`faar_resampler_finish()` until it produces zero frames at end of stream.
+Process, drain, and finish calls do not allocate or free heap storage.
+Exceeding the bound returns `FAAR_ERR_INVALID_ARGUMENT` before consuming input.
+If queued output is not drained and its reserved capacity is exhausted,
+processing may return `FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`;
+discard and close that stream.
 
-Preparation reserves storage across the cascade, including endpoint padding
-and FFT workspace prefill; it can increase persistent memory and may return
-`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_INVALID_ARGUMENT`. Pages initialized during
-preparation can still be paged out later by the operating system, so this is
-not a hard real-time guarantee. FFT block costs are unchanged. Streams that do
-not need a fixed input bound can continue using the regular open/process/flush
-flow without preparing.
+The reservation covers the cascade, including endpoint padding and FFT
+workspace prefill; it can increase persistent memory, and `open` may return
+`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_INVALID_ARGUMENT`. Pages initialized
+during open can still be paged out later by the operating system, so this is
+not a hard real-time guarantee. FFT block costs are unchanged. A design opened
+with a nonzero `max_input_frames` reserves each stream's storage in
+`faar_resampler_open_from_design()`.
 
 ### Function reference
 
@@ -259,7 +260,6 @@ flow without preparing.
 | `faar_get_library_info()` | Reports the build's channel ceiling, supported quality mask, version, and copyright. |
 | `faar_strerror()` | Returns a static message for a `faar_status` value. |
 | `faar_resampler_open()` | Validates the configuration and creates a resampler handle. |
-| `faar_resampler_prepare()` | Reserves streaming storage for a maximum input chunk before processing begins. |
 | `faar_resampler_get_info()` | Reports the settings resolved for an open handle, including filter delay. |
 | `faar_resampler_process()` | Consumes input frames or drains queued output and reports produced frames. |
 | `faar_resampler_finish()` | Produces the remaining filter tail at end of stream. |
@@ -308,11 +308,10 @@ before committing to it.
 A fixed-pool override can avoid the system heap, with the same
 `pool_alloc` / `pool_free` pattern as the
 [FAAC example](libfaac.md#running-without-a-heap). Allocation occurs when a
-resampler is opened and when `faar_resampler_prepare` runs. Process calls on
-an unprepared resampler may still grow a buffer, so prepare first if the pool
-must not allocate during streaming, and reserve space for freed blocks because
-a bump allocator cannot reuse them. Prepared process and flush calls allocate
-nothing.
+resampler is opened. Process calls on a resampler opened with
+`max_input_frames == 0` may still grow a buffer, so set a bound if the pool must
+not allocate during streaming, and reserve space for freed blocks because a bump
+allocator cannot reuse them. Bounded process and finish calls allocate nothing.
 
 ## ABI compatibility
 
@@ -324,8 +323,6 @@ grow by appending fields; initialize configurations with
 `faar_config_init(&config, sizeof(config))` and set `struct_size` on query
 structures. Reserved fields remain zero and are never reused. The structure
 size passed to `faar_config_init()` must cover the current baseline fields.
-`faar_resampler_prepare()` is an additive function; it does not change public
-structure layouts or the SONAME.
 
 Query functions write back the number of bytes populated in `struct_size`.
 Reset `struct_size` and zero your storage before reusing a structure as a query

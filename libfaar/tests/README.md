@@ -82,7 +82,7 @@ build/libfaar/tests/bench_faar_heap 48000 44100 2 1 8192
 ```
 
 The arguments are input rate, output rate, channels, quality, and frames to
-reserve with `faar_resampler_prepare()` (`0` skips preparation). The CSV fields
+reserve through `faar_config.max_input_frames` (`0` skips reservation). The CSV fields
 are input rate, output rate, channels, quality, prepared frames, open live
 bytes, open peak bytes, post-prepare live bytes, peak bytes including prepare,
 and live bytes after close. Caller buffers, allocator bookkeeping, and static
@@ -138,7 +138,7 @@ not an end-to-end host callback measurement or a real-time deadline guarantee;
 FFT block costs and their bursts remain. See
 [`preparation-results.md`](preparation-results.md) for the final comparison.
 
-`test_faar_prepare` checks the no-allocation contract by failing all library
+`test_faar_bounded` checks the no-allocation contract by failing all library
 allocations after preparation and verifying that prepared processing and
 flushing make zero allocation and free calls. It contrasts this with unprepared
 allocation snapshots (0–19 allocation calls in the tested cases), injects

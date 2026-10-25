@@ -1,13 +1,13 @@
 # Bounded streaming preparation: validation and timing
 
-`faar_resampler_prepare(r, max_input_frames)` reserves storage for a nonzero
-input bound before input or flush begins. Prepared process, drain, and flush
+A nonzero `faar_config.max_input_frames` reserves storage for the input bound
+inside `faar_resampler_open()`. (The measurements below predate folding the
+reservation into the config; they used a separate prepare call.) Prepared process, drain, and flush
 calls make no heap allocations or frees. Drain with `process(NULL, 0, ...)`
 using nonzero output capacity until it returns zero frames before adding more
 input; otherwise the bounded output queue can exhaust and return
-`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`. Repreparation is allowed before
-streaming; if it fails, the previous mode and bound remain usable. The normal
-unprepared flow is unchanged.
+`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`. A failed open returns
+no handle. The normal unreserved flow is unchanged.
 
 The latency comparison uses baseline `2d4d0fb7` and the final candidate. It is
 the median of seven alternating fresh-process runs per configuration. The

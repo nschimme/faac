@@ -137,6 +137,7 @@ struct faar_resampler_struct {
 struct faar_design_struct {
     faac_once_t references; /* Atomic refcount, using the platform atomic type. */
     faar_resampler *prototype; /* Immutable geometry, coefficients and twiddles. */
+    uint32_t max_input_frames; /* Per-stream reservation, 0 for none. */
 };
 
 static void plan_release(faar_design *plan);
@@ -201,6 +202,9 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate,
         uint32_t decimate_factor, size_t filter_len_override,
         bool force_polyphase, size_t max_phases);
 static void destroy_internal(faar_resampler *r);
+static faar_status open_stream(const faar_config *config, faar_resampler **out,
+                               bool reserve);
+static faar_status reserve_stream(faar_resampler *r, size_t max_input_frames);
 
 /* Limit padding to the original input duration, without multiplying the
  * entire recording length by a rate. */
@@ -1699,7 +1703,7 @@ FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **ou
     if (!out) return FAAR_ERR_INVALID_ARGUMENT;
     *out = NULL;
     faar_resampler *prototype = NULL;
-    faar_status status = faar_resampler_open(config, &prototype);
+    faar_status status = open_stream(config, &prototype, false);
     if (status != FAAR_OK) return status;
     faar_design *plan = AllocMemory(sizeof(*plan));
     if (!plan) { destroy_internal(prototype); return FAAR_ERR_INSUFFICIENT_MEM; }
@@ -1709,6 +1713,7 @@ FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **ou
     plan->references = 1;
 #endif
     plan->prototype = prototype;
+    plan->max_input_frames = config->max_input_frames;
     release_plan_workspace(prototype);
     *out = plan;
     return FAAR_OK;
@@ -1730,6 +1735,10 @@ FAARAPI faar_status faar_resampler_open_from_design(faar_design *plan,
     faar_resampler *r = clone_plan_internal(plan->prototype);
     if (!r) { plan_release(plan); return FAAR_ERR_INSUFFICIENT_MEM; }
     r->plan = plan;
+    if (plan->max_input_frames) {
+        faar_status st = reserve_stream(r, plan->max_input_frames);
+        if (st != FAAR_OK) { destroy_internal(r); return st; }
+    }
     *out = r;
     return FAAR_OK;
 }
@@ -1777,8 +1786,8 @@ FAARAPI const char *faar_strerror(faar_status status) {
     }
 }
 
-FAARAPI faar_status faar_resampler_open(const faar_config *config,
-                                         faar_resampler **out) {
+static faar_status open_stream(const faar_config *config, faar_resampler **out,
+                               bool reserve) {
     if (!out) return FAAR_ERR_INVALID_ARGUMENT;
     *out = NULL;
     if (!config || config->struct_size < FAAR_CONFIG_BASELINE)
@@ -1805,23 +1814,29 @@ FAARAPI faar_status faar_resampler_open(const faar_config *config,
         destroy_internal(r);
         return FAAR_ERR_INVALID_ARGUMENT;
     }
+    if (reserve && cfg.max_input_frames) {
+        faar_status st = reserve_stream(r, cfg.max_input_frames);
+        if (st != FAAR_OK) { destroy_internal(r); return st; }
+    }
     *out = r;
     return FAAR_OK;
 }
 
-FAARAPI faar_status faar_resampler_prepare(faar_resampler *r,
-                                           size_t max_input_frames) {
-    if (!r || !max_input_frames || r->input_frames || r->flushed
-            || max_input_frames > SIZE_MAX / r->channels / sizeof(float))
+FAARAPI faar_status faar_resampler_open(const faar_config *config,
+                                         faar_resampler **out) {
+    return open_stream(config, out, true);
+}
+
+static faar_status reserve_stream(faar_resampler *r, size_t max_input_frames) {
+    if (max_input_frames > SIZE_MAX / r->channels / sizeof(float))
         return FAAR_ERR_INVALID_ARGUMENT;
-    bool was_prepared = r->prepared;
-    set_prepared(r, false);
     clear_error(r);
     size_t output_bound;
     faar_status st = prepare_internal(r, max_input_frames, &output_bound);
-    if (st == FAAR_OK) r->prepared_max_input = max_input_frames;
-    set_prepared(r, st == FAAR_OK || was_prepared);
-    return st;
+    if (st != FAAR_OK) return st;
+    r->prepared_max_input = max_input_frames;
+    set_prepared(r, true);
+    return FAAR_OK;
 }
 
 FAARAPI faar_status faar_resampler_close(faar_resampler **resampler) {

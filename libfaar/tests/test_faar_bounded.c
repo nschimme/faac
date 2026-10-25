@@ -24,7 +24,7 @@ typedef struct {
 } test_case;
 
 static int fail(const char *message, size_t which) {
-    fprintf(stderr, "test_faar_prepare: %s (case %zu)\n", message, which);
+    fprintf(stderr, "test_faar_bounded: %s (case %zu)\n", message, which);
     return 1;
 }
 
@@ -99,7 +99,7 @@ static int stream_all(faar_resampler *r, const test_case *tc, size_t bound,
     return 0;
 }
 
-static int open_case(const test_case *tc, faar_resampler **resampler) {
+static int open_case(const test_case *tc, size_t bound, faar_resampler **resampler) {
     faar_config config;
     if (faar_config_init(&config, sizeof(config)) != FAAR_OK) return 0;
     config.in_rate = tc->in_rate;
@@ -107,6 +107,7 @@ static int open_case(const test_case *tc, faar_resampler **resampler) {
     config.channels = tc->channels;
     config.quality = tc->quality;
     config.decimate_factor = tc->decimate;
+    config.max_input_frames = (uint32_t)bound;
     return faar_resampler_open(&config, resampler) == FAAR_OK && *resampler;
 }
 
@@ -118,24 +119,14 @@ static int run_comparison(const test_case *tc, size_t which, pcm_t *reference_ou
     for (size_t i = 0; i < TOTAL_INPUT; ++i)
         for (size_t c = 0; c < tc->channels; ++c)
             input[i * tc->channels + c] = input_sample(i, c);
-    if (!open_case(tc, &reference) || !open_case(tc, &prepared)) goto error;
-
-    size_t bound = tc->block;
-    if (faar_resampler_prepare(NULL, bound) != FAAR_ERR_INVALID_ARGUMENT ||
-        faar_resampler_prepare(prepared, 0) != FAAR_ERR_INVALID_ARGUMENT ||
-        faar_resampler_prepare(prepared, SIZE_MAX) != FAAR_ERR_INVALID_ARGUMENT)
-        goto error;
+    size_t bound = tc->block + (tc->repeat_prepare ? 19 : 0);
+    if (!open_case(tc, 0, &reference) || !open_case(tc, bound, &prepared)) goto error;
     faar_alloc_reset_counters();
     size_t ref_calls_before = faar_alloc_calls(), ref_frees_before = faar_alloc_frees();
     if (!stream_all(reference, tc, bound, input, &ref)) goto error;
-    printf("unprepared %u->%u channels=%u block=%zu cap=%zu: allocations=%zu frees=%zu\n",
+    printf("unreserved %u->%u channels=%u block=%zu cap=%zu: allocations=%zu frees=%zu\n",
            tc->in_rate, tc->out_rate, tc->channels, tc->block, tc->output_cap,
            faar_alloc_calls() - ref_calls_before, faar_alloc_frees() - ref_frees_before);
-
-    if (faar_resampler_prepare(prepared, bound) != FAAR_OK) goto error;
-    if (tc->repeat_prepare &&
-        faar_resampler_prepare(prepared, bound + 19) != FAAR_OK) goto error;
-    if (tc->repeat_prepare) bound += 19;
 
     /* An over-bound call must fail before consuming any stream state. */
     float too_much[1025 * 8] = {0}, scratch[OUT_MAX * 8];
@@ -156,23 +147,6 @@ static int run_comparison(const test_case *tc, size_t which, pcm_t *reference_ou
         memcmp(ref.data, got.data, got.frames * tc->channels * sizeof(float)))
         goto error;
 
-    /* Preparation is forbidden once stream state has begun, including after flush. */
-    faar_resampler *late = NULL;
-    if (!open_case(tc, &late)) goto error;
-    if (faar_resampler_process(late, input, 1, scratch, OUT_MAX, &made) != FAAR_OK ||
-        faar_resampler_prepare(late, bound) != FAAR_ERR_INVALID_ARGUMENT) {
-        faar_resampler_close(&late); goto error;
-    }
-    do {
-        if (faar_resampler_finish(late, scratch, OUT_MAX, &made) != FAAR_OK) {
-            faar_resampler_close(&late); goto error;
-        }
-    } while (made);
-    if (faar_resampler_prepare(late, bound) != FAAR_ERR_INVALID_ARGUMENT) {
-        faar_resampler_close(&late); goto error;
-    }
-    faar_resampler_close(&late);
-
     if (reference_out) *reference_out = ref;
     else free(ref.data);
     free(got.data); free(input);
@@ -183,17 +157,14 @@ error:
     free(ref.data); free(got.data); free(input);
     if (reference) faar_resampler_close(&reference);
     if (prepared) faar_resampler_close(&prepared);
-    return fail("prepared stream mismatch, invalid state, or allocation occurred", which);
+    return fail("reserved stream mismatch, invalid state, or allocation occurred", which);
 }
 
-static int test_prepare_failures(const test_case *tc, const pcm_t *expected) {
+static int test_reserve_failures(const test_case *tc, const pcm_t *expected) {
     size_t live_at_start = faar_alloc_live();
     faar_resampler *probe = NULL;
-    if (!open_case(tc, &probe)) return fail("failure probe open failed", 99);
     faar_alloc_reset_counters();
-    if (faar_resampler_prepare(probe, tc->block) != FAAR_OK) {
-        faar_resampler_close(&probe); return fail("allocation probe prepare failed", 99);
-    }
+    if (!open_case(tc, tc->block, &probe)) return fail("allocation probe open failed", 99);
     size_t allocation_points = faar_alloc_calls();
     faar_resampler_close(&probe);
     if (faar_alloc_live() != live_at_start) return fail("allocation probe leaked", 99);
@@ -208,60 +179,36 @@ static int test_prepare_failures(const test_case *tc, const pcm_t *expected) {
         faar_resampler *r = NULL;
         pcm_t actual = {0};
         size_t live_before = faar_alloc_live();
-        if (!open_case(tc, &r)) { free(input); return fail("failure handle open failed", nth); }
+        faar_config config;
+        faar_config_init(&config, sizeof(config));
+        config.in_rate = tc->in_rate;
+        config.out_rate = tc->out_rate;
+        config.channels = tc->channels;
+        config.quality = tc->quality;
+        config.decimate_factor = tc->decimate;
+        config.max_input_frames = (uint32_t)tc->block;
         faar_alloc_reset_counters();
         faar_alloc_fail_nth(nth);
-        faar_status status = faar_resampler_prepare(r, tc->block);
+        faar_status status = faar_resampler_open(&config, &r);
         faar_alloc_fail_nth(0);
-        if (status != FAAR_ERR_INSUFFICIENT_MEM || faar_alloc_calls() < nth ||
-            faar_resampler_prepare(r, tc->block) != FAAR_OK ||
+        if (status != FAAR_ERR_INSUFFICIENT_MEM || r || faar_alloc_live() != live_before ||
+            !open_case(tc, tc->block, &r) ||
             !stream_all(r, tc, tc->block, input, &actual) ||
             actual.frames != expected->frames ||
             memcmp(actual.data, expected->data,
                    expected->frames * tc->channels * sizeof(float))) {
             free(actual.data); faar_resampler_close(&r); free(input);
-            return fail("prepare allocation failure was not retryable and PCM-identical", nth);
+            return fail("reserving open failure leaked or the retry changed PCM", nth);
         }
         free(actual.data);
         faar_resampler_close(&r);
         if (faar_alloc_live() != live_before) {
             free(input);
-            return fail("failed/retried prepare leaked library allocations", nth);
+            return fail("reserving open leaked library allocations", nth);
         }
     }
     free(input);
     return 0;
-}
-
-static int test_failed_reprepare(const test_case *tc, const pcm_t *expected) {
-    faar_resampler *r = NULL;
-    float *input = malloc(TOTAL_INPUT * tc->channels * sizeof(float));
-    pcm_t actual = {0};
-    if (!input) return fail("reprepare input allocation failed", 98);
-    for (size_t i = 0; i < TOTAL_INPUT; ++i)
-        for (size_t c = 0; c < tc->channels; ++c)
-            input[i * tc->channels + c] = input_sample(i, c);
-    if (!open_case(tc, &r) || faar_resampler_prepare(r, 64) != FAAR_OK) goto error;
-    faar_alloc_reset_counters();
-    faar_alloc_fail_nth(1);
-    faar_status status = faar_resampler_prepare(r, 65536);
-    faar_alloc_fail_nth(0);
-    if (status != FAAR_ERR_INSUFFICIENT_MEM) goto error;
-    faar_alloc_fail_all(1);
-    size_t before = faar_alloc_calls();
-    int streamed = stream_all(r, tc, 64, input, &actual);
-    size_t after = faar_alloc_calls();
-    faar_alloc_fail_all(0);
-    if (!streamed || before != after || actual.frames != expected->frames ||
-        memcmp(actual.data, expected->data,
-               expected->frames * tc->channels * sizeof(float))) goto error;
-    free(actual.data); free(input); faar_resampler_close(&r);
-    return 0;
-error:
-    faar_alloc_fail_all(0); faar_alloc_fail_nth(0);
-    free(actual.data); free(input);
-    if (r) faar_resampler_close(&r);
-    return fail("failed repeated preparation changed prior bounded mode", 98);
 }
 
 static int test_budget_exhaustion(void) {
@@ -270,8 +217,7 @@ static int test_budget_exhaustion(void) {
     float input[64], output[1];
     size_t made = 0;
     for (size_t i = 0; i < 64; ++i) input[i] = input_sample(i, 0);
-    if (!open_case(&tc, &r) || faar_resampler_prepare(r, 64) != FAAR_OK) {
-        if (r) faar_resampler_close(&r);
+    if (!open_case(&tc, 64, &r)) {
         return fail("budget exhaustion setup failed", 97);
     }
     faar_alloc_reset_counters();
@@ -342,10 +288,7 @@ int main(void) {
             selected.channels = (uint16_t)library.max_channels;
         pcm_t reference = {0};
         if (run_comparison(&selected, i, &reference)) return 1;
-        if ((i == 0 || i == 1 || i == 2) && test_prepare_failures(&selected, &reference)) {
-            free(reference.data); return 1;
-        }
-        if (i == 0 && test_failed_reprepare(&selected, &reference)) {
+        if ((i == 0 || i == 1 || i == 2) && test_reserve_failures(&selected, &reference)) {
             free(reference.data); return 1;
         }
         free(reference.data);

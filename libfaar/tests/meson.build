@@ -58,13 +58,13 @@ test('test_faar_dft_shared', test_faar_dft_shared)
 
 faar_force_include = (cc.get_argument_syntax() == 'msvc') ? '/FI' : '-include'
 faar_alloc_include = meson.current_source_dir() / 'faar_alloc_hooks.h'
-test_faar_prepare = executable('test_faar_prepare',
-  ['test_faar_prepare.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
+test_faar_bounded = executable('test_faar_bounded',
+  ['test_faar_bounded.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
   c_args: libfaar_args + [faar_force_include, faar_alloc_include],
   include_directories: ['.', '..', inc],
   dependencies: [m_dep],
 )
-test('test_faar_prepare', test_faar_prepare, timeout: 120)
+test('test_faar_bounded', test_faar_bounded, timeout: 120)
 
 test_faar_design = executable('test_faar_design', 'test_faar_design.c',
   c_args: libfaar_args,
