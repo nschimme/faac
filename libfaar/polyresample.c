@@ -211,7 +211,7 @@ static int ensure_dft_intermediate(faar_resampler * r, size_t frames) {
 static faar_resampler * create_resampler_internal(uint32_t in_rate,
         uint32_t out_rate, uint16_t channels, faar_quality_t quality,
         uint32_t decimate_factor, size_t filter_len_override,
-        bool force_polyphase);
+        bool force_polyphase, size_t max_phases);
 static void destroy_internal(faar_resampler *r);
 
 /* Limit padding to the original input duration, without multiplying the
@@ -354,6 +354,7 @@ static void design_from_spec(faar_quality_t quality, uint32_t out_rate,
 struct short_plan {
     size_t taps, fft, expansion, decimation, bank;
     double beta, cutoff;
+    size_t max_phases;
 };
 
 enum short_route { GENERAL, REFERENCE, UP, HALF, QUARTER, DOWN32 };
@@ -415,13 +416,28 @@ static const struct short_route_entry *short_dedicated_route(uint32_t in,
  * residual brackets it in [2.48, 2.52], so take the centre. */
 static const double bank_oversample = 2.50;
 
+/* Upsampling without a dedicated entry designs its 2x prefilter from the
+ * preset spec; this bank interpolates the doubled stream to the output. */
+static const size_t general_up_bank = 41;
+
+/* Phase-table ceiling for that bank: rows beyond it are interpolated, so a
+ * coprime rate pair stores 259 rows instead of up to 2051, for under 0.5 dB
+ * of image rejection. */
+static const size_t general_up_max_phases = 512;
+
 static struct short_plan short_plan(uint32_t in, uint32_t out,
         faar_quality_t quality, bool general) {
-    struct short_plan p = {0, 1, 1, 1, 21, 19.078143572239966, 0.0};
+    struct short_plan p = {0, 1, 1, 1, 21, 19.078143572239966, 0.0, 0};
     enum short_route route = short_half_rate_route(in, out) ? HALF : GENERAL;
     enum short_design design = route == HALF ? FIXED_HALF : SPEC;
     const struct short_route_entry *entry = short_dedicated_route(in, out);
     if (general) { route = GENERAL; design = SPEC; entry = NULL; }
+    else if (!entry && in < out) {
+        route = UP;
+        p.expansion = 2;
+        p.bank = (uint64_t)in * p.expansion == out ? 1 : general_up_bank;
+        p.max_phases = general_up_max_phases;
+    }
     if (entry) {
         route = entry->route;
         design = entry->design;
@@ -532,7 +548,8 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
     uint32_t stage2_rate = in_rate * (uint32_t)expansion
         / (uint32_t)decimation;
     r->stage2 = create_resampler_internal(stage2_rate, out_rate, channels,
-                                         quality, 0, phase_bank_len, true);
+                                         quality, 0, phase_bank_len, true,
+                                         plan.max_phases);
     if (!r->stage2) {
         faar_dft_prefilter_destroy(r->dft_prefilter);
         free(r);
@@ -587,7 +604,7 @@ static double short_work(uint32_t in, uint32_t out, faar_quality_t quality,
 
 static struct short_plan short_preplan(uint32_t in, uint32_t out,
         faar_quality_t quality) {
-    struct short_plan pre = {0, 0, 1, 2, 1, 0, 0};
+    struct short_plan pre = {0, 0, 1, 2, 1, 0, 0, 0};
     /* Symmetric edges cover the preset pass edge and reject aliases before
      * they can land inside 1.04 times FINAL output Nyquist. */
     double pb = 0.52 * out / in;
@@ -671,11 +688,11 @@ static void store_coefficient(faar_resampler *r, size_t at, double val) {
 
 static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out_rate,
         uint16_t channels, faar_quality_t quality, uint32_t decimate_factor,
-        size_t filter_len_override, bool force_polyphase) {
+        size_t filter_len_override, bool force_polyphase, size_t max_phases) {
     if (in_rate == 0 || out_rate == 0 || channels == 0 || channels > MAX_CHANNELS) return NULL;
 
     const struct short_route_entry *entry = short_dedicated_route(in_rate, out_rate);
-    bool use_staged = in_rate > out_rate || entry;
+    bool use_staged = in_rate != out_rate || entry;
     /* The final phase bank must bypass planning to avoid recursive stages. */
     if (!force_polyphase && use_staged && decimate_factor < 2) {
         unsigned k = short_halvings(in_rate, out_rate, quality, entry);
@@ -697,9 +714,9 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         r->boundary = FAAR_BOUNDARY_HOLD;
 
         r->stage1 = create_resampler_internal(in_rate, intermediate_rate,
-                channels, quality, 0, 0, true);
+                channels, quality, 0, 0, true, 0);
         r->stage2 = create_resampler_internal(intermediate_rate, out_rate,
-                channels, quality, 0, 0, true);
+                channels, quality, 0, 0, true, 0);
 
         if (!r->stage1 || !r->stage2) {
             destroy_internal(r->stage1);
@@ -749,9 +766,10 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
     if (filter_len_override) {
         r->filter_len = filter_len_override;
         size_t exact_phase_count = 2u * (size_t)(out_rate / rate_gcd(in_rate, out_rate));
-        r->num_phases = exact_phase_count <= 4096 ? exact_phase_count : 4096;
+        if (!max_phases) max_phases = 4096;
+        r->num_phases = exact_phase_count <= max_phases ? exact_phase_count : max_phases;
         r->phase_gcd = rate_gcd(in_rate, out_rate);
-        r->exact_phase_bank = exact_phase_count <= 4096;
+        r->exact_phase_bank = exact_phase_count <= max_phases;
         /* The even 20-tap bank needs a half-sample clock origin. */
         if (filter_len_override == 20)
             r->half_sample_phase_bank = true;
@@ -1784,7 +1802,7 @@ FAARAPI faar_status faar_resampler_open(const faar_config *config,
                 && cfg.dither_bits != 16 && cfg.dither_bits != 24))
         return FAAR_ERR_INVALID_ARGUMENT;
     faar_resampler * r = create_resampler_internal(cfg.in_rate, cfg.out_rate,
-            cfg.channels, cfg.quality, cfg.decimate_factor, 0, false);
+            cfg.channels, cfg.quality, cfg.decimate_factor, 0, false, 0);
     if (!r) return FAAR_ERR_NO_MEMORY;
     if (set_boundary_internal(r, cfg.boundary) != 0
             || set_dither_internal(r, cfg.dither, cfg.dither_bits) != 0) {

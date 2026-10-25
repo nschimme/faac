@@ -351,13 +351,14 @@ static int test_staged_short_impulse_symmetry(void) {
 
 /* Least-squares fit y ~= a*sin(wt)+b*cos(wt), giving phase-independent gain and residual. */
 static int test_passband(void) {
-static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {44100,48000}, {88200,44100}};
-    const double freqs[] = {1000.0, 10000.0, 14400.0, 15200.0, 20000.0};
+static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {44100,48000}, {88200,44100},
+                                        {16000,48000}, {11025,16000}};
+    const double freqs[] = {1000.0, 5180.0, 7520.0, 10000.0, 14400.0, 15200.0, 20000.0};
     for (size_t r = 0; r < sizeof(rates)/sizeof(rates[0]); r++) {
         uint32_t ir = rates[r][0], orate = rates[r][1];
         size_t n = ir; /* One second at each input rate. */
         for (size_t f = 0; f < sizeof(freqs)/sizeof(freqs[0]); f++) {
-            if (freqs[f] >= 0.475 * orate) continue;
+            if (freqs[f] >= 0.475 * (ir < orate ? ir : orate)) continue;
             float *in = (float *)malloc(n * sizeof(float));
             if (!in) return fail("tone allocation failed");
             for (size_t i = 0; i < n; i++) in[i] = (float)sin(2.0 * PI * freqs[f] * i / ir);
