@@ -13,6 +13,7 @@
  * Lesser General Public License for more details.
  */
 #include "fft_float2.h"
+#include "libfaar_internal.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -20,8 +21,8 @@
 
 void faar_float2_clear(faar_float2_plan *p) {
     if (!p) return;
-    free(p->work);
-    if (p->twiddle_owned) free(p->twiddle);
+    FreeMemory(p->work);
+    if (p->twiddle_owned) FreeMemory(p->twiddle);
     memset(p, 0, sizeof(*p));
 }
 
@@ -33,9 +34,9 @@ int faar_float2_init_shared(faar_float2_plan *p, size_t n,
     memset(p, 0, sizeof(*p));
     p->size = n;
     p->twiddle_size = owner ? owner->twiddle_size : n;
-    p->work = malloc(2 * n * sizeof(*p->work));
+    p->work = AllocMemory(2 * n * sizeof(*p->work));
     p->twiddle_owned = owner == NULL;
-    p->twiddle = owner ? owner->twiddle : malloc(n * sizeof(*p->twiddle));
+    p->twiddle = owner ? owner->twiddle : AllocMemory(n * sizeof(*p->twiddle));
     if (!p->work || !p->twiddle) { faar_float2_clear(p); return -1; }
     if (!owner) {
         for (size_t k = 0; k < n / 2; ++k) {

@@ -10,6 +10,7 @@
   - [Complete streaming example](#complete-streaming-example)
   - [Preparing bounded streams](#preparing-bounded-streams)
   - [Function reference](#function-reference)
+  - [Custom allocators](#custom-allocators)
 - [ABI compatibility](#abi-compatibility)
 - [Command-line tool](#command-line-tool)
 
@@ -284,6 +285,34 @@ settings are selected in `faar_config` before opening. Set `decimate_factor`
 to zero for automatic planning or to a value of two or greater to request an
 explicit cascade. Closing frees the handle and sets the caller's pointer to
 NULL; closing an already-NULL pointer is a no-op that returns `FAAR_OK`.
+
+### Custom allocators
+
+libfaar allocates through the `AllocMemory` / `FreeMemory` macros in
+`libfaar/libfaar_internal.h`. A source build can override both together, for
+example with `-DAllocMemory=my_alloc -DFreeMemory=my_free` (provide the
+function declarations when compiling), to place resampler state in external
+RAM. The allocator need not clear the memory it returns and must return
+storage aligned as `malloc` does; libfaar aligns its SIMD buffers to 64 bytes
+internally. `FreeMemory` must accept NULL. Default builds grow the two
+resizable buffers with libc `realloc`; custom-allocator builds allocate, copy
+and free so growth stays in the custom allocator's memory.
+
+Static FFT twiddle tables stay in static storage; `-Dfaar-twiddle-cache-bits`
+bounds them, and larger sizes allocate twiddles per plan through
+`AllocMemory`. Check the speed cost of external-RAM placement on your target
+before committing to it.
+
+#### Running without a heap
+
+A fixed-pool override can avoid the system heap, with the same
+`pool_alloc` / `pool_free` pattern as the
+[FAAC example](libfaac.md#running-without-a-heap). Allocation occurs when a
+resampler is opened and when `faar_resampler_prepare` runs. Process calls on
+an unprepared resampler may still grow a buffer, so prepare first if the pool
+must not allocate during streaming, and reserve space for freed blocks because
+a bump allocator cannot reuse them. Prepared process and flush calls allocate
+nothing.
 
 ## ABI compatibility
 

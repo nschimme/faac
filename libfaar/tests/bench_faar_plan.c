@@ -15,12 +15,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <faar.h>
 #include <faar_alloc_hooks.h>
-#undef malloc
-#undef calloc
-#undef realloc
-#undef free
-#undef posix_memalign
-
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>

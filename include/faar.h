@@ -17,6 +17,8 @@
  * @file faar.h
  * @brief Public API for libfaar CPU audio resampling
  *
+ * Allocation uses overridable AllocMemory / FreeMemory macros in source builds.
+ *
  * API and ABI notes:
  *   - Initialize faar_config with faar_config_init() and open an opaque handle
  *     with faar_resampler_open(). Fallible calls return faar_status; process

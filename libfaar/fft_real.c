@@ -17,6 +17,7 @@
 #ifndef FAAR_RFFT_TEMPLATE
 #define FAAR_RFFT_TEMPLATE
 #include "fft_real.h"
+#include "libfaar_internal.h"
 #include "../common/atomic.h"
 #ifndef FAAR_FFT_CACHE_BITS
 #define FAAR_FFT_CACHE_BITS 16
@@ -463,9 +464,9 @@ static REAL *FN(shared_twiddle)(int logm)
 void FN(clear)(PLAN *plan)
 {
     if (!plan) return;
-    if (plan->twiddle_owned) free(plan->twiddle);
-    free(plan->split);
-    free(plan->work);
+    if (plan->twiddle_owned) FreeMemory(plan->twiddle);
+    FreeMemory(plan->split);
+    FreeMemory(plan->work);
     memset(plan, 0, sizeof(*plan));
 }
 
@@ -496,10 +497,10 @@ static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single,
     plan->twiddle = filter_owner ? filter_owner->twiddle : FN(shared_twiddle)(plan->logm);
     plan->twiddle_owned = !filter_owner && plan->twiddle == NULL;
     if (plan->twiddle_owned) {
-        plan->twiddle = malloc(2 * m * sizeof(REAL));
+        plan->twiddle = AllocMemory(2 * m * sizeof(REAL));
         if (plan->twiddle) FN(build_twiddle)(plan->twiddle, m);
     }
-    plan->split = split ? malloc(2 * m * sizeof(REAL)) : NULL;
+    plan->split = split ? AllocMemory(2 * m * sizeof(REAL)) : NULL;
     int padded = m >= (sizeof(REAL) == sizeof(float) ? 4096 : 2048);
     plan->work_buffers = single && padded ? 1 : 2;
     size_t work_count = plan->work_buffers * (size_t)plan->size;
@@ -507,7 +508,7 @@ static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single,
      * the core's second scratch pointer within the allocation. */
     int separate_scratch = padded || 2 * (size_t)PAD_IM(m) > work_count;
     size_t scratch_count = separate_scratch && !scratch ? 4 * (size_t)PAD_IM(m) : 0;
-    plan->work = malloc((work_count + scratch_count) * sizeof(REAL));
+    plan->work = AllocMemory((work_count + scratch_count) * sizeof(REAL));
     plan->scratch = scratch ? scratch : plan->work
         ? plan->work + (separate_scratch ? work_count : 0) : NULL;
     if (!plan->twiddle || (split && !plan->split) || !plan->work) {

@@ -37,33 +37,20 @@
 #define POLYRESAMPLE_MAX_FILTER_LEN 512 /* Upper bound for stack-allocated temporary coefficient buffers */
 #define POLYRESAMPLE_ALIGNMENT 64 /* 64-byte alignment for AVX-512 / AVX2 / NEON SIMD vector loads */
 
+/* Over-allocate and align by hand so a custom AllocMemory needs no aligned variant. */
 static void *aligned_malloc(size_t size) {
-#if defined(_WIN32)
-    return _aligned_malloc(size, POLYRESAMPLE_ALIGNMENT);
-#elif defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
-    void *ptr = NULL;
-    if (posix_memalign(&ptr, POLYRESAMPLE_ALIGNMENT, size) != 0) return NULL;
-    return ptr;
-#else
     if (size > SIZE_MAX - POLYRESAMPLE_ALIGNMENT - sizeof(void *)) return NULL;
-    void *ptr = malloc(size + POLYRESAMPLE_ALIGNMENT + sizeof(void *));
+    void *ptr = AllocMemory(size + POLYRESAMPLE_ALIGNMENT + sizeof(void *));
     if (!ptr) return NULL;
     uintptr_t addr = (uintptr_t)ptr + sizeof(void *) + POLYRESAMPLE_ALIGNMENT - 1;
     void *aligned_ptr = (void *)(addr & ~(uintptr_t)(POLYRESAMPLE_ALIGNMENT - 1));
     ((void **)aligned_ptr)[-1] = ptr;
     return aligned_ptr;
-#endif
 }
 
 static void aligned_free(void *ptr) {
     if (!ptr) return;
-#if defined(_WIN32)
-    _aligned_free(ptr);
-#elif defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L
-    free(ptr);
-#else
-    free(((void **)ptr)[-1]);
-#endif
+    FreeMemory(((void **)ptr)[-1]);
 }
 
 static double bessel_i0(double x) {
@@ -200,7 +187,8 @@ static int ensure_dft_intermediate(faar_resampler * r, size_t frames) {
     if (frames <= r->dft_intermediate_capacity) return 0;
     if (r->prepared) return -1;
     if (frames > SIZE_MAX / r->channels / sizeof(float)) return -1;
-    float *next = (float *)realloc(r->dft_intermediate,
+    float *next = (float *)faar_grow_memory(r->dft_intermediate,
+            r->dft_intermediate_capacity * r->channels * sizeof(float),
             frames * r->channels * sizeof(float));
     if (!next) return -1;
     r->dft_intermediate = next;
@@ -514,11 +502,11 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
         if (fft_size > SIZE_MAX / 2) return NULL;
         fft_size <<= 1;
     }
-    double *taps = (double *)malloc(tap_count * sizeof(*taps));
+    double *taps = (double *)AllocMemory(tap_count * sizeof(*taps));
     if (!taps) return NULL;
     double cutoff = plan.cutoff;
     if (faar_dft_design_lowpass(taps, tap_count, cutoff, beta)) {
-        free(taps);
+        FreeMemory(taps);
         return NULL;
     }
     if (expansion > 1) {
@@ -526,8 +514,8 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
             taps[i] *= (double)expansion;
     }
     struct faar_resampler_struct *r =
-        (struct faar_resampler_struct *)calloc(1, sizeof(*r));
-    if (!r) { free(taps); return NULL; }
+        (struct faar_resampler_struct *)faar_alloc_zeroed(1, sizeof(*r));
+    if (!r) { FreeMemory(taps); return NULL; }
     r->in_rate = in_rate;
     r->out_rate = out_rate;
     r->channels = channels;
@@ -539,12 +527,12 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
     r->dft_prefilter = faar_dft_prefilter_create_stage(channels, taps,
             tap_count, fft_size, expansion, decimation, selected->fft == 0,
             quality == FAAR_QUALITY_HIGH);
-    free(taps);
-    if (!r->dft_prefilter) { free(r); return NULL; }
+    FreeMemory(taps);
+    if (!r->dft_prefilter) { FreeMemory(r); return NULL; }
     size_t phase_bank_len = plan.bank;
     if ((uint64_t)in_rate * expansion > UINT32_MAX) {
         faar_dft_prefilter_destroy(r->dft_prefilter);
-        free(r);
+        FreeMemory(r);
         return NULL;
     }
     if (selected->fft == 0) {
@@ -558,7 +546,7 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
                                          plan.max_phases);
     if (!r->stage2) {
         faar_dft_prefilter_destroy(r->dft_prefilter);
-        free(r);
+        FreeMemory(r);
         return NULL;
     }
     r->delay = ((tap_count - 1) / 2 + expansion * decimation - 1)
@@ -658,7 +646,7 @@ static faar_resampler * short_cascade(uint32_t in, uint32_t out,
         return create_staged(in, out, channels, quality, &p);
     }
     struct short_plan pre = short_preplan(in, out, quality);
-    faar_resampler * r = calloc(1, sizeof(*r));
+    faar_resampler * r = faar_alloc_zeroed(1, sizeof(*r));
     if (!r) return NULL;
     r->in_rate = in;
     r->out_rate = out;
@@ -715,7 +703,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         if (intermediate_rate <= out_rate) intermediate_rate = in_rate / 2;
         if (intermediate_rate <= out_rate) intermediate_rate = (in_rate + out_rate) / 2;
 
-        struct faar_resampler_struct *r = (struct faar_resampler_struct *)calloc(1, sizeof(struct faar_resampler_struct));
+        struct faar_resampler_struct *r = (struct faar_resampler_struct *)faar_alloc_zeroed(1, sizeof(struct faar_resampler_struct));
         if (!r) return NULL;
         r->boundary = FAAR_BOUNDARY_HOLD;
 
@@ -727,7 +715,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         if (!r->stage1 || !r->stage2) {
             destroy_internal(r->stage1);
             destroy_internal(r->stage2);
-            free(r);
+            FreeMemory(r);
             return NULL;
         }
 
@@ -742,7 +730,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         if (!r->cascade_buf) {
             destroy_internal(r->stage1);
             destroy_internal(r->stage2);
-            free(r);
+            FreeMemory(r);
             return NULL;
         }
 
@@ -751,7 +739,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         return r;
     }
 
-    struct faar_resampler_struct *r = (struct faar_resampler_struct *)calloc(1, sizeof(struct faar_resampler_struct));
+    struct faar_resampler_struct *r = (struct faar_resampler_struct *)faar_alloc_zeroed(1, sizeof(struct faar_resampler_struct));
     if (!r) return NULL;
     r->boundary = FAAR_BOUNDARY_HOLD;
 
@@ -791,7 +779,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         r->polyphase_wide_table = aligned_malloc(stored_phases * r->filter_len
                 * sizeof(*r->polyphase_wide_table));
         if (!r->polyphase_wide_table) {
-            free(r);
+            FreeMemory(r);
             return NULL;
         }
     } else
@@ -799,7 +787,7 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
     {
         r->polyphase_table = (faar_sample_t *)aligned_malloc(stored_phases * r->filter_len * sizeof(*r->polyphase_table));
         if (!r->polyphase_table) {
-            free(r);
+            FreeMemory(r);
             return NULL;
         }
     }
@@ -1622,7 +1610,7 @@ static void destroy_internal(faar_resampler * r) {
     if (r->stage1) destroy_internal(r->stage1);
     if (r->stage2) destroy_internal(r->stage2);
     if (r->dft_prefilter) faar_dft_prefilter_destroy(r->dft_prefilter);
-    free(r->dft_intermediate);
+    FreeMemory(r->dft_intermediate);
     if (r->cascade_buf) aligned_free(r->cascade_buf);
     for (uint16_t c = 0; c < r->channels && c < MAX_CHANNELS; c++) {
         if (r->hist[c]) aligned_free(r->hist[c] - r->hist_offset);
@@ -1639,7 +1627,7 @@ static void destroy_internal(faar_resampler * r) {
 #endif
     }
     faar_plan *plan = r->plan;
-    free(r);
+    FreeMemory(r);
     if (plan) plan_release(plan);
 }
 
@@ -1653,7 +1641,7 @@ static void plan_release(faar_plan *plan) {
 #endif
     if (last) {
         destroy_internal(plan->prototype);
-        free(plan);
+        FreeMemory(plan);
     }
 }
 
@@ -1663,7 +1651,7 @@ static void release_plan_workspace(faar_resampler *r) {
     if (r->stage1) release_plan_workspace(r->stage1);
     if (r->stage2) release_plan_workspace(r->stage2);
     if (r->dft_prefilter) faar_dft_prefilter_release_workspace(r->dft_prefilter);
-    free(r->dft_intermediate);
+    FreeMemory(r->dft_intermediate);
     r->dft_intermediate = NULL;
     aligned_free(r->cascade_buf);
     r->cascade_buf = NULL;
@@ -1675,7 +1663,7 @@ static void release_plan_workspace(faar_resampler *r) {
 }
 
 static faar_resampler *clone_plan_internal(const faar_resampler *source) {
-    faar_resampler *r = malloc(sizeof(*r));
+    faar_resampler *r = AllocMemory(sizeof(*r));
     if (!r) return NULL;
     *r = *source;
     r->shared_coeffs = true;
@@ -1713,7 +1701,7 @@ FAARAPI faar_status faar_plan_open(const faar_config *config, faar_plan **out) {
     faar_resampler *prototype = NULL;
     faar_status status = faar_resampler_open(config, &prototype);
     if (status != FAAR_OK) return status;
-    faar_plan *plan = malloc(sizeof(*plan));
+    faar_plan *plan = AllocMemory(sizeof(*plan));
     if (!plan) { destroy_internal(prototype); return FAAR_ERR_NO_MEMORY; }
 #if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
     atomic_init(&plan->references, 1);

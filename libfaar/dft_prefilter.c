@@ -73,14 +73,14 @@ static int fifo_reserve(faar_dft_prefilter *s, size_t additional) {
         capacity *= 2;
     }
     if (capacity > SIZE_MAX / s->channels / sizeof(float)) return -1;
-    float *next = (float *)malloc(capacity * s->channels * sizeof(float));
+    float *next = (float *)AllocMemory(capacity * s->channels * sizeof(float));
     if (!next) return -1;
     for (uint16_t c = 0; c < s->channels; ++c)
         if (s->fifo_count)
             memcpy(next + (size_t)c * capacity,
                    s->fifo + (size_t)c * s->fifo_capacity + s->fifo_read,
                    s->fifo_count * sizeof(float));
-    free(s->fifo);
+    FreeMemory(s->fifo);
     s->fifo = next;
     s->fifo_capacity = capacity;
     s->fifo_read = 0;
@@ -170,13 +170,13 @@ static int feed_endpoint(faar_dft_prefilter *s, const float *values,
     int temporary = frames > s->endpoint_capacity;
     if (temporary && s->prepared) return -1;
     float *block = temporary
-        ? (float *)malloc(frames * s->channels * sizeof(float)) : s->endpoint;
+        ? (float *)AllocMemory(frames * s->channels * sizeof(float)) : s->endpoint;
     if (!block) return -1;
     for (size_t i = 0; i < frames; ++i)
         memcpy(block + i * s->channels, values,
                s->channels * sizeof(float));
     int result = feed_raw(s, block, frames);
-    if (temporary) free(block);
+    if (temporary) FreeMemory(block);
     return result;
 }
 
@@ -218,26 +218,26 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
             || (fft_size - tap_count + 1) % decimation
             || (tap_count - 1) % decimation)
         return NULL;
-    faar_dft_prefilter *s = (faar_dft_prefilter *)calloc(1, sizeof(*s));
+    faar_dft_prefilter *s = (faar_dft_prefilter *)faar_alloc_zeroed(1, sizeof(*s));
     if (!s) return NULL;
     s->channels = channels;
     s->expansion = expansion;
     s->decimation = decimation;
     s->half = (tap_count - 1) / 2;
     s->block_size = fft_size - tap_count + 1;
-    if (s->half > SIZE_MAX / 2) { free(s); return NULL; }
+    if (s->half > SIZE_MAX / 2) { FreeMemory(s); return NULL; }
     s->prefix_drop = 2 * s->half / decimation;
     s->hold = 1;
     /* Two channels share each complex transform, a lone channel shares it
      * with its next block; the half-band is direct. */
     s->lanes = !halfband && channels > 1 ? 2 : 1;
     s->stages = (uint16_t)((channels + s->lanes - 1) / s->lanes);
-    s->fir = (faar_dft_fir *)calloc(s->stages, sizeof(*s->fir));
-    s->channel_input = (faar_sample_t *)malloc(s->lanes * s->block_size
+    s->fir = (faar_dft_fir *)faar_alloc_zeroed(s->stages, sizeof(*s->fir));
+    s->channel_input = (faar_sample_t *)AllocMemory(s->lanes * s->block_size
                                         * sizeof(faar_sample_t));
     s->channel_output_capacity = (channels == 1 && !halfband ? 2 : 1)
         * s->block_size / decimation;
-    s->channel_output = (faar_sample_t *)malloc(s->channel_output_capacity
+    s->channel_output = (faar_sample_t *)AllocMemory(s->channel_output_capacity
                                          * channels * sizeof(faar_sample_t));
     if (!s->fir || !s->channel_input || !s->channel_output)
         goto fail;
@@ -283,7 +283,7 @@ faar_dft_prefilter *faar_dft_prefilter_clone_filter(
             || !source->lanes || !source->block_size
             || !source->channel_output_capacity)
         return NULL;
-    faar_dft_prefilter *s = (faar_dft_prefilter *)calloc(1, sizeof(*s));
+    faar_dft_prefilter *s = (faar_dft_prefilter *)faar_alloc_zeroed(1, sizeof(*s));
     if (!s) return NULL;
     s->channels = source->channels;
     s->expansion = source->expansion;
@@ -299,10 +299,10 @@ faar_dft_prefilter *faar_dft_prefilter_clone_filter(
             || s->channel_output_capacity > SIZE_MAX / s->channels
                     / sizeof(faar_sample_t))
         goto fail;
-    s->fir = (faar_dft_fir *)calloc(s->stages, sizeof(*s->fir));
-    s->channel_input = (faar_sample_t *)malloc(s->lanes * s->block_size
+    s->fir = (faar_dft_fir *)faar_alloc_zeroed(s->stages, sizeof(*s->fir));
+    s->channel_input = (faar_sample_t *)AllocMemory(s->lanes * s->block_size
                                             * sizeof(faar_sample_t));
-    s->channel_output = (faar_sample_t *)malloc(s->channel_output_capacity
+    s->channel_output = (faar_sample_t *)AllocMemory(s->channel_output_capacity
             * s->channels * sizeof(faar_sample_t));
     if (!s->fir || !s->channel_input || !s->channel_output) goto fail;
     for (uint16_t f = 0; f < s->stages; ++f) {
@@ -325,10 +325,10 @@ void faar_dft_prefilter_release_workspace(faar_dft_prefilter *s) {
     if (s->fir)
         for (uint16_t f = s->stages; f > 0; --f)
             faar_dft_fir_release_workspace(&s->fir[f - 1]);
-    free(s->channel_input);
-    free(s->channel_output);
-    free(s->fifo);
-    free(s->endpoint);
+    FreeMemory(s->channel_input);
+    FreeMemory(s->channel_output);
+    FreeMemory(s->fifo);
+    FreeMemory(s->endpoint);
     s->channel_input = NULL;
     s->channel_output = NULL;
     s->fifo = NULL;
@@ -351,12 +351,12 @@ void faar_dft_prefilter_destroy(faar_dft_prefilter *s) {
         for (uint16_t f = s->stages; f > 0; --f)
             faar_dft_fir_clear(&s->fir[f - 1]);
     }
-    free(s->fir);
-    free(s->channel_input);
-    free(s->channel_output);
-    free(s->fifo);
-    free(s->endpoint);
-    free(s);
+    FreeMemory(s->fir);
+    FreeMemory(s->channel_input);
+    FreeMemory(s->channel_output);
+    FreeMemory(s->fifo);
+    FreeMemory(s->endpoint);
+    FreeMemory(s);
 }
 
 faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *s,
@@ -385,7 +385,9 @@ faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *s,
         return FAAR_ERR_INVALID_ARGUMENT;
     if (fifo_reserve(s, frames)) return FAAR_ERR_NO_MEMORY;
     if (prefix > s->endpoint_capacity) {
-        float *next = realloc(s->endpoint, prefix * s->channels * sizeof(float));
+        float *next = (float *)faar_grow_memory(s->endpoint,
+                s->endpoint_capacity * s->channels * sizeof(float),
+                prefix * s->channels * sizeof(float));
         if (!next) return FAAR_ERR_NO_MEMORY;
         s->endpoint = next;
         s->endpoint_capacity = prefix;

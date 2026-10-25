@@ -98,7 +98,7 @@ static int PAIR_FN(init_spectrum)(faar_dft_fir *stage, const double *taps) {
     h = PAIR_FFT_FN(cbuffer)(&plan, 0);
     memset(h, 0, 2 * n * sizeof(PAIR_REAL));
     for (size_t i = 0; i < stage->tap_count; ++i) h[i] = taps[i];
-    spectrum = (PAIR_REAL *)malloc(2 * n * sizeof(PAIR_REAL));
+    spectrum = (PAIR_REAL *)AllocMemory(2 * n * sizeof(PAIR_REAL));
     if (!spectrum) { PAIR_FFT_FN(clear)(&plan); return -1; }
     h = PAIR_FFT_FN(cforward)(&plan, h);
     for (size_t i = 0; i < 2 * n; ++i) spectrum[i] = h[i] * scale;

@@ -22,6 +22,45 @@
 #include <stdbool.h>
 #include <assert.h>
 
+/* Ports override both hooks with -D or a force-included header. Detect the
+ * overrides first: libc realloc must never see a custom allocator's block. */
+#if defined(AllocMemory) != defined(FreeMemory)
+#error "Override AllocMemory and FreeMemory together"
+#endif
+#if defined(AllocMemory)
+#define FAAR_CUSTOM_ALLOCATOR 1
+#else
+#define AllocMemory(size) malloc(size)
+#define FreeMemory(block) free(block)
+#endif
+
+/* Zeroed array allocation; AllocMemory need not clear, and calloc's overflow
+ * check must survive the conversion. */
+static inline void *faar_alloc_zeroed(size_t count, size_t size)
+{
+    void *block;
+    if (size && count > SIZE_MAX / size) return NULL;
+    block = AllocMemory(count * size);
+    if (block) memset(block, 0, count * size);
+    return block;
+}
+
+/* Grow a block, preserving only initialized bytes. On failure the old block
+ * remains owned by the caller. Standard builds retain in-place libc growth. */
+static inline void *faar_grow_memory(void *block, size_t used, size_t bytes)
+{
+#ifdef FAAR_CUSTOM_ALLOCATOR
+    void *grown = AllocMemory(bytes);
+    if (!grown) return NULL;
+    if (used) memcpy(grown, block, used);
+    FreeMemory(block);
+    return grown;
+#else
+    (void)used;
+    return realloc(block, bytes);
+#endif
+}
+
 /* High's sensitive kernels need more than float precision. Float builds
  * emulate it with float2 so targets without a double FPU still run High;
  * mixed runs the same kernels in native double, which is ten times faster. */

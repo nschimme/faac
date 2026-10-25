@@ -31,8 +31,8 @@ static int init_precise_plans(faar_dft_fir *stage, const faar_dft_fir *owner) {
 static int init_precise_spectrum(faar_dft_fir *stage, const double *taps) {
     size_t n = stage->fft_size;
     if (init_precise_plans(stage, NULL)) return -1;
-    stage->spec = malloc(2 * n * sizeof(*stage->spec));
-    stage->spec_low = malloc(2 * n * sizeof(*stage->spec_low));
+    stage->spec = AllocMemory(2 * n * sizeof(*stage->spec));
+    stage->spec_low = AllocMemory(2 * n * sizeof(*stage->spec_low));
     if (!stage->spec || !stage->spec_low) return -1;
     faar_float2_plan temporary = {0};
     faar_float2_plan *plan = stage->precise_in.size == n ? &stage->precise_in

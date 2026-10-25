@@ -1,15 +1,5 @@
 #include <faar_alloc_hooks.h>
 #include <faar.h>
-#undef malloc
-#undef calloc
-#undef realloc
-#undef free
-#undef posix_memalign
-#ifdef _WIN32
-#undef _aligned_malloc
-#undef _aligned_free
-#endif
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -21,15 +21,6 @@
 #endif
 #ifdef FAAR_PLAN_ALLOC_TEST
 #include <faar_alloc_hooks.h>
-#undef malloc
-#undef calloc
-#undef realloc
-#undef free
-#undef posix_memalign
-#ifdef _WIN32
-#undef _aligned_malloc
-#undef _aligned_free
-#endif
 #endif
 
 #define N 321
