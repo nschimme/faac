@@ -420,6 +420,10 @@ static const double bank_oversample = 2.50;
  * preset spec; this bank interpolates the doubled stream to the output. */
 static const size_t general_up_bank = 41;
 
+/* Fast and Good meet their masks with 21 taps of the sampled prototype on
+ * every 2x upsampling bank; High keeps 41 for its rejection. */
+static const size_t short_up_bank = 21;
+
 /* Phase-table ceiling for that bank: rows beyond it are interpolated, so a
  * coprime rate pair stores 259 rows instead of up to 2051, for under 0.5 dB
  * of image rejection. */
@@ -435,7 +439,8 @@ static struct short_plan short_plan(uint32_t in, uint32_t out,
     else if (!entry && in < out) {
         route = UP;
         p.expansion = 2;
-        p.bank = (uint64_t)in * p.expansion == out ? 1 : general_up_bank;
+        p.bank = (uint64_t)in * p.expansion == out ? 1
+            : quality == FAAR_QUALITY_HIGH ? general_up_bank : short_up_bank;
         p.max_phases = general_up_max_phases;
     }
     if (entry) {
@@ -443,6 +448,8 @@ static struct short_plan short_plan(uint32_t in, uint32_t out,
         design = entry->design;
         p.expansion = entry->expansion;
         p.bank = entry->bank;
+        if (route == UP && p.bank == 41 && quality != FAAR_QUALITY_HIGH)
+            p.bank = short_up_bank;
     }
     switch (route) {
     case HALF:
@@ -836,9 +843,9 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
         ? (filter_len_override ? legacy_cutoff_custom_len : legacy_cutoff * r->ratio)
         : legacy_cutoff;
     double half_len = (r->filter_len - 1) / 2.0;
-    const bool sampled_long_prototype = filter_len_override == 20
-        || (filter_len_override == 21
-            && (uint64_t)r->in_rate * 80 == (uint64_t)r->out_rate * 147);
+    const bool long_up = filter_len_override == 21
+        && (uint64_t)r->out_rate * 2 > r->in_rate && r->num_phases >= 2;
+    const bool sampled_long_prototype = filter_len_override == 20 || long_up;
     const double window_denominator = r->beta <= 0.0 ? 1.0 : bessel_i0(r->beta);
     double window[POLYRESAMPLE_MAX_FILTER_LEN];
     if (r->filter_len > 1 && !sampled_long_prototype) {
@@ -865,12 +872,14 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
                 /* Rows are samples of one long prototype; windowing each
                  * as its own FIR would shift the even phase origin. */
                 const bool bank_147 = filter_len_override == 20;
+                const double up_phases = (double)(r->num_phases / 2);
                 const double prototype_fc = bank_147
-                    ? 0.006075233237773342 : 0.011217712407519471;
-                const double prototype_phases = bank_147 ? 147.0 : 80.0;
-                const double prototype_center = bank_147 ? 1469.0 : 839.0;
-                const double prototype_denominator = bank_147 ? 1469.75 : 839.75;
-                const double prototype_scale = bank_147 ? 147.0 : 80.0;
+                    ? 0.006075233237773342 : 0.89741699260155768 / up_phases;
+                const double prototype_phases = bank_147 ? 147.0 : up_phases;
+                const double prototype_center = bank_147 ? 1469.0
+                    : (double)r->filter_len * up_phases / 2 - 1;
+                const double prototype_denominator = prototype_center + 0.75;
+                const double prototype_scale = prototype_phases;
                 double phase_count = bank_147 ? 294.0 : (double)r->num_phases;
                 double prototype_index =
                     ((double)(r->filter_len - 1 - j) * prototype_phases)
