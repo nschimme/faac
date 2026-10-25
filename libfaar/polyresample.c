@@ -288,8 +288,9 @@ struct preset_spec {
 static const struct preset_spec preset_specs[] = {
     /* Fast preserves 90% bandwidth with 100 dB alias rejection. */
     [FAAR_QUALITY_FAST] = {0.90, 1.04, 100.0, 127, 28.0f},
-    /* Good preserves 96% bandwidth with 130 dB alias rejection. */
-    [FAAR_QUALITY_GOOD] = {0.96, 1.04, 130.0, 255, 32.0f},
+    /* Good preserves 96% bandwidth; float arithmetic limits measured rejection
+     * to about 140 dB, so a 145 dB design is the most it can use. */
+    [FAAR_QUALITY_GOOD] = {0.96, 1.04, 145.0, 255, 32.0f},
     [FAAR_QUALITY_HIGH] = {0.96, 1.04, 150.0, 511, 38.0f},
 };
 
