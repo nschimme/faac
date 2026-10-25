@@ -21,7 +21,7 @@ jobs:
 
       - name: Run fuzz harnesses
         run: |
-          meson setup build
+          meson setup build -Dencoder-ps=true
           tests/fuzz/run.sh build 120
 
       - name: Upload fuzz failures

@@ -4,7 +4,7 @@ FAAC is an open-source, dependency-free AAC encoder, with FAAD as its decoder, a
 
 ### Key features:
 
-- MPEG-4 AAC-LC and HE-AAC v1 (SBR) encoding and decoding, plus HE-AAC v2 (PS) decoding
+- MPEG-4 AAC-LC and HE-AAC v1 (SBR) encoding and decoding, plus HE-AAC v2 (PS) decoding and, with `-Dencoder-ps`, encoding
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
 - VBR, ABR and CBR rate control
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
@@ -58,6 +58,7 @@ Lesser General Public License for more details.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `encoder` | true | Build `libfaac` and the `faac` frontend |
+| `encoder-ps` | false | Enable HE-AAC v2 Parametric Stereo encoding |
 | `decoder` | true | Build `libfaad` and the `faad` frontend |
 | `frontend` | true | Build the command-line tools |
 | `frontend-static` | false | Link the frontend executables to the static libraries |

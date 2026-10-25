@@ -268,11 +268,12 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
+int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int aacObjectType, int rateLimited)
 {
-    /* ApplyConfig reaches this once, after creating the context. */
     sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
-    return sCtx->sbrInfo != NULL;
+    if (!sCtx->sbrInfo) return 0;
+    PsConfigure(sCtx->sbrInfo, IsPS(aacObjectType), bitrate, rateLimited);
+    return 1;
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
@@ -313,9 +314,11 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
          * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
          * would inflate its levels, and the QMF-overlap save below reads the last
          * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
+        if (PsIsActive(sCtx->sbrInfo)) PsPrepareCarrier(sCtx, fullPtrs);
         SbrAnalyze(sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
         SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->signalAnalysis, fd);
         /* Dual-rate decimation: produces the halved-rate core signal. */
+        if (PsIsActive(sCtx->sbrInfo)) PsCommitCarrier(sCtx, rs->fullRate[0]);
         Resample(rs, 2 * FRAME_LEN);
     }
 }
@@ -410,6 +413,15 @@ static inline void qmf_band(const SBRInfo *sbr, const float *y, int k, float *re
     *im = Si;
 }
 
+#if FAAC_ENCODER_PS
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float *ovl_pos, float *real, float *imag, int kx, int k2)
+{
+    float y[128];
+    qmf_transform(sbr, ovl_pos, y);
+    for (int k = kx; k < k2; k++) qmf_band(sbr, y, k, &real[k], &imag[k]);
+}
+#endif
+
 /* The SBR bitstream only transmits envelope magnitudes, so the energy path
  * discards phase. */
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
@@ -476,7 +488,12 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_HIST_LEN, SBR_QMF_HIST_LEN * sizeof(float));
 
     sbr_adopt_envelope_grid(sa, fd);
-    sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
+    int coreChannels = numChannels;
+    if (PsIsActive(sbr)) {
+        PsAnalyze(sbr, sa, fd);
+        coreChannels = 1;
+    }
+    sbr_quantize_envelopes(sbr, coreChannels, isLfe, sa, fd);
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
@@ -494,4 +511,3 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
  * Replays the write sequence into a counting sink during rate control to
  * ensure accurate bit budget allocation. */
-

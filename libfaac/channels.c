@@ -295,7 +295,7 @@ static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int f
 {
     if (hEncoder->config.outputFormat == 1 && bs->data) {
         int fullness = 0x7FF;
-        int channelConfig = GetChannelConfig((int)hEncoder->numChannels);
+        int channelConfig = GetChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels));
         if (hEncoder->rc.resMean)
             fullness = RateControlReservoirAfter(&hEncoder->rc, (frameBytes - ADTS_HEADER_SIZE) * 8) >> 5;
         bs->data[0] = 0xFF;

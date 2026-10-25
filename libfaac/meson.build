@@ -22,6 +22,7 @@ libfaac_src = [
     'cpu_compute.h',
     'faac.c',
     'faac_internal.h',
+    'ps.h',
     'filtbank.c',
     'filtbank.h',
     'frame.c',
@@ -39,6 +40,7 @@ libfaac_src = [
     'sbr_internal.h',
     'sbr_bitstream.c',
     'sbr_huff_tables.c',
+    'sbr_huff_tables.h',
     'sbr_analysis.c',
     'sbr_analysis.h',
     'resample.c',
@@ -50,6 +52,10 @@ libfaac_src = [
     'util.c',
     'util.h',
 ]
+
+if encoder_ps
+    libfaac_src += ['ps.c', 'ps_huff_tables.c', 'ps_huff_tables.h']
+endif
 
 libfaac = disabler()
 

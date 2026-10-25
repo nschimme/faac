@@ -19,6 +19,7 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
+#include "ps.h"
 
 /* A written frame's last envelope and the layout it was coded in: the
  * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
@@ -57,14 +58,34 @@ typedef struct SbrFrameData {
     uint8_t tEnv[SBR_MAX_ENVELOPES + 1];
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
+#if FAAC_ENCODER_PS
+    int8_t iid[PS_BANDS];
+    int8_t icc[PS_BANDS];
+    uint8_t enable_icc;
+    int8_t ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
+    uint8_t enable_phase;
+    uint8_t ps_num_env;
+    uint8_t ps_band_mode;
+    /* Second envelope; the first lives in the arrays above. */
+    struct {
+        int8_t iid[PS_BANDS], icc[PS_BANDS];
+        int8_t ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
+    } ps_env2;
+#endif
     SbrEnvData ch[];
 } SbrFrameData;
 
 struct SBRInfo {
     /* Frame scratch lives with the encoder handle, not on the caller's thread
-     * stack. */
-    float workspace[1][SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
-    /* Coupled rendition of the pair being written: level, then balance. */
+     * stack; PS needs a second slot for the right channel. */
+    float workspace[FAAC_ENCODER_PS ? 2 : 1][SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
+#if FAAC_ENCODER_PS
+    int is_he_v2;
+    PsHybrid psHybrid;
+    PsRef psRef[2];
+    int psNumEnv;
+#endif
+    /* Coupled rendition of a conventional stereo SBR pair: level, then balance. */
     SbrEnvData cpl[2];
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
     int numChannels;
@@ -115,6 +136,10 @@ struct SBRContext {
        the payload the current access unit emits. */
     SbrFrameData *frameFIFO[SBR_FRAME_FIFO];
     int          frameHead;
+#if FAAC_ENCODER_PS
+    PsCarrier psCarrier;
+    float psSpectralCarrier[2 * FRAME_LEN];
+#endif
     /* Channel-sized payload slots share the context allocation. */
     unsigned char frameData[];
 };
@@ -126,6 +151,20 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 int build_freq_table(SBRInfo *sbr);
 void SbrEnd(SBRInfo *sbr);
 
+/* A compile-time false result removes all PS branches in disabled builds. */
+static inline bool PsIsActive(const SBRInfo *sbr)
+{
+#if FAAC_ENCODER_PS
+    return sbr->is_he_v2 != 0;
+#else
+    (void)sbr;
+    return false;
+#endif
+}
+
+#if FAAC_ENCODER_PS
+void SbrQmfAnalysisComplex(SBRInfo *, const float *, float *, float *, int, int);
+#endif
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
