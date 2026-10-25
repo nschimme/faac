@@ -383,24 +383,24 @@ static const struct {
 
 static const struct short_route_entry {
     uint32_t in, out;
-    uint8_t route, expansion, bank, high_bank, design;
+    uint8_t route, expansion, bank, design;
 } short_routes[] = {
-    {48000, 44100, REFERENCE, 2, 20, 0, FIXED_REFERENCE},
-    {96000, 44100, REFERENCE, 1, 20, 0, FIXED_REFERENCE},
-    {192000, 44100, REFERENCE, 1, 20, 0, SPEC_HIGH_192_44},
-    {192000, 48000, QUARTER, 1, 1, 0, FIXED_QUARTER},
-    {44100, 32000, DOWN32, 2, 21, 0, SPEC},
-    {48000, 32000, DOWN32, 2, 1, 0, SPEC_HIGH_48_32},
-    {44100, 48000, UP, 2, 21, 0, FIXED_UP},
-    {44100, 88200, UP, 2, 1, 0, FIXED_UP},
-    {48000, 96000, UP, 2, 1, 0, FIXED_UP_48_96},
-    {96000, 192000, UP, 2, 1, 0, FIXED_UP_48_96},
-    {44100, 96000, UP, 2, 41, 21, FIXED_UP},
-    {48000, 88200, UP, 2, 41, 21, FIXED_UP_48_96},
+    {48000, 44100, REFERENCE, 2, 20, FIXED_REFERENCE},
+    {96000, 44100, REFERENCE, 1, 20, FIXED_REFERENCE},
+    {192000, 44100, REFERENCE, 1, 20, SPEC_HIGH_192_44},
+    {192000, 48000, QUARTER, 1, 1, FIXED_QUARTER},
+    {44100, 32000, DOWN32, 2, 21, SPEC},
+    {48000, 32000, DOWN32, 2, 1, SPEC_HIGH_48_32},
+    {44100, 48000, UP, 2, 21, FIXED_UP},
+    {44100, 88200, UP, 2, 1, FIXED_UP},
+    {48000, 96000, UP, 2, 1, FIXED_UP_48_96},
+    {96000, 192000, UP, 2, 1, FIXED_UP_48_96},
+    {44100, 96000, UP, 2, 41, FIXED_UP},
+    {48000, 88200, UP, 2, 41, FIXED_UP_48_96},
     /* Wider support suppresses phase modulation near input Nyquist. */
-    {32000, 44100, UP, 2, 41, 0, SPEC},
-    {32000, 48000, UP, 2, 41, 0, SPEC},
-    {88200, 96000, UP, 2, 41, 21, FIXED_UP},
+    {32000, 44100, UP, 2, 41, SPEC},
+    {32000, 48000, UP, 2, 41, SPEC},
+    {88200, 96000, UP, 2, 41, FIXED_UP},
 };
 
 static const struct short_route_entry *short_dedicated_route(uint32_t in,
@@ -442,8 +442,7 @@ static struct short_plan short_plan(uint32_t in, uint32_t out,
         route = entry->route;
         design = entry->design;
         p.expansion = entry->expansion;
-        p.bank = quality == FAAR_QUALITY_HIGH && entry->high_bank
-            ? entry->high_bank : entry->bank;
+        p.bank = entry->bank;
     }
     switch (route) {
     case HALF:
