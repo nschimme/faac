@@ -205,7 +205,22 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     int bands = fd->ps_band_mode ? PS_BANDS : PS_LOW_BANDS;
     int phases = fd->ps_band_mode ? PS_PHASE_BANDS : PS_LOW_PHASE_BANDS;
     /* Save low-rate core bits with one envelope and ten parameter bands. */
-    fd->ps_num_env = sbr->psNumEnv;
+    /* Transient spatial shift detection: allocate 2 envelopes on panning transients */
+    if (sbr->psNumEnv == 1) {
+        float eL0 = 0, eR0 = 0, eL1 = 0, eR1 = 0;
+        for (int k = 0; k < PS_BANDS; k++) {
+            eL0 += sa->psE[0][0][k] + sa->psE[0][1][k];
+            eR0 += sa->psE[1][0][k] + sa->psE[1][1][k];
+            eL1 += sa->psE[0][2][k] + sa->psE[0][3][k];
+            eR1 += sa->psE[1][2][k] + sa->psE[1][3][k];
+        }
+        float r0 = (eL0 + 1e-5f) / (eR0 + 1e-5f);
+        float r1 = (eL1 + 1e-5f) / (eR1 + 1e-5f);
+        float shift = fabsf(log2f(r0 / r1));
+        fd->ps_num_env = (shift > 1.0f) ? 2 : 1;
+    } else {
+        fd->ps_num_env = sbr->psNumEnv;
+    }
     float energy[2][64], crossReal[64], crossImag[64];
     PsFrameParams params = {0};
     fd->enable_icc = fd->enable_phase = 0;
