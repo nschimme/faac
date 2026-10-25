@@ -21,7 +21,7 @@ faar_quality_groups = [
   'boundary', 'lengths', 'impulses', 'passband',
   '48k_96k_wideband', '48k_32k_wideband', 'empty', 'dither',
 ]
-faar_quality_groups += ['staged_short_symmetry', 'alias', 'high_stopband']
+faar_quality_groups += ['staged_short_symmetry', 'alias', 'high_stopband', 'high_up_residual']
 foreach group : faar_quality_groups
   test('test_faar_quality_' + group, test_faar_quality, args: [group])
 endforeach

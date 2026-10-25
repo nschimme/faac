@@ -669,6 +669,44 @@ static int test_high_stopband(void) {
     return 0;
 }
 
+static int test_high_up_residual(void) {
+    static const uint32_t rates[][2] = {{44100, 96000}, {48000, 88200}, {88200, 96000}};
+    const double peak = 0.6309573444801932;
+    for (size_t r = 0; r < sizeof(rates) / sizeof(rates[0]); ++r) {
+        const uint32_t ir = rates[r][0], orate = rates[r][1];
+        const size_t n = 2 * (size_t)ir;
+        const double frequency = 0.48 * ir;
+        float *in = malloc(n * sizeof(*in));
+        if (!in) return fail("High up residual input allocation failed");
+        for (size_t i = 0; i < n; ++i)
+            in[i] = (float)(32768.0 * peak * sin(2.0 * PI * frequency * i / ir));
+        samples out;
+        int rc = convert(in, n, ir, orate, 1, 4096, 8192, &out);
+        free(in);
+        if (rc) return rc;
+        size_t guard = orate / 4, end = out.frames - guard;
+        double ss = 0, cc = 0, sc = 0, sy = 0, cy = 0, yy = 0;
+        for (size_t i = guard; i < end; ++i) {
+            double s = sin(2.0 * PI * frequency * i / orate);
+            double c = cos(2.0 * PI * frequency * i / orate);
+            double y = out.data[i] / 32768.0;
+            ss += s * s; cc += c * c; sc += s * c;
+            sy += s * y; cy += c * y; yy += y * y;
+        }
+        free(out.data);
+        double det = ss * cc - sc * sc;
+        double a = (sy * cc - cy * sc) / det, b = (cy * ss - sy * sc) / det;
+        double fit = a * a * ss + 2 * a * b * sc + b * b * cc;
+        double residual = (yy - fit) / (end - guard);
+        double db = 10 * log10((residual > 1e-30 ? residual : 1e-30)
+                               / (peak * peak / 2.0));
+        printf("High up residual %u->%u %.1f dB\n", ir, orate, db);
+        if (!isfinite(db) || db > -110.0)
+            return fail("High up residual above -110 dB");
+    }
+    return 0;
+}
+
 static int test_empty_flush(void) {
     faar_test_handle * h = faar_test_create(48000, 44100, 1, TEST_QUALITY);
     float out[8];
@@ -692,6 +730,7 @@ int main(int argc, char **argv) {
         {"48k_32k_wideband", test_48k_32k_wideband},
         {"alias", test_alias_energy},
         {"high_stopband", test_high_stopband},
+        {"high_up_residual", test_high_up_residual},
         {"empty", test_empty_flush}, {"dither", test_dither_streams}
     };
     return faar_run_groups(argc, argv, groups, sizeof(groups) / sizeof(groups[0]));
