@@ -192,6 +192,7 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
     faar_pcm_format_t fmt = options->format;
     size_t out_bytes_per_sample = fmt == FAAR_PCM_F32LE ? 4 :
                                   fmt == FAAR_PCM_S24LE ? 3 : 2;
+    const size_t chunk_frames = 2048;
     faar_config config;
     faar_config_init(&config, sizeof(config));
     config.in_rate = in_rate;
@@ -200,6 +201,7 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
     config.quality = options->quality;
     config.boundary = options->boundary;
     config.decimate_factor = options->decimate_factor;
+    config.max_input_frames = (uint32_t)chunk_frames;
     if (options->dither != FAAR_DITHER_OFF &&
         (fmt == FAAR_PCM_S16LE || fmt == FAAR_PCM_S24LE)) {
         config.dither = options->dither;
@@ -218,7 +220,6 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
     float *float_out_buf = NULL;
     uint8_t *raw_out_buf = NULL;
     uint64_t total_out_data_bytes = 0;
-    size_t chunk_frames = 2048;
     size_t out_cap = chunk_frames * 4;
     uint64_t input_frames_total = 0;
     uint64_t known_total_frames = infile->bounded_data && infile->samples > 0
@@ -289,13 +290,13 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
     for (;;) {
         size_t flushed = 0;
         api_status = faar_resampler_finish(r, float_out_buf, out_cap, &flushed);
-        if (api_status != FAAR_OK) { fprintf(stderr, "Error: Resampler flush failed: %s\n", faar_strerror(api_status)); goto cleanup; }
+        if (api_status != FAAR_OK) { fprintf(stderr, "Error: Resampler finish failed: %s\n", faar_strerror(api_status)); goto cleanup; }
         if (flushed == 0)
             break;
         if (write_output_frames(fout, float_out_buf, raw_out_buf, flushed,
                                 channels, fmt, out_bytes_per_sample,
                                 &total_out_data_bytes) != 0) {
-            fprintf(stderr, "Error: Couldn't write flushed audio to output\n");
+            fprintf(stderr, "Error: Couldn't write final audio to output\n");
             goto cleanup;
         }
     }
