@@ -40,7 +40,7 @@ class Library:
             "faar_resampler_open": [ct.POINTER(Config), ct.POINTER(ct.c_void_p)],
             "faar_resampler_process": [ct.c_void_p, FLOAT_PTR, ct.c_size_t,
                                        FLOAT_PTR, ct.c_size_t, ct.POINTER(ct.c_size_t)],
-            "faar_resampler_finish": [ct.c_void_p, FLOAT_PTR, ct.c_size_t,
+            "faar_resampler_finalize": [ct.c_void_p, FLOAT_PTR, ct.c_size_t,
                                      ct.POINTER(ct.c_size_t)],
             "faar_resampler_close": [ct.POINTER(ct.c_void_p)],
         }
@@ -105,7 +105,7 @@ class Library:
                             break
             # Bound the loop so broken flush behavior fails instead of hanging.
             for _ in range(expected + 2):
-                self.check(self.lib.faar_resampler_finish(
+                self.check(self.lib.faar_resampler_finalize(
                     handle, ptr, 16384, ct.byref(made)))
                 save()
                 if not made.value:

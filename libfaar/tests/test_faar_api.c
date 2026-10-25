@@ -134,7 +134,7 @@ int main(void) {
     size_t total = produced;
     size_t flushed = 0;
     do {
-        assert(faar_resampler_finish(resampler, output + total,
+        assert(faar_resampler_finalize(resampler, output + total,
                                     512 - total, &flushed) == FAAR_OK);
         total += flushed;
     } while (flushed != 0);

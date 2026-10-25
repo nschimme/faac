@@ -25,7 +25,7 @@
  *   - Configuration is supplied once, up front, to faar_resampler_open(), so a
  *     resampler never exists half-configured. The required lifecycle is
  *     faar_config_init() -> faar_resampler_open() -> faar_resampler_process()
- *     -> faar_resampler_finish() -> faar_resampler_close().
+ *     -> faar_resampler_finalize() -> faar_resampler_close().
  *   - Two optional refinements need no extra calls: faar_config.max_input_frames
  *     reserves all streaming storage in open() for allocation-free processing,
  *     and a faar_design (faar_design_open()) shares one filter design among
@@ -165,7 +165,7 @@ typedef struct faar_config {
     uint32_t       decimate_factor;   /* 0 plans automatically; 2 or more requests an explicit cascade */
     uint32_t       max_input_frames;  /* 0 grows storage on demand. Nonzero bounds the frames per
                                        * process call and reserves all streaming storage in
-                                       * open(): process and finish then never allocate or free
+                                       * open(): process and finalize then never allocate or free
                                        * heap storage. A larger chunk is rejected with
                                        * FAAR_ERR_INVALID_ARGUMENT before consuming input.
                                        * Drain with NULL/0 input and nonzero output capacity
@@ -246,7 +246,7 @@ FAARAPI faar_status faar_resampler_open(const faar_config *config, faar_resample
  * close its design reference before closing streams. A design may be used
  * concurrently to open streams; do not close the same caller reference while
  * another thread is using it. On toolchains without atomics, serialize design
- * and associated stream open/close operations. Process/finish on independent
+ * and associated stream open/close operations. Process/finalize on independent
  * streams remain concurrent. Ordinary open() needs no design. */
 FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **out);
 /* Releases the caller's reference and sets *design to NULL; a NULL *design is a no-op. */
@@ -270,7 +270,7 @@ FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
  * and is zeroed on error. With in_samples == NULL and in_count == 0 it only
  * drains queued output; call that with nonzero capacity until it makes zero
  * frames before supplying more input when the output buffer is smaller than the
- * result. Input after faar_resampler_finish() is rejected with
+ * result. Input after faar_resampler_finalize() is rejected with
  * FAAR_ERR_INVALID_ARGUMENT. */
 FAARAPI faar_status faar_resampler_process(faar_resampler *resampler,
         const float *in_samples, size_t in_count, float *out_samples,
@@ -279,7 +279,7 @@ FAARAPI faar_status faar_resampler_process(faar_resampler *resampler,
 /* End of stream: write the remaining filter tail. Call until *out_count is zero.
  * The total over a stream is ceil(input_frames * out_rate / in_rate). Unlike
  * libfaad's faad_decoder_flush() this does not discard history. */
-FAARAPI faar_status faar_resampler_finish(faar_resampler *resampler,
+FAARAPI faar_status faar_resampler_finalize(faar_resampler *resampler,
         float *out_samples, size_t max_out_count, size_t *out_count);
 
 #ifdef __cplusplus

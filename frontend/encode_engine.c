@@ -871,7 +871,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 if (input_eof)
                 {
                     size_t flushed = 0;
-                    resample_status = faar_resampler_finish(resampler,
+                    resample_status = faar_resampler_finalize(resampler,
                             resample_out_buf + resample_out_produced * num_channels,
                             (enc_samples_needed / num_channels) - resample_out_produced, &flushed);
                     if (resample_status != FAAR_OK) FAIL("Resampler flush failed: %s\n", faar_strerror(resample_status));

@@ -72,7 +72,7 @@ static inline size_t faar_test_process(faar_test_handle *h, const float *in,
 static inline size_t faar_test_flush(faar_test_handle *h, float *out, size_t cap) {
     size_t made = 0;
     if (!h) return 0;
-    faar_status st = faar_resampler_finish(h->resampler, out, cap, &made);
+    faar_status st = faar_resampler_finalize(h->resampler, out, cap, &made);
     if (st != FAAR_OK) return 0;
     h->started = 1;
     return made;

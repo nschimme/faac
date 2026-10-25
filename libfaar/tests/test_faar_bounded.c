@@ -92,7 +92,7 @@ static int stream_all(faar_resampler *r, const test_case *tc, size_t bound,
     }
     for (size_t guard = 0; guard < 100000; ++guard) {
         size_t made = 0;
-        if (faar_resampler_finish(r, out, tc->output_cap, &made) != FAAR_OK ||
+        if (faar_resampler_finalize(r, out, tc->output_cap, &made) != FAAR_OK ||
             made > tc->output_cap || !append(pcm, out, made, tc->channels)) return 0;
         if (!made) return 1;
     }

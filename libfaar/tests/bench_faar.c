@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
             } while (made);
         }
         size_t made;
-        do { check(faar_resampler_finish(r, out, cap, &made)); produced += made; } while (made);
+        do { check(faar_resampler_finalize(r, out, cap, &made)); produced += made; } while (made);
         elapsed += now() - t;
         if (produced != ((uint64_t)frames * c.out_rate + c.in_rate - 1) / c.in_rate) return 1;
         total += frames;

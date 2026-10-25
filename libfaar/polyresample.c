@@ -1885,7 +1885,7 @@ FAARAPI faar_status faar_resampler_process(faar_resampler *resampler,
     return status;
 }
 
-FAARAPI faar_status faar_resampler_finish(faar_resampler *resampler,
+FAARAPI faar_status faar_resampler_finalize(faar_resampler *resampler,
         float *out_samples, size_t max_out_count, size_t *out_count) {
     if (!out_count) return FAAR_ERR_INVALID_ARGUMENT;
     *out_count = 0;

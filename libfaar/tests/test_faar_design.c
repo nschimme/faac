@@ -85,7 +85,7 @@ static int stream(faar_resampler *r, unsigned ch, size_t seed, float *dst,
   }
   for (size_t guard = 0; guard < 10000; guard++) {
     size_t made = 0;
-    if (faar_resampler_finish(r, out, OUT, &made) != FAAR_OK || made > OUT ||
+    if (faar_resampler_finalize(r, out, OUT, &made) != FAAR_OK || made > OUT ||
         made > MAX_FRAMES - got)
       return 0;
     memcpy(dst + got * ch, out, made * ch * sizeof(float));

@@ -6,7 +6,7 @@ EXPORTS
     faar_resampler_close
     faar_resampler_get_info
     faar_resampler_process
-    faar_resampler_finish
+    faar_resampler_finalize
     faar_design_open
     faar_design_close
     faar_resampler_open_from_design

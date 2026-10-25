@@ -289,8 +289,8 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
 
     for (;;) {
         size_t flushed = 0;
-        api_status = faar_resampler_finish(r, float_out_buf, out_cap, &flushed);
-        if (api_status != FAAR_OK) { fprintf(stderr, "Error: Resampler finish failed: %s\n", faar_strerror(api_status)); goto cleanup; }
+        api_status = faar_resampler_finalize(r, float_out_buf, out_cap, &flushed);
+        if (api_status != FAAR_OK) { fprintf(stderr, "Error: Resampler finalize failed: %s\n", faar_strerror(api_status)); goto cleanup; }
         if (flushed == 0)
             break;
         if (write_output_frames(fout, float_out_buf, raw_out_buf, flushed,

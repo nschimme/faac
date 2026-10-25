@@ -89,7 +89,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     }
     for (unsigned guard = 0; guard < 64; ++guard) {
         size_t produced = 0;
-        if (faar_resampler_finish(handle, output, MAX_OUTPUT_FRAMES,
+        if (faar_resampler_finalize(handle, output, MAX_OUTPUT_FRAMES,
                 &produced) != FAAR_OK || produced == 0) break;
     }
     faar_resampler_close(&handle);

@@ -111,7 +111,7 @@ static int timed_flush(faar_resampler *resampler,
         perror("clock_gettime");
         return 0;
     }
-    status = faar_resampler_finish(resampler, output, output_capacity, &made);
+    status = faar_resampler_finalize(resampler, output, output_capacity, &made);
     elapsed = now() - start;
     if (elapsed < 0.0) {
         perror("clock_gettime");

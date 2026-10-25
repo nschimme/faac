@@ -151,7 +151,7 @@ owns all buffers and the handle.
 4. Call `faar_resampler_process()` for each chunk of input. Drain queued output
    with `in_samples == NULL` and `in_count == 0` whenever the output buffer
    was smaller than the result.
-5. At end of input, call `faar_resampler_finish()` until it returns `FAAR_OK`
+5. At end of input, call `faar_resampler_finalize()` until it returns `FAAR_OK`
    with zero frames. It emits the filter tail; it does not discard history.
 6. Call `faar_resampler_close(&resampler)`. It frees the handle and sets the
    pointer to `NULL`.
@@ -177,7 +177,7 @@ a static, human-readable string and never returns NULL.
 | `FAAR_ERR_PROCESSING` | Resampling failed. Discard and close that handle. |
 
 Open functions set their output pointer to `NULL` before anything else, so it is
-always safe to pass to `faar_resampler_close()`. Process and finish set the
+always safe to pass to `faar_resampler_close()`. Process and finalize set the
 output frame count to zero when they return an error.
 
 ### Function reference
@@ -200,7 +200,7 @@ faar_status faar_resampler_get_info(const faar_resampler *resampler,
 faar_status faar_resampler_process(faar_resampler *resampler,
         const float *in_samples, size_t in_count, float *out_samples,
         size_t max_out_count, size_t *out_count);
-faar_status faar_resampler_finish(faar_resampler *resampler,
+faar_status faar_resampler_finalize(faar_resampler *resampler,
         float *out_samples, size_t max_out_count, size_t *out_count);
 
 /* Optional: share a filter design among identical streams. */
@@ -258,7 +258,7 @@ int main(void) {
     }
     while (status == FAAR_OK && written < 4800) {
         size_t made = 0;
-        status = faar_resampler_finish(resampler, output + written * 2,
+        status = faar_resampler_finalize(resampler, output + written * 2,
                 4800 - written, &made);
         written += made;
         if (made == 0) break;
@@ -273,7 +273,7 @@ int main(void) {
 The example reserves enough output space for the complete result. For
 streaming with smaller output buffers, retain and drain queued output by calling
 `faar_resampler_process()` with `in_samples == NULL` and `in_count == 0` before
-supplying more input. At end of input, call `faar_resampler_finish()` until it
+supplying more input. At end of input, call `faar_resampler_finalize()` until it
 returns `FAAR_OK` with zero frames. The total output is
 `ceil(input_frames * out_rate / in_rate)`.
 
@@ -295,9 +295,9 @@ Zero, the default, grows storage on demand. A nonzero bound reserves all
 streaming storage inside `faar_resampler_open()`. Every input chunk must then
 be at most the bound. Drain with `faar_resampler_process()` using
 `in_samples == NULL`, `in_count == 0`, and nonzero output capacity until it
-produces zero frames before supplying the next chunk; finish with
-`faar_resampler_finish()` until it produces zero frames at end of stream.
-Process, drain, and finish calls do not allocate or free heap storage.
+produces zero frames before supplying the next chunk; finalize with
+`faar_resampler_finalize()` until it produces zero frames at end of stream.
+Process, drain, and finalize calls do not allocate or free heap storage.
 Exceeding the bound returns `FAAR_ERR_INVALID_ARGUMENT` before consuming input.
 If queued output is not drained and its reserved capacity is exhausted,
 processing may return `FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`;
@@ -334,7 +334,7 @@ if (status != FAAR_OK) {
     faar_resampler_close(&right);
     return status;
 }
-/* Process/finish each stream, then close both handles. */
+/* Process/finalize each stream, then close both handles. */
 faar_resampler_close(&left);
 faar_resampler_close(&right);
 ```
@@ -378,7 +378,7 @@ A fixed-pool override can avoid the system heap, with the same
 resampler is opened. Process calls on a resampler opened with
 `max_input_frames == 0` may still grow a buffer, so set a bound if the pool must
 not allocate during streaming, and reserve space for freed blocks because a bump
-allocator cannot reuse them. Bounded process and finish calls allocate nothing.
+allocator cannot reuse them. Bounded process and finalize calls allocate nothing.
 
 ## ABI compatibility
 
