@@ -35,7 +35,7 @@ static inline int env_border(const SignalAnalysis *sa, int e, int num_slots)
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
-    float workspace[SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
+    float *workspace = sbr->workspace[0];
 
     float frameStrength = 0.0f;
 

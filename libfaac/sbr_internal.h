@@ -61,6 +61,9 @@ typedef struct SbrFrameData {
 } SbrFrameData;
 
 struct SBRInfo {
+    /* Frame scratch lives with the encoder handle, not on the caller's thread
+     * stack. */
+    float workspace[1][SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
     /* Coupled rendition of the pair being written: level, then balance. */
     SbrEnvData cpl[2];
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */

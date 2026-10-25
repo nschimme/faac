@@ -358,16 +358,14 @@ static inline float fast_log2(float x)
     return (float)(exp - 127) + (float)(m * (FAST_LOG2_A - FAST_LOG2_B * m));
 }
 
-/* 64-band subband energy analysis using a 64-point complex FFT.
+/* 64-band subband analysis using a 64-point complex FFT.
  * Leverages conjugate symmetry to extract two 64-point real-subsequence
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
- * a standard 128-point implementation. Phase info is discarded as the
- * SBR bitstream only transmits envelope magnitudes. */
-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+ * a standard 128-point implementation. y receives the FFT spectrum. */
+static inline void qmf_transform(const SBRInfo *sbr, const float *ovl_pos, float *y)
 {
-    float x[128], y[128];
+    float x[128];
     float * restrict xr = x, * restrict xi = x + 64;
-    const float * restrict yr = y, * restrict yi = y + 64;
     /* The filter is symmetric except at offsets 128/512 and 256/384.
      * Compute the contiguous polyphase outputs before the complex rotation,
      * using the FFT output buffer as workspace. */
@@ -390,23 +388,40 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
     }
     fft(x, y, FFT_LOGM_SHORT);
+}
+
+/* Band k of the complex QMF output. */
+static inline void qmf_band(const SBRInfo *sbr, const float *y, int k, float *re, float *im)
+{
+    const float * restrict yr = y, * restrict yi = y + 64;
+    int kr = 63 - k;
+    /* Separate the two real-subsequence DFTs by conjugate symmetry. */
+    float Ar = 0.5f * (yr[k] + yr[kr]);
+    float Ai = 0.5f * (yi[kr] - yi[k]);
+    float Br = -0.5f * (yi[k] + yi[kr]);
+    float Bi = 0.5f * (yr[kr] - yr[k]);
+    /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
+     * Si = Ai + w_k_real * Bi + w_k_imag * Br */
+    float wr = sbr->oddCos[k];
+    float wi = sbr->oddSin[k];
+    float Sr = Ar + wr * Br - wi * Bi;
+    float Si = Ai + wr * Bi + wi * Br;
+    *re = Sr;
+    *im = Si;
+}
+
+/* The SBR bitstream only transmits envelope magnitudes, so the energy path
+ * discards phase. */
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+{
+    float y[128];
+    qmf_transform(sbr, ovl_pos, y);
     for (int k = kx; k < k2; k++) {
-        int kr = 63 - k;
-        /* Separate the two real-subsequence DFTs by conjugate symmetry. */
-        float Ar = 0.5f * (yr[k] + yr[kr]);
-        float Ai = 0.5f * (yi[kr] - yi[k]);
-        float Br = -0.5f * (yi[k] + yi[kr]);
-        float Bi = 0.5f * (yr[kr] - yr[k]);
-        /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
-         * Si = Ai + w_k_real * Bi + w_k_imag * Br */
-        float wr = sbr->oddCos[k];
-        float wi = sbr->oddSin[k];
-        float Sr = Ar + wr * Br - wi * Bi;
-        float Si = Ai + wr * Bi + wi * Br;
+        float Sr, Si;
+        qmf_band(sbr, y, k, &Sr, &Si);
         energy[k] += Sr * Sr + Si * Si;
     }
 }
-
 
 static void sbr_adopt_envelope_grid(const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
