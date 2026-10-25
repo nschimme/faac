@@ -210,6 +210,9 @@ and other quality tests remain the absolute quality gate.
 See [the measured history-buffering results](optimization-results.md) for the
 2026-10-24 baseline comparison and its limits.
 
+See [the FFT-size selection experiment](fft-size-results.md) for the 3×/4×/5×
+geometry tradeoffs, quality results, and retained sizing decision.
+
 See [the static FFT-table measurements](static-tables-results.md) for repeated
 open and throughput comparisons of the lazy shared tables.
 
