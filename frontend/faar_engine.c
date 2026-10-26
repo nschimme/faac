@@ -183,7 +183,7 @@ struct faar_design_cache {
     size_t count;
     struct {
         uint32_t in_rate;
-        uint16_t channels;
+        uint32_t channels;
         faar_design *design;
     } entry[DESIGN_CACHE_MAX];
 };
@@ -243,10 +243,10 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
     config.boundary = options->boundary;
     config.decimate_factor = options->decimate_factor;
     config.max_input_frames = (uint32_t)chunk_frames;
-    if (options->dither != FAAR_DITHER_OFF &&
+    if (options->dither &&
         (fmt == FAAR_PCM_S16LE || fmt == FAAR_PCM_S24LE)) {
-        config.dither = options->dither;
-        config.dither_bits = fmt == FAAR_PCM_S16LE ? 16 : 24;
+        config.flags = options->dither |
+            (fmt == FAAR_PCM_S16LE ? FAAR_DITHER_16 : FAAR_DITHER_24);
     }
     faar_resampler *r = NULL;
     faar_status api_status = open_stream(options->designs, &config, &r);

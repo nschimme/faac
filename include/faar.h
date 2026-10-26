@@ -42,14 +42,14 @@
  *     appended at or after the previous sizeof(struct); compiler padding is
  *     never reused. Absent input fields take their zero value, so zero keeps
  *     the previous behavior. Explicit reserved fields must be zero on input
- *     (faar_resampler_open() rejects anything else) and are zero on output
- *     until assigned a future meaning. They may be reused with their storage and
- *     offsets preserved and zero retaining the previous behavior. Callers must
- *     check library support (the struct_size written back by the library)
- *     before requesting new behavior. Baseline sizes, enum values, signatures
+ *     and are zero on output until assigned a future meaning. They may be reused
+ *     with their storage and offsets preserved and zero retaining the previous
+ *     behavior. Callers must check library support (the struct_size written
+ *     back by the library) before requesting new behavior. Baseline sizes, enum values, signatures
  *     and offsets of released fields stay fixed within a major version.
  *   - FAAR_VERSION_MAJOR tracks the libfaar SONAME, not the project release.
- *     size_t and pointer types follow the platform ABI.
+ *     Structs hold fixed-width integers only; size_t appears in signatures and
+ *     follows the platform ABI.
  *   - Independent handles may be used concurrently; one handle is owned by one
  *     thread at a time.
  *
@@ -111,13 +111,16 @@ typedef enum faar_quality {
     FAAR_QUALITY_MAX  = 0x7fffffff
 } faar_quality;
 
-/* Dither modes for later bit-depth truncation; FAAR itself outputs float. */
-typedef enum faar_dither {
-    FAAR_DITHER_OFF    = 0, /* no dithering (direct truncation / rounding)                 */
-    FAAR_DITHER_TPDF   = 1, /* triangular probability density function dither              */
-    FAAR_DITHER_SHAPED = 2, /* TPDF dither with high-pass noise shaping error feedback     */
-    FAAR_DITHER_MAX    = 0x7fffffff
-} faar_dither;
+/* faar_config.flags: dither for a later bit-depth truncation; FAAR itself outputs
+ * float. Zero is no dither. Choose exactly one mode and exactly one depth, or none
+ * of the four; anything else, including unknown bits, is FAAR_ERR_INVALID_ARGUMENT. */
+enum faar_flag {
+    FAAR_DITHER_TPDF   = 0x1, /* triangular probability density function dither            */
+    FAAR_DITHER_SHAPED = 0x2, /* TPDF dither with high-pass noise shaping error feedback   */
+    FAAR_DITHER_16     = 0x4, /* target depth: 16-bit integer output                       */
+    FAAR_DITHER_24     = 0x8, /* target depth: 24-bit integer output                       */
+    FAAR_FLAG_MAX      = 0x7fffffff
+};
 
 /* Samples assumed outside an independently supplied stream. */
 typedef enum faar_boundary {
@@ -140,9 +143,13 @@ typedef enum faar_status {
     FAAR_STATUS_MAX           = 0x7fffffff
 } faar_status;
 
-#define FAAR_QUALITY_MASK_FAST (1u << FAAR_QUALITY_FAST)
-#define FAAR_QUALITY_MASK_GOOD (1u << FAAR_QUALITY_GOOD)
-#define FAAR_QUALITY_MASK_HIGH (1u << FAAR_QUALITY_HIGH)
+/* faar_library_info.features */
+enum faar_feature {
+    FAAR_FEATURE_QUALITY_FAST = 0x1, /* FAAR_QUALITY_FAST is compiled in */
+    FAAR_FEATURE_QUALITY_GOOD = 0x2, /* FAAR_QUALITY_GOOD is compiled in */
+    FAAR_FEATURE_QUALITY_HIGH = 0x4, /* FAAR_QUALITY_HIGH is compiled in */
+    FAAR_FEATURE_MAX          = 0x7fffffff
+};
 
 /*
  * Resampler configuration, supplied once at open.
@@ -155,13 +162,10 @@ typedef struct faar_config {
 
     uint32_t       in_rate;           /* input sample rate in Hz (required)                */
     uint32_t       out_rate;          /* output sample rate in Hz (required)               */
-    uint16_t       channels;          /* interleaved channels, 1..faar_library_info.max_channels */
-    uint16_t       reserved;          /* reserved for future use; must be zero             */
+    uint32_t       channels;          /* interleaved channels, 1..faar_library_info.max_channels */
     faar_quality   quality;           /* filter preset; default GOOD                       */
     faar_boundary  boundary;          /* edge extension; default HOLD                      */
-    faar_dither    dither;            /* default OFF                                       */
-    uint8_t        dither_bits;       /* 16 or 24 when dither is not OFF; ignored otherwise */
-    uint8_t        reserved1[3];      /* reserved for future use; must be zero             */
+    uint32_t       flags;             /* FAAR_DITHER_* bits; default 0 (no dither)         */
     uint32_t       decimate_factor;   /* 0 plans automatically; 2 or more requests an explicit cascade */
     uint32_t       max_input_frames;  /* 0 grows storage on demand. Nonzero bounds the frames per
                                        * process call and reserves all streaming storage in
@@ -184,37 +188,32 @@ typedef struct faar_library_info {
     uint32_t       struct_size;       /* set by caller to sizeof(faar_library_info)        */
 
     uint32_t       max_channels;      /* highest channel count this build resamples        */
-    uint32_t       quality_mask;      /* FAAR_QUALITY_MASK_* bits of the compiled presets  */
+    uint32_t       features;          /* FAAR_FEATURE_* bits of this build                 */
     uint32_t       reserved0;         /* reserved for future use; currently zero           */
     const char    *version;           /* library version string   (library-owned)          */
     const char    *copyright;         /* library copyright string (library-owned)          */
 } faar_library_info;
 
 /*
- * Settings resolved for one open resampler. Set struct_size to
+ * Decisions the library made for one open resampler; what the caller configured
+ * (rates, channels, quality, boundary, flags) is not repeated. Set struct_size to
  * sizeof(faar_resampler_info) before faar_resampler_get_info(); it is updated
  * to the bytes populated.
  */
 typedef struct faar_resampler_info {
     uint32_t       struct_size;       /* set by caller to sizeof(faar_resampler_info)      */
 
-    uint32_t       in_rate;           /* input sample rate in Hz                           */
-    uint32_t       out_rate;          /* output sample rate in Hz                          */
-    uint32_t       channels;          /* interleaved channels                              */
-    faar_quality   quality;           /* resolved preset                                   */
-    faar_boundary  boundary;          /* resolved edge extension                           */
-    faar_dither    dither;            /* resolved dither mode                              */
-    uint8_t        dither_bits;       /* 16 or 24 when dither is not OFF; else zero        */
-    uint8_t        reserved[3];       /* reserved for future use; currently zero           */
-    size_t         delay;             /* filter lookahead in input frames, all stages      */
+    uint32_t       decimate_factor;   /* total decimation of the cascade stages ahead of the
+                                       * final stage, 1 when the plan has none              */
+    uint32_t       delay_frames;      /* filter lookahead in input frames, all stages      */
 } faar_resampler_info;
 
 /* Offset just past the named field: the size of a struct as first released. */
 #define FAAR_STRUCT_END(type, field) \
-    ((uint32_t)(offsetof(type, field) + sizeof(((type *)0)->field)))
+    (offsetof(type, field) + sizeof(((type *)0)->field))
 #define FAAR_CONFIG_BASELINE FAAR_STRUCT_END(faar_config, max_input_frames)
 #define FAAR_LIBRARY_INFO_BASELINE FAAR_STRUCT_END(faar_library_info, copyright)
-#define FAAR_RESAMPLER_INFO_BASELINE FAAR_STRUCT_END(faar_resampler_info, delay)
+#define FAAR_RESAMPLER_INFO_BASELINE FAAR_STRUCT_END(faar_resampler_info, delay_frames)
 
 /* Opaque resampler handle. */
 typedef struct faar_resampler_struct faar_resampler;

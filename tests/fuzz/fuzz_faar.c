@@ -72,8 +72,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     config.quality = quality;
     config.decimate_factor = cascade;
     config.boundary = (data[0] & 0x10) ? FAAR_BOUNDARY_HOLD : FAAR_BOUNDARY_ZERO;
-    config.dither = (faar_dither)(data[1] % 3);
-    config.dither_bits = (data[2] & 1) ? 16 : 24;
+    config.flags = (uint32_t)(data[1] & 0x0f);
     faar_resampler *handle = NULL;
     if (faar_resampler_open(&config, &handle) != FAAR_OK) return 0;
 

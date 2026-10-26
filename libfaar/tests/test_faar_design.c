@@ -41,7 +41,7 @@ static float sample(size_t i, size_t c, size_t seed) {
   return (float)((int32_t)(x & 0xffffff) - 0x800000) / 8388608.0f;
 }
 static int config_for(faar_config *c, uint32_t in, uint32_t out, unsigned ch,
-                      faar_quality q, faar_boundary b, faar_dither d) {
+                      faar_quality q, faar_boundary b, uint32_t dither) {
   if (faar_config_init(c, sizeof(*c)) != FAAR_OK)
     return 0;
   c->in_rate = in;
@@ -49,8 +49,7 @@ static int config_for(faar_config *c, uint32_t in, uint32_t out, unsigned ch,
   c->channels = (uint16_t)ch;
   c->quality = q;
   c->boundary = b;
-  c->dither = d;
-  c->dither_bits = 16;
+  c->flags = dither ? dither | FAAR_DITHER_16 : 0;
   return 1;
 }
 static int stream(faar_resampler *r, unsigned ch, size_t seed, float *dst,
@@ -266,7 +265,7 @@ int main(void) {
     return bad("null plan arguments");
   faar_config c;
   if (!config_for(&c, 48000, 44100, 1, FAAR_QUALITY_FAST, FAAR_BOUNDARY_ZERO,
-                  FAAR_DITHER_OFF))
+                  0))
     return bad("config");
   faar_design *p = NULL;
   if (faar_design_open(&c, &p) != FAAR_OK)
@@ -297,7 +296,7 @@ int main(void) {
             if (!config_for(
                     &c, rates[route][0], rates[route][1], ch, (faar_quality)q,
                     (faar_boundary)boundary,
-                    (faar_dither)(d ? FAAR_DITHER_SHAPED : FAAR_DITHER_OFF)))
+                    (d ? FAAR_DITHER_SHAPED : 0u)))
               return bad("config");
             if (!compare(&c) || !multi_stream(&c))
               return bad("route comparison or independent streams");
@@ -325,7 +324,7 @@ int main(void) {
                     alloc_cases[i].ch > li.max_channels ? li.max_channels
                                                         : alloc_cases[i].ch,
                     alloc_cases[i].q, FAAR_BOUNDARY_ZERO,
-                    FAAR_DITHER_OFF) ||
+                    0) ||
         !allocation_failures(&c))
       return bad("allocation failure sweep or recovery");
   }

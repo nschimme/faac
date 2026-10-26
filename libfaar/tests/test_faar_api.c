@@ -21,7 +21,7 @@ static void test_struct_size(void) {
 
     /* Sizes below the frozen baseline are rejected. */
     memset(&p, 0xa5, sizeof(p));
-    assert(faar_config_init(&p.v.config, FAAR_CONFIG_BASELINE - 1)
+    assert(faar_config_init(&p.v.config, (uint32_t)(FAAR_CONFIG_BASELINE - 1))
            == FAAR_ERR_INVALID_ARGUMENT);
     assert(faar_config_init(NULL, sizeof(faar_config)) == FAAR_ERR_INVALID_ARGUMENT);
 
@@ -47,32 +47,27 @@ static void test_struct_size(void) {
     faar_resampler *r = NULL;
     assert(faar_resampler_open(&p.v.config, &r) == FAAR_OK && r);
     assert(faar_resampler_close(&r) == FAAR_OK);
-    p.v.config.struct_size = FAAR_CONFIG_BASELINE - 1;
+    p.v.config.struct_size = (uint32_t)(FAAR_CONFIG_BASELINE - 1);
     r = (faar_resampler *)&p;
     assert(faar_resampler_open(&p.v.config, &r) == FAAR_ERR_INVALID_ARGUMENT);
     assert(r == NULL);
 
-    /* Reserved fields must be zero. */
-    assert(faar_config_init(&config, sizeof(config)) == FAAR_OK);
-    config.in_rate = 48000;
-    config.out_rate = 44100;
-    config.channels = 1;
-    config.reserved = 1;
-    assert(faar_resampler_open(&config, &r) == FAAR_ERR_INVALID_ARGUMENT && !r);
-
     /* Query structures: baseline minimum, larger accepted, size written back. */
     memset(&p, 0xa5, sizeof(p));
-    p.v.library.struct_size = FAAR_LIBRARY_INFO_BASELINE - 1;
+    p.v.library.struct_size = (uint32_t)(FAAR_LIBRARY_INFO_BASELINE - 1);
     assert(faar_get_library_info(&p.v.library) == FAAR_ERR_INVALID_ARGUMENT);
     p.v.library.struct_size = sizeof(faar_library_info) + sizeof(p.tail);
     assert(faar_get_library_info(&p.v.library) == FAAR_OK);
     assert(p.v.library.struct_size == sizeof(faar_library_info));
     assert(tail_untouched(&p));
 
-    config.reserved = 0;
+    assert(faar_config_init(&config, sizeof(config)) == FAAR_OK);
+    config.in_rate = 48000;
+    config.out_rate = 44100;
+    config.channels = 1;
     assert(faar_resampler_open(&config, &r) == FAAR_OK);
     memset(&p, 0xa5, sizeof(p));
-    p.v.info.struct_size = FAAR_RESAMPLER_INFO_BASELINE - 1;
+    p.v.info.struct_size = (uint32_t)(FAAR_RESAMPLER_INFO_BASELINE - 1);
     assert(faar_resampler_get_info(r, &p.v.info) == FAAR_ERR_INVALID_ARGUMENT);
     p.v.info.struct_size = sizeof(faar_resampler_info) + sizeof(p.tail);
     assert(faar_resampler_get_info(r, &p.v.info) == FAAR_OK);
@@ -110,9 +105,10 @@ int main(void) {
     faar_library_info library = {.struct_size = sizeof(library)};
     assert(faar_get_library_info(&library) == FAAR_OK);
     assert(library.max_channels >= 1 && library.max_channels <= 8);
-    assert(library.quality_mask & FAAR_QUALITY_MASK_GOOD);
+    assert(library.features & FAAR_FEATURE_QUALITY_FAST);
+    assert(library.features & FAAR_FEATURE_QUALITY_GOOD);
+    assert(library.features & FAAR_FEATURE_QUALITY_HIGH);
     assert(strcmp(library.version, FAAR_VERSION_STRING) == 0);
-    assert(library.quality_mask & FAAR_QUALITY_MASK_HIGH);
 
     config.in_rate = 48000;
     config.out_rate = 44100;
@@ -123,8 +119,20 @@ int main(void) {
 
     faar_resampler_info info = {.struct_size = sizeof(info)};
     assert(faar_resampler_get_info(resampler, &info) == FAAR_OK);
-    assert(info.in_rate == config.in_rate && info.out_rate == config.out_rate);
-    assert(info.channels == 1 && info.quality == FAAR_QUALITY_GOOD);
+    assert(info.decimate_factor >= 1);
+    {
+        faar_config c2 = config;
+        c2.in_rate = 96000;
+        c2.out_rate = 44100;
+        c2.decimate_factor = 2;
+        faar_resampler *r2 = NULL;
+        faar_resampler_info i2 = {.struct_size = sizeof(i2)};
+        assert(faar_resampler_open(&c2, &r2) == FAAR_OK);
+        assert(faar_resampler_get_info(r2, &i2) == FAAR_OK);
+        assert(i2.decimate_factor == 2);
+        assert(faar_resampler_close(&r2) == FAAR_OK);
+    }
+    assert(info.delay_frames > 0);
 
     float input[480] = {0};
     float output[512] = {0};
@@ -147,22 +155,45 @@ int main(void) {
     assert(resampler == NULL);
     assert(faar_resampler_close(&resampler) == FAAR_OK);
 
-    config.channels = (uint16_t)(library.max_channels + 1);
+    config.channels = library.max_channels + 1;
     assert(faar_resampler_open(&config, &resampler)
            == FAAR_ERR_INVALID_ARGUMENT);
     assert(resampler == NULL);
 
+    /* Dither flags: none, or exactly one mode plus one depth. */
     config.channels = 1;
-    config.reserved1[1] = 1;
-    assert(faar_resampler_open(&config, &resampler)
-           == FAAR_ERR_INVALID_ARGUMENT);
-    config.reserved1[1] = 0;
-    config.dither = FAAR_DITHER_TPDF;
-    assert(faar_resampler_open(&config, &resampler)
-           == FAAR_ERR_INVALID_ARGUMENT);
-    assert(resampler == NULL);
-    config.dither = FAAR_DITHER_OFF;
-    config.channels = 1;
+    static const uint32_t valid_flags[] = {
+        0,
+        FAAR_DITHER_TPDF | FAAR_DITHER_16,
+        FAAR_DITHER_TPDF | FAAR_DITHER_24,
+        FAAR_DITHER_SHAPED | FAAR_DITHER_16,
+        FAAR_DITHER_SHAPED | FAAR_DITHER_24,
+    };
+    for (size_t i = 0; i < sizeof(valid_flags) / sizeof(valid_flags[0]); ++i) {
+        config.flags = valid_flags[i];
+        assert(faar_resampler_open(&config, &resampler) == FAAR_OK);
+        assert(faar_resampler_close(&resampler) == FAAR_OK);
+    }
+    static const uint32_t invalid_flags[] = {
+        FAAR_DITHER_TPDF,
+        FAAR_DITHER_16,
+        FAAR_DITHER_TPDF | FAAR_DITHER_SHAPED | FAAR_DITHER_16,
+        FAAR_DITHER_TPDF | FAAR_DITHER_16 | FAAR_DITHER_24,
+        FAAR_DITHER_16 | FAAR_DITHER_24,
+        0x10,
+        FAAR_DITHER_SHAPED | FAAR_DITHER_16 | 0x10,
+    };
+    for (size_t i = 0; i < sizeof(invalid_flags) / sizeof(invalid_flags[0]); ++i) {
+        config.flags = invalid_flags[i];
+        assert(faar_resampler_open(&config, &resampler)
+               == FAAR_ERR_INVALID_ARGUMENT);
+        assert(resampler == NULL);
+        faar_design *design = NULL;
+        assert(faar_design_open(&config, &design)
+               == FAAR_ERR_INVALID_ARGUMENT);
+        assert(design == NULL);
+    }
+    config.flags = 0;
     config.quality = FAAR_QUALITY_HIGH;
     assert(faar_resampler_open(&config, &resampler) == FAAR_OK);
     assert(resampler != NULL);

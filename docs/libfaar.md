@@ -170,7 +170,7 @@ output frame count to zero when they return an error.
 /* Fill defaults; pass sizeof(config). Set the rates and channels afterwards. */
 faar_status faar_config_init(faar_config *config, uint32_t caller_size);
 
-/* Channel ceiling, supported quality mask, version, copyright.
+/* Channel ceiling, feature bits, version, copyright.
  * Set out->struct_size before calling. */
 faar_status faar_get_library_info(faar_library_info *out);
 const char *faar_strerror(faar_status status);
@@ -195,14 +195,15 @@ faar_status faar_resampler_open_from_design(faar_design *design,
 ```
 
 `faar_config_init()` zeroes the structure and selects Good quality, HOLD
-boundary extension and no dither. When dither is enabled, `dither_bits` must be
-16 or 24; it is ignored otherwise. Dither adds TPDF or shaped noise for later
-16-bit or 24-bit integer quantization; FAAR does not convert samples to
+boundary extension and no dither. Dither is selected with `flags`: zero, or
+exactly one of `FAAR_DITHER_TPDF`/`FAAR_DITHER_SHAPED` plus exactly one of
+`FAAR_DITHER_16`/`FAAR_DITHER_24`; any other combination is
+`FAAR_ERR_INVALID_ARGUMENT`. Dither adds TPDF or shaped noise (plus the chosen
+target depth) for later integer quantization; FAAR does not convert samples to
 integers. Set `decimate_factor` to zero for automatic planning or to a value of
-two or greater to request an explicit cascade. `reserved` and `reserved1` must
-be zero or open fails with `FAAR_ERR_INVALID_ARGUMENT`.
-`faar_get_library_info()` reports the compiled channel ceiling and quality mask;
-`faar_resampler_get_info()` reports resolved settings and delay. Initialize each
+two or greater to request an explicit cascade.
+`faar_get_library_info()` reports the compiled channel ceiling and feature bits;
+`faar_resampler_get_info()` reports the resolved cascade decimation and the filter delay. Initialize each
 query structure's `struct_size` to `sizeof(structure)` first. Closing frees the
 handle and sets the caller's pointer to NULL; closing an already-NULL pointer is
 a no-op that returns `FAAR_OK`.
@@ -324,7 +325,7 @@ faar_resampler_close(&right);
 ```
 
 A design fixes the complete configuration, including channel count, boundary
-policy, dither settings and `max_input_frames`.
+policy, dither flags and `max_input_frames`.
 Design creation uses the normal designer and temporarily allocates its setup
 workspace, then releases that workspace. Subsequent stream opens allocate
 mutable storage without regenerating filters. There is no global cache of

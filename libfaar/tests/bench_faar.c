@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
         setup += now() - t;
         faar_resampler_info info = {.struct_size = sizeof(info)};
         check(faar_resampler_get_info(r, &info));
-        delay = info.delay;
+        delay = info.delay_frames;
         t = now();
         size_t frames = (size_t)c.in_rate * 4, produced = 0;
         for (size_t pos = 0; pos < frames;) {

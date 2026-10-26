@@ -62,14 +62,14 @@ int main(void) {
 
     /* Test Dithering Modes (TPDF & SHAPED for 16-bit and 24-bit) */
     printf("Testing libfaar dithering modes...\n");
-    faar_dither test_dithers[] = {FAAR_DITHER_OFF, FAAR_DITHER_TPDF, FAAR_DITHER_SHAPED};
+    uint32_t test_dithers[] = {0, FAAR_DITHER_TPDF, FAAR_DITHER_SHAPED};
     uint8_t test_bits[] = {16, 24};
 
     for (size_t d = 0; d < 3; d++) {
         for (size_t b = 0; b < 2; b++) {
             faar_test_handle * r_dither = faar_test_create(in_rate, out_rate, channels, TEST_QUALITY);
             assert(r_dither != NULL);
-            if (test_dithers[d] != FAAR_DITHER_OFF) {
+            if (test_dithers[d] != 0) {
                 int status = faar_test_set_dither(r_dither, test_dithers[d], test_bits[b]);
                 assert(status == 0);
             }

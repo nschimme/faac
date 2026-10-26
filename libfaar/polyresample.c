@@ -83,9 +83,9 @@ struct faar_resampler_struct {
     uint32_t out_rate;
     uint16_t channels;
     faar_quality quality;
-    faar_dither dither;
+    uint32_t dither; /* 0, FAAR_DITHER_TPDF or FAAR_DITHER_SHAPED */
     faar_boundary boundary;
-    uint8_t dither_bits;
+    uint8_t dither_depth;
     uint32_t prng_state[MAX_CHANNELS];
     float error_history[MAX_CHANNELS];
 
@@ -232,11 +232,11 @@ static const uint32_t prng_stream_offset = 0x9e3779b9U;
 static const float inv_2_32 = 1.0f / 4294967296.0f;
 
 static void apply_dither(faar_resampler * r, float *samples, size_t frames) {
-    if (r->dither == FAAR_DITHER_OFF || !r->dither_bits) return;
+    if (!r->dither || !r->dither_depth) return;
     uint16_t c = 0;
     for (size_t i = 0; i < frames * r->channels; i++) {
         float sum = samples[i];
-        float lsb_scale = (r->dither_bits == 16) ? 1.0f : lsb_ratio_24_to_16;
+        float lsb_scale = (r->dither_depth == 16) ? 1.0f : lsb_ratio_24_to_16;
         float inv_lsb_scale = 1.0f / lsb_scale;
 
         uint32_t s1 = r->prng_state[c];
@@ -982,14 +982,30 @@ static int set_boundary_internal(faar_resampler * r, faar_boundary boundary) {
     return 0;
 }
 
-static int set_dither_internal(faar_resampler * r, faar_dither dither, uint8_t target_bits) {
+/* Map the public flag bits to the internal mode and depth; zero means none. */
+static int dither_from_flags(uint32_t flags, uint32_t *dither, uint8_t *bits) {
+    const uint32_t mode_mask = FAAR_DITHER_TPDF | FAAR_DITHER_SHAPED;
+    const uint32_t depth_mask = FAAR_DITHER_16 | FAAR_DITHER_24;
+    if (flags & ~(mode_mask | depth_mask)) return -1;
+    if (flags == 0) { *dither = 0; *bits = 0; return 0; }
+    uint32_t mode = flags & mode_mask;
+    uint32_t depth = flags & depth_mask;
+    if ((mode != FAAR_DITHER_TPDF && mode != FAAR_DITHER_SHAPED)
+            || (depth != FAAR_DITHER_16 && depth != FAAR_DITHER_24))
+        return -1;
+    *dither = mode;
+    *bits = (uint8_t)(depth == FAAR_DITHER_16 ? 16 : 24);
+    return 0;
+}
+
+static int set_dither_internal(faar_resampler * r, uint32_t dither, uint8_t target_bits) {
     if (!r) return -1;
-    if (dither != FAAR_DITHER_OFF && dither != FAAR_DITHER_TPDF
+    if (dither != 0 && dither != FAAR_DITHER_TPDF
             && dither != FAAR_DITHER_SHAPED) return -1;
-    if (dither != FAAR_DITHER_OFF && target_bits != 16 && target_bits != 24) return -1;
+    if (dither != 0 && target_bits != 16 && target_bits != 24) return -1;
 
     r->dither = dither;
-    r->dither_bits = target_bits;
+    r->dither_depth = target_bits;
     if (r->stage2) {
         return set_dither_internal(r->stage2, dither, target_bits);
     }
@@ -1750,7 +1766,6 @@ FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size) 
     memset(&defaults, 0, sizeof(defaults));
     defaults.quality = FAAR_QUALITY_GOOD;
     defaults.boundary = FAAR_BOUNDARY_HOLD;
-    defaults.dither = FAAR_DITHER_OFF;
     uint32_t n = caller_size < sizeof(defaults) ? caller_size : sizeof(defaults);
     defaults.struct_size = n;
     memcpy(config, &defaults, n);
@@ -1763,8 +1778,8 @@ FAARAPI faar_status faar_get_library_info(faar_library_info *out) {
     uint32_t caller_size = out->struct_size;
     faar_library_info info = {0};
     info.max_channels = MAX_CHANNELS;
-    info.quality_mask = FAAR_QUALITY_MASK_FAST | FAAR_QUALITY_MASK_GOOD;
-    info.quality_mask |= FAAR_QUALITY_MASK_HIGH;
+    info.features = FAAR_FEATURE_QUALITY_FAST | FAAR_FEATURE_QUALITY_GOOD;
+    info.features |= FAAR_FEATURE_QUALITY_HIGH;
     info.version = FAAR_VERSION_STRING;
     info.copyright =
         "FAAR - Freeware Advanced Audio Resampler (https://freewareadvancedaudio.github.io)\n"
@@ -1795,22 +1810,20 @@ static faar_status open_stream(const faar_config *config, faar_resampler **out,
     faar_config cfg = {0};
     uint32_t n = config->struct_size < sizeof(cfg) ? config->struct_size : sizeof(cfg);
     memcpy(&cfg, config, n);
-    if (cfg.reserved != 0 || cfg.reserved1[0] || cfg.reserved1[1] || cfg.reserved1[2]
-            || cfg.in_rate == 0 || cfg.out_rate == 0
+    uint32_t dither;
+    uint8_t dither_depth;
+    if (cfg.in_rate == 0 || cfg.out_rate == 0
             || cfg.channels == 0 || cfg.channels > MAX_CHANNELS
             || cfg.quality < FAAR_QUALITY_FAST || cfg.quality > FAAR_QUALITY_HIGH
             || (cfg.boundary != FAAR_BOUNDARY_HOLD
                 && cfg.boundary != FAAR_BOUNDARY_ZERO)
-            || (cfg.dither != FAAR_DITHER_OFF && cfg.dither != FAAR_DITHER_TPDF
-                && cfg.dither != FAAR_DITHER_SHAPED)
-            || (cfg.dither != FAAR_DITHER_OFF
-                && cfg.dither_bits != 16 && cfg.dither_bits != 24))
+            || dither_from_flags(cfg.flags, &dither, &dither_depth) != 0)
         return FAAR_ERR_INVALID_ARGUMENT;
     faar_resampler * r = create_resampler_internal(cfg.in_rate, cfg.out_rate,
-            cfg.channels, cfg.quality, cfg.decimate_factor, 0, false, 0);
+            (uint16_t)cfg.channels, cfg.quality, cfg.decimate_factor, 0, false, 0);
     if (!r) return FAAR_ERR_INSUFFICIENT_MEM;
     if (set_boundary_internal(r, cfg.boundary) != 0
-            || set_dither_internal(r, cfg.dither, cfg.dither_bits) != 0) {
+            || set_dither_internal(r, dither, dither_depth) != 0) {
         destroy_internal(r);
         return FAAR_ERR_INVALID_ARGUMENT;
     }
@@ -1852,14 +1865,11 @@ FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
         return FAAR_ERR_INVALID_ARGUMENT;
     uint32_t caller_size = out->struct_size;
     faar_resampler_info info = {0};
-    info.in_rate = resampler->in_rate;
-    info.out_rate = resampler->out_rate;
-    info.channels = resampler->channels;
-    info.quality = resampler->quality;
-    info.boundary = resampler->boundary;
-    info.dither = resampler->dither;
-    info.dither_bits = resampler->dither_bits;
-    info.delay = resampler->delay;
+    info.decimate_factor = 1;
+    for (const faar_resampler *s = resampler; s && s->stage1; s = s->stage2)
+        info.decimate_factor *= (uint32_t)((s->in_rate + s->stage1->out_rate / 2)
+                                           / s->stage1->out_rate);
+    info.delay_frames = (uint32_t)resampler->delay;
     uint32_t n = caller_size < sizeof(info) ? caller_size : sizeof(info);
     info.struct_size = n;
     memcpy(out, &info, n);

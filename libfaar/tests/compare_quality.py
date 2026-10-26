@@ -19,12 +19,14 @@ import numpy as np
 class Config(ct.Structure):
     _fields_ = [
         ("struct_size", ct.c_uint32), ("in_rate", ct.c_uint32),
-        ("out_rate", ct.c_uint32), ("channels", ct.c_uint16),
-        ("reserved", ct.c_uint16), ("quality", ct.c_int32),
-        ("boundary", ct.c_int32), ("dither", ct.c_int32),
-        ("dither_bits", ct.c_uint8), ("reserved1", ct.c_uint8 * 3),
+        ("out_rate", ct.c_uint32), ("channels", ct.c_uint32),
+        ("quality", ct.c_int32), ("boundary", ct.c_int32),
+        ("flags", ct.c_uint32),
         ("decimate_factor", ct.c_uint32), ("max_input_frames", ct.c_uint32),
     ]
+
+
+DITHER_16 = 0x4
 
 
 FLOAT_PTR = ct.POINTER(ct.c_float)
@@ -36,7 +38,7 @@ class Library:
         self.prepare = prepare
         self.drain_each_input = drain_each_input
         signatures = {
-            "faar_config_init": [ct.POINTER(Config), ct.c_size_t],
+            "faar_config_init": [ct.POINTER(Config), ct.c_uint32],
             "faar_resampler_open": [ct.POINTER(Config), ct.POINTER(ct.c_void_p)],
             "faar_resampler_process": [ct.c_void_p, FLOAT_PTR, ct.c_size_t,
                                        FLOAT_PTR, ct.c_size_t, ct.POINTER(ct.c_size_t)],
@@ -63,7 +65,8 @@ class Library:
         self.check(self.lib.faar_config_init(ct.byref(config), ct.sizeof(config)))
         config.in_rate, config.out_rate = in_rate, out_rate
         config.channels, config.quality = channels, quality
-        config.boundary, config.dither, config.dither_bits = boundary, dither, 16
+        config.boundary = boundary
+        config.flags = (dither | DITHER_16) if dither else 0
         if self.prepare:
             config.max_input_frames = 8192
         handle = ct.c_void_p()

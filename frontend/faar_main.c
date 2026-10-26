@@ -107,7 +107,7 @@ typedef struct {
     faar_quality quality;
     uint16_t raw_channels;
     faar_pcm_format_t fmt;
-    faar_dither dither;
+    uint32_t dither;
     faar_boundary boundary;
     uint32_t decimate_factor;
     uint8_t verbose;
@@ -137,7 +137,7 @@ static int convert_file(const job_t *job, const char *input_path,
     faar_quality quality = job->quality;
     uint16_t channels = job->raw_channels;
     faar_pcm_format_t fmt = job->fmt;
-    faar_dither dither = job->dither;
+    uint32_t dither = job->dither;
     faar_boundary boundary = job->boundary;
     uint32_t decimate_factor = job->decimate_factor;
     uint8_t verbose = job->verbose;
@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
     faar_quality quality = FAAR_QUALITY_GOOD;
     uint16_t channels = 2;
     faar_pcm_format_t fmt = FAAR_PCM_F32LE;
-    faar_dither dither = FAAR_DITHER_OFF;
+    uint32_t dither = 0;
     faar_boundary boundary = FAAR_BOUNDARY_HOLD;
     const char **inputs = NULL;
     size_t n_inputs = 0;
@@ -298,7 +298,7 @@ int main(int argc, char **argv) {
             case 'd':
                 if (strcmp(optarg, "tpdf") == 0) dither = FAAR_DITHER_TPDF;
                 else if (strcmp(optarg, "shaped") == 0) dither = FAAR_DITHER_SHAPED;
-                else if (strcmp(optarg, "none") == 0) dither = FAAR_DITHER_OFF;
+                else if (strcmp(optarg, "none") == 0) dither = 0;
                 else { fprintf(stderr, "Error: Invalid dither mode '%s' (choose none, tpdf, or shaped)\n", optarg); return 1; }
                 break;
             case 1001: allow_extreme_rates = true; break;
