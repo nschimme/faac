@@ -617,16 +617,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     faar_quality resampler_quality = FAAR_QUALITY_GOOD;
     if (resample_active && raw_sample_rate > 48000)
-    {
-        faar_library_info resampler_info = { .struct_size = sizeof(resampler_info) };
-        resample_status = faar_get_library_info(&resampler_info);
-        if (resample_status != FAAR_OK)
-            FAIL("Couldn't query resampler capabilities: %s\n",
-                 faar_strerror(resample_status));
-        if (!(resampler_info.features & FAAR_FEATURE_QUALITY_HIGH))
-            FAIL("Downsampling input above 48000 Hz requires FAAR High quality, which is unavailable in this build.\n");
         resampler_quality = FAAR_QUALITY_HIGH;
-    }
 
     if (log_cb)
     {

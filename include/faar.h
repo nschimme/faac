@@ -145,10 +145,10 @@ typedef enum faar_status {
 
 /* faar_library_info.features */
 enum faar_feature {
-    FAAR_FEATURE_QUALITY_FAST = 0x1, /* FAAR_QUALITY_FAST is compiled in */
-    FAAR_FEATURE_QUALITY_GOOD = 0x2, /* FAAR_QUALITY_GOOD is compiled in */
-    FAAR_FEATURE_QUALITY_HIGH = 0x4, /* FAAR_QUALITY_HIGH is compiled in */
-    FAAR_FEATURE_MAX          = 0x7fffffff
+    FAAR_FEATURE_FLOAT_ONLY = 0x1, /* faar-precision=float: the sample path never uses double,
+                                    * so High runs on emulated extended precision and costs
+                                    * about ten times more than in the default build */
+    FAAR_FEATURE_MAX        = 0x7fffffff
 };
 
 /*

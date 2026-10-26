@@ -105,9 +105,8 @@ int main(void) {
     faar_library_info library = {.struct_size = sizeof(library)};
     assert(faar_get_library_info(&library) == FAAR_OK);
     assert(library.max_channels >= 1 && library.max_channels <= 8);
-    assert(library.features & FAAR_FEATURE_QUALITY_FAST);
-    assert(library.features & FAAR_FEATURE_QUALITY_GOOD);
-    assert(library.features & FAAR_FEATURE_QUALITY_HIGH);
+    /* Only the precision policy is reported; every preset is always built. */
+    assert((library.features & ~(uint32_t)FAAR_FEATURE_FLOAT_ONLY) == 0);
     assert(strcmp(library.version, FAAR_VERSION_STRING) == 0);
 
     config.in_rate = 48000;
