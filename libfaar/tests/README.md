@@ -185,8 +185,8 @@ test additionally requires at least 100/130/150 dB rejection for
 Fast/Good/High. Its independently generated category coverage includes a
 20-second sweep; 30-second 23 kHz tone, tone-plus-noise, and two-tone signals;
 impulse positions covering every rational phase; independently processed
-track edges; and a route matrix with 1, 2, 3, and 8 channels, both boundary
-modes, dither modes, and queued scheduling. The signal categories are informed
+track edges; and a route matrix with 1, 2, 3, and 8 channels, dither modes,
+and queued scheduling. The signal categories are informed
 by [Hydrogenaudio technical material](https://src.hydrogenaudio.org/technical)
 and [dBpoweramp's sample-rate conversion discussion](https://www.dbpoweramp.com/sample_rate_conversion).
 
@@ -216,8 +216,8 @@ throughput, and requested heap measurements.
 
 `test_faar_design` compares plan-backed streams with independent normal opens
 across dedicated, generic, cascaded, half-band and equal-rate routes. It checks
-prepared streaming, both boundary policies, shaped dither, independent sample
-histories, and closing the caller's plan reference before processing streams.
+prepared streaming, shaped dither, independent sample histories, and closing
+the caller's plan reference before processing streams.
 `test_faar_design_alloc` injects every setup/clone allocation failure for High,
 cascaded Good and generic Fast plans, verifies cleanup, then reuses the plan.
 On pthread platforms, `test_faar_design_threads` opens, processes and closes

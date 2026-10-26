@@ -48,7 +48,6 @@ struct faar_dft_prefilter {
     size_t released_count;
     int have_input;
     int prefix_added;
-    int hold;
     int finishing;
     int finished;
 };
@@ -227,7 +226,6 @@ faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
     s->block_size = fft_size - tap_count + 1;
     if (s->half > SIZE_MAX / 2) { FreeMemory(s); return NULL; }
     s->prefix_drop = 2 * s->half / decimation;
-    s->hold = 1;
     /* Two channels share each complex transform, a lone channel shares it
      * with its next block; the half-band is direct. */
     s->lanes = !halfband && channels > 1 ? 2 : 1;
@@ -294,7 +292,6 @@ faar_dft_prefilter *faar_dft_prefilter_clone_filter(
     s->stages = source->stages;
     s->channel_output_capacity = source->channel_output_capacity;
     s->prefix_drop = 2 * s->half / s->decimation;
-    s->hold = source->hold;
     if (s->lanes > SIZE_MAX / s->block_size / sizeof(faar_sample_t)
             || s->channel_output_capacity > SIZE_MAX / s->channels
                     / sizeof(faar_sample_t))
@@ -406,12 +403,6 @@ void faar_dft_prefilter_set_prepared(faar_dft_prefilter *s, int prepared) {
     if (s) s->prepared = prepared;
 }
 
-int faar_dft_prefilter_set_boundary(faar_dft_prefilter *s, int hold) {
-    if (!s || s->have_input || (hold != 0 && hold != 1)) return -1;
-    s->hold = hold;
-    return 0;
-}
-
 int faar_dft_prefilter_process(faar_dft_prefilter *s, const float *input,
                                size_t frames, float *output,
                                size_t output_capacity, size_t *produced) {
@@ -425,16 +416,9 @@ int faar_dft_prefilter_process(faar_dft_prefilter *s, const float *input,
             for (uint16_t c = 0; c < s->channels; ++c)
                 s->first[c] = input[c];
             s->prefix_added = 1;
-            if (s->hold) {
-                if (s->half % s->expansion
-                        || feed_endpoint(s, s->first,
-                                         s->half / s->expansion)) return -1;
-            } else {
-                float zero[8] = {0};
-                if (s->half % s->expansion
-                        || feed_endpoint(s, zero,
-                                         s->half / s->expansion)) return -1;
-            }
+            if (s->half % s->expansion
+                    || feed_endpoint(s, s->first,
+                                     s->half / s->expansion)) return -1;
         }
         if (frames > SIZE_MAX / s->expansion - s->input_count) return -1;
         if (feed_raw(s, input, frames)) return -1;
@@ -454,10 +438,8 @@ int faar_dft_prefilter_flush(faar_dft_prefilter *s, float *output,
     if (!s->finishing && !s->finished) {
         s->finishing = 1;
         if (s->have_input) {
-            float zero[8] = {0};
-            const float *endpoint = s->hold ? s->last : zero;
             if (s->half % s->expansion
-                    || feed_endpoint(s, endpoint,
+                    || feed_endpoint(s, s->last,
                                      s->half / s->expansion)) return -1;
             /* A stacked stage may still hold a whole stacked block. */
             size_t capacity = s->channel_output_capacity;

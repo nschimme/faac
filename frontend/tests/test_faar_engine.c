@@ -54,7 +54,6 @@ static int run_case(faar_pcm_format_t format, int write_wav,
         .quality = FAAR_QUALITY_GOOD,
         .format = format,
         .dither = 0,
-        .boundary = FAAR_BOUNDARY_HOLD,
         .verbosity = 0,
         .write_wav = write_wav != 0,
     };

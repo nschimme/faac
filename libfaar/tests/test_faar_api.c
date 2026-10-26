@@ -100,7 +100,6 @@ int main(void) {
     faar_config config;
     assert(faar_config_init(&config, sizeof(config)) == FAAR_OK);
     assert(config.quality == FAAR_QUALITY_GOOD);
-    assert(config.boundary == FAAR_BOUNDARY_HOLD);
 
     faar_library_info library = {.struct_size = sizeof(library)};
     assert(faar_get_library_info(&library) == FAAR_OK);

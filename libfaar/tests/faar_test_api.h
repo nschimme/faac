@@ -14,8 +14,7 @@ typedef struct faar_test_handle {
 
 static inline faar_test_handle *faar_test_open(uint32_t in_rate,
         uint32_t out_rate, uint16_t channels, faar_quality quality,
-        uint32_t decimate_factor, faar_boundary boundary,
-        uint32_t dither, uint8_t bits) {
+        uint32_t decimate_factor, uint32_t dither, uint8_t bits) {
     faar_test_handle *h = calloc(1, sizeof(*h));
     if (!h) return NULL;
     if (faar_config_init(&h->config, sizeof(h->config)) != FAAR_OK) { free(h); return NULL; }
@@ -24,7 +23,6 @@ static inline faar_test_handle *faar_test_open(uint32_t in_rate,
     h->config.channels = channels;
     h->config.quality = quality;
     h->config.decimate_factor = decimate_factor;
-    h->config.boundary = boundary;
     h->config.flags = dither
             ? dither | (bits == 16 ? FAAR_DITHER_16 : FAAR_DITHER_24) : 0;
     if (faar_resampler_open(&h->config, &h->resampler) != FAAR_OK) { free(h); return NULL; }
@@ -32,23 +30,16 @@ static inline faar_test_handle *faar_test_open(uint32_t in_rate,
 }
 static inline faar_test_handle *faar_test_create(uint32_t in_rate,
         uint32_t out_rate, uint16_t channels, faar_quality quality) {
-    return faar_test_open(in_rate, out_rate, channels, quality, 0,
-            FAAR_BOUNDARY_HOLD, 0, 0);
+    return faar_test_open(in_rate, out_rate, channels, quality, 0, 0, 0);
 }
 static inline faar_test_handle *faar_test_create_ext(uint32_t in_rate,
         uint32_t out_rate, uint16_t channels, faar_quality quality,
         uint32_t factor) {
-    return faar_test_open(in_rate, out_rate, channels, quality, factor,
-            FAAR_BOUNDARY_HOLD, 0, 0);
+    return faar_test_open(in_rate, out_rate, channels, quality, factor, 0, 0);
 }
 static inline int faar_test_reopen(faar_test_handle *h) {
     faar_resampler_close(&h->resampler);
     return faar_resampler_open(&h->config, &h->resampler) == FAAR_OK ? 0 : -1;
-}
-static inline int faar_test_set_boundary(faar_test_handle *h, faar_boundary b) {
-    if (!h || h->started || (b != FAAR_BOUNDARY_HOLD && b != FAAR_BOUNDARY_ZERO)) return -1;
-    h->config.boundary = b;
-    return faar_test_reopen(h);
 }
 static inline int faar_test_set_dither(faar_test_handle *h, uint32_t d, uint8_t bits) {
     if (!h || h->started || (d != 0 && d != FAAR_DITHER_TPDF && d != FAAR_DITHER_SHAPED)

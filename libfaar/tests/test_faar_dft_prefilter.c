@@ -46,7 +46,7 @@ static int drain_direct(faar_dft_prefilter *stage, float *output,
     return 0;
 }
 
-static int run_boundary(int hold, size_t tap_count, size_t fft_size,
+static int run_boundary(size_t tap_count, size_t fft_size,
                         size_t frames, size_t input_chunk,
                         size_t output_capacity,
                         size_t channels, int direct_planes) {
@@ -69,10 +69,10 @@ static int run_boundary(int hold, size_t tap_count, size_t fft_size,
     }
     faar_dft_prefilter *stage = faar_dft_prefilter_create_rate(CHANNELS, taps,
             tap_count, fft_size, 1, 1);
-    if (!stage || faar_dft_prefilter_set_boundary(stage, hold)) {
+    if (!stage) {
         faar_dft_prefilter_destroy(stage);
         free(taps); free(input); free(output); free(chunk);
-        return fail("prefilter create or boundary setup failed");
+        return fail("prefilter create failed");
     }
     size_t in_at = 0, out_at = 0;
     while (in_at < frames) {
@@ -137,15 +137,14 @@ static int run_boundary(int hold, size_t tap_count, size_t fft_size,
                 long index = (long)n + (long)(tap_count - 1) / 2 - (long)k;
                 double sample;
                 if (index < 0)
-                    sample = hold ? input[c] : 0.0;
+                    sample = input[c];
                 else if ((size_t)index >= frames)
-                    sample = hold ? input[(frames - 1) * CHANNELS + c] : 0.0;
+                    sample = input[(frames - 1) * CHANNELS + c];
                 else sample = input[(size_t)index * CHANNELS + c];
                 expected += taps[k] * sample;
             }
             if (fabs(output[c * frames + n] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-7)) {
-                fprintf(stderr, "boundary %d frame %zu channel %zu\n",
-                        hold, n, c);
+                fprintf(stderr, "frame %zu channel %zu\n", n, c);
                 faar_dft_prefilter_destroy(stage);
                 free(taps); free(input); free(output); free(chunk);
                 return fail("centered prefilter output differs from direct convolution");
@@ -171,11 +170,9 @@ int main(void) {
      * three make a pair plus a lone lane. */
         for (size_t channels = 1; channels <= 3; ++channels)
             for (int direct = 0; direct <= 1; ++direct)
-                if (run_boundary(0, 31, 128, 257, 17, 7, channels, direct)
-                        || run_boundary(1, 31, 128, 257, 17, 7, channels, direct)
-                        || run_boundary(0, 601, 4096, 4000, 257, 97, channels, direct)
-                        || run_boundary(1, 601, 4096, 4000, 257, 97, channels, direct))
+                if (run_boundary(31, 128, 257, 17, 7, channels, direct)
+                        || run_boundary(601, 4096, 4000, 257, 97, channels, direct))
                     return 1;
-    puts("DFT prefilter: centered alignment, short/601-tap plans, packed/direct multi-channel isolation, boundaries, chunking and drain passed");
+    puts("DFT prefilter: centered alignment, short/601-tap plans, packed/direct multi-channel isolation, hold boundaries, chunking and drain passed");
     return 0;
 }

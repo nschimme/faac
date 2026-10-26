@@ -20,8 +20,7 @@ class Config(ct.Structure):
     _fields_ = [
         ("struct_size", ct.c_uint32), ("in_rate", ct.c_uint32),
         ("out_rate", ct.c_uint32), ("channels", ct.c_uint32),
-        ("quality", ct.c_int32), ("boundary", ct.c_int32),
-        ("flags", ct.c_uint32),
+        ("quality", ct.c_int32), ("flags", ct.c_uint32),
         ("decimate_factor", ct.c_uint32), ("max_input_frames", ct.c_uint32),
     ]
 
@@ -55,7 +54,7 @@ class Library:
         if status:
             raise RuntimeError(f"FAAR status {status}")
 
-    def convert(self, data, in_rate, out_rate, quality, boundary=1,
+    def convert(self, data, in_rate, out_rate, quality,
                 schedule="regular", dither=0):
         data = np.ascontiguousarray(data, dtype=np.float32)
         if data.ndim == 1:
@@ -65,7 +64,6 @@ class Library:
         self.check(self.lib.faar_config_init(ct.byref(config), ct.sizeof(config)))
         config.in_rate, config.out_rate = in_rate, out_rate
         config.channels, config.quality = channels, quality
-        config.boundary = boundary
         config.flags = (dither | DITHER_16) if dither else 0
         if self.prepare:
             config.max_input_frames = 8192
@@ -159,13 +157,13 @@ def main():
     candidate = Library(args.candidate, prepare=args.prepare, drain_each_input=args.prepare)
     records = []
 
-    def compare(name, data, ir, out, q, boundary=1, schedule="regular", dither=0):
-        old = reference.convert(data, ir, out, q, boundary, schedule, dither)
-        new = candidate.convert(data, ir, out, q, boundary, schedule, dither)
+    def compare(name, data, ir, out, q, schedule="regular", dither=0):
+        old = reference.convert(data, ir, out, q, schedule, dither)
+        new = candidate.convert(data, ir, out, q, schedule, dither)
         # Compare IEEE representations, including signed zeros, not a tolerance.
         equal = np.array_equal(old.view(np.uint32), new.view(np.uint32))
         record = dict(signal=name, in_rate=ir, out_rate=out, quality=q,
-                      channels=new.shape[1], boundary=boundary, schedule=schedule,
+                      channels=new.shape[1], schedule=schedule,
                       dither=dither, frames=len(new), bit_identical=equal,
                       max_error=float(np.max(np.abs(new.astype(np.float64) - old))),
                       peak=float(np.max(np.abs(new))),
@@ -193,10 +191,9 @@ def main():
                 if name == "boundary_tones":
                     # Independently opened track halves are distinct from a
                     # continuous stream; preserve their edge artifacts too.
-                    for boundary in (0, 1):
-                        for part in (pcm[:3287], pcm[3287:5696]):
-                            compare("independent_track_edge", part, 96000, 44100, q, boundary)
-        # Cover other planner routes, channel layouts, boundary modes, and RNG.
+                    for part in (pcm[:3287], pcm[3287:5696]):
+                        compare("independent_track_edge", part, 96000, 44100, q)
+        # Cover other planner routes, channel layouts, and RNG.
         t = np.arange(12000, dtype=np.float64)
         for ir, out in ((48000, 44100), (44100, 48000), (192000, 44100),
                         (96000, 48000), (48000, 48000), (47999, 44100)):
@@ -204,9 +201,8 @@ def main():
                 for channels in (1, 2, 3, 8):
                     pcm = np.stack([16000 * np.sin(t * (.137 + c * .019))
                                     for c in range(channels)], axis=1)
-                    for boundary in (0, 1):
-                        for dither in (0, 1, 2):
-                            compare("route_matrix", pcm, ir, out, q, boundary, "queued", dither)
+                    for dither in (0, 1, 2):
+                        compare("route_matrix", pcm, ir, out, q, "queued", dither)
     finally:
         args.report.write_text(json.dumps(dict(
             reference=str(Path(args.reference).resolve()),

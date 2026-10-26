@@ -122,13 +122,6 @@ enum faar_flag {
     FAAR_FLAG_MAX      = 0x7fffffff
 };
 
-/* Samples assumed outside an independently supplied stream. */
-typedef enum faar_boundary {
-    FAAR_BOUNDARY_ZERO = 0, /* silence outside the stream                                  */
-    FAAR_BOUNDARY_HOLD = 1, /* continue the first/last sample (default)                    */
-    FAAR_BOUNDARY_MAX  = 0x7fffffff
-} faar_boundary;
-
 /*
  * Result codes. All values are negative except FAAR_OK so a caller can test
  * `status < 0` for failure. The FAAR_STATUS_MAX sentinel pins the enum to a
@@ -164,7 +157,6 @@ typedef struct faar_config {
     uint32_t       out_rate;          /* output sample rate in Hz (required)               */
     uint32_t       channels;          /* interleaved channels, 1..faar_library_info.max_channels */
     faar_quality   quality;           /* filter preset; default GOOD                       */
-    faar_boundary  boundary;          /* edge extension; default HOLD                      */
     uint32_t       flags;             /* FAAR_DITHER_* bits; default 0 (no dither)         */
     uint32_t       decimate_factor;   /* 0 plans automatically; 2 or more requests an explicit cascade */
     uint32_t       max_input_frames;  /* 0 grows storage on demand. Nonzero bounds the frames per
@@ -196,7 +188,7 @@ typedef struct faar_library_info {
 
 /*
  * Decisions the library made for one open resampler; what the caller configured
- * (rates, channels, quality, boundary, flags) is not repeated. Set struct_size to
+ * (rates, channels, quality, flags) is not repeated. Set struct_size to
  * sizeof(faar_resampler_info) before faar_resampler_get_info(); it is updated
  * to the bytes populated.
  */

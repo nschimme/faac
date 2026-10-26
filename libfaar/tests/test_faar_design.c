@@ -41,14 +41,13 @@ static float sample(size_t i, size_t c, size_t seed) {
   return (float)((int32_t)(x & 0xffffff) - 0x800000) / 8388608.0f;
 }
 static int config_for(faar_config *c, uint32_t in, uint32_t out, unsigned ch,
-                      faar_quality q, faar_boundary b, uint32_t dither) {
+                      faar_quality q, uint32_t dither) {
   if (faar_config_init(c, sizeof(*c)) != FAAR_OK)
     return 0;
   c->in_rate = in;
   c->out_rate = out;
   c->channels = (uint16_t)ch;
   c->quality = q;
-  c->boundary = b;
   c->flags = dither ? dither | FAAR_DITHER_16 : 0;
   return 1;
 }
@@ -264,8 +263,7 @@ int main(void) {
   if (faar_design_open(NULL, (faar_design **)0) != FAAR_ERR_INVALID_ARGUMENT)
     return bad("null plan arguments");
   faar_config c;
-  if (!config_for(&c, 48000, 44100, 1, FAAR_QUALITY_FAST, FAAR_BOUNDARY_ZERO,
-                  0))
+  if (!config_for(&c, 48000, 44100, 1, FAAR_QUALITY_FAST, 0))
     return bad("config");
   faar_design *p = NULL;
   if (faar_design_open(&c, &p) != FAAR_OK)
@@ -291,21 +289,18 @@ int main(void) {
         unsigned ch = channel_cases[ci];
         if (ch > li.max_channels)
           continue;
-        for (int boundary = 0; boundary <= 1; boundary++)
-          for (int d = 0; d <= 1; d++) {
-            if (!config_for(
-                    &c, rates[route][0], rates[route][1], ch, (faar_quality)q,
-                    (faar_boundary)boundary,
-                    (d ? FAAR_DITHER_SHAPED : 0u)))
-              return bad("config");
-            if (!compare(&c) || !multi_stream(&c))
-              return bad("route comparison or independent streams");
-          }
+        for (int d = 0; d <= 1; d++) {
+          if (!config_for(
+                  &c, rates[route][0], rates[route][1], ch, (faar_quality)q,
+                  (d ? FAAR_DITHER_SHAPED : 0u)))
+            return bad("config");
+          if (!compare(&c) || !multi_stream(&c))
+            return bad("route comparison or independent streams");
+        }
       }
 #ifdef FAAR_PLAN_PTHREAD
   if (!config_for(&c, 96000, 32000, li.max_channels < 2 ? 1 : 2,
-                  FAAR_QUALITY_HIGH, FAAR_BOUNDARY_HOLD,
-                  FAAR_DITHER_SHAPED) ||
+                  FAAR_QUALITY_HIGH, FAAR_DITHER_SHAPED) ||
       !concurrent(&c))
     return bad("concurrent opens and streams");
 #endif
@@ -323,8 +318,7 @@ int main(void) {
     if (!config_for(&c, alloc_cases[i].in, alloc_cases[i].out,
                     alloc_cases[i].ch > li.max_channels ? li.max_channels
                                                         : alloc_cases[i].ch,
-                    alloc_cases[i].q, FAAR_BOUNDARY_ZERO,
-                    0) ||
+                    alloc_cases[i].q, 0) ||
         !allocation_failures(&c))
       return bad("allocation failure sweep or recovery");
   }

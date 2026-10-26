@@ -84,7 +84,6 @@ struct faar_resampler_struct {
     uint16_t channels;
     faar_quality quality;
     uint32_t dither; /* 0, FAAR_DITHER_TPDF or FAAR_DITHER_SHAPED */
-    faar_boundary boundary;
     uint8_t dither_depth;
     uint32_t prng_state[MAX_CHANNELS];
     float error_history[MAX_CHANNELS];
@@ -525,7 +524,6 @@ static faar_resampler * create_staged(uint32_t in_rate, uint32_t out_rate,
     r->channels = channels;
     r->quality = quality;
     r->ratio = (double)out_rate / (double)in_rate;
-    r->boundary = FAAR_BOUNDARY_HOLD;
     r->dft_expansion = expansion;
     size_t decimation = plan.decimation;
     r->dft_prefilter = faar_dft_prefilter_create_stage(channels, taps,
@@ -656,7 +654,6 @@ static faar_resampler * short_cascade(uint32_t in, uint32_t out,
     r->out_rate = out;
     r->channels = channels;
     r->quality = quality;
-    r->boundary = FAAR_BOUNDARY_HOLD;
     r->ratio = (double)out / in;
     r->stage1 = create_staged(in, in / 2, channels, quality, &pre);
     r->stage2 = short_cascade(in / 2, out, channels, quality, k - 1, dedicated);
@@ -709,7 +706,6 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
 
         struct faar_resampler_struct *r = (struct faar_resampler_struct *)faar_alloc_zeroed(1, sizeof(struct faar_resampler_struct));
         if (!r) return NULL;
-        r->boundary = FAAR_BOUNDARY_HOLD;
 
         r->stage1 = create_resampler_internal(in_rate, intermediate_rate,
                 channels, quality, 0, 0, true, 0);
@@ -745,7 +741,6 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
 
     struct faar_resampler_struct *r = (struct faar_resampler_struct *)faar_alloc_zeroed(1, sizeof(struct faar_resampler_struct));
     if (!r) return NULL;
-    r->boundary = FAAR_BOUNDARY_HOLD;
 
     r->in_rate = in_rate;
     r->out_rate = out_rate;
@@ -968,20 +963,6 @@ static faar_resampler * create_resampler_internal(uint32_t in_rate, uint32_t out
     return r;
 }
 
-static int set_boundary_internal(faar_resampler * r, faar_boundary boundary) {
-    if (!r || (boundary != FAAR_BOUNDARY_ZERO && boundary != FAAR_BOUNDARY_HOLD)
-        || r->input_frames || r->flushed) return -1;
-    if (r->dft_prefilter
-            && faar_dft_prefilter_set_boundary(r->dft_prefilter,
-                                               boundary == FAAR_BOUNDARY_HOLD))
-        return -1;
-    if (r->stage1 && (set_boundary_internal(r->stage1, boundary)
-                  || set_boundary_internal(r->stage2, boundary))) return -1;
-    if (!r->stage1 && r->stage2 && set_boundary_internal(r->stage2, boundary)) return -1;
-    r->boundary = boundary;
-    return 0;
-}
-
 /* Map the public flag bits to the internal mode and depth; zero means none. */
 static int dither_from_flags(uint32_t flags, uint32_t *dither, uint8_t *bits) {
     const uint32_t mode_mask = FAAR_DITHER_TPDF | FAAR_DITHER_SHAPED;
@@ -1186,7 +1167,7 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
             }
         }
         /* Initialize the virtual past only once, independently of chunk size. */
-        if (!r->input_frames && !r->flushed && r->boundary == FAAR_BOUNDARY_HOLD) {
+        if (!r->input_frames && !r->flushed) {
             for (uint16_t c = 0; c < r->channels; c++) {
             faar_sample_t first = r->hist[c][r->history_pad];
                 for (size_t j = 0; j < r->history_pad; j++) r->hist[c][j] = first;
@@ -1521,8 +1502,7 @@ static size_t process_prefilter_output(faar_resampler *parent, size_t capacity,
         for (uint16_t c = 0; c < r->channels; ++c)
             planes[c] = r->hist[c] + r->hist_len;
         faar_dft_prefilter_drain_planes(parent->dft_prefilter, planes, in_count);
-        if (!r->input_frames && !r->flushed
-                && r->boundary == FAAR_BOUNDARY_HOLD) {
+        if (!r->input_frames && !r->flushed) {
             for (uint16_t c = 0; c < r->channels; ++c) {
                 faar_sample_t first = r->hist[c][r->history_pad];
                 for (size_t j = 0; j < r->history_pad; ++j)
@@ -1551,8 +1531,7 @@ static size_t polyresample_flush_single(faar_resampler * r, float *out_samples, 
         if (r->filter_len == 20) ++tail_len;
         if (reserve_history(r, tail_len, false)) return 0;
         for (uint16_t c = 0; c < r->channels; ++c) {
-            faar_sample_t last = r->boundary == FAAR_BOUNDARY_HOLD && r->input_frames
-                ? r->last_input[c] : 0.0f;
+            faar_sample_t last = r->input_frames ? r->last_input[c] : 0.0f;
             for (size_t j = 0; j < tail_len; ++j)
                 r->hist[c][r->hist_len + j] = last;
         }
@@ -1765,7 +1744,6 @@ FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size) 
         return FAAR_ERR_INVALID_ARGUMENT;
     memset(&defaults, 0, sizeof(defaults));
     defaults.quality = FAAR_QUALITY_GOOD;
-    defaults.boundary = FAAR_BOUNDARY_HOLD;
     uint32_t n = caller_size < sizeof(defaults) ? caller_size : sizeof(defaults);
     defaults.struct_size = n;
     memcpy(config, &defaults, n);
@@ -1816,15 +1794,12 @@ static faar_status open_stream(const faar_config *config, faar_resampler **out,
     if (cfg.in_rate == 0 || cfg.out_rate == 0
             || cfg.channels == 0 || cfg.channels > MAX_CHANNELS
             || cfg.quality < FAAR_QUALITY_FAST || cfg.quality > FAAR_QUALITY_HIGH
-            || (cfg.boundary != FAAR_BOUNDARY_HOLD
-                && cfg.boundary != FAAR_BOUNDARY_ZERO)
             || dither_from_flags(cfg.flags, &dither, &dither_depth) != 0)
         return FAAR_ERR_INVALID_ARGUMENT;
     faar_resampler * r = create_resampler_internal(cfg.in_rate, cfg.out_rate,
             (uint16_t)cfg.channels, cfg.quality, cfg.decimate_factor, 0, false, 0);
     if (!r) return FAAR_ERR_INSUFFICIENT_MEM;
-    if (set_boundary_internal(r, cfg.boundary) != 0
-            || set_dither_internal(r, dither, dither_depth) != 0) {
+    if (set_dither_internal(r, dither, dither_depth) != 0) {
         destroy_internal(r);
         return FAAR_ERR_INVALID_ARGUMENT;
     }

@@ -240,7 +240,6 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
     config.out_rate = target_rate;
     config.channels = channels;
     config.quality = options->quality;
-    config.boundary = options->boundary;
     config.decimate_factor = options->decimate_factor;
     config.max_input_frames = (uint32_t)chunk_frames;
     if (options->dither &&

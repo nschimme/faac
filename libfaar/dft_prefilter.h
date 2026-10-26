@@ -59,7 +59,6 @@ void faar_dft_prefilter_destroy(faar_dft_prefilter *stage);
 faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *stage,
         size_t max_input, size_t extra_output, size_t *output_bound);
 void faar_dft_prefilter_set_prepared(faar_dft_prefilter *stage, int prepared);
-int faar_dft_prefilter_set_boundary(faar_dft_prefilter *stage, int hold);
 int faar_dft_prefilter_process(faar_dft_prefilter *stage, const float *input,
                                size_t frames, float *output,
                                size_t output_capacity, size_t *produced);

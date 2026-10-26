@@ -75,10 +75,9 @@ static int append(samples *s, const float *src, size_t n) {
 /* Process every input frame, draining between calls and flushing until empty. */
 static int convert_boundary(const float *input, size_t in_frames, uint32_t in_rate,
                    uint32_t out_rate, uint16_t channels, size_t block,
-                   size_t out_cap, samples *out, faar_boundary boundary) {
+                   size_t out_cap, samples *out) {
     faar_test_handle * h = faar_test_create(in_rate, out_rate, channels, TEST_QUALITY);
     if (!h) return fail("faar_test_create returned NULL");
-    if (faar_test_set_boundary(h, boundary)) {faar_test_close(h);return fail("boundary configuration failed");}
     out->data = NULL;
     out->frames = out->capacity = 0;
     out->channels = channels;
@@ -119,7 +118,7 @@ static int convert_boundary(const float *input, size_t in_frames, uint32_t in_ra
 static int convert(const float *input, size_t in_frames, uint32_t in_rate,
                    uint32_t out_rate, uint16_t channels, size_t block,
                    size_t out_cap, samples *out) {
-    return convert_boundary(input,in_frames,in_rate,out_rate,channels,block,out_cap,out,FAAR_BOUNDARY_HOLD);
+    return convert_boundary(input,in_frames,in_rate,out_rate,channels,block,out_cap,out);
 }
 
 static int test_boundary_modes(void) {
@@ -157,41 +156,9 @@ static int test_boundary_modes(void) {
             free(output.data);
         }
     }
-    const uint32_t zero_rates[][2]={{96000,44100},{32000,44100},
-        {32000,48000},{88200,96000}};
-    for(size_t r=0;r<sizeof(zero_rates)/sizeof(zero_rates[0]);r++) {
-        size_t n=zero_rates[r][0]/10;
-        float *input=malloc(n*sizeof(*input));
-        if(!input)return fail("zero-boundary input allocation failed");
-        for(size_t i=0;i<n;i++)input[i]=.5f;
-        samples zero;
-        int rc=convert_boundary(input,n,zero_rates[r][0],zero_rates[r][1],
-                                1,257,257,&zero,FAAR_BOUNDARY_ZERO);
-        free(input);
-        if(rc)return rc;
-        size_t zero_frames=zero.frames;
-        float first=zero_frames?zero.data[0]:0.0f;
-        int has_zero_edge=zero_frames && first<.499f;
-        free(zero.data);
-        if(!has_zero_edge) {
-            fprintf(stderr,"zero-boundary edge %u->%u frames=%zu first=%g\n",
-                    zero_rates[r][0],zero_rates[r][1],zero_frames,first);
-            return fail("explicit zero padding lost its edge response");
-        }
-    }
-    faar_test_handle * h=faar_test_create(48000,44100,1,TEST_QUALITY);
-    float out[4];
-    float input[1]={.5f};
-    if(!h)return fail("boundary state create failed");
-    if(faar_test_set_boundary(NULL,FAAR_BOUNDARY_HOLD)!=-1 || faar_test_set_boundary(h,(faar_boundary)7)!=-1) {
-        faar_test_close(h);return fail("invalid boundary setting accepted");
-    }
-    faar_test_process(h,input,1,out,4);
-    if(faar_test_set_boundary(h,FAAR_BOUNDARY_ZERO)!=-1) {faar_test_close(h);return fail("late boundary change accepted");}
-    faar_test_close(h);
     puts(TEST_CHANNELS == 2
-         ? "endpoint hold: mono/stereo, short streams, cascades and explicit zero mode passed"
-         : "endpoint hold: mono, short streams, cascades and explicit zero mode passed");
+         ? "endpoint hold: mono/stereo, short streams and cascades passed"
+         : "endpoint hold: mono, short streams and cascades passed");
     return 0;
 }
 

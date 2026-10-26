@@ -40,8 +40,6 @@ static const help_t core_help[] = {
      "Sets the sample rate for raw PCM input. WAV input always uses the rate stored in its header."},
     {"--quality <preset>", "Filter profile: fast (lower cost), good (default), or high (stronger rejection)",
      "Fast uses less processing at the cost of a narrower passband and weaker alias rejection. Good is the default profile with a wide passband and strong alias suppression. High keeps Good's passband while further reducing aliasing, at greater CPU and setup-memory cost. Float builds support High with compensated float arithmetic, which uses more CPU; filter coefficients and FFT twiddles are still prepared with the existing double-precision calculations."},
-    {"--boundary <mode>", "Stream endpoint behavior: hold (default) or zero",
-     "Hold extends the first and last input sample beyond the stream; zero extends with silence. This affects the beginning and end of each input stream."},
     {"-c, --channels <num>", "Raw input channel count [default: 2]",
      "Sets the number of interleaved channels in raw input. The supported range is 1 through 8, subject to the configured build limit. WAV input uses its header channel count."},
     {"-f, --format <fmt>", "PCM format: f32le (default), s16le, or s24le",
@@ -108,7 +106,6 @@ typedef struct {
     uint16_t raw_channels;
     faar_pcm_format_t fmt;
     uint32_t dither;
-    faar_boundary boundary;
     uint32_t decimate_factor;
     uint8_t verbose;
     bool ignore_wav_length, force_raw_input, overwrite;
@@ -138,7 +135,6 @@ static int convert_file(const job_t *job, const char *input_path,
     uint16_t channels = job->raw_channels;
     faar_pcm_format_t fmt = job->fmt;
     uint32_t dither = job->dither;
-    faar_boundary boundary = job->boundary;
     uint32_t decimate_factor = job->decimate_factor;
     uint8_t verbose = job->verbose;
     bool ignore_wav_length = job->ignore_wav_length;
@@ -202,7 +198,6 @@ static int convert_file(const job_t *job, const char *input_path,
         .quality = quality,
         .format = fmt,
         .dither = dither,
-        .boundary = boundary,
         .decimate_factor = decimate_factor,
         .verbosity = verbose,
         .write_wav = write_wav_out,
@@ -239,7 +234,6 @@ int main(int argc, char **argv) {
     uint16_t channels = 2;
     faar_pcm_format_t fmt = FAAR_PCM_F32LE;
     uint32_t dither = 0;
-    faar_boundary boundary = FAAR_BOUNDARY_HOLD;
     const char **inputs = NULL;
     size_t n_inputs = 0;
     const char *output_path = NULL;
@@ -256,7 +250,6 @@ int main(int argc, char **argv) {
         {"rate", required_argument, 0, 'r'},
         {"in-rate", required_argument, 0, 'R'},
         {"quality", required_argument, 0, 1000},
-        {"boundary", required_argument, 0, 1002},
         {"channels", required_argument, 0, 'c'},
         {"format", required_argument, 0, 'f'},
         {"dither", required_argument, 0, 'd'},
@@ -302,11 +295,6 @@ int main(int argc, char **argv) {
                 else { fprintf(stderr, "Error: Invalid dither mode '%s' (choose none, tpdf, or shaped)\n", optarg); return 1; }
                 break;
             case 1001: allow_extreme_rates = true; break;
-            case 1002:
-                if (strcmp(optarg, "hold") == 0) boundary = FAAR_BOUNDARY_HOLD;
-                else if (strcmp(optarg, "zero") == 0) boundary = FAAR_BOUNDARY_ZERO;
-                else { fprintf(stderr, "Invalid boundary mode: %s\n", optarg); return 1; }
-                break;
             case 'v':
                 if (strcmp(optarg, "0") == 0) verbose = 0;
                 else if (strcmp(optarg, "1") == 0) verbose = 1;
@@ -392,8 +380,7 @@ int main(int argc, char **argv) {
     const job_t job = {
         .target_rate = target_rate, .raw_in_rate = raw_in_rate,
         .quality = quality, .raw_channels = channels, .fmt = fmt,
-        .dither = dither, .boundary = boundary,
-        .decimate_factor = decimate_factor, .verbose = verbose,
+        .dither = dither, .decimate_factor = decimate_factor, .verbose = verbose,
         .ignore_wav_length = ignore_wav_length,
         .force_raw_input = force_raw_input, .overwrite = overwrite,
     };

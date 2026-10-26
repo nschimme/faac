@@ -43,7 +43,7 @@ def main():
     assert short_help.returncode == 0, short_help.stderr.decode(errors="replace")
     assert b"Usage: faar [options] <input> [output]" in short_help.stdout
     assert b"FAAR 3.0.0" in short_help.stdout
-    assert b"-r, --rate" in short_help.stdout and b"--boundary" in short_help.stdout
+    assert b"-r, --rate" in short_help.stdout
     assert b"--in-rate" in short_help.stdout and b"--allow-extreme-rates" in short_help.stdout
     assert b"--quiet" in short_help.stdout and b"--license" in short_help.stdout
     assert b"--raw" in short_help.stdout and b"-H" in short_help.stdout

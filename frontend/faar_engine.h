@@ -40,7 +40,6 @@ typedef struct {
     faar_quality quality;
     faar_pcm_format_t format;
     uint32_t dither; /* FAAR_DITHER_TPDF or FAAR_DITHER_SHAPED; 0 for none */
-    faar_boundary boundary;
     uint32_t decimate_factor;
     uint8_t verbosity;
     bool write_wav;

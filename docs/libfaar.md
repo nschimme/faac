@@ -126,8 +126,8 @@ owns all buffers and the handle.
 ### Calling sequence
 
 1. Initialize a `faar_config` with `faar_config_init(&config, sizeof(config))`,
-   then set `in_rate`, `out_rate` and `channels`. Defaults are Good quality,
-   HOLD boundary extension and no dither.
+   then set `in_rate`, `out_rate` and `channels`. Defaults are Good quality
+   and no dither.
 2. Call `faar_resampler_open()`. It validates the configuration and allocates
    the handle.
 3. Optionally call `faar_resampler_get_info()` with `struct_size` set to
@@ -194,8 +194,8 @@ faar_status faar_resampler_open_from_design(faar_design *design,
                                             faar_resampler **out);
 ```
 
-`faar_config_init()` zeroes the structure and selects Good quality, HOLD
-boundary extension and no dither. Dither is selected with `flags`: zero, or
+`faar_config_init()` zeroes the structure and selects Good quality and no
+dither. Dither is selected with `flags`: zero, or
 exactly one of `FAAR_DITHER_TPDF`/`FAAR_DITHER_SHAPED` plus exactly one of
 `FAAR_DITHER_16`/`FAAR_DITHER_24`; any other combination is
 `FAAR_ERR_INVALID_ARGUMENT`. Dither adds TPDF or shaped noise (plus the chosen
@@ -324,8 +324,8 @@ faar_resampler_close(&left);
 faar_resampler_close(&right);
 ```
 
-A design fixes the complete configuration, including channel count, boundary
-policy, dither flags and `max_input_frames`.
+A design fixes the complete configuration, including channel count, dither
+flags and `max_input_frames`.
 Design creation uses the normal designer and temporarily allocates its setup
 workspace, then releases that workspace. Subsequent stream opens allocate
 mutable storage without regenerating filters. There is no global cache of
