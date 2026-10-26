@@ -62,7 +62,7 @@ jobs:
       - name: Build Candidate
         run: |
           cd candidate
-          meson setup build_cand --buildtype=release
+          meson setup build_cand --buildtype=release -Dencoder-ps=true
           ninja -C build_cand
 
       - name: Determine Baseline SHA
@@ -266,7 +266,7 @@ jobs:
         if: steps.baseline-sha.outputs.sha != ''
         run: |
           for d in baseline candidate; do
-            ( cd $d && meson setup build --buildtype=release && meson compile -C build )
+            ( cd $d && meson setup build --buildtype=release -Dencoder-ps=true && meson compile -C build )
           done
 
       - name: Measure and Compare
