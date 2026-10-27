@@ -109,7 +109,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}-bench-${{ steps.bench-sha.outputs.sha }}
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}-ps-bench-${{ steps.bench-sha.outputs.sha }}
 
       - name: Validate Restored Baseline
         id: baseline-ok
@@ -132,7 +132,7 @@ jobs:
       - name: Build Baseline
         run: |
           cd baseline
-          meson setup build_base --buildtype=release
+          meson setup build_base --buildtype=release -Dencoder-ps=true
           ninja -C build_base
 
       - name: Run Benchmark (Baseline)
@@ -168,7 +168,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}-bench-${{ steps.bench-sha.outputs.sha }}
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}-ps-bench-${{ steps.bench-sha.outputs.sha }}
 
       - name: Select Decoder Comparison
         id: decoder-diff
