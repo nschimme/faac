@@ -224,7 +224,7 @@ static decoded decode(const bytes *stream, unsigned cut, unsigned boost, unsigne
         frame_info *r = &out.frames[out.count++];
         r->flags = flags;
         r->short_window = dec->win_seq[0] == EIGHT_SHORT_SEQUENCE;
-        r->ref_present = info.prog_ref_level_present;
+        r->ref_present = (info.flags & FAAD_STREAM_PROG_REF_LEVEL) != 0;
         r->ref_level = info.prog_ref_level;
         r->offset = out.pcm.len;
         r->len = wrote;

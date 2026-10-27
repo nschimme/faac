@@ -694,7 +694,7 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_i
     if (dec->format_known) info.flags |= FAAD_STREAM_FORMAT_KNOWN;
 #ifndef FAAD_DISABLE_DRC
     info.prog_ref_level = dec->drc.ref;
-    info.prog_ref_level_present = dec->drc.ref_present;
+    if (dec->drc.ref_present) info.flags |= FAAD_STREAM_PROG_REF_LEVEL;
 #endif
     if (!(info.flags & FAAD_STREAM_FORMAT_KNOWN)) {
         memcpy(out_info, &info, info.struct_size);

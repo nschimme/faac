@@ -36,8 +36,7 @@ typedef struct {
 typedef struct {
     uint32_t struct_size, sample_rate, channels, object_type, decoder_delay;
     uint32_t frame_samples, max_output_bytes, channel_mask;
-    bool format_known;
-    uint8_t reserved[3];
+    uint32_t flags;
 } stream_v3;
 #define BASE(T, field) ((uint32_t)(offsetof(T, field) + sizeof(((T *)0)->field)))
 
@@ -83,9 +82,9 @@ static void test_layouts(void)
         assert(lib.value.version && lib.value.max_channels > 0);
         assert_tail(&lib, lib.value.struct_size, sizeof(lib));
         memset(&stream, 0xa5, sizeof(stream));
-        stream.value.struct_size = future ? sizeof(stream) : BASE(stream_v3, reserved);
+        stream.value.struct_size = future ? sizeof(stream) : BASE(stream_v3, flags);
         assert(faad_decoder_get_info(dec, (faad_stream_info *)&stream.value) == FAAD_OK);
-        assert(!(stream.value.format_known) && !stream.value.sample_rate && !stream.value.channels);
+        assert(!(stream.value.flags & FAAD_STREAM_FORMAT_KNOWN) && !stream.value.sample_rate && !stream.value.channels);
         assert(!stream.value.object_type && !stream.value.decoder_delay && !stream.value.channel_mask);
         assert(stream.value.max_output_bytes > 0);
         assert_tail(&stream, stream.value.struct_size, sizeof(stream));

@@ -572,7 +572,7 @@ workarounds can go.
 | Legacy behaviour | libfaad3 |
 |---|---|
 | The first decoded frame returned `samples == 0` although it was decoded | Every frame that produces PCM reports it; use `decoder_delay` and the container's priming for trimming |
-| Streams with `dynamic_range_info` but no programme reference level came out 20 dB quieter (the missing level was treated as 0 dBFS) | No attenuation; `prog_ref_level_present` says whether a level exists, `FAAD_FRAME_DRC_INFO` says the frame carried DRC data |
+| Streams with `dynamic_range_info` but no programme reference level came out 20 dB quieter (the missing level was treated as 0 dBFS) | No attenuation; `FAAD_STREAM_PROG_REF_LEVEL` in `flags` says whether a level exists, `FAAD_FRAME_DRC_INFO` says the frame carried DRC data |
 | DRC and normalisation applied silently, with no way to read or change them | Off unless `drc_cut`, `drc_boost` or `drc_target_level` is set; `FAAD_FRAME_DRC` reports what was applied |
 | Channels in bitstream order (C L R, side, back, LFE) with a position array to decode | WAVE speaker order with `channel_mask` |
 | Output format and downmix settable at any time, and `Init` reported a sample rate that could be wrong for implicit SBR at 24 kHz or below | Configuration is fixed at open; `faad_decoder_get_info()` reports the rate and channels of the PCM actually emitted, and `FAAD_FRAME_FORMAT_CHANGED` marks changes |
@@ -650,6 +650,9 @@ handle that in their container/parser layer.
 | `faad_library_info.sbr_supported` | Test `flags & FAAD_LIB_SBR`. |
 | `faad_library_info.ps_supported` | Test `flags & FAAD_LIB_PS`. |
 | `faad_stream_info.format_known` | Test `flags & FAAD_STREAM_FORMAT_KNOWN`; clear before ADTS discovery, set once the format is known. |
+| `faad_stream_info.prog_ref_level_present` | Test `flags & FAAD_STREAM_PROG_REF_LEVEL`; `prog_ref_level` is valid only when that bit is set. |
+| `faad_stream_info.reserved_drc` | Removed; `prog_ref_level` follows `flags`. |
+| `faad_config.reserved` | Removed; the tail is now `drc_target_level`. |
 | Library/stream info `reserved` | Removed; query functions write back the populated `struct_size`. |
 
 ## ABI compatibility

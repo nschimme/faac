@@ -48,7 +48,6 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include <stddef.h>
-#include <stdbool.h>
 #include <stdint.h>
 
 #define FAAD_VERSION_MAJOR 3
@@ -169,12 +168,12 @@ typedef struct faad_config {
     uint8_t                 drc_cut;          /* attenuation scale, 0..127 */
     uint8_t                 drc_boost;        /* boost scale, 0..127 */
     uint8_t                 drc_target_level; /* 0 off, else 40..127 quarter-dB below FS */
-    uint8_t                 reserved[1];     /* reserved for future use; currently zero */
 } faad_config;
 
 enum faad_stream_flag {
-    FAAD_STREAM_FORMAT_KNOWN = 1u << 0,
-    FAAD_STREAM_FLAG_MAX = 0x7fffffff
+    FAAD_STREAM_FORMAT_KNOWN  = 1u << 0,
+    FAAD_STREAM_PROG_REF_LEVEL = 1u << 1, /* prog_ref_level carries a valid programme reference level */
+    FAAD_STREAM_FLAG_MAX      = 0x7fffffff
 };
 
 /*
@@ -203,9 +202,8 @@ typedef struct faad_stream_info {
     uint32_t                max_output_bytes; /* Lifetime PCM capacity, including implicit SBR/PS */
     uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
     uint32_t                flags;            /* FAAD_STREAM_* */
-    uint8_t                 prog_ref_level;  /* quarter-dB below full scale */
-    bool                    prog_ref_level_present;
-    uint8_t                 reserved_drc[2]; /* reserved for future use; currently zero */
+    uint8_t                 prog_ref_level;   /* quarter-dB below full scale; valid only
+                                               * when flags has FAAD_STREAM_PROG_REF_LEVEL */
 } faad_stream_info;
 
 enum faad_frame_flag {
