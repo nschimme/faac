@@ -756,13 +756,8 @@ int main(int argc, char *argv[])
     if (optind < argc)
     {
         opts.input_filename = argv[optind];
-        if (!dieMessage && (argc - optind) > 1)
-        {
-            if (aacFileNameGiven)
-                dieMessage = "Cannot encode several input files to one output file.\n";
-            else
-                dieMessage = "Unexpected argument after input file.\n";
-        }
+        if ((argc - optind) > 1 && aacFileNameGiven)
+            dieMessage = "Cannot encode several input files to one output file.\n";
     }
     else
     {

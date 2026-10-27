@@ -874,6 +874,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
             ret_status = DECODE_ERROR;
             goto cleanup;
         }
+        if (write_stdout) quiet = true;
     }
 
     _Alignas(float) uint8_t outbuf[65536];

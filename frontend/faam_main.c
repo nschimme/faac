@@ -443,13 +443,6 @@ static bool output_refused(const char *path, bool overwrite)
     return true;
 }
 
-static bool reject_extra_positionals(int argc, char **argv, int first)
-{
-    if (first >= argc) return false;
-    fprintf(stderr, "Unexpected argument '%s'\n", argv[first]);
-    return true;
-}
-
 /* Owned UTF-8 copies of CLI strings; metadata entries only borrow them, so they
  * must outlive the muxer or faam_update_metadata_stream. argv text arrives in
  * whatever the shell/locale handed us and iTunes atoms require UTF-8, hence
@@ -770,7 +763,6 @@ static int cmd_info(int argc, char **argv)
         }
     }
     if (optind < argc) filepath = argv[optind];
-    if (reject_extra_positionals(argc, argv, optind + (filepath ? 1 : 0))) return 1;
 
     if (!filepath) {
         print_usage(HELP_COMMANDS);
@@ -959,7 +951,6 @@ static int cmd_dump(int argc, char **argv)
         return 1;
     }
     if (optind < argc) filepath = argv[optind];
-    if (reject_extra_positionals(argc, argv, optind + (filepath ? 1 : 0))) return 1;
 
     if (!filepath) {
         print_usage(HELP_COMMANDS);
@@ -1361,7 +1352,6 @@ static int cmd_mux(int argc, char **argv)
             break;
         }
     }
-    if (reject_extra_positionals(fargc, filtered, optind)) goto done;
     if (fail) {
         fprintf(stderr, "%s", fail);
         goto done;
@@ -1742,7 +1732,6 @@ static int cmd_demux(int argc, char **argv)
     }
 
     if (optind < argc) input_file = argv[optind];
-    if (reject_extra_positionals(argc, argv, optind + (input_file ? 1 : 0))) return 1;
 
     if (!input_file) {
         print_usage(HELP_INSPECT);
@@ -2040,8 +2029,6 @@ static int cmd_tag(int argc, char **argv)
         if (err_msg || bad_option) break;
     }
 
-    if (reject_extra_positionals(argc, argv, optind + (filepath ? 1 : 0))) goto done;
-
     if (err_msg || bad_option) {
         if (err_msg) fprintf(stderr, "%s", err_msg);
         else print_usage('h');
@@ -2244,7 +2231,6 @@ static int cmd_chapter(int argc, char **argv)
         }
     }
     if (optind < sub_argc) filepath = sub_argv[optind];
-    if (reject_extra_positionals(sub_argc, sub_argv, optind + (filepath ? 1 : 0))) return 1;
 
     if (!strcmp(subcmd, "import")) {
         if (!filepath || !chapters_path) {
