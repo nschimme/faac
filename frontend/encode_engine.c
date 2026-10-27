@@ -455,6 +455,22 @@ int run_encoding_session(const encode_options_t *opts,
     return run_encoding_session_ext(opts, &cbs);
 }
 
+/* The library alone resolves FAAC_OBJ_AUTO, so ask an encoder opened at the
+   input rate which object type it would use. */
+static faac_status resolve_object_type(const faac_params *params,
+                                       enum faac_object_type *type)
+{
+    faac_encoder *probe = NULL;
+    faac_status st = faac_encoder_open(params, &probe);
+    if (st != FAAC_OK)
+        return st;
+    faac_encoder_info info = { .struct_size = sizeof(info) };
+    st = faac_encoder_get_info(probe, &info);
+    faac_encoder_close(&probe);
+    *type = info.object_type;
+    return st;
+}
+
 int run_encoding_session_ext(const encode_options_t *opts,
                               const encode_callbacks_t *callbacks)
 {
@@ -537,7 +553,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
     /* Ensure target sample rate is within ISO/IEC 14496-3 valid AAC rates (7350 Hz to 96000 Hz) */
-    if (target_rate < 7350) target_rate = 7350;
     if (target_rate > 96000) target_rate = 96000;
 
     bool resample_active = (target_rate != raw_sample_rate && target_rate > 0);
@@ -596,14 +611,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
                  ((raw_sample_rate % 8000 == 0 && params.bit_rate <= lc_48k_bps) ||
                   (raw_sample_rate % 11025 == 0 && params.bit_rate <= lc_44k_bps)))
         {
-            faac_status st = faac_encoder_open(&params, &hEncoder);
+            enum faac_object_type native_type;
+            faac_status st = resolve_object_type(&params, &native_type);
             if (st != FAAC_OK)
                 FAIL("Couldn't open encoder instance for %s: %s\n",
                      opts->input_filename, faac_strerror(st));
-            faac_encoder_info native_info = { .struct_size = sizeof(native_info) };
-            faac_encoder_get_info(hEncoder, &native_info);
-            faac_encoder_close(&hEncoder);
-            if (native_info.object_type == FAAC_OBJ_LOW)
+            if (native_type == FAAC_OBJ_LOW)
             {
                 target_rate = 32000;
                 /* Keep AUTO from switching to HE at the new rate. */
@@ -917,11 +930,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
         }
 
         uint32_t nbytes = 0;
+        bool source_done = resample_active ? resampler_eof : input_eof;
+        bool flush = source_done && (!resample_active || samples_read == 0);
         faac_status st = faac_encoder_encode(hEncoder,
-                                             ((input_eof && !resample_active) ||
-                                              (resample_active && resampler_eof && samples_read == 0)) ? NULL : input_pcm,
-                                             ((input_eof && !resample_active) ||
-                                              (resample_active && resampler_eof && samples_read == 0)) ? 0 : (uint32_t)samples_read,
+                                             flush ? NULL : input_pcm,
+                                             flush ? 0 : (uint32_t)samples_read,
                                              bitbuf,
                                              (uint32_t)max_output_bytes,
                                              &nbytes);
@@ -938,8 +951,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         if (resample_active)
             current_encoder_samples += (uint64_t)(samples_read / num_channels);
 
-        if (((input_eof && !resample_active) || (resample_active && resampler_eof)) &&
-            samples_read == 0 && bytes_written <= 0)
+        if (source_done && samples_read == 0 && bytes_written <= 0)
             break;
 
         if (bytes_written < 0)
