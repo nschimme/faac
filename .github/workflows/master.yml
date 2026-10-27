@@ -55,8 +55,6 @@ jobs:
               options: -Dencoder-ps=true -Dstats=true,
             }
           - {
-              name: Linux GCC (SBR decimation 4),
-          - {
               name: Linux GCC (LC-only encoder),
               os: ubuntu-latest,
               compiler: gcc,
@@ -64,7 +62,7 @@ jobs:
               options: -Dencoder-sbr=false,
             }
           - {
-              name: Linux GCC (SBR Decimation),
+              name: Linux GCC (SBR decimation 4),
               os: ubuntu-latest,
               compiler: gcc,
               shell: bash,
