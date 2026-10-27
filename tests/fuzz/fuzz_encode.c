@@ -61,7 +61,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     static uint8_t pcm[MAX_FRAME_SAMPLES * sizeof(int32_t)];
     const uint8_t *asc;
     uint32_t asc_len, w, flags, sel, i;
-    int32_t map[16];
 
     if (size < 24)
         return 0;
@@ -70,29 +69,34 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     flags = take(&c, 4);
     sel = take(&c, 1);
     p.sample_rate  = (sel & 0x80) ? take(&c, 4) : rates[sel % (sizeof(rates) / sizeof(rates[0]))];
-    p.num_channels = take(&c, 1) % 10;
-    p.mpeg_version = (enum faac_mpeg_version)(flags & 3);
-    p.object_type  = (enum faac_object_type)((flags >> 2 & 3) == 0 ? 0 : (flags >> 2 & 3) == 1 ? 2 :
+    p.channels      = take(&c, 1) % 10;
+    p.object_type   = (enum faac_object_type)((flags >> 2 & 3) == 0 ? 0 : (flags >> 2 & 3) == 1 ? 2 :
                                               (flags >> 2 & 3) == 2 ? 5 : 29);
-    p.joint_mode   = (enum faac_joint_mode)(flags >> 4 & 7);
-    p.use_lfe      = flags >> 7 & 1;
-    p.use_tns      = flags >> 8 & 1;
-    p.use_pns      = flags >> 9 & 1;
-    p.output_format = (enum faac_stream_format)(flags >> 10 & 3);
-    p.input_format = (enum faac_input_format)(flags >> 12 & 7);
+    p.stereo_mode   = (enum faac_stereo_mode)(flags >> 4 & 7);
+    p.flags         = ((flags >> 8 & 1) ? FAAC_FLAG_TNS : 0)
+                    | ((flags >> 9 & 1) ? FAAC_FLAG_PNS : 0);
+    if ((flags >> 24 & 0xf) == 15)
+        p.flags |= 0x80000000u;            /* unknown bit: open() must reject */
+
+    /* Bits 10-11 pick the new stream format directly; the old mpeg_version
+     * bit upgrades ADTS to FAAC_STREAM_ADTS_MPEG2. */
+    p.stream_format = (enum faac_stream_format)(flags >> 10 & 3);
+    if (p.stream_format == FAAC_STREAM_ADTS && (flags & 1))
+        p.stream_format = FAAC_STREAM_ADTS_MPEG2;
+    p.input_format  = (enum faac_input_format)(flags >> 12 & 7);
     p.short_control = (enum faac_shortctl_mode)(flags >> 15 & 3);
-    p.rate_control = (enum faac_rate_control)(flags >> 17 & 7);
-    p.bit_rate     = (flags >> 20 & 1) ? take(&c, 4) : take(&c, 2) * 4;
-    p.bandwidth    = (flags >> 21 & 1) ? take(&c, 4) : take(&c, 2);
-    p.quant_quality = (flags >> 22 & 1) ? take(&c, 4) : take(&c, 2) % 6000;
-    p.max_bit_rate = (flags >> 23 & 1) ? take(&c, 4) : 0;
-    p.reserved[0]  = (flags >> 24 & 0xf) == 15;
-    if (flags >> 28 & 1) {
-        for (i = 0; i < 16; i++)
-            map[i] = (int32_t)(int8_t)take(&c, 1) % 10;
-        p.channel_map = map;
-        p.channel_map_count = take(&c, 1) % 17;
-    }
+
+    p.bit_rate      = (flags >> 20 & 1) ? take(&c, 4) : take(&c, 2) * 4;
+    p.bandwidth     = (flags >> 21 & 1) ? take(&c, 4) : take(&c, 2);
+    p.quality       = (flags >> 22 & 1) ? take(&c, 4) : take(&c, 2) % 6000;
+    p.peak_bit_rate = (flags >> 23 & 1) ? take(&c, 4) : 0;
+
+    p.rate_control  = (enum faac_rate_control)(flags >> 17 & 7);
+
+    /* SONAME 2 use_lfe and channel_map folded into channel_layout. The old
+     * flag bits select AAC, WAV, or an invalid layout for rejection coverage;
+     * LFE itself is automatic for six and eight channels. */
+    p.channel_layout = (enum faac_channel_layout)(((flags >> 7) & 1) | ((flags >> 28 & 1) << 1));
 
     if (faac_encoder_open(&p, &enc) != FAAC_OK)
         return 0;
@@ -105,8 +109,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     (void)faac_encoder_asc(enc, &asc, &asc_len);
 
     {
-        unsigned bps = p.input_format == FAAC_INPUT_16BIT ? 2 : 4;
-        uint32_t cap = info.frame_samples * p.num_channels;
+        unsigned bps = p.input_format == FAAC_INPUT_16BIT ? 2 :
+                       p.input_format == FAAC_INPUT_24BIT ? 3 : 4;
+        uint32_t cap = info.frame_samples * p.channels;
         int calls;
 
         for (calls = 0; calls < MAX_CALLS && c.n; calls++) {

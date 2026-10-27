@@ -19,9 +19,14 @@ def main():
         if target.exists():
             continue
         # Header format is consumed by fuzz_encode.c: object selector 3 is
-        # HE-AAC v2, input selector 1 is 16-bit PCM, rate selector 8 is 48 kHz.
-        flags = (3 << 2) | (1 << 12) | ((3 if cbr else 0) << 17)
-        header = struct.pack(">IBBHHH", flags, 8, 2, rate_per_channel // 4, 0, 100)
+        # HE-AAC v2, input selector 1 is 16-bit PCM, rate selector 8 is 48 kHz,
+        # rate-control selector 1 is VBR and 2 is CBR.
+        flags = (3 << 2) | (1 << 12) | ((2 if cbr else 1) << 17)
+        # bit_rate is whole-stream; the non-CBR seed rides VBR with bit_rate 0.
+        header = struct.pack(">IBBHHH", flags, 8, 2,
+                             0 if not cbr else rate_per_channel // 2,
+                             0,
+                             100 if not cbr else 0)
         chunks = bytearray()
         for frame in range(8):
             chunks.extend(struct.pack(">H", 4096))

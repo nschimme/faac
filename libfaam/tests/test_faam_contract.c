@@ -332,7 +332,7 @@ static bool has_elst(const memfile *f) { return find_tag(f, "elst", 0) >= 0; }
 static void test_gapless(void) {
     /* The CLI path: delay and padding, no total. */
     memfile f = {0};
-    mux_opts o = { .frames = 118, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1040, 1840, 0, 0 } };
+    mux_opts o = { .frames = 118, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1040, 1840, 0 } };
     mux_file(&f, &o);
     uint64_t expect = 118ULL * 1024 - 1040 - 1840;
     long e = find_tag(&f, "elst", 0);
@@ -377,7 +377,7 @@ static void test_gapless(void) {
     /* Delay and padding bigger than the media: an empty programme, written as the empty
      * edit list a plain writer produces for it. */
     memfile tiny = {0};
-    mux_opts ot = { .frames = 1, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1000, 1000, 0, 0 } };
+    mux_opts ot = { .frames = 1, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1000, 1000, 0 } };
     mux_file(&tiny, &ot);
     e = find_tag(&tiny, "elst", 0);
     CHECK(e > 0 && be32(tiny.buf + e + 12) == 0);
@@ -391,7 +391,7 @@ static void test_gapless(void) {
     for (unsigned i = 0; i < 2; i++) {
         memfile short_file = {0};
         mux_opts os = { .frames = i ? 1 : 2, .ticks = 1024,
-                        .gapless = { sizeof(faam_gapless_info), i ? 100 : 2000, i ? 200 : 1000, 0, 0 } };
+                        .gapless = { sizeof(faam_gapless_info), i ? 100 : 2000, i ? 200 : 1000, 0 } };
         uint64_t total = i ? 724 : 0;
         mux_file(&short_file, &os);
         e = find_tag(&short_file, "elst", 0);
@@ -410,7 +410,7 @@ static void test_gapless(void) {
 
     /* No frames at all behaves the same. */
     memfile none = {0};
-    mux_opts on = { .frames = 0, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 0, 0, 0 } };
+    mux_opts on = { .frames = 0, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 0, 0 } };
     mux_file(&none, &on);
     e = find_tag(&none, "elst", 0);
     CHECK(e > 0 && be32(none.buf + e + 12) == 0);
@@ -418,7 +418,7 @@ static void test_gapless(void) {
 
     /* Padding only: no edit list (it needs a delay) but iTunSMPB carries the total. */
     memfile po = {0};
-    mux_opts op = { .frames = 10, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 0, 500, 0, 0 } };
+    mux_opts op = { .frames = 10, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 0, 500, 0 } };
     mux_file(&po, &op);
     CHECK(!has_elst(&po));
     d = open_mem(&po, 0);
@@ -494,7 +494,7 @@ static void collect(memfile *f, uint32_t *n_chapters, char titles[4][16], faam_d
 static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
     memfile f = {0};
     faam_chapter seed[1] = { { sizeof(faam_chapter), 0, "seed" } };
-    mux_opts o = { .frames = 30, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 100, 0, 0 }, .num_chapters = 1, .chapters = seed };
+    mux_opts o = { .frames = 30, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 100, 0 }, .num_chapters = 1, .chapters = seed };
     mux_file(&f, &o);
     switch (kind) {
     case ABSENT_UDTA: rename_tag(&f, "udta", "free"); break;
@@ -1115,7 +1115,7 @@ static void test_per_track_gapless(int mode) {
     tc2.timescale = tc2.sample_rate = 48000; tc2.channels = 2;
     static const uint8_t asc_lc_48k[ASC_LEN] = { 0x11, 0x90 };
     tc2.codec_data = asc_lc_48k; tc2.codec_data_len = ASC_LEN;
-    tc2.gapless = &(faam_gapless_info){ sizeof(faam_gapless_info), 1040, 600, 0, 0 };
+    tc2.gapless = &(faam_gapless_info){ sizeof(faam_gapless_info), 1040, 600, 0 };
     CHECK(test_append_track(&cfg, cfg_tracks, &tc2, NULL) == FAAM_OK);
 
     faam_io io = mem_io(&f);
