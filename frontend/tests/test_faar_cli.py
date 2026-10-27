@@ -39,6 +39,7 @@ def make_wav(path, frames=257, rate=96000, channels=1):
 
 def main():
     faar = os.path.abspath(sys.argv[1])
+    max_channels = int(sys.argv[2])
     short_help = run(faar, "-h")
     assert short_help.returncode == 0, short_help.stderr.decode(errors="replace")
     assert b"Usage: faar [options] <input> [output]" in short_help.stdout
@@ -103,7 +104,7 @@ def main():
         second = os.path.join(directory, "second.wav")
         third = os.path.join(directory, "third.wav")
         make_wav(second, frames=300)
-        make_wav(third, frames=199, rate=48000, channels=2)
+        make_wav(third, frames=199, rate=48000, channels=min(2, max_channels))
         batch_dir = os.path.join(directory, "batch")
         os.mkdir(batch_dir)
         batch = run(faar, "--rate", "44100", "-q", "-o", batch_dir, source, second, third)

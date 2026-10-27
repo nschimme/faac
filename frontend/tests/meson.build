@@ -126,5 +126,5 @@ endif
 
 if get_option('resampler') and not meson.is_cross_build()
     test('test_e2e_faar_cli', find_program('python3'),
-        args: [files('test_faar_cli.py'), faar_cli], timeout: 60)
+        args: [files('test_faar_cli.py'), faar_cli, get_option('max-channels').to_string()], timeout: 60)
 endif
