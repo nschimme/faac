@@ -242,7 +242,7 @@ static faam_status mux(memfile *out, bool faststart, bool video, bool finalize_o
     };
     cfg.chapters = chapters;
     cfg.num_chapters = 2;
-    faam_gapless_info gapless = { sizeof(faam_gapless_info), 1024, 512, 0, 0 };
+    faam_gapless_info gapless = { sizeof(faam_gapless_info), 1024, 512, 0 };
     cfg.gapless = &gapless;
 
     faam_io io = mem_io(out, true);

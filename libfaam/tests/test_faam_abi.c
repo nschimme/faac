@@ -48,7 +48,7 @@ _Static_assert(FAAM_UPDATE_CREATION_TIME == 1 && FAAM_UPDATE_GAPLESS == 2
 _Static_assert(FAAM_FRAME_KEYFRAME == 1 && FAAM_METADATA_UPDATE_CLEAR == 1 && FAAM_METADATA_REMOVE == 1, "operation values");
 _Static_assert(sizeof(((faam_track_config *)0)->flags) == 4, "mask storage width");
 
-_Static_assert(offsetof(faam_io, reserved0) == 4 && offsetof(faam_io, user_data) == 8, "io layout");
+_Static_assert(offsetof(faam_io, user_data) == 8, "io layout");
 _Static_assert(offsetof(faam_muxer_config, num_metadata) == 24 && offsetof(faam_muxer_config, tracks) == 32, "config layout");
 _Static_assert(offsetof(faam_muxer_update_params, num_metadata) == 20 && offsetof(faam_muxer_update_params, codec_data) == 32, "update layout");
 _Static_assert(FAAM_MUXER_UPDATE_PARAMS_BASELINE == FAAM_STRUCT_END(faam_muxer_update_params, metadata), "update baseline");
@@ -205,10 +205,10 @@ static void test_outputs(void) {
 static void test_future_inputs(void) {
     memfile plain = {0}, newer = {0};
     faam_track_config tracks[2] = { audio(), audio() };
-    faam_chapter chapters[2] = { { sizeof(faam_chapter), 0, 0, "One" }, { sizeof(faam_chapter), 0, 20, "Two" } };
+    faam_chapter chapters[2] = { { sizeof(faam_chapter), 0, "One" }, { sizeof(faam_chapter), 20, "Two" } };
     faam_metadata_entry tags[2] = { test_text(TEST_KEY_TITLE, "Future"), test_text(TEST_KEY_ARTIST, "Two") };
 
-    faam_gapless_info gap = { sizeof(gap), 10, 20, 0, 3000 };
+    faam_gapless_info gap = { sizeof(gap), 10, 20, 3000 };
     faam_muxer_config cfg; STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK);
     cfg.tracks = tracks; cfg.num_tracks = 2; cfg.chapters = chapters; cfg.num_chapters = 2; cfg.metadata = tags; cfg.num_metadata = 2; cfg.gapless = &gap;
     faam_muxer_update_params update = { .struct_size = sizeof(update), .flags = FAAM_UPDATE_LANGUAGE, .track_id = 2, .language = "deu" };
@@ -305,7 +305,7 @@ static void test_updates_close_flags(void) {
     /* Entries become known only after open. */
     faam_metadata_entry late_tag = test_text(TEST_KEY_TITLE, "Late");
     uint8_t data[FAAM_CODEC_DATA_MAX]; for(unsigned i=0;i<sizeof(data);i++) data[i]=(uint8_t)i; data[0]=0x12; data[1]=0x10;
-    faam_gapless_info gap={ sizeof(gap), 10, 20, 0, 3000 };
+    faam_gapless_info gap={ sizeof(gap), 10, 20, 3000 };
     faam_muxer_update_params p={ .struct_size=sizeof(p), .track_id=1, .creation_time=1700000000,
         .codec_data=data, .codec_data_len=sizeof(data), .language="deu", .gapless=&gap, .metadata=&late_tag, .num_metadata=1 };
     const uint32_t flags[]={FAAM_UPDATE_CREATION_TIME,FAAM_UPDATE_GAPLESS,FAAM_UPDATE_CODEC_DATA,FAAM_UPDATE_LANGUAGE,FAAM_UPDATE_METADATA};

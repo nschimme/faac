@@ -1011,6 +1011,8 @@ int main(int argc, char **argv)
 | `faam_demuxer_get_*` demuxer argument | Takes `const faam_demuxer *`; source-compatible for callers passing a non-const handle. |
 | `faam_demuxer_config.reserved0` | Removed; the baseline ends at `flags`. |
 | `faam_muxer_info.reserved0` | Removed; the baseline still ends at `max_frame_size`. |
+| `faam_io.reserved0`, `faam_gapless_info.reserved0`, `faam_chapter.reserved0`, `faam_muxer_config.reserved0`, `faam_muxer_update_params.reserved0` | Removed. They were explicit padding before a 64-bit or pointer member, which the compiler still aligns, so offsets are unchanged on 64-bit targets. Do not set them. |
+| `faam_track_info.reserved0` | Removed; `language` moves two bytes earlier. Rebuild against the new header. |
 
 ## ABI compatibility
 
@@ -1021,19 +1023,17 @@ fields, and output writes at most struct_size bytes. Unknown fields take
 zero values. Zero your storage and reset struct_size before each query.
 
 New storage is appended at or after the previous sizeof(struct), preserving
-alignment; compiler padding is never reused. Explicit reserved fields must be zero
-on input and are zero on output until assigned a future meaning. They may be
-reused with their storage and offsets preserved and zero retaining the previous
-behavior. Callers must check library support before requesting new behavior.
+alignment; compiler padding is never reused. Callers must check library support
+before requesting new behavior.
 Baseline sizes, released enum values, signatures and field offsets stay fixed
 within a major version. The design excludes embedded structs and embedded list arrays:
 tracks, chapters and metadata entries use pointers/counts. The header still has
-fixed language and reserved byte arrays; these are not extensible lists.
+fixed language byte arrays; these are not extensible lists.
 Input arrays have one uniform element size, strided by the first element's
 struct_size. Output lists use count getters and index getters.
-`faam_io` reserves a uint32_t after struct_size. The muxer config stores
-num_metadata and reserved0 before its pointers. Update parameters carry
-num_metadata and a metadata pointer; their baseline ends at metadata.
+Update parameters carry num_metadata and a metadata pointer; their baseline
+ends at metadata. No struct has explicit reserved fields; padding is the
+compiler's.
 
 Open calls take config pointers so future knobs can be appended.
 Only the demuxer accepts a NULL config; the muxer requires a populated one.

@@ -29,11 +29,8 @@
  *     above the FAAM_*_BASELINE of that struct, reads only the fields that size
  *     covers and, for output structs, writes at most struct_size bytes. New
  *     fields are appended at or after the previous sizeof(struct), preserving
- *     alignment; compiler padding is never reused. Explicit reserved fields must
- *     be zero on input and are zero on output until assigned a future meaning.
- *     They may be reused with their storage and offsets preserved and zero retaining
- *     the previous behavior. Callers must check library support before requesting
- *     new behavior. Absent input fields take their zero value. Baseline sizes,
+ *     alignment; compiler padding is never reused. Callers must check library
+ *     support before requesting new behavior. Absent input fields take their zero value. Baseline sizes,
  *     enum values, signatures and offsets of released fields stay fixed within
  *     a major version.
  *   - No struct is embedded in another and none holds an array of structs (fixed char
@@ -187,7 +184,6 @@ typedef enum faam_codec_id {
  * input that would need that is refused with FAAM_ERR_INVALID_ARGUMENT before any I/O. */
 typedef struct faam_io {
     uint32_t struct_size;
-    uint32_t reserved0;
     void    *user_data;
     int32_t (*read)(void *user_data, void *buf, uint32_t bytes_to_read);
     int32_t (*write)(void *user_data, const void *buf, uint32_t bytes_to_write);
@@ -212,7 +208,6 @@ typedef struct faam_gapless_info {
     uint32_t struct_size;
     uint32_t encoder_delay;    /* Leading priming samples to discard; defaults to 0, caller supplies codec delay */
     uint32_t end_padding;      /* Trailing zero-padding samples to discard */
-    uint32_t reserved0;
     uint64_t total_samples;    /* Original unpadded PCM sample count, 0 if unknown */
 } faam_gapless_info;
 #define FAAM_GAPLESS_INFO_BASELINE FAAM_STRUCT_END(faam_gapless_info, total_samples)
@@ -220,7 +215,6 @@ typedef struct faam_gapless_info {
 /* Chapter Metadata Entry */
 typedef struct faam_chapter {
     uint32_t struct_size;
-    uint32_t reserved0;
     uint64_t start_ms;         /* Chapter start time in milliseconds */
     const char *title;         /* Must not be NULL; at most 255 bytes are stored. Borrowed through
                                 * finalize/update; demux output lives until close */
@@ -292,7 +286,6 @@ typedef struct faam_track_info {
     uint16_t        width;            /* Video width in pixels */
     uint16_t        height;           /* Video height in pixels */
     uint16_t        rotation_degrees; /* tkhd matrix rotation: 0, 90, 180 or 270 clockwise; other matrices read 0 */
-    uint16_t        reserved0;
     char            language[4];
 } faam_track_info;
 #define FAAM_TRACK_INFO_BASELINE FAAM_STRUCT_END(faam_track_info, language)
@@ -498,7 +491,6 @@ typedef struct faam_muxer_config {
     uint32_t            num_tracks;      /* 1 to max_tracks */
     uint32_t            num_chapters;    /* Chapter count, at most 255 */
     uint32_t            num_metadata;    /* Metadata entry count */
-    uint32_t            reserved0;
     const faam_track_config *tracks;     /* num_tracks entries */
     const faam_chapter *chapters;        /* Chapters list to inject; every title must be non-NULL */
     const faam_metadata_entry *metadata; /* num_metadata entries; NULL when 0 */
@@ -564,7 +556,6 @@ typedef struct faam_muxer_update_params {
     uint32_t codec_data_len;
     uint32_t num_metadata;
     char     language[4];
-    uint8_t  reserved0[4];
     const uint8_t *codec_data;
     const faam_gapless_info *gapless;
     const faam_metadata_entry *metadata;
