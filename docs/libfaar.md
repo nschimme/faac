@@ -16,6 +16,7 @@
   - [Bounded streams](#bounded-streams)
   - [Reusing a filter design](#reusing-a-filter-design)
   - [Custom allocators](#custom-allocators)
+- [Porting from libfaar ABI 2 to ABI 3](#porting-from-libfaar-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 - [Command-line tool](#command-line-tool)
 
@@ -357,6 +358,19 @@ resampler is opened. Process calls on a resampler opened with
 `max_input_frames == 0` may still grow a buffer, so set a bound if the pool must
 not allocate during streaming, and reserve space for freed blocks because a bump
 allocator cannot reuse them. Bounded process and finalize calls allocate nothing.
+
+## Porting from libfaar ABI 2 to ABI 3
+
+| ABI 2 | ABI 3 / caller action |
+|---|---|
+| `FAAR_ERR_INSUFFICIENT_MEM` | `FAAR_ERR_NO_MEMORY`; allocation or filter design failure. |
+| `faar_library_info.features` | `faar_library_info.flags`; test `FAAR_LIB_*` bits. |
+| `FAAR_FEATURE_FLOAT_ONLY` | `FAAR_LIB_FLOAT_ONLY`. |
+| `faar_library_info.reserved0` | Removed. |
+| `faar_library_info` field order | `version` and `copyright` come first, then the numeric fields (`max_channels`, `flags`); the baseline ends at `flags` and `struct_size` reports the bytes populated. |
+| Input and output float scale | Unity full scale, `-1.0` to `1.0`; remove the `* 32768` conversion around `faar_resampler_process()` and `faar_resampler_finalize()`. |
+| Dither LSB | Follows the unity scale: one 16-bit LSB is `1/32768` and one 24-bit LSB is `1/8388608` of full scale. |
+| `<stdbool.h>` from `faar.h` | No longer included; include it yourself if your code uses `bool`. |
 
 ## ABI compatibility
 

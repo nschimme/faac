@@ -24,6 +24,7 @@
   - [Reading MP4 for the FAAD decoder](#reading-mp4-for-the-faad-decoder)
   - [Thread safety](#thread-safety)
   - [Complete examples](#complete-examples)
+- [Porting from libfaam ABI 2 to ABI 3](#porting-from-libfaam-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 
 ## Scope
@@ -995,6 +996,21 @@ int main(int argc, char **argv)
     return st == FAAM_OK ? 0 : 1;
 }
 ```
+
+## Porting from libfaam ABI 2 to ABI 3
+
+| ABI 2 | ABI 3 / caller action |
+|---|---|
+| `FAAM_ERR_INSUFFICIENT_MEM` | `FAAM_ERR_NO_MEMORY`; allocation failure. |
+| `faam_library_info.features` | `faam_library_info.flags`; test `FAAM_LIB_*` bits. |
+| `FAAM_FEATURE_VIDEO` | `FAAM_LIB_VIDEO`. |
+| `FAAM_FEATURE_FRAGMENTED` | `FAAM_LIB_FRAGMENTED`. |
+| `faam_library_info.reserved0` | Removed. |
+| `faam_library_info` field order | `version` and `copyright` come first, then the numeric fields (`max_tracks`, `flags`); the baseline ends at `flags` and `struct_size` reports the bytes populated. |
+| `faam_frame_loc.is_keyframe` | Test `flags & FAAM_FRAME_KEYFRAME`; `faam_frame_loc.reserved0` is removed. |
+| `faam_demuxer_get_*` demuxer argument | Takes `const faam_demuxer *`; source-compatible for callers passing a non-const handle. |
+| `faam_demuxer_config.reserved0` | Removed; the baseline ends at `flags`. |
+| `faam_muxer_info.reserved0` | Removed; the baseline still ends at `max_frame_size`. |
 
 ## ABI compatibility
 
