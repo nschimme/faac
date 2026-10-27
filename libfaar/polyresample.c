@@ -222,8 +222,10 @@ static size_t output_capacity(faar_resampler * r, size_t capacity) {
  * noise power. */
 static const float shaping_gain = 0.75f;
 
-/* 24-bit output quantizes 256 times finer than 16-bit. */
-static const float lsb_ratio_24_to_16 = 1.0f / 256.0f;
+/* Unity full scale: one 16-bit LSB is 1/32768 and one 24-bit LSB is
+ * 1/8388608 of full scale. */
+static const float lsb_16 = 1.0f / 32768.0f;
+static const float lsb_24 = 1.0f / 8388608.0f;
 
 /* Golden-ratio increment decorrelates the second xorshift32 stream used for
  * the triangular (difference of two uniforms) dither. */
@@ -235,7 +237,7 @@ static void apply_dither(faar_resampler * r, float *samples, size_t frames) {
     uint16_t c = 0;
     for (size_t i = 0; i < frames * r->channels; i++) {
         float sum = samples[i];
-        float lsb_scale = (r->dither_depth == 16) ? 1.0f : lsb_ratio_24_to_16;
+        float lsb_scale = (r->dither_depth == 16) ? lsb_16 : lsb_24;
         float inv_lsb_scale = 1.0f / lsb_scale;
 
         uint32_t s1 = r->prng_state[c];

@@ -255,8 +255,8 @@ FAARAPI faar_status faar_resampler_close(faar_resampler **resampler);
 FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
                                              faar_resampler_info *out);
 
-/* Consume in_count input frames (interleaved floats on the FAAC integer scale,
- * +-32768.0) and write up to max_out_count output frames. Counts are frames
+/* Consume in_count input frames (interleaved floats at unity full scale,
+ * +-1.0) and write up to max_out_count output frames at the same scale. Counts are frames
  * (samples per channel), not samples. *out_count receives the frames written
  * and is zeroed on error. With in_samples == NULL and in_count == 0 it only
  * drains queued output; call that with nonzero capacity until it makes zero

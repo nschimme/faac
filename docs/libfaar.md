@@ -23,8 +23,8 @@
 
 FAAR converts interleaved PCM audio between sample rates. The application
 handles file and container I/O, timestamps, and playback. The library accepts
-and returns 32-bit float PCM on the FAAC integer scale: `-32768.0` to
-`32768.0`. It does not read or write audio files.
+and returns 32-bit float PCM at unity full scale: `-1.0` to `1.0`. It does not
+read or write audio files.
 
 ## Interface description
 
