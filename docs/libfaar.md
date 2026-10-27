@@ -71,12 +71,7 @@ coefficients and FFT twiddles still use double-precision setup calculations.
 The channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).
 The FFT engine keeps no static tables: each handle allocates its twiddles at
 setup. Float High additionally allocates expansion FFT workspaces per handle;
-channels within the handle share immutable twiddles and filter spectra. See the
-[float High measurements](../libfaar/tests/float-high-results.md) for measured
-quality, CPU, and heap tradeoffs.
-
-The current float/mixed tradeoffs and precision-policy measurements are
-recorded in [precision-policy-results.md](../libfaar/tests/precision-policy-results.md).
+channels within the handle share immutable twiddles and filter spectra.
 
 ## Resampling model
 

@@ -89,22 +89,6 @@ if host_machine.system() != 'windows'
     dependencies: [libfaar_dep, m_dep, threads_dep],
   )
   test('test_faar_design_threads', test_faar_design_threads, timeout: 180)
-  executable('bench_faar_design', ['bench_faar_design.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
-    c_args: libfaar_args + [faar_force_include, faar_alloc_include],
-    include_directories: ['.', '..', inc],
-    dependencies: [m_dep],
-    build_by_default: false,
-  )
-endif
-
-if host_machine.system() != 'windows'
-  executable('bench_faar_heap',
-    ['bench_faar_heap.c', 'faar_alloc_hooks.c'] + libfaar_prepare_sources,
-    c_args: libfaar_args + [faar_force_include, faar_alloc_include],
-    include_directories: ['.', '..', inc],
-    dependencies: [m_dep],
-    build_by_default: false,
-  )
 endif
 
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
@@ -136,25 +120,6 @@ foreach case : [
 ]
   test(case[0], test_faar_fft_real, args: [case[1], case[2]], timeout: 60)
 endforeach
-
-# Opt-in timing tool: no timing thresholds in the correctness suite.
-if host_machine.system() != 'windows'
-  executable('bench_faar', 'bench_faar.c',
-    include_directories: inc,
-    dependencies: [libfaar_dep, m_dep],
-    build_by_default: false,
-  )
-  executable('bench_faar_open', 'bench_faar_open.c',
-    include_directories: inc,
-    dependencies: [libfaar_dep, m_dep],
-    build_by_default: false,
-  )
-  executable('bench_faar_latency', 'bench_faar_latency.c',
-    include_directories: inc,
-    dependencies: [libfaar_dep, m_dep],
-    build_by_default: false,
-  )
-endif
 
 if get_option('faar-precision') == 'float'
   test_faar_float2 = executable('test_faar_float2',

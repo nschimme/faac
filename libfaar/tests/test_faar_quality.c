@@ -588,7 +588,7 @@ static int test_alias_energy(void) {
     return 0;
 }
 
-/* The 150 dB High probe from compare_quality.py, including a loud neighbouring
+/* The 150 dB High probe, including a loud neighbouring
  * channel to expose leakage from the two-real-channels-in-one-complex FFT. */
 static int test_high_stopband(void) {
     const uint32_t ir = 96000, orate = 44100;

@@ -10,45 +10,6 @@ on:
     paths-ignore: ['**.md']
 
 jobs:
-  faar-precision-benchmark:
-    name: FAAR precision benchmark (GCC 13 amd64)
-    runs-on: ubuntu-24.04
-    env:
-      CC: gcc-13
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install benchmark toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-13 meson ninja-build python3
-
-      - name: Configure and build float and mixed variants
-        run: |
-          test "$(uname -m)" = x86_64
-          for mode in float mixed; do
-            meson setup "build-faar-$mode" \
-              -Dencoder=false -Ddecoder=false -Dfrontend=false \
-              -Dbuildtype=release -Db_lto=true -Dfaar-precision="$mode"
-            meson compile -C "build-faar-$mode" bench_faar bench_faar_heap
-          done
-
-      - name: Measure throughput and requested heap
-        run: |
-          uname -a > precision-environment.txt
-          lscpu >> precision-environment.txt
-          gcc-13 --version >> precision-environment.txt
-          python3 libfaar/tests/bench_precision.py > precision-results.csv
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v7
-        with:
-          name: faar-precision-gcc13-amd64-${{ github.sha }}
-          path: |
-            precision-environment.txt
-            precision-results.csv
-
   build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
