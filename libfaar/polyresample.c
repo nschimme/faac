@@ -1757,7 +1757,7 @@ FAARAPI faar_status faar_get_library_info(faar_library_info *out) {
     faar_library_info info = {0};
     info.max_channels = MAX_CHANNELS;
 #ifndef FAAR_WIDE_HIGH
-    info.features |= FAAR_FEATURE_FLOAT_ONLY;
+    info.flags |= FAAR_LIB_FLOAT_ONLY;
 #endif
     info.version = FAAR_VERSION_STRING;
     info.copyright =

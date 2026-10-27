@@ -77,13 +77,13 @@ leave the macros undefined to omit them. Install `include/faam.h` with the libra
 ## Supported content
 
 Query `faam_get_library_info()` with `faam_library_info.struct_size` set.
-`features` contains `FAAM_FEATURE_*` bits; `max_tracks` is the number one
+`flags` contains `FAAM_LIB_*` bits; `max_tracks` is the number one
 muxer can write or one demuxer can hold. `version` and `copyright` are static strings.
 
 | Optional feature | Option (default) | Runtime detection | When absent |
 |---|---|---|---|
-| H.264/H.265, including Annex-B input and avc3/hev1 | `muxer-video` (true) | `FAAM_FEATURE_VIDEO` | Video muxing and non-zero frame CTS offsets return `FAAM_ERR_NOT_BUILT`; video sample entries demux as `FAAM_CODEC_GENERIC`, without video sync/CTS parsing. |
-| Fragmented MP4 | `muxer-fragmented` (true) | `FAAM_FEATURE_FRAGMENTED` | Fragmented muxing/demuxing returns `FAAM_ERR_NOT_BUILT`. |
+| H.264/H.265, including Annex-B input and avc3/hev1 | `muxer-video` (true) | `FAAM_LIB_VIDEO` | Video muxing and non-zero frame CTS offsets return `FAAM_ERR_NOT_BUILT`; video sample entries demux as `FAAM_CODEC_GENERIC`, without video sync/CTS parsing. |
+| Fragmented MP4 | `muxer-fragmented` (true) | `FAAM_LIB_FRAGMENTED` | Fragmented muxing/demuxing returns `FAAM_ERR_NOT_BUILT`. |
 
 ## API (faam.h)
 
@@ -185,7 +185,7 @@ Test for end of stream explicitly in frame loops; `status < 0` detects errors.
 | `FAAM_ERR_IO_WRITE` | -6 | Failed write, muxer seek or flush |
 | `FAAM_ERR_BAD_CONTAINER` | -7 | Invalid atom structure or missing track; no `moov` for an in-place edit |
 | `FAAM_ERR_NO_TRACK` | -8 | No matching track |
-| `FAAM_ERR_NOT_BUILT` | -9 | Feature compiled out; query `faam_library_info.features` |
+| `FAAM_ERR_NOT_BUILT` | -9 | Feature compiled out; query `faam_library_info.flags` |
 | `FAAM_END_OF_STREAM` | 1 | No more frames; not an error |
 
 Init/open set the output handle to NULL before failing. Close takes its
@@ -477,7 +477,7 @@ from the USAC configuration.
 
 Set width, height, timescale (often 90000), rotation_degrees and codec_data
 (avcC/hvcC payload). Non-zero cts_offset permits negative values for B-frames,
-requires FAAM_FEATURE_VIDEO and is invalid for audio. Progressive files write
+requires FAAM_LIB_VIDEO and is invalid for audio. Progressive files write
 ctts only for non-zero offsets; the first offset is compensated by an edit list.
 Set `FAAM_TRACK_INBAND_PARAMS` when samples repeat parameter sets, selecting
 avc3/hev1; codec_data is still required for their configuration boxes.
@@ -490,7 +490,7 @@ H.265 always needs supplied hvcC. Dimensions are still required.
 
 ### Recording to removable storage
 
-Set fragment_ms greater than zero and check FAAM_FEATURE_FRAGMENTED.
+Set fragment_ms greater than zero and check FAAM_LIB_FRAGMENTED.
 Open with `faam_muxer_open()`; it allocates the fragment index up front.
 ftyp/moov are written at open, then moof/mdat fragments.
 A fragment closes at the first video keyframe after the requested duration

@@ -26,7 +26,7 @@
 #include "../../tests/faam_test_helpers.h"
 
 /* Public constant groups remain 32-bit enums, even with -fshort-enums. */
-_Static_assert(sizeof(enum faam_feature) == 4, "feature enum width");
+_Static_assert(sizeof(enum faam_library_flag) == 4, "feature enum width");
 _Static_assert(sizeof(enum faam_track_flag) == 4, "track_flag enum width");
 _Static_assert(sizeof(enum faam_track_info_flag) == 4, "track_info_flag enum width");
 _Static_assert(sizeof(enum faam_metadata_data_type) == 4, "metadata_data_type enum width");
@@ -35,7 +35,7 @@ _Static_assert(sizeof(enum faam_muxer_flag) == 4, "muxer_flag enum width");
 _Static_assert(sizeof(enum faam_update_flag) == 4, "update_flag enum width");
 _Static_assert(sizeof(enum faam_frame_flag) == 4, "frame_flag enum width");
 _Static_assert(sizeof(enum faam_metadata_update_flag) == 4, "metadata_update_flag enum width");
-_Static_assert(FAAM_FEATURE_VIDEO == 1 && FAAM_FEATURE_FRAGMENTED == 2, "feature values");
+_Static_assert(FAAM_LIB_VIDEO == 1 && FAAM_LIB_FRAGMENTED == 2, "feature values");
 _Static_assert(FAAM_TRACK_ANNEXB == 1 && FAAM_TRACK_INBAND_PARAMS == 2, "track values");
 _Static_assert(FAAM_TRACK_INFO_INBAND_PARAMS == 1, "track info values");
 _Static_assert(FAAM_METADATA_IMPLICIT == 0 && FAAM_METADATA_UTF8 == 1 && FAAM_METADATA_UTF16 == 2
@@ -166,7 +166,22 @@ static void test_outputs(void) {
     faam_muxer_config cfg; STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK);
     cfg.tracks = &t; cfg.num_tracks = 1; cfg.metadata = &entry; cfg.num_metadata = 1; cfg.chapters = &ch; cfg.num_chapters = 1;
     faam_muxer *m = start(&f, &cfg); frames(m, 1);
-    OUTPUT(faam_library_info, FAAM_LIBRARY_INFO_BASELINE, faam_get_library_info(&out.v));
+    {
+        /* Library info reports the bytes populated rather than echoing struct_size. */
+        struct { faam_library_info v; uint8_t guard[32]; } lib;
+        memset(&lib, 0xA5, sizeof(lib));
+        lib.v.struct_size = sizeof(faam_library_info) + 32;
+        STATUS(faam_get_library_info(&lib.v), FAAM_OK);
+        CHECK(lib.v.struct_size == sizeof(faam_library_info));
+        for (unsigned k = 0; k < 32; k++) CHECK(lib.guard[k] == 0xA5);
+        lib.v.struct_size = FAAM_LIBRARY_INFO_BASELINE;
+        STATUS(faam_get_library_info(&lib.v), FAAM_OK);
+        CHECK(lib.v.struct_size == FAAM_LIBRARY_INFO_BASELINE);
+        lib.v.struct_size = FAAM_LIBRARY_INFO_BASELINE - 1;
+        STATUS(faam_get_library_info(&lib.v), FAAM_ERR_INVALID_ARGUMENT);
+        lib.v.struct_size = 0;
+        STATUS(faam_get_library_info(&lib.v), FAAM_ERR_INVALID_ARGUMENT);
+    }
     OUTPUT(faam_muxer_info, FAAM_MUXER_INFO_BASELINE, faam_muxer_get_info(m, 1, &out.v));
     finish(&m); faam_demuxer *d = open_mem(&f);
     OUTPUT(faam_track_info, FAAM_TRACK_INFO_BASELINE, faam_demuxer_get_track_info(d, 0, &out.v));

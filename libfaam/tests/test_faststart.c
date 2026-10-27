@@ -76,7 +76,7 @@ static uint32_t be32(const uint8_t *b) {
 static bool have_feature(uint32_t bit) {
     faam_library_info info = { .struct_size = sizeof(info) };
     CHECK(faam_get_library_info(&info) == FAAM_OK);
-    return (info.features & bit) != 0;
+    return (info.flags & bit) != 0;
 }
 
 /* Top-level box order: where moov and mdat start, and moov's size. */
@@ -349,7 +349,7 @@ static void check_errors(void) {
     cfg.flags = FAAM_MUXER_FASTSTART;
     cfg.fragment_ms = 1000;
     CHECK(faam_muxer_open(&cfg, &io, &m) ==
-          (have_feature(FAAM_FEATURE_FRAGMENTED) ? FAAM_ERR_INVALID_ARGUMENT : FAAM_ERR_NOT_BUILT) && m == NULL);
+          (have_feature(FAAM_LIB_FRAGMENTED) ? FAAM_ERR_INVALID_ARGUMENT : FAAM_ERR_NOT_BUILT) && m == NULL);
     free(out.buf);
 
     /* A write that fails inside the copy and inside the final moov is sticky. */
@@ -441,7 +441,7 @@ int main(void) {
     check_pair(false);
     check_update();
     check_errors();
-    if (have_feature(FAAM_FEATURE_VIDEO)) {
+    if (have_feature(FAAM_LIB_VIDEO)) {
         check_pair(true);
         check_mp4v();
     }

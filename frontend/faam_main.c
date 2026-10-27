@@ -1532,7 +1532,7 @@ static int cmd_mux(int argc, char **argv)
     faam_library_info library_info = {0};
     library_info.struct_size = sizeof(library_info);
     bool can_fragment = faam_get_library_info(&library_info) == FAAM_OK &&
-                        (library_info.features & FAAM_FEATURE_FRAGMENTED) != 0;
+                        (library_info.flags & FAAM_LIB_FRAGMENTED) != 0;
     mux_stream = mux_stdout && !faststart && !is_m4b && !gapless_given && can_fragment;
     if (mux_stream) cfg.fragment_ms = 1000;
     if (mux_stdout && !cli_binary_stream(stdout)) {

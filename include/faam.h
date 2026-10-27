@@ -132,7 +132,7 @@ typedef enum faam_status {
     FAAM_ERR_IO_WRITE         = -6, /* I/O write failure */
     FAAM_ERR_BAD_CONTAINER    = -7, /* Invalid MP4 atom structure or missing track */
     FAAM_ERR_NO_TRACK         = -8, /* No matching video/audio track found */
-    FAAM_ERR_NOT_BUILT        = -9, /* The feature is compiled out of this build (see faam_library_info.features) */
+    FAAM_ERR_NOT_BUILT        = -9, /* The feature is compiled out of this build (see faam_library_info.flags) */
     FAAM_END_OF_STREAM        = 1, /* Not an error: no more frames */
     FAAM_STATUS_MAX           = 0x7fffffff
 } faam_status;
@@ -143,23 +143,26 @@ typedef enum faam_status {
 /* Public flag constants are enums; combinable masks retain fixed-width storage.
  * MAX sentinels pin enum widths and are not valid flags or cover types. */
 
-/* faam_library_info.features */
-enum faam_feature {
-    FAAM_FEATURE_VIDEO = 0x1, /* muxer-video: H.264/H.265 tracks, Annex-B, B-frame offsets */
-    FAAM_FEATURE_FRAGMENTED = 0x2, /* muxer-fragmented: fragmented MP4 recording and demuxing */
-    FAAM_FEATURE_MAX = 0x7fffffff
+/* faam_library_info.flags */
+enum faam_library_flag {
+    FAAM_LIB_VIDEO = 1u << 0, /* muxer-video: H.264/H.265 tracks, Annex-B, B-frame offsets */
+    FAAM_LIB_FRAGMENTED = 1u << 1, /* muxer-fragmented: fragmented MP4 recording and demuxing */
+    FAAM_LIB_FLAG_MAX = 0x7fffffff
 };
 
-/* Global library metadata; set struct_size to sizeof(faam_library_info) before the call. */
+/* Global library metadata; set struct_size to sizeof(faam_library_info) before
+ * the call; it is updated to the bytes populated. version/copyright are
+ * library-owned; do not free them. */
 typedef struct faam_library_info {
     uint32_t                struct_size;
+
+    const char             *version;      /* library version string   (library-owned) */
+    const char             *copyright;    /* library copyright string (library-owned) */
+
     uint32_t                max_tracks;   /* Tracks one muxer writes or one demuxer holds */
-    uint32_t                features;     /* FAAM_FEATURE_* bits of this build */
-    uint32_t                reserved0;
-    const char             *version;
-    const char             *copyright;
+    uint32_t                flags;        /* FAAM_LIB_* bits of this build */
 } faam_library_info;
-#define FAAM_LIBRARY_INFO_BASELINE FAAM_STRUCT_END(faam_library_info, copyright)
+#define FAAM_LIBRARY_INFO_BASELINE FAAM_STRUCT_END(faam_library_info, flags)
 
 FAAMAPI faam_status faam_get_library_info(faam_library_info *out);
 

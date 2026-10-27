@@ -26,17 +26,19 @@ FAAMAPI faam_status faam_get_library_info(faam_library_info *out)
 
     faam_library_info info;
     memset(&info, 0, sizeof(info));
-    info.struct_size = sizeof(info);
     info.max_tracks = FAAM_MAX_TRACKS;
 #ifdef FAAM_MUXER_VIDEO
-    info.features |= FAAM_FEATURE_VIDEO;
+    info.flags |= FAAM_LIB_VIDEO;
 #endif
 #ifdef FAAM_MUXER_FRAGMENTED
-    info.features |= FAAM_FEATURE_FRAGMENTED;
+    info.flags |= FAAM_LIB_FRAGMENTED;
 #endif
     info.version = FAAM_VERSION_STRING;
     info.copyright = "Copyright (C) 2026 Nils Schimmelmann";
-    faam_copy_out(out, out->struct_size, &info, sizeof(info));
+    /* Write at most the caller's struct_size and report the bytes populated. */
+    uint32_t n = out->struct_size < sizeof(info) ? out->struct_size : (uint32_t)sizeof(info);
+    info.struct_size = n;
+    memcpy(out, &info, n);
     return FAAM_OK;
 }
 
