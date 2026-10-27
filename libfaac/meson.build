@@ -47,23 +47,20 @@ libfaac_src = [
     'util.h',
 ]
 
-encoder_args = []
 encoder_codec_dep = codec_lc_dep
-if get_option('encoder-sbr')
+if encoder_sbr
     libfaac_src += files('sbr.c', 'sbr_analysis.c', 'sbr_bitstream.c', 'sbr_huff_tables.c', 'resample.c')
     encoder_codec_dep = codec_dep
     if encoder_ps
         libfaac_src += files('ps.c', 'ps_huff_tables.c', 'ps_huff_tables.h')
     endif
-else
-    encoder_args += ['-DFAAC_DISABLE_SBR']
 endif
 
 libfaac = disabler()
 
 common_args = {
     'include_directories' : ['..', '../include', common_inc],
-    'c_args' : c_args + encoder_args + ['-DCOMMON_PREFIX=faac_'],
+    'c_args' : c_args + ['-DCOMMON_PREFIX=faac_'],
     'dependencies' : [libm, encoder_codec_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,

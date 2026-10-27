@@ -154,7 +154,7 @@ struct SignalAnalysis;
 
 typedef struct SBRContext SBRContext;
 
-#ifndef FAAC_DISABLE_SBR
+#if FAAC_ENCODER_SBR
 SBRContext *SbrContextInit(int channels);
 void SbrContextEnd(SBRContext *sbrCtx);
 unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx);
