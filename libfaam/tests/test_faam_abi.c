@@ -48,9 +48,10 @@ _Static_assert(FAAM_UPDATE_CREATION_TIME == 1 && FAAM_UPDATE_GAPLESS == 2
 _Static_assert(FAAM_FRAME_KEYFRAME == 1 && FAAM_METADATA_UPDATE_CLEAR == 1 && FAAM_METADATA_REMOVE == 1, "operation values");
 _Static_assert(sizeof(((faam_track_config *)0)->flags) == 4, "mask storage width");
 
-_Static_assert(offsetof(faam_io, user_data) == 8, "io layout");
-_Static_assert(offsetof(faam_muxer_config, num_metadata) == 24 && offsetof(faam_muxer_config, tracks) == 32, "config layout");
-_Static_assert(offsetof(faam_muxer_update_params, num_metadata) == 20 && offsetof(faam_muxer_update_params, codec_data) == 32, "update layout");
+#define PTR_ALIGN_UP(n) (((n) + _Alignof(void *) - 1) / _Alignof(void *) * _Alignof(void *))
+_Static_assert(offsetof(faam_io, user_data) == PTR_ALIGN_UP(4), "io layout");
+_Static_assert(offsetof(faam_muxer_config, num_metadata) == 24 && offsetof(faam_muxer_config, tracks) == PTR_ALIGN_UP(28), "config layout");
+_Static_assert(offsetof(faam_muxer_update_params, num_metadata) == 20 && offsetof(faam_muxer_update_params, codec_data) == PTR_ALIGN_UP(28), "update layout");
 _Static_assert(FAAM_MUXER_UPDATE_PARAMS_BASELINE == FAAM_STRUCT_END(faam_muxer_update_params, metadata), "update baseline");
 
 #define CHECK(c) do { if (!(c)) { \
