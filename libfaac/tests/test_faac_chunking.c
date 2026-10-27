@@ -76,6 +76,7 @@ int main(void)
     for (size_t c = 0; c < sizeof(configs) / sizeof(configs[0]); c++) {
         const config *cfg = &configs[c];
         if (cfg->channels > lib.max_channels) continue; /* build has fewer channels */
+        if (cfg->object != FAAC_OBJ_LC && !(lib.flags & FAAC_LIB_SBR)) continue; /* LC-only build */
         uint32_t frames = cfg->rate * 3 / 2 + 5; /* not a multiple of any chunk size */
         int16_t *pcm = pcm_make(cfg->rate, cfg->channels, frames);
         uint8_t *ref = NULL;

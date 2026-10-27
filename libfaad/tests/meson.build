@@ -80,6 +80,10 @@ if get_option('encoder')
         'mono-lc', 'stereo-lc', 'stereo-he-aac', 'six-channel-lc',
         'three-channel-downmix', 'eight-channel-downmix', 'hang-cases'
     ]
+        # These cases encode HE-AAC, which an LC-only encoder cannot do.
+        if not encoder_sbr and (case_name == 'stereo-he-aac' or case_name == 'eight-channel-downmix')
+            continue
+        endif
         test('test_integration_faad_robust_' + case_name, test_faad_robust,
             args: [case_name], timeout: 120)
     endforeach
@@ -92,6 +96,10 @@ if get_option('encoder')
         'align-lc-44100', 'align-lc-48000', 'align-he-48000', 'align-he-32000',
         'tone-level-and-channels', 'silence', 'he-aac-band'
     ]
+        # These cases encode HE-AAC, which an LC-only encoder cannot do.
+        if not encoder_sbr and (case_name == 'align-he-48000' or case_name == 'align-he-32000' or case_name == 'he-aac-band')
+            continue
+        endif
         test('test_integration_faad_roundtrip_' + case_name, test_faad_roundtrip,
             args: [case_name], timeout: 120)
     endforeach

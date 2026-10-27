@@ -246,6 +246,7 @@ int main(int argc, char **argv)
     FT_REQUIRE(faac_get_library_info(&enc) == FAAC_OK);
     FT_REQUIRE(faad_get_library_info(&dec) == FAAD_OK);
     int stereo = enc.max_channels >= 2 && dec.max_channels >= 2;
+    int enc_sbr = enc.flags & FAAC_LIB_SBR;
     int all = argc == 1 || (argc == 2 && strcmp(argv[1], "all") == 0);
     if (argc > 2) goto invalid_case;
 
@@ -253,15 +254,15 @@ int main(int argc, char **argv)
         test_alignment(FAAC_OBJ_LC, 44100, 96000, "LC 44.1k");
     if (all || strcmp(argv[1], "align-lc-48000") == 0)
         test_alignment(FAAC_OBJ_LC, 48000, 64000, "LC 48k");
-    if ((dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-48000") == 0))
+    if (enc_sbr && (dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-48000") == 0))
         test_alignment(FAAC_OBJ_HE_AAC_V1, 48000, 48000, "HE 48k");
-    if ((dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-32000") == 0))
+    if (enc_sbr && (dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-32000") == 0))
         test_alignment(FAAC_OBJ_HE_AAC_V1, 32000, 40000, "HE 32k");
     if (stereo && (all || strcmp(argv[1], "tone-level-and-channels") == 0))
         test_tone_level_and_channels();
     if (stereo && (all || strcmp(argv[1], "silence") == 0))
         test_silence();
-    if (stereo && (dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "he-aac-band") == 0))
+    if (stereo && enc_sbr && (dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "he-aac-band") == 0))
         test_he_band();
 
     if (all || strcmp(argv[1], "align-lc-44100") == 0

@@ -483,7 +483,8 @@ static int run_stream_case(int t, const faad_library_info *lib, const faac_libra
     const enum faac_object_type objs[2] = { FAAC_OBJ_LC, FAAC_OBJ_HE_AAC_V1 };
     uint32_t channels = t == 0 ? 1 : t == 3 ? 6 : 2;
     enum faac_object_type obj = objs[t == 2 ? 1 : 0];
-    if (channels > lib->max_channels || (t == 2 && !(lib->flags & FAAD_LIB_SBR))
+    if (channels > lib->max_channels
+        || (t == 2 && (!(lib->flags & FAAD_LIB_SBR) || !(enc->flags & FAAC_LIB_SBR)))
         || channels > enc->max_channels) return 0;
     uint32_t len = encode(obj, channels, intact, sizeof(intact));
     if (len == 0) return fail("encode");
@@ -521,7 +522,7 @@ static int run_matrix_case(uint32_t channels, const faad_library_info *lib, cons
 {
     static uint8_t intact[1 << 20];
     if (channels > lib->max_channels || channels > enc->max_channels
-        || (channels == 8 && !(lib->flags & FAAD_LIB_SBR))) return 0;
+        || (channels == 8 && (!(lib->flags & FAAD_LIB_SBR) || !(enc->flags & FAAC_LIB_SBR)))) return 0;
     enum faac_object_type obj = channels == 8 ? FAAC_OBJ_HE_AAC_V1 : FAAC_OBJ_LC;
     uint32_t len = encode(obj, channels, intact, sizeof(intact));
     return !len || test_stereo_downmix_matrix(intact, len, channels) ? 1 : 0;
