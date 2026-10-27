@@ -56,7 +56,7 @@
  *     below says which callbacks it needs; they are checked before any byte is read
  *     or written.
  *   - An allocation that failed returns
- *     FAAM_ERR_INSUFFICIENT_MEM.
+ *     FAAM_ERR_NO_MEMORY.
  *   - On failure open functions set *out_muxer / *out_demuxer to NULL
  *     before anything else, so the pointer is always safe to pass to close.
  *
@@ -126,7 +126,7 @@ typedef enum faam_status {
     FAAM_OK                   = 0,
     FAAM_ERR_INVALID_ARGUMENT = -1,
     FAAM_ERR_UNSUPPORTED      = -2, /* A required io callback is NULL, or the call or content is not supported */
-    FAAM_ERR_INSUFFICIENT_MEM = -3, /* An allocation failed */
+    FAAM_ERR_NO_MEMORY        = -3, /* An allocation failed */
     FAAM_ERR_OUTPUT_TOO_SMALL = -4, /* *out_len reports the required output capacity */
     FAAM_ERR_IO_READ          = -5, /* A read callback failed or a read ended short of data the caller needs */
     FAAM_ERR_IO_WRITE         = -6, /* I/O write failure */

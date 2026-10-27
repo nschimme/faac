@@ -1595,7 +1595,7 @@ static int cmd_mux(int argc, char **argv)
                                               &frames[i], g_verbose > 0 ? mux_progress : NULL, &progress);
             free(vbuf_store[i]);
             vbuf_store[i] = NULL;
-            if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+            if (st == FAAM_ERR_NO_MEMORY) {
                 fprintf(stderr, "Error: out of memory\n");
                 goto done;
             }
@@ -1861,7 +1861,7 @@ static int cmd_demux(int argc, char **argv)
     progress_throttle_reset(&progress.throttle);
     st = faam_engine_demux_track(d, &ti, demux_write_sample, &output_ctx,
                                  g_verbose > 0 ? mux_progress : NULL, &progress);
-    if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+    if (st == FAAM_ERR_NO_MEMORY) {
         fprintf(stderr, "Error: out of memory\n");
         goto done;
     }

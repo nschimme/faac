@@ -45,7 +45,7 @@ faam_status faam_update_chapters_stream(const faam_io *caller_io, const faam_cha
 
     uint32_t chpl_cap = 17 + count * 265;
     uint8_t *chpl_buf = (uint8_t *)AllocMemory(chpl_cap);
-    if (!chpl_buf) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!chpl_buf) return FAAM_ERR_NO_MEMORY;
 
     uint32_t chpl_len = 17;
     write_u32_be(chpl_buf + 8, 1U << 24); /* ver/flags */

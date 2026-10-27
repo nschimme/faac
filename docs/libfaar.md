@@ -152,7 +152,7 @@ a static, human-readable string and never returns NULL.
 |---|---|
 | `FAAR_ERR_INVALID_ARGUMENT` | NULL pointer, bad argument or bad configuration, including nonzero reserved fields. |
 | `FAAR_ERR_UNSUPPORTED` | Reserved for a configuration a build refuses on purpose; this release does not return it. |
-| `FAAR_ERR_INSUFFICIENT_MEM` | An allocation failed, the planner could not build the filter design, or a bounded stream exhausted its reserved output queue. |
+| `FAAR_ERR_NO_MEMORY` | An allocation failed, the planner could not build the filter design, or a bounded stream exhausted its reserved output queue. |
 | `FAAR_ERR_PROCESSING` | Resampling failed. Discard and close that handle. |
 
 Open functions set their output pointer to `NULL` before anything else, so it is
@@ -280,12 +280,12 @@ produces zero frames before supplying the next chunk; finalize with
 Process, drain, and finalize calls do not allocate or free heap storage.
 Exceeding the bound returns `FAAR_ERR_INVALID_ARGUMENT` before consuming input.
 If queued output is not drained and its reserved capacity is exhausted,
-processing may return `FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_PROCESSING`;
+processing may return `FAAR_ERR_NO_MEMORY` or `FAAR_ERR_PROCESSING`;
 discard and close that stream.
 
 The reservation covers the cascade, including endpoint padding and FFT
 workspace prefill; it can increase persistent memory, and `open` may return
-`FAAR_ERR_INSUFFICIENT_MEM` or `FAAR_ERR_INVALID_ARGUMENT`. Pages initialized
+`FAAR_ERR_NO_MEMORY` or `FAAR_ERR_INVALID_ARGUMENT`. Pages initialized
 during open can still be paged out later by the operating system, so this is
 not a hard real-time guarantee. FFT block costs are unchanged. A design opened
 with a nonzero `max_input_frames` reserves each stream's storage in

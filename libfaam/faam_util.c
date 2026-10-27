@@ -63,7 +63,7 @@ const char *faam_strerror(faam_status status)
         return "Invalid argument or null pointer";
     case FAAM_ERR_UNSUPPORTED:
         return "Operation or content not supported";
-    case FAAM_ERR_INSUFFICIENT_MEM:
+    case FAAM_ERR_NO_MEMORY:
         return "Insufficient memory";
     case FAAM_ERR_OUTPUT_TOO_SMALL:
         return "Output buffer too small";

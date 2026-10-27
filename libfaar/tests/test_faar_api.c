@@ -211,6 +211,6 @@ int main(void) {
     assert(resampler != NULL);
     assert(faar_resampler_close(&resampler) == FAAR_OK);
     assert(resampler == NULL);
-    assert(strcmp(faar_strerror(FAAR_ERR_INSUFFICIENT_MEM), "out of memory") == 0);
+    assert(strcmp(faar_strerror(FAAR_ERR_NO_MEMORY), "out of memory") == 0);
     return 0;
 }

@@ -179,7 +179,7 @@ Test for end of stream explicitly in frame loops; `status < 0` detects errors.
 | `FAAM_OK` | 0 | Success |
 | `FAAM_ERR_INVALID_ARGUMENT` | -1 | NULL required pointer, invalid struct size, configuration, flags or call order |
 | `FAAM_ERR_UNSUPPORTED` | -2 | Missing required callback, unsupported content/call or in-place 64-bit box header |
-| `FAAM_ERR_INSUFFICIENT_MEM` | -3 | An allocation failed |
+| `FAAM_ERR_NO_MEMORY` | -3 | An allocation failed |
 | `FAAM_ERR_OUTPUT_TOO_SMALL` | -4 | Output capacity too small; length out-parameter reports required capacity |
 | `FAAM_ERR_IO_READ` | -5 | Failed read or insufficient data for the requested operation |
 | `FAAM_ERR_IO_WRITE` | -6 | Failed write, muxer seek or flush |
@@ -356,7 +356,7 @@ void pool_reset(void) { used = 0; }
 Use one FAAM operation or instance at a time with this pool and serialize
 access. Reset only after close or a failed open/standalone update, once no
 pool-backed instance or borrowed output remains. Allocation failure returns
-`FAAM_ERR_INSUFFICIENT_MEM`.
+`FAAM_ERR_NO_MEMORY`.
 
 A bump allocator never reuses freed blocks. Budget for every allocation over
 the whole operation, including temporary parsing buffers and both old and new

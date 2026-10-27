@@ -55,7 +55,7 @@ static faam_status set_track_codec(faam_muxer_track *tr, const uint8_t *data, ui
     uint8_t *ext = NULL;
     if (len > FAAM_CODEC_INLINE) {
         ext = (uint8_t *)AllocMemory(len);
-        if (!ext) return FAAM_ERR_INSUFFICIENT_MEM;
+        if (!ext) return FAAM_ERR_NO_MEMORY;
         memcpy(ext, data, len);
     } else if (len) {
         memcpy(tr->codec_data, data, len);
@@ -332,10 +332,10 @@ faam_status faam_muxer_open(const faam_muxer_config *src, const faam_io *io, faa
         }
     }
     faam_muxer *m = (faam_muxer *)AllocMemory(sizeof(*m));
-    if (!m) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!m) return FAAM_ERR_NO_MEMORY;
     memset(m, 0, sizeof(*m));
     m->tracks = (faam_muxer_track *)AllocMemory(cfg.num_tracks * sizeof(*m->tracks));
-    if (!m->tracks) { faam_muxer_close(&m); return FAAM_ERR_INSUFFICIENT_MEM; }
+    if (!m->tracks) { faam_muxer_close(&m); return FAAM_ERR_NO_MEMORY; }
     memset(m->tracks, 0, cfg.num_tracks * sizeof(*m->tracks));
     m->cfg.creation_time = cfg.creation_time;
     m->cfg.constant_rate = cfg.flags & FAAM_MUXER_CONSTANT_RATE;
@@ -343,7 +343,7 @@ faam_status faam_muxer_open(const faam_muxer_config *src, const faam_io *io, faa
     if (cfg.flags & FAAM_MUXER_FASTSTART) {
         /* Heap, not stack: embedded callers finalize from small task stacks. */
         m->faststart_buf = (uint8_t *)AllocMemory(FAAM_FASTSTART_COPY_BYTES);
-        if (!m->faststart_buf) { faam_muxer_close(&m); return FAAM_ERR_INSUFFICIENT_MEM; }
+        if (!m->faststart_buf) { faam_muxer_close(&m); return FAAM_ERR_NO_MEMORY; }
     }
     if (cfg.gapless) faam_copy_in(&m->cfg.gapless, sizeof(m->cfg.gapless), cfg.gapless, cfg.gapless->struct_size);
     m->cfg.metadata = cfg.metadata;
@@ -370,7 +370,7 @@ faam_status faam_muxer_open(const faam_muxer_config *src, const faam_io *io, faa
         m->fi_track = (uint8_t *)AllocMemory(m->frag_cap);
         if (!m->fi_off || !m->fi_dur || (m->has_video && !m->fi_cts) || !m->fi_flags || !m->fi_track) {
             faam_muxer_close(&m);
-            return FAAM_ERR_INSUFFICIENT_MEM;
+            return FAAM_ERR_NO_MEMORY;
         }
     }
 #endif
@@ -392,7 +392,7 @@ faam_status faam_muxer_open(const faam_muxer_config *src, const faam_io *io, faa
                 memcpy(tr->codec_data, tr->cfg.codec_data, len);
             } else {
                 tr->codec_ext = (uint8_t *)AllocMemory(len);
-                if (!tr->codec_ext) { faam_muxer_close(&m); return FAAM_ERR_INSUFFICIENT_MEM; }
+                if (!tr->codec_ext) { faam_muxer_close(&m); return FAAM_ERR_NO_MEMORY; }
                 memcpy(tr->codec_ext, tr->cfg.codec_data, len);
             }
             tr->codec_data_len = len;
@@ -407,14 +407,14 @@ faam_status faam_muxer_open(const faam_muxer_config *src, const faam_io *io, faa
             tr->sample_offsets = (uint64_t *)AllocMemory(tr->sample_capacity * sizeof(uint64_t));
         if (!tr->sample_sizes || (m->num_tracks > 1 && !tr->sample_offsets)) {
             faam_muxer_close(&m);
-            return FAAM_ERR_INSUFFICIENT_MEM;
+            return FAAM_ERR_NO_MEMORY;
         }
 
         tr->stts_capacity = 16;
         tr->stts_entries = (faam_stts_entry *)AllocMemory(tr->stts_capacity * sizeof(faam_stts_entry));
         if (!tr->stts_entries) {
             faam_muxer_close(&m);
-            return FAAM_ERR_INSUFFICIENT_MEM;
+            return FAAM_ERR_NO_MEMORY;
         }
 
 #ifdef FAAM_MUXER_VIDEO
@@ -423,7 +423,7 @@ faam_status faam_muxer_open(const faam_muxer_config *src, const faam_io *io, faa
             tr->stss_entries = (uint32_t *)AllocMemory(tr->stss_capacity * sizeof(uint32_t));
             if (!tr->stss_entries) {
                 faam_muxer_close(&m);
-                return FAAM_ERR_INSUFFICIENT_MEM;
+                return FAAM_ERR_NO_MEMORY;
             }
         }
 #endif
@@ -538,7 +538,7 @@ static bool add_ctts(faam_muxer *m, faam_muxer_track *tr, int32_t offset)
     if (!tr->ctts_entries) {
         tr->ctts_capacity = 16;
         tr->ctts_entries = (faam_ctts_entry *)AllocMemory(tr->ctts_capacity * sizeof(faam_ctts_entry));
-        if (!tr->ctts_entries) { m->error = FAAM_ERR_INSUFFICIENT_MEM; return false; }
+        if (!tr->ctts_entries) { m->error = FAAM_ERR_NO_MEMORY; return false; }
         if (tr->sample_count) {
             tr->ctts_entries[0].count = tr->sample_count;
             tr->ctts_entries[0].offset = 0;
@@ -552,7 +552,7 @@ static bool add_ctts(faam_muxer *m, faam_muxer_track *tr, int32_t offset)
     if (tr->ctts_count >= tr->ctts_capacity) {
         uint32_t new_cap = tr->ctts_capacity * 2;
         faam_ctts_entry *tmp = (faam_ctts_entry *)faam_grow_memory(tr->ctts_entries, (size_t)tr->ctts_count * sizeof(*tr->ctts_entries), new_cap * sizeof(faam_ctts_entry));
-        if (!tmp) { m->error = FAAM_ERR_INSUFFICIENT_MEM; return false; }
+        if (!tmp) { m->error = FAAM_ERR_NO_MEMORY; return false; }
         tr->ctts_entries = tmp;
         tr->ctts_capacity = new_cap;
     }
@@ -834,13 +834,13 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
         if (tr->sample_count >= tr->sample_capacity) {
             uint32_t new_cap = tr->sample_capacity * 2;
             if (new_cap < tr->sample_capacity || new_cap > UINT32_MAX / sizeof(uint64_t))
-                return m->error = FAAM_ERR_INSUFFICIENT_MEM;
+                return m->error = FAAM_ERR_NO_MEMORY;
             uint32_t *tmp = (uint32_t *)faam_grow_memory(tr->sample_sizes, (size_t)tr->sample_count * sizeof(*tr->sample_sizes), (size_t)new_cap * sizeof(uint32_t));
-            if (!tmp) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
+            if (!tmp) return m->error = FAAM_ERR_NO_MEMORY;
             tr->sample_sizes = tmp;
             if (m->num_tracks > 1) {
                 uint64_t *offsets = (uint64_t *)faam_grow_memory(tr->sample_offsets, (size_t)tr->sample_count * sizeof(*tr->sample_offsets), (size_t)new_cap * sizeof(uint64_t));
-                if (!offsets) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
+                if (!offsets) return m->error = FAAM_ERR_NO_MEMORY;
                 tr->sample_offsets = offsets;
             }
             tr->sample_capacity = new_cap;
@@ -885,7 +885,7 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
         if (tr->stss_count >= tr->stss_capacity) {
             uint32_t new_cap = tr->stss_capacity * 2;
             uint32_t *tmp = (uint32_t *)faam_grow_memory(tr->stss_entries, (size_t)tr->stss_count * sizeof(*tr->stss_entries), new_cap * sizeof(uint32_t));
-            if (!tmp) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
+            if (!tmp) return m->error = FAAM_ERR_NO_MEMORY;
             tr->stss_entries = tmp;
             tr->stss_capacity = new_cap;
         }
@@ -901,7 +901,7 @@ faam_status faam_muxer_write_frame(faam_muxer *m, uint32_t track_id, const uint8
         if (tr->stts_count >= tr->stts_capacity) {
             uint32_t new_cap = tr->stts_capacity * 2;
             faam_stts_entry *tmp = (faam_stts_entry *)faam_grow_memory(tr->stts_entries, (size_t)tr->stts_count * sizeof(*tr->stts_entries), new_cap * sizeof(faam_stts_entry));
-            if (!tmp) return m->error = FAAM_ERR_INSUFFICIENT_MEM;
+            if (!tmp) return m->error = FAAM_ERR_NO_MEMORY;
             tr->stts_entries = tmp;
             tr->stts_capacity = new_cap;
         }

@@ -205,7 +205,7 @@ static int test_reserve_failures(const test_case *tc, const pcm_t *expected) {
         faar_alloc_fail_nth(nth);
         faar_status status = faar_resampler_open(&config, &r);
         faar_alloc_fail_nth(0);
-        if (status != FAAR_ERR_INSUFFICIENT_MEM || r || faar_alloc_live() != live_before ||
+        if (status != FAAR_ERR_NO_MEMORY || r || faar_alloc_live() != live_before ||
             !open_case(tc, tc->block, &r) ||
             !stream_all(r, tc, tc->block, input, &actual) ||
             actual.frames != expected->frames ||
@@ -242,7 +242,7 @@ static int test_budget_exhaustion(void) {
     size_t calls = faar_alloc_calls();
     faar_alloc_fail_all(0);
     faar_resampler_close(&r);
-    if ((status != FAAR_ERR_INSUFFICIENT_MEM && status != FAAR_ERR_PROCESSING) || calls)
+    if ((status != FAAR_ERR_NO_MEMORY && status != FAAR_ERR_PROCESSING) || calls)
         return fail("undrained bounded output did not exhaust without allocation", 97);
     return 0;
 }
@@ -270,7 +270,7 @@ static int test_high_open_failures(void) {
             faar_alloc_fail_nth(0);
             int returned_handle = r != NULL;
             faar_resampler_close(&r);
-            if (status != FAAR_ERR_INSUFFICIENT_MEM || returned_handle
+            if (status != FAAR_ERR_NO_MEMORY || returned_handle
                     || faar_alloc_live() != live_before)
                 return fail("High allocation failure leaked or returned a handle", nth);
         }

@@ -108,11 +108,11 @@ static bool esds_decoder_specific_info(const uint8_t *p, uint32_t n,
 static const char *own_string(faam_demuxer *d, const uint8_t *text, uint32_t len) {
     if (!text) return NULL;
     if (len > UINT32_MAX - sizeof(faam_owned_string) - 1) {
-        d->error = FAAM_ERR_INSUFFICIENT_MEM;
+        d->error = FAAM_ERR_NO_MEMORY;
         return NULL;
     }
     faam_owned_string *s = (faam_owned_string *)AllocMemory(sizeof(*s) + (size_t)len + 1);
-    if (!s) { d->error = FAAM_ERR_INSUFFICIENT_MEM; return NULL; }
+    if (!s) { d->error = FAAM_ERR_NO_MEMORY; return NULL; }
     s->next = d->strings;
     if (len) memcpy(s->text, text, len);
     s->text[len] = '\0';
@@ -134,11 +134,11 @@ static void parse_metadata_entry(const uint8_t *atom, uint32_t size, faam_demuxe
             if (count == d->entries_cap) {
                 size_t cap = d->entries_cap ? (size_t)d->entries_cap * 2 : 16;
                 if (cap > UINT32_MAX || cap > SIZE_MAX / sizeof(*d->entries)) {
-                    d->error = FAAM_ERR_INSUFFICIENT_MEM; return;
+                    d->error = FAAM_ERR_NO_MEMORY; return;
                 }
                 faam_metadata_entry *grown = (faam_metadata_entry *)faam_grow_memory(d->entries,
                     (size_t)count * sizeof(*d->entries), cap * sizeof(*d->entries));
-                if (!grown) { d->error = FAAM_ERR_INSUFFICIENT_MEM; return; }
+                if (!grown) { d->error = FAAM_ERR_NO_MEMORY; return; }
                 d->entries = grown; d->entries_cap = (uint32_t)cap;
             }
             if (name && !owned_name) {
@@ -240,7 +240,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
             if (d->num_tracks < FAAM_MAX_TRACKS) {
                 current_trak_idx = (int)d->num_tracks;
                 if (!reserve_tracks(d, d->num_tracks + 1)) {
-                    d->error = FAAM_ERR_INSUFFICIENT_MEM;
+                    d->error = FAAM_ERR_NO_MEMORY;
                     return;
                 }
                 d->num_tracks++;
@@ -301,7 +301,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
             uint32_t entry_count = buf[p++];
             if (d->chapters || !entry_count) { cur = payload_end; continue; }
             d->chapters = (faam_chapter *)AllocMemory(entry_count * sizeof(faam_chapter));
-            if (!d->chapters) { d->error = FAAM_ERR_INSUFFICIENT_MEM; cur = payload_end; continue; }
+            if (!d->chapters) { d->error = FAAM_ERR_NO_MEMORY; cur = payload_end; continue; }
             for (uint32_t c = 0; c < entry_count && p + 9 <= payload_end; c++) {
                 uint64_t start = read_u64_be(buf + p) / 10000;
                 uint8_t tlen = buf[p + 8];
@@ -401,7 +401,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
             uint32_t len = (uint32_t)(payload_end - payload_offset);
             if (!tr->codec_data && len) {
                 tr->codec_data = (uint8_t *)AllocMemory(len);
-                if (!tr->codec_data) d->error = FAAM_ERR_INSUFFICIENT_MEM;
+                if (!tr->codec_data) d->error = FAAM_ERR_NO_MEMORY;
                 else { memcpy(tr->codec_data, buf + payload_offset, len); tr->codec_data_len = len; }
             }
 #endif
@@ -417,7 +417,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                                            &object_type, &config, &config_len) &&
                 (tr->info.codec_id != FAAM_CODEC_AAC || is_aac_object_type(object_type)) && config_len) {
                 tr->codec_data = (uint8_t *)AllocMemory(config_len);
-                if (!tr->codec_data) d->error = FAAM_ERR_INSUFFICIENT_MEM;
+                if (!tr->codec_data) d->error = FAAM_ERR_NO_MEMORY;
                 else { memcpy(tr->codec_data, config, config_len); tr->codec_data_len = config_len; }
             }
         } else if (memcmp(type, "stts", 4) == 0 && current_trak_idx >= 0 && !tb->stts[current_trak_idx] && payload_offset + 8 <= payload_end) {
@@ -559,7 +559,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
         if (n_samples == 0) continue;
 
         tr->samples = (faam_sample *)AllocMemory(n_samples * sizeof(faam_sample));
-        if (!tr->samples) { d->error = FAAM_ERR_INSUFFICIENT_MEM; return d->error; }
+        if (!tr->samples) { d->error = FAAM_ERR_NO_MEMORY; return d->error; }
         memset(tr->samples, 0, n_samples * sizeof(faam_sample));
         tr->total_frames = n_samples;
         tr->info.total_frames = n_samples;
@@ -662,7 +662,7 @@ static bool reserve_samples(faam_demuxer *d, faam_demuxer_track *tr, uint32_t ne
     uint32_t cap = tr->samples_cap * 2 > need ? tr->samples_cap * 2 : need;
     if (cap < 64) cap = 64;
     faam_sample *p = (faam_sample *)faam_grow_memory(tr->samples, (size_t)tr->total_frames * sizeof(*tr->samples), (size_t)cap * sizeof(faam_sample));
-    if (!p) { d->error = FAAM_ERR_INSUFFICIENT_MEM; return false; }
+    if (!p) { d->error = FAAM_ERR_NO_MEMORY; return false; }
     tr->samples = p;
     tr->samples_cap = cap;
     return true;
@@ -759,7 +759,7 @@ static faam_status load_fragment(faam_demuxer *d)
         if (memcmp(hdr + 4, "moof", 4)) { d->frag_pos += size; continue; }
         if (size > MOOF_MAX_BYTES) break;
         uint8_t *buf = (uint8_t *)AllocMemory((size_t)size);
-        if (!buf) { d->error = FAAM_ERR_INSUFFICIENT_MEM; break; }
+        if (!buf) { d->error = FAAM_ERR_NO_MEMORY; break; }
         for (uint32_t t = 0; t < d->num_tracks; t++) d->tracks[t].total_frames = d->tracks[t].current_frame = 0;
         int32_t body = read_at(&d->io, d->frag_pos, buf, (uint32_t)size);
         if (body < 0) d->error = FAAM_ERR_IO_READ;
@@ -805,7 +805,7 @@ faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
     if (!loaded.read || !loaded.seek) return FAAM_ERR_UNSUPPORTED;
 
     faam_demuxer *d = (faam_demuxer *)AllocMemory(sizeof(*d));
-    if (!d) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!d) return FAAM_ERR_NO_MEMORY;
     memset(d, 0, sizeof(*d));
     d->io = loaded;
 
@@ -824,9 +824,9 @@ faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
         if (!memcmp(hdr + 4, "ftyp", 4) && size >= header + 4 && got >= (int32_t)header + 4)
             memcpy(d->major_brand, hdr + header, 4);
         if (!memcmp(hdr + 4, "moov", 4)) {
-            if (size > MOOV_MAX_BYTES) { d->error = FAAM_ERR_INSUFFICIENT_MEM; break; }
+            if (size > MOOV_MAX_BYTES) { d->error = FAAM_ERR_NO_MEMORY; break; }
             uint8_t *buf = (uint8_t *)AllocMemory((size_t)size);
-            if (!buf) { d->error = FAAM_ERR_INSUFFICIENT_MEM; break; }
+            if (!buf) { d->error = FAAM_ERR_NO_MEMORY; break; }
             int32_t moov_got = read_at(&d->io, pos, buf, (uint32_t)size);
             if (moov_got < 0) d->error = FAAM_ERR_IO_READ;
             else if (moov_got == (int32_t)size) {

@@ -173,7 +173,7 @@ faam_status faam_engine_mux_video_frames(faam_muxer *m, uint32_t track_id, annex
     video_sink sink = { m, track_id, frames, fps_num, fps_den, FAAM_OK, progress, progress_user,
                         start };
     annexb_status as = annexb_split(codec, data, len, video_sample, &sink);
-    if (as == ANNEXB_NO_MEMORY) sink.st = FAAM_ERR_INSUFFICIENT_MEM;
+    if (as == ANNEXB_NO_MEMORY) sink.st = FAAM_ERR_NO_MEMORY;
     if (as == ANNEXB_OK && sink.st == FAAM_OK)
         report_progress(progress, progress_user, *frames,
                         fps_num ? (double)*frames * fps_den / fps_num : 0.0,
@@ -191,7 +191,7 @@ faam_status faam_engine_demux_track(faam_demuxer *d, const faam_track_info *trac
     uint32_t frames = 0;
     uint64_t media_ticks = 0;
     double start = progress ? progress_time() : 0.0;
-    if (!frame) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!frame) return FAAM_ERR_NO_MEMORY;
 
     faam_status st = FAAM_OK;
     faam_frame_loc loc = { .struct_size = sizeof(loc) };
@@ -205,7 +205,7 @@ faam_status faam_engine_demux_track(faam_demuxer *d, const faam_track_info *trac
         st = faam_demuxer_read_frame(d, frame, frame_cap, &frame_bytes);
         if (st == FAAM_ERR_OUTPUT_TOO_SMALL) {
             uint8_t *bigger = (uint8_t *)realloc(frame, frame_bytes);
-            if (!bigger) { st = FAAM_ERR_INSUFFICIENT_MEM; break; }
+            if (!bigger) { st = FAAM_ERR_NO_MEMORY; break; }
             frame = bigger;
             frame_cap = frame_bytes;
             st = faam_demuxer_read_frame(d, frame, frame_cap, &frame_bytes);

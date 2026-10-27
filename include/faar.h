@@ -59,7 +59,7 @@
  *   - FAAR_ERR_UNSUPPORTED is reserved for a configuration a build refuses on
  *     purpose; this release does not return it.
  *   - An allocation that failed, or a filter design the planner could not
- *     build, returns FAAR_ERR_INSUFFICIENT_MEM.
+ *     build, returns FAAR_ERR_NO_MEMORY.
  *   - A failure while resampling returns FAAR_ERR_PROCESSING; discard and close
  *     that handle.
  *   - On failure open functions set *out to NULL before anything else, so the
@@ -131,7 +131,7 @@ typedef enum faar_status {
     FAAR_OK                   = 0,
     FAAR_ERR_INVALID_ARGUMENT = -1, /* NULL pointer, bad arguments or bad configuration  */
     FAAR_ERR_UNSUPPORTED      = -2, /* reserved; not returned by this release            */
-    FAAR_ERR_INSUFFICIENT_MEM = -3, /* allocation or filter design failed, or reserved queue exhausted */
+    FAAR_ERR_NO_MEMORY = -3, /* allocation or filter design failed, or reserved queue exhausted */
     FAAR_ERR_PROCESSING       = -4, /* resampling failed; discard and close the handle   */
     FAAR_STATUS_MAX           = 0x7fffffff
 } faar_status;

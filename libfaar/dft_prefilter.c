@@ -380,12 +380,12 @@ faar_status faar_dft_prefilter_prepare(faar_dft_prefilter *s,
     if (frames > SIZE_MAX / s->channels / sizeof(float)
             || prefix > SIZE_MAX / s->channels / sizeof(float))
         return FAAR_ERR_INVALID_ARGUMENT;
-    if (fifo_reserve(s, frames)) return FAAR_ERR_INSUFFICIENT_MEM;
+    if (fifo_reserve(s, frames)) return FAAR_ERR_NO_MEMORY;
     if (prefix > s->endpoint_capacity) {
         float *next = (float *)faar_grow_memory(s->endpoint,
                 s->endpoint_capacity * s->channels * sizeof(float),
                 prefix * s->channels * sizeof(float));
-        if (!next) return FAAR_ERR_INSUFFICIENT_MEM;
+        if (!next) return FAAR_ERR_NO_MEMORY;
         s->endpoint = next;
         s->endpoint_capacity = prefix;
     }
