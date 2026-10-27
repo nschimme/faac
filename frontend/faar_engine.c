@@ -298,6 +298,10 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
         }
         if (samples_read == 0)
             break;
+
+        /* wav_read_float32 yields [-1, 1]; libfaar works on 16-bit scale. */
+        for (size_t i = 0; i < samples_read; i++)
+            float_in_buf[i] *= 32768.0f;
         if (samples_read % channels != 0) {
             fprintf(stderr, "Error: Input ends with an incomplete audio frame\n");
             goto cleanup;

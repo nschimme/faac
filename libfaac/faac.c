@@ -156,7 +156,7 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
             break;
         case FAAC_OBJ_HE_AAC_V2:
             if (!IsPS(p->object_type)) return FAAC_ERR_UNSUPPORTED;
-            if (p->num_channels != 2) return FAAC_ERR_INVALID_ARGUMENT;
+            if (p->channels != 2) return FAAC_ERR_INVALID_ARGUMENT;
             break;
         default:
             return FAAC_ERR_INVALID_ARGUMENT;

@@ -50,7 +50,8 @@ meson install -C build
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `encoder` | true | Build `libfaac` and the `faac` frontend |
+| `encoder-sbr` | true | HE-AAC v1 (SBR) support in `libfaac`; false builds an LC-only encoder |
+| `encoder-ps` | false | Enable HE-AAC v2 Parametric Stereo encoding; needs `encoder-sbr` |
 | `encoder-ps` | false | Enable HE-AAC v2 Parametric Stereo encoding |
 | `decoder` | true | Build `libfaad` and the `faad` frontend |
 | `frontend` | true | Build the command-line tools |

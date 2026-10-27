@@ -192,11 +192,14 @@ static inline unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
     return 0;
 }
 
-static inline int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
+static inline int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate,
+                                         int aacObjectType, int rateLimited)
 {
     (void)sCtx;
     (void)channels;
     (void)bitrate;
+    (void)aacObjectType;
+    (void)rateLimited;
     return 0;
 }
 

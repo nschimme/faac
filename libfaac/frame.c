@@ -389,7 +389,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         const int  sfbn[2]      = { hEncoder->aacquantCfg.max_cbl, hEncoder->aacquantCfg.max_cbs };
         QuantizeConfigureMask(&hEncoder->aacquantCfg, hEncoder->sampleRate,
                               hEncoder->config.bitRate, hEncoder->numChannels,
-                              hEncoder->config.aacObjectType == HE_V1);
+                              IsSBR(hEncoder->config.aacObjectType));
         StereoConfigure(&hEncoder->stereoCfg, (JointMode)hEncoder->config.jointmode, hEncoder->sampleRate,
                         hEncoder->config.bitRate,
                         CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels),
