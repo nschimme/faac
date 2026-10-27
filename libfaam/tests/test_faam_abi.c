@@ -364,8 +364,8 @@ static void test_video(void) {
         CHECK(ti.fourcc==(codec?(inband?0x68657631:0x68766331):(inband?0x61766333:0x61766331)));
         if (ti.flags != (inband?FAAM_TRACK_INFO_INBAND_PARAMS:0)) fprintf(stderr, "codec %u inband %u rotation %u: flags observed %u, expected %u\n", codec, inband, rot*90, ti.flags, inband?FAAM_TRACK_INFO_INBAND_PARAMS:0);
         inband_ok &= ti.flags==(inband?FAAM_TRACK_INFO_INBAND_PARAMS:0);
-        faam_frame_loc loc={ .struct_size=sizeof(loc) }; STATUS(faam_demuxer_next_frame_loc(d,&loc),FAAM_OK); CHECK(loc.is_keyframe); advance(d);
-        STATUS(faam_demuxer_next_frame_loc(d,&loc),FAAM_OK); CHECK(!loc.is_keyframe); faam_demuxer_close(&d); free(f.buf);
+        faam_frame_loc loc={ .struct_size=sizeof(loc) }; STATUS(faam_demuxer_next_frame_loc(d,&loc),FAAM_OK); CHECK(loc.flags & FAAM_FRAME_KEYFRAME); advance(d);
+        STATUS(faam_demuxer_next_frame_loc(d,&loc),FAAM_OK); CHECK(!(loc.flags & FAAM_FRAME_KEYFRAME)); faam_demuxer_close(&d); free(f.buf);
     }
     for(unsigned rot=45;rot<=360;rot+=315) { memfile f={0}; faam_io io=mem_io(&f); faam_muxer *m=NULL; t.rotation_degrees=rot;
         STATUS(faam_muxer_open(&cfg,&io,&m),FAAM_ERR_INVALID_ARGUMENT); free(f.buf); }

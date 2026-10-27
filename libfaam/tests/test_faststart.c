@@ -160,7 +160,7 @@ static void snap(memfile *f, snapshot *s) {
         CHECK(loc.frame_bytes <= sizeof(buf));
         CHECK(faam_demuxer_read_frame(d, buf, sizeof(buf), &got) == FAAM_OK && got == loc.frame_bytes);
         r->track = loc.track_id; r->size = loc.frame_bytes; r->duration = loc.duration_ticks;
-        r->cts = loc.cts_offset; r->key = loc.is_keyframe; r->offset = loc.file_offset;
+        r->cts = loc.cts_offset; r->key = !!(loc.flags & FAAM_FRAME_KEYFRAME); r->offset = loc.file_offset;
         r->hash = 2166136261u;
         for (uint32_t i = 0; i < got; i++) r->hash = (r->hash ^ buf[i]) * 16777619u;
     }

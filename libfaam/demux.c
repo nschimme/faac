@@ -889,7 +889,7 @@ faam_status faam_demuxer_close(faam_demuxer **handle)
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_num_tracks(faam_demuxer *d, uint32_t *out_held, uint32_t *out_total)
+faam_status faam_demuxer_get_num_tracks(const faam_demuxer *d, uint32_t *out_held, uint32_t *out_total)
 {
     if (!d || !out_held) return FAAM_ERR_INVALID_ARGUMENT;
     *out_held = d->num_tracks;
@@ -897,18 +897,18 @@ faam_status faam_demuxer_get_num_tracks(faam_demuxer *d, uint32_t *out_held, uin
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_track_info(faam_demuxer *d, uint32_t track_index, faam_track_info *out_info)
+faam_status faam_demuxer_get_track_info(const faam_demuxer *d, uint32_t track_index, faam_track_info *out_info)
 {
     if (!d || !out_info || out_info->struct_size < FAAM_TRACK_INFO_BASELINE || track_index >= d->num_tracks) return FAAM_ERR_INVALID_ARGUMENT;
     faam_copy_out(out_info, out_info->struct_size, &d->tracks[track_index].info, sizeof(faam_track_info));
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_codec_data(faam_demuxer *d, uint32_t track_id, uint8_t *out_buf, uint32_t buf_cap, uint32_t *out_len)
+faam_status faam_demuxer_get_codec_data(const faam_demuxer *d, uint32_t track_id, uint8_t *out_buf, uint32_t buf_cap, uint32_t *out_len)
 {
     if (!d || !out_len || (!out_buf && buf_cap)) return FAAM_ERR_INVALID_ARGUMENT;
     *out_len = 0;
-    faam_demuxer_track *tr = NULL;
+    const faam_demuxer_track *tr = NULL;
     for (uint32_t t = 0; t < d->num_tracks; t++) {
         if (d->tracks[t].info.track_id == track_id) {
             tr = &d->tracks[t];
@@ -923,7 +923,7 @@ faam_status faam_demuxer_get_codec_data(faam_demuxer *d, uint32_t track_id, uint
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_major_brand(faam_demuxer *d, char out_brand[5])
+faam_status faam_demuxer_get_major_brand(const faam_demuxer *d, char out_brand[5])
 {
     if (!d || !out_brand) return FAAM_ERR_INVALID_ARGUMENT;
     memcpy(out_brand, d->major_brand, 4);
@@ -932,12 +932,12 @@ faam_status faam_demuxer_get_major_brand(faam_demuxer *d, char out_brand[5])
 }
 
 /* Fills *out for a track; the public wrapper copies it out to the caller's size. */
-static faam_status track_gapless(faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless)
+static faam_status track_gapless(const faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless)
 {
     memset(out_gapless, 0, sizeof(*out_gapless));
     out_gapless->struct_size = sizeof(*out_gapless);
 
-    faam_demuxer_track *tr = NULL;
+    const faam_demuxer_track *tr = NULL;
     for (uint32_t t = 0; t < d->num_tracks; t++) {
         if (d->tracks[t].info.track_id == track_id) {
             tr = &d->tracks[t];
@@ -974,7 +974,7 @@ static faam_status track_gapless(faam_demuxer *d, uint32_t track_id, faam_gaples
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_track_gapless(faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless)
+faam_status faam_demuxer_get_track_gapless(const faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless)
 {
     if (!d || !out_gapless || out_gapless->struct_size < FAAM_GAPLESS_INFO_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
     if (track_id == 0) {
@@ -992,14 +992,14 @@ faam_status faam_demuxer_get_track_gapless(faam_demuxer *d, uint32_t track_id, f
     return st;
 }
 
-faam_status faam_demuxer_get_num_metadata(faam_demuxer *d, uint32_t *out_count)
+faam_status faam_demuxer_get_num_metadata(const faam_demuxer *d, uint32_t *out_count)
 {
     if (!d || !out_count) return FAAM_ERR_INVALID_ARGUMENT;
     *out_count = d->num_entries;
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_metadata_entry(faam_demuxer *d, uint32_t index, faam_metadata_entry *out)
+faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *d, uint32_t index, faam_metadata_entry *out)
 {
     if (!d || !out || out->struct_size < FAAM_METADATA_ENTRY_BASELINE || index >= d->num_entries)
         return FAAM_ERR_INVALID_ARGUMENT;
@@ -1007,14 +1007,14 @@ faam_status faam_demuxer_get_metadata_entry(faam_demuxer *d, uint32_t index, faa
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_num_chapters(faam_demuxer *d, uint32_t *out_count)
+faam_status faam_demuxer_get_num_chapters(const faam_demuxer *d, uint32_t *out_count)
 {
     if (!d || !out_count) return FAAM_ERR_INVALID_ARGUMENT;
     *out_count = d->num_chapters;
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_chapter(faam_demuxer *d, uint32_t index, faam_chapter *out_chapter)
+faam_status faam_demuxer_get_chapter(const faam_demuxer *d, uint32_t index, faam_chapter *out_chapter)
 {
     if (!d || !out_chapter || out_chapter->struct_size < FAAM_CHAPTER_BASELINE || index >= d->num_chapters)
         return FAAM_ERR_INVALID_ARGUMENT;
@@ -1053,7 +1053,7 @@ faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc
     loc.frame_bytes = tr->samples[tr->current_frame].size;
     loc.duration_ticks = tr->samples[tr->current_frame].duration;
     loc.cts_offset = tr->samples[tr->current_frame].cts_offset;
-    loc.is_keyframe = tr->samples[tr->current_frame].is_keyframe;
+    if (tr->samples[tr->current_frame].is_keyframe) loc.flags |= FAAM_FRAME_KEYFRAME;
     faam_copy_out(out_loc, out_loc->struct_size, &loc, sizeof(loc));
     return FAAM_OK;
 }

@@ -201,18 +201,18 @@ faam_status faam_get_library_info(faam_library_info *out);
 faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
                                       faam_demuxer **out_demuxer);
 faam_status faam_demuxer_close(faam_demuxer **d);
-faam_status faam_demuxer_get_num_tracks(faam_demuxer *d, uint32_t *out_held, uint32_t *out_total);
-faam_status faam_demuxer_get_track_info(faam_demuxer *d, uint32_t track_index,
+faam_status faam_demuxer_get_num_tracks(const faam_demuxer *d, uint32_t *out_held, uint32_t *out_total);
+faam_status faam_demuxer_get_track_info(const faam_demuxer *d, uint32_t track_index,
                                                 faam_track_info *out_info);
-faam_status faam_demuxer_get_codec_data(faam_demuxer *d, uint32_t track_id,
+faam_status faam_demuxer_get_codec_data(const faam_demuxer *d, uint32_t track_id,
                                                 uint8_t *out_buf, uint32_t buf_cap,
                                                 uint32_t *out_len);
-faam_status faam_demuxer_get_major_brand(faam_demuxer *d, char out_brand[5]);
-faam_status faam_demuxer_get_track_gapless(faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless);
-faam_status faam_demuxer_get_num_metadata(faam_demuxer *d, uint32_t *out_count);
-faam_status faam_demuxer_get_metadata_entry(faam_demuxer *d, uint32_t index, faam_metadata_entry *out_entry);
-faam_status faam_demuxer_get_num_chapters(faam_demuxer *d, uint32_t *out_count);
-faam_status faam_demuxer_get_chapter(faam_demuxer *d, uint32_t index, faam_chapter *out_chapter);
+faam_status faam_demuxer_get_major_brand(const faam_demuxer *d, char out_brand[5]);
+faam_status faam_demuxer_get_track_gapless(const faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless);
+faam_status faam_demuxer_get_num_metadata(const faam_demuxer *d, uint32_t *out_count);
+faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *d, uint32_t index, faam_metadata_entry *out_entry);
+faam_status faam_demuxer_get_num_chapters(const faam_demuxer *d, uint32_t *out_count);
+faam_status faam_demuxer_get_chapter(const faam_demuxer *d, uint32_t index, faam_chapter *out_chapter);
 faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc);
 faam_status faam_demuxer_read_frame(faam_demuxer *d,
                                             uint8_t *out_frame, uint32_t frame_cap,
@@ -247,7 +247,9 @@ faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *c
    `FAAM_ERR_OUTPUT_TOO_SMALL` and the required length. Major brand is a
    five-byte NUL-terminated string, padding spaces retained, empty without `ftyp`.
 3. Initialize `faam_frame_loc.struct_size` and call next_frame_loc to inspect
-   the next sample. It does not advance. read_frame reads and advances;
+   the next sample. It does not advance. `flags` carries `FAAM_FRAME_KEYFRAME`
+   for a sync sample; audio samples are all keyframes. The `faam_demuxer_get_*`
+   queries take a const handle and do not change the cursor. read_frame reads and advances;
    a NULL payload buffer skips it. An undersized buffer reports its required
    size without advancing. Stop on `FAAM_END_OF_STREAM`, and report negative statuses.
 4. Query tags with `faam_demuxer_get_num_metadata()` and the indexed entry getter.

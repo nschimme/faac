@@ -305,10 +305,9 @@ typedef struct faam_frame_loc {
     uint32_t frame_bytes;      /* Length of the payload frame in bytes */
     uint32_t duration_ticks;   /* Frame duration (DTS delta) in timescale ticks */
     int32_t  cts_offset;       /* PTS - DTS in timescale ticks (ctts); 0 for audio and I/P-only video */
-    bool     is_keyframe;      /* True if sync sample / keyframe / IDR frame */
-    uint8_t  reserved0[3];
+    uint32_t flags;            /* FAAM_FRAME_* bits (FAAM_FRAME_KEYFRAME: sync sample / keyframe / IDR) */
 } faam_frame_loc;
-#define FAAM_FRAME_LOC_BASELINE FAAM_STRUCT_END(faam_frame_loc, is_keyframe)
+#define FAAM_FRAME_LOC_BASELINE FAAM_STRUCT_END(faam_frame_loc, flags)
 
 /* Native ilst keys are four bytes, including bytes such as 0xa9 (not UTF-8).
  * FAAM_FOURCC(0xa9, 'l', 'y', 'r') is the interoperable lyrics key. */
@@ -397,9 +396,8 @@ typedef struct faam_metadata_entry {
 typedef struct faam_demuxer_config {
     uint32_t struct_size;
     uint32_t flags;            /* Reserved, 0 */
-    uint32_t reserved0[2];
 } faam_demuxer_config;
-#define FAAM_DEMUXER_CONFIG_BASELINE FAAM_STRUCT_END(faam_demuxer_config, reserved0)
+#define FAAM_DEMUXER_CONFIG_BASELINE FAAM_STRUCT_END(faam_demuxer_config, flags)
 
 /* The demuxer needs read and seek (FAAM_ERR_UNSUPPORTED otherwise; FAAM_ERR_NOT_BUILT for a
  * fragmented file in a build without muxer-fragmented; a read callback that
@@ -418,10 +416,10 @@ FAAMAPI faam_status faam_demuxer_close(faam_demuxer **d);
 /* *out_held is the number of tracks the demuxer holds (valid indices for get_track_info);
  * *out_total, when not NULL, is the number of tracks in the file, which exceeds out_held
  * when the file has more than max_tracks. */
-FAAMAPI faam_status faam_demuxer_get_num_tracks(faam_demuxer *d, uint32_t *out_held, uint32_t *out_total);
+FAAMAPI faam_status faam_demuxer_get_num_tracks(const faam_demuxer *d, uint32_t *out_held, uint32_t *out_total);
 
 /* Set out_info->struct_size to sizeof(faam_track_info) before the call. */
-FAAMAPI faam_status faam_demuxer_get_track_info(faam_demuxer *d, uint32_t track_index,
+FAAMAPI faam_status faam_demuxer_get_track_info(const faam_demuxer *d, uint32_t track_index,
                                                 faam_track_info *out_info);
 
 /* Copies codec-specific decoder configuration: the AudioSpecificConfig, the avcC/hvcC
@@ -429,31 +427,31 @@ FAAMAPI faam_status faam_demuxer_get_track_info(faam_demuxer *d, uint32_t track_
  * DecoderSpecificInfo (VOL configuration) from its esds. On
  * FAAM_ERR_OUTPUT_TOO_SMALL, *out_len is the required capacity; retry with that size.
  * A NULL out_buf with zero buf_cap queries the required size. */
-FAAMAPI faam_status faam_demuxer_get_codec_data(faam_demuxer *d, uint32_t track_id,
+FAAMAPI faam_status faam_demuxer_get_codec_data(const faam_demuxer *d, uint32_t track_id,
                                                 uint8_t *out_buf, uint32_t buf_cap,
                                                 uint32_t *out_len);
 
 /* The ftyp major brand as a NUL-terminated string, padding spaces kept; empty without an ftyp. */
-FAAMAPI faam_status faam_demuxer_get_major_brand(faam_demuxer *d, char out_brand[5]);
+FAAMAPI faam_status faam_demuxer_get_major_brand(const faam_demuxer *d, char out_brand[5]);
 
 /* Reports gapless parameters for one track; track_id 0 means the first audio track. The
  * first audio track gets the file's iTunSMPB when present; every track otherwise uses its
  * own edit list, with delay, padding and total in that track's timescale units. All zeros
  * when neither exists. Set out_gapless->struct_size to sizeof. */
-FAAMAPI faam_status faam_demuxer_get_track_gapless(faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless);
+FAAMAPI faam_status faam_demuxer_get_track_gapless(const faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless);
 
 /* Number of ilst values; read each with faam_demuxer_get_metadata_entry(). */
-FAAMAPI faam_status faam_demuxer_get_num_metadata(faam_demuxer *d, uint32_t *out_count);
+FAAMAPI faam_status faam_demuxer_get_num_metadata(const faam_demuxer *d, uint32_t *out_count);
 /* Set out_entry->struct_size to sizeof. Enumerates every supported ilst data child, including native, freeform and
  * repeated values. Unknown data types are returned as bytes; malformed/opaque
  * atoms without a usable data child are not enumerated. */
-FAAMAPI faam_status faam_demuxer_get_metadata_entry(faam_demuxer *d, uint32_t index, faam_metadata_entry *out_entry);
+FAAMAPI faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *d, uint32_t index, faam_metadata_entry *out_entry);
 
 
 
 /* Up to 255 chapters exist (the Nero chpl count byte). Set out_chapter->struct_size to sizeof. */
-FAAMAPI faam_status faam_demuxer_get_num_chapters(faam_demuxer *d, uint32_t *out_count);
-FAAMAPI faam_status faam_demuxer_get_chapter(faam_demuxer *d, uint32_t index, faam_chapter *out_chapter);
+FAAMAPI faam_status faam_demuxer_get_num_chapters(const faam_demuxer *d, uint32_t *out_count);
+FAAMAPI faam_status faam_demuxer_get_chapter(const faam_demuxer *d, uint32_t index, faam_chapter *out_chapter);
 
 /* Returns the next frame's location without consuming it. Repeated calls return
  * the same location until faam_demuxer_read_frame() consumes or skips that frame.
@@ -581,7 +579,7 @@ FAAMAPI faam_status faam_muxer_update(faam_muxer *m, const faam_muxer_update_par
  * I/P-only video, which then writes no ctts box. Non-zero offsets need the muxer-video
  * build option (FAAM_ERR_NOT_BUILT otherwise) and are invalid on audio tracks. */
 enum faam_frame_flag {
-    FAAM_FRAME_KEYFRAME = 0x1, /* Sync sample / IDR; audio frames are all keyframes, the flag is ignored there */
+    FAAM_FRAME_KEYFRAME = 1u << 0, /* Sync sample / IDR; audio frames are all keyframes, the flag is ignored there */
     FAAM_FRAME_FLAG_MAX = 0x7fffffff
 };
 
@@ -611,7 +609,6 @@ typedef struct faam_muxer_info {
     uint32_t max_bitrate;
     uint32_t avg_bitrate;
     uint32_t max_frame_size;
-    uint32_t reserved0;
 } faam_muxer_info;
 #define FAAM_MUXER_INFO_BASELINE FAAM_STRUCT_END(faam_muxer_info, max_frame_size)
 
