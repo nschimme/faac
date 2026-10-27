@@ -25,6 +25,9 @@ int main(void)
 {
     faac_params p;
     faac_encoder *enc = NULL;
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    assert(faac_get_library_info(&lib) == FAAC_OK);
+    assert(!!(lib.flags & FAAC_LIB_PS) == FAAC_ENCODER_PS);
     assert(faac_params_init(&p, sizeof(p)) == FAAC_OK);
     p.sample_rate = 48000;
     p.channels = 1;
@@ -69,8 +72,6 @@ int main(void)
     assert(faac_encoder_close(&enc) == FAAC_OK);
 #if MAX_CHANNELS >= 2
     p.channels = 2;
-    faac_library_info lib = { .struct_size = sizeof(lib) };
-    assert(faac_get_library_info(&lib) == FAAC_OK);
     const unsigned auto_rates[] = {32000, 44100, 48000};
     for (unsigned i = 0; i < 3; i++) {
         p.sample_rate = auto_rates[i];

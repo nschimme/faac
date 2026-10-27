@@ -297,6 +297,7 @@ typedef struct faac_encoder_info {
  */
 enum faac_library_flag {
     FAAC_LIB_SBR = 1u << 0,         /* HE-AAC v1 (SBR) is compiled in */
+    FAAC_LIB_PS  = 1u << 1,         /* HE-AAC v2 (Parametric Stereo) is compiled in */
     FAAC_LIB_FLAG_MAX = 0x7fffffff
 };
 

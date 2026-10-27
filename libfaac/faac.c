@@ -93,6 +93,9 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out)
 #ifndef FAAC_DISABLE_SBR
     info.flags          = FAAC_LIB_SBR;
 #endif
+#if FAAC_ENCODER_PS
+    info.flags         |= FAAC_LIB_PS;
+#endif
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_library_info; report the byte count actually set. */

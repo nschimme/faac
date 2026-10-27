@@ -548,10 +548,10 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             if (faac_get_library_info(&info) == FAAC_OK && (info.flags & FAAC_LIB_SBR)) {
                 idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
                 SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
-#if FAAC_ENCODER_PS
-                idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
-                SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
-#endif
+                if (info.flags & FAAC_LIB_PS) {
+                    idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
+                    SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
+                }
             }
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }

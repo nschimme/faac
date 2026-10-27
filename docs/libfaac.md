@@ -101,7 +101,9 @@ Query `faac_get_library_info()` for `max_channels`, version/copyright and
 `sbr_decimation` (build-time SBR analysis density; 1 is full density) and
 `flags`. `FAAC_LIB_SBR` is clear in an LC-only build (`-Dencoder-sbr=false`),
 where `FAAC_OBJ_HE_AAC_V1` returns `FAAC_ERR_UNSUPPORTED` and
-`FAAC_OBJ_AUTO` resolves to LC.
+`FAAC_OBJ_AUTO` resolves to LC. `FAAC_LIB_PS` is set only when
+`-Dencoder-ps=true` (and SBR) is built; otherwise `FAAC_OBJ_HE_AAC_V2` returns
+`FAAC_ERR_UNSUPPORTED`.
 `max-channels` defaults to 8; `sbr-decimation` defaults to 1.
 Use standard AAC sample rates (8000, 11025, 12000, 16000, 22050, 24000,
 32000, 44100, 48000, 64000, 88200 or 96000 Hz). Validation accepts
