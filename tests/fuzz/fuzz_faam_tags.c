@@ -89,12 +89,23 @@ static int tracks_of(const faam_io *io, rw_mem_stream *s)
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-    if (size < 16) return 0;
+    if (size < 24) return 0;
 
-    /* Use data[0] as a configuration byte */
+    faam_library_info lib;
+    memset(&lib, 0, sizeof(lib));
+    lib.struct_size = sizeof(lib);
+    if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
+        __builtin_trap();
+    if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
+        __builtin_trap();
+
+    /* data[0] is configuration; data[1..5] seed one extra metadata entry. */
     uint8_t cfg_byte = data[0];
-    const uint8_t *file_data = data + 1;
-    size_t file_len = size - 1;
+    uint32_t fuzz_key = ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) |
+                        ((uint32_t)data[3] << 8) | data[4];
+    uint8_t fuzz_type = data[5];
+    const uint8_t *file_data = data + 6;
+    size_t file_len = size - 6;
 
     rw_mem_stream ms;
     ms.cap = file_len + 4096;
@@ -110,7 +121,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     char title_buf[32];
     snprintf(title_buf, sizeof(title_buf), "FuzzTitle_%u", cfg_byte);
 
-    faam_metadata_entry entries[4];
+    faam_metadata_entry entries[8];
     uint32_t num_entries = 0;
     entries[num_entries++] = (faam_metadata_entry){
         .struct_size = sizeof(faam_metadata_entry),
@@ -150,9 +161,32 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         };
     }
 
+    /* An entry whose key, type and payload come from the input. */
+    static const uint8_t text_payload[] = "fuzz";
+    static const uint8_t int_payload[] = { 0x00, 0x2a, 0x01 };
+    const void *payload = fuzz_type & 1 ? text_payload : int_payload;
+    uint32_t payload_len = fuzz_type & 1 ? sizeof(text_payload) - 1 : sizeof(int_payload);
+    const char *mean = NULL, *name = NULL;
+    if (fuzz_key == FAAM_METADATA_KEY_FREEFORM) {
+        mean = "com.apple.iTunes";
+        name = "fuzz";
+    }
+    entries[num_entries++] = (faam_metadata_entry){
+        .struct_size = sizeof(faam_metadata_entry),
+        .key = fuzz_key,
+        .data_type = fuzz_type % 30,
+        .locale = 0,
+        .data = (fuzz_type & 0x80) ? NULL : payload,
+        .data_bytes = (fuzz_type & 0x80) ? 0 : payload_len,
+        .flags = (fuzz_type & 0x40) ? FAAM_METADATA_REMOVE : 0,
+        .mean = mean,
+        .name = name,
+    };
+
     int tracks = tracks_of(&io, &ms);
     ms.pos = 0;
-    faam_status st = faam_update_metadata_stream(&io, entries, num_entries, 0);
+    uint32_t update_flags = (cfg_byte & 8) ? FAAM_METADATA_UPDATE_CLEAR : 0;
+    faam_status st = faam_update_metadata_stream(&io, entries, num_entries, update_flags);
     if (st == FAAM_OK && tracks > 0 && tracks_of(&io, &ms) != tracks) abort();
 
     /* Construct fuzz-derived chapters */
@@ -169,6 +203,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     st = faam_update_chapters_stream(&io, chaps, 2, 0);
     /* Chapters add a track of their own, so only losing one is wrong. */
     if (st == FAAM_OK && tracks > 0 && tracks_of(&io, &ms) < tracks) abort();
+
+    /* Reserved flags are rejected and an empty list is a no-op. */
+    ms.pos = 0;
+    if (faam_update_chapters_stream(&io, NULL, 0, 1) == FAAM_OK) abort();
+    ms.pos = 0;
+    if (faam_update_metadata_stream(&io, NULL, 0, 0x80000000u) == FAAM_OK) abort();
 
     free(ms.buf);
     return 0;

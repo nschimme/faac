@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed fuzz_encode's parameter header and PCM chunks with valid PS streams."""
+"""Seed fuzz_faac_encode's parameter header and PCM chunks with valid PS streams."""
 
 import math
 from pathlib import Path
@@ -18,7 +18,7 @@ def main():
         target = corpus / name
         if target.exists():
             continue
-        # Header format is consumed by fuzz_encode.c: object selector 3 is
+        # Header format is consumed by fuzz_faac_encode.c: object selector 3 is
         # HE-AAC v2, input selector 1 is 16-bit PCM, rate selector 8 is 48 kHz,
         # rate-control selector 1 is VBR and 2 is CBR.
         flags = (3 << 2) | (1 << 12) | ((2 if cbr else 1) << 17)
@@ -33,6 +33,22 @@ def main():
             for i in range(2048):
                 sample = int(8000 * math.sin(2 * math.pi * 1000 * (frame * 2048 + i) / 48000))
                 chunks.extend(struct.pack("<hh", sample, phase * sample))
+        target.write_bytes(header + chunks)
+
+    # Eight channels are the PCE layout: ADTS frames carry the PCE in the first
+    # frame and the ASC carries it for raw streams.
+    for name, stream_format in (("lc-8ch-adts", 1), ("lc-8ch-raw", 0)):
+        target = corpus / name
+        if target.exists():
+            continue
+        flags = (1 << 2) | (stream_format << 10) | (1 << 12) | (1 << 17)
+        header = struct.pack(">IBBHHH", flags, 8, 8, 0, 0, 100)
+        chunks = bytearray()
+        for frame in range(2):
+            chunks.extend(struct.pack(">H", 1024 * 8))
+            for i in range(1024 * 8):
+                sample = int(12000 * math.sin(2 * math.pi * 440 * (frame * 1024 + i) / 48000))
+                chunks.extend(struct.pack("<h", sample))
         target.write_bytes(header + chunks)
 
 

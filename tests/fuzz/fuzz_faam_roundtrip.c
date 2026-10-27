@@ -84,6 +84,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     if (size < 16) return 0;
 
+    faam_library_info lib;
+    memset(&lib, 0, sizeof(lib));
+    lib.struct_size = sizeof(lib);
+    if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
+        __builtin_trap();
+    if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
+        __builtin_trap();
+
     uint8_t mode = data[0];
     uint8_t frame_count_target = (data[1] % 8) + 1;
     const uint8_t *payload = data + 2;
@@ -93,7 +101,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     faam_muxer_config_init(&cfg, sizeof(cfg));
 
     cfg.fragment_ms = (mode & 1) ? 1000 : 0;
-    cfg.flags = (mode & 2) ? FAAM_MUXER_M4B : 0;
+    if (mode & 2) cfg.flags |= FAAM_MUXER_M4B;
+    if (mode & 8) cfg.flags |= FAAM_MUXER_CONSTANT_RATE;
+    /* faststart rewrites the file and is invalid with fragmentation */
+    if ((mode & 4) && !cfg.fragment_ms) cfg.flags |= FAAM_MUXER_FASTSTART;
 
     faam_gapless_info gap; gap.struct_size = sizeof(gap);
     gap.encoder_delay = 1024;
@@ -147,6 +158,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     if (faam_muxer_get_track_id(m, 0, &track_id) != FAAM_OK) abort();
 
+    /* Late configuration the progressive muxer accepts before finalize. */
+    if (!cfg.fragment_ms) {
+        faam_muxer_update_params update;
+        memset(&update, 0, sizeof(update));
+        update.struct_size = sizeof(update);
+        update.flags = FAAM_UPDATE_LANGUAGE | FAAM_UPDATE_CREATION_TIME;
+        update.track_id = track_id;
+        update.creation_time = 1700000000u + mode;
+        memcpy(update.language, "eng", 4);
+        if (faam_muxer_update(m, &update) != FAAM_OK) abort();
+    }
+
     uint32_t written_frames = 0;
     uint32_t frame_sizes[16];
     size_t frame_offsets_in_payload[16];
@@ -172,6 +195,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         faam_muxer_close(&m);
         free(ms.buf);
         return 0;
+    }
+
+    if (!cfg.fragment_ms) {
+        faam_muxer_info mi;
+        memset(&mi, 0, sizeof(mi));
+        mi.struct_size = sizeof(mi);
+        if (faam_muxer_get_info(m, track_id, &mi) != FAAM_OK) abort();
+        if (mi.struct_size < sizeof(mi) || mi.frame_count != written_frames) abort();
     }
 
     if (faam_muxer_finalize(m) != FAAM_OK) {
