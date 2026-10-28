@@ -115,6 +115,9 @@ foreach case : [
   ['test_faar_fft_complex_2048', 'complex', '2048'],
   ['test_faar_fft_complex_4096', 'complex', '4096'],
   ['test_faar_fft_complex_8192', 'complex', '8192'],
+  ['test_faar_fft_complex_16384', 'complex', '16384'],
+  ['test_faar_fft_complex_32768', 'complex', '32768'],
+  ['test_faar_fft_complex_65536', 'complex', '65536'],
 ]
   test(case[0], test_faar_fft, args: [case[1], case[2]], timeout: 60)
 endforeach
