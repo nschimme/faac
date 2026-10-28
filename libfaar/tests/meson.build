@@ -26,8 +26,7 @@ foreach group : faar_quality_groups
   test('test_faar_quality_' + group, test_faar_quality, args: [group])
 endforeach
 foreach group : ['streaming-0', 'streaming-1']
-  test('test_faar_quality_' + group, test_faar_quality,
-    args: [group], is_parallel: false)
+  test('test_faar_quality_' + group, test_faar_quality, args: [group])
 endforeach
 
 test_faar_matrix = executable('test_faar_matrix', 'test_faar_matrix.c',
@@ -36,8 +35,7 @@ test_faar_matrix = executable('test_faar_matrix', 'test_faar_matrix.c',
   dependencies: [libfaar_dep, m_dep],
 )
 foreach group : ['matrix-0', 'matrix-1', 'matrix-2', 'equal-rate', 'channels', 'decimate']
-  test('test_faar_matrix_' + group, test_faar_matrix,
-    args: [group], is_parallel: false)
+  test('test_faar_matrix_' + group, test_faar_matrix, args: [group])
 endforeach
 
 test_faar_dft_fir = executable('test_faar_dft_fir',
@@ -69,7 +67,7 @@ test('test_faar_bounded', test_faar_bounded, timeout: 120)
 test_faar_design = executable('test_faar_design', 'test_faar_design.c',
   c_args: libfaar_args,
   include_directories: ['..', inc],
-  dependencies: [libfaar_dep, m_dep],
+  dependencies: [libfaar_dep, m_dep, dependency('threads', required: false)],
 )
 test('test_faar_design', test_faar_design, timeout: 180)
 
@@ -80,16 +78,6 @@ test_faar_design_alloc = executable('test_faar_design_alloc',
   dependencies: [m_dep],
 )
 test('test_faar_design_alloc', test_faar_design_alloc, timeout: 180)
-
-if host_machine.system() != 'windows'
-  threads_dep = dependency('threads')
-  test_faar_design_threads = executable('test_faar_design_threads', 'test_faar_design.c',
-    c_args: libfaar_args + ['-DFAAR_PLAN_PTHREAD'],
-    include_directories: ['..', inc],
-    dependencies: [libfaar_dep, m_dep, threads_dep],
-  )
-  test('test_faar_design_threads', test_faar_design_threads, timeout: 180)
-endif
 
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   ['test_faar_dft_prefilter.c', '../dft_coeffs.c', '../dft_prefilter.c',

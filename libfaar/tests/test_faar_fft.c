@@ -130,7 +130,9 @@ static int check_complex(int selected)
             state = state * 1664525u + 1013904223u;
             xi[j] = ((int)(state >> 16) - 32768) / 32768.0;
         }
-        if (t < 6) {
+        /* The O(n^2) long double reference is software binary128 on several
+         * targets, so larger sizes check sampled bins instead. */
+        if (t < 4) {
             rr = malloc(n * sizeof(long double));
             ri = malloc(n * sizeof(long double));
             if (!rr || !ri) exit(2);

@@ -38,5 +38,5 @@ prepared streaming, shaped dither, independent sample histories, and closing
 the caller's plan reference before processing streams.
 `test_faar_design_alloc` injects every setup/clone allocation failure for High,
 cascaded Good and generic Fast plans, verifies cleanup, then reuses the plan.
-On pthread platforms, `test_faar_design_threads` opens, processes and closes
+On pthread platforms, `test_faar_design` also opens, processes and closes
 independent streams concurrently from one plan.
