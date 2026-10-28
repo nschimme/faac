@@ -61,12 +61,10 @@ static inline void *faar_grow_memory(void *block, size_t used, size_t bytes)
 #endif
 }
 
-/* High's sensitive kernels need more than float precision. Float builds
- * emulate it with float2 so targets without a double FPU still run High;
- * mixed runs the same kernels in native double, which is ten times faster. */
-#ifndef FAAR_WIDE_HIGH
-#define FAAR_COMPENSATED_FLOAT
-#endif
+/* High's sensitive kernels need more than float precision. FAAR_WIDE_HIGH
+ * runs them in native double, which is ten times faster; without it, float
+ * builds emulate the precision with float2 so targets without a double FPU
+ * still run High. */
 
 /* Sample planes; distinct from the API's float so storage stays greppable. */
 typedef float faar_sample_t;
