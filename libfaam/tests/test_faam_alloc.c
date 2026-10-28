@@ -237,7 +237,7 @@ static void mux_failures(faam_muxer_config *cfg)
     CHECK(!g_live);
     for (unsigned fail = 1; fail <= calls; fail++) {
         reset(fail);
-        CHECK(mux_run(cfg, 0) == FAAM_ERR_INSUFFICIENT_MEM);
+        CHECK(mux_run(cfg, 0) == FAAM_ERR_NO_MEMORY);
         CHECK(!g_live);
     }
     reset(0);
@@ -292,8 +292,8 @@ static void demux_failures(faam_muxer_config *cfg, bool update)
         faam_status st = demux_run(&f, update);
         if (!fail) { CHECK(st == FAAM_OK); calls = g_allocs; }
         else {
-            if (st != FAAM_ERR_INSUFFICIENT_MEM) fprintf(stderr, "demux failure %u/%u, update=%d, fragment=%u, status=%d\n", fail, calls, update, cfg->fragment_ms, st);
-            CHECK(st == FAAM_ERR_INSUFFICIENT_MEM);
+            if (st != FAAM_ERR_NO_MEMORY) fprintf(stderr, "demux failure %u/%u, update=%d, fragment=%u, status=%d\n", fail, calls, update, cfg->fragment_ms, st);
+            CHECK(st == FAAM_ERR_NO_MEMORY);
         }
         CHECK(!g_live);
         free(f.buf);

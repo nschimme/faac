@@ -446,13 +446,18 @@ static void sbr_adopt_envelope_grid(const struct SignalAnalysis *sa, SbrFrameDat
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
+#if MAX_CHANNELS < 6
+    (void)isLfe;
+#endif
     int n_env = fd->numEnvelopes;
     /* Must match write_sbr_envelope's table, or the decoder desyncs. */
     int nb = sbr->numBands;
     const int *edges = sbr->bandEdges;
 
     for (int ch = 0; ch < nch; ch++) {
+#if MAX_CHANNELS >= 6
         if (isLfe[ch]) continue;
+#endif
         /* Read-only alias; the quantizer never writes back through it. */
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->ch[ch].bandE;
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
@@ -483,8 +488,13 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
 
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
+#if MAX_CHANNELS < 6
+    (void)isLfe;
+#endif
     for (int ch = 0; ch < numChannels; ch++)
+#if MAX_CHANNELS >= 6
         if (!isLfe[ch])
+#endif
             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_HIST_LEN, SBR_QMF_HIST_LEN * sizeof(float));
 
     sbr_adopt_envelope_grid(sa, fd);
@@ -501,7 +511,9 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
         g_faacStats.sbrTransientFrames++;
     }
     for (int ch = 0; ch < numChannels; ch++) {
+#if MAX_CHANNELS >= 6
         if (isLfe[ch]) continue;
+#endif
         g_faacStats.sbrInvfSum += sbr->rich ? SBR_INVF_MODE_RICH : SBR_INVF_MODE;
         g_faacStats.sbrInvfCount++;
     }

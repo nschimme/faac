@@ -98,7 +98,10 @@ typedef struct faacEncStruct {
 
     /* Built once after configuration at open. Inline storage keeps the ASC
      * pointer stable until close without a separate allocation. */
-    uint8_t asc[8];
+    uint8_t asc[14];
+#if MAX_CHANNELS >= 8
+    uint8_t pce[9];
+#endif
     uint32_t ascLen;
 
     /* HE-AAC / SBR state */

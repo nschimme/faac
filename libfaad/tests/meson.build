@@ -44,7 +44,7 @@ test_faad_tns_order = executable('test_faad_tns_order', 'test_faad_tns_order.c',
     include_directories: ['..', '../..', '../../include', common_inc], link_with: [libfaad])
 test('test_unit_faad_tns_order', test_faad_tns_order)
 
-if get_option('decoder-sbr') and get_option('decoder-ps') and get_option('max-channels') >= 2
+if get_option('decoder-sbr') and get_option('decoder-ps') and get_option('max-channels') >= 2 and (default_lib == 'static' or default_lib == 'both')
     test_faad_ps = executable('test_faad_ps', 'test_faad_ps.c',
         c_args: faad_c_args + ['-DFAAD_STATIC'],
         include_directories: ['..', '../..', '../../include', common_inc],
@@ -80,6 +80,10 @@ if get_option('encoder')
         'mono-lc', 'stereo-lc', 'stereo-he-aac', 'six-channel-lc',
         'three-channel-downmix', 'eight-channel-downmix', 'hang-cases'
     ]
+        # These cases encode HE-AAC, which an LC-only encoder cannot do.
+        if not encoder_sbr and (case_name == 'stereo-he-aac' or case_name == 'eight-channel-downmix')
+            continue
+        endif
         test('test_integration_faad_robust_' + case_name, test_faad_robust,
             args: [case_name], timeout: 120)
     endforeach
@@ -90,8 +94,17 @@ if get_option('encoder')
         link_with: [libfaad, libfaac], dependencies: [libm])
     foreach case_name : [
         'align-lc-44100', 'align-lc-48000', 'align-he-48000', 'align-he-32000',
-        'tone-level-and-channels', 'silence', 'he-aac-band'
+        'tone-level-and-channels', 'silence', 'he-aac-band',
+        'align-ps-48000', 'ps-tone-level-and-channels', 'ps-silence'
     ]
+        # These cases encode HE-AAC, which an LC-only encoder cannot do.
+        if not encoder_sbr and (case_name == 'align-he-48000' or case_name == 'align-he-32000' or case_name == 'he-aac-band')
+            continue
+        endif
+        # PS needs both the encoder and the decoder side compiled in.
+        if (not encoder_ps or not get_option('decoder-sbr') or not get_option('decoder-ps')) and (case_name in ['align-ps-48000', 'ps-tone-level-and-channels', 'ps-silence'])
+            continue
+        endif
         test('test_integration_faad_roundtrip_' + case_name, test_faad_roundtrip,
             args: [case_name], timeout: 120)
     endforeach

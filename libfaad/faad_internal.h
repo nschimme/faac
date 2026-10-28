@@ -43,6 +43,7 @@
 #endif
 
 #include "faad3.h"
+#include "asc_codec.h"
 _Static_assert(sizeof(bool) == 1, "public ABI requires one-byte flags");
 _Static_assert(sizeof(float) == 4 && FLT_RADIX == 2 && FLT_MANT_DIG == 24,
                "PCM requires IEEE binary32 floats");
@@ -189,6 +190,7 @@ typedef struct {
     enum faad_object_type object_type;
     uint32_t sample_rate;
     uint32_t num_channels;
+    AscPce pce;
     bool is_sbr;
     bool is_ps;
     uint32_t sbr_sample_rate;
@@ -499,7 +501,7 @@ static inline uint32_t faad_downmix_lfe_channel(const struct faad_decoder *dec, 
         || dec->config.downmix_mode == FAAD_DOWNMIX_NONE)
         return UINT32_MAX;
     if (dec->asc.num_channels == 6 && num_chs == 6) return 5;
-    if (dec->asc.num_channels == 7 && num_chs == 8) return 7;
+    if ((dec->asc.num_channels == 7 || dec->asc.pce.wave71) && num_chs == 8) return 7;
     return UINT32_MAX;
 }
 

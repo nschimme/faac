@@ -219,7 +219,7 @@ faam_status faam_atom_resize(const faam_io *io,
     uint64_t tail_len = (file_size > tail_start) ? (file_size - tail_start) : 0;
     if (tail_len > 0) {
         uint8_t *buf = (uint8_t *)AllocMemory(FAAM_ATOM_TAIL_CHUNK);
-        if (!buf) return FAAM_ERR_INSUFFICIENT_MEM;
+        if (!buf) return FAAM_ERR_NO_MEMORY;
         faam_status st = faam_io_move_forward(io, buf, FAAM_ATOM_TAIL_CHUNK, tail_start, tail_len, delta);
         FreeMemory(buf);
         if (st != FAAM_OK) return st;
@@ -273,7 +273,7 @@ faam_status faam_atom_append_udta_child(const faam_io *io, const faam_atom_ref *
     if (child_len > UINT32_MAX - 8) return FAAM_ERR_UNSUPPORTED;
     uint32_t wrap_len = 8 + child_len;
     uint8_t *wrap = (uint8_t *)AllocMemory(wrap_len);
-    if (!wrap) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!wrap) return FAAM_ERR_NO_MEMORY;
     write_u32_be(wrap, wrap_len);
     memcpy(wrap + 4, "udta", 4);
     memcpy(wrap + 8, child, child_len);

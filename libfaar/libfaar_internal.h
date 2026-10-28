@@ -61,25 +61,23 @@ static inline void *faar_grow_memory(void *block, size_t used, size_t bytes)
 #endif
 }
 
-/* High's sensitive kernels need more than float precision. Float builds
- * emulate it with float2 so targets without a double FPU still run High;
- * mixed runs the same kernels in native double, which is ten times faster. */
-#ifndef FAAR_WIDE_HIGH
-#define FAAR_COMPENSATED_FLOAT
-#endif
+/* High's sensitive kernels need more than float precision. FAAR_WIDE_HIGH
+ * runs them in native double, which is ten times faster; without it, float
+ * builds emulate the precision with float2 so targets without a double FPU
+ * still run High. */
 
 /* Sample planes; distinct from the API's float so storage stays greppable. */
 typedef float faar_sample_t;
 
-#include "fft_real.h"
-#define faar_fft_plan faar_rfftf_plan
-#define faar_fft_cinit faar_rfftf_cinit
-#define faar_fft_cinit_shared faar_rfftf_cinit_shared
-#define faar_fft_cinit_shared_single faar_rfftf_cinit_shared_single
-#define faar_fft_cinit_filter_shared faar_rfftf_cinit_filter_shared
-#define faar_fft_cbuffer faar_rfftf_cbuffer
-#define faar_fft_cforward faar_rfftf_cforward
-#define faar_fft_clear faar_rfftf_clear
-#define faar_fft_prepare faar_rfftf_prepare
+#include "fft.h"
+#define faar_fft_plan faar_fftf_plan
+#define faar_fft_cinit faar_fftf_cinit
+#define faar_fft_cinit_shared faar_fftf_cinit_shared
+#define faar_fft_cinit_shared_single faar_fftf_cinit_shared_single
+#define faar_fft_cinit_filter_shared faar_fftf_cinit_filter_shared
+#define faar_fft_cbuffer faar_fftf_cbuffer
+#define faar_fft_cforward faar_fftf_cforward
+#define faar_fft_clear faar_fftf_clear
+#define faar_fft_prepare faar_fftf_prepare
 
 #endif /* LIBFAAR_INTERNAL_H */

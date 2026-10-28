@@ -8,14 +8,18 @@ project('faac', 'c',
         'b_lto=true'
     ])
 
-# Shared-library ABI version, separate from the project release version. This
-# is the single source for the SONAMEs, and Meson checks that the public
-# version macros in the installed headers match it.
-library_abi_version = '3.0.0'
-shared_library_args = {
-    'version': library_abi_version,
-    'soversion': library_abi_version.split('.')[0],
+# Shared-library ABI versions, separate from the project release version.
+# These are the single source for the SONAMEs. The public version macros in the
+# installed headers, and so the version each library reports, are the project
+# release version; Meson checks that they match it. libfaac already shipped
+# SONAMEs 0-2 with other interfaces; the other libraries start at 0.
+library_abi_versions = {
+    'FAAC': '3.0.0',
+    'FAAD': '0.0.0',
+    'FAAM': '0.0.0',
+    'FAAR': '0.0.0',
 }
+shared_library_args = {}
 
 # Windows otherwise installs shared-library DLLs in bindir. Static frontends
 # do not need those DLLs at runtime, so keep them with the other libraries.
@@ -39,14 +43,15 @@ foreach h: ['getopt.h', 'immintrin.h']
     config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
 
-config_h.set10('WORDS_BIGENDIAN', host_machine.endian() == 'big')
 
 libm = cc.find_library('m', required: false)
 
 cpu_family = target_machine.cpu_family()
 
 config_h.set('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and config_h.get('HAVE_IMMINTRIN_H'))
-encoder_ps = get_option('encoder-ps') and get_option('max-channels') >= 2
+encoder_sbr = get_option('encoder-sbr')
+config_h.set10('FAAC_ENCODER_SBR', encoder_sbr)
+encoder_ps = get_option('encoder-ps') and get_option('max-channels') >= 2 and encoder_sbr
 config_h.set10('FAAC_ENCODER_PS', encoder_ps)
 
 config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))

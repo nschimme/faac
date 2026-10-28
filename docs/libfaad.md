@@ -34,8 +34,8 @@ in separate blocks through overridable allocators.
 Include `<faad3.h>` and link against `libfaad3` (`-lfaad3`). Installed builds
 provide the `faad3` pkg-config module.
 
-The shared library is `libfaad3` (`libfaad3.so.3` on Linux,
-`libfaad3.3.dylib` on macOS, or `libfaad3.dll` on Windows). The default build
+The shared library is `libfaad3` (`libfaad3.so.0` on Linux,
+`libfaad3.0.dylib` on macOS, or `libfaad3.dll` on Windows). The default build
 also produces a static archive. The `faad` command-line decoder in
 `frontend/` is an example of using the API.
 
@@ -56,10 +56,10 @@ To build the `faad` command-line decoder too, omit `-Dfrontend=false`.
 For an installed library, compile the example below with:
 
 ```sh
-cc -std=c11 -Wall -Wextra adts_decode.c -o adts_decode $(pkg-config --cflags --libs faad)
+cc -std=c11 -Wall -Wextra adts_decode.c -o adts_decode $(pkg-config --cflags --libs faad3)
 ```
 
-For static linking, use `pkg-config --cflags --libs --static faad` and select
+For static linking, use `pkg-config --cflags --libs --static faad3` and select
 an installation containing only the static library, or use your toolchain's
 static-library selection options. `--static` adds private dependencies; it
 does not itself force the linker to select an archive.
@@ -73,8 +73,7 @@ application's build configuration.
 
 The Meson build writes a `config.h` that every source includes. A build system
 that compiles the sources directly must define the same macros: `PACKAGE`,
-`PACKAGE_VERSION`, `WORDS_BIGENDIAN` (`1` on big-endian targets, `0`
-otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8) and, for a combined
+`PACKAGE_VERSION`, `MAX_CHANNELS` (`-Dmax-channels`, default 8) and, for a combined
 build with the encoder, `FAAC_SBR_DECIMATION`. Add `common/` and `include/`
 to the include path. Define `FAAD_BUILDING` when building a Windows DLL.
 
@@ -83,8 +82,8 @@ to the include path. Define `FAAD_BUILDING` when building a Windows DLL.
 | Feature | Option (default) | Runtime detection | When absent |
 |---|---|---|---|
 | AAC-LC | Always built | No capability field; supported by every decoder build | No build switch. |
-| HE-AAC v1 (SBR) | `decoder-sbr` (true) | `faad_library_info.sbr_supported` | SBR output is unavailable. |
-| HE-AAC v2 (SBR + PS) | `decoder-sbr` and `decoder-ps` (both true); requires at least two compiled channels | `faad_library_info.sbr_supported`, `ps_supported` and `max_channels` | PS stereo output is unavailable. |
+| HE-AAC v1 (SBR) | `decoder-sbr` (true) | `faad_library_info.flags & FAAD_LIB_SBR` | SBR output is unavailable. |
+| HE-AAC v2 (SBR + PS) | `decoder-sbr` and `decoder-ps` (both true); requires at least two compiled channels | `faad_library_info.flags & (FAAD_LIB_SBR \| FAAD_LIB_PS)` and `max_channels` | PS stereo output is unavailable. |
 | ADTS | Always built | No capability field; select `FAAD_STREAM_ADTS` | Pass headers and payload; one raw data block per ADTS frame. |
 | RAW AAC | Always built | No capability field; select `FAAD_STREAM_RAW` | Supply valid ASC at open; pass one complete access unit per call. |
 | MP4/M4A | External demuxer | No container capability field | libfaad does not parse containers. Use [libfaam](libfaam.md) to supply track ASC and RAW access units; see [Reading MP4 for the FAAD decoder](libfaam.md#reading-mp4-for-the-faad-decoder). |
@@ -95,6 +94,8 @@ to the include path. Define `FAAD_BUILDING` when building a Windows DLL.
 
 Query `faad_get_library_info()` for the loaded library's channel ceiling and
 SBR/PS capabilities; set `faad_library_info.struct_size` before calling.
+The query writes back the number of bytes populated. The field order is `struct_size`, `version`,
+`copyright`, `max_channels`, `flags`.
 Header constants alone do not identify build options.
 HE-AAC may signal extensions implicitly during decoding, so use frame flags
 and stream info even when the initial snapshot describes AAC-LC.
@@ -149,25 +150,25 @@ for consumption and retry rules.
 
 ```c
 /* Library version, compiled channel ceiling and SBR/PS support.
- * Set out->struct_size before calling. */
-faad_status faad_get_library_info(faad_library_info *out);
+ * Set out_info->struct_size before calling. */
+faad_status faad_get_library_info(faad_library_info *out_info);
 
-faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
-faad_status faad_decoder_open(const faad_config *cfg,
+faad_status faad_config_init(faad_config *config, uint32_t caller_size);
+faad_status faad_decoder_open(const faad_config *config,
                               const uint8_t *asc_buf, uint32_t asc_len,
-                              faad_decoder **out_dec);
-faad_status faad_decoder_close(faad_decoder **dec);  /* sets *dec = NULL */
+                              faad_decoder **out);
+faad_status faad_decoder_close(faad_decoder **decoder);  /* sets *decoder = NULL */
 
 /* Current format and lifetime PCM capacity; set out_info->struct_size. */
-faad_status faad_decoder_get_info(const faad_decoder *dec,
+faad_status faad_decoder_get_info(const faad_decoder *decoder,
                                   faad_stream_info *out_info);
-faad_status faad_decode_frame(faad_decoder *dec,
+faad_status faad_decode_frame(faad_decoder *decoder,
                               const uint8_t *in_buf, uint32_t in_bytes,
                               uint32_t *bytes_consumed,
                               void *out_pcm, uint32_t out_cap_bytes,
                               uint32_t *bytes_written,
                               uint32_t *frame_flags);
-faad_status faad_decoder_flush(faad_decoder *dec);
+faad_status faad_decoder_flush(faad_decoder *decoder);
 
 const char *faad_strerror(faad_status status);
 ```
@@ -357,7 +358,7 @@ after open and after decoding streams that exercise SBR/PS: ADTS can allocate
 optional state on first use. A bump allocator does not reclaim individual
 blocks, including allocations freed during failed initialization. Reset only
 after close or a failed open, once no pool-backed instance remains. Allocation
-failure returns `FAAD_ERR_INSUFFICIENT_MEM`; reserve room for optional state
+failure returns `FAAD_ERR_NO_MEMORY`; reserve room for optional state
 before decoding. Shared tables, stack, input and caller-owned PCM remain
 separate from the pool. See the matching [FAAC example](libfaac.md#running-without-a-heap).
 
@@ -410,8 +411,10 @@ PCM is native-endian on both little-endian and big-endian machines:
 |---|---|---|
 | 16-bit | signed `int16_t` | 2 bytes |
 | 24-bit | signed packed three-byte samples | Any |
-| 32-bit | native-endian signed int24 in `int32_t`, same meaning as `FAAC_INPUT_32BIT` | 4 bytes |
+| `FAAD_OUTPUT_24IN32` | 24 significant bits in a native-endian 32-bit word, ALSA S24_LE style, same meaning as `FAAC_INPUT_24IN32` | 4 bytes |
 | Float | binary32, unity full scale | 4 bytes |
+
+FAAD float output can be passed directly to `FAAC_INPUT_FLOAT`.
 
 Convert native PCM to the device or file's required byte order separately.
 WAVE output from the frontend is little-endian regardless of host byte order.
@@ -419,8 +422,9 @@ Channel order is documented in the header; `channel_mask` uses WAVE speaker
 bits and is zero for unknown surround layouts.
 
 `faad_stream_info` describes the most recently emitted PCM; before any PCM,
-it describes the ASC/ADTS snapshot. Before ADTS discovery, `format_known` is
-false and format fields are zero/`FAAD_OBJ_NULL`; capacity is already valid.
+it describes the ASC/ADTS snapshot. Before ADTS discovery,
+`FAAD_STREAM_FORMAT_KNOWN` is clear in `flags` and format fields are
+zero/`FAAD_OBJ_NULL`; capacity is already valid.
 ASC may provide a usable snapshot, but implicit SBR/PS can change it later.
 Set `struct_size` once to `sizeof(info)`. The library writes back the populated
 size, which remains valid for later queries.
@@ -511,7 +515,7 @@ and new code should use libfaad3 directly.
   Opening consumes no input bytes: pass the first ADTS frame, including its
   header, to `faad_decode_frame()`. There is no initialization return value to
   skip in the input. Rate and channel count may remain unknown until decoding;
-  check `faad_stream_info.format_known`; re-query on `FAAD_FRAME_FORMAT_CHANGED`.
+  check `faad_stream_info.flags & FAAD_STREAM_FORMAT_KNOWN`; re-query on `FAAD_FRAME_FORMAT_CHANGED`.
 - **RAW initialization.** For `NeAACDecInit2()`, select `FAAD_STREAM_RAW`
   and pass the demuxer's valid, nonempty AudioSpecificConfig to
   `faad_decoder_open()`. Configuration and ASC are consumed during open and
@@ -547,7 +551,7 @@ and new code should use libfaad3 directly.
 - **Version and capabilities.** Replace `NeAACDecGetVersion()` and
   `NeAACDecGetCapabilities()` with `faad_get_library_info()`. It reports
   library-owned version/copyright strings, the compiled channel ceiling, and
-  SBR/PS support as fields rather than a capability bitmask. Use
+  SBR/PS support in `flags` (`FAAD_LIB_SBR` / `FAAD_LIB_PS`). Use
   `FAAD_VERSION_STRING` / `FAAD_VERSION_HEX` for compile-time header version
   checks instead of `FAAD2_VERSION`.
 - **Struct growth and integer widths.** Always initialize configuration with
@@ -566,7 +570,7 @@ workarounds can go.
 | Legacy behaviour | libfaad3 |
 |---|---|
 | The first decoded frame returned `samples == 0` although it was decoded | Every frame that produces PCM reports it; use `decoder_delay` and the container's priming for trimming |
-| Streams with `dynamic_range_info` but no programme reference level came out 20 dB quieter (the missing level was treated as 0 dBFS) | No attenuation; `prog_ref_level_present` says whether a level exists, `FAAD_FRAME_DRC_INFO` says the frame carried DRC data |
+| Streams with `dynamic_range_info` but no programme reference level came out 20 dB quieter (the missing level was treated as 0 dBFS) | No attenuation; `FAAD_STREAM_PROG_REF_LEVEL` in `flags` says whether a level exists, `FAAD_FRAME_DRC_INFO` says the frame carried DRC data |
 | DRC and normalisation applied silently, with no way to read or change them | Off unless `drc_cut`, `drc_boost` or `drc_target_level` is set; `FAAD_FRAME_DRC` reports what was applied |
 | Channels in bitstream order (C L R, side, back, LFE) with a position array to decode | WAVE speaker order with `channel_mask` |
 | Output format and downmix settable at any time, and `Init` reported a sample rate that could be wrong for implicit SBR at 24 kHz or below | Configuration is fixed at open; `faad_decoder_get_info()` reports the rate and channels of the PCM actually emitted, and `FAAD_FRAME_FORMAT_CHANGED` marks changes |
@@ -581,7 +585,7 @@ workarounds can go.
 
 | Legacy `NeAACDecConfiguration` field | New configuration or action |
 |---|---|
-| `outputFormat` | `faad_config.output_format`: `FAAD_FMT_16BIT`, `FAAD_FMT_24BIT`, `FAAD_FMT_32BIT`, and `FAAD_FMT_FLOAT` become `FAAD_OUTPUT_16BIT`, `FAAD_OUTPUT_24BIT`, `FAAD_OUTPUT_32BIT`, and `FAAD_OUTPUT_FLOAT` |
+| `outputFormat` | `faad_config.output_format`: `FAAD_FMT_16BIT`, `FAAD_FMT_24BIT`, `FAAD_FMT_32BIT`, and `FAAD_FMT_FLOAT` become `FAAD_OUTPUT_16BIT`, `FAAD_OUTPUT_24BIT`, `FAAD_OUTPUT_24IN32`, and `FAAD_OUTPUT_FLOAT` |
 | `downMatrix` | `faad_config.downmix_mode`: use `FAAD_DOWNMIX_STEREO` for the old stereo downmix request, or `FAAD_DOWNMIX_NONE` to preserve the layout; `FAAD_DOWNMIX_MONO` is also available |
 | `defObjectType`, `defSampleRate` | No replacement; ADTS or required RAW ASC supplies stream parameters |
 | `useOldADTSFormat` | No replacement for the legacy ADTS variant |
@@ -615,8 +619,18 @@ Double and legacy fixed-point PCM modes are not exposed; select a documented
 
 Review any channel reordering inherited from FAAD2: the new surround output
 starts with FL, FR, FC, and `channel_mask` uses WAVE speaker bits rather than
-the legacy channel-position constants. Unknown PCE surround layouts report
-mask 0.
+the legacy channel-position constants. FAAC signals eight channels with
+`channelConfiguration` 0 plus a PCE: front C/front pair, side pair, back pair
+and LFE, compatible with fdkaac and unambiguous for Apple, FDK, FFmpeg and
+faad. ADTS repeats the in-band PCE every 32 frames starting at frame 0;
+MP4/RAW carry it only in the ASC. Configuration 7 streams are still accepted
+as common side/back 7.1. Both use WAVE order FL FR FC LFE BL BR SL SR and mask `0x63F`.
+A PCE with front SCE/CPE, one side CPE and one back CPE maps those pairs to
+SL/SR and BL/BR; with two back CPEs and no side CPE, the first back pair is
+SL/SR and the second BL/BR (the FDK rear-surround convention). Element tags
+select the channels in both ASC and in-band PCEs. Other PCE surround layouts
+retain element order and report mask 0. RAW ASC PCE channel counts size the
+output buffer before the first frame; ADTS discovery uses the build capacity.
 
 Stream info describes emitted PCM; re-query on `FAAD_FRAME_FORMAT_CHANGED`.
 
@@ -627,11 +641,47 @@ handle that in their container/parser layer.
 
 ## ABI compatibility
 
-Initialize configuration with `faad_config_init(&cfg, sizeof cfg)` and each
-info struct with `.struct_size = sizeof(info)`. The library writes back the
-number of bytes populated; that size remains valid for later info queries.
-The API/ABI is stable within the major version / SONAME. Struct layouts follow
-the target platform ABI; they are not a wire format.
+The API and ABI are stable within a major version / SONAME on a given platform
+ABI. Layouts follow the target's pointer width and alignment; they differ between
+32- and 64-bit targets and are not a serialization format.
+
+**Caller rules**
+
+- Initialize configuration with `faad_config_init(&cfg, sizeof cfg)`. Initialize each output struct
+  by setting `.struct_size = sizeof(info)` and nothing else.
+- Initialization stores `min(caller size, library size)` in `struct_size`. That
+  write-back is the support probe: before using a field appended in a newer
+  release, check that `struct_size` covers it
+  (`struct_size >= offsetof(T, field) + sizeof(((T *)0)->field)`).
+- Query functions write at most the caller's `struct_size` bytes and set
+  `struct_size` to the bytes populated. Reset it before reusing a struct as a
+  query destination.
+- The library reads only the input bytes `struct_size` covers; absent fields take
+  their zero or default value. A `struct_size` below the struct's `FAAD_*_BASELINE`
+  macro, including zero, returns `FAAD_ERR_INVALID_ARGUMENT`.
+  Unknown flag bits and out-of-range enum values are rejected the same way.
+- Tolerate unknown enum values, flag bits and status codes in anything the
+  library returns.
+  `FAAD_OK` is 0 and `FAAD_ERR_INVALID_ARGUMENT`, `FAAD_ERR_UNSUPPORTED` and
+  `FAAD_ERR_NO_MEMORY` are -1, -2 and -3 in all four libraries; higher codes are
+  specific to each library.
+- Fixed-width integers and width-pinned enums keep layouts stable under
+  `-fshort-enums`. `size_t` appears in signatures only and follows the platform ABI.
+
+**Maintainer rules**
+
+- New fields are appended at or after the previous `sizeof(struct)`, never in its
+  tail padding. In a pointer-free struct with 4-byte alignment (`faad_config`, `faad_stream_info`) append only
+  members of 4 bytes or less, so alignment stays 4. Where a struct holds a pointer
+  or 64-bit member, place each appended member at an offset that is a multiple of
+  its size, add an explicit `uint32_t` first if needed, and keep each appended
+  block a multiple of 8 bytes.
+- Zero in a new input field keeps the previous behaviour.
+- Baseline sizes (`FAAD_*_BASELINE` macros), released offsets, enum values, status codes
+  and signatures stay fixed within a major version; incompatible changes need a
+  new SONAME.
+- `FAAD_VERSION_*` is the project release version, which every library reports;
+  the SONAME is versioned separately. `faad_get_library_info()` reports the linked version.
 
 FAAD is free software, licensed under the GNU Lesser General Public License
 (LGPL), version 2.1 or later.

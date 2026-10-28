@@ -35,15 +35,9 @@ libfaac_src = [
     'quantize.h',
     'ratecontrol.c',
     'ratecontrol.h',
-    'sbr.c',
     'sbr.h',
     'sbr_internal.h',
-    'sbr_bitstream.c',
-    'sbr_huff_tables.c',
-    'sbr_huff_tables.h',
-    'sbr_analysis.c',
     'sbr_analysis.h',
-    'resample.c',
     'resample.h',
     'stereo.c',
     'stereo.h',
@@ -53,8 +47,13 @@ libfaac_src = [
     'util.h',
 ]
 
-if encoder_ps
-    libfaac_src += ['ps.c', 'ps_huff_tables.c', 'ps_huff_tables.h']
+encoder_codec_dep = codec_lc_dep
+if encoder_sbr
+    libfaac_src += files('sbr.c', 'sbr_analysis.c', 'sbr_bitstream.c', 'sbr_huff_tables.c', 'resample.c')
+    encoder_codec_dep = codec_dep
+    if encoder_ps
+        libfaac_src += files('ps.c', 'ps_huff_tables.c', 'ps_huff_tables.h')
+    endif
 endif
 
 libfaac = disabler()
@@ -62,7 +61,7 @@ libfaac = disabler()
 common_args = {
     'include_directories' : ['..', '../include', common_inc],
     'c_args' : c_args + ['-DCOMMON_PREFIX=faac_'],
-    'dependencies' : [libm, codec_dep],
+    'dependencies' : [libm, encoder_codec_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
@@ -83,9 +82,19 @@ endif
 
 if default_lib == 'shared' or default_lib == 'both'
     shared_kwargs = shared_library_args + {
+      'version': library_abi_versions['FAAC'],
+      'soversion': library_abi_versions['FAAC'].split('.')[0],
       'c_args' : common_args['c_args'] + ['-DFAAC_BUILDING'],
       'vs_module_defs' : 'libfaac.def',
     }
+    # GNU ld version script (ELF only). PE and Mach-O have no symbol versions, so skip them and probe the rest.
+    faac_map = meson.current_source_dir() / 'libfaac.map'
+    if host_machine.system() not in ['windows', 'cygwin', 'darwin'] and cc.has_link_argument('-Wl,--version-script=' + faac_map)
+        shared_kwargs += {
+          'link_args' : ['-Wl,--version-script=' + faac_map],
+          'link_depends' : [faac_map],
+        }
+    endif
     libfaac_shared = shared_library(
         'faac',
         libfaac_src,

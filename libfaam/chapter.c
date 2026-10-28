@@ -26,8 +26,10 @@ faam_status faam_update_chapters_stream(const faam_io *caller_io, const faam_cha
     const faam_io *io = &loaded;
     if (flags || !caller_io || (count && !chapters) || count > 255 || !faam_io_load(&loaded, caller_io)) return FAAM_ERR_INVALID_ARGUMENT;
     if (count && chapters->struct_size < FAAM_CHAPTER_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
-    for (uint32_t c = 0; c < count; c++)
-        if (!faam_chapter_at(chapters, c)->title) return FAAM_ERR_INVALID_ARGUMENT;
+    for (uint32_t c = 0; c < count; c++) {
+        const faam_chapter *e = faam_chapter_at(chapters, c);
+        if (e->struct_size != chapters->struct_size || !e->title) return FAAM_ERR_INVALID_ARGUMENT;
+    }
     if (!io->read || !io->write || !io->seek || !io->tell) return FAAM_ERR_UNSUPPORTED;
 
     faam_atom_ref moov, mdat;
@@ -45,7 +47,7 @@ faam_status faam_update_chapters_stream(const faam_io *caller_io, const faam_cha
 
     uint32_t chpl_cap = 17 + count * 265;
     uint8_t *chpl_buf = (uint8_t *)AllocMemory(chpl_cap);
-    if (!chpl_buf) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!chpl_buf) return FAAM_ERR_NO_MEMORY;
 
     uint32_t chpl_len = 17;
     write_u32_be(chpl_buf + 8, 1U << 24); /* ver/flags */

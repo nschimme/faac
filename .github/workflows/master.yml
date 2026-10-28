@@ -31,7 +31,7 @@ jobs:
               os: ubuntu-latest,
               compiler: gcc,
               shell: bash,
-              options: -Dfaar-precision=float,
+              options: -Dresampler-float=true,
             }
           - {
               name: Linux GCC (max 1 channel),
@@ -53,6 +53,13 @@ jobs:
               compiler: gcc,
               shell: bash,
               options: -Dencoder-ps=true -Dstats=true,
+            }
+          - {
+              name: Linux GCC (LC-only encoder),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dencoder-sbr=false,
             }
           - {
               name: Linux GCC (SBR decimation 4),
@@ -199,6 +206,22 @@ jobs:
         if: matrix.config.shell != 'msys2 {0}' && matrix.config.compiler != 'cl'
         run: meson test -C build --print-errorlogs
 
+      - name: Smoke-test LC-only encoder
+        if: matrix.config.name == 'Linux GCC (LC-only encoder)'
+        run: |
+          meson test -C build --print-errorlogs
+          python3 - <<'PYTHON'
+          import wave
+          with wave.open("lc-smoke.wav", "wb") as w:
+              w.setparams((2, 2, 48000, 0, "NONE", "NONE"))
+              w.writeframes(bytes(8192))
+          PYTHON
+          build/frontend/faac --object-type lc -o lc-smoke.aac lc-smoke.wav
+          if build/frontend/faac --object-type he-aac-v1 -o he-smoke.aac lc-smoke.wav 2>he-smoke.err; then
+            exit 1
+          fi
+          grep -i unsupported he-smoke.err
+
       - name: Build (MSVC)
         if: matrix.config.compiler == 'cl'
         run: |
@@ -292,10 +315,11 @@ jobs:
         run: meson test -C build-coverage --print-errorlogs
 
       - name: Generate coverage report
+        # build-coverage/tests holds only link and layout checks, which gcov cannot map back to their sources.
         run: |
-          gcovr --gcov-ignore-parse-errors=negative_hits.warn --root . --txt -o build-coverage/meson-logs/coverage.txt build-coverage
-          gcovr --gcov-ignore-parse-errors=negative_hits.warn --root . --xml-pretty -o build-coverage/meson-logs/coverage.xml build-coverage
-          gcovr --gcov-ignore-parse-errors=negative_hits.warn --root . --json-summary-pretty -o build-coverage/meson-logs/coverage-summary.json build-coverage
+          gcovr --gcov-ignore-parse-errors=negative_hits.warn --exclude-directories build-coverage/tests --root . --txt -o build-coverage/meson-logs/coverage.txt build-coverage
+          gcovr --gcov-ignore-parse-errors=negative_hits.warn --exclude-directories build-coverage/tests --root . --xml-pretty -o build-coverage/meson-logs/coverage.xml build-coverage
+          gcovr --gcov-ignore-parse-errors=negative_hits.warn --exclude-directories build-coverage/tests --root . --json-summary-pretty -o build-coverage/meson-logs/coverage-summary.json build-coverage
 
       - name: Add coverage summary to Actions run
         run: |
@@ -418,7 +442,6 @@ jobs:
           needs_exe_wrapper = true
           EOF
           meson setup build-s390x --cross-file s390x.txt -Ddefault_library=static -Dc_link_args=-static
-          grep WORDS_BIGENDIAN build-s390x/config.h
           meson compile -C build-s390x
 
       - name: Test s390x (big-endian)

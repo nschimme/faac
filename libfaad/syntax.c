@@ -84,32 +84,15 @@ static faad_status decode_section_data(BitReader *bs, ICSInfo *ics)
 
 faad_status decode_pce(BitReader *bs, struct faad_decoder *dec)
 {
-    (void)dec;
-    bits_skip(bs, 4); /* element_instance_tag */
-    bits_skip(bs, 2); /* object_type */
-    bits_skip(bs, 4); /* sampling_frequency_index */
-    uint32_t num_front = bits_get(bs, 4);
-    uint32_t num_side = bits_get(bs, 4);
-    uint32_t num_back = bits_get(bs, 4);
-    uint32_t num_lfe = bits_get(bs, 2);
-    uint32_t num_assoc_data = bits_get(bs, 3);
-    uint32_t num_valid_cc = bits_get(bs, 4);
-
-    if (bits_get(bs, 1)) bits_skip(bs, 4); /* mono_mixdown */
-    if (bits_get(bs, 1)) bits_skip(bs, 4); /* stereo_mixdown */
-    if (bits_get(bs, 1)) bits_skip(bs, 3); /* matrix_mixdown */
-
-    for (uint32_t i = 0; i < num_front; i++) bits_skip(bs, 5);
-    for (uint32_t i = 0; i < num_side; i++) bits_skip(bs, 5);
-    for (uint32_t i = 0; i < num_back; i++) bits_skip(bs, 5);
-    for (uint32_t i = 0; i < num_lfe; i++) bits_skip(bs, 4);
-    for (uint32_t i = 0; i < num_assoc_data; i++) bits_skip(bs, 4);
-    for (uint32_t i = 0; i < num_valid_cc; i++) bits_skip(bs, 5);
-
-    bits_byte_align(bs);
-    uint32_t comment_bytes = bits_get(bs, 8);
-    for (uint32_t i = 0; i < comment_bytes; i++) bits_skip(bs, 8);
-
+    uint32_t start = bits_get_consumed(bs);
+    asc_bitreader br = { bs->buffer, bs->len * 8, start };
+    AscPce pce;
+    if (!asc_parse_pce(&br, &pce))
+        return FAAD_ERR_DECODE_FAILED;
+    bits_skip(bs, br.pos - start);
+    if (pce.channels > MAX_CHANNELS)
+        return FAAD_ERR_UNSUPPORTED;
+    if (!dec->asc.num_channels) dec->asc.pce = pce;
     return FAAD_OK;
 }
 

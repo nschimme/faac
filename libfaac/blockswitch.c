@@ -169,11 +169,16 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 void PsyCalculate(PsyInfo * psyInfo, const bool * isLfeChannel,
 			 unsigned int numChannels)
 {
+#if MAX_CHANNELS < 6
+  (void)isLfeChannel;
+#endif
   for (unsigned int channel = 0; channel < numChannels; channel++)
   {
+#if MAX_CHANNELS >= 6
       if (isLfeChannel[channel])
           psyInfo[channel].block_type = ONLY_LONG_WINDOW;
       else
+#endif
           PsyCheckShort(&psyInfo[channel]);
   }
 }

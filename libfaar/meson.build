@@ -6,19 +6,16 @@ libfaar_sources = files(
   'dft_coeffs.c',
   'dft_prefilter.c',
   'dft_fir.c',
-  'fft_real.c',
+  'fft.c',
 )
 
-if get_option('faar-precision') == 'mixed'
-  libfaar_args += ['-DFAAR_WIDE_HIGH']
-else
+if get_option('resampler-float')
   libfaar_float2_sources = files('fft_float2.c')
   libfaar_sources += libfaar_float2_sources
+else
+  libfaar_args += ['-DFAAR_WIDE_HIGH']
 endif
 libfaar_prepare_sources = libfaar_sources
-
-# Real-transform wrappers are exercised only by FFT verification.
-libfaar_args += '-DFAAR_FFT_LEAN'
 
 default_lib = get_option('default_library')
 
@@ -36,12 +33,24 @@ if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') a
 endif
 
 if default_lib == 'shared' or default_lib == 'both'
+  faar_kwargs = shared_library_args + {
+    'version': library_abi_versions['FAAR'],
+    'soversion': library_abi_versions['FAAR'].split('.')[0],
+  }
+  # GNU ld version script (ELF only). PE and Mach-O have no symbol versions, so skip them and probe the rest.
+  faar_map = meson.current_source_dir() / 'libfaar.map'
+  if host_machine.system() not in ['windows', 'cygwin', 'darwin'] and cc.has_link_argument('-Wl,--version-script=' + faar_map)
+    faar_kwargs += {
+      'link_args': ['-Wl,--version-script=' + faar_map],
+      'link_depends': [faar_map],
+    }
+  endif
   libfaar_shared = shared_library('faar',
     libfaar_sources,
     include_directories: inc,
     c_args: libfaar_args + ['-DFAAR_BUILDING'],
     dependencies: [m_dep],
-    kwargs: shared_library_args,
+    kwargs: faar_kwargs,
     gnu_symbol_visibility: 'hidden',
     vs_module_defs: 'libfaar.def',
     install: true,

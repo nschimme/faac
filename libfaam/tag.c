@@ -38,7 +38,7 @@ static faam_status read_atom(const faam_io *io, uint64_t offset, uint32_t size,
                              uint8_t **out)
 {
     uint8_t *atom = (uint8_t *)AllocMemory(size);
-    if (!atom) return FAAM_ERR_INSUFFICIENT_MEM;
+    if (!atom) return FAAM_ERR_NO_MEMORY;
     if (!io->seek(io->user_data, offset) ||
         faam_io_read_full(io, atom, size) != (int32_t)size) {
         FreeMemory(atom);
@@ -61,7 +61,7 @@ static faam_status append_bytes(uint8_t **buffer, uint32_t *length,
             grown *= 2;
         }
         uint8_t *tmp = (uint8_t *)faam_grow_memory(*buffer, *length, grown);
-        if (!tmp) return FAAM_ERR_INSUFFICIENT_MEM;
+        if (!tmp) return FAAM_ERR_NO_MEMORY;
         *buffer = tmp;
         *capacity = grown;
     }
@@ -164,7 +164,7 @@ faam_status faam_update_metadata_stream(const faam_io *caller_io, const faam_met
     /* A new meta needs its version/flags and handler ahead of the ilst; an existing
      * meta already has them, so the same buffer serves both by offset. */
     uint8_t *buf = (uint8_t *)AllocMemory(MFULL_PREFIX + ilst_len);
-    if (!buf) { FreeMemory(extra_buf); return FAAM_ERR_INSUFFICIENT_MEM; }
+    if (!buf) { FreeMemory(extra_buf); return FAAM_ERR_NO_MEMORY; }
     uint8_t *ilst_buf = buf + MFULL_PREFIX;
     ilst_buffer buffer = {ilst_buf, 0};
     build = faam_write_ilst(meta, NULL, extra_buf, extra_len, append_ilst, &buffer, &ilst_len);

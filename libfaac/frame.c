@@ -61,9 +61,8 @@
  * hearing. VBR, having no rate, codes at the top. */
 #define BANDWIDTH_CEILING     18750
 
-/* Float PCM is in 16-bit sample units; 2^23 is the most 32-bit input can reach
- * after its scaling, so anything beyond it is not audio. */
-#define FLOAT_INPUT_LIMIT     8388608.0f
+/* Reject non-audio magnitudes before scaling into the encoder. */
+#define FLOAT_INPUT_LIMIT     256.0f
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -111,10 +110,14 @@ static unsigned int CalcBandwidth(unsigned long bitRate)
 static void RefreshLfeMap(faacEncStruct *hEncoder)
 {
     memset(hEncoder->isLfeChannel, 0, sizeof(hEncoder->isLfeChannel));
+#if MAX_CHANNELS >= 6
     for (int e = 0; e < hEncoder->numElements; e++) {
         if (hEncoder->elements[e].type == ID_LFE)
             hEncoder->isLfeChannel[hEncoder->elements[e].channels[0]] = true;
     }
+#else
+    (void)hEncoder;
+#endif
 }
 
 int faacEncGetVersion( char **faac_id_string,
@@ -130,10 +133,15 @@ int faacEncGetVersion( char **faac_id_string,
 }
 
 
+#if MAX_CHANNELS >= 8
 /* The configuration is fixed at open, so LC and HE share one non-allocating
- * writer. The longest ASC is mono HE: 16 core + 21 SBR + 12 PS bits. */
-_Static_assert(sizeof(((faacEncStruct *)0)->asc) * 8 >= 16 + 21 + 12,
-               "ASC buffer must hold the mono HE extensions");
+ * writer. The longest ASC is an eight-channel HE one: the PCE form of the
+ * core followed by the SBR extension. */
+_Static_assert(sizeof(((faacEncStruct *)0)->asc) >= PCE_HE_ASC_BYTES,
+               "ASC buffer must hold the PCE and SBR extensions");
+_Static_assert(sizeof(((faacEncStruct *)0)->pce) >= PCE_ADTS_BYTES,
+               "PCE buffer must hold the in-band element");
+#endif
 
 int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 {
@@ -142,6 +150,12 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 
     if (hEncoder == NULL || buf == NULL)
         return -1;
+#if MAX_CHANNELS >= 8
+    if (HasPCE((int)hEncoder->numChannels)) {
+        /* The raw block starts byte aligned, so this image is reusable. */
+        BuildPCE(hEncoder->pce, hEncoder->sampleRateIdx);
+    }
+#endif
     if (hEncoder->config.mpegVersion == MPEG2)
         return -2; /* not supported */
 
@@ -149,8 +163,18 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
     InitBitStream(&bs, buf, sizeof(hEncoder->asc));
     PutBit(&bs, he ? LOW : hEncoder->config.aacObjectType, 5);
     PutBit(&bs, hEncoder->sampleRateIdx, 4);
-    PutBit(&bs, GetChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels)), 4);
+    PutBit(&bs, SignalledChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels)), 4);
     PutBit(&bs, 0, 3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
+#if MAX_CHANNELS >= 8
+    if (HasPCE((int)hEncoder->numChannels)) {
+        /* Same PCE as the in-band image, minus the element id; copying it bit
+         * by bit keeps a single copy of the field writer. */
+        for (uint32_t i = LEN_SE_ID; i < LEN_SE_ID + PCE_BODY_BITS; i++)
+            PutBit(&bs, (hEncoder->pce[i >> 3] >> (7 - (i & 7))) & 1, 1);
+        PutBit(&bs, 0, (int)((8 - (bs.currentBit & 7)) & 7));
+        PutBit(&bs, 0, 8);
+    }
+#endif
     if (he) {
         /* Backward-compatible sync extension: AAC-LC at Fs/2, SBR at full Fs. */
         PutBit(&bs, 0x2b7, 11);
@@ -193,16 +217,15 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
         hEncoder->config.aacObjectType =
-            (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE &&
+            (FAAC_ENCODER_SBR && rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE &&
              hEncoder->config.mpegVersion != MPEG2) ? HE_V1 : LOW;
 #if FAAC_ENCODER_PS
-        /* Keep the adjacent range on HE v1, including rates below its legacy
-         * AUTO floor, so crossing the PS ceiling does not send low-rate
-         * stereo back to LC. */
+        /* Explicit-bitrate stereo uses PS up to the ceiling, below HE v1's
+         * floor too; just above it stays on HE v1 rather than falling to LC. */
         unsigned long ps_ceiling = hEncoder->sampleRate == 48000 ? 8000 :
             (hEncoder->sampleRate == 32000 || hEncoder->sampleRate == 44100) ? 6000 : 0;
         if (ps_ceiling && hEncoder->numChannels == 2 &&
-            hEncoder->config.mpegVersion != MPEG2 && rate_per_ch >= 4000) {
+            hEncoder->config.mpegVersion != MPEG2 && rate_per_ch > 0) {
             if (rate_per_ch <= ps_ceiling)
                 hEncoder->config.aacObjectType = HE_V2;
             else if (rate_per_ch < HE_MIN_BITRATE_PER_CH)
@@ -366,7 +389,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         const int  sfbn[2]      = { hEncoder->aacquantCfg.max_cbl, hEncoder->aacquantCfg.max_cbs };
         QuantizeConfigureMask(&hEncoder->aacquantCfg, hEncoder->sampleRate,
                               hEncoder->config.bitRate, hEncoder->numChannels,
-                              hEncoder->config.aacObjectType == HE_V1);
+                              IsSBR(hEncoder->config.aacObjectType));
         StereoConfigure(&hEncoder->stereoCfg, (JointMode)hEncoder->config.jointmode, hEncoder->sampleRate,
                         hEncoder->config.bitRate,
                         CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels),
@@ -496,11 +519,7 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 const uint8_t *src_base = (const uint8_t *)inputBuffer;
                 for (i = 0; i < spch; i++) {
                     const uint8_t *src = src_base + (i * numChannels + hEncoder->config.channel_map[channel]) * 3;
-#if WORDS_BIGENDIAN
-                    int32_t s = read_pcm24(src, true);
-#else
-                    int32_t s = read_pcm24(src, false);
-#endif
+                    int32_t s = read_pcm24(src, FAAC_BIG_ENDIAN);
                     dst[i] = (1.0f / 256.0f) * (float)s;
                 }
                 break;
@@ -519,6 +538,8 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++)
                     if (!(fabsf(dst[i]) < FLOAT_INPUT_LIMIT))
                         dst[i] = 0.0f;
+                    else
+                        dst[i] *= 32768.0f;
                 break;
             }
             default: return -1;
@@ -767,7 +788,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
             /* LFE's block_type is always forced to ONLY_LONG_WINDOW in PsyCalculate,
              * and forced short windows neither switch nor run TNS, so the
              * transient analysis below would be discarded -- skip it. */
+#if MAX_CHANNELS >= 6
             if (!hEncoder->isLfeChannel[channel] && shortctl != SHORTCTL_NOLONG)
+#else
+            if (shortctl != SHORTCTL_NOLONG)
+#endif
             {
                 PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
                     hEncoder->audioFIFO[channel][FIFO_AHEAD1],
@@ -803,7 +828,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* force block type; LFE must stay ONLY_LONG_SEQUENCE (ISO/IEC 14496-3) */
     for (channel = 0; channel < numChannels; channel++)
     {
+#if MAX_CHANNELS >= 6
         if (hEncoder->isLfeChannel[channel] || shortctl == SHORTCTL_NOSHORT)
+#else
+        if (shortctl == SHORTCTL_NOSHORT)
+#endif
             coderInfo[channel].block_type = ONLY_LONG_WINDOW;
         else if ((hEncoder->frameNum <= (LOOKAHEAD_DEPTH + 1)) || (shortctl == SHORTCTL_NOLONG))
             coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
@@ -869,7 +898,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
+#if MAX_CHANNELS >= 6
         if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+#else
+        if (useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+#endif
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
 #ifdef FAAC_STATS
@@ -896,6 +929,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
+#if MAX_CHANNELS >= 6
     for (channel = 0; channel < numChannels; channel++) {
         if (hEncoder->isLfeChannel[channel]) {
             /* CalcBW only initializes offsets through max_cbl. */
@@ -903,6 +937,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].sfbn = max_cbl < 3 ? max_cbl : 3;
         }
     }
+#endif
 
     /* Clear each channel's section state before AACstereo pre-loads intensity
      * bands and BlocQuant resolves the rest. */
@@ -920,7 +955,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
     float baseQuality = hEncoder->aacquantCfg.quality;
     int sfbnSnap[MAX_CHANNELS];
     int attempt;
-    /* Every cap below is on the raw_data_block; the ADTS header is transport. */
+    /* The raw_data_block includes periodic PCE bytes, so caps and reservoir
+     * accounting charge them along with audio; only the ADTS header is excluded. */
     int hdrBytes = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE : 0;
     int payloadBits = 0;
 #ifdef FAAC_STATS

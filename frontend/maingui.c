@@ -166,7 +166,7 @@ static void ApplyRateModeUI(HWND hWnd, int mode)
 
     if (mode == RATEMODE_VBR)
     {
-        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quantizer\nquality");
+        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quality");
         snprintf(text, sizeof(text), "%d", DEFAULT_QUANT_QUALITY);
     }
     else
@@ -316,8 +316,8 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     opts.object_type = (enum faac_object_type)GetComboData(hWnd, IDC_OBJECTTYPE, FAAC_OBJ_AUTO);
 
     {
-        LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
-        opts.joint_mode = (mode == CB_ERR) ? FAAC_JOINT_MIXED : (enum faac_joint_mode)mode;
+        LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_GETCURSEL, 0, 0);
+        opts.joint_mode = (mode == CB_ERR) ? FAAC_STEREO_AUTO : (enum faac_stereo_mode)mode;
     }
 
     opts.shortctl = (enum faac_shortctl_mode)GetComboData(hWnd, IDC_SHORTCTL, FAAC_SHORTCTL_NORMAL);
@@ -512,7 +512,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             {
                 char txt[128], ver_buf[128];
                 snprintf(txt, sizeof(txt), "libfaac version %s",
-                         faac_version_string(ver_buf, sizeof(ver_buf), libinfo.version ? libinfo.version : "?"));
+                         cli_version_string(ver_buf, sizeof(ver_buf), libinfo.version ? libinfo.version : "?"));
                 SetDlgItemText(hWnd, IDC_COMPILEDATE, txt);
             }
             else
@@ -543,21 +543,24 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_AUTO);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Low Complexity");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LOW);
-            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
-#if FAAC_ENCODER_PS
-            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
-#endif
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LC);
+            faac_library_info info = { .struct_size = sizeof(info) };
+            if (faac_get_library_info(&info) == FAAC_OK && (info.flags & FAAC_LIB_SBR)) {
+                idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
+                SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+                if (info.flags & FAAC_LIB_PS) {
+                    idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
+                    SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
+                }
+            }
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"None");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"M/S");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"IS");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Mixed");
-        SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_SETCURSEL, 3, 0);
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"L/R");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"M/S");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"IS");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
+        SendMessage(GetDlgItem(hWnd, IDC_STEREOMODE), CB_SETCURSEL, 3, 0);
 
         {
             HWND hSC = GetDlgItem(hWnd, IDC_SHORTCTL);
@@ -606,9 +609,9 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             AddTip(hWnd, IDC_SHORTCTL,
                 "Normal switches block length automatically; No Short/No Long\n"
                 "force one block type throughout the encode.");
-            AddTip(hWnd, IDC_JOINTMODE,
-                "None: independent channels. M/S and IS: fixed stereo coding.\n"
-                "Mixed: chooses dynamically per band (default).");
+            AddTip(hWnd, IDC_STEREOMODE,
+                "L/R: independent channels. M/S and IS: fixed stereo coding.\n"
+                "Auto: chooses dynamically per band (default).");
         }
 
         DragAcceptFiles(hWnd, TRUE);

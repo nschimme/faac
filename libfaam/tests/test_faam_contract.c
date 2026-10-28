@@ -208,7 +208,7 @@ static void test_status_contract(void) {
     faam_muxer_close(&m);
 
     /* A NULL chapter title is rejected up front, not dereferenced at finalize. */
-    faam_chapter nulltitle[1] = { { sizeof(faam_chapter), 0, 0, NULL } };
+    faam_chapter nulltitle[1] = { { sizeof(faam_chapter), 0, NULL } };
     faam_muxer_config bad_cfg = cfg;
     bad_cfg.chapters = nulltitle; bad_cfg.num_chapters = 1;
     m = (faam_muxer *)0x1;
@@ -243,7 +243,7 @@ static void test_status_contract(void) {
     free(junk.buf);
 
     /* In-place updates. */
-    faam_chapter ch[1] = { { sizeof(faam_chapter), 0, 0, "a" } };
+    faam_chapter ch[1] = { { sizeof(faam_chapter), 0, "a" } };
     CHECK(test_set_tags(NULL, "t", NULL, 0) == FAAM_ERR_INVALID_ARGUMENT);
     CHECK(faam_update_chapters_stream(NULL, ch, 1, 0) == FAAM_ERR_INVALID_ARGUMENT);
     CHECK(faam_update_chapters_stream(&full, ch, 256, 0) == FAAM_ERR_INVALID_ARGUMENT);
@@ -261,7 +261,7 @@ static void test_status_contract(void) {
 
 static void test_short_reads(void) {
     memfile f = {0};
-    faam_chapter ch[2] = { { sizeof(faam_chapter), 0, 0, "One" }, { sizeof(faam_chapter), 0, 5000, "Two" } };
+    faam_chapter ch[2] = { { sizeof(faam_chapter), 0, "One" }, { sizeof(faam_chapter), 5000, "Two" } };
     mux_opts o = { .frames = 40, .ticks = 1024, .num_chapters = 2, .chapters = ch };
     mux_file(&f, &o);
 
@@ -281,7 +281,7 @@ static void test_short_reads(void) {
     u.max_read = 3; u.pos = 0;
     faam_io io = mem_io(&u);
     CHECK(test_set_tags(&io, "Trickled title that is rather longer than any earlier one", "A", 0) == FAAM_OK);
-    faam_chapter more[3] = { { sizeof(faam_chapter), 0, 0, "x" }, { sizeof(faam_chapter), 0, 1, "y" }, { sizeof(faam_chapter), 0, 2, "zz" } };
+    faam_chapter more[3] = { { sizeof(faam_chapter), 0, "x" }, { sizeof(faam_chapter), 1, "y" }, { sizeof(faam_chapter), 2, "zz" } };
     u.pos = 0;
     CHECK(faam_update_chapters_stream(&io, more, 3, 0) == FAAM_OK);
     check_frames(&u, 40, 5);
@@ -332,7 +332,7 @@ static bool has_elst(const memfile *f) { return find_tag(f, "elst", 0) >= 0; }
 static void test_gapless(void) {
     /* The CLI path: delay and padding, no total. */
     memfile f = {0};
-    mux_opts o = { .frames = 118, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1040, 1840, 0, 0 } };
+    mux_opts o = { .frames = 118, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1040, 1840, 0 } };
     mux_file(&f, &o);
     uint64_t expect = 118ULL * 1024 - 1040 - 1840;
     long e = find_tag(&f, "elst", 0);
@@ -377,7 +377,7 @@ static void test_gapless(void) {
     /* Delay and padding bigger than the media: an empty programme, written as the empty
      * edit list a plain writer produces for it. */
     memfile tiny = {0};
-    mux_opts ot = { .frames = 1, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1000, 1000, 0, 0 } };
+    mux_opts ot = { .frames = 1, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1000, 1000, 0 } };
     mux_file(&tiny, &ot);
     e = find_tag(&tiny, "elst", 0);
     CHECK(e > 0 && be32(tiny.buf + e + 12) == 0);
@@ -391,7 +391,7 @@ static void test_gapless(void) {
     for (unsigned i = 0; i < 2; i++) {
         memfile short_file = {0};
         mux_opts os = { .frames = i ? 1 : 2, .ticks = 1024,
-                        .gapless = { sizeof(faam_gapless_info), i ? 100 : 2000, i ? 200 : 1000, 0, 0 } };
+                        .gapless = { sizeof(faam_gapless_info), i ? 100 : 2000, i ? 200 : 1000, 0 } };
         uint64_t total = i ? 724 : 0;
         mux_file(&short_file, &os);
         e = find_tag(&short_file, "elst", 0);
@@ -410,7 +410,7 @@ static void test_gapless(void) {
 
     /* No frames at all behaves the same. */
     memfile none = {0};
-    mux_opts on = { .frames = 0, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 0, 0, 0 } };
+    mux_opts on = { .frames = 0, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 0, 0 } };
     mux_file(&none, &on);
     e = find_tag(&none, "elst", 0);
     CHECK(e > 0 && be32(none.buf + e + 12) == 0);
@@ -418,7 +418,7 @@ static void test_gapless(void) {
 
     /* Padding only: no edit list (it needs a delay) but iTunSMPB carries the total. */
     memfile po = {0};
-    mux_opts op = { .frames = 10, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 0, 500, 0, 0 } };
+    mux_opts op = { .frames = 10, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 0, 500, 0 } };
     mux_file(&po, &op);
     CHECK(!has_elst(&po));
     d = open_mem(&po, 0);
@@ -493,8 +493,8 @@ static void collect(memfile *f, uint32_t *n_chapters, char titles[4][16], faam_d
 
 static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
     memfile f = {0};
-    faam_chapter seed[1] = { { sizeof(faam_chapter), 0, 0, "seed" } };
-    mux_opts o = { .frames = 30, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 100, 0, 0 }, .num_chapters = 1, .chapters = seed };
+    faam_chapter seed[1] = { { sizeof(faam_chapter), 0, "seed" } };
+    mux_opts o = { .frames = 30, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 100, 0 }, .num_chapters = 1, .chapters = seed };
     mux_file(&f, &o);
     switch (kind) {
     case ABSENT_UDTA: rename_tag(&f, "udta", "free"); break;
@@ -516,7 +516,7 @@ static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
     faam_metadata_entry entries[3] = { test_text(TEST_KEY_TITLE, "Created title"), test_text(TEST_KEY_ARTIST, "Created artist"),
         { .struct_size = sizeof(faam_metadata_entry), .key = FAAM_FOURCC('t', 'r', 'k', 'n'),
           .data_type = FAAM_METADATA_IMPLICIT, .data = trkn, .data_bytes = sizeof(trkn) } };
-    faam_chapter chs[3] = { { sizeof(faam_chapter), 0, 0, "Intro" }, { sizeof(faam_chapter), 0, 61000, "Middle" }, { sizeof(faam_chapter), 0, 120500, "End" } };
+    faam_chapter chs[3] = { { sizeof(faam_chapter), 0, "Intro" }, { sizeof(faam_chapter), 61000, "Middle" }, { sizeof(faam_chapter), 120500, "End" } };
     for (int step = 0; step < 2; step++) {
         bool tags = (step == 0) == tags_first;
         f.pos = 0;
@@ -537,7 +537,7 @@ static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
     CHECK(!strcmp(got.title, "Created title") && !strcmp(got.artist, "Created artist"));
     CHECK(got.track_num == 3 && got.track_total == 9);
     /* A second pass on a now complete file replaces in place. */
-    faam_chapter one[1] = { { sizeof(faam_chapter), 0, 7, "Only" } };
+    faam_chapter one[1] = { { sizeof(faam_chapter), 7, "Only" } };
     f.pos = 0; CHECK(faam_update_chapters_stream(&io, one, 1, 0) == FAAM_OK);
     f.pos = 0; CHECK(test_set_tags(&io, "Second", NULL, 0) == FAAM_OK);
     collect(&f, &n, titles, &got);
@@ -655,8 +655,8 @@ static void test_multitrack_gapless(void) {
         bool low_first = k < 200;
         uint32_t n1 = 110, n2 = 100 + k % 3;
         uint32_t total2 = 99000 + k % 200;
-        faam_gapless_info g1 = { sizeof(faam_gapless_info), 1105, 700, 0, n1 * 1024 - 1105 - 700 };
-        faam_gapless_info g2 = { sizeof(faam_gapless_info), 1067, n2 * 1024 - 1067 - total2, 0, total2 };
+        faam_gapless_info g1 = { sizeof(faam_gapless_info), 1105, 700, n1 * 1024 - 1105 - 700 };
+        faam_gapless_info g2 = { sizeof(faam_gapless_info), 1067, n2 * 1024 - 1067 - total2, total2 };
         memfile f = {0};
         mux_two_rates(&f, low_first, &g1, n1, &g2, n2);
 
@@ -741,7 +741,7 @@ static void test_creation_time(void) {
     faam_muxer *m = NULL;
     CHECK(faam_muxer_open(&cfg, &io, &m) == FAAM_OK);
     CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_CREATION_TIME, .creation_time = 5 }) == FAAM_OK);
-    faam_gapless_info g = { sizeof(faam_gapless_info), 1, 2, 0, 3 };
+    faam_gapless_info g = { sizeof(faam_gapless_info), 1, 2, 3 };
     CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_GAPLESS, .gapless = &g }) == FAAM_OK);
     CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_CREATION_TIME, .creation_time = 5 }) == FAAM_OK);
     uint8_t one = 1;
@@ -900,7 +900,7 @@ static void test_extended_moov(void) {
     faam_demuxer_close(&d);
 
     faam_io io = mem_io(&x);
-    faam_chapter ch[1] = { { sizeof(faam_chapter), 0, 0, "Chapter" } };
+    faam_chapter ch[1] = { { sizeof(faam_chapter), 0, "Chapter" } };
     x.pos = 0;
     faam_status st = test_set_tags(&io, "A title that makes the tag list grow", NULL, 0);
     CHECK(st == FAAM_ERR_UNSUPPORTED || st == FAAM_ERR_BAD_CONTAINER);
@@ -925,7 +925,7 @@ static void test_chapters_preserve_ilst(memfile *f) {
     CHECK(saved);
     memcpy(saved, f->buf + pos - 4, size);
     faam_io io = mem_io(f);
-    faam_chapter chapters[2] = { { sizeof(faam_chapter), 0, 0, "Intro" }, { sizeof(faam_chapter), 0, 50, "End" } };
+    faam_chapter chapters[2] = { { sizeof(faam_chapter), 0, "Intro" }, { sizeof(faam_chapter), 50, "End" } };
     f->pos = 0;
     CHECK(faam_update_chapters_stream(&io, chapters, 2, 0) == FAAM_OK);
     pos = find_tag(f, "ilst", 0);
@@ -1106,7 +1106,7 @@ static void test_per_track_gapless(int mode) {
     tc1.timescale = tc1.sample_rate = 44100; tc1.channels = 2;
     tc1.codec_data = asc_lc_44k; tc1.codec_data_len = ASC_LEN;
     /* Function scope: the pointer is read when the muxer opens, long after an if body's block has ended. */
-    faam_gapless_info tc1_gapless = { sizeof(faam_gapless_info), 1024, 500, 0, 0 };
+    faam_gapless_info tc1_gapless = { sizeof(faam_gapless_info), 1024, 500, 0 };
     if (mode != 2) tc1.gapless = &tc1_gapless;
     CHECK(test_append_track(&cfg, cfg_tracks, &tc1, NULL) == FAAM_OK);
 
@@ -1115,7 +1115,7 @@ static void test_per_track_gapless(int mode) {
     tc2.timescale = tc2.sample_rate = 48000; tc2.channels = 2;
     static const uint8_t asc_lc_48k[ASC_LEN] = { 0x11, 0x90 };
     tc2.codec_data = asc_lc_48k; tc2.codec_data_len = ASC_LEN;
-    tc2.gapless = &(faam_gapless_info){ sizeof(faam_gapless_info), 1040, 600, 0, 0 };
+    tc2.gapless = &(faam_gapless_info){ sizeof(faam_gapless_info), 1040, 600, 0 };
     CHECK(test_append_track(&cfg, cfg_tracks, &tc2, NULL) == FAAM_OK);
 
     faam_io io = mem_io(&f);
@@ -1123,7 +1123,7 @@ static void test_per_track_gapless(int mode) {
     CHECK(faam_muxer_open(&cfg, &io, &m) == FAAM_OK);
 
     /* Distinct file-level values make accidental reuse on track 2 observable. */
-    faam_gapless_info file_gapless = { sizeof(faam_gapless_info), 2112, 700, 0, 109828 };
+    faam_gapless_info file_gapless = { sizeof(faam_gapless_info), 2112, 700, 109828 };
     if (mode == 1) CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_GAPLESS, .gapless = &file_gapless }) == FAAM_OK);
 
     uint8_t frame[16] = {0};
@@ -1146,7 +1146,7 @@ static void test_per_track_gapless(int mode) {
     } else if (mode == 2) {
         CHECK(find_tag(&f, "iTunSMPB", 0) < 0);
         CHECK(g1.encoder_delay == 0 && g1.end_padding == 0 && g1.total_samples == 0);
-        faam_gapless_info g = { sizeof(faam_gapless_info), 1, 2, 0, 3 };
+        faam_gapless_info g = { sizeof(faam_gapless_info), 1, 2, 3 };
         CHECK(faam_demuxer_get_track_gapless(d, 0, &g) == FAAM_OK);
         CHECK(g.encoder_delay == 0 && g.end_padding == 0 && g.total_samples == 0);
     } else {
@@ -1278,7 +1278,7 @@ static void test_overrunning_child_refused(void) {
     CHECK(gref.buf);
     memcpy(gref.buf, g.buf, g.len);
     faam_io gio = mem_io(&g);
-    faam_chapter ch[1] = { { sizeof(faam_chapter), 0, 0, "Chapter" } };
+    faam_chapter ch[1] = { { sizeof(faam_chapter), 0, "Chapter" } };
     g.pos = 0;
     CHECK(faam_update_chapters_stream(&gio, ch, 1, 0) == FAAM_ERR_BAD_CONTAINER);
     CHECK(g.len == gref.len && !memcmp(g.buf, gref.buf, g.len));

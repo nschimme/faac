@@ -76,7 +76,7 @@ static uint32_t be32(const uint8_t *b) {
 static bool have_feature(uint32_t bit) {
     faam_library_info info = { .struct_size = sizeof(info) };
     CHECK(faam_get_library_info(&info) == FAAM_OK);
-    return (info.features & bit) != 0;
+    return (info.flags & bit) != 0;
 }
 
 /* Top-level box order: where moov and mdat start, and moov's size. */
@@ -160,7 +160,7 @@ static void snap(memfile *f, snapshot *s) {
         CHECK(loc.frame_bytes <= sizeof(buf));
         CHECK(faam_demuxer_read_frame(d, buf, sizeof(buf), &got) == FAAM_OK && got == loc.frame_bytes);
         r->track = loc.track_id; r->size = loc.frame_bytes; r->duration = loc.duration_ticks;
-        r->cts = loc.cts_offset; r->key = loc.is_keyframe; r->offset = loc.file_offset;
+        r->cts = loc.cts_offset; r->key = !!(loc.flags & FAAM_FRAME_KEYFRAME); r->offset = loc.file_offset;
         r->hash = 2166136261u;
         for (uint32_t i = 0; i < got; i++) r->hash = (r->hash ^ buf[i]) * 16777619u;
     }
@@ -242,7 +242,7 @@ static faam_status mux(memfile *out, bool faststart, bool video, bool finalize_o
     };
     cfg.chapters = chapters;
     cfg.num_chapters = 2;
-    faam_gapless_info gapless = { sizeof(faam_gapless_info), 1024, 512, 0, 0 };
+    faam_gapless_info gapless = { sizeof(faam_gapless_info), 1024, 512, 0 };
     cfg.gapless = &gapless;
 
     faam_io io = mem_io(out, true);
@@ -349,7 +349,7 @@ static void check_errors(void) {
     cfg.flags = FAAM_MUXER_FASTSTART;
     cfg.fragment_ms = 1000;
     CHECK(faam_muxer_open(&cfg, &io, &m) ==
-          (have_feature(FAAM_FEATURE_FRAGMENTED) ? FAAM_ERR_INVALID_ARGUMENT : FAAM_ERR_NOT_BUILT) && m == NULL);
+          (have_feature(FAAM_LIB_FRAGMENTED) ? FAAM_ERR_INVALID_ARGUMENT : FAAM_ERR_NOT_BUILT) && m == NULL);
     free(out.buf);
 
     /* A write that fails inside the copy and inside the final moov is sticky. */
@@ -441,7 +441,7 @@ int main(void) {
     check_pair(false);
     check_update();
     check_errors();
-    if (have_feature(FAAM_FEATURE_VIDEO)) {
+    if (have_feature(FAAM_LIB_VIDEO)) {
         check_pair(true);
         check_mp4v();
     }

@@ -261,10 +261,12 @@ bool faam_metadata_atom_key(const uint8_t *atom, uint32_t size, uint32_t *key,
                              const uint8_t **name, uint32_t *name_len);
 bool faam_metadata_matches_atom(const faam_entry_list *meta, const uint8_t *atom, uint32_t size);
 
-/* Output structs to a caller: write at most the caller's struct_size bytes. */
+/* Output structs to a caller: write at most the caller's struct_size bytes and
+ * report the bytes populated in struct_size. */
 static inline void faam_copy_out(void *dst, uint32_t dst_size, const void *src, size_t src_size) {
-    memcpy(dst, src, dst_size < src_size ? dst_size : src_size);
-    memcpy(dst, &dst_size, sizeof(dst_size)); /* struct_size stays the caller's */
+    uint32_t n = dst_size < src_size ? dst_size : (uint32_t)src_size;
+    memcpy(dst, src, n);
+    memcpy(dst, &n, sizeof(n));
 }
 
 /* Element i of a caller's chapter array, strided by the first element's size. */

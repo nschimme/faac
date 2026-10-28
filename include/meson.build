@@ -1,6 +1,4 @@
 fs = import('fs')
-version_parts = library_abi_version.split('.')
-assert(version_parts.length() == 3, 'library_abi_version must be MAJOR.MINOR.PATCH')
 version_fields = ['MAJOR', 'MINOR', 'PATCH']
 version_headers = {
     'FAAC': 'faac.h',
@@ -8,6 +6,8 @@ version_headers = {
     'FAAM': 'faam.h',
     'FAAR': 'faar.h',
 }
+version_parts = meson.project_version().split('.')
+assert(version_parts.length() == 3, 'project version must be MAJOR.MINOR.PATCH')
 foreach library, header: version_headers
     header_text = fs.read(header)
     foreach index: range(3)

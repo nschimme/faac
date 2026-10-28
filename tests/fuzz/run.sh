@@ -68,7 +68,7 @@ if grep -q '^#define FAAC_ENCODER_PS 1$' "$bd/config.h"; then
 fi
 
 # Source files for libfaar
-faar_src="$root/libfaar/polyresample.c $root/libfaar/dft_coeffs.c $root/libfaar/dft_prefilter.c $root/libfaar/dft_fir.c $root/libfaar/fft_real.c"
+faar_src="$root/libfaar/polyresample.c $root/libfaar/dft_coeffs.c $root/libfaar/dft_prefilter.c $root/libfaar/dft_fir.c $root/libfaar/fft.c"
 
 # Compile quantize_sse.c with gcc if available to bypass clang bug on immintrin.h
 q_sse_obj=""
@@ -80,22 +80,27 @@ if [ -n "$sse" ]; then
     fi
 fi
 
-# 1. fuzz_faar
-build_target "fuzz_faar" \
-    -include "$bd/config.h" -DFAAR_BUILDING -DFAAR_FFT_LEAN -DFAAR_WIDE_HIGH \
+# 1. fuzz_faar_resampler (libfaar streaming API)
+build_target "fuzz_faar_resampler" \
+    -include "$bd/config.h" -DFAAR_BUILDING -DFAAR_WIDE_HIGH \
     -I"$root/include" -I"$root/libfaar" \
-    "$root/tests/fuzz/fuzz_faar.c" $faar_src -lm
+    "$root/tests/fuzz/fuzz_faar_resampler.c" $faar_src -lm
 
-# 2. fuzz_encode
-build_target "fuzz_encode" \
+# 2. fuzz_faac_encode
+build_target "fuzz_faac_encode" \
     -include "$bd/config.h" -DCOMMON_PREFIX=faac_ -I"$root/include" -I"$root/common" -I"$root/libfaac" \
-    "$root/tests/fuzz/fuzz_encode.c" $faac_src $q_sse_obj \
+    "$root/tests/fuzz/fuzz_faac_encode.c" $faac_src $q_sse_obj \
     "$root/common/fft.c" "$root/common/sbr_tables.c" "$root/common/sfb_tables.c" -lm
 
-# 3. fuzz_wav
-build_target "fuzz_wav" \
+# 2b. fuzz_faac_faad_pce: libfaac PCE (7.1) -> libfaad PCE decode
+build_target "fuzz_faac_faad_pce" \
+    -include "$bd/config.h" -DCOMMON_PREFIX=fuzz_ -I"$root/include" -I"$root/common" -I"$root/libfaac" -I"$root/libfaad" \
+    "$root/tests/fuzz/fuzz_faac_faad_pce.c" $faac_src $faad_src $q_sse_obj $(ls "$root"/common/*.c 2>/dev/null) -lm
+
+# 3. fuzz_frontend_wav
+build_target "fuzz_frontend_wav" \
     -include "$bd/config.h" -I"$root/include" -I"$root/common" -I"$root/frontend" -I"$bd/frontend" \
-    "$root/tests/fuzz/fuzz_wav.c" "$root/frontend/input.c" "$root/frontend/charset.c" \
+    "$root/tests/fuzz/fuzz_frontend_wav.c" "$root/frontend/input.c" "$root/frontend/charset.c" \
     "$root/frontend/cli_io.c" -lm
 
 # 4. fuzz_faad_adts
@@ -147,10 +152,10 @@ build_target "fuzz_faam_annexb" \
     -DFAAM_MUXER_FRAGMENTED=1 -DFAAM_MUXER_VIDEO=1 \
     "$root/tests/fuzz/fuzz_faam_annexb.c" "$root/frontend/annexb.c" $faam_src $(ls "$root"/common/*.c 2>/dev/null) -lm
 
-# 10. fuzz_adts_header
-build_target "fuzz_adts_header" \
+# 10. fuzz_frontend_adts_header
+build_target "fuzz_frontend_adts_header" \
     -include "$bd/config.h" -I"$root/include" -I"$root/common" -I"$root/frontend" \
-    "$root/tests/fuzz/fuzz_adts_header.c" "$root/frontend/adts.c" -lm
+    "$root/tests/fuzz/fuzz_frontend_adts_header.c" "$root/frontend/adts.c" -lm
 
 echo "All fuzz targets compiled successfully."
 
@@ -160,7 +165,7 @@ fi
 
 cd "$out"
 
-all_targets="fuzz_faar fuzz_encode fuzz_wav fuzz_faad_adts fuzz_faad_raw960 fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_adts_header"
+all_targets="fuzz_faar_resampler fuzz_faac_encode fuzz_faac_faad_pce fuzz_frontend_wav fuzz_faad_adts fuzz_faad_raw960 fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_frontend_adts_header"
 
 if [ -z "$targets" ]; then
     run_list="$all_targets"
@@ -172,11 +177,24 @@ fi
 # tag-edit harness would never be held to its "still readable" rule without a real one.
 seed_m4a="$out/seed.m4a"
 seed_adts="$out/seed.aac"
+seed_8ch_adts="$out/seed_8ch.aac"
+seed_8ch_m4a="$out/seed_8ch.m4a"
 if [ -x "$bd/frontend/faac" ] && [ ! -f "$seed_m4a" ]; then
     head -c 40000 /dev/zero | "$bd/frontend/faac" -P --title seed -o "$seed_m4a" - >/dev/null 2>&1 || rm -f "$seed_m4a"
 fi
 if [ -x "$bd/frontend/faac" ] && [ ! -f "$seed_adts" ]; then
     head -c 40000 /dev/zero | "$bd/frontend/faac" -P -o "$seed_adts" - >/dev/null 2>&1 || rm -f "$seed_adts"
+fi
+# Seven-plus-one channels exercise the program config element (PCE) path in
+# both the encoder and the decoder.
+if [ -x "$bd/frontend/faac" ] && [ ! -f "$seed_8ch_adts" ]; then
+    head -c 300000 /dev/zero | "$bd/frontend/faac" -P -C 8 -R 48000 -a -o "$seed_8ch_adts" - >/dev/null 2>&1 || rm -f "$seed_8ch_adts"
+fi
+if [ -x "$bd/frontend/faac" ] && [ ! -f "$seed_8ch_m4a" ]; then
+    head -c 300000 /dev/zero | "$bd/frontend/faac" -P -C 8 -R 48000 -o "$seed_8ch_m4a" - >/dev/null 2>&1 || rm -f "$seed_8ch_m4a"
+fi
+if [ -f "$seed_8ch_adts" ]; then
+    python3 "$root/tests/fuzz/seed_faad_pce.py" "$seed_8ch_adts" "$out/pce_seed" || true
 fi
 
 for t in $run_list; do
@@ -191,16 +209,32 @@ for t in $run_list; do
             fuzz_faam_demux|fuzz_faam_demux_full|fuzz_faad_mp4|fuzz_faad_mp4_full) cp "$seed_m4a" "corpus_$t/seed_m4a" ;;
         esac
     fi
+    if [ -f "$seed_8ch_m4a" ]; then
+        case $t in
+            fuzz_faad_mp4|fuzz_faad_mp4_full) cp "$seed_8ch_m4a" "corpus_$t/seed_8ch_m4a" ;;
+        esac
+    fi
+    if [ -f "$out/pce_seed/pce8_adts" ]; then
+        case $t in
+            fuzz_faad_adts) cp "$out/pce_seed/pce8_adts" "corpus_$t/pce8_adts" ;;
+            fuzz_faad_raw960) cp "$out/pce_seed/pce8_raw960" "corpus_$t/pce8_raw960" ;;
+        esac
+    fi
     if [ "$t" = fuzz_faad_adts ] && [ -f "$seed_adts" ]; then
         { printf '\001'; cat "$seed_adts"; } > "corpus_$t/seed_adts"
     fi
     max_len=65536
     case $t in
-        fuzz_wav) max_len=4096 ;;
-        fuzz_encode)
+        fuzz_frontend_wav) max_len=4096 ;;
+        fuzz_faac_encode)
             max_len=70000
-            if grep -q '^#define FAAC_ENCODER_PS 1$' "$bd/config.h"; then
-                python3 "$root/tests/fuzz/seed_encode.py" "corpus_$t"
+            python3 "$root/tests/fuzz/seed_faac_encode.py" "corpus_$t" ;;
+        fuzz_faac_faad_pce)
+            max_len=70000
+            if [ ! -f "corpus_$t/seed_8ch" ]; then
+                { printf '\001\003'; head -c 4096 /dev/zero | tr '\000' 'A'; } > "corpus_$t/seed_8ch"
+                { printf '\005\003'; head -c 4096 /dev/zero | tr '\000' 'B'; } > "corpus_$t/seed_8ch_raw"
+                { printf '\002\003'; head -c 4096 /dev/zero | tr '\000' 'C'; } > "corpus_$t/seed_6ch"
             fi ;;
         fuzz_faam_annexb)
             # A sample must outgrow the splitter's initial buffer to exercise its growth path,

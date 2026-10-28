@@ -119,7 +119,7 @@ int main(void) {
     assert(faar_get_library_info(&library) == FAAR_OK);
     assert(library.max_channels >= 1 && library.max_channels <= 8);
     /* Only the precision policy is reported; every preset is always built. */
-    assert((library.features & ~(uint32_t)FAAR_FEATURE_FLOAT_ONLY) == 0);
+    assert((library.flags & ~(uint32_t)FAAR_LIB_FLOAT_ONLY) == 0);
     assert(strcmp(library.version, FAAR_VERSION_STRING) == 0);
 
     config.in_rate = 48000;
@@ -211,6 +211,6 @@ int main(void) {
     assert(resampler != NULL);
     assert(faar_resampler_close(&resampler) == FAAR_OK);
     assert(resampler == NULL);
-    assert(strcmp(faar_strerror(FAAR_ERR_INSUFFICIENT_MEM), "out of memory") == 0);
+    assert(strcmp(faar_strerror(FAAR_ERR_NO_MEMORY), "out of memory") == 0);
     return 0;
 }

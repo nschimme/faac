@@ -131,17 +131,14 @@ static void signal_handler(int signal)
 }
 #endif
 
+/* Set once in main from the linked library. */
+static const char *g_lib_version;
+
 static void print_usage(int mode)
 {
-    faad_library_info info;
-    info.struct_size = sizeof(info);
-    if (faad_get_library_info(&info) != FAAD_OK) {
-        info.version = "3.0.0";
-    }
-
     char version_buf[128];
     show_help_usage("faad", mode,
-                    cli_version_string(version_buf, sizeof(version_buf), info.version),
+                    cli_version_string(version_buf, sizeof(version_buf), g_lib_version),
                     "faad [options] <infile.aac|infile.m4a>", g_help);
 }
 
@@ -248,6 +245,14 @@ static void cli_summary_callback(const decode_summary_t *summary, void *user_dat
 int main(int argc, char **argv)
 {
     cli_init_console();
+
+    faad_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    if (faad_get_library_info(&libinfo) != FAAD_OK) {
+        fprintf(stderr, "Wrong libfaad version!\n");
+        return 1;
+    }
+    g_lib_version = libinfo.version;
+
 #ifdef _WIN32
     int wargc = 0;
     wchar_t **wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
@@ -267,11 +272,6 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 #endif
-
-    faad_library_info libinfo = { .struct_size = sizeof(libinfo) };
-    if (faad_get_library_info(&libinfo) != FAAD_OK) {
-        libinfo.version = "3.0.0";
-    }
 
     decode_options_t opts;
     init_decode_options(&opts);

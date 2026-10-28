@@ -34,6 +34,9 @@ static inline int env_border(const SignalAnalysis *sa, int e, int num_slots)
  * and subband energy accumulation. */
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
 {
+#if MAX_CHANNELS < 6
+    (void)isLfe;
+#endif
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     float *workspace = sbr->workspace[0];
 
@@ -41,7 +44,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
 
     /* The strongest non-LFE transient selects the shared envelope grid. */
     for (int ch = 0; ch < nch; ch++) {
+#if MAX_CHANNELS >= 6
         if (isLfe[ch]) continue;
+#endif
         float smax = 0.0f, ssum = 0.0f;
         for (int slot = 0; slot < num_slots; slot++) {
             /* The analysed frame starts SBR_ANALYSIS_DELAY back, in the saved history. */
@@ -148,7 +153,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         int kx = sbr->kx;
         int kEnd = sbr->k2;
         for (int ch = 0; ch < nch; ch++) {
+#if MAX_CHANNELS >= 6
             if (isLfe[ch]) continue;
+#endif
             memset(sa->ch[ch].bandE, 0, (size_t)sa->numEnvelopes * sizeof(sa->ch[ch].bandE[0]));
 
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));

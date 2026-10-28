@@ -13,10 +13,10 @@
  * Lesser General Public License for more details.
  */
 
-/* Generalized from FAAC 17fbbf8a; real split wrapper. */
-#ifndef FAAR_RFFT_TEMPLATE
-#define FAAR_RFFT_TEMPLATE
-#include "fft_real.h"
+/* Generalized from FAAC 17fbbf8a. */
+#ifndef FAAR_FFT_TEMPLATE
+#define FAAR_FFT_TEMPLATE
+#include "fft.h"
 #include "libfaar_internal.h"
 #include <math.h>
 #include <stdlib.h>
@@ -25,18 +25,18 @@
 #define JOIN(a, b) JOIN_(a, b)
 #define FN(name) JOIN(PREFIX, name)
 #define REAL float
-#define PLAN faar_rfftf_plan
-#define PREFIX faar_rfftf_
-#include "fft_real.c"
+#define PLAN faar_fftf_plan
+#define PREFIX faar_fftf_
+#include "fft.c"
 #undef REAL
 #undef PLAN
 #undef PREFIX
-/* Double transforms serve mixed High and FFT verification. */
-#if defined(FAAR_WIDE_HIGH) || !defined(FAAR_FFT_LEAN)
+/* Double transforms serve the native-double High kernels. */
+#ifdef FAAR_WIDE_HIGH
 #define REAL double
-#define PLAN faar_rfftd_plan
-#define PREFIX faar_rfftd_
-#include "fft_real.c"
+#define PLAN faar_fftd_plan
+#define PREFIX faar_fftd_
+#include "fft.c"
 #undef REAL
 #undef PLAN
 #undef PREFIX
@@ -359,7 +359,6 @@ void FN(clear)(PLAN *plan)
 {
     if (!plan) return;
     if (plan->twiddle_owned) FreeMemory(plan->twiddle);
-    FreeMemory(plan->split);
     FreeMemory(plan->work);
     memset(plan, 0, sizeof(*plan));
 }
@@ -379,9 +378,8 @@ void FN(prepare)(PLAN *plan, int both_buffers)
         memset(plan->scratch, 0, 4 * (size_t)PAD_IM(m) * sizeof(REAL));
 }
 
-/* m complex points; the real wrapper additionally needs the split table.
- * FAAR_FFT_LEAN builds only the complex transforms libfaar uses. */
-static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single,
+/* m complex points. */
+static int FN(setup)(PLAN *plan, int m, REAL *scratch, int single,
                      const PLAN *filter_owner)
 {
     int j;
@@ -394,7 +392,6 @@ static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single,
         plan->twiddle = AllocMemory(2 * m * sizeof(REAL));
         if (plan->twiddle) FN(build_twiddle)(plan->twiddle, m);
     }
-    plan->split = split ? AllocMemory(2 * m * sizeof(REAL)) : NULL;
     int padded = m >= (sizeof(REAL) == sizeof(float) ? 4096 : 2048);
     plan->work_buffers = single && padded ? 1 : 2;
     size_t work_count = plan->work_buffers * (size_t)plan->size;
@@ -405,35 +402,19 @@ static int FN(setup)(PLAN *plan, int m, int split, REAL *scratch, int single,
     plan->work = AllocMemory((work_count + scratch_count) * sizeof(REAL));
     plan->scratch = scratch ? scratch : plan->work
         ? plan->work + (separate_scratch ? work_count : 0) : NULL;
-    if (!plan->twiddle || (split && !plan->split) || !plan->work) {
+    if (!plan->twiddle || !plan->work) {
         FN(clear)(plan);
         return -1;
     }
-    for (j = 0; split && j < m; j++) {
-        double a = 3.1415926535897932384626433832795 * j / m;
-        plan->split[j] = (REAL)cos(a);
-        plan->split[m + j] = (REAL)-sin(a);
-    }
     return 0;
 }
-
-#ifndef FAAR_FFT_LEAN
-int FN(init)(PLAN *plan, int size)
-{
-    if (!plan) return -1;
-    memset(plan, 0, sizeof(*plan));
-    if (size < 256 || size > 65536 || (size & (size - 1))) return -1;
-    return FN(setup)(plan, size / 2, 1, NULL, 0, NULL);
-}
-
-#endif
 
 int FN(cinit)(PLAN *plan, int n)
 {
     if (!plan) return -1;
     memset(plan, 0, sizeof(*plan));
     if (n < 16 || n > (1 << 22) || (n & (n - 1))) return -1;
-    return FN(setup)(plan, n, 0, NULL, 0, NULL);
+    return FN(setup)(plan, n, NULL, 0, NULL);
 }
 
 /* The owner must outlive this plan; their executions must be serialized. */
@@ -442,7 +423,7 @@ int FN(cinit_shared)(PLAN *plan, int n, const PLAN *owner)
     if (!plan || !owner || n < 16 || n > owner->size / 2
             || (n & (n - 1))) return -1;
     memset(plan, 0, sizeof(*plan));
-    return FN(setup)(plan, n, 0, owner->scratch, 0, NULL);
+    return FN(setup)(plan, n, owner->scratch, 0, NULL);
 }
 
 /* Different-sized FIR plans consume the forward spectrum in a separate plan,
@@ -452,7 +433,7 @@ int FN(cinit_shared_single)(PLAN *plan, int n, const PLAN *owner)
     if (!plan || !owner || n < 16 || n >= owner->size / 2
             || (n & (n - 1))) return -1;
     memset(plan, 0, sizeof(*plan));
-    return FN(setup)(plan, n, 0, owner->scratch, 1, NULL);
+    return FN(setup)(plan, n, owner->scratch, 1, NULL);
 }
 
 /* Borrow an immutable same-size filter plan's twiddles, with private work.
@@ -469,7 +450,7 @@ int FN(cinit_filter_shared)(PLAN *plan, int n, const PLAN *filter_owner,
             || (single && (!workspace_owner || n >= workspace_owner->size / 2)))
         return -1;
     memset(plan, 0, sizeof(*plan));
-    return FN(setup)(plan, n, 0,
+    return FN(setup)(plan, n,
             workspace_owner ? workspace_owner->scratch : NULL, single, filter_owner);
 }
 
@@ -482,64 +463,6 @@ REAL *FN(cforward)(const PLAN *plan, REAL *in)
 {
     return FN(core)(plan, in);
 }
-
-#ifndef FAAR_FFT_LEAN
-void FN(execute)(const PLAN *plan, REAL *data, int inverse)
-{
-    int k, m;
-    REAL *r, *i, *out;
-    const REAL *wr, *wi;
-
-    if (!plan || !data || !plan->size) return;
-    m = plan->size / 2;
-    r = plan->work;
-    i = r + m;
-    wr = plan->split;
-    wi = wr + m;
-    if (!inverse) {
-        for (k = 0; k < m; k++) {
-            r[k] = data[2 * k];
-            i[k] = data[2 * k + 1];
-        }
-    } else {
-        r[0] = (data[0] + data[1]) * (REAL)0.5;
-        i[0] = (data[1] - data[0]) * (REAL)0.5;
-        /* Conjugate the pre-pass so both directions share the forward core. */
-        for (k = 1; k < m; k++) {
-            REAL pr = data[2 * k], pi = -data[2 * k + 1];
-            REAL qr = data[2 * (m - k)], qi = data[2 * (m - k) + 1];
-            REAL dr = pr - qr, di = pi - qi;
-            REAL tr = wr[k] * dr + wi[k] * di;
-            REAL ti = wr[k] * di - wi[k] * dr;
-            r[k] = (pr + qr - ti) * (REAL)0.5;
-            i[k] = -(pi + qi + tr) * (REAL)0.5;
-        }
-    }
-    out = FN(core)(plan, plan->work);
-    r = out;
-    i = out + m;
-    if (!inverse) {
-        data[0] = r[0] + i[0];
-        data[1] = r[0] - i[0];
-        for (k = 1; k < m; k++) {
-            REAL ar = r[k], ai = i[k];
-            REAL br = r[m - k], bi = -i[m - k];
-            REAL dr = ar - br, di = ai - bi;
-            REAL pr = wr[k] * dr - wi[k] * di;
-            REAL pi = wr[k] * di + wi[k] * dr;
-            data[2 * k] = (ar + br + pi) * (REAL)0.5;
-            data[2 * k + 1] = (pr - ai - bi) * (REAL)0.5;
-        }
-    } else {
-        REAL scale = (REAL)1 / m;
-        for (k = 0; k < m; k++) {
-            data[2 * k] = r[k] * scale;
-            data[2 * k + 1] = -i[k] * scale;
-        }
-    }
-}
-
-#endif
 
 #undef PAD_BLOCK
 #undef PAD_COUNT

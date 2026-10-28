@@ -33,9 +33,14 @@ _Static_assert(TNS_MAX_ORDER <= (1 << LEN_TNS_ORDERL) - 1,
  */
 int InitElements(AACElement * __restrict elements, int *numElements, int numChannels, bool useLfe)
 {
+#if MAX_CHANNELS < 6
+    (void)useLfe;
+#endif
     uint8_t sceTag = 0;
     uint8_t cpeTag = 0;
+#if MAX_CHANNELS >= 6
     uint8_t lfeTag = 0;
+#endif
 
     int currentElem = 0;
     int currentCh = 0;
@@ -67,13 +72,17 @@ int InitElements(AACElement * __restrict elements, int *numElements, int numChan
 
     // Residual SCE or LFE
     if (channelsRemaining == 1) {
+#if MAX_CHANNELS >= 6
         if (useLfe) {
             elements[currentElem].type = ID_LFE;
             elements[currentElem].tag = lfeTag++;
         } else {
+#endif
             elements[currentElem].type = ID_SCE;
             elements[currentElem].tag = sceTag++;
+#if MAX_CHANNELS >= 6
         }
+#endif
         elements[currentElem].channels[0] = currentCh++;
         elements[currentElem].channels[1] = -1;
 
@@ -193,7 +202,9 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
 
     switch (elem->type) {
         case ID_SCE:
+#if MAX_CHANNELS >= 6
         case ID_LFE:
+#endif
             bits += WriteICS(bs, &coder[elem->channels[0]], false);
             break;
 
@@ -224,6 +235,22 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
     return bits;
 }
 
+#if MAX_CHANNELS >= 8
+/* The in-band PCE: element id, body, byte alignment and an empty comment.
+ * Two back CPEs match fdkaac's rear-surround convention: the first carries
+ * sides, the second rears. Configuration 7 would instead declare 7.1 wide.
+ * Only the sampling frequency index varies, so it is patched into byte 1 of
+ * an otherwise constant image. */
+void BuildPCE(uint8_t pce[PCE_ADTS_BYTES], int sampleRateIdx)
+{
+    static const uint8_t image[PCE_ADTS_BYTES] = {
+        0xa0, 0x81, 0x01, 0x20, 0x00, 0x21, 0x19, 0x00, 0x00
+    };
+    memcpy(pce, image, sizeof(image));
+    pce[1] |= (uint8_t)(sampleRateIdx << 3);
+}
+#endif
+
 static int WriteAACFillBits(BitStream *bs, int numBits)
 {
     int left = numBits;
@@ -253,6 +280,17 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
         bits = ADTS_HEADER_SIZE * 8;
         bs->currentBit += bits;
     }
+#if MAX_CHANNELS >= 8
+    /* Repeat after priming so a joining ADTS decoder can recover the layout. */
+    if (hEncoder->config.outputFormat == 1 && HasPCE((int)hEncoder->numChannels)
+        && ((hEncoder->frameNum - LOOKAHEAD_DEPTH - 1) & (PCE_REPEAT_FRAMES - 1)) == 0) {
+        /* The header leaves the stream byte aligned. */
+        if (bs->data)
+            memcpy(bs->data + (bs->currentBit >> 3), hEncoder->pce, sizeof(hEncoder->pce));
+        bs->currentBit += sizeof(hEncoder->pce) * 8;
+        bits += sizeof(hEncoder->pce) * 8;
+    }
+#endif
     /* SBR follows each SCE/CPE in a fill element; rate control charges only
      * the core, so its total is kept aside. */
     int sbrBits = 0;
@@ -295,7 +333,7 @@ static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int f
 {
     if (hEncoder->config.outputFormat == 1 && bs->data) {
         int fullness = 0x7FF;
-        int channelConfig = GetChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels));
+        int channelConfig = SignalledChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels));
         if (hEncoder->rc.resMean)
             fullness = RateControlReservoirAfter(&hEncoder->rc, (frameBytes - ADTS_HEADER_SIZE) * 8) >> 5;
         bs->data[0] = 0xFF;

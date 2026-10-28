@@ -72,15 +72,14 @@ typedef struct {
     uint16_t center_channel;
     uint16_t lfe_channel;
 
-    enum faac_mpeg_version mpeg_version;
+    unsigned int mpeg_version; /* 2 or 4 */
     enum faac_object_type object_type;
-    enum faac_joint_mode joint_mode;
+    enum faac_stereo_mode joint_mode;
     enum faac_stream_format stream_format;
     enum faac_shortctl_mode shortctl;
 
     bool use_tns;
     bool use_pns;
-    int8_t use_lfe; /* -1 for auto (ch >= 6), 0 = false, 1 = true */
 
     uint16_t quant_quality;
     uint32_t bit_rate; /* total bitrate in bps (whole stream) */
@@ -111,10 +110,6 @@ typedef struct {
 bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value);
 void free_encode_options(encode_options_t *opts);
 
-/* "2.1.0 (faac-2.1-51-gc3c8f222)", or just "2.1.0" when git has nothing to
-   add (a tarball build, where FAAC_GIT_VERSION falls back to lib_version). */
-const char *faac_version_string(char *buf, size_t buf_size, const char *lib_version);
-
 /* Canonical defaults, shared by both the CLI and GUI frontends. */
 #define DEFAULT_QUANT_QUALITY 100
 #define DEFAULT_ABR_KBPS      128
@@ -143,8 +138,7 @@ typedef struct {
     uint16_t frame_size;
 
     bool container_mp4;
-    enum faac_stream_format stream_format;
-    enum faac_mpeg_version mpeg_version; /* resolved: HE-AAC forces MPEG-4 */
+    enum faac_stream_format stream_format; /* resolved: HE-AAC forces MPEG-4 */
     enum faac_object_type object_type;
     bool use_pns;
     uint32_t bandwidth;

@@ -98,6 +98,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     if (size < 2) return 0;
 
+    faam_library_info lib;
+    memset(&lib, 0, sizeof(lib));
+    lib.struct_size = sizeof(lib);
+    if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
+        __builtin_trap();
+    if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
+        __builtin_trap();
+
     annexb_codec codec = (data[0] & 1) ? ANNEXB_H265 : ANNEXB_H264;
     const uint8_t *payload = data + 1;
     size_t payload_len = size - 1;
@@ -125,6 +133,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     trk.width = 320;
     trk.height = 240;
     trk.flags = FAAM_TRACK_ANNEXB;
+    if (data[0] & 2) trk.flags |= FAAM_TRACK_INBAND_PARAMS;
+    trk.rotation_degrees = (uint16_t)(((data[0] >> 2) & 3) * 90);
+    if (data[0] & 0x10) memcpy(trk.language, "eng", 4);
 
     if (codec == ANNEXB_H265) {
         if (cfg_len == 0) return 0;

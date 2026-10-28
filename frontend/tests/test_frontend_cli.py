@@ -36,6 +36,8 @@ import tempfile
 import time
 import wave
 
+ENCODER_SBR = sys.argv[5] == "true"
+ENCODER_PS = sys.argv[6] == "true"
 failures = []
 checks = 0
 
@@ -187,9 +189,13 @@ def no_output(d, name):
 
 def test_gapless_boxes(t, d):
     make_wav(os.path.join(d, "gapless.wav"), rate=44100, secs=3.1, sine=True)
-    for name, extra, sbr in (("gapless_lc", ["-q", "100"], []),
-                             ("gapless_he", ["--object-type", "he-aac-v1", "-b", "48"],
-                              ["--sbr-signaling", "compatible"])):
+    cases = [("gapless_lc", ["-q", "100"], [])]
+    if ENCODER_SBR:
+        cases.append(("gapless_he", ["--object-type", "he-aac-v1", "-b", "48"],
+                      ["--sbr-signaling", "compatible"]))
+    else:
+        print("note: gapless HE checks skipped (faac built without encoder-sbr)")
+    for name, extra, sbr in cases:
         for ext in ("m4a", "aac"):
             r = t.run(t.faac, ["-v0"] + extra + ["-o", f"{name}.{ext}", "gapless.wav"], d)
             check(r.returncode == 0, f"{name}.{ext}: encode")
@@ -276,13 +282,42 @@ def run_all(t, d):
     open(os.path.join(d, "alt.jpg"), "wb").write(b"\xff\xd8\xff\xdb" + b"\x00" * 24)
 
     # ADTS and faac's own .m4a for the same audio: LC and HE-AAC v1
-    for name, extra in (("lc", ["-q", "100", "--object-type", "lc"]), ("he", ["-b", "48", "--object-type", "he-aac-v1"])):
+    profiles = [("lc", ["-q", "100", "--object-type", "lc"])]
+    if ENCODER_SBR:
+        profiles.append(("he", ["-b", "48", "--object-type", "he-aac-v1"]))
+    else:
+        print("note: HE-AAC checks skipped (faac built without encoder-sbr)")
+    for name, extra in profiles:
         for ext, flag in (("aac", ["-a"]), ("m4a", [])):
             r = t.run(t.faac, ["-v0"] + extra + flag + ["-o", f"{name}.{ext}", "s.wav"], d)
             check(r.returncode == 0, f"faac {name}.{ext}")
 
+    # AUTO picks HE-AAC v2 below the old 8 kbps stereo floor when PS is built,
+    # and the encoder tag names the profile instead of reporting LC.
+    if ENCODER_PS and ENCODER_SBR and CHANNELS == 2:
+        r = t.run(t.faac, ["-v0", "--object-type", "auto", "-b", "6", "-o", "ps_auto.m4a", "s.wav"], d)
+        check(r.returncode == 0, "faac auto low-rate PS encode")
+        info = t.faam_run(["info", "ps_auto.m4a"], d).stdout
+        text = info.decode()
+        check(any(line.strip().startswith("AAC Object Type") and "HE-AAC v2" in line
+                  for line in text.splitlines()), f"low-rate AUTO signals HE-AAC v2:\n{text}")
+        check("HE v2" in info_tags(info), "low-rate AUTO tag names HE v2: " + info_tags(info))
+
+    # Resampling is visible in the encoder tag only when the rates differ.
+    r = t.run(t.faac, ["-v0", "--object-type", "lc", "--rate", "32000", "-b", "8",
+                       "-o", "resampled.m4a", "s.wav"], d)
+    check(r.returncode == 0, "faac resampled encode")
+    tags = info_tags(t.faam_run(["info", "resampled.m4a"], d).stdout)
+    check("48000Hz->32000Hz" in tags, "resampling is recorded in the encoder tag: " + tags)
+    r = t.run(t.faac, ["-v0", "--object-type", "lc", "-q", "100", "-o", "not_resampled.m4a", "s.wav"], d)
+    check(r.returncode == 0 and "->" not in info_tags(t.faam_run(["info", "not_resampled.m4a"], d).stdout),
+          "the encoder tag omits resampling when the rate is unchanged")
+
     # Mux correctness: gapless values from faac's own file reproduce it, and a full decode matches
-    for name, sbr in (("lc", []), ("he", ["--sbr-signaling", "compatible"])):
+    mux_cases = [("lc", [])]
+    if ENCODER_SBR:
+        mux_cases.append(("he", ["--sbr-signaling", "compatible"]))
+    for name, sbr in mux_cases:
         ref = read(os.path.join(d, f"{name}.m4a"))
         sm = smpb(ref)
         check(sm is not None, f"{name}: faac iTunSMPB present")
@@ -485,10 +520,16 @@ def run_all(t, d):
     # Overwrite protection
     r1 = t.faam_run(["-i", "lc.aac", "-o", "ow.m4a"], d)
     before = read(os.path.join(d, "ow.m4a"))
-    r2 = t.faam_run(["-i", "he.aac", "-o", "ow.m4a"], d)
+    if ENCODER_SBR:
+        overwrite_src = "he.aac"
+    else:
+        # A different LC stream, so replacing the file still changes its bytes.
+        overwrite_src = "lc_alt.aac"
+        t.run(t.faac, ["-v0", "-q", "90", "--object-type", "lc", "-a", "-o", overwrite_src, "s.wav"], d)
+    r2 = t.faam_run(["-i", overwrite_src, "-o", "ow.m4a"], d)
     check(r1.returncode == 0 and r2.returncode == 1 and b"already exists (use --overwrite)" in r2.stderr and
           read(os.path.join(d, "ow.m4a")) == before, "mux -o refuses to overwrite and leaves the file alone")
-    r3 = t.faam_run(["-i", "he.aac", "-o", "ow.m4a", "--overwrite"], d)
+    r3 = t.faam_run(["-i", overwrite_src, "-o", "ow.m4a", "--overwrite"], d)
     check(r3.returncode == 0 and read(os.path.join(d, "ow.m4a")) != before, "mux --overwrite replaces")
 
     work = os.path.join(d, "dm")
@@ -836,12 +877,11 @@ def run_demux_header(t, d):
                              for i in range(48000 * 8)))
         r = t.run(t.faac, ["-v0", "-P", "-R", "48000", "-B", "16", "-C", "8", "--object-type", "lc", "-q", "100", "-a",
                            "-o", "c8.aac", "c8.raw"], d)
-        check(r.returncode == 0 and adts_frames(os.path.join(d, "c8.aac"))[0][2] == 7, "faac 7.1 ADTS has channel configuration 7")
+        check(r.returncode == 0 and adts_frames(os.path.join(d, "c8.aac"))[0][2] == 0, "faac 7.1 ADTS carries its layout in a PCE")
 
     cases = [("lc.aac", m) for m in ("none", "compatible", "explicit")] + \
-            [("he.aac", m) for m in ("none", "compatible", "explicit")] + \
-            [("mono.aac", m) for m in ("none", "ps", "ps-explicit")] + \
-            [("c8.aac", m) for m in ("none", "compatible", "explicit") if MAX_CHANNELS >= 8]
+            ([("he.aac", m) for m in ("none", "compatible", "explicit")] if ENCODER_SBR else []) + \
+            [("mono.aac", m) for m in ("none", "ps", "ps-explicit")]
     for src, mode in cases:
         tag = f"{src}/{mode}"
         base = f"rt_{src[:-4]}_{mode}"
@@ -888,7 +928,7 @@ def run_demux_header(t, d):
 
 def run_adts_validation(t, d):
     frames = adts_chunks(os.path.join(d, "lc.aac"))
-    he_frames = adts_chunks(os.path.join(d, "he.aac"))
+    he_frames = adts_chunks(os.path.join(d, "he.aac")) if ENCODER_SBR else []
     mono_frames = adts_chunks(os.path.join(d, "mono.aac"))
 
     def stream(name, chunks):
@@ -958,10 +998,11 @@ def run_info_and_chapters(t, d, have_video):
     open(os.path.join(d, "mp42.m4a"), "wb").write(other)
     check("mp42" in info_line("mp42.m4a", "Container"), "info shows an unusual brand: " + info_line("mp42.m4a", "Container"))
     check("AAC-LC" in info_line("lc.m4a", "AAC Object Type"), "LC is labelled AAC-LC")
-    for mode in ("compatible", "explicit"):
-        t.faam_run(["-i", "he.aac", "-o", f"he_{mode}.m4a", "--sbr-signaling", mode, "--overwrite"], d)
-        line = info_line(f"he_{mode}.m4a", "AAC Object Type")
-        check("HE-AAC v1" in line and "v2" not in line, f"{mode} SBR is labelled HE-AAC v1: {line}")
+    if ENCODER_SBR:
+        for mode in ("compatible", "explicit"):
+            t.faam_run(["-i", "he.aac", "-o", f"he_{mode}.m4a", "--sbr-signaling", mode, "--overwrite"], d)
+            line = info_line(f"he_{mode}.m4a", "AAC Object Type")
+            check("HE-AAC v1" in line and "v2" not in line, f"{mode} SBR is labelled HE-AAC v1: {line}")
     t.faam_run(["-i", "mono.aac", "-o", "ps_label.m4a", "--sbr-signaling", "ps", "--overwrite"], d)
     check("HE-AAC v2" in info_line("ps_label.m4a", "AAC Object Type"), "PS is labelled HE-AAC v2")
     odd = bytes(read(os.path.join(d, "lc.m4a"))).replace(bytes((2, 0x11, 0x80 | CHANNELS << 3, 6)), b"\x02\x89\x90\x06")

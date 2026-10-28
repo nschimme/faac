@@ -1,0 +1,13 @@
+FAAC_3 {
+  global:
+    faac_get_library_info;
+    faac_params_init;
+    faac_encoder_open;
+    faac_encoder_close;
+    faac_encoder_get_info;
+    faac_encoder_asc;
+    faac_encoder_encode;
+    faac_strerror;
+  local:
+    *;
+};

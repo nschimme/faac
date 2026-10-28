@@ -58,29 +58,31 @@ static int write_output_frames(FILE *fout, const float *samples, uint8_t *raw_ou
                                size_t bytes_per_sample, uint64_t *total_bytes) {
     size_t sample_count = frames * channels;
 
-    /* Convert float output PCM ([-32768, +32768]) to the requested format. */
+    /* Convert float output PCM (unity full scale, [-1.0, +1.0]) to the
+     * requested format. */
     for (size_t i = 0; i < sample_count; i++) {
         float val = samples[i];
 
         if (fmt == FAAR_PCM_F32LE) {
-            float norm_val = val / 32768.0f;
-            if (norm_val > 1.0f) norm_val = 1.0f;
-            if (norm_val < -1.0f) norm_val = -1.0f;
+            if (val > 1.0f) val = 1.0f;
+            if (val < -1.0f) val = -1.0f;
             uint32_t bits;
-            memcpy(&bits, &norm_val, sizeof(bits));
+            memcpy(&bits, &val, sizeof(bits));
             raw_out_buf[4 * i + 0] = (uint8_t)bits;
             raw_out_buf[4 * i + 1] = (uint8_t)(bits >> 8);
             raw_out_buf[4 * i + 2] = (uint8_t)(bits >> 16);
             raw_out_buf[4 * i + 3] = (uint8_t)(bits >> 24);
         } else if (fmt == FAAR_PCM_S16LE) {
-            int32_t v = (int32_t)(val + (val >= 0.0f ? 0.5f : -0.5f));
+            float scaled = val * 32768.0f;
+            int32_t v = (int32_t)(scaled + (scaled >= 0.0f ? 0.5f : -0.5f));
             if (v > 32767) v = 32767;
             if (v < -32768) v = -32768;
             uint16_t bits = (uint16_t)(int16_t)v;
             raw_out_buf[2 * i + 0] = (uint8_t)bits;
             raw_out_buf[2 * i + 1] = (uint8_t)(bits >> 8);
         } else if (fmt == FAAR_PCM_S24LE) {
-            int32_t v = (int32_t)(val * 256.0f + (val >= 0.0f ? 0.5f : -0.5f));
+            float scaled = val * 8388608.0f;
+            int32_t v = (int32_t)(scaled + (scaled >= 0.0f ? 0.5f : -0.5f));
             if (v > 8388607) v = 8388607;
             if (v < -8388608) v = -8388608;
             uint32_t bits = (uint32_t)v;
@@ -298,6 +300,8 @@ int faar_engine_run(pcmfile_t *infile, FILE *fout,
         }
         if (samples_read == 0)
             break;
+
+        /* wav_read_float32 yields unity full scale, which is libfaar's scale. */
         if (samples_read % channels != 0) {
             fprintf(stderr, "Error: Input ends with an incomplete audio frame\n");
             goto cleanup;

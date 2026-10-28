@@ -343,16 +343,14 @@ static faam_io mux_stream_io(mux_stream_output *s)
     return io;
 }
 
+/* Set once in main from the linked library. */
+static const char *g_lib_version;
+
 static void print_usage(int mode)
 {
-    faam_library_info info;
-    info.struct_size = sizeof(info);
-    if (faam_get_library_info(&info) != FAAM_OK)
-        info.version = "1.0.0";
-
     char version_buf[128];
     show_help_usage("faam", mode,
-                    cli_version_string(version_buf, sizeof(version_buf), info.version),
+                    cli_version_string(version_buf, sizeof(version_buf), g_lib_version),
                     "faam -i <input> [-i <input>...] -o <out.mp4> [options]\n"
                     "       faam <info|dump|demux|tag|chapter> [options] <file>",
                     g_help);
@@ -362,14 +360,9 @@ static void print_version_banner(void)
 {
     if (g_verbose == 0) return;
 
-    faam_library_info info = { .struct_size = sizeof(info) };
-    const char *version = "1.0.0";
-    if (faam_get_library_info(&info) == FAAM_OK && info.version)
-        version = info.version;
-
     char version_buf[128];
     fprintf(stderr, "Freeware Advanced Audio Muxer\nFAAM %s\n\n",
-            cli_version_string(version_buf, sizeof(version_buf), version));
+            cli_version_string(version_buf, sizeof(version_buf), g_lib_version));
 }
 
 enum {
@@ -1532,7 +1525,7 @@ static int cmd_mux(int argc, char **argv)
     faam_library_info library_info = {0};
     library_info.struct_size = sizeof(library_info);
     bool can_fragment = faam_get_library_info(&library_info) == FAAM_OK &&
-                        (library_info.features & FAAM_FEATURE_FRAGMENTED) != 0;
+                        (library_info.flags & FAAM_LIB_FRAGMENTED) != 0;
     mux_stream = mux_stdout && !faststart && !is_m4b && !gapless_given && can_fragment;
     if (mux_stream) cfg.fragment_ms = 1000;
     if (mux_stdout && !cli_binary_stream(stdout)) {
@@ -1595,7 +1588,7 @@ static int cmd_mux(int argc, char **argv)
                                               &frames[i], g_verbose > 0 ? mux_progress : NULL, &progress);
             free(vbuf_store[i]);
             vbuf_store[i] = NULL;
-            if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+            if (st == FAAM_ERR_NO_MEMORY) {
                 fprintf(stderr, "Error: out of memory\n");
                 goto done;
             }
@@ -1861,7 +1854,7 @@ static int cmd_demux(int argc, char **argv)
     progress_throttle_reset(&progress.throttle);
     st = faam_engine_demux_track(d, &ti, demux_write_sample, &output_ctx,
                                  g_verbose > 0 ? mux_progress : NULL, &progress);
-    if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+    if (st == FAAM_ERR_NO_MEMORY) {
         fprintf(stderr, "Error: out of memory\n");
         goto done;
     }
@@ -2254,6 +2247,13 @@ static int cmd_chapter(int argc, char **argv)
 int main(int argc, char **argv)
 {
     cli_init_console();
+
+    faam_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    if (faam_get_library_info(&libinfo) != FAAM_OK) {
+        fprintf(stderr, "Wrong libfaam version!\n");
+        return 1;
+    }
+    g_lib_version = libinfo.version;
 #ifdef _WIN32
     int wargc = 0;
     wchar_t **wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);

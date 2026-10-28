@@ -102,7 +102,7 @@ static int run_paired_case(size_t expansion, size_t decimation,
     if (compensated && (owner.in_wide.work != borrower.in_wide.work ||
                         owner.out_wide.work != borrower.out_wide.work)) goto error;
 #endif
-#ifdef FAAR_COMPENSATED_FLOAT
+#ifndef FAAR_WIDE_HIGH
     if (compensated && (owner.precise_in.work != borrower.precise_in.work ||
                         owner.precise_out.work != borrower.precise_out.work)) goto error;
 #endif

@@ -29,19 +29,22 @@ int get_sr_index(uint32_t sample_rate)
 }
 
 /* The shared ASC helper accepts zero-filled truncated syntax for container
- * probing; decoder initialization must not. */
-static faad_status validate_asc(const uint8_t *buf, uint32_t len, bool *frame_length)
+ * probing; decoder initialization must not, so it is parsed here instead. */
+static faad_status parse_asc(const uint8_t *buf, uint32_t len, AudioSpecificConfig *asc, bool *frame_length)
 {
     if (!buf || len < 2 || len > UINT32_MAX / 8) return FAAD_ERR_INVALID_ARGUMENT;
+    memset(asc, 0, sizeof(*asc));
     asc_bitreader br = { buf, len * 8, 0 };
     uint32_t aot = asc_br_get(&br, 5);
     if (aot == 31) aot = 32 + asc_br_get(&br, 6);
     uint32_t rate = asc_parse_sample_rate(&br);
     uint32_t channels = asc_br_get(&br, 4);
-    uint32_t output_rate = rate;
+    uint32_t output_rate = rate * 2;
     bool explicit_sbr = aot == 5 || aot == 29;
     if (explicit_sbr) {
         output_rate = asc_parse_sample_rate(&br);
+        asc->is_sbr = true;
+        asc->is_ps = aot == 29;
         aot = asc_br_get(&br, 5);
         if (aot == 31) aot = 32 + asc_br_get(&br, 6);
     }
@@ -53,23 +56,12 @@ static faad_status validate_asc(const uint8_t *buf, uint32_t len, bool *frame_le
     if (asc_br_get(&br, 1)) asc_skip_core_coder_delay(&br);
     bool extension = asc_br_get(&br, 1) != 0;
     if (!channels) {
-        /* Skip and validate the ASC's PCE; the channel elements come from
-         * the packet syntax. */
-        asc_br_get(&br, 4); /* element_instance_tag */
-        uint32_t profile = asc_br_get(&br, 2), sr = asc_br_get(&br, 4);
-        uint32_t front = asc_br_get(&br, 4), side = asc_br_get(&br, 4);
-        uint32_t back = asc_br_get(&br, 4), lfe = asc_br_get(&br, 2);
-        uint32_t assoc = asc_br_get(&br, 3), cc = asc_br_get(&br, 4);
-        if (asc_br_get(&br, 1)) asc_br_get(&br, 4);
-        if (asc_br_get(&br, 1)) asc_br_get(&br, 4);
-        if (asc_br_get(&br, 1)) asc_br_get(&br, 3);
-        for (uint32_t i = 0; i < front + side + back; i++) asc_br_get(&br, 5);
-        for (uint32_t i = 0; i < lfe + assoc; i++) asc_br_get(&br, 4);
-        for (uint32_t i = 0; i < cc; i++) asc_br_get(&br, 5);
-        br.pos = (br.pos + 7) & ~7u;
-        uint32_t comment = asc_br_get(&br, 8);
-        for (uint32_t i = 0; i < comment; i++) asc_br_get(&br, 8);
-        if (profile != 1 || sr >= 12) return FAAD_ERR_UNSUPPORTED;
+        /* Validate the ASC's PCE profile and sampling index; channel elements
+         * are mapped from its tags during packet decoding. */
+        if (!asc_parse_pce(&br, &asc->pce)) return FAAD_ERR_INVALID_ARGUMENT;
+        if (asc->pce.profile != 1 || asc->pce.sr_index >= 12) return FAAD_ERR_UNSUPPORTED;
+        /* Per-channel state is sized for MAX_CHANNELS. */
+        if (asc->pce.channels > MAX_CHANNELS) return FAAD_ERR_UNSUPPORTED;
     }
     if (extension) asc_br_get(&br, 1);
     if (br.pos > br.len_bits) return FAAD_ERR_INVALID_ARGUMENT;
@@ -79,31 +71,27 @@ static faad_status validate_asc(const uint8_t *buf, uint32_t len, bool *frame_le
             uint32_t ext_rate = asc_parse_sample_rate(&br);
             if (!ext_rate || br.pos > br.len_bits) return FAAD_ERR_INVALID_ARGUMENT;
             if (ext_rate != rate * 2) return FAAD_ERR_UNSUPPORTED;
+            asc->is_sbr = true;
+            output_rate = ext_rate;
             if (asc_br_remaining(&br) >= 11 && asc_br_get(&br, 11) == ASC_SYNC_EXTENSION_PS)
-                asc_br_get(&br, 1);
+                asc->is_ps = asc_br_get(&br, 1) != 0;
         }
     }
-    return br.pos > br.len_bits ? FAAD_ERR_INVALID_ARGUMENT : FAAD_OK;
+    if (br.pos > br.len_bits) return FAAD_ERR_INVALID_ARGUMENT;
+    asc->object_type = FAAD_OBJ_LC;
+    asc->sample_rate = rate;
+    asc->num_channels = channels;
+    asc->sbr_sample_rate = output_rate;
+    return FAAD_OK;
 }
 
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
 {
     /* asc_decode() is always called on a BitReader freshly bits_init()'d over
-     * exactly the ASC bytes (see faad_decoder_open()), so the shared codec
-     * can parse straight from its underlying buffer. */
-    AscInfo info;
+     * exactly the ASC bytes (see faad_decoder_open()). */
     bool frame_length;
-    faad_status status = validate_asc(bs->buffer, bs->len, &frame_length);
+    faad_status status = parse_asc(bs->buffer, bs->len, asc, &frame_length);
     if (status != FAAD_OK) return status;
-    asc_codec_parse(bs->buffer, bs->len, &info);
-
-    memset(asc, 0, sizeof(*asc));
-    asc->object_type = (enum faad_object_type)info.object_type;
-    asc->sample_rate = info.sample_rate;
-    asc->num_channels = info.num_channels;
-    asc->is_sbr = info.sbr_present;
-    asc->sbr_sample_rate = info.sbr_sample_rate;
-    asc->is_ps = info.ps_present;
 
     if (frame_length) {
 #ifndef FAAD_DISABLE_DAB
@@ -113,13 +101,7 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
 #endif
     }
 
-    if (asc->object_type == FAAD_OBJ_LC || asc->object_type == FAAD_OBJ_HE_AAC_V1 ||
-        asc->object_type == FAAD_OBJ_HE_AAC_V2) {
-        asc->object_type = FAAD_OBJ_LC;
-        return FAAD_OK;
-    }
-
-    return FAAD_ERR_UNSUPPORTED;
+    return FAAD_OK;
 }
 
 faad_status adts_decode_header(BitReader *bs, AudioSpecificConfig *asc, uint32_t *frame_length)

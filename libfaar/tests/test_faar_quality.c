@@ -509,7 +509,9 @@ static int test_dither_streams(void) {
             if (small.data[i] != large.data[i]) { free(plain.data); free(small.data); free(large.data); return fail("dither RNG sequence changed with block/capacity"); }
             if (small.data[i] != 0.0f) {
                 nonzero++;
-                if (fabsf(small.data[i] - nearbyintf(small.data[i])) > 1e-6f) {
+                /* Unity scale: one 16-bit LSB is 1/32768 of full scale. */
+                float quanta = small.data[i] * 32768.0f;
+                if (fabsf(quanta - nearbyintf(quanta)) > 1e-3f) {
                     free(plain.data); free(small.data); free(large.data); return fail("TPDF16 output is not integer-quantized");
                 }
             }
@@ -605,7 +607,7 @@ static int test_high_stopband(void) {
         for (size_t i = 0; i < n; ++i) {
             for (uint16_t c = 0; c < channels; ++c) {
                 double frequency = c & 1 ? 1000.0 : 23000.0;
-                in[i * channels + c] = (float)(32768.0 * peak
+                in[i * channels + c] = (float)(peak
                     * sin(2.0 * PI * frequency * i / ir));
             }
         }
@@ -620,7 +622,7 @@ static int test_high_stopband(void) {
         for (uint16_t c = 0; c < channels; c += 2) {
             double energy = 0;
             for (size_t i = guard; i < end; ++i) {
-                double x = out.data[i * channels + c] / 32768.0;
+                double x = out.data[i * channels + c];
                 energy += x * x;
             }
             double rms = sqrt(energy / (end - guard));
@@ -646,7 +648,7 @@ static int test_high_up_residual(void) {
         float *in = malloc(n * sizeof(*in));
         if (!in) return fail("High up residual input allocation failed");
         for (size_t i = 0; i < n; ++i)
-            in[i] = (float)(32768.0 * peak * sin(2.0 * PI * frequency * i / ir));
+            in[i] = (float)(peak * sin(2.0 * PI * frequency * i / ir));
         samples out;
         int rc = convert(in, n, ir, orate, 1, 4096, 8192, &out);
         free(in);
@@ -656,7 +658,7 @@ static int test_high_up_residual(void) {
         for (size_t i = guard; i < end; ++i) {
             double s = sin(2.0 * PI * frequency * i / orate);
             double c = cos(2.0 * PI * frequency * i / orate);
-            double y = out.data[i] / 32768.0;
+            double y = out.data[i];
             ss += s * s; cc += c * c; sc += s * c;
             sy += s * y; cy += c * y; yy += y * y;
         }

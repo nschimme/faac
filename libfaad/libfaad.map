@@ -1,0 +1,13 @@
+FAAD_3 {
+  global:
+    faad_get_library_info;
+    faad_config_init;
+    faad_decoder_open;
+    faad_decoder_close;
+    faad_decoder_get_info;
+    faad_decoder_flush;
+    faad_decode_frame;
+    faad_strerror;
+  local:
+    *;
+};
