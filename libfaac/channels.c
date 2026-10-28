@@ -236,26 +236,18 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
 }
 
 #if MAX_CHANNELS >= 8
-/* Two back CPEs match fdkaac's rear-surround convention: the first carries
- * sides, the second rears. Configuration 7 would instead declare 7.1 wide. */
-int WritePCE(BitStream *bs, int sampleRateIdx)
+/* The in-band PCE: element id, body, byte alignment and an empty comment.
+ * Two back CPEs match fdkaac's rear-surround convention: the first carries
+ * sides, the second rears. Configuration 7 would instead declare 7.1 wide.
+ * Only the sampling frequency index varies, so it is patched into byte 1 of
+ * an otherwise constant image. */
+void BuildPCE(uint8_t pce[PCE_ADTS_BYTES], int sampleRateIdx)
 {
-    static const uint8_t fields[][2] = {
-        {0, 4}, {1, 2},
-        {2, 4}, {0, 4}, {2, 4}, {1, 2}, {0, 3}, {0, 4},
-        {0, 1}, {0, 1}, {0, 1},
-        {0, 1}, {0, 4}, {1, 1}, {0, 4},
-        {1, 1}, {1, 4}, {1, 1}, {2, 4}, {0, 4}
+    static const uint8_t image[PCE_ADTS_BYTES] = {
+        0xa0, 0x81, 0x01, 0x20, 0x00, 0x21, 0x19, 0x00, 0x00
     };
-    uint32_t start = bs->currentBit;
-    for (unsigned int i = 0; i < sizeof(fields) / sizeof(fields[0]); i++) {
-        if (i == 2) PutBit(bs, sampleRateIdx, 4);
-        PutBit(bs, fields[i][0], fields[i][1]);
-    }
-    int pad = (8 - ((start + PCE_BODY_BITS) & 7)) & 7;
-    PutBit(bs, 0, pad);
-    PutBit(bs, 0, 8);
-    return PCE_BODY_BITS + pad + 8;
+    memcpy(pce, image, sizeof(image));
+    pce[1] |= (uint8_t)(sampleRateIdx << 3);
 }
 #endif
 

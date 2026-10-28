@@ -153,9 +153,7 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
 #if MAX_CHANNELS >= 8
     if (HasPCE((int)hEncoder->numChannels)) {
         /* The raw block starts byte aligned, so this image is reusable. */
-        InitBitStream(&bs, hEncoder->pce, sizeof(hEncoder->pce));
-        PutBit(&bs, ID_PCE, LEN_SE_ID);
-        WritePCE(&bs, hEncoder->sampleRateIdx);
+        BuildPCE(hEncoder->pce, hEncoder->sampleRateIdx);
     }
 #endif
     if (hEncoder->config.mpegVersion == MPEG2)

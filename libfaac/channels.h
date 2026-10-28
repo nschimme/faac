@@ -130,7 +130,7 @@ enum {
     PCE_HE_ASC_BYTES = (PCE_ASC_BYTES * 8 + 21 + 7) / 8
 };
 
-int WritePCE(BitStream *bs, int sampleRateIdx);
+void BuildPCE(uint8_t pce[PCE_ADTS_BYTES], int sampleRateIdx);
 #endif
 
 int InitElements(AACElement * __restrict elements, int *numElements, int numChannels, bool useLfe);
