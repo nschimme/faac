@@ -82,7 +82,7 @@ fi
 
 # 1. fuzz_faar_resampler (libfaar streaming API)
 build_target "fuzz_faar_resampler" \
-    -include "$bd/config.h" -DFAAR_BUILDING -DFAAR_FFT_LEAN -DFAAR_WIDE_HIGH \
+    -include "$bd/config.h" -DFAAR_BUILDING -DFAAR_WIDE_HIGH \
     -I"$root/include" -I"$root/libfaar" \
     "$root/tests/fuzz/fuzz_faar_resampler.c" $faar_src -lm
 

@@ -12,97 +12,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details.
  */
-/* Independent long-double DFT verification for the FAAC-derived real FFT. */
+/* Independent long-double DFT verification for the complex FFT. */
 #include "fft.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-
-static void reference(const double *x, long double *ref, int n)
-{
-    int k, j;
-    const long double tau = 6.283185307179586476925286766559005768L;
-
-    /* Direct DFT, with a long-double oscillator to avoid O(N^2) trig calls. */
-    for (k = 0; k <= n / 2; k++) {
-        long double c = cosl(tau * k / n), s = sinl(tau * k / n);
-        long double wr = 1, wi = 0, re = 0, im = 0;
-        for (j = 0; j < n; j++) {
-            long double next = wr * c - wi * s;
-            re += x[j] * wr;
-            im += x[j] * wi;
-            wi = wr * s + wi * c;
-            wr = next;
-        }
-        if (!k) ref[0] = re;
-        else if (k == n / 2) ref[1] = re;
-        else {
-            ref[2 * k] = re;
-            ref[2 * k + 1] = im;
-        }
-    }
-}
-
-#define CHECK_TYPE(T, P, INIT, EXEC, CLEAR, LABEL, TOL) do { \
-    P plan = {0}; \
-    T *a = malloc(n * sizeof(T)), *b = malloc(n * sizeof(T)); \
-    T *sum = malloc(n * sizeof(T)); \
-    long double peak = 0, energy = 0, error = 0, worst = 0; \
-    double roundtrip = 0, linear = 0, scale = 0; \
-    if (!a || !b || !sum || INIT(&plan, n)) exit(2); \
-    for (j = 0; j < n; j++) a[j] = (T)x[j]; \
-    EXEC(&plan, a, 0); \
-    if (n <= 8192) { \
-        for (j = 0; j < n; j++) { \
-            long double e = fabsl((long double)a[j] - ref[j]); \
-            if (!isfinite(a[j])) failed = 1; \
-            if (e > worst) worst = e; \
-            if (fabsl(ref[j]) > peak) peak = fabsl(ref[j]); \
-            energy += ref[j] * ref[j]; error += e * e; \
-        } \
-        printf("%s N=%d max_rel=%.9Le rms_rel=%.9Le", LABEL, n, \
-               worst / peak, sqrtl(error / energy)); \
-        if (worst / peak > TOL || sqrtl(error / energy) > TOL) failed = 1; \
-    } else { \
-        printf("%s N=%d direct DFT skipped;", LABEL, n); \
-        for (j = 0; j < n; j++) if (!isfinite(a[j])) failed = 1; \
-    } \
-    EXEC(&plan, a, 1); \
-    for (j = 0; j < n; j++) { \
-        double e = fabs(a[j] - x[j]); \
-        if (!isfinite(a[j])) failed = 1; \
-        if (e > roundtrip) roundtrip = e; \
-        a[j] = (T)x[j]; b[j] = (T)x[(j * 13 + 7) % n]; \
-        sum[j] = a[j] + b[j]; \
-    } \
-    EXEC(&plan, a, 0); EXEC(&plan, b, 0); EXEC(&plan, sum, 0); \
-    for (j = 0; j < n; j++) { \
-        double e = fabs((double)sum[j] - ((double)a[j] + b[j])); \
-        if (!isfinite(sum[j])) failed = 1; \
-        if (e > linear) linear = e; \
-        if (fabs(sum[j]) > scale) scale = fabs(sum[j]); \
-    } \
-    printf(" roundtrip=%.9g linear_rel=%.9g\n", roundtrip, linear / scale); \
-    if (roundtrip > 8 * TOL || linear / scale > 8 * TOL) failed = 1; \
-    /* DC, Nyquist, and shifted impulse cover real-spectrum endpoints. */ \
-    for (int kind = 0; kind < 3; kind++) { \
-        for (j = 0; j < n; j++) \
-            a[j] = kind == 0 ? 1 : kind == 1 ? (j & 1 ? -1 : 1) : j == 7; \
-        EXEC(&plan, a, 0); \
-        if (kind < 2) { \
-            for (j = 0; j < n; j++) \
-                if (fabs(a[j] - (j == kind ? n : 0)) > n * TOL) failed = 1; \
-        } \
-        EXEC(&plan, a, 1); \
-        for (j = 0; j < n; j++) { \
-            double expected = kind == 0 ? 1 : kind == 1 ? (j & 1 ? -1 : 1) : j == 7; \
-            if (!isfinite(a[j]) || fabs(a[j] - expected) > 8 * TOL) failed = 1; \
-        } \
-    } \
-    CLEAR(&plan); CLEAR(&plan); free(a); free(b); free(sum); \
-} while (0)
 
 /* Complex transform against a direct DFT, plus the conjugation round trip
  * the resampler uses as its inverse. */
@@ -192,43 +108,14 @@ static int check_complex(int selected)
 
 int main(int argc, char **argv)
 {
-    const int sizes[] = {256, 1024, 8192, 65536};
-    int t, j, failed = 0;
-    uint32_t state = 1;
-    faar_fftf_plan invalid = {0};
+    const int sizes[] = {16, 64, 512, 2048, 4096, 8192};
+    int i, n;
 
-    if (argc != 3 || (strcmp(argv[1], "real") && strcmp(argv[1], "complex")))
-        return 2;
-    t = atoi(argv[2]);
-    if (strcmp(argv[1], "complex") == 0) {
-        const int complex_sizes[] = {16, 64, 512, 2048, 4096, 8192};
-        int i;
-        for (i = 0; i < 6 && complex_sizes[i] != t; i++) {
-            /* Find the selected transform size. */
-        }
-        if (i == 6) return 2;
-        return check_complex(i);
+    if (argc != 3 || strcmp(argv[1], "complex")) return 2;
+    n = atoi(argv[2]);
+    for (i = 0; i < 6 && sizes[i] != n; i++) {
+        /* Find the selected transform size. */
     }
-    if (t != 256 && t != 1024 && t != 8192 && t != 65536) return 2;
-    if (!faar_fftf_init(&invalid, 0) || !faar_fftf_init(&invalid, 257)
-            || !faar_fftf_init(&invalid, 131072)) return 1;
-    for (t = 0; t < 4; t++) {
-        if (sizes[t] != atoi(argv[2])) continue;
-        int n = sizes[t];
-        double *x = malloc(n * sizeof(double));
-        long double *ref = malloc(n * sizeof(long double));
-        if (!x || !ref) return 2;
-        for (j = 0; j < n; j++) {
-            state = state * 1664525u + 1013904223u;
-            /* Dyadic inputs are identical in both precisions. */
-            x[j] = ((int)(state >> 16) - 32768) / 32768.0;
-        }
-        if (n <= 8192) reference(x, ref, n);
-        CHECK_TYPE(float, faar_fftf_plan, faar_fftf_init, faar_fftf_execute,
-                   faar_fftf_clear, "float", 2e-6);
-        CHECK_TYPE(double, faar_fftd_plan, faar_fftd_init, faar_fftd_execute,
-                   faar_fftd_clear, "double", 2e-12);
-        free(x); free(ref);
-    }
-    return failed;
+    if (i == 6) return 2;
+    return check_complex(i);
 }

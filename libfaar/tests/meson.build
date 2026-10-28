@@ -100,17 +100,15 @@ test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
 )
 test('test_faar_dft_prefilter', test_faar_dft_prefilter)
 
-# Float and double FFT coverage includes the real transform wrappers.
+# Float and double FFT coverage; the double transform is otherwise built only
+# for native-double High.
 test_faar_fft = executable('test_faar_fft',
   ['test_faar_fft.c', '../fft.c'],
+  c_args: ['-DFAAR_WIDE_HIGH'],
   include_directories: ['..', inc],
   dependencies: [m_dep],
 )
 foreach case : [
-  ['test_faar_fft_256', 'real', '256'],
-  ['test_faar_fft_1024', 'real', '1024'],
-  ['test_faar_fft_8192', 'real', '8192'],
-  ['test_faar_fft_65536', 'real', '65536'],
   ['test_faar_fft_complex_16', 'complex', '16'],
   ['test_faar_fft_complex_64', 'complex', '64'],
   ['test_faar_fft_complex_512', 'complex', '512'],
@@ -124,6 +122,7 @@ endforeach
 if get_option('resampler-float')
   test_faar_float2 = executable('test_faar_float2',
     ['test_faar_float2.c', '../fft_float2.c', '../fft.c'],
+    c_args: ['-DFAAR_WIDE_HIGH'],
     include_directories: ['..', inc],
     dependencies: [m_dep],
   )

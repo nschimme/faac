@@ -17,25 +17,21 @@
 
 /* Common twiddle tables are immutable after once initialization.
  * Plans have mutable scratch: executions sharing one must be serialized.
- * Sizes are powers of two, 256 through 65536; init returns 0 on success and
- * needs a fresh or cleared plan, and clear accepts a zero-initialized one.
- * Data is N scalars packed as DC, Nyquist, then (real, positive-sine
- * imaginary) bins. The inverse is normalized. */
+ * Init returns 0 on success and needs a fresh or cleared plan, and clear
+ * accepts a zero-initialized one. */
 typedef struct faar_fftf_plan {
     int size, logm;
     int work_buffers;
     int twiddle_owned; /* Set unless the plan borrows a filter owner's table. */
-    float *twiddle, *split, *work, *scratch;
+    float *twiddle, *work, *scratch;
 } faar_fftf_plan;
 
-int faar_fftf_init(faar_fftf_plan *plan, int size);
 void faar_fftf_clear(faar_fftf_plan *plan);
 /* Touch private workspace before the first transform; no stream data yet.
  * Set both_buffers when one plan serves both forward and inverse filtering. */
 void faar_fftf_prepare(faar_fftf_plan *plan, int both_buffers);
-void faar_fftf_execute(const faar_fftf_plan *plan, float *data, int inverse);
 
-/* Complex transform of n points, 16 through 4194304, on the same plan type.
+/* Transform of n complex points, 16 through 4194304.
  * Data is planar: n real parts then n imaginary parts, e^{-j} convention and
  * unnormalized. The plan owns two such buffers (cbuffer 0 and 1). cforward
  * transforms the buffer `in`, which must be one of them, and returns the
@@ -61,13 +57,11 @@ typedef struct faar_fftd_plan {
     int size, logm;
     int work_buffers;
     int twiddle_owned; /* Set unless the plan borrows a filter owner's table. */
-    double *twiddle, *split, *work, *scratch;
+    double *twiddle, *work, *scratch;
 } faar_fftd_plan;
 
-int faar_fftd_init(faar_fftd_plan *plan, int size);
 void faar_fftd_clear(faar_fftd_plan *plan);
 void faar_fftd_prepare(faar_fftd_plan *plan, int both_buffers);
-void faar_fftd_execute(const faar_fftd_plan *plan, double *data, int inverse);
 int faar_fftd_cinit(faar_fftd_plan *plan, int n);
 int faar_fftd_cinit_shared(faar_fftd_plan *plan, int n,
                               const faar_fftd_plan *owner);

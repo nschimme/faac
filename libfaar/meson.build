@@ -17,9 +17,6 @@ else
 endif
 libfaar_prepare_sources = libfaar_sources
 
-# Real-transform wrappers are exercised only by FFT verification.
-libfaar_args += '-DFAAR_FFT_LEAN'
-
 default_lib = get_option('default_library')
 
 # The FAAC frontend can be requested as a static executable even when the

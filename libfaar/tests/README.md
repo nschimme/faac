@@ -3,7 +3,7 @@
 The library tests live in this directory and are registered by its local
 `meson.build`. They cover the public streaming API, signal quality controls,
 rate-matrix invariants, DFT filtering and shared spectra, prefilter setup, and
-the real FFT. Shared-workspace tests cover serialized channel-pair processing
+the complex FFT. Shared-workspace tests cover serialized channel-pair processing
 at padded and High quality settings, verify that overlap histories and
 streaming queues remain independent, and check workspace lifetime across
 processing and close.
