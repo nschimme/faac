@@ -55,21 +55,9 @@ static faad_status validate_asc(const uint8_t *buf, uint32_t len, bool *frame_le
     if (!channels) {
         /* Validate the ASC's PCE profile and sampling index; channel elements
          * are mapped from its tags during packet decoding. */
-        asc_br_get(&br, 4); /* element_instance_tag */
-        uint32_t profile = asc_br_get(&br, 2), sr = asc_br_get(&br, 4);
-        uint32_t front = asc_br_get(&br, 4), side = asc_br_get(&br, 4);
-        uint32_t back = asc_br_get(&br, 4), lfe = asc_br_get(&br, 2);
-        uint32_t assoc = asc_br_get(&br, 3), cc = asc_br_get(&br, 4);
-        if (asc_br_get(&br, 1)) asc_br_get(&br, 4);
-        if (asc_br_get(&br, 1)) asc_br_get(&br, 4);
-        if (asc_br_get(&br, 1)) asc_br_get(&br, 3);
-        for (uint32_t i = 0; i < front + side + back; i++) asc_br_get(&br, 5);
-        for (uint32_t i = 0; i < lfe + assoc; i++) asc_br_get(&br, 4);
-        for (uint32_t i = 0; i < cc; i++) asc_br_get(&br, 5);
-        br.pos = (br.pos + 7) & ~7u;
-        uint32_t comment = asc_br_get(&br, 8);
-        for (uint32_t i = 0; i < comment; i++) asc_br_get(&br, 8);
-        if (profile != 1 || sr >= 12) return FAAD_ERR_UNSUPPORTED;
+        AscPce pce;
+        if (!asc_parse_pce(&br, &pce)) return FAAD_ERR_INVALID_ARGUMENT;
+        if (pce.profile != 1 || pce.sr_index >= 12) return FAAD_ERR_UNSUPPORTED;
     }
     if (extension) asc_br_get(&br, 1);
     if (br.pos > br.len_bits) return FAAD_ERR_INVALID_ARGUMENT;

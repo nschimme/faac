@@ -47,6 +47,7 @@ static inline int asc_codec_sr_idx(uint32_t rate)
  * Unrecognized PCEs retain only their channel count. */
 typedef struct {
     uint8_t channels;
+    uint8_t profile, sr_index;
     uint8_t tags[5];
     bool wave71;
 } AscPce;
@@ -121,7 +122,9 @@ static inline uint8_t asc_parse_pce(asc_bitreader *br, AscPce *pce)
 {
     memset(pce, 0, sizeof(*pce));
     if (asc_br_remaining(br) < 34) return 0;
-    asc_br_get(br, 10);
+    asc_br_get(br, 4);
+    pce->profile = (uint8_t)asc_br_get(br, 2);
+    pce->sr_index = (uint8_t)asc_br_get(br, 4);
     uint32_t front = asc_br_get(br, 4);
     uint32_t side = asc_br_get(br, 4);
     uint32_t back = asc_br_get(br, 4);
