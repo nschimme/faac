@@ -69,17 +69,9 @@ typedef struct { const uint8_t *buf; uint32_t len_bits; uint32_t pos; } asc_bitr
 static inline uint32_t asc_br_get(asc_bitreader *br, uint32_t n)
 {
     uint32_t val = 0;
-    /* Byte-sized chunks keep fixed-width reads compact without unrolling
-     * one bounds check and extraction for every bit of a PCE field. */
-    while (n) {
-        uint32_t room = 8 - (br->pos & 7);
-        uint32_t take = n < room ? n : room;
-        uint32_t byte = br->pos < br->len_bits ? br->buf[br->pos >> 3] : 0;
-        uint32_t available = br->pos < br->len_bits ? br->len_bits - br->pos : 0;
-        if (available < room) byte &= 0xffu << (room - available);
-        val = (val << take) | ((byte >> (room - take)) & ((1u << take) - 1));
-        br->pos += take;
-        n -= take;
+    for (; n; n--, br->pos++) {
+        uint32_t bit = br->pos < br->len_bits ? (br->buf[br->pos >> 3] >> (7 - (br->pos & 7))) & 1 : 0;
+        val = (val << 1) | bit;
     }
     return val;
 }
