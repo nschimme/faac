@@ -345,14 +345,9 @@ static faam_io mux_stream_io(mux_stream_output *s)
 
 static void print_usage(int mode)
 {
-    faam_library_info info;
-    info.struct_size = sizeof(info);
-    if (faam_get_library_info(&info) != FAAM_OK)
-        info.version = "1.0.0";
-
     char version_buf[128];
     show_help_usage("faam", mode,
-                    cli_version_string(version_buf, sizeof(version_buf), info.version),
+                    cli_version_string(version_buf, sizeof(version_buf), PACKAGE_VERSION),
                     "faam -i <input> [-i <input>...] -o <out.mp4> [options]\n"
                     "       faam <info|dump|demux|tag|chapter> [options] <file>",
                     g_help);
@@ -362,14 +357,9 @@ static void print_version_banner(void)
 {
     if (g_verbose == 0) return;
 
-    faam_library_info info = { .struct_size = sizeof(info) };
-    const char *version = "1.0.0";
-    if (faam_get_library_info(&info) == FAAM_OK && info.version)
-        version = info.version;
-
     char version_buf[128];
     fprintf(stderr, "Freeware Advanced Audio Muxer\nFAAM %s\n\n",
-            cli_version_string(version_buf, sizeof(version_buf), version));
+            cli_version_string(version_buf, sizeof(version_buf), PACKAGE_VERSION));
 }
 
 enum {
