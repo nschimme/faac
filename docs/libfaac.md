@@ -97,7 +97,8 @@ otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8), `FAAC_SBR_DECIMATION`
 
 Query `faac_get_library_info()` for `max_channels`, version/copyright and
 `sbr_decimation` (build-time SBR analysis density; 1 is full density) and
-`flags`. `FAAC_LIB_SBR` is clear in an LC-only build (`-Dencoder-sbr=false`),
+`flags`. `flags` follows `FAAC_LIBRARY_INFO_BASELINE`, so check that the
+returned `struct_size` covers it before reading. `FAAC_LIB_SBR` is clear in an LC-only build (`-Dencoder-sbr=false`),
 where `FAAC_OBJ_HE_AAC_V1` returns `FAAC_ERR_UNSUPPORTED` and
 `FAAC_OBJ_AUTO` resolves to LC. `FAAC_LIB_PS` is set only when
 `-Dencoder-ps=true` (and SBR) is built; otherwise `FAAC_OBJ_HE_AAC_V2` returns
@@ -135,9 +136,11 @@ See [ABI compatibility](#abi-compatibility).
   `info.frame_samples` × `channels` samples; the output buffer
   must be at least `info.max_output_bytes`. The same struct also reports the
   resolved sample rate, object type, and rate-control settings. If you write a
-  raw stream, take the AudioSpecificConfig from `info.asc` / `info.asc_size`
-  (valid right after open; copy it if you need it longer) or from
-  `faac_encoder_asc()` (library-owned — do **not** free it).
+  raw stream, take the AudioSpecificConfig from `faac_encoder_asc()` (library-owned — do **not** free it), which works
+  with any library version. `info.asc` / `info.asc_size` are an inline snapshot
+  valid right after open (copy it if you need it longer); they follow
+  `FAAC_ENCODER_INFO_BASELINE`, so read them only if the returned
+  `struct_size` covers them.
 - Call `faac_encoder_encode()` for each block of input; it emits at most
   one frame per call and reports the byte count via an out-parameter.
   `in_samples` counts samples across all channels, not bytes or samples/channel.
@@ -516,8 +519,9 @@ reports the cutoff in use.
 Packet-oriented transports often cannot fragment a frame: one that overruns the
 link MTU is dropped, not split. `bit_rate` cannot prevent that, being an
 average individual frames are free to exceed — a transient easily produces
-a frame several times the mean. `faac_params.peak_bit_rate` puts a hard
-ceiling on any single frame; 0, the default, means none beyond the encoder's
+a frame several times the mean. `faac_params.peak_bit_rate` sets a best-effort
+peak target for any single frame (it can still be exceeded, so check the emitted
+byte count when a packet limit is strict); 0, the default, means none beyond the encoder's
 own ISO/IEC 14496-3 peak ceiling of 6144 bits per channel per frame, enforced
 unconditionally to guarantee decoder compatibility across portable devices.
 Both `bit_rate` and `peak_bit_rate` are whole-stream bits/sec. The peak stays

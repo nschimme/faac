@@ -692,7 +692,7 @@ done:
 }
 ```
 
-For an installed build, compile with `pkg-config --cflags --libs faam faad`.
+For an installed build, compile with `pkg-config --cflags --libs faam faad3`.
 For source-tree static archives built in `b/`:
 
 ```sh

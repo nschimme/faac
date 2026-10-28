@@ -56,10 +56,10 @@ To build the `faad` command-line decoder too, omit `-Dfrontend=false`.
 For an installed library, compile the example below with:
 
 ```sh
-cc -std=c11 -Wall -Wextra adts_decode.c -o adts_decode $(pkg-config --cflags --libs faad)
+cc -std=c11 -Wall -Wextra adts_decode.c -o adts_decode $(pkg-config --cflags --libs faad3)
 ```
 
-For static linking, use `pkg-config --cflags --libs --static faad` and select
+For static linking, use `pkg-config --cflags --libs --static faad3` and select
 an installation containing only the static library, or use your toolchain's
 static-library selection options. `--static` adds private dependencies; it
 does not itself force the linker to select an archive.
