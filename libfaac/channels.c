@@ -292,8 +292,10 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     /* Repeat after priming so a joining ADTS decoder can recover the layout. */
     if (hEncoder->config.outputFormat == 1 && HasPCE((int)hEncoder->numChannels)
         && ((hEncoder->frameNum - LOOKAHEAD_DEPTH - 1) & (PCE_REPEAT_FRAMES - 1)) == 0) {
-        for (unsigned int i = 0; i < sizeof(hEncoder->pce); i++)
-            PutBit(bs, hEncoder->pce[i], 8);
+        /* The header leaves the stream byte aligned. */
+        if (bs->data)
+            memcpy(bs->data + (bs->currentBit >> 3), hEncoder->pce, sizeof(hEncoder->pce));
+        bs->currentBit += sizeof(hEncoder->pce) * 8;
         bits += sizeof(hEncoder->pce) * 8;
     }
 #endif

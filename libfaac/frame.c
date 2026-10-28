@@ -168,7 +168,14 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
     PutBit(&bs, SignalledChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels)), 4);
     PutBit(&bs, 0, 3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
 #if MAX_CHANNELS >= 8
-    if (HasPCE((int)hEncoder->numChannels)) WritePCE(&bs, hEncoder->sampleRateIdx);
+    if (HasPCE((int)hEncoder->numChannels)) {
+        /* Same PCE as the in-band image, minus the element id; copying it bit
+         * by bit keeps a single copy of the field writer. */
+        for (uint32_t i = LEN_SE_ID; i < LEN_SE_ID + PCE_BODY_BITS; i++)
+            PutBit(&bs, (hEncoder->pce[i >> 3] >> (7 - (i & 7))) & 1, 1);
+        PutBit(&bs, 0, (int)((8 - (bs.currentBit & 7)) & 7));
+        PutBit(&bs, 0, 8);
+    }
 #endif
     if (he) {
         /* Backward-compatible sync extension: AAC-LC at Fs/2, SBR at full Fs. */
