@@ -205,11 +205,11 @@ static int test_pcm_formats(const uint8_t *stream)
             if (reference < -1) reference = -1;
             if (reference > 1) reference = 1;
             double s16 = ((int16_t *)pcm[0])[i] / 32768.0;
-            double s24 = read_pcm24((uint8_t *)pcm[1] + 3 * i, WORDS_BIGENDIAN) / 8388608.0;
+            double s24 = read_pcm24((uint8_t *)pcm[1] + 3 * i, FAAC_BIG_ENDIAN) / 8388608.0;
             double s32 = ((int32_t *)pcm[2])[i] / 8388608.0;
             if (fabs(reference - s16) > 1.0 / 32768 || fabs(reference - s24) > 1.0 / 8388608
                 || fabs(reference - s32) > 1.0 / 8388608
-                || ((int32_t *)pcm[2])[i] != read_pcm24((uint8_t *)pcm[1] + 3 * i, WORDS_BIGENDIAN)) return fail("native PCM numeric/byte-order mismatch");
+                || ((int32_t *)pcm[2])[i] != read_pcm24((uint8_t *)pcm[1] + 3 * i, FAAC_BIG_ENDIAN)) return fail("native PCM numeric/byte-order mismatch");
         }
         pos += packet;
     }

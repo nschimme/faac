@@ -525,7 +525,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
 
 bool wav_native_ok(const pcmfile_t *sndf)
 {
-  return !sndf->isfloat && sndf->bigendian == WORDS_BIGENDIAN &&
+  return !sndf->isfloat && sndf->bigendian == FAAC_BIG_ENDIAN &&
          (sndf->samplebytes == 2 || sndf->samplebytes == 3);
 }
 

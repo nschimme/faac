@@ -1273,7 +1273,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
         uint8_t * restrict out_u8 = (uint8_t *)out_pcm;
         for (uint32_t i = 0; i < frame_samples; i++)
             for (uint32_t c = 0; c < num_chs; c++, out_u8 += 3)
-                write_pcm24(out_u8, pcm_to_s24(src[c][i]), WORDS_BIGENDIAN);
+                write_pcm24(out_u8, pcm_to_s24(src[c][i]), FAAC_BIG_ENDIAN);
     } else if (dec->config.output_format == FAAD_OUTPUT_32BIT) {
         int32_t * restrict out_int32 = (int32_t *)out_pcm;
         for (uint32_t i = 0; i < frame_samples; i++)

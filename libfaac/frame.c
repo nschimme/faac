@@ -496,11 +496,7 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 const uint8_t *src_base = (const uint8_t *)inputBuffer;
                 for (i = 0; i < spch; i++) {
                     const uint8_t *src = src_base + (i * numChannels + hEncoder->config.channel_map[channel]) * 3;
-#if WORDS_BIGENDIAN
-                    int32_t s = read_pcm24(src, true);
-#else
-                    int32_t s = read_pcm24(src, false);
-#endif
+                    int32_t s = read_pcm24(src, FAAC_BIG_ENDIAN);
                     dst[i] = (1.0f / 256.0f) * (float)s;
                 }
                 break;

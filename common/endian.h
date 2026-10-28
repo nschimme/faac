@@ -62,21 +62,29 @@ static inline uint64_t bswap64(uint64_t x) {
 }
 #endif
 
-#if WORDS_BIGENDIAN
-# define htobe16(x) ((uint16_t)(x))
-# define htobe32(x) ((uint32_t)(x))
-# define htobe64(x) ((uint64_t)(x))
-# define htole16(x) bswap16(x)
-# define htole32(x) bswap32(x)
-# define htole64(x) bswap64(x)
+/* Host byte order as a constant expression where the compiler states it, and
+ * a probe the optimizer folds to one otherwise. Never use it in #if. */
+static inline bool host_is_big_endian(void) {
+    const uint16_t one = 1;
+    uint8_t first;
+    memcpy(&first, &one, 1);
+    return first == 0;
+}
+
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+# define FAAC_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#elif defined(_MSC_VER)
+# define FAAC_BIG_ENDIAN 0
 #else
-# define htobe16(x) bswap16(x)
-# define htobe32(x) bswap32(x)
-# define htobe64(x) bswap64(x)
-# define htole16(x) ((uint16_t)(x))
-# define htole32(x) ((uint32_t)(x))
-# define htole64(x) ((uint64_t)(x))
+# define FAAC_BIG_ENDIAN host_is_big_endian()
 #endif
+
+#define htobe16(x) ((uint16_t)(FAAC_BIG_ENDIAN ? (uint16_t)(x) : bswap16(x)))
+#define htobe32(x) ((uint32_t)(FAAC_BIG_ENDIAN ? (uint32_t)(x) : bswap32(x)))
+#define htobe64(x) ((uint64_t)(FAAC_BIG_ENDIAN ? (uint64_t)(x) : bswap64(x)))
+#define htole16(x) ((uint16_t)(FAAC_BIG_ENDIAN ? bswap16(x) : (uint16_t)(x)))
+#define htole32(x) ((uint32_t)(FAAC_BIG_ENDIAN ? bswap32(x) : (uint32_t)(x)))
+#define htole64(x) ((uint64_t)(FAAC_BIG_ENDIAN ? bswap64(x) : (uint64_t)(x)))
 
 #define be16toh(x) htobe16(x)
 #define be32toh(x) htobe32(x)

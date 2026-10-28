@@ -418,7 +418,6 @@ jobs:
           needs_exe_wrapper = true
           EOF
           meson setup build-s390x --cross-file s390x.txt -Ddefault_library=static -Dc_link_args=-static
-          grep WORDS_BIGENDIAN build-s390x/config.h
           meson compile -C build-s390x
 
       - name: Test s390x (big-endian)

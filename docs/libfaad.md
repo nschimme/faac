@@ -73,8 +73,7 @@ application's build configuration.
 
 The Meson build writes a `config.h` that every source includes. A build system
 that compiles the sources directly must define the same macros: `PACKAGE`,
-`PACKAGE_VERSION`, `WORDS_BIGENDIAN` (`1` on big-endian targets, `0`
-otherwise), `MAX_CHANNELS` (`-Dmax-channels`, default 8) and, for a combined
+`PACKAGE_VERSION`, `MAX_CHANNELS` (`-Dmax-channels`, default 8) and, for a combined
 build with the encoder, `FAAC_SBR_DECIMATION`. Add `common/` and `include/`
 to the include path. Define `FAAD_BUILDING` when building a Windows DLL.
 
