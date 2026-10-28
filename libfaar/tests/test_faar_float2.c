@@ -15,7 +15,7 @@
 /* Numerical validation of the compensated float FFT against the independent
  * double FFT, plus inverse round trips and borrowed-twiddle ownership. */
 #include "fft_float2.h"
-#include "fft_real.h"
+#include "fft.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,13 +30,13 @@ static float random_sample(void) {
 
 static int check_transform(int n, int tone) {
     faar_float2_plan plan = {0};
-    faar_rfftd_plan reference = {0};
+    faar_fftd_plan reference = {0};
     float *input = NULL;
     int bad = 1;
-    if (faar_float2_init(&plan, (size_t)n) || faar_rfftd_cinit(&reference, n)) goto done;
+    if (faar_float2_init(&plan, (size_t)n) || faar_fftd_cinit(&reference, n)) goto done;
     input = malloc(2 * (size_t)n * sizeof(*input));
     if (!input) goto done;
-    double *expected = faar_rfftd_cbuffer(&reference, 0);
+    double *expected = faar_fftd_cbuffer(&reference, 0);
     for (int j = 0; j < n; ++j) {
         double phase = 6.283185307179586476925286766559 * (n / 8) * j / n;
         input[j] = tone ? (float)(.75 * cos(phase)) : random_sample();
@@ -47,7 +47,7 @@ static int check_transform(int n, int tone) {
         expected[n + j] = input[n + j];
     }
     faar_float2_forward(&plan);
-    expected = faar_rfftd_cforward(&reference, expected);
+    expected = faar_fftd_cforward(&reference, expected);
     double error = 0, energy = 0;
     for (int j = 0; j < 2 * n; ++j) {
         double actual = (double)plan.work[j].hi + plan.work[j].lo;
@@ -74,7 +74,7 @@ static int check_transform(int n, int tone) {
 done:
     free(input);
     faar_float2_clear(&plan);
-    faar_rfftd_clear(&reference);
+    faar_fftd_clear(&reference);
     return bad;
 }
 

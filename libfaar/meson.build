@@ -6,7 +6,7 @@ libfaar_sources = files(
   'dft_coeffs.c',
   'dft_prefilter.c',
   'dft_fir.c',
-  'fft_real.c',
+  'fft.c',
 )
 
 if get_option('resampler-float')

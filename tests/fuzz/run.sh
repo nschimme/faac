@@ -68,7 +68,7 @@ if grep -q '^#define FAAC_ENCODER_PS 1$' "$bd/config.h"; then
 fi
 
 # Source files for libfaar
-faar_src="$root/libfaar/polyresample.c $root/libfaar/dft_coeffs.c $root/libfaar/dft_prefilter.c $root/libfaar/dft_fir.c $root/libfaar/fft_real.c"
+faar_src="$root/libfaar/polyresample.c $root/libfaar/dft_coeffs.c $root/libfaar/dft_prefilter.c $root/libfaar/dft_fir.c $root/libfaar/fft.c"
 
 # Compile quantize_sse.c with gcc if available to bypass clang bug on immintrin.h
 q_sse_obj=""

@@ -71,9 +71,9 @@ static size_t overlap_stride(const faar_dft_fir *stage) {
 #undef PAIR_FFT
 #ifdef FAAR_WIDE_HIGH
 #define PAIR_REAL double
-#define PAIR_PLAN faar_rfftd_plan
+#define PAIR_PLAN faar_fftd_plan
 #define PAIR_TAG _wide
-#define PAIR_FFT faar_rfftd_
+#define PAIR_FFT faar_fftd_
 #include "dft_fir_pair.inc"
 #undef PAIR_REAL
 #undef PAIR_PLAN
@@ -452,8 +452,8 @@ void faar_dft_fir_prepare(faar_dft_fir *stage) {
 #endif
 #ifdef FAAR_WIDE_HIGH
     else if (stage->compensated) {
-        faar_rfftd_prepare(&stage->in_wide, !stage->out_wide.size);
-        faar_rfftd_prepare(&stage->out_wide, 0);
+        faar_fftd_prepare(&stage->in_wide, !stage->out_wide.size);
+        faar_fftd_prepare(&stage->out_wide, 0);
     }
 #endif
     else {
@@ -494,8 +494,8 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
 #ifdef FAAR_WIDE_HIGH
     FreeMemory(stage->wide_half_work);
     if (!stage->shared_fft) {
-        faar_rfftd_clear(&stage->in_wide);
-        faar_rfftd_clear(&stage->out_wide);
+        faar_fftd_clear(&stage->in_wide);
+        faar_fftd_clear(&stage->out_wide);
     }
 #endif
     if (!stage->shared_fft) {

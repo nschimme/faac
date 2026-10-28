@@ -14,9 +14,9 @@
  */
 
 /* Generalized from FAAC 17fbbf8a; real split wrapper. */
-#ifndef FAAR_RFFT_TEMPLATE
-#define FAAR_RFFT_TEMPLATE
-#include "fft_real.h"
+#ifndef FAAR_FFT_TEMPLATE
+#define FAAR_FFT_TEMPLATE
+#include "fft.h"
 #include "libfaar_internal.h"
 #include <math.h>
 #include <stdlib.h>
@@ -25,18 +25,18 @@
 #define JOIN(a, b) JOIN_(a, b)
 #define FN(name) JOIN(PREFIX, name)
 #define REAL float
-#define PLAN faar_rfftf_plan
-#define PREFIX faar_rfftf_
-#include "fft_real.c"
+#define PLAN faar_fftf_plan
+#define PREFIX faar_fftf_
+#include "fft.c"
 #undef REAL
 #undef PLAN
 #undef PREFIX
 /* Double transforms serve mixed High and FFT verification. */
 #if defined(FAAR_WIDE_HIGH) || !defined(FAAR_FFT_LEAN)
 #define REAL double
-#define PLAN faar_rfftd_plan
-#define PREFIX faar_rfftd_
-#include "fft_real.c"
+#define PLAN faar_fftd_plan
+#define PREFIX faar_fftd_
+#include "fft.c"
 #undef REAL
 #undef PLAN
 #undef PREFIX

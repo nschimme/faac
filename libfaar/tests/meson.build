@@ -41,7 +41,7 @@ foreach group : ['matrix-0', 'matrix-1', 'matrix-2', 'equal-rate', 'channels', '
 endforeach
 
 test_faar_dft_fir = executable('test_faar_dft_fir',
-  ['test_faar_dft_fir.c', '../dft_coeffs.c', '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
+  ['test_faar_dft_fir.c', '../dft_coeffs.c', '../dft_fir.c', '../fft.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -49,7 +49,7 @@ test_faar_dft_fir = executable('test_faar_dft_fir',
 test('test_faar_dft_fir', test_faar_dft_fir)
 
 test_faar_dft_shared = executable('test_faar_dft_shared',
-  ['test_faar_dft_shared.c', '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
+  ['test_faar_dft_shared.c', '../dft_fir.c', '../fft.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -93,7 +93,7 @@ endif
 
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   ['test_faar_dft_prefilter.c', '../dft_coeffs.c', '../dft_prefilter.c',
-   '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
+   '../dft_fir.c', '../fft.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -101,16 +101,16 @@ test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
 test('test_faar_dft_prefilter', test_faar_dft_prefilter)
 
 # Float and double FFT coverage includes the real transform wrappers.
-test_faar_fft_real = executable('test_faar_fft_real',
-  ['test_faar_fft_real.c', '../fft_real.c'],
+test_faar_fft = executable('test_faar_fft',
+  ['test_faar_fft.c', '../fft.c'],
   include_directories: ['..', inc],
   dependencies: [m_dep],
 )
 foreach case : [
-  ['test_faar_fft_real_256', 'real', '256'],
-  ['test_faar_fft_real_1024', 'real', '1024'],
-  ['test_faar_fft_real_8192', 'real', '8192'],
-  ['test_faar_fft_real_65536', 'real', '65536'],
+  ['test_faar_fft_256', 'real', '256'],
+  ['test_faar_fft_1024', 'real', '1024'],
+  ['test_faar_fft_8192', 'real', '8192'],
+  ['test_faar_fft_65536', 'real', '65536'],
   ['test_faar_fft_complex_16', 'complex', '16'],
   ['test_faar_fft_complex_64', 'complex', '64'],
   ['test_faar_fft_complex_512', 'complex', '512'],
@@ -118,12 +118,12 @@ foreach case : [
   ['test_faar_fft_complex_4096', 'complex', '4096'],
   ['test_faar_fft_complex_8192', 'complex', '8192'],
 ]
-  test(case[0], test_faar_fft_real, args: [case[1], case[2]], timeout: 60)
+  test(case[0], test_faar_fft, args: [case[1], case[2]], timeout: 60)
 endforeach
 
 if get_option('resampler-float')
   test_faar_float2 = executable('test_faar_float2',
-    ['test_faar_float2.c', '../fft_float2.c', '../fft_real.c'],
+    ['test_faar_float2.c', '../fft_float2.c', '../fft.c'],
     include_directories: ['..', inc],
     dependencies: [m_dep],
   )

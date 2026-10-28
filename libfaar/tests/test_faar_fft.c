@@ -13,7 +13,7 @@
  * Lesser General Public License for more details.
  */
 /* Independent long-double DFT verification for the FAAC-derived real FFT. */
-#include "fft_real.h"
+#include "fft.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -148,10 +148,10 @@ static int check_complex(int selected)
     int failed = 0, t, j, k;
     uint32_t state = 7;
     const long double tau = 6.283185307179586476925286766559005768L;
-    faar_rfftf_plan invalid = {0};
+    faar_fftf_plan invalid = {0};
 
-    if (!faar_rfftf_cinit(&invalid, 8) || !faar_rfftf_cinit(&invalid, 48)
-            || !faar_rfftf_cinit(&invalid, 1 << 23)) return 1;
+    if (!faar_fftf_cinit(&invalid, 8) || !faar_fftf_cinit(&invalid, 48)
+            || !faar_fftf_cinit(&invalid, 1 << 23)) return 1;
     for (t = 0; t < 6; t++) {
         if (selected >= 0 && t != selected) continue;
         int n = sizes[t];
@@ -177,14 +177,14 @@ static int check_complex(int selected)
             }
             rr[k] = re; ri[k] = im;
         }
-        CHECK_COMPLEX(float, faar_rfftf_plan, faar_rfftf_cinit,
-                      faar_rfftf_cinit_shared_single, faar_rfftf_prepare,
-                      faar_rfftf_cbuffer, faar_rfftf_cforward,
-                      faar_rfftf_clear, "float", 2e-6);
-        CHECK_COMPLEX(double, faar_rfftd_plan, faar_rfftd_cinit,
-                      faar_rfftd_cinit_shared_single, faar_rfftd_prepare,
-                      faar_rfftd_cbuffer, faar_rfftd_cforward,
-                      faar_rfftd_clear, "double", 2e-12);
+        CHECK_COMPLEX(float, faar_fftf_plan, faar_fftf_cinit,
+                      faar_fftf_cinit_shared_single, faar_fftf_prepare,
+                      faar_fftf_cbuffer, faar_fftf_cforward,
+                      faar_fftf_clear, "float", 2e-6);
+        CHECK_COMPLEX(double, faar_fftd_plan, faar_fftd_cinit,
+                      faar_fftd_cinit_shared_single, faar_fftd_prepare,
+                      faar_fftd_cbuffer, faar_fftd_cforward,
+                      faar_fftd_clear, "double", 2e-12);
         free(xr); free(xi); free(rr); free(ri);
     }
     return failed;
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
     const int sizes[] = {256, 1024, 8192, 65536};
     int t, j, failed = 0;
     uint32_t state = 1;
-    faar_rfftf_plan invalid = {0};
+    faar_fftf_plan invalid = {0};
 
     if (argc != 3 || (strcmp(argv[1], "real") && strcmp(argv[1], "complex")))
         return 2;
@@ -210,8 +210,8 @@ int main(int argc, char **argv)
         return check_complex(i);
     }
     if (t != 256 && t != 1024 && t != 8192 && t != 65536) return 2;
-    if (!faar_rfftf_init(&invalid, 0) || !faar_rfftf_init(&invalid, 257)
-            || !faar_rfftf_init(&invalid, 131072)) return 1;
+    if (!faar_fftf_init(&invalid, 0) || !faar_fftf_init(&invalid, 257)
+            || !faar_fftf_init(&invalid, 131072)) return 1;
     for (t = 0; t < 4; t++) {
         if (sizes[t] != atoi(argv[2])) continue;
         int n = sizes[t];
@@ -224,10 +224,10 @@ int main(int argc, char **argv)
             x[j] = ((int)(state >> 16) - 32768) / 32768.0;
         }
         if (n <= 8192) reference(x, ref, n);
-        CHECK_TYPE(float, faar_rfftf_plan, faar_rfftf_init, faar_rfftf_execute,
-                   faar_rfftf_clear, "float", 2e-6);
-        CHECK_TYPE(double, faar_rfftd_plan, faar_rfftd_init, faar_rfftd_execute,
-                   faar_rfftd_clear, "double", 2e-12);
+        CHECK_TYPE(float, faar_fftf_plan, faar_fftf_init, faar_fftf_execute,
+                   faar_fftf_clear, "float", 2e-6);
+        CHECK_TYPE(double, faar_fftd_plan, faar_fftd_init, faar_fftd_execute,
+                   faar_fftd_clear, "double", 2e-12);
         free(x); free(ref);
     }
     return failed;

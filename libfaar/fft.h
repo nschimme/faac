@@ -12,8 +12,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  */
-#ifndef FAAR_FFT_REAL_H
-#define FAAR_FFT_REAL_H
+#ifndef FAAR_FFT_H
+#define FAAR_FFT_H
 
 /* Common twiddle tables are immutable after once initialization.
  * Plans have mutable scratch: executions sharing one must be serialized.
@@ -21,19 +21,19 @@
  * needs a fresh or cleared plan, and clear accepts a zero-initialized one.
  * Data is N scalars packed as DC, Nyquist, then (real, positive-sine
  * imaginary) bins. The inverse is normalized. */
-typedef struct faar_rfftf_plan {
+typedef struct faar_fftf_plan {
     int size, logm;
     int work_buffers;
     int twiddle_owned; /* Set unless the plan borrows a filter owner's table. */
     float *twiddle, *split, *work, *scratch;
-} faar_rfftf_plan;
+} faar_fftf_plan;
 
-int faar_rfftf_init(faar_rfftf_plan *plan, int size);
-void faar_rfftf_clear(faar_rfftf_plan *plan);
+int faar_fftf_init(faar_fftf_plan *plan, int size);
+void faar_fftf_clear(faar_fftf_plan *plan);
 /* Touch private workspace before the first transform; no stream data yet.
  * Set both_buffers when one plan serves both forward and inverse filtering. */
-void faar_rfftf_prepare(faar_rfftf_plan *plan, int both_buffers);
-void faar_rfftf_execute(const faar_rfftf_plan *plan, float *data, int inverse);
+void faar_fftf_prepare(faar_fftf_plan *plan, int both_buffers);
+void faar_fftf_execute(const faar_fftf_plan *plan, float *data, int inverse);
 
 /* Complex transform of n points, 16 through 4194304, on the same plan type.
  * Data is planar: n real parts then n imaginary parts, e^{-j} convention and
@@ -41,44 +41,44 @@ void faar_rfftf_execute(const faar_rfftf_plan *plan, float *data, int inverse);
  * transforms the buffer `in`, which must be one of them, and returns the
  * buffer holding the result: either one, so the caller never aliases it.
  * The inverse is conj(cforward(conj(x))) / n. */
-int faar_rfftf_cinit(faar_rfftf_plan *plan, int n);
-int faar_rfftf_cinit_shared(faar_rfftf_plan *plan, int n,
-                              const faar_rfftf_plan *owner);
+int faar_fftf_cinit(faar_fftf_plan *plan, int n);
+int faar_fftf_cinit_shared(faar_fftf_plan *plan, int n,
+                              const faar_fftf_plan *owner);
 /* Private paired-FIR variant for the smaller side of a padded plan. Only
  * cbuffer 0 is valid for padded plans initialized this way; the existing
  * cinit_shared function retains its two-buffer contract. */
-int faar_rfftf_cinit_shared_single(faar_rfftf_plan *plan, int n,
-                                     const faar_rfftf_plan *owner);
+int faar_fftf_cinit_shared_single(faar_fftf_plan *plan, int n,
+                                     const faar_fftf_plan *owner);
 /* Shared filter twiddles with private work; workspace_owner is an optional
  * larger plan in the same stream. Both owners must outlive this plan. */
-int faar_rfftf_cinit_filter_shared(faar_rfftf_plan *plan, int n,
-        const faar_rfftf_plan *filter_owner,
-        const faar_rfftf_plan *workspace_owner, int single);
-float *faar_rfftf_cbuffer(const faar_rfftf_plan *plan, int which);
-float *faar_rfftf_cforward(const faar_rfftf_plan *plan, float *in);
+int faar_fftf_cinit_filter_shared(faar_fftf_plan *plan, int n,
+        const faar_fftf_plan *filter_owner,
+        const faar_fftf_plan *workspace_owner, int single);
+float *faar_fftf_cbuffer(const faar_fftf_plan *plan, int which);
+float *faar_fftf_cforward(const faar_fftf_plan *plan, float *in);
 
-typedef struct faar_rfftd_plan {
+typedef struct faar_fftd_plan {
     int size, logm;
     int work_buffers;
     int twiddle_owned; /* Set unless the plan borrows a filter owner's table. */
     double *twiddle, *split, *work, *scratch;
-} faar_rfftd_plan;
+} faar_fftd_plan;
 
-int faar_rfftd_init(faar_rfftd_plan *plan, int size);
-void faar_rfftd_clear(faar_rfftd_plan *plan);
-void faar_rfftd_prepare(faar_rfftd_plan *plan, int both_buffers);
-void faar_rfftd_execute(const faar_rfftd_plan *plan, double *data, int inverse);
-int faar_rfftd_cinit(faar_rfftd_plan *plan, int n);
-int faar_rfftd_cinit_shared(faar_rfftd_plan *plan, int n,
-                              const faar_rfftd_plan *owner);
-int faar_rfftd_cinit_shared_single(faar_rfftd_plan *plan, int n,
-                                     const faar_rfftd_plan *owner);
+int faar_fftd_init(faar_fftd_plan *plan, int size);
+void faar_fftd_clear(faar_fftd_plan *plan);
+void faar_fftd_prepare(faar_fftd_plan *plan, int both_buffers);
+void faar_fftd_execute(const faar_fftd_plan *plan, double *data, int inverse);
+int faar_fftd_cinit(faar_fftd_plan *plan, int n);
+int faar_fftd_cinit_shared(faar_fftd_plan *plan, int n,
+                              const faar_fftd_plan *owner);
+int faar_fftd_cinit_shared_single(faar_fftd_plan *plan, int n,
+                                     const faar_fftd_plan *owner);
 /* Shared filter twiddles with private work; workspace_owner is an optional
  * larger plan in the same stream. Both owners must outlive this plan. */
-int faar_rfftd_cinit_filter_shared(faar_rfftd_plan *plan, int n,
-        const faar_rfftd_plan *filter_owner,
-        const faar_rfftd_plan *workspace_owner, int single);
-double *faar_rfftd_cbuffer(const faar_rfftd_plan *plan, int which);
-double *faar_rfftd_cforward(const faar_rfftd_plan *plan, double *in);
+int faar_fftd_cinit_filter_shared(faar_fftd_plan *plan, int n,
+        const faar_fftd_plan *filter_owner,
+        const faar_fftd_plan *workspace_owner, int single);
+double *faar_fftd_cbuffer(const faar_fftd_plan *plan, int which);
+double *faar_fftd_cforward(const faar_fftd_plan *plan, double *in);
 
 #endif
