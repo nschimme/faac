@@ -9,8 +9,9 @@ project('faac', 'c',
     ])
 
 # Shared-library ABI versions, separate from the project release version.
-# These are the single source for the SONAMEs, and Meson checks that the public
-# version macros in the installed headers match them. libfaac already shipped
+# These are the single source for the SONAMEs. The public version macros in the
+# installed headers, and so the version each library reports, are the project
+# release version; Meson checks that they match it. libfaac already shipped
 # SONAMEs 0-2 with other interfaces; the other libraries start at 0.
 library_abi_versions = {
     'FAAC': '3.0.0',

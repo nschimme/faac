@@ -6,9 +6,9 @@ version_headers = {
     'FAAM': 'faam.h',
     'FAAR': 'faar.h',
 }
+version_parts = meson.project_version().split('.')
+assert(version_parts.length() == 3, 'project version must be MAJOR.MINOR.PATCH')
 foreach library, header: version_headers
-    version_parts = library_abi_versions[library].split('.')
-    assert(version_parts.length() == 3, library + ' ABI version must be MAJOR.MINOR.PATCH')
     header_text = fs.read(header)
     foreach index: range(3)
         expected = '#define ' + library + '_VERSION_' + version_fields[index] + ' ' + version_parts[index]

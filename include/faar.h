@@ -77,7 +77,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#define FAAR_VERSION_MAJOR 0
+#define FAAR_VERSION_MAJOR 3
 #define FAAR_VERSION_MINOR 0
 #define FAAR_VERSION_PATCH 0
 #define FAAR_STR_(x) #x

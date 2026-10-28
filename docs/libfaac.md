@@ -721,8 +721,8 @@ ABI. Layouts follow the target's pointer width and alignment; they differ betwee
 - Baseline sizes (`FAAC_*_BASELINE` macros), released offsets, enum values, status codes
   and signatures stay fixed within a major version; incompatible changes need a
   new SONAME.
-- `FAAC_VERSION_MAJOR` matches the SONAME major; minor and patch track the
-  project release. `faac_get_library_info()` reports the linked version.
+- `FAAC_VERSION_*` is the project release version, which every library reports;
+  the SONAME is versioned separately. `faac_get_library_info()` reports the linked version.
 
 FAAC is free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later.
 

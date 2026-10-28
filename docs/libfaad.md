@@ -680,8 +680,8 @@ ABI. Layouts follow the target's pointer width and alignment; they differ betwee
 - Baseline sizes (`FAAD_*_BASELINE` macros), released offsets, enum values, status codes
   and signatures stay fixed within a major version; incompatible changes need a
   new SONAME.
-- `FAAD_VERSION_MAJOR` matches the SONAME major; minor and patch track this
-  library's ABI version, not the project release. `faad_get_library_info()` reports the linked version.
+- `FAAD_VERSION_*` is the project release version, which every library reports;
+  the SONAME is versioned separately. `faad_get_library_info()` reports the linked version.
 
 FAAD is free software, licensed under the GNU Lesser General Public License
 (LGPL), version 2.1 or later.
