@@ -86,10 +86,13 @@ static bool path_has_wav_suffix(const char *path) {
            tolower((unsigned char)path[len - 1]) == 'v';
 }
 
+/* Set once in main from the linked library. */
+static const char *g_lib_version;
+
 static void print_faar_help(int mode) {
     char version[128];
     show_help_usage("faar", mode,
-                    cli_version_string(version, sizeof(version), "3.0.0"),
+                    cli_version_string(version, sizeof(version), g_lib_version),
                     "faar [options] <input> [output]\n       faar [options] -o <dir> <input>...", help_groups);
     printf(
         "\nExamples:\n"
@@ -228,6 +231,13 @@ static int convert_file(const job_t *job, const char *input_path,
 }
 
 int main(int argc, char **argv) {
+    faar_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    if (faar_get_library_info(&libinfo) != FAAR_OK) {
+        fprintf(stderr, "Wrong libfaar version!\n");
+        return 1;
+    }
+    g_lib_version = libinfo.version;
+
     uint32_t target_rate = 0;
     uint32_t raw_in_rate = 44100;
     faar_quality quality = FAAR_QUALITY_GOOD;
@@ -374,7 +384,7 @@ int main(int argc, char **argv) {
     if (verbose > 0) {
         char version[128];
         fprintf(stderr, "Freeware Advanced Audio Resampler\nFAAR %s\n\n",
-                cli_version_string(version, sizeof(version), "3.0.0"));
+                cli_version_string(version, sizeof(version), g_lib_version));
     }
 
     const job_t job = {
