@@ -355,13 +355,13 @@ static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts, u
 
     mp4_metadata_t metadata = opts->metadata;
 
-    if (opts->encoder_info && libinfo.version)
+    if (opts->encoder_info)
     {
         char *version_string = malloc(128);
         if (version_string)
         {
             char ver_buf[128];
-            snprintf(version_string, 128, "FAAC %s", faac_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
+            snprintf(version_string, 128, "FAAC %s", cli_version_string(ver_buf, sizeof(ver_buf), PACKAGE_VERSION));
             metadata.encoder = version_string;
             allocated_tags[num_allocated++] = version_string;
         }
