@@ -67,14 +67,20 @@ option('encoder-ps',
     type: 'boolean',
     value: false)
 
-# SBR spectral analysis density: analyse every Nth slot per frame.
-# 1 = full quality (every slot); higher values trade MOS for faster encode.
-# Max 8: above that, both halves of the frame are sampled but the gain is negligible.
-# Only affects HE-AAC; LC encodes are identical regardless of this setting.
-#   1: every slot  -- reference quality (MOS d: 0)
-#   2: every 2nd   -- ~17% faster HE-AAC encode; MOS d: ~0
-#   4: every 4th   -- ~26% faster HE-AAC encode; MOS d: -0.010
-#   8: every 8th   -- ~30% faster HE-AAC encode; MOS d: -0.038
+# SBR spectral analysis density: analyse every Nth slot per frame. 1 = full
+# quality; higher values trade MOS for speed (max 8; above that, both halves
+# of the frame are sampled but the gain is negligible). Only affects HE-AAC;
+# LC encodes are identical. PS stacks on HE-AAC v1, so its extra work dilutes
+# the speed percentage. Prefer 2 when a speed benefit is needed: it is nearly
+# MOS-neutral for both profiles, while 4 and 8 cost roughly 2-2.6x the
+# HE-AAC v1 MOS loss in PS.
+#
+# Cost/benefit vs N=1 (MOS delta; relative encode-speed gain):
+#   N   HE-AAC v1 MOS   HE-AAC v2 MOS   HE-v1 speed   HE-v2 speed
+#   1   0               0               reference     reference
+#   2   ~0              -0.005          ~17% faster   ~8% faster
+#   4   -0.010          -0.022          ~26% faster   ~13% faster
+#   8   -0.038          -0.099          ~30% faster   ~16% faster
 option('sbr-decimation',
     description: 'Encoder SBR spectral analysis density: analyse every Nth slot (1=full quality, max=8)',
     type: 'integer',
@@ -90,11 +96,10 @@ option('max-channels',
     max: 8,
     value: 8)
 
-option('faar-precision',
-    description: 'FAAR arithmetic policy (mixed runs High filter kernels in double; float is double-free in the sample path for FPU-less targets)',
-    type: 'combo',
-    choices: ['float', 'mixed'],
-    value: 'mixed')
+option('resampler-float',
+    description: 'FAAR resampler: use the float-only engine (double-free sample path for FPU-less targets); the default mixed build runs High filter kernels in double',
+    type: 'boolean',
+    value: false)
 
 # End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
 # Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();

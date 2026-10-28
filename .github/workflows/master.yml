@@ -31,7 +31,7 @@ jobs:
               os: ubuntu-latest,
               compiler: gcc,
               shell: bash,
-              options: -Dfaar-precision=float,
+              options: -Dresampler-float=true,
             }
           - {
               name: Linux GCC (max 1 channel),

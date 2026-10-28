@@ -138,7 +138,7 @@ typedef enum faar_status {
 
 /* faar_library_info.flags */
 enum faar_library_flag {
-    FAAR_LIB_FLOAT_ONLY = 1u << 0, /* faar-precision=float: the sample path never uses double,
+    FAAR_LIB_FLOAT_ONLY = 1u << 0, /* resampler-float=true: the sample path never uses double,
                                     * so High runs on emulated extended precision and costs
                                     * about ten times more than in the default build */
     FAAR_LIB_FLAG_MAX   = 0x7fffffff

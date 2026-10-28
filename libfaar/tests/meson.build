@@ -121,7 +121,7 @@ foreach case : [
   test(case[0], test_faar_fft_real, args: [case[1], case[2]], timeout: 60)
 endforeach
 
-if get_option('faar-precision') == 'float'
+if get_option('resampler-float')
   test_faar_float2 = executable('test_faar_float2',
     ['test_faar_float2.c', '../fft_float2.c', '../fft_real.c'],
     include_directories: ['..', inc],
