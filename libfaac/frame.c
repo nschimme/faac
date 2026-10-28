@@ -215,13 +215,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
             (FAAC_ENCODER_SBR && rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE &&
              hEncoder->config.mpegVersion != MPEG2) ? HE_V1 : LOW;
 #if FAAC_ENCODER_PS
-        /* Keep the adjacent range on HE v1, including rates below its legacy
-         * AUTO floor, so crossing the PS ceiling does not send low-rate
-         * stereo back to LC. */
+        /* Explicit-bitrate stereo uses PS up to the ceiling, below HE v1's
+         * floor too; just above it stays on HE v1 rather than falling to LC. */
         unsigned long ps_ceiling = hEncoder->sampleRate == 48000 ? 8000 :
             (hEncoder->sampleRate == 32000 || hEncoder->sampleRate == 44100) ? 6000 : 0;
         if (ps_ceiling && hEncoder->numChannels == 2 &&
-            hEncoder->config.mpegVersion != MPEG2 && rate_per_ch >= 4000) {
+            hEncoder->config.mpegVersion != MPEG2 && rate_per_ch > 0) {
             if (rate_per_ch <= ps_ceiling)
                 hEncoder->config.aacObjectType = HE_V2;
             else if (rate_per_ch < HE_MIN_BITRATE_PER_CH)

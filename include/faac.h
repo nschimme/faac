@@ -102,7 +102,7 @@ typedef enum faac_status {
  * FAAC_OBJ_AUTO lets the library pick AAC-LC or HE-AAC by bitrate.
  */
 enum faac_object_type {
-    FAAC_OBJ_AUTO      = 0,          /* let the library choose LC or HE-AAC by bitrate */
+    FAAC_OBJ_AUTO      = 0,          /* choose LC or HE-AAC by bitrate; stereo may use HE-AAC v2 */
     FAAC_OBJ_LC        = 2,          /* AAC-LC                                       */
     FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR                                 */
     FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS  (requires encoder-ps build option) */

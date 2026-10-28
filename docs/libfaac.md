@@ -195,8 +195,9 @@ const char *faac_strerror(faac_status status);
 The `object_type` field of `faac_params` uses MPEG-4 Audio Object Type
 numbers: `FAAC_OBJ_LC` (2) is AAC-LC and `FAAC_OBJ_HE_AAC_V1` (5) is
 HE-AAC v1 (AAC-LC core + SBR). `FAAC_OBJ_AUTO` (0) lets the library choose
-LC or HE-AAC from the bitrate, or from `quality` when there is none. `FAAC_OBJ_HE_AAC_V2` (29) is defined but not
-implemented; requesting it returns `FAAC_ERR_UNSUPPORTED`.
+LC or HE-AAC from the bitrate, or from `quality` when there is none; in a PS
+build, stereo with an explicit bitrate can resolve to `FAAC_OBJ_HE_AAC_V2` (29).
+Requesting `FAAC_OBJ_HE_AAC_V2` without PS support returns `FAAC_ERR_UNSUPPORTED`.
 
 For an HE-AAC encoder the SBR core runs at half the input rate and codes a
 2048-sample frame, so `faac_encoder_get_info()` reports

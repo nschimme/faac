@@ -32,7 +32,7 @@ enum { MPEG4 = 0, MPEG2 = 1 };
 
 /* AAC object types this build implements, numbered per the MPEG-4 AOT
  * registry (mirrors the public FAAC_OBJ_* enum in <faac.h>). AUTO defers the
- * choice between LOW and HE_V1 to faacEncApplyConfig. */
+ * choice among LOW, HE_V1, and HE_V2 to faacEncApplyConfig. */
 enum { AUTO = 0, LOW = 2, HE_V1 = 5, HE_V2 = 29 };
 
 static inline int IsPS(unsigned int obj)
