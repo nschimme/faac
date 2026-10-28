@@ -133,11 +133,11 @@ static void exercise(uint32_t flags) {
     CHECK(count_key(d, LYRICS, NULL, NULL, initial_lyrics, sizeof(initial_lyrics) - 1) == 1);
     CHECK(count_key(d, FREEFORM, "org.example", "Identifier", NULL, 0) == 2);
     CHECK(count_key(d, UNKNOWN, NULL, NULL, binary, sizeof(binary)) == 1);
-    /* A larger caller buffer keeps its struct_size and the bytes past the library struct. */
+    /* A larger caller buffer reports the library struct size and keeps the bytes past it. */
     struct { faam_metadata_entry entry; uint8_t canary[8]; } output;
     memset(&output, 0xa5, sizeof(output)); output.entry.struct_size = sizeof(output);
     OK(faam_demuxer_get_metadata_entry(d, 0, &output.entry));
-    CHECK(output.entry.struct_size == sizeof(output));
+    CHECK(output.entry.struct_size == sizeof(faam_metadata_entry));
     for (unsigned i = 0; i < sizeof(output.canary); i++) CHECK(output.canary[i] == 0xa5);
     output.entry.struct_size = FAAM_METADATA_ENTRY_BASELINE - 1;
     CHECK(faam_demuxer_get_metadata_entry(d, 0, &output.entry) == FAAM_ERR_INVALID_ARGUMENT);

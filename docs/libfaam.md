@@ -24,7 +24,6 @@
   - [Reading MP4 for the FAAD decoder](#reading-mp4-for-the-faad-decoder)
   - [Thread safety](#thread-safety)
   - [Complete examples](#complete-examples)
-- [Porting from libfaam ABI 2 to ABI 3](#porting-from-libfaam-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 
 ## Scope
@@ -90,7 +89,7 @@ muxer can write or one demuxer can hold. `version` and `copyright` are static st
 
 Every fallible call returns `faam_status`; results use out-parameters. Set
 `struct_size` on every input and output struct, including nested pointer targets.
-Reserved fields and reserved flags must be zero.
+The `flags` argument of `faam_update_chapters_stream()` is reserved and must be 0.
 
 ### Stream I/O
 
@@ -198,40 +197,43 @@ are sticky, including at finalize/close. Argument errors are not sticky.
 The declarations below are from `faam.h`; output structs require `struct_size`.
 
 ```c
-faam_status faam_get_library_info(faam_library_info *out);
-faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
-                                      faam_demuxer **out_demuxer);
-faam_status faam_demuxer_close(faam_demuxer **d);
-faam_status faam_demuxer_get_num_tracks(const faam_demuxer *d, uint32_t *out_held, uint32_t *out_total);
-faam_status faam_demuxer_get_track_info(const faam_demuxer *d, uint32_t track_index,
+faam_status faam_get_library_info(faam_library_info *out_info);
+faam_status faam_demuxer_config_init(faam_demuxer_config *config, uint32_t caller_size);
+faam_status faam_io_init(faam_io *io, uint32_t caller_size);
+faam_status faam_track_config_init(faam_track_config *track, uint32_t caller_size);
+faam_status faam_demuxer_open(const faam_demuxer_config *config, const faam_io *io,
+                                      faam_demuxer **out);
+faam_status faam_demuxer_close(faam_demuxer **demuxer);
+faam_status faam_demuxer_get_num_tracks(const faam_demuxer *demuxer, uint32_t *out_held, uint32_t *out_total);
+faam_status faam_demuxer_get_track_info(const faam_demuxer *demuxer, uint32_t track_index,
                                                 faam_track_info *out_info);
-faam_status faam_demuxer_get_codec_data(const faam_demuxer *d, uint32_t track_id,
+faam_status faam_demuxer_get_codec_data(const faam_demuxer *demuxer, uint32_t track_id,
                                                 uint8_t *out_buf, uint32_t buf_cap,
                                                 uint32_t *out_len);
-faam_status faam_demuxer_get_major_brand(const faam_demuxer *d, char out_brand[5]);
-faam_status faam_demuxer_get_track_gapless(const faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless);
-faam_status faam_demuxer_get_num_metadata(const faam_demuxer *d, uint32_t *out_count);
-faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *d, uint32_t index, faam_metadata_entry *out_entry);
-faam_status faam_demuxer_get_num_chapters(const faam_demuxer *d, uint32_t *out_count);
-faam_status faam_demuxer_get_chapter(const faam_demuxer *d, uint32_t index, faam_chapter *out_chapter);
-faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc);
-faam_status faam_demuxer_read_frame(faam_demuxer *d,
+faam_status faam_demuxer_get_major_brand(const faam_demuxer *demuxer, char out_brand[5]);
+faam_status faam_demuxer_get_track_gapless(const faam_demuxer *demuxer, uint32_t track_id, faam_gapless_info *out_gapless);
+faam_status faam_demuxer_get_num_metadata(const faam_demuxer *demuxer, uint32_t *out_count);
+faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *demuxer, uint32_t index, faam_metadata_entry *out_entry);
+faam_status faam_demuxer_get_num_chapters(const faam_demuxer *demuxer, uint32_t *out_count);
+faam_status faam_demuxer_get_chapter(const faam_demuxer *demuxer, uint32_t index, faam_chapter *out_chapter);
+faam_status faam_demuxer_next_frame_loc(faam_demuxer *demuxer, faam_frame_loc *out_loc);
+faam_status faam_demuxer_read_frame(faam_demuxer *demuxer,
                                             uint8_t *out_frame, uint32_t frame_cap,
                                             uint32_t *frame_bytes);
-faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size);
-faam_status faam_muxer_get_track_id(const faam_muxer *m, uint32_t track_index, uint32_t *out_track_id);
-faam_status faam_muxer_update(faam_muxer *m, const faam_muxer_update_params *params);
-faam_status faam_muxer_write_frame(faam_muxer *m,
+faam_status faam_muxer_config_init(faam_muxer_config *config, uint32_t caller_size);
+faam_status faam_muxer_get_track_id(const faam_muxer *muxer, uint32_t track_index, uint32_t *out_track_id);
+faam_status faam_muxer_update(faam_muxer *muxer, const faam_muxer_update_params *params);
+faam_status faam_muxer_write_frame(faam_muxer *muxer,
                                            uint32_t track_id,
                                            const uint8_t *frame_buf, uint32_t frame_bytes,
                                            uint32_t duration_ticks,
                                            int32_t cts_offset,
                                            uint32_t frame_flags);
-faam_status faam_muxer_finalize(faam_muxer *m);
-faam_status faam_muxer_open(const faam_muxer_config *cfg, const faam_io *io,
-                                    faam_muxer **out_muxer);
-faam_status faam_muxer_close(faam_muxer **m);
-faam_status faam_muxer_get_info(const faam_muxer *m, uint32_t track_id, faam_muxer_info *out_info);
+faam_status faam_muxer_finalize(faam_muxer *muxer);
+faam_status faam_muxer_open(const faam_muxer_config *config, const faam_io *io,
+                                    faam_muxer **out);
+faam_status faam_muxer_close(faam_muxer **muxer);
+faam_status faam_muxer_get_info(const faam_muxer *muxer, uint32_t track_id, faam_muxer_info *out_info);
 const char *faam_strerror(faam_status status);
 faam_status faam_update_metadata_stream(const faam_io *io, const faam_metadata_entry *entries, uint32_t count, uint32_t flags);
 faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *chapters, uint32_t count, uint32_t flags);
@@ -239,7 +241,7 @@ faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *c
 
 ### Demuxer lifecycle
 
-1. Pass a `faam_demuxer_config` with `struct_size` set and `flags` zero, or
+1. Pass a `faam_demuxer_config` from `faam_demuxer_config_init()` (`flags` stays zero), or
    NULL for defaults, to open. Opening retains `moov` and
    indexes progressive samples; no `moov` means zero tracks.
 2. Get held/total counts, then query track info by index. Other track calls
@@ -997,56 +999,69 @@ int main(int argc, char **argv)
 }
 ```
 
-## Porting from libfaam ABI 2 to ABI 3
-
-| ABI 2 | ABI 3 / caller action |
-|---|---|
-| `FAAM_ERR_INSUFFICIENT_MEM` | `FAAM_ERR_NO_MEMORY`; allocation failure. |
-| `faam_library_info.features` | `faam_library_info.flags`; test `FAAM_LIB_*` bits. |
-| `FAAM_FEATURE_VIDEO` | `FAAM_LIB_VIDEO`. |
-| `FAAM_FEATURE_FRAGMENTED` | `FAAM_LIB_FRAGMENTED`. |
-| `faam_library_info.reserved0` | Removed. |
-| `faam_library_info` field order | `version` and `copyright` come first, then the numeric fields (`max_tracks`, `flags`); the baseline ends at `flags` and `struct_size` reports the bytes populated. |
-| `faam_frame_loc.is_keyframe` | Test `flags & FAAM_FRAME_KEYFRAME`; `faam_frame_loc.reserved0` is removed. |
-| `faam_demuxer_get_*` demuxer argument | Takes `const faam_demuxer *`; source-compatible for callers passing a non-const handle. |
-| `faam_demuxer_config.reserved0` | Removed; the baseline ends at `flags`. |
-| `faam_muxer_info.reserved0` | Removed; the baseline still ends at `max_frame_size`. |
-| `faam_io.reserved0`, `faam_gapless_info.reserved0`, `faam_chapter.reserved0`, `faam_muxer_config.reserved0`, `faam_muxer_update_params.reserved0` | Removed. They were explicit padding before a 64-bit or pointer member, which the compiler still aligns, so offsets are unchanged on 64-bit targets. Do not set them. |
-| `faam_track_info.reserved0` | Removed; `language` moves two bytes earlier. Rebuild against the new header. |
-
 ## ABI compatibility
 
-Every caller-filled or received struct starts with uint32_t struct_size. Set
-it to sizeof of your struct. The corresponding `FAAM_*_BASELINE` freezes its
-minimum accepted size: larger structs are accepted, input reads only covered
-fields, and output writes at most struct_size bytes. Unknown fields take
-zero values. Zero your storage and reset struct_size before each query.
+The API and ABI are stable within a major version / SONAME on a given platform
+ABI. Layouts follow the target's pointer width and alignment; they differ between
+32- and 64-bit targets and are not a serialization format.
 
-New storage is appended at or after the previous sizeof(struct), preserving
-alignment; compiler padding is never reused. Callers must check library support
-before requesting new behavior.
-Baseline sizes, released enum values, signatures and field offsets stay fixed
-within a major version. The design excludes embedded structs and embedded list arrays:
-tracks, chapters and metadata entries use pointers/counts. The header still has
-fixed language byte arrays; these are not extensible lists.
-Input arrays have one uniform element size, strided by the first element's
-struct_size. Output lists use count getters and index getters.
-Update parameters carry num_metadata and a metadata pointer; their baseline
-ends at metadata. No struct has explicit reserved fields; padding is the
-compiler's.
+**Caller rules**
 
-Open calls take config pointers so future knobs can be appended.
-Only the demuxer accepts a NULL config; the muxer requires a populated one.
-Compile-time options never change public layouts; query library features.
-Layouts follow platform pointer width/alignment and are not serialized formats.
+- Every struct the caller fills or receives starts with `uint32_t struct_size`.
+  Initialize `faam_muxer_config`, `faam_demuxer_config`, `faam_track_config` and
+  `faam_io` with `faam_muxer_config_init()`, `faam_demuxer_config_init()`,
+  `faam_track_config_init()` and `faam_io_init()` (pass `sizeof` of the struct).
+  `faam_chapter`, `faam_metadata_entry`, `faam_gapless_info` and
+  `faam_muxer_update_params` have no init function: set `.struct_size = sizeof(x)`
+  and zero the rest (`{ .struct_size = sizeof(x) }`). Set `.struct_size` on every
+  output struct and on nothing else.
+- Initialization stores `min(caller size, library size)` in `struct_size`. That
+  write-back is the support probe: before using a field appended in a newer
+  release, check that `struct_size` covers it. Structs without an init function
+  (`faam_chapter`, `faam_metadata_entry`, `faam_gapless_info`) are also getter
+  outputs, so a query reports the same probe. `faam_muxer_update_params` gates
+  every field behind a `flags` bit and rejects unknown bits, so a library that
+  predates a field refuses the update instead of ignoring it.
+- Query functions write at most the caller's `struct_size` bytes and set
+  `struct_size` to the bytes populated. Reset it before each query.
+- The library reads only the input bytes `struct_size` covers; absent fields take
+  their zero value. A `struct_size` below the matching `FAAM_*_BASELINE` returns
+  `FAAM_ERR_INVALID_ARGUMENT`.
+- Input lists (tracks, chapters, metadata entries) are a pointer and a count,
+  strided by the first element's `struct_size`, so every element shares one size.
+  Output lists use a count getter plus a getter by index. A getter reports the
+  bytes populated in `struct_size`, which can be smaller than your `sizeof`, so
+  set `struct_size = sizeof(element)` again on every element before passing
+  queried chapters or metadata entries back as input; mixed sizes are rejected.
+- `faam_demuxer_config.flags` is reserved and must be 0; the demuxer rejects
+  anything else. A `struct_size` of 0 or below the baseline is detectable; a
+  garbage larger value is not, so always initialize.
+- Tolerate unknown enum values, flag bits and status codes in anything the
+  library returns.
+  `FAAM_OK` is 0 and `FAAM_ERR_INVALID_ARGUMENT`, `FAAM_ERR_UNSUPPORTED` and
+  `FAAM_ERR_NO_MEMORY` are -1, -2 and -3 in all four libraries; higher codes are
+  specific to each library. `faam_update_chapters_stream()` takes a `flags` argument that
+  must be 0.
+- Compile-time options never change public layouts; query
+  `faam_get_library_info()` for what a build supports, including `max_tracks`
+  (do not compile against the internal track cap).
 
-`FAAM_VERSION_MAJOR`, `FAAM_VERSION_MINOR`, `FAAM_VERSION_PATCH`,
-`FAAM_VERSION_STRING` and `FAAM_VERSION_HEX` describe header version 3.0.0.
-Major 3 corresponds to SONAME 3; faam_get_library_info reports the linked version.
-Deliberately outside the ABI are opaque handle contents, allocation/state
-sizes, sample-index limits and the internal track cap (currently 8).
-Query max_tracks instead of compiling against that cap. No internal track
-array or compile-time track-cap constant is part of the public interface.
+**Maintainer rules**
+
+- New fields are appended at or after the previous `sizeof(struct)`, never in its
+  tail padding. Place each appended member at an offset that is a multiple of its
+  size, add an explicit `uint32_t` first if needed, and keep each appended block a
+  multiple of 8 bytes. `faam_demuxer_config` has 4-byte alignment: append only
+  members of 4 bytes or less.
+- Zero in a new input field keeps the previous behaviour.
+- Baseline sizes (`FAAM_*_BASELINE` macros), released offsets, enum values, status
+  codes and signatures stay fixed within a major version.
+- No struct embeds another or holds an array of structs; the fixed `language`
+  byte arrays are not extensible lists. Open calls take config pointers so knobs
+  can be appended; only the demuxer accepts a NULL config.
+- `FAAM_VERSION_MAJOR` matches the SONAME major; minor and patch track the project
+  release. Opaque handle contents, allocation/state sizes and sample-index limits
+  are outside the ABI.
 
 FAAM is free software, licensed under the GNU Lesser General Public License
 (LGPL), version 2.1 or later.

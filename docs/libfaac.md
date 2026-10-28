@@ -7,7 +7,6 @@
 - [Building and linking](#building-and-linking)
 - [Supported streams](#supported-streams)
 - [API (faac.h)](#api-faach)
-
   - [Calling sequence](#calling-sequence)
   - [Error handling](#error-handling)
   - [Function reference](#function-reference)
@@ -19,7 +18,6 @@
   - [Encoder delay and gapless output](#encoder-delay-and-gapless-output)
   - [Rate control modes](#rate-control-modes)
   - [Capping the peak frame size](#capping-the-peak-frame-size)
-
 - [Porting from the legacy faacEnc* API](#porting-from-the-legacy-faacenc-api)
 - [Porting from libfaac ABI 1](#porting-from-libfaac-abi-1)
 - [Porting from libfaac ABI 2 to ABI 3](#porting-from-libfaac-abi-2-to-abi-3)
@@ -174,19 +172,19 @@ partial block first, then drain until zero output; close does not drain audio.
 
 ```c
 /* library-global facts: compiled channel ceiling, version/copyright */
-faac_status faac_get_library_info(faac_library_info *out);
+faac_status faac_get_library_info(faac_library_info *out_info);
 
-faac_status faac_params_init(faac_params *p, uint32_t caller_size);  /* sizeof(*p) */
-faac_status faac_encoder_open(const faac_params *p, faac_encoder **out);
-faac_status faac_encoder_close(faac_encoder **enc);   /* sets *enc = NULL */
+faac_status faac_params_init(faac_params *params, uint32_t caller_size);  /* sizeof(*params) */
+faac_status faac_encoder_open(const faac_params *config, faac_encoder **out);
+faac_status faac_encoder_close(faac_encoder **encoder);   /* sets *encoder = NULL */
 
-/* resolved properties, valid after open; set out.struct_size first */
-faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out);
+/* resolved properties, valid after open; set out_info->struct_size first */
+faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_encoder_info *out_info);
 
 /* AudioSpecificConfig: library-owned, valid until close, do NOT free */
-faac_status faac_encoder_asc(const faac_encoder *enc, const uint8_t **buf, uint32_t *len);
+faac_status faac_encoder_asc(const faac_encoder *encoder, const uint8_t **buf, uint32_t *len);
 
-faac_status faac_encoder_encode(faac_encoder *enc,
+faac_status faac_encoder_encode(faac_encoder *encoder,
                                 const void *in, uint32_t in_samples,
                                 uint8_t *out, uint32_t out_cap,
                                 uint32_t *bytes_written);
@@ -680,23 +678,47 @@ calls and rebuild.
 
 ## ABI compatibility
 
-Initialize parameters with `faac_params_init(&p, sizeof(p))`; initialize query
-structs with `.struct_size = sizeof(info)`. Query functions update
-`struct_size` to the number of bytes populated. Reinitialize it before reusing
-a struct as a query destination. Check the returned populated size before
-using an appended field when supporting older libraries.
+The API and ABI are stable within a major version / SONAME on a given platform
+ABI. Layouts follow the target's pointer width and alignment; they differ between
+32- and 64-bit targets and are not a serialization format.
 
-The library accepts its frozen baseline struct sizes, ignores unknown trailing
-configuration storage, and writes at most the caller's capacity in initialization
-and queries. Bytes beyond the library's known layout remain untouched; callers
-using newer structs with older libraries should also zero their own storage.
-Named fields grow additively; do not repurpose reserved padding.
+**Caller rules**
 
-Fixed-width integers and width-pinned enums support `-fshort-enums` on a given
-platform ABI. Pointer fields follow the target's pointer width and alignment;
-layouts are not necessarily identical across 32-/64-bit targets. These structs
-are not serializable file or network formats. Incompatible signature/layout
-changes require a new library ABI version.
+- Initialize parameters with `faac_params_init(&params, sizeof params)`. Initialize each output struct
+  by setting `.struct_size = sizeof(info)` and nothing else.
+- Initialization stores `min(caller size, library size)` in `struct_size`. That
+  write-back is the support probe: before using a field appended in a newer
+  release, check that `struct_size` covers it
+  (`struct_size >= offsetof(T, field) + sizeof(((T *)0)->field)`).
+- Query functions write at most the caller's `struct_size` bytes and set
+  `struct_size` to the bytes populated. Reset it before reusing a struct as a
+  query destination.
+- The library reads only the input bytes `struct_size` covers; absent fields take
+  their zero or default value. A `struct_size` below the struct's `FAAC_*_BASELINE`
+  macro, including zero, returns `FAAC_ERR_INVALID_ARGUMENT`.
+  Unknown flag bits and out-of-range enum values are rejected the same way.
+- Tolerate unknown enum values, flag bits and status codes in anything the
+  library returns.
+  `FAAC_OK` is 0 and `FAAC_ERR_INVALID_ARGUMENT`, `FAAC_ERR_UNSUPPORTED` and
+  `FAAC_ERR_NO_MEMORY` are -1, -2 and -3 in all four libraries; higher codes are
+  specific to each library.
+- Fixed-width integers and width-pinned enums keep layouts stable under
+  `-fshort-enums`. `size_t` appears in signatures only and follows the platform ABI.
+
+**Maintainer rules**
+
+- New fields are appended at or after the previous `sizeof(struct)`, never in its
+  tail padding. In a pointer-free struct with 4-byte alignment (`faac_params`, `faac_encoder_info`) append only
+  members of 4 bytes or less, so alignment stays 4. Where a struct holds a pointer
+  or 64-bit member, place each appended member at an offset that is a multiple of
+  its size, add an explicit `uint32_t` first if needed, and keep each appended
+  block a multiple of 8 bytes.
+- Zero in a new input field keeps the previous behaviour.
+- Baseline sizes (`FAAC_*_BASELINE` macros), released offsets, enum values, status codes
+  and signatures stay fixed within a major version; incompatible changes need a
+  new SONAME.
+- `FAAC_VERSION_MAJOR` matches the SONAME major; minor and patch track the
+  project release. `faac_get_library_info()` reports the linked version.
 
 FAAC is free software, licensed under the GNU Lesser General Public License (LGPL), version 2.1 or later.
 

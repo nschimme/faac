@@ -85,6 +85,14 @@ if default_lib == 'shared' or default_lib == 'both'
       'c_args' : common_args['c_args'] + ['-DFAAC_BUILDING'],
       'vs_module_defs' : 'libfaac.def',
     }
+    # GNU ld version script (ELF only). PE and Mach-O have no symbol versions, so skip them and probe the rest.
+    faac_map = meson.current_source_dir() / 'libfaac.map'
+    if host_machine.system() not in ['windows', 'cygwin', 'darwin'] and cc.has_link_argument('-Wl,--version-script=' + faac_map)
+        shared_kwargs += {
+          'link_args' : ['-Wl,--version-script=' + faac_map],
+          'link_depends' : [faac_map],
+        }
+    endif
     libfaac_shared = shared_library(
         'faac',
         libfaac_src,

@@ -20,7 +20,6 @@
   - [What the legacy API did that you may be working around](#what-the-legacy-api-did-that-you-may-be-working-around)
   - [Configuration field mapping](#configuration-field-mapping)
   - [Frame metadata mapping](#frame-metadata-mapping)
-- [Porting from libfaad ABI 2 to ABI 3](#porting-from-libfaad-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 
 ## Scope
@@ -152,25 +151,25 @@ for consumption and retry rules.
 
 ```c
 /* Library version, compiled channel ceiling and SBR/PS support.
- * Set out->struct_size before calling. */
-faad_status faad_get_library_info(faad_library_info *out);
+ * Set out_info->struct_size before calling. */
+faad_status faad_get_library_info(faad_library_info *out_info);
 
-faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
-faad_status faad_decoder_open(const faad_config *cfg,
+faad_status faad_config_init(faad_config *config, uint32_t caller_size);
+faad_status faad_decoder_open(const faad_config *config,
                               const uint8_t *asc_buf, uint32_t asc_len,
-                              faad_decoder **out_dec);
-faad_status faad_decoder_close(faad_decoder **dec);  /* sets *dec = NULL */
+                              faad_decoder **out);
+faad_status faad_decoder_close(faad_decoder **decoder);  /* sets *decoder = NULL */
 
 /* Current format and lifetime PCM capacity; set out_info->struct_size. */
-faad_status faad_decoder_get_info(const faad_decoder *dec,
+faad_status faad_decoder_get_info(const faad_decoder *decoder,
                                   faad_stream_info *out_info);
-faad_status faad_decode_frame(faad_decoder *dec,
+faad_status faad_decode_frame(faad_decoder *decoder,
                               const uint8_t *in_buf, uint32_t in_bytes,
                               uint32_t *bytes_consumed,
                               void *out_pcm, uint32_t out_cap_bytes,
                               uint32_t *bytes_written,
                               uint32_t *frame_flags);
-faad_status faad_decoder_flush(faad_decoder *dec);
+faad_status faad_decoder_flush(faad_decoder *decoder);
 
 const char *faad_strerror(faad_status status);
 ```
@@ -641,27 +640,49 @@ public parser equivalent. Pass ASC to decoder initialization and query the
 available stream metadata; applications needing detailed ASC syntax must
 handle that in their container/parser layer.
 
-## Porting from libfaad ABI 2 to ABI 3
-
-| ABI 2 | ABI 3 / caller action |
-|---|---|
-| `FAAD_OUTPUT_32BIT` | `FAAD_OUTPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
-| `FAAD_ERR_INSUFFICIENT_MEM` | `FAAD_ERR_NO_MEMORY`; allocation failure or supplied state block too small. |
-| `faad_library_info.sbr_supported` | Test `flags & FAAD_LIB_SBR`. |
-| `faad_library_info.ps_supported` | Test `flags & FAAD_LIB_PS`. |
-| `faad_stream_info.format_known` | Test `flags & FAAD_STREAM_FORMAT_KNOWN`; clear before ADTS discovery, set once the format is known. |
-| `faad_stream_info.prog_ref_level_present` | Test `flags & FAAD_STREAM_PROG_REF_LEVEL`; `prog_ref_level` is valid only when that bit is set. |
-| `faad_stream_info.reserved_drc` | Removed; `prog_ref_level` follows `flags`. |
-| `faad_config.reserved` | Removed; the tail is now `drc_target_level`. |
-| Library/stream info `reserved` | Removed; query functions write back the populated `struct_size`. |
-
 ## ABI compatibility
 
-Initialize configuration with `faad_config_init(&cfg, sizeof cfg)` and each
-info struct with `.struct_size = sizeof(info)`. The library writes back the
-number of bytes populated; that size remains valid for later info queries.
-The API/ABI is stable within the major version / SONAME. Struct layouts follow
-the target platform ABI; they are not a wire format.
+The API and ABI are stable within a major version / SONAME on a given platform
+ABI. Layouts follow the target's pointer width and alignment; they differ between
+32- and 64-bit targets and are not a serialization format.
+
+**Caller rules**
+
+- Initialize configuration with `faad_config_init(&cfg, sizeof cfg)`. Initialize each output struct
+  by setting `.struct_size = sizeof(info)` and nothing else.
+- Initialization stores `min(caller size, library size)` in `struct_size`. That
+  write-back is the support probe: before using a field appended in a newer
+  release, check that `struct_size` covers it
+  (`struct_size >= offsetof(T, field) + sizeof(((T *)0)->field)`).
+- Query functions write at most the caller's `struct_size` bytes and set
+  `struct_size` to the bytes populated. Reset it before reusing a struct as a
+  query destination.
+- The library reads only the input bytes `struct_size` covers; absent fields take
+  their zero or default value. A `struct_size` below the struct's `FAAD_*_BASELINE`
+  macro, including zero, returns `FAAD_ERR_INVALID_ARGUMENT`.
+  Unknown flag bits and out-of-range enum values are rejected the same way.
+- Tolerate unknown enum values, flag bits and status codes in anything the
+  library returns.
+  `FAAD_OK` is 0 and `FAAD_ERR_INVALID_ARGUMENT`, `FAAD_ERR_UNSUPPORTED` and
+  `FAAD_ERR_NO_MEMORY` are -1, -2 and -3 in all four libraries; higher codes are
+  specific to each library.
+- Fixed-width integers and width-pinned enums keep layouts stable under
+  `-fshort-enums`. `size_t` appears in signatures only and follows the platform ABI.
+
+**Maintainer rules**
+
+- New fields are appended at or after the previous `sizeof(struct)`, never in its
+  tail padding. In a pointer-free struct with 4-byte alignment (`faad_config`, `faad_stream_info`) append only
+  members of 4 bytes or less, so alignment stays 4. Where a struct holds a pointer
+  or 64-bit member, place each appended member at an offset that is a multiple of
+  its size, add an explicit `uint32_t` first if needed, and keep each appended
+  block a multiple of 8 bytes.
+- Zero in a new input field keeps the previous behaviour.
+- Baseline sizes (`FAAD_*_BASELINE` macros), released offsets, enum values, status codes
+  and signatures stay fixed within a major version; incompatible changes need a
+  new SONAME.
+- `FAAD_VERSION_MAJOR` matches the SONAME major; minor and patch track the
+  project release. `faad_get_library_info()` reports the linked version.
 
 FAAD is free software, licensed under the GNU Lesser General Public License
 (LGPL), version 2.1 or later.

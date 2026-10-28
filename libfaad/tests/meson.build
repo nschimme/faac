@@ -44,7 +44,7 @@ test_faad_tns_order = executable('test_faad_tns_order', 'test_faad_tns_order.c',
     include_directories: ['..', '../..', '../../include', common_inc], link_with: [libfaad])
 test('test_unit_faad_tns_order', test_faad_tns_order)
 
-if get_option('decoder-sbr') and get_option('decoder-ps') and get_option('max-channels') >= 2
+if get_option('decoder-sbr') and get_option('decoder-ps') and get_option('max-channels') >= 2 and (default_lib == 'static' or default_lib == 'both')
     test_faad_ps = executable('test_faad_ps', 'test_faad_ps.c',
         c_args: faad_c_args + ['-DFAAD_STATIC'],
         include_directories: ['..', '../..', '../../include', common_inc],

@@ -28,9 +28,9 @@
  *     type) are known and queryable the instant open() returns.
  *   - Every fallible call returns a faac_status; faac_strerror() maps a status
  *     to a human-readable string.
- *   - Fixed-width integer types and width-pinned enums keep the ABI identical
- *     across 64-bit platforms (LP64 and LLP64), regardless of -fshort-enums.
- *     faac_params is pointer-free; other structs follow target pointer alignment.
+ *   - Fixed-width integer types and width-pinned enums keep the ABI stable on
+ *     each target platform, regardless of -fshort-enums. faac_params is
+ *     pointer-free; other structs follow the target's pointer width and alignment.
  *   - faac_params grows only additively: new releases append named fields and
  *     grow sizeof(faac_params); callers MUST zero-initialize via
  *     faac_params_init() so struct_size lets the library reconcile versions.
@@ -190,11 +190,13 @@ enum faac_flag {
  *
  * Maintainers: appended fields must start at or after the previous sizeof(struct),
  * never in its tail padding: struct_size cannot distinguish a new field there
- * from padding supplied by an older caller. Explicit reserved fields must be zero
- * on input and are zero on output until assigned a future meaning. They may be
- * reused with their storage and offsets preserved and zero retaining the previous
- * behavior. Callers must check library support before requesting new behavior.
- * Existing field offsets, meanings and struct alignment, and baseline sizes stay fixed.
+ * from padding supplied by an older caller. faac_params and
+ * faac_encoder_info are pointer-free with 4-byte alignment: append only members of
+ * 4 bytes or less. Structs holding pointers take members at multiples of their
+ * size, in blocks of 8 bytes. Zero in a new field keeps
+ * the previous behavior. Callers check library support through the struct_size
+ * faac_params_init() writes back. Existing field offsets, meanings and struct
+ * alignment, and baseline sizes stay fixed.
  */
 typedef struct faac_params {
     uint32_t                struct_size;   /* set by faac_params_init() */
@@ -286,7 +288,7 @@ typedef struct faac_encoder_info {
  * channel ceiling, the version/copyright strings, SBR analysis density and flags.
  * These reflect build-time options (max-channels, sbr-decimation, encoder-sbr) that the
  * header alone cannot report, so they are queried at runtime. Set
- * out->struct_size to sizeof(faac_library_info) before the call; the struct
+ * out_info->struct_size to sizeof(faac_library_info) before the call; the struct
  * grows only by appending fields, so a newer library stays compatible with an
  * older caller's smaller struct. struct_size reports bytes populated.
  * version/copyright are static and library-owned; do not free them.
@@ -313,16 +315,23 @@ typedef struct faac_library_info {
     uint32_t                flags;          /* FAAC_LIB_* */
 } faac_library_info;
 
-FAACAPI faac_status faac_get_library_info(faac_library_info *out);
+/* Offset just past the named field: the smallest struct size the library accepts. */
+#define FAAC_STRUCT_END(type, field) \
+    (offsetof(type, field) + sizeof(((type *)0)->field))
+#define FAAC_PARAMS_BASELINE FAAC_STRUCT_END(faac_params, rate_control)
+#define FAAC_ENCODER_INFO_BASELINE FAAC_STRUCT_END(faac_encoder_info, rate_control)
+#define FAAC_LIBRARY_INFO_BASELINE FAAC_STRUCT_END(faac_library_info, sbr_decimation)
 
-/* Zero-initialize *p and fill in library defaults and struct_size. Pass
- * sizeof(*p) as caller_size; never writes past min(caller_size,
+FAACAPI faac_status faac_get_library_info(faac_library_info *out_info);
+
+/* Zero-initialize *params and fill in library defaults and struct_size. Pass
+ * sizeof(*params) as caller_size; never writes past min(caller_size,
  * sizeof(faac_params)), so a caller stays safe even if the loaded library's
  * faac_params has grown since the caller was built. Returns
  * FAAC_ERR_INVALID_ARGUMENT if p is NULL or caller_size is smaller than
  * faac_params's minimum layout, through rate_control.
  */
-FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size);
+FAACAPI faac_status faac_params_init(faac_params *params, uint32_t caller_size);
 
 /*
  * Create an encoder from a fully-specified faac_params. On success writes the
@@ -331,25 +340,25 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size);
  * this build does not implement). The faac_params is consumed by this call and
  * need not outlive it.
  */
-FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out);
+FAACAPI faac_status faac_encoder_open(const faac_params *config, faac_encoder **out);
 
 /*
  * Destroy an encoder. Pass the address of your handle; on success the handle is
  * set to NULL to help guard against use-after-free. Passing a pointer to a NULL
  * handle is a no-op that returns FAAC_OK.
  */
-FAACAPI faac_status faac_encoder_close(faac_encoder **enc);
+FAACAPI faac_status faac_encoder_close(faac_encoder **encoder);
 
 /*
- * Query the resolved encoder properties. Set out->struct_size to
+ * Query the resolved encoder properties. Set out_info->struct_size to
  * sizeof(faac_encoder_info) first; the library fills the fields (writing at most
- * out->struct_size bytes, so a newer library is safe against an older caller's
+ * out_info->struct_size bytes, so a newer library is safe against an older caller's
  * struct) and updates struct_size to the number of bytes populated. Returns
- * FAAC_ERR_INVALID_ARGUMENT if enc or out is NULL, or struct_size is too small.
+ * FAAC_ERR_INVALID_ARGUMENT if encoder or out_info is NULL, or struct_size is too small.
  * Use these values to size the input/output buffers and to report the effective
  * configuration back to the user.
  */
-FAACAPI faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out);
+FAACAPI faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_encoder_info *out_info);
 
 /*
  * Return the AudioSpecificConfig (a.k.a. decoder-specific info) for this
@@ -357,7 +366,7 @@ FAACAPI faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_
  * encoder is closed; do NOT free it. Returns FAAC_ERR_UNSUPPORTED for
  * configurations that have no ASC (e.g. MPEG-2).
  */
-FAACAPI faac_status faac_encoder_asc(const faac_encoder *enc,
+FAACAPI faac_status faac_encoder_asc(const faac_encoder *encoder,
                                      const uint8_t **buf, uint32_t *len);
 
 /*
@@ -369,7 +378,7 @@ FAACAPI faac_status faac_encoder_asc(const faac_encoder *enc,
  * 0 while priming, accumulating, or draining). Pass in_samples == 0 to drain at
  * end of stream; keep calling until *bytes_written is 0.
  */
-FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
+FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
                                         const void *in, uint32_t in_samples,
                                         uint8_t *out, uint32_t out_cap,
                                         uint32_t *bytes_written);

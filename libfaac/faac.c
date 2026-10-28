@@ -59,27 +59,24 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
 
 /* The minimum parameter layout ends at rate_control so appended fields do
  * not raise the minimum caller size. */
-#define PARAMS_BASELINE_SIZE \
-    ((uint32_t)(offsetof(faac_params, rate_control) + sizeof(enum faac_rate_control)))
+#define PARAMS_BASELINE_SIZE ((uint32_t)FAAC_PARAMS_BASELINE)
 
 /* Query baselines end at their last field so appended fields remain optional. */
-#define LIBRARY_INFO_BASELINE_SIZE \
-    ((uint32_t)(offsetof(faac_library_info, sbr_decimation) + sizeof(uint32_t)))
-#define ENCODER_INFO_BASELINE_SIZE \
-    ((uint32_t)(offsetof(faac_encoder_info, rate_control) + sizeof(enum faac_rate_control)))
+#define LIBRARY_INFO_BASELINE_SIZE ((uint32_t)FAAC_LIBRARY_INFO_BASELINE)
+#define ENCODER_INFO_BASELINE_SIZE ((uint32_t)FAAC_ENCODER_INFO_BASELINE)
 
 /* faac_encoder* and faacEncHandle are the same underlying object. */
 static inline faacEncStruct *unwrap(faac_encoder *enc) { return (faacEncStruct *)enc; }
 
-FAACAPI faac_status faac_get_library_info(faac_library_info *out)
+FAACAPI faac_status faac_get_library_info(faac_library_info *out_info)
 {
     faac_library_info info;
     char *vid = NULL, *vcopy = NULL;
     uint32_t caller_size, n;
 
-    if (!out)
+    if (!out_info)
         return FAAC_ERR_INVALID_ARGUMENT;
-    caller_size = out->struct_size;
+    caller_size = out_info->struct_size;
     if (caller_size < LIBRARY_INFO_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
 
@@ -96,16 +93,16 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out)
      * an older, smaller faac_library_info; report the byte count actually set. */
     n = caller_size < (uint32_t)sizeof(info) ? caller_size : (uint32_t)sizeof(info);
     info.struct_size = n;
-    memcpy(out, &info, n);
+    memcpy(out_info, &info, n);
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
+FAACAPI faac_status faac_params_init(faac_params *params, uint32_t caller_size)
 {
     faac_params tmp;
     uint32_t n;
 
-    if (!p)
+    if (!params)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (caller_size < PARAMS_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
@@ -127,7 +124,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
      * an older, smaller faac_params; report the byte count actually set. */
     n = caller_size < (uint32_t)sizeof(faac_params) ? caller_size : (uint32_t)sizeof(faac_params);
     tmp.struct_size = n;
-    memcpy(p, &tmp, n);
+    memcpy(params, &tmp, n);
     return FAAC_OK;
 }
 
@@ -225,8 +222,10 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
+FAACAPI faac_status faac_encoder_open(const faac_params *config, faac_encoder **out)
 {
+    faac_params local;
+    const faac_params *p = &local;
     faacEncStruct *h;
     faacEncConfiguration *cfg;
     unsigned long inSamples = 0, maxOut = 0;
@@ -237,12 +236,16 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     if (!out)
         return FAAC_ERR_INVALID_ARGUMENT;
     *out = NULL;
-    if (!p)
+    if (!config)
         return FAAC_ERR_INVALID_ARGUMENT;
 
     /* Not sizeof(faac_params): that grows, which would reject older callers. */
-    if (p->struct_size < PARAMS_BASELINE_SIZE)
+    if (config->struct_size < PARAMS_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
+
+    /* Read only what the caller's struct_size covers; appended fields stay zero. */
+    memset(&local, 0, sizeof(local));
+    memcpy(&local, config, config->struct_size < sizeof(local) ? config->struct_size : sizeof(local));
 
     st = validate_params(p, &bit_rate_per_channel);
     if (st != FAAC_OK)
@@ -319,13 +322,13 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_encoder_close(faac_encoder **enc)
+FAACAPI faac_status faac_encoder_close(faac_encoder **encoder)
 {
-    if (!enc)
+    if (!encoder)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (*enc) {
-        faacEncClose((faacEncHandle)unwrap(*enc));
-        *enc = NULL;
+    if (*encoder) {
+        faacEncClose((faacEncHandle)unwrap(*encoder));
+        *encoder = NULL;
     }
     return FAAC_OK;
 }
@@ -347,18 +350,18 @@ static uint32_t faacEncoderDelay(const faacEncStruct *h)
     return FRAME_LEN;
 }
 
-FAACAPI faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_info *out)
+FAACAPI faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_encoder_info *out_info)
 {
     faac_encoder_info info;
     const faacEncStruct *h;
     uint32_t caller_size, n;
 
-    if (!enc || !out)
+    if (!encoder || !out_info)
         return FAAC_ERR_INVALID_ARGUMENT;
-    caller_size = out->struct_size;
+    caller_size = out_info->struct_size;
     if (caller_size < ENCODER_INFO_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
-    h = (const faacEncStruct *)enc;
+    h = (const faacEncStruct *)encoder;
 
     memset(&info, 0, sizeof(info));
     info.frame_samples    = faacFrameSamples(h);
@@ -387,18 +390,18 @@ FAACAPI faac_status faac_encoder_get_info(const faac_encoder *enc, faac_encoder_
      * an older, smaller faac_encoder_info; report the byte count actually set. */
     n = caller_size < (uint32_t)sizeof(info) ? caller_size : (uint32_t)sizeof(info);
     info.struct_size = n;
-    memcpy(out, &info, n);
+    memcpy(out_info, &info, n);
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_encoder_asc(const faac_encoder *enc,
+FAACAPI faac_status faac_encoder_asc(const faac_encoder *encoder,
                                      const uint8_t **buf, uint32_t *len)
 {
     const faacEncStruct *h;
 
-    if (!enc || !buf || !len)
+    if (!encoder || !buf || !len)
         return FAAC_ERR_INVALID_ARGUMENT;
-    h = (const faacEncStruct *)enc;
+    h = (const faacEncStruct *)encoder;
 
     if (h->config.mpegVersion == MPEG2) {
         *buf = NULL;
@@ -411,7 +414,7 @@ FAACAPI faac_status faac_encoder_asc(const faac_encoder *enc,
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
+FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
                                         const void *in, uint32_t in_samples,
                                         uint8_t *out, uint32_t out_cap,
                                         uint32_t *bytes_written)
@@ -419,12 +422,12 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
     faacEncStruct *h;
     int rc;
 
-    if (!enc || !out || !bytes_written)
+    if (!encoder || !out || !bytes_written)
         return FAAC_ERR_INVALID_ARGUMENT;
     *bytes_written = 0;
     if (in_samples && !in)
         return FAAC_ERR_INVALID_ARGUMENT;
-    h = unwrap(enc);
+    h = unwrap(encoder);
 
     if (out_cap < (uint32_t)ADTS_FRAMESIZE)
         return FAAC_ERR_OUTPUT_TOO_SMALL;

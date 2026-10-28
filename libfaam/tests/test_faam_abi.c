@@ -153,7 +153,7 @@ static void finish(faam_muxer **m) {
 #define OUTPUT(T, baseline, call) do { \
     struct { T v; uint8_t guard[32]; } out; memset(&out, 0xA5, sizeof(out)); \
     out.v.struct_size = sizeof(T) + 32; STATUS(call, FAAM_OK); \
-    CHECK(out.v.struct_size == sizeof(T) + 32); \
+    CHECK(out.v.struct_size == sizeof(T)); \
     for (unsigned k = 0; k < 32; k++) CHECK(out.guard[k] == 0xA5); \
     out.v.struct_size = (baseline) - 1; STATUS(call, FAAM_ERR_INVALID_ARGUMENT); \
     out.v.struct_size = 0; STATUS(call, FAAM_ERR_INVALID_ARGUMENT); \
@@ -374,10 +374,57 @@ static void test_video(void) {
 #endif
 }
 
+/* Init functions touch at most the caller's bytes and report the bytes populated. */
+static void test_config_init(void) {
+    struct { faam_demuxer_config v; uint8_t canary[16]; } d;
+    memset(&d, 0xA5, sizeof(d));
+    STATUS(faam_demuxer_config_init(&d.v, sizeof(d)), FAAM_OK);
+    CHECK(d.v.struct_size == sizeof(faam_demuxer_config) && d.v.flags == 0);
+    for (unsigned k = 0; k < 16; k++) CHECK(d.canary[k] == 0xA5);
+    STATUS(faam_demuxer_config_init(&d.v, FAAM_DEMUXER_CONFIG_BASELINE - 1), FAAM_ERR_INVALID_ARGUMENT);
+    STATUS(faam_demuxer_config_init(NULL, sizeof(d.v)), FAAM_ERR_INVALID_ARGUMENT);
+    d.v.flags = 1; memfile f = {0}; faam_io io = mem_io(&f); faam_demuxer *dm = NULL;
+    STATUS(faam_demuxer_open(&d.v, &io, &dm), FAAM_ERR_INVALID_ARGUMENT);
+
+    struct { faam_io v; uint8_t canary[16]; } iot;
+    memset(&iot, 0xA5, sizeof(iot));
+    STATUS(faam_io_init(&iot.v, sizeof(iot)), FAAM_OK);
+    CHECK(iot.v.struct_size == sizeof(faam_io) && !iot.v.read && !iot.v.flush);
+    for (unsigned k = 0; k < 16; k++) CHECK(iot.canary[k] == 0xA5);
+    STATUS(faam_io_init(&iot.v, FAAM_IO_BASELINE - 1), FAAM_ERR_INVALID_ARGUMENT);
+
+    struct { faam_track_config v; uint8_t canary[16]; } tc;
+    memset(&tc, 0xA5, sizeof(tc));
+    STATUS(faam_track_config_init(&tc.v, sizeof(tc)), FAAM_OK);
+    CHECK(tc.v.struct_size == sizeof(faam_track_config) && !tc.v.codec_data && !tc.v.flags);
+    for (unsigned k = 0; k < 16; k++) CHECK(tc.canary[k] == 0xA5);
+    STATUS(faam_track_config_init(&tc.v, FAAM_TRACK_CONFIG_BASELINE - 1), FAAM_ERR_INVALID_ARGUMENT);
+
+    struct { faam_muxer_config v; uint8_t canary[16]; } m;
+    memset(&m, 0xA5, sizeof(m));
+    STATUS(faam_muxer_config_init(&m.v, sizeof(m)), FAAM_OK);
+    CHECK(m.v.struct_size == sizeof(faam_muxer_config));
+    for (unsigned k = 0; k < 16; k++) CHECK(m.canary[k] == 0xA5);
+}
+
+/* Chapters passed as input are strided by the first element's struct_size, so a
+ * mixed-size array is rejected instead of being read at the wrong stride. */
+static void test_chapter_stride(void) {
+    faam_chapter ch[2] = { { .struct_size = sizeof(ch[0]), .title = "A" },
+                           { .struct_size = sizeof(ch[0]) - 8, .title = "B" } };
+    memfile f = {0}; faam_io io = mem_io(&f);
+    STATUS(faam_update_chapters_stream(&io, ch, 2, 0), FAAM_ERR_INVALID_ARGUMENT);
+    faam_track_config t = audio(); faam_muxer_config cfg;
+    STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK);
+    cfg.tracks = &t; cfg.num_tracks = 1; cfg.chapters = ch; cfg.num_chapters = 2;
+    faam_muxer *m = NULL;
+    STATUS(faam_muxer_open(&cfg, &io, &m), FAAM_ERR_INVALID_ARGUMENT);
+}
+
 int main(int argc, char **argv) {
     /* Optional case name lets a failing contract be diagnosed independently. */
 #define RUN(name) do { if (argc == 1 || !strcmp(argv[1], #name)) test_##name(); } while (0)
     RUN(outputs); RUN(future_inputs); RUN(track_limits_ids); RUN(odd_and_many);
-    RUN(updates_close_flags); RUN(video);
+    RUN(updates_close_flags); RUN(video); RUN(config_init); RUN(chapter_stride);
     puts("libfaam ABI tests passed."); return 0;
 }

@@ -1716,24 +1716,24 @@ FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **ou
     return FAAR_OK;
 }
 
-FAARAPI faar_status faar_design_close(faar_design **plan) {
-    if (!plan) return FAAR_ERR_INVALID_ARGUMENT;
-    if (*plan) plan_release(*plan);
-    *plan = NULL;
+FAARAPI faar_status faar_design_close(faar_design **design) {
+    if (!design) return FAAR_ERR_INVALID_ARGUMENT;
+    if (*design) plan_release(*design);
+    *design = NULL;
     return FAAR_OK;
 }
 
-FAARAPI faar_status faar_resampler_open_from_design(faar_design *plan,
+FAARAPI faar_status faar_resampler_open_from_design(faar_design *design,
                                                 faar_resampler **out) {
     if (!out) return FAAR_ERR_INVALID_ARGUMENT;
     *out = NULL;
-    if (!plan) return FAAR_ERR_INVALID_ARGUMENT;
-    if (plan_retain(plan)) return FAAR_ERR_NO_MEMORY;
-    faar_resampler *r = clone_plan_internal(plan->prototype);
-    if (!r) { plan_release(plan); return FAAR_ERR_NO_MEMORY; }
-    r->plan = plan;
-    if (plan->max_input_frames) {
-        faar_status st = reserve_stream(r, plan->max_input_frames);
+    if (!design) return FAAR_ERR_INVALID_ARGUMENT;
+    if (plan_retain(design)) return FAAR_ERR_NO_MEMORY;
+    faar_resampler *r = clone_plan_internal(design->prototype);
+    if (!r) { plan_release(design); return FAAR_ERR_NO_MEMORY; }
+    r->plan = design;
+    if (design->max_input_frames) {
+        faar_status st = reserve_stream(r, design->max_input_frames);
         if (st != FAAR_OK) { destroy_internal(r); return st; }
     }
     *out = r;
@@ -1752,10 +1752,10 @@ FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size) 
     return FAAR_OK;
 }
 
-FAARAPI faar_status faar_get_library_info(faar_library_info *out) {
-    if (!out || out->struct_size < FAAR_LIBRARY_INFO_BASELINE)
+FAARAPI faar_status faar_get_library_info(faar_library_info *out_info) {
+    if (!out_info || out_info->struct_size < FAAR_LIBRARY_INFO_BASELINE)
         return FAAR_ERR_INVALID_ARGUMENT;
-    uint32_t caller_size = out->struct_size;
+    uint32_t caller_size = out_info->struct_size;
     faar_library_info info = {0};
     info.max_channels = MAX_CHANNELS;
 #ifndef FAAR_WIDE_HIGH
@@ -1767,7 +1767,7 @@ FAARAPI faar_status faar_get_library_info(faar_library_info *out) {
         " Copyright (C) 2026, Nils Schimmelmann";
     uint32_t n = caller_size < sizeof(info) ? caller_size : sizeof(info);
     info.struct_size = n;
-    memcpy(out, &info, n);
+    memcpy(out_info, &info, n);
     return FAAR_OK;
 }
 
@@ -1838,10 +1838,10 @@ FAARAPI faar_status faar_resampler_close(faar_resampler **resampler) {
 }
 
 FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
-                                             faar_resampler_info *out) {
-    if (!resampler || !out || out->struct_size < FAAR_RESAMPLER_INFO_BASELINE)
+                                             faar_resampler_info *out_info) {
+    if (!resampler || !out_info || out_info->struct_size < FAAR_RESAMPLER_INFO_BASELINE)
         return FAAR_ERR_INVALID_ARGUMENT;
-    uint32_t caller_size = out->struct_size;
+    uint32_t caller_size = out_info->struct_size;
     faar_resampler_info info = {0};
     info.decimate_factor = 1;
     for (const faar_resampler *s = resampler; s && s->stage1; s = s->stage2)
@@ -1850,7 +1850,7 @@ FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
     info.delay_frames = (uint32_t)resampler->delay;
     uint32_t n = caller_size < sizeof(info) ? caller_size : sizeof(info);
     info.struct_size = n;
-    memcpy(out, &info, n);
+    memcpy(out_info, &info, n);
     return FAAR_OK;
 }
 

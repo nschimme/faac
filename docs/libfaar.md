@@ -16,7 +16,6 @@
   - [Bounded streams](#bounded-streams)
   - [Reusing a filter design](#reusing-a-filter-design)
   - [Custom allocators](#custom-allocators)
-- [Porting from libfaar ABI 2 to ABI 3](#porting-from-libfaar-abi-2-to-abi-3)
 - [ABI compatibility](#abi-compatibility)
 - [Command-line tool](#command-line-tool)
 
@@ -151,7 +150,7 @@ a static, human-readable string and never returns NULL.
 
 | Status | Meaning |
 |---|---|
-| `FAAR_ERR_INVALID_ARGUMENT` | NULL pointer, bad argument or bad configuration, including nonzero reserved fields. |
+| `FAAR_ERR_INVALID_ARGUMENT` | NULL pointer, bad argument or bad configuration. |
 | `FAAR_ERR_UNSUPPORTED` | Reserved for a configuration a build refuses on purpose; this release does not return it. |
 | `FAAR_ERR_NO_MEMORY` | An allocation failed, the planner could not build the filter design, or a bounded stream exhausted its reserved output queue. |
 | `FAAR_ERR_PROCESSING` | Resampling failed. Discard and close that handle. |
@@ -167,16 +166,16 @@ output frame count to zero when they return an error.
 faar_status faar_config_init(faar_config *config, uint32_t caller_size);
 
 /* Channel ceiling, flag bits, version, copyright.
- * Set out->struct_size before calling. */
-faar_status faar_get_library_info(faar_library_info *out);
+ * Set out_info->struct_size before calling. */
+faar_status faar_get_library_info(faar_library_info *out_info);
 const char *faar_strerror(faar_status status);
 
 faar_status faar_resampler_open(const faar_config *config, faar_resampler **out);
 faar_status faar_resampler_close(faar_resampler **resampler); /* sets *resampler = NULL */
 
-/* Resolved settings and filter delay; set out->struct_size. */
+/* Resolved settings and filter delay; set out_info->struct_size. */
 faar_status faar_resampler_get_info(const faar_resampler *resampler,
-                                    faar_resampler_info *out);
+                                    faar_resampler_info *out_info);
 faar_status faar_resampler_process(faar_resampler *resampler,
         const float *in_samples, size_t in_count, float *out_samples,
         size_t max_out_count, size_t *out_count);
@@ -359,45 +358,49 @@ resampler is opened. Process calls on a resampler opened with
 not allocate during streaming, and reserve space for freed blocks because a bump
 allocator cannot reuse them. Bounded process and finalize calls allocate nothing.
 
-## Porting from libfaar ABI 2 to ABI 3
-
-| ABI 2 | ABI 3 / caller action |
-|---|---|
-| `FAAR_ERR_INSUFFICIENT_MEM` | `FAAR_ERR_NO_MEMORY`; allocation or filter design failure. |
-| `faar_library_info.features` | `faar_library_info.flags`; test `FAAR_LIB_*` bits. |
-| `FAAR_FEATURE_FLOAT_ONLY` | `FAAR_LIB_FLOAT_ONLY`. |
-| `faar_library_info.reserved0` | Removed. |
-| `faar_library_info` field order | `version` and `copyright` come first, then the numeric fields (`max_channels`, `flags`); the baseline ends at `flags` and `struct_size` reports the bytes populated. |
-| Input and output float scale | Unity full scale, `-1.0` to `1.0`; remove the `* 32768` conversion around `faar_resampler_process()` and `faar_resampler_finalize()`. |
-| Dither LSB | Follows the unity scale: one 16-bit LSB is `1/32768` and one 24-bit LSB is `1/8388608` of full scale. |
-| `<stdbool.h>` from `faar.h` | No longer included; include it yourself if your code uses `bool`. |
-
 ## ABI compatibility
 
-The shared library uses SONAME 3. The API and ABI are stable within that major
-SONAME on a given platform ABI. Initialize configuration with
-`faar_config_init(&config, sizeof(config))` and each info struct with
-`.struct_size = sizeof(info)`. Query functions update `struct_size` to the
-number of bytes populated. Reset `struct_size` and zero your storage before
-reusing a structure as a query destination, and check the returned size before
-reading an appended field when supporting older libraries.
+The API and ABI are stable within a major version / SONAME on a given platform
+ABI. Layouts follow the target's pointer width and alignment; they differ between
+32- and 64-bit targets and are not a serialization format.
 
-The library accepts its frozen baseline struct sizes, reads only the
-configuration bytes the caller's `struct_size` covers, and writes at most the
-caller's capacity in initialization and queries. Absent input fields take their
-zero value, which keeps the previous behavior. New fields are appended at or
-after the previous `sizeof(struct)`; compiler padding is never reused. Explicit
-`reserved` fields must be zero on input and are zero on output until they gain a
-meaning; they may later be reused with their storage and offsets preserved and
-zero retaining the previous behavior. Callers must check library support before
-requesting new behavior.
+**Caller rules**
 
-Fixed-width integers and width-pinned enums support `-fshort-enums` on a given
-platform ABI. `size_t` and pointer fields follow the target's width and
-alignment; layouts are not serialization formats. Incompatible signature or
-layout changes require a new SONAME. `FAAR_VERSION_MAJOR` matches the library
-SONAME major; minor and patch macros track the project release.
-`faar_get_library_info()` reports the linked version.
+- Initialize configuration with `faar_config_init(&config, sizeof config)`. Initialize each output struct
+  by setting `.struct_size = sizeof(info)` and nothing else.
+- Initialization stores `min(caller size, library size)` in `struct_size`. That
+  write-back is the support probe: before using a field appended in a newer
+  release, check that `struct_size` covers it
+  (`struct_size >= offsetof(T, field) + sizeof(((T *)0)->field)`).
+- Query functions write at most the caller's `struct_size` bytes and set
+  `struct_size` to the bytes populated. Reset it before reusing a struct as a
+  query destination.
+- The library reads only the input bytes `struct_size` covers; absent fields take
+  their zero or default value. A `struct_size` below the struct's `FAAR_*_BASELINE`
+  macro, including zero, returns `FAAR_ERR_INVALID_ARGUMENT`.
+  Unknown flag bits and out-of-range enum values are rejected the same way.
+- Tolerate unknown enum values, flag bits and status codes in anything the
+  library returns.
+  `FAAR_OK` is 0 and `FAAR_ERR_INVALID_ARGUMENT`, `FAAR_ERR_UNSUPPORTED` and
+  `FAAR_ERR_NO_MEMORY` are -1, -2 and -3 in all four libraries; higher codes are
+  specific to each library.
+- Fixed-width integers and width-pinned enums keep layouts stable under
+  `-fshort-enums`. `size_t` appears in signatures only and follows the platform ABI.
+
+**Maintainer rules**
+
+- New fields are appended at or after the previous `sizeof(struct)`, never in its
+  tail padding. In a pointer-free struct with 4-byte alignment (`faar_config`, `faar_resampler_info`) append only
+  members of 4 bytes or less, so alignment stays 4. Where a struct holds a pointer
+  or 64-bit member, place each appended member at an offset that is a multiple of
+  its size, add an explicit `uint32_t` first if needed, and keep each appended
+  block a multiple of 8 bytes.
+- Zero in a new input field keeps the previous behaviour.
+- Baseline sizes (`FAAR_*_BASELINE` macros), released offsets, enum values, status codes
+  and signatures stay fixed within a major version; incompatible changes need a
+  new SONAME.
+- `FAAR_VERSION_MAJOR` matches the SONAME major; minor and patch track the
+  project release. `faar_get_library_info()` reports the linked version.
 
 ## Command-line tool
 

@@ -19,9 +19,9 @@
 
 #include "libfaam_internal.h"
 
-FAAMAPI faam_status faam_get_library_info(faam_library_info *out)
+FAAMAPI faam_status faam_get_library_info(faam_library_info *out_info)
 {
-    if (!out || out->struct_size < FAAM_LIBRARY_INFO_BASELINE)
+    if (!out_info || out_info->struct_size < FAAM_LIBRARY_INFO_BASELINE)
         return FAAM_ERR_INVALID_ARGUMENT;
 
     faam_library_info info;
@@ -36,9 +36,18 @@ FAAMAPI faam_status faam_get_library_info(faam_library_info *out)
     info.version = FAAM_VERSION_STRING;
     info.copyright = "Copyright (C) 2026 Nils Schimmelmann";
     /* Write at most the caller's struct_size and report the bytes populated. */
-    uint32_t n = out->struct_size < sizeof(info) ? out->struct_size : (uint32_t)sizeof(info);
+    uint32_t n = out_info->struct_size < sizeof(info) ? out_info->struct_size : (uint32_t)sizeof(info);
     info.struct_size = n;
-    memcpy(out, &info, n);
+    memcpy(out_info, &info, n);
+    return FAAM_OK;
+}
+
+faam_status faam_io_init(faam_io *io, uint32_t caller_size)
+{
+    if (!io || caller_size < FAAM_IO_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
+    uint32_t n = caller_size < sizeof(*io) ? caller_size : (uint32_t)sizeof(*io);
+    memset(io, 0, n);
+    io->struct_size = n;
     return FAAM_OK;
 }
 

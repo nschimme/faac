@@ -59,6 +59,14 @@ if default_lib == 'shared' or default_lib == 'both'
     shared_kwargs = shared_library_args + {
       'c_args' : common_args['c_args'] + ['-DFAAD_BUILDING'],
     }
+    # GNU ld version script (ELF only). PE and Mach-O have no symbol versions, so skip them and probe the rest.
+    faad_map = meson.current_source_dir() / 'libfaad.map'
+    if host_machine.system() not in ['windows', 'cygwin', 'darwin'] and cc.has_link_argument('-Wl,--version-script=' + faad_map)
+        shared_kwargs += {
+          'link_args' : ['-Wl,--version-script=' + faad_map],
+          'link_depends' : [faad_map],
+        }
+    endif
     libfaad_shared = shared_library(
         'faad3',
         faad_src,

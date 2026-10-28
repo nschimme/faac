@@ -790,16 +790,25 @@ static faam_status load_fragment(faam_demuxer *d)
 }
 #endif /* FAAM_MUXER_FRAGMENTED */
 
-static bool demuxer_config_ok(const faam_demuxer_config *cfg)
+faam_status faam_demuxer_config_init(faam_demuxer_config *config, uint32_t caller_size)
 {
-    return !cfg || cfg->struct_size >= FAAM_DEMUXER_CONFIG_BASELINE;
+    if (!config || caller_size < FAAM_DEMUXER_CONFIG_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
+    uint32_t n = caller_size < sizeof(*config) ? caller_size : (uint32_t)sizeof(*config);
+    memset(config, 0, n);
+    config->struct_size = n;
+    return FAAM_OK;
 }
 
-faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io, faam_demuxer **out_demuxer)
+static bool demuxer_config_ok(const faam_demuxer_config *cfg)
 {
-    if (!out_demuxer) return FAAM_ERR_INVALID_ARGUMENT;
-    *out_demuxer = NULL;
-    if (!io || !demuxer_config_ok(cfg)) return FAAM_ERR_INVALID_ARGUMENT;
+    return !cfg || (cfg->struct_size >= FAAM_DEMUXER_CONFIG_BASELINE && !cfg->flags);
+}
+
+faam_status faam_demuxer_open(const faam_demuxer_config *config, const faam_io *io, faam_demuxer **out)
+{
+    if (!out) return FAAM_ERR_INVALID_ARGUMENT;
+    *out = NULL;
+    if (!io || !demuxer_config_ok(config)) return FAAM_ERR_INVALID_ARGUMENT;
     faam_io loaded;
     if (!faam_io_load(&loaded, io)) return FAAM_ERR_INVALID_ARGUMENT;
     if (!loaded.read || !loaded.seek) return FAAM_ERR_UNSUPPORTED;
@@ -864,15 +873,15 @@ faam_status faam_demuxer_open(const faam_demuxer_config *cfg, const faam_io *io,
         faam_demuxer_close(&d);
         return error;
     }
-    *out_demuxer = d;
+    *out = d;
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_close(faam_demuxer **handle)
+faam_status faam_demuxer_close(faam_demuxer **demuxer)
 {
-    if (!handle || !*handle) return FAAM_OK;
-    faam_demuxer *d = *handle;
-    *handle = NULL;
+    if (!demuxer || !*demuxer) return FAAM_OK;
+    faam_demuxer *d = *demuxer;
+    *demuxer = NULL;
     for (uint32_t t = 0; t < d->num_tracks; t++) {
         if (d->tracks[t].samples) FreeMemory(d->tracks[t].samples);
         FreeMemory(d->tracks[t].codec_data);
@@ -889,29 +898,29 @@ faam_status faam_demuxer_close(faam_demuxer **handle)
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_num_tracks(const faam_demuxer *d, uint32_t *out_held, uint32_t *out_total)
+faam_status faam_demuxer_get_num_tracks(const faam_demuxer *demuxer, uint32_t *out_held, uint32_t *out_total)
 {
-    if (!d || !out_held) return FAAM_ERR_INVALID_ARGUMENT;
-    *out_held = d->num_tracks;
-    if (out_total) *out_total = d->total_tracks;
+    if (!demuxer || !out_held) return FAAM_ERR_INVALID_ARGUMENT;
+    *out_held = demuxer->num_tracks;
+    if (out_total) *out_total = demuxer->total_tracks;
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_track_info(const faam_demuxer *d, uint32_t track_index, faam_track_info *out_info)
+faam_status faam_demuxer_get_track_info(const faam_demuxer *demuxer, uint32_t track_index, faam_track_info *out_info)
 {
-    if (!d || !out_info || out_info->struct_size < FAAM_TRACK_INFO_BASELINE || track_index >= d->num_tracks) return FAAM_ERR_INVALID_ARGUMENT;
-    faam_copy_out(out_info, out_info->struct_size, &d->tracks[track_index].info, sizeof(faam_track_info));
+    if (!demuxer || !out_info || out_info->struct_size < FAAM_TRACK_INFO_BASELINE || track_index >= demuxer->num_tracks) return FAAM_ERR_INVALID_ARGUMENT;
+    faam_copy_out(out_info, out_info->struct_size, &demuxer->tracks[track_index].info, sizeof(faam_track_info));
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_codec_data(const faam_demuxer *d, uint32_t track_id, uint8_t *out_buf, uint32_t buf_cap, uint32_t *out_len)
+faam_status faam_demuxer_get_codec_data(const faam_demuxer *demuxer, uint32_t track_id, uint8_t *out_buf, uint32_t buf_cap, uint32_t *out_len)
 {
-    if (!d || !out_len || (!out_buf && buf_cap)) return FAAM_ERR_INVALID_ARGUMENT;
+    if (!demuxer || !out_len || (!out_buf && buf_cap)) return FAAM_ERR_INVALID_ARGUMENT;
     *out_len = 0;
     const faam_demuxer_track *tr = NULL;
-    for (uint32_t t = 0; t < d->num_tracks; t++) {
-        if (d->tracks[t].info.track_id == track_id) {
-            tr = &d->tracks[t];
+    for (uint32_t t = 0; t < demuxer->num_tracks; t++) {
+        if (demuxer->tracks[t].info.track_id == track_id) {
+            tr = &demuxer->tracks[t];
             break;
         }
     }
@@ -923,10 +932,10 @@ faam_status faam_demuxer_get_codec_data(const faam_demuxer *d, uint32_t track_id
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_major_brand(const faam_demuxer *d, char out_brand[5])
+faam_status faam_demuxer_get_major_brand(const faam_demuxer *demuxer, char out_brand[5])
 {
-    if (!d || !out_brand) return FAAM_ERR_INVALID_ARGUMENT;
-    memcpy(out_brand, d->major_brand, 4);
+    if (!demuxer || !out_brand) return FAAM_ERR_INVALID_ARGUMENT;
+    memcpy(out_brand, demuxer->major_brand, 4);
     out_brand[4] = '\0';
     return FAAM_OK;
 }
@@ -935,7 +944,6 @@ faam_status faam_demuxer_get_major_brand(const faam_demuxer *d, char out_brand[5
 static faam_status track_gapless(const faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless)
 {
     memset(out_gapless, 0, sizeof(*out_gapless));
-    out_gapless->struct_size = sizeof(*out_gapless);
 
     const faam_demuxer_track *tr = NULL;
     for (uint32_t t = 0; t < d->num_tracks; t++) {
@@ -974,80 +982,79 @@ static faam_status track_gapless(const faam_demuxer *d, uint32_t track_id, faam_
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_track_gapless(const faam_demuxer *d, uint32_t track_id, faam_gapless_info *out_gapless)
+faam_status faam_demuxer_get_track_gapless(const faam_demuxer *demuxer, uint32_t track_id, faam_gapless_info *out_gapless)
 {
-    if (!d || !out_gapless || out_gapless->struct_size < FAAM_GAPLESS_INFO_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
+    if (!demuxer || !out_gapless || out_gapless->struct_size < FAAM_GAPLESS_INFO_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
     if (track_id == 0) {
         /* The first audio track, else the first track. */
-        for (uint32_t t = 0; t < d->num_tracks && !track_id; t++)
-            if (d->tracks[t].info.track_type == FAAM_TRACK_AUDIO) track_id = d->tracks[t].info.track_id;
-        if (!track_id && d->num_tracks) track_id = d->tracks[0].info.track_id;
+        for (uint32_t t = 0; t < demuxer->num_tracks && !track_id; t++)
+            if (demuxer->tracks[t].info.track_type == FAAM_TRACK_AUDIO) track_id = demuxer->tracks[t].info.track_id;
+        if (!track_id && demuxer->num_tracks) track_id = demuxer->tracks[0].info.track_id;
     }
     faam_gapless_info g;
-    faam_status st = track_gapless(d, track_id, &g);
+    faam_status st = track_gapless(demuxer, track_id, &g);
     if (st == FAAM_OK || track_id == 0) {
-        if (track_id == 0) memset(&g, 0, sizeof(g)), g.struct_size = sizeof(g), st = FAAM_OK;
+        if (track_id == 0) memset(&g, 0, sizeof(g)), st = FAAM_OK;
         faam_copy_out(out_gapless, out_gapless->struct_size, &g, sizeof(g));
     }
     return st;
 }
 
-faam_status faam_demuxer_get_num_metadata(const faam_demuxer *d, uint32_t *out_count)
+faam_status faam_demuxer_get_num_metadata(const faam_demuxer *demuxer, uint32_t *out_count)
 {
-    if (!d || !out_count) return FAAM_ERR_INVALID_ARGUMENT;
-    *out_count = d->num_entries;
+    if (!demuxer || !out_count) return FAAM_ERR_INVALID_ARGUMENT;
+    *out_count = demuxer->num_entries;
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *d, uint32_t index, faam_metadata_entry *out)
+faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *demuxer, uint32_t index, faam_metadata_entry *out)
 {
-    if (!d || !out || out->struct_size < FAAM_METADATA_ENTRY_BASELINE || index >= d->num_entries)
+    if (!demuxer || !out || out->struct_size < FAAM_METADATA_ENTRY_BASELINE || index >= demuxer->num_entries)
         return FAAM_ERR_INVALID_ARGUMENT;
-    faam_copy_out(out, out->struct_size, &d->entries[index], sizeof(*out));
+    faam_copy_out(out, out->struct_size, &demuxer->entries[index], sizeof(*out));
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_num_chapters(const faam_demuxer *d, uint32_t *out_count)
+faam_status faam_demuxer_get_num_chapters(const faam_demuxer *demuxer, uint32_t *out_count)
 {
-    if (!d || !out_count) return FAAM_ERR_INVALID_ARGUMENT;
-    *out_count = d->num_chapters;
+    if (!demuxer || !out_count) return FAAM_ERR_INVALID_ARGUMENT;
+    *out_count = demuxer->num_chapters;
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_get_chapter(const faam_demuxer *d, uint32_t index, faam_chapter *out_chapter)
+faam_status faam_demuxer_get_chapter(const faam_demuxer *demuxer, uint32_t index, faam_chapter *out_chapter)
 {
-    if (!d || !out_chapter || out_chapter->struct_size < FAAM_CHAPTER_BASELINE || index >= d->num_chapters)
+    if (!demuxer || !out_chapter || out_chapter->struct_size < FAAM_CHAPTER_BASELINE || index >= demuxer->num_chapters)
         return FAAM_ERR_INVALID_ARGUMENT;
-    faam_copy_out(out_chapter, out_chapter->struct_size, &d->chapters[index], sizeof(faam_chapter));
+    faam_copy_out(out_chapter, out_chapter->struct_size, &demuxer->chapters[index], sizeof(faam_chapter));
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc)
+faam_status faam_demuxer_next_frame_loc(faam_demuxer *demuxer, faam_frame_loc *out_loc)
 {
-    if (!d || !out_loc || out_loc->struct_size < FAAM_FRAME_LOC_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
+    if (!demuxer || !out_loc || out_loc->struct_size < FAAM_FRAME_LOC_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
     faam_demuxer_track *tr;
     for (;;) {
         uint64_t min_offset = UINT64_MAX;
         tr = NULL;
-        for (uint32_t t = 0; t < d->num_tracks; t++) {
-            if (d->tracks[t].current_frame < d->tracks[t].total_frames) {
-                uint64_t off = d->tracks[t].samples[d->tracks[t].current_frame].offset;
+        for (uint32_t t = 0; t < demuxer->num_tracks; t++) {
+            if (demuxer->tracks[t].current_frame < demuxer->tracks[t].total_frames) {
+                uint64_t off = demuxer->tracks[t].samples[demuxer->tracks[t].current_frame].offset;
                 if (off < min_offset) {
                     min_offset = off;
-                    tr = &d->tracks[t];
+                    tr = &demuxer->tracks[t];
                 }
             }
         }
         if (tr) break;
 #ifdef FAAM_MUXER_FRAGMENTED
-        if (d->fragmented && !d->frag_done && load_fragment(d) == FAAM_OK) continue;
+        if (demuxer->fragmented && !demuxer->frag_done && load_fragment(demuxer) == FAAM_OK) continue;
 #endif
-        return d->error ? d->error : FAAM_END_OF_STREAM;
+        return demuxer->error ? demuxer->error : FAAM_END_OF_STREAM;
     }
 
     faam_frame_loc loc;
     memset(&loc, 0, sizeof(loc));
-    loc.struct_size = sizeof(loc);
     loc.track_id = tr->info.track_id;
     loc.file_offset = tr->samples[tr->current_frame].offset;
     loc.frame_bytes = tr->samples[tr->current_frame].size;
@@ -1058,22 +1065,22 @@ faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc
     return FAAM_OK;
 }
 
-faam_status faam_demuxer_read_frame(faam_demuxer *d, uint8_t *out_frame, uint32_t frame_cap, uint32_t *frame_bytes)
+faam_status faam_demuxer_read_frame(faam_demuxer *demuxer, uint8_t *out_frame, uint32_t frame_cap, uint32_t *frame_bytes)
 {
-    if (!d || !frame_bytes) return FAAM_ERR_INVALID_ARGUMENT;
+    if (!demuxer || !frame_bytes) return FAAM_ERR_INVALID_ARGUMENT;
 
     faam_frame_loc loc;
     memset(&loc, 0, sizeof(loc));
     loc.struct_size = sizeof(loc);
-    faam_status st = faam_demuxer_next_frame_loc(d, &loc);
+    faam_status st = faam_demuxer_next_frame_loc(demuxer, &loc);
     if (st != FAAM_OK) return st;
 
     *frame_bytes = loc.frame_bytes;
 
     faam_demuxer_track *tr = NULL;
-    for (uint32_t t = 0; t < d->num_tracks; t++) {
-        if (d->tracks[t].info.track_id == loc.track_id) {
-            tr = &d->tracks[t];
+    for (uint32_t t = 0; t < demuxer->num_tracks; t++) {
+        if (demuxer->tracks[t].info.track_id == loc.track_id) {
+            tr = &demuxer->tracks[t];
             break;
         }
     }
@@ -1082,7 +1089,7 @@ faam_status faam_demuxer_read_frame(faam_demuxer *d, uint8_t *out_frame, uint32_
     if (out_frame != NULL) {
         if (loc.frame_bytes > frame_cap) return FAAM_ERR_OUTPUT_TOO_SMALL;
 
-        if (read_at(&d->io, loc.file_offset, out_frame, loc.frame_bytes) != (int32_t)loc.frame_bytes)
+        if (read_at(&demuxer->io, loc.file_offset, out_frame, loc.frame_bytes) != (int32_t)loc.frame_bytes)
             return FAAM_ERR_IO_READ;
     }
 

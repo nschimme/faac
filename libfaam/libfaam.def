@@ -27,3 +27,6 @@ faam_muxer_get_info                      @22
 faam_strerror                            @23
 faam_update_metadata_stream              @24
 faam_update_chapters_stream              @25
+faam_demuxer_config_init                 @26
+faam_io_init                             @27
+faam_track_config_init                   @28

@@ -32,10 +32,11 @@
  *     signatures and struct alignment never change within a released major ABI
  *     version. Appended fields start at or after the previous sizeof(struct);
  *     compiler padding is never reused and baseline sizes stay fixed.
- *     Explicit reserved fields must be zero on input and are zero on output until
- *     assigned a future meaning. They may be reused with their storage and offsets
- *     preserved and zero retaining the previous behavior. Callers must check library
- *     support before requesting new behavior.
+ *     faad_config and faad_stream_info are 4-byte aligned: append only members
+ *     of 4 bytes or less. Structs holding pointers take members at multiples
+ *     of their size, in blocks of 8 bytes. Zero in a new field keeps the
+ *     previous behavior. Callers check library support through the struct_size
+ *     the library writes back.
  *   - Independent handles may be used concurrently; one handle is owned by
  *     one thread at a time. Instrumented stats builds are process-global.
  */
@@ -104,7 +105,7 @@ enum faad_library_flag {
 /*
  * Library-global facts, independent of any decoder instance. These reflect
  * build-time options (max-channels, decoder-sbr, decoder-ps) that the header
- * alone cannot report, so they are queried at runtime. Set out->struct_size to
+ * alone cannot report, so they are queried at runtime. Set out_info->struct_size to
  * sizeof(faad_library_info) before the call; the struct grows only by
  * appending fields. struct_size reports bytes populated. version/copyright
  * are static and library-owned; do not free them.
@@ -119,7 +120,7 @@ typedef struct faad_library_info {
     uint32_t                flags;          /* FAAD_LIB_* */
 } faad_library_info;
 
-FAADAPI faad_status faad_get_library_info(faad_library_info *out);
+FAADAPI faad_status faad_get_library_info(faad_library_info *out_info);
 
 /* AAC object type, numbered per the MPEG-4 Audio Object Type (AOT) registry. */
 enum faad_object_type {
@@ -206,6 +207,13 @@ typedef struct faad_stream_info {
                                                * when flags has FAAD_STREAM_PROG_REF_LEVEL */
 } faad_stream_info;
 
+/* Offset just past the named field: the smallest struct size the library accepts. */
+#define FAAD_STRUCT_END(type, field) \
+    (offsetof(type, field) + sizeof(((type *)0)->field))
+#define FAAD_CONFIG_BASELINE FAAD_STRUCT_END(faad_config, downmix_mode)
+#define FAAD_LIBRARY_INFO_BASELINE FAAD_STRUCT_END(faad_library_info, flags)
+#define FAAD_STREAM_INFO_BASELINE FAAD_STRUCT_END(faad_stream_info, flags)
+
 enum faad_frame_flag {
     FAAD_FRAME_FORMAT_CHANGED = 1u << 0, /* Emitted PCM format differs from the previous emitted frame;
                                          * always set on the first. Re-query faad_decoder_get_info(). */
@@ -219,11 +227,11 @@ enum faad_frame_flag {
 };
 
 
-/* Zero-initialize *cfg and fill in library defaults and struct_size. Pass
- * sizeof(*cfg) as caller_size; never writes past min(caller_size,
- * sizeof(faad_config)). Returns FAAD_ERR_INVALID_ARGUMENT if cfg is NULL or
+/* Zero-initialize *config and fill in library defaults and struct_size. Pass
+ * sizeof(*config) as caller_size; never writes past min(caller_size,
+ * sizeof(faad_config)). Returns FAAD_ERR_INVALID_ARGUMENT if config is NULL or
  * caller_size is smaller than faad_config's baseline layout. */
-FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
+FAADAPI faad_status faad_config_init(faad_config *config, uint32_t caller_size);
 
 
 /*
@@ -231,16 +239,16 @@ FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
  * asc_buf must contain a valid, nonempty AudioSpecificConfig for RAW streams;
  * it is optional for ADTS. Configuration and ASC need not outlive this call.
  */
-FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
+FAADAPI faad_status faad_decoder_open(const faad_config *config,
                                         const uint8_t *asc_buf, uint32_t asc_len,
-                                        faad_decoder **out_dec);
+                                        faad_decoder **out);
 
 /*
  * Destroy a decoder. Pass the address of your handle; on success the handle is
  * set to NULL and all instance allocations are freed. A pointer to
  * a NULL handle is a no-op that returns FAAD_OK; a NULL pointer is invalid.
  */
-FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
+FAADAPI faad_status faad_decoder_close(faad_decoder **decoder);
 
 /*
  * Query current stream metadata. Safe immediately after open. Before ADTS
@@ -254,14 +262,14 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
  * ADTS uses the build's channel capacity; RAW layouts (including ASC PCEs) use their count
  * (at least two with PS support), and downmix reduces that bound.
  */
-FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_info *out_info);
+FAADAPI faad_status faad_decoder_get_info(const faad_decoder *decoder, faad_stream_info *out_info);
 
 /*
  * Discard audio history on seek/discontinuity, including concealment and
  * synthesis history. Preserves configuration, discovered format and capacity.
  * Does not drain PCM or generate missing packets. Reopen for a different stream.
  */
-FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
+FAADAPI faad_status faad_decoder_flush(faad_decoder *decoder);
 
 /*
  * Decode exactly ONE AAC access unit (packet/frame), zero-copy on the incoming
@@ -290,7 +298,7 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
  * frame_flags remains zero and the stream_info format is unchanged. Flush
  * preserves the last emitted format; it does not force FORMAT_CHANGED.
  */
-FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
+FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                                       const uint8_t *in_buf, uint32_t in_bytes,
                                       uint32_t *bytes_consumed,
                                       void *out_pcm, uint32_t out_cap_bytes,

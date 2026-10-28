@@ -67,6 +67,14 @@ static void test_layouts(void)
     assert(faad_decoder_open((faad_config *)&cfg.value, NULL, 0, &dec) == FAAD_OK);
     assert_tail(&cfg, sizeof(config_v3), sizeof(cfg));
     assert(faad_decoder_close(&dec) == FAAD_OK);
+    /* A heap block of exactly the baseline size: ASan flags any read past it. */
+    faad_config *exact = malloc(FAAD_CONFIG_BASELINE);
+    assert(exact);
+    assert(faad_config_init(exact, FAAD_CONFIG_BASELINE) == FAAD_OK);
+    assert(exact->struct_size == FAAD_CONFIG_BASELINE);
+    assert(faad_decoder_open(exact, NULL, 0, &dec) == FAAD_OK);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+    free(exact);
     struct { faad_config value; uint8_t tail[16]; } future_cfg;
     memset(&future_cfg, 0xa5, sizeof(future_cfg));
     assert(faad_config_init(&future_cfg.value, sizeof(future_cfg)) == FAAD_OK);
