@@ -340,14 +340,12 @@ FAACAPI faac_status faac_encoder_close(faac_encoder **encoder)
  * PS adds one 256-sample hop of spectral-carrier overlap. */
 static uint32_t faacEncoderDelay(const faacEncStruct *h)
 {
+    uint32_t delay = FRAME_LEN;
+    if (IsSBR(h->config.aacObjectType))
+        delay = 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1;
     if (IsPS(h->config.aacObjectType))
-        return 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1 + 256;
-    switch (h->config.aacObjectType) {
-        case LOW:   return FRAME_LEN;
-        case HE_V1: return 2 * FRAME_LEN + RESAMPLE_FILTER_LEN / 2 + 1;
-    }
-    assert(0 && "faacEncoderDelay: unhandled aacObjectType");
-    return FRAME_LEN;
+        delay += 256;
+    return delay;
 }
 
 FAACAPI faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_encoder_info *out_info)
@@ -378,7 +376,8 @@ FAACAPI faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_enco
     info.peak_bit_rate     = (uint32_t)h->config.maxBitRate;
     info.encoder_delay    = faacEncoderDelay(h);
     info.asc_size         = h->ascLen;
-    memcpy(info.asc, h->asc, h->ascLen);
+    /* The handle is zeroed at open, so the bytes past ascLen are zero. */
+    memcpy(info.asc, h->asc, sizeof(h->asc));
     switch (h->config.rateControl) {
     case RATE_ABR: info.rate_control = FAAC_RC_ABR; break;
     case RATE_VBR: info.rate_control = FAAC_RC_VBR; break;
