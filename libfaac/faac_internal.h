@@ -69,8 +69,9 @@ enum { SHORTCTL_NORMAL = 0, SHORTCTL_NOSHORT = 1, SHORTCTL_NOLONG = 2 };
 
 enum stream_format { RAW_STREAM = 0, ADTS_STREAM = 1 };
 
-/* Mirrors enum faac_rate_control; faac.c asserts the values agree. */
-enum rate_control_mode { RATE_AUTO = 0, RATE_VBR, RATE_ABR, RATE_CBR };
+/* Mirrors enum faac_rate_control, which faac.c asserts, so the facade can
+ * pass it through. */
+enum rate_control_mode { RATE_ABR = 0, RATE_VBR, RATE_CBR };
 
 typedef enum { JOINT_NONE = 0, JOINT_MS, JOINT_IS, JOINT_MIXED } JointMode;
 
@@ -90,7 +91,7 @@ typedef struct faacEncConfiguration
     unsigned int inputFormat;
     int shortctl;
     int channel_map[MAX_CHANNELS];   /* identity by default */
-    unsigned int rateControl;        /* enum rate_control_mode; AUTO resolved by facade */
+    unsigned int rateControl;        /* enum rate_control_mode */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;

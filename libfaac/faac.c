@@ -38,6 +38,8 @@
 _Static_assert(sizeof(enum faac_status)        == 4, "faac_status must be 32-bit");
 _Static_assert(sizeof(enum faac_object_type)   == 4, "faac_object_type must be 32-bit");
 _Static_assert(sizeof(enum faac_rate_control)  == 4, "faac_rate_control must be 32-bit");
+_Static_assert((int)FAAC_RC_ABR == RATE_ABR && (int)FAAC_RC_VBR == RATE_VBR
+            && (int)FAAC_RC_CBR == RATE_CBR, "rate control drift");
 _Static_assert(sizeof(enum faac_stereo_mode)   == 4, "faac_stereo_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_shortctl_mode) == 4, "faac_shortctl_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_stream_format) == 4, "faac_stream_format must be 32-bit");
@@ -275,12 +277,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *config, faac_encoder **
     cfg->shortctl      = (int)p->short_control;
     cfg->usePns        = (p->flags & FAAC_FLAG_PNS) ? 1 : 0;
     cfg->maxBitRate    = p->peak_bit_rate;
-    switch (p->rate_control) {
-    case FAAC_RC_ABR: cfg->rateControl = RATE_ABR; break;
-    case FAAC_RC_VBR: cfg->rateControl = RATE_VBR; break;
-    case FAAC_RC_CBR: cfg->rateControl = RATE_CBR; break;
-    default: break; /* validate_params rejected other modes */
-    }
+    cfg->rateControl   = (unsigned int)p->rate_control;  /* validate_params checked the range */
     /* WAVE order must become AAC element order. */
 #if MAX_CHANNELS >= 3
     if (p->channel_layout == FAAC_LAYOUT_WAV && p->channels >= 3) {
@@ -378,12 +375,7 @@ FAACAPI faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_enco
     info.asc_size         = h->ascLen;
     /* The handle is zeroed at open, so the bytes past ascLen are zero. */
     memcpy(info.asc, h->asc, sizeof(h->asc));
-    switch (h->config.rateControl) {
-    case RATE_ABR: info.rate_control = FAAC_RC_ABR; break;
-    case RATE_VBR: info.rate_control = FAAC_RC_VBR; break;
-    case RATE_CBR: info.rate_control = FAAC_RC_CBR; break;
-    default: return FAAC_ERR_INVALID_ARGUMENT;
-    }
+    info.rate_control     = (enum faac_rate_control)h->config.rateControl;
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_encoder_info; report the byte count actually set. */
