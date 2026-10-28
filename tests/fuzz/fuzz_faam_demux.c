@@ -69,9 +69,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     faam_io io = { .struct_size = sizeof(faam_io), .user_data = &ms, .read = mem_read, .write = NULL, .seek = mem_seek, .tell = mem_tell, .flush = NULL };
 
     faam_demuxer_config cfg;
-    memset(&cfg, 0, sizeof(cfg));
-    cfg.struct_size = sizeof(cfg);
-    cfg.flags = (data[0] & 1) ? (uint32_t)data[1] << 8 : 0;
+    if (faam_demuxer_config_init(&cfg, sizeof(cfg)) != FAAM_OK)
+        __builtin_trap();
+
+    /* The reserved flags must be refused before any I/O; every input still parses below. */
+    faam_demuxer_config bad = cfg;
+    bad.flags = ((uint32_t)data[1] << 8) | 1;
+    faam_demuxer *refused = NULL;
+    if (faam_demuxer_open(&bad, &io, &refused) != FAAM_ERR_INVALID_ARGUMENT || refused)
+        __builtin_trap();
 
     faam_demuxer *d = NULL;
     faam_status st = faam_demuxer_open(&cfg, &io, &d);
