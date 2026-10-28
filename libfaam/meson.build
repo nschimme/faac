@@ -51,6 +51,8 @@ libfaam_static = static_library(
 
 if default_lib == 'shared' or default_lib == 'both'
   shared_kwargs = shared_library_args + {
+    'version': library_abi_versions['FAAM'],
+    'soversion': library_abi_versions['FAAM'].split('.')[0],
     'c_args': libfaam_args['c_args'] + ['-DFAAM_BUILDING'],
     'vs_module_defs': 'libfaam.def',
     'install': true,

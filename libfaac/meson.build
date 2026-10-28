@@ -82,6 +82,8 @@ endif
 
 if default_lib == 'shared' or default_lib == 'both'
     shared_kwargs = shared_library_args + {
+      'version': library_abi_versions['FAAC'],
+      'soversion': library_abi_versions['FAAC'].split('.')[0],
       'c_args' : common_args['c_args'] + ['-DFAAC_BUILDING'],
       'vs_module_defs' : 'libfaac.def',
     }

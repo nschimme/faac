@@ -8,14 +8,17 @@ project('faac', 'c',
         'b_lto=true'
     ])
 
-# Shared-library ABI version, separate from the project release version. This
-# is the single source for the SONAMEs, and Meson checks that the public
-# version macros in the installed headers match it.
-library_abi_version = '3.0.0'
-shared_library_args = {
-    'version': library_abi_version,
-    'soversion': library_abi_version.split('.')[0],
+# Shared-library ABI versions, separate from the project release version.
+# These are the single source for the SONAMEs, and Meson checks that the public
+# version macros in the installed headers match them. libfaac already shipped
+# SONAMEs 0-2 with other interfaces; the other libraries start at 0.
+library_abi_versions = {
+    'FAAC': '3.0.0',
+    'FAAD': '0.0.0',
+    'FAAM': '0.0.0',
+    'FAAR': '0.0.0',
 }
+shared_library_args = {}
 
 # Windows otherwise installs shared-library DLLs in bindir. Static frontends
 # do not need those DLLs at runtime, so keep them with the other libraries.

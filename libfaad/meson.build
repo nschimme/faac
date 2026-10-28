@@ -57,6 +57,8 @@ endif
 
 if default_lib == 'shared' or default_lib == 'both'
     shared_kwargs = shared_library_args + {
+      'version': library_abi_versions['FAAD'],
+      'soversion': library_abi_versions['FAAD'].split('.')[0],
       'c_args' : common_args['c_args'] + ['-DFAAD_BUILDING'],
     }
     # GNU ld version script (ELF only). PE and Mach-O have no symbol versions, so skip them and probe the rest.

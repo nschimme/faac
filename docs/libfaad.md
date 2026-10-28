@@ -34,8 +34,8 @@ in separate blocks through overridable allocators.
 Include `<faad3.h>` and link against `libfaad3` (`-lfaad3`). Installed builds
 provide the `faad3` pkg-config module.
 
-The shared library is `libfaad3` (`libfaad3.so.3` on Linux,
-`libfaad3.3.dylib` on macOS, or `libfaad3.dll` on Windows). The default build
+The shared library is `libfaad3` (`libfaad3.so.0` on Linux,
+`libfaad3.0.dylib` on macOS, or `libfaad3.dll` on Windows). The default build
 also produces a static archive. The `faad` command-line decoder in
 `frontend/` is an example of using the API.
 
@@ -680,8 +680,8 @@ ABI. Layouts follow the target's pointer width and alignment; they differ betwee
 - Baseline sizes (`FAAD_*_BASELINE` macros), released offsets, enum values, status codes
   and signatures stay fixed within a major version; incompatible changes need a
   new SONAME.
-- `FAAD_VERSION_MAJOR` matches the SONAME major; minor and patch track the
-  project release. `faad_get_library_info()` reports the linked version.
+- `FAAD_VERSION_MAJOR` matches the SONAME major; minor and patch track this
+  library's ABI version, not the project release. `faad_get_library_info()` reports the linked version.
 
 FAAD is free software, licensed under the GNU Lesser General Public License
 (LGPL), version 2.1 or later.

@@ -51,7 +51,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#define FAAD_VERSION_MAJOR 3
+#define FAAD_VERSION_MAJOR 0
 #define FAAD_VERSION_MINOR 0
 #define FAAD_VERSION_PATCH 0
 #define FAAD_STR_(x) #x

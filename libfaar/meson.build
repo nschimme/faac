@@ -36,7 +36,10 @@ if default_lib == 'static' or default_lib == 'both' or (get_option('frontend') a
 endif
 
 if default_lib == 'shared' or default_lib == 'both'
-  faar_kwargs = shared_library_args
+  faar_kwargs = shared_library_args + {
+    'version': library_abi_versions['FAAR'],
+    'soversion': library_abi_versions['FAAR'].split('.')[0],
+  }
   # GNU ld version script (ELF only). PE and Mach-O have no symbol versions, so skip them and probe the rest.
   faar_map = meson.current_source_dir() / 'libfaar.map'
   if host_machine.system() not in ['windows', 'cygwin', 'darwin'] and cc.has_link_argument('-Wl,--version-script=' + faar_map)

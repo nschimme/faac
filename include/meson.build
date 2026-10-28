@@ -1,6 +1,4 @@
 fs = import('fs')
-version_parts = library_abi_version.split('.')
-assert(version_parts.length() == 3, 'library_abi_version must be MAJOR.MINOR.PATCH')
 version_fields = ['MAJOR', 'MINOR', 'PATCH']
 version_headers = {
     'FAAC': 'faac.h',
@@ -9,6 +7,8 @@ version_headers = {
     'FAAR': 'faar.h',
 }
 foreach library, header: version_headers
+    version_parts = library_abi_versions[library].split('.')
+    assert(version_parts.length() == 3, library + ' ABI version must be MAJOR.MINOR.PATCH')
     header_text = fs.read(header)
     foreach index: range(3)
         expected = '#define ' + library + '_VERSION_' + version_fields[index] + ' ' + version_parts[index]
