@@ -315,10 +315,11 @@ jobs:
         run: meson test -C build-coverage --print-errorlogs
 
       - name: Generate coverage report
+        # build-coverage/tests holds only link and layout checks, which gcov cannot map back to their sources.
         run: |
-          gcovr --gcov-ignore-parse-errors=negative_hits.warn --root . --txt -o build-coverage/meson-logs/coverage.txt build-coverage
-          gcovr --gcov-ignore-parse-errors=negative_hits.warn --root . --xml-pretty -o build-coverage/meson-logs/coverage.xml build-coverage
-          gcovr --gcov-ignore-parse-errors=negative_hits.warn --root . --json-summary-pretty -o build-coverage/meson-logs/coverage-summary.json build-coverage
+          gcovr --gcov-ignore-parse-errors=negative_hits.warn --exclude-directories build-coverage/tests --root . --txt -o build-coverage/meson-logs/coverage.txt build-coverage
+          gcovr --gcov-ignore-parse-errors=negative_hits.warn --exclude-directories build-coverage/tests --root . --xml-pretty -o build-coverage/meson-logs/coverage.xml build-coverage
+          gcovr --gcov-ignore-parse-errors=negative_hits.warn --exclude-directories build-coverage/tests --root . --json-summary-pretty -o build-coverage/meson-logs/coverage-summary.json build-coverage
 
       - name: Add coverage summary to Actions run
         run: |

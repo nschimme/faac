@@ -31,8 +31,8 @@ int main(void)
     assert(faac_params_init(p, FAAC_PARAMS_BASELINE) == FAAC_OK);
     assert(p->struct_size == FAAC_PARAMS_BASELINE);
     p->sample_rate = 48000;
-    p->channels = 2;
-    p->bit_rate = 128000;
+    p->channels = 1;
+    p->bit_rate = 64000;
     faac_encoder *enc = NULL;
     assert(faac_encoder_open(p, &enc) == FAAC_OK);
     free(p);
