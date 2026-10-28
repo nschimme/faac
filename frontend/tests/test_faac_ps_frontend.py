@@ -28,6 +28,7 @@ import wave
 def run(cmd):
     result = subprocess.run(cmd, capture_output=True)
     assert result.returncode == 0, result.stderr.decode(errors='replace')
+    return result
 
 
 def make_stereo_wav(path, rate, mode):
@@ -82,6 +83,14 @@ def main():
                         assert left > right * 100, 'left image lost'
                     else:
                         assert right > left * 100, 'right image lost'
+        source = os.path.join(directory, '48000-antiphase.wav')
+        auto_encoded = os.path.join(directory, 'auto-6kbps.m4a')
+        result = run([faac, '--object-type', 'auto', '-b', '6', '-o', auto_encoded, source])
+        assert b'HE-AAC v2' in result.stderr, result.stderr.decode(errors='replace')
+        auto_output = auto_encoded + '.wav'
+        run([faad, '--strict', '-q', '-o', auto_output, auto_encoded])
+        with wave.open(auto_output, 'rb') as wav:
+            assert wav.getnchannels() == 2 and wav.getframerate() == 48000
     print('PS frontend: ok')
 
 

@@ -37,6 +37,7 @@ import time
 import wave
 
 ENCODER_SBR = sys.argv[5] == "true"
+ENCODER_PS = sys.argv[6] == "true"
 failures = []
 checks = 0
 
@@ -290,6 +291,27 @@ def run_all(t, d):
         for ext, flag in (("aac", ["-a"]), ("m4a", [])):
             r = t.run(t.faac, ["-v0"] + extra + flag + ["-o", f"{name}.{ext}", "s.wav"], d)
             check(r.returncode == 0, f"faac {name}.{ext}")
+
+    # AUTO picks HE-AAC v2 below the old 8 kbps stereo floor when PS is built,
+    # and the encoder tag names the profile instead of reporting LC.
+    if ENCODER_PS and ENCODER_SBR and CHANNELS == 2:
+        r = t.run(t.faac, ["-v0", "--object-type", "auto", "-b", "6", "-o", "ps_auto.m4a", "s.wav"], d)
+        check(r.returncode == 0, "faac auto low-rate PS encode")
+        info = t.faam_run(["info", "ps_auto.m4a"], d).stdout
+        text = info.decode()
+        check(any(line.strip().startswith("AAC Object Type") and "HE-AAC v2" in line
+                  for line in text.splitlines()), f"low-rate AUTO signals HE-AAC v2:\n{text}")
+        check("HE v2" in info_tags(info), "low-rate AUTO tag names HE v2: " + info_tags(info))
+
+    # Resampling is visible in the encoder tag only when the rates differ.
+    r = t.run(t.faac, ["-v0", "--object-type", "lc", "--rate", "32000", "-b", "8",
+                       "-o", "resampled.m4a", "s.wav"], d)
+    check(r.returncode == 0, "faac resampled encode")
+    tags = info_tags(t.faam_run(["info", "resampled.m4a"], d).stdout)
+    check("48000Hz->32000Hz" in tags, "resampling is recorded in the encoder tag: " + tags)
+    r = t.run(t.faac, ["-v0", "--object-type", "lc", "-q", "100", "-o", "not_resampled.m4a", "s.wav"], d)
+    check(r.returncode == 0 and "->" not in info_tags(t.faam_run(["info", "not_resampled.m4a"], d).stdout),
+          "the encoder tag omits resampling when the rate is unchanged")
 
     # Mux correctness: gapless values from faac's own file reproduce it, and a full decode matches
     mux_cases = [("lc", [])]

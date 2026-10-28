@@ -305,9 +305,12 @@ if set, otherwise 0.
 .BR --no-encoder-info
 Do not write the encoder tag
 .RI ( \[u00A9]too ).
-By default it holds the FAAC version, the rate, cutoff and object type, and any
-options changed from their defaults, e.g.
+By default it holds the FAAC version, the rate, cutoff and object type,
+whether the input was resampled, and any options changed from their defaults,
+e.g.
 .IR "FAAC x.y.z (hash), ABR 64kbps, cutoff 14500Hz, LC, stereo M/S, no TNS" .
+When resampling occurs, the rate field becomes a mapping such as
+.IR "48000Hz->32000Hz" .
 Without it, output no longer varies with the FAAC build, so identical audio gives byte-identical files.
 .TP
 .BR --faststart
