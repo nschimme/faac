@@ -100,11 +100,6 @@ bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const c
     return true;
 }
 
-const char *faac_version_string(char *buf, size_t buf_size, const char *lib_version)
-{
-    return cli_version_string(buf, buf_size, lib_version);
-}
-
 void free_encode_options(encode_options_t *opts)
 {
     if (!opts)
@@ -361,7 +356,7 @@ static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts, u
         if (version_string)
         {
             char ver_buf[128];
-            snprintf(version_string, 128, "FAAC %s", faac_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
+            snprintf(version_string, 128, "FAAC %s", cli_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
             metadata.encoder = version_string;
             allocated_tags[num_allocated++] = version_string;
         }

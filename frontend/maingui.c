@@ -512,7 +512,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             {
                 char txt[128], ver_buf[128];
                 snprintf(txt, sizeof(txt), "libfaac version %s",
-                         faac_version_string(ver_buf, sizeof(ver_buf), libinfo.version ? libinfo.version : "?"));
+                         cli_version_string(ver_buf, sizeof(ver_buf), libinfo.version ? libinfo.version : "?"));
                 SetDlgItemText(hWnd, IDC_COMPILEDATE, txt);
             }
             else

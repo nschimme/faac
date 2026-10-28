@@ -110,10 +110,6 @@ typedef struct {
 bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value);
 void free_encode_options(encode_options_t *opts);
 
-/* "2.1.0 (faac-2.1-51-gc3c8f222)", or just "2.1.0" when git has nothing to
-   add (a tarball build, where FAAC_GIT_VERSION falls back to lib_version). */
-const char *faac_version_string(char *buf, size_t buf_size, const char *lib_version);
-
 /* Canonical defaults, shared by both the CLI and GUI frontends. */
 #define DEFAULT_QUANT_QUALITY 100
 #define DEFAULT_ABR_KBPS      128
