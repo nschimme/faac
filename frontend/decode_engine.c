@@ -281,7 +281,8 @@ static void pcm_to_little_endian(uint8_t *buf, uint32_t bytes, uint32_t sample_b
             memcpy(buf + i, &v, 4);
         }
     }
-#if WORDS_BIGENDIAN
+    if (!FAAC_BIG_ENDIAN)
+        return;
     for (uint32_t i = 0; i + sample_bytes <= bytes; i += sample_bytes) {
         uint8_t *p = buf + i;
         if (sample_bytes == 2) {
@@ -292,9 +293,6 @@ static void pcm_to_little_endian(uint8_t *buf, uint32_t bytes, uint32_t sample_b
             uint32_t v; memcpy(&v, p, 4); v = htole32(v); memcpy(p, &v, 4);
         }
     }
-#else
-    (void)buf; (void)bytes; (void)sample_bytes;
-#endif
 }
 
 static bool write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint64_t total_pcm_bytes, uint16_t bits_per_sample, bool is_float, uint32_t channel_mask)
