@@ -133,9 +133,15 @@ static void signal_handler(int signal)
 
 static void print_usage(int mode)
 {
+    faad_library_info info;
+    info.struct_size = sizeof(info);
+    if (faad_get_library_info(&info) != FAAD_OK) {
+        info.version = "3.0.0";
+    }
+
     char version_buf[128];
     show_help_usage("faad", mode,
-                    cli_version_string(version_buf, sizeof(version_buf), PACKAGE_VERSION),
+                    cli_version_string(version_buf, sizeof(version_buf), info.version),
                     "faad [options] <infile.aac|infile.m4a>", g_help);
 }
 
@@ -261,6 +267,11 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 #endif
+
+    faad_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    if (faad_get_library_info(&libinfo) != FAAD_OK) {
+        libinfo.version = FAAD_VERSION_STRING;
+    }
 
     decode_options_t opts;
     init_decode_options(&opts);
@@ -409,10 +420,10 @@ int main(int argc, char **argv)
         allocated_outfile = out_path;
     }
 
-    if (opts.verbose > 0 && !opts.write_stdout && !opts.info_only) {
+    if (opts.verbose > 0 && !opts.write_stdout && !opts.info_only && libinfo.version) {
         char ver_buf[128];
         fprintf(stderr, "Freeware Advanced Audio Decoder\nFAAD %s\n\n",
-                cli_version_string(ver_buf, sizeof(ver_buf), PACKAGE_VERSION));
+                cli_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
     }
 
     decode_callbacks_t cbs = {

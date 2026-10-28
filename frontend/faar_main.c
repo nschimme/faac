@@ -89,7 +89,7 @@ static bool path_has_wav_suffix(const char *path) {
 static void print_faar_help(int mode) {
     char version[128];
     show_help_usage("faar", mode,
-                    cli_version_string(version, sizeof(version), PACKAGE_VERSION),
+                    cli_version_string(version, sizeof(version), "3.0.0"),
                     "faar [options] <input> [output]\n       faar [options] -o <dir> <input>...", help_groups);
     printf(
         "\nExamples:\n"
@@ -374,7 +374,7 @@ int main(int argc, char **argv) {
     if (verbose > 0) {
         char version[128];
         fprintf(stderr, "Freeware Advanced Audio Resampler\nFAAR %s\n\n",
-                cli_version_string(version, sizeof(version), PACKAGE_VERSION));
+                cli_version_string(version, sizeof(version), "3.0.0"));
     }
 
     const job_t job = {
