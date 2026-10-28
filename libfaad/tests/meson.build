@@ -94,10 +94,15 @@ if get_option('encoder')
         link_with: [libfaad, libfaac], dependencies: [libm])
     foreach case_name : [
         'align-lc-44100', 'align-lc-48000', 'align-he-48000', 'align-he-32000',
-        'tone-level-and-channels', 'silence', 'he-aac-band'
+        'tone-level-and-channels', 'silence', 'he-aac-band',
+        'align-ps-48000', 'ps-tone-level-and-channels', 'ps-silence'
     ]
         # These cases encode HE-AAC, which an LC-only encoder cannot do.
         if not encoder_sbr and (case_name == 'align-he-48000' or case_name == 'align-he-32000' or case_name == 'he-aac-band')
+            continue
+        endif
+        # PS needs both the encoder and the decoder side compiled in.
+        if (not encoder_ps or not get_option('decoder-sbr') or not get_option('decoder-ps')) and (case_name in ['align-ps-48000', 'ps-tone-level-and-channels', 'ps-silence'])
             continue
         endif
         test('test_integration_faad_roundtrip_' + case_name, test_faad_roundtrip,

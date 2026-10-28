@@ -38,6 +38,7 @@ typedef struct {
     int16_t *pcm;       /* decoded, interleaved */
     size_t frames;      /* per channel */
     uint32_t rate, channels, delay; /* delay: encoder + decoder, samples per channel */
+    unsigned flags;     /* FAAD_FRAME_* seen across the stream */
 } decoded;
 
 static decoded roundtrip(enum faac_object_type object, uint32_t rate, uint32_t channels, uint32_t bit_rate,
@@ -46,7 +47,7 @@ static decoded roundtrip(enum faac_object_type object, uint32_t rate, uint32_t c
     faac_params p;
     faac_encoder *enc = NULL;
     faac_encoder_info info = { .struct_size = sizeof(info) };
-    decoded d = { NULL, 0, 0, 0, 0 };
+    decoded d = { NULL, 0, 0, 0, 0, 0 };
     FT_REQUIRE(faac_params_init(&p, sizeof(p)) == FAAC_OK);
     p.sample_rate = rate;
     p.channels = channels;
@@ -90,6 +91,9 @@ static decoded roundtrip(enum faac_object_type object, uint32_t rate, uint32_t c
         FT_REQUIRE(faad_decode_frame(dec, stream + pos, packet, &used, out + out_len,
                                      (uint32_t)(out_cap - out_len), &written, &flags) == FAAD_OK);
         FT_REQUIRE(used == packet);
+        /* faad --strict rejects these frames, so the checks must not need them. */
+        FT_CHECK((flags & (FAAD_FRAME_CONCEALED | FAAD_FRAME_DEGRADED)) == 0);
+        d.flags |= flags;
         out_len += written;
         pos += packet;
     }
@@ -156,6 +160,73 @@ static void test_alignment(enum faac_object_type object, uint32_t rate, uint32_t
     }
     if (best_lag) fprintf(stderr, "%s: ", name);
     FT_CHECK_INT(best_lag, 0);
+    free(d.pcm);
+    free(in);
+}
+
+/* PS codes a mono core plus stereo cues, so the input is identical on both channels to
+ * allow comparing against one; the peak must sit at lag 0 on both outputs. */
+static void test_alignment_ps(uint32_t rate, uint32_t bit_rate, const char *name)
+{
+    enum { TONES = 120 };
+    uint32_t frames = rate * 3;
+    int16_t *in = (int16_t *)malloc((size_t)frames * 2 * sizeof(int16_t));
+    double phase[TONES];
+    uint32_t rng = 5;
+    FT_REQUIRE(in);
+    for (int k = 0; k < TONES; k++) phase[k] = 2.0 * M_PI * (ft_rand(&rng) & 0xFFFF) / 65536.0;
+    for (uint32_t i = 0; i < frames; i++) {
+        double v = 0;
+        for (int k = 0; k < TONES; k++) v += 60.0 * sin(2.0 * M_PI * (300.0 + 45.0 * k) * i / rate + phase[k]);
+        in[2 * i] = in[2 * i + 1] = (int16_t)v;
+    }
+    decoded d = roundtrip(FAAC_OBJ_HE_AAC_V2, rate, 2, bit_rate, in, frames);
+    FT_CHECK(d.flags & FAAD_FRAME_PS);
+    for (uint32_t c = 0; c < 2; c++) {
+        double best = 0;
+        int best_lag = 0;
+        for (int lag = -4; lag <= 4; lag++) {
+            double sum = 0;
+            for (size_t i = rate / 2; i < rate * 5 / 2; i++)
+                sum += (double)in[2 * i] * d.pcm[(i + d.delay + lag) * 2 + c];
+            if (lag == -4 || sum > best) { best = sum; best_lag = lag; }
+        }
+        if (best_lag) fprintf(stderr, "%s channel %u: ", name, c);
+        FT_CHECK_INT(best_lag, 0);
+    }
+    free(d.pcm);
+    free(in);
+}
+
+static void test_ps_tone_level_and_channels(void)
+{
+    enum { RATE = 48000, FRAMES = RATE * 2 };
+    int16_t *in = (int16_t *)calloc((size_t)FRAMES * 2, sizeof(int16_t));
+    FT_REQUIRE(in);
+    /* Hard left: PS must place the tone on the left without losing its level. */
+    for (uint32_t i = 0; i < FRAMES; i++)
+        in[2 * i] = (int16_t)(8192.0 * sin(2.0 * M_PI * 1000.0 * i / RATE));
+    decoded d = roundtrip(FAAC_OBJ_HE_AAC_V2, RATE, 2, 32000, in, FRAMES);
+    FT_CHECK(d.flags & FAAD_FRAME_PS);
+    size_t from = RATE / 2, to = RATE + RATE / 2;
+    double own = tone_amplitude(d.pcm, 2, 0, from + d.delay, to + d.delay, 1000.0, RATE);
+    double other = tone_amplitude(d.pcm, 2, 1, from + d.delay, to + d.delay, 1000.0, RATE);
+    FT_CHECK_NEAR(db(own / 8192.0), 0.0, 1.5);
+    FT_CHECK(db(own / other) >= 20.0);
+    free(d.pcm);
+    free(in);
+}
+
+static void test_silence_ps(void)
+{
+    enum { RATE = 48000, FRAMES = RATE };
+    int16_t *in = (int16_t *)calloc((size_t)FRAMES * 2, sizeof(int16_t));
+    FT_REQUIRE(in);
+    decoded d = roundtrip(FAAC_OBJ_HE_AAC_V2, RATE, 2, 32000, in, FRAMES);
+    FT_CHECK(d.flags & FAAD_FRAME_PS);
+    size_t nonzero = 0;
+    for (size_t i = 0; i < d.frames * 2; i++) nonzero += d.pcm[i] != 0;
+    FT_CHECK_INT(nonzero, 0);
     free(d.pcm);
     free(in);
 }
@@ -247,6 +318,8 @@ int main(int argc, char **argv)
     FT_REQUIRE(faad_get_library_info(&dec) == FAAD_OK);
     int stereo = enc.max_channels >= 2 && dec.max_channels >= 2;
     int enc_sbr = enc.flags & FAAC_LIB_SBR;
+    int ps = stereo && enc_sbr && (enc.flags & FAAC_LIB_PS)
+             && (dec.flags & FAAD_LIB_SBR) && (dec.flags & FAAD_LIB_PS);
     int all = argc == 1 || (argc == 2 && strcmp(argv[1], "all") == 0);
     if (argc > 2) goto invalid_case;
 
@@ -264,6 +337,12 @@ int main(int argc, char **argv)
         test_silence();
     if (stereo && enc_sbr && (dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "he-aac-band") == 0))
         test_he_band();
+    if (ps && (all || strcmp(argv[1], "align-ps-48000") == 0))
+        test_alignment_ps(48000, 32000, "PS 48k");
+    if (ps && (all || strcmp(argv[1], "ps-tone-level-and-channels") == 0))
+        test_ps_tone_level_and_channels();
+    if (ps && (all || strcmp(argv[1], "ps-silence") == 0))
+        test_silence_ps();
 
     if (all || strcmp(argv[1], "align-lc-44100") == 0
         || strcmp(argv[1], "align-lc-48000") == 0
@@ -271,10 +350,13 @@ int main(int argc, char **argv)
         || strcmp(argv[1], "align-he-32000") == 0
         || strcmp(argv[1], "tone-level-and-channels") == 0
         || strcmp(argv[1], "silence") == 0
-        || strcmp(argv[1], "he-aac-band") == 0)
+        || strcmp(argv[1], "he-aac-band") == 0
+        || strcmp(argv[1], "align-ps-48000") == 0
+        || strcmp(argv[1], "ps-tone-level-and-channels") == 0
+        || strcmp(argv[1], "ps-silence") == 0)
         return ft_done();
 
 invalid_case:
-    fprintf(stderr, "usage: %s [all|align-lc-44100|align-lc-48000|align-he-48000|align-he-32000|tone-level-and-channels|silence|he-aac-band]\n", argv[0]);
+    fprintf(stderr, "usage: %s [all|align-lc-44100|align-lc-48000|align-he-48000|align-he-32000|tone-level-and-channels|silence|he-aac-band|align-ps-48000|ps-tone-level-and-channels|ps-silence]\n", argv[0]);
     return 2;
 }
