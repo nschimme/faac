@@ -28,7 +28,7 @@ Set target output sampling rate in Hz. Required. The accepted range is 7350 thro
 Set the raw PCM input rate [default: 44100 Hz]. WAV input uses its header rate.
 .TP
 .BR \-\-quality " " \fIpreset\fR
-Set filter quality preset: fast uses less processing with a narrower passband and weaker alias rejection; good (default) provides a wide passband and strong alias suppression; high keeps Good's passband while further reducing aliasing, at greater CPU and setup-memory cost. Float builds support High with compensated float arithmetic, which uses more CPU; filter coefficients and FFT twiddles are still prepared with the existing double-precision calculations.
+Set filter quality preset: fast uses less processing with a narrower passband and weaker alias rejection; good (default) provides a wide passband and strong alias suppression; high keeps Good's passband while further reducing aliasing, at greater CPU and setup-memory cost. The default build runs High's filter kernels in native double. Float builds (resampler-float) support High with compensated float arithmetic, which uses more CPU; filter coefficients and FFT twiddles are still prepared with the existing double-precision calculations.
 .TP
 .BR \-c ", " \-\-channels " " \fInum\fR
 Set audio channel count for raw PCM input [default: 2; range: 1 to 8, subject to the configured build limit]. WAV input uses its header channel count.
