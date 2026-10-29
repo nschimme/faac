@@ -597,6 +597,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
         params.quality = 0;
     }
 
+    params.drc_mode = opts->drc_mode;
+    params.drc_ref_level = opts->drc_ref_level;
+
     if (opts->max_bit_rate > 0)
         params.peak_bit_rate = opts->max_bit_rate;
     if (opts->cbr)

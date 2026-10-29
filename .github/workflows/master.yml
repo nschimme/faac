@@ -55,6 +55,13 @@ jobs:
               options: -Dencoder-ps=true -Dstats=true,
             }
           - {
+              name: Linux GCC (encoder DRC enabled),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dencoder-drc=true,
+            }
+          - {
               name: Linux GCC (LC-only encoder),
               os: ubuntu-latest,
               compiler: gcc,

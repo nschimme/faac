@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <math.h>
+
 #include <faac.h>
 #include "frame.h"
 #include "bitstream.h"
@@ -42,6 +44,7 @@ _Static_assert(sizeof(enum faac_stereo_mode)   == 4, "faac_stereo_mode must be 3
 _Static_assert(sizeof(enum faac_shortctl_mode) == 4, "faac_shortctl_mode must be 32-bit");
 _Static_assert(sizeof(enum faac_stream_format) == 4, "faac_stream_format must be 32-bit");
 _Static_assert(sizeof(enum faac_input_format)  == 4, "faac_input_format must be 32-bit");
+_Static_assert(sizeof(enum faac_drc_mode)      == 4, "faac_drc_mode must be 32-bit");
 
 /* The modern enums mirror the legacy numeric values one-for-one, so parameter
  * translation is a plain field copy. Guard that assumption. */
@@ -55,6 +58,7 @@ _Static_assert((int)FAAC_STREAM_RAW == RAW_STREAM && (int)FAAC_STREAM_ADTS == AD
 _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == INPUT_16BIT
             && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_24IN32 == INPUT_32BIT
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
+_Static_assert((int)FAAC_DRC_OFF == DRC_OFF && (int)FAAC_DRC_AUTO == DRC_AUTO, "drc mode drift");
 
 /* Baselines end at the last field so appended fields remain optional. */
 #define PARAMS_BASELINE_SIZE ((uint32_t)FAAC_PARAMS_BASELINE)
@@ -102,7 +106,7 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out_info)
     info.copyright      = vcopy;
     info.max_channels   = (uint32_t)MAX_CHANNELS;
     info.sbr_decimation = (uint32_t)FAAC_SBR_DECIMATION;
-    info.flags          = (FAAC_ENCODER_SBR ? FAAC_LIB_SBR : 0) | (FAAC_ENCODER_PS ? FAAC_LIB_PS : 0);
+    info.flags          = (FAAC_ENCODER_SBR ? FAAC_LIB_SBR : 0) | (FAAC_ENCODER_PS ? FAAC_LIB_PS : 0) | (FAAC_ENCODER_DRC ? FAAC_LIB_DRC : 0);
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_library_info; report the byte count actually set. */
@@ -176,6 +180,14 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         case FAAC_SHORTCTL_NOLONG: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
+    switch (p->drc_mode) {
+        case FAAC_DRC_OFF: case FAAC_DRC_AUTO: break;
+        default: return FAAC_ERR_INVALID_ARGUMENT;
+    }
+    if (p->drc_mode == FAAC_DRC_AUTO && !FAAC_ENCODER_DRC)
+        return FAAC_ERR_UNSUPPORTED;
+    if (p->drc_ref_level < -31.75f || p->drc_ref_level > 0.0f || isnan(p->drc_ref_level))
+        return FAAC_ERR_INVALID_ARGUMENT;
     switch (p->stream_format) {
         case FAAC_STREAM_RAW: case FAAC_STREAM_ADTS: case FAAC_STREAM_ADTS_MPEG2: break;
         default: return FAAC_ERR_INVALID_ARGUMENT;
@@ -289,6 +301,8 @@ FAACAPI faac_status faac_encoder_open(const faac_params *caller, faac_encoder **
     cfg->usePns        = (config->flags & FAAC_FLAG_PNS) ? 1 : 0;
     cfg->maxBitRate    = config->peak_bit_rate;
     cfg->rateControl   = rate_mode_to_core(config->rate_control);
+    cfg->drcMode       = (unsigned int)config->drc_mode;
+    cfg->drcRefLevel   = config->drc_ref_level == 0.0f ? -23.0f : config->drc_ref_level;
     /* WAVE order must become AAC element order; each entry names the input
      * channel that feeds that output slot. AAC input keeps the identity map
      * faacEncOpen installed. */
@@ -388,6 +402,8 @@ FAACAPI faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_enco
     info.peak_bit_rate     = (uint32_t)h->config.maxBitRate;
     info.encoder_delay    = faacEncoderDelay(h);
     info.rate_control     = rate_mode_from_core(h->config.rateControl);
+    info.drc_mode         = (enum faac_drc_mode)h->config.drcMode;
+    info.drc_ref_level    = h->config.drcRefLevel;
     info.asc_size         = h->ascLen;
     memcpy(info.asc, h->asc, h->ascLen);
 
@@ -452,6 +468,45 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
 
     *bytes_written = (uint32_t)rc;
     return FAAC_OK;
+}
+
+FAACAPI faac_status faac_encoder_set_drc(faac_encoder *encoder, const faac_drc_info *drc)
+{
+#if !FAAC_ENCODER_DRC
+    (void)encoder; (void)drc;
+    return FAAC_ERR_UNSUPPORTED;
+#else
+    faacEncStruct *h;
+
+    if (!encoder)
+        return FAAC_ERR_INVALID_ARGUMENT;
+    h = unwrap(encoder);
+
+    if (!drc || !drc->enabled) {
+        h->drcInfo.enabled = false;
+        h->hasManualDrcOverride = false;
+        return FAAC_OK;
+    }
+
+    if (drc->struct_size < sizeof(faac_drc_info))
+        return FAAC_ERR_INVALID_ARGUMENT;
+
+    if (isnan(drc->dynamic_range_gain) || drc->dynamic_range_gain < -31.75f || drc->dynamic_range_gain > 31.75f)
+        return FAAC_ERR_INVALID_ARGUMENT;
+
+    if (drc->prog_ref_level_present) {
+        if (isnan(drc->prog_ref_level) || drc->prog_ref_level < -31.75f || drc->prog_ref_level > 0.0f)
+            return FAAC_ERR_INVALID_ARGUMENT;
+    }
+
+    h->drcInfo.enabled = true;
+    h->drcInfo.gain_db = drc->dynamic_range_gain;
+    h->drcInfo.prog_ref_level_present = drc->prog_ref_level_present;
+    h->drcInfo.prog_ref_level_db = drc->prog_ref_level;
+    h->hasManualDrcOverride = true;
+
+    return FAAC_OK;
+#endif
 }
 
 FAACAPI const char *faac_strerror(faac_status status)
