@@ -61,7 +61,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     static uint8_t pcm[MAX_FRAME_SAMPLES * sizeof(int32_t)];
     const uint8_t *asc;
     uint32_t asc_len, w, flags, sel, i;
-    int32_t map[16];
 
     if (size < 24)
         return 0;
@@ -74,7 +73,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     p.object_type  = (enum faac_object_type)((flags >> 2 & 3) == 0 ? 0 : (flags >> 2 & 3) == 1 ? 2 :
                                               (flags >> 2 & 3) == 2 ? 5 : 29);
     p.stereo_mode   = (enum faac_stereo_mode)(flags >> 4 & 7);
-    p.use_lfe      = flags >> 7 & 1;
+    p.channel_layout = (enum faac_channel_layout)(flags >> 7 & 1);
     p.flags        = (flags >> 8 & 1 ? FAAC_FLAG_TNS : 0) | (flags >> 9 & 1 ? FAAC_FLAG_PNS : 0);
     p.stream_format = (enum faac_stream_format)(flags >> 10 & 3);
     p.input_format = (enum faac_input_format)(flags >> 12 & 7);
@@ -84,13 +83,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     p.bandwidth    = (flags >> 21 & 1) ? take(&c, 4) : take(&c, 2);
     p.quality = (flags >> 22 & 1) ? take(&c, 4) : take(&c, 2) % 6000;
     p.peak_bit_rate = (flags >> 23 & 1) ? take(&c, 4) : 0;
-    p.reserved[0]  = (flags >> 24 & 0xf) == 15;
-    if (flags >> 28 & 1) {
-        for (i = 0; i < 16; i++)
-            map[i] = (int32_t)(int8_t)take(&c, 1) % 10;
-        p.channel_map = map;
-        p.channel_map_count = take(&c, 1) % 17;
-    }
 
     if (faac_encoder_open(&p, &enc) != FAAC_OK)
         return 0;

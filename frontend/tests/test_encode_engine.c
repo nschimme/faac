@@ -92,7 +92,7 @@ static int test_options(void)
     CHECK(opts.mpeg_version == 4);
     CHECK(opts.object_type == FAAC_OBJ_AUTO);
     CHECK(opts.quant_quality == 0 && opts.bit_rate == DEFAULT_ABR_KBPS * 1000);
-    CHECK(opts.use_tns && opts.use_pns && opts.use_lfe == -1);
+    CHECK(opts.use_tns && opts.use_pns);
 
     parse_quality_or_bitrate("72", false, &opts);
     CHECK(opts.quant_quality == 72 && opts.bit_rate == 0);

@@ -290,7 +290,7 @@ cleanup:
 ### Defaults and PCM input
 
 `faac_params_init()` defaults to MPEG-4 AAC-LC, mixed joint stereo, TNS and
-PNS enabled, LFE disabled, ADTS, signed 16-bit input, normal block switching,
+PNS enabled, AAC channel order, ADTS, signed 16-bit input, normal block switching,
 ABR at 64000 bits/sec for every channel, no user peak cap and automatic
 bandwidth/quality. Only sample rate and channel count must be supplied.
 `FAAC_OBJ_AUTO` is an explicit choice, not the initialization default.
@@ -320,25 +320,25 @@ this is not a clipping or normalization service.
 
 ### Channel ordering and ownership
 
-Mono and stereo use mono and L/R order. Multichannel input follows AAC element
-order, with the center first, channel pairs next and the final unpaired channel
-last. For conventional 5.1 use C, L, R, Ls, Rs, LFE and set `use_lfe = true`.
-For source order L, R, C, LFE, Ls, Rs:
+Mono and stereo use mono and L/R order. For three or more channels,
+`faac_params.channel_layout` names the order of the interleaved input:
 
-```c
-int32_t map[6] = { 2, 0, 1, 4, 5, 3 };
-p.channel_map = map;
-p.channel_map_count = 6;
-p.use_lfe = true;
-```
+| Channels | `FAAC_LAYOUT_AAC` (default) | `FAAC_LAYOUT_WAV` |
+|---|---|---|
+| 3 | C, L, R | L, R, C |
+| 4 | C, L, R, BC | L, R, C, BC |
+| 5 | C, L, R, Ls, Rs | L, R, C, Ls, Rs |
+| 6 | C, L, R, Ls, Rs, LFE | L, R, C, LFE, Ls, Rs |
+| 8 | C, L, R, SL, SR, BL, BR, LFE | L, R, C, LFE, BL, BR, SL, SR |
 
-`channel_map[destination_channel]` selects the source PCM channel; entries must
-be in `0..channels-1`, with at least `channels` entries supplied.
-NULL selects identity order. Use a permutation to reorder channels; the map
-does not mix or downmix audio. For the conventional six- and eight-channel layouts, LFE selection applies
-to the trailing unpaired channel; it does not locate an LFE within the source layout automatically.
+With `FAAC_LAYOUT_WAV` the library reorders the channels to AAC element order,
+so WAVE files and decoder output can be passed straight in. Six and eight
+channels always carry an LFE, as the trailing unpaired channel. The layout only
+reorders channels; it does not mix or downmix audio, and there is no way to
+place the channels of a custom source order. A caller with one permutes the
+samples itself and passes `FAAC_LAYOUT_AAC`.
 
-Open copies parameters and the map; their storage may be released after open.
+Open copies the parameters; their storage may be released after open.
 Input and output buffers remain caller-owned; PCM is copied into internal
 storage during encode. ASC remains library-owned until close; copy it if the
 muxer needs it longer. Version/copyright and error strings are static and must
@@ -570,8 +570,8 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     `allowMidside` was a compatibility alias sharing storage with
     `jointmode` in a union; it has no separate replacement, use
     `stereo_mode` directly.
-  - `useLfe` → `use_lfe` (now `bool`); `useTns` → `FAAC_FLAG_TNS` in
-    `flags`.
+  - `useLfe` has no replacement: six and eight channels carry an LFE.
+    `useTns` → `FAAC_FLAG_TNS` in `flags`.
   - `shortctl` → `short_control` (`FAAC_SHORTCTL_*`).
   - `bitRate` → `bit_rate`, now the whole stream rather than per
     channel; `bandWidth` → `bandwidth`; `quantqual` → `quality`, which
@@ -580,9 +580,8 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     the encoder, leaving the caller an on/off switch.
   - `outputFormat` → `stream_format` (`FAAC_STREAM_*`);
     `inputFormat` → `input_format` (`FAAC_INPUT_*`).
-  - `channel_map[64]` → `channel_map` plus an explicit
-    `channel_map_count` (the old fixed-size array was implicitly sized by
-    `numChannels`).
+  - `channel_map[64]` → `channel_layout` (`FAAC_LAYOUT_AAC` or
+    `FAAC_LAYOUT_WAV`); arbitrary permutations are done by the caller.
   - `version`, `name`, and `copyright` were unused or
     library-populated informational fields in the legacy config struct; their
     closest analogs are `faac_params.struct_size` (for `version`-style
@@ -637,6 +636,7 @@ calls and rebuild.
 | `faac_encoder_asc()` as the only way to read the ASC | The ASC is also in `faac_encoder_info.asc` and `asc_size`, valid as soon as `faac_encoder_open()` returns. `faac_encoder_get_info()` and `faac_encoder_asc()` take a const handle. |
 | `rate_control` with `FAAC_RC_AUTO` as zero | `FAAC_RC_ABR` is zero and the default. `FAAC_RC_AUTO` is gone and the constants are renumbered (ABR 0, VBR 1, CBR 2). VBR needs `bit_rate = 0`. ABR and CBR need `quality = 0`; a `quality` given with a bitrate used to seed the rate loop and is now refused, and a VBR `quality` above 5000 is refused instead of clamped. |
 | per-channel `bit_rate` | **Whole-stream bits/sec; multiply an old value by `channels`.** Zero means 64 kbit/s for every channel. `faac_encoder_info.bit_rate` is whole-stream too, and `peak_bit_rate` must be at least `bit_rate`. |
+| `use_lfe`, `channel_map`, `channel_map_count` | `channel_layout`: `FAAC_LAYOUT_AAC` (the default) or `FAAC_LAYOUT_WAV`. Six and eight channels always carry an LFE. Any other order is permuted by the caller before encoding. `faac.h` no longer includes `<stdbool.h>`. |
 
 ## ABI compatibility
 

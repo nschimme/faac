@@ -124,7 +124,6 @@ FAACAPI faac_status faac_params_init(faac_params *params, uint32_t caller_size)
     memset(&tmp, 0, sizeof(tmp));
     tmp.object_type   = FAAC_OBJ_LC;
     tmp.stereo_mode    = FAAC_STEREO_AUTO;
-    tmp.use_lfe       = false;
     tmp.flags         = FAAC_FLAG_TNS | FAAC_FLAG_PNS;
     tmp.bit_rate      = 0;              /* ABR default: 64 kbit/s per channel */
     tmp.bandwidth     = 0;              /* derive from bit_rate */
@@ -190,14 +189,8 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         return FAAC_ERR_INVALID_ARGUMENT;
     if (GetChannelConfig((int)p->channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (p->channel_map) {
-        uint32_t i;
-        if (p->channel_map_count < p->channels)
-            return FAAC_ERR_INVALID_ARGUMENT;
-        for (i = 0; i < p->channels; i++)
-            if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->channels)
-                return FAAC_ERR_INVALID_ARGUMENT;
-    }
+    if (p->channel_layout != FAAC_LAYOUT_AAC && p->channel_layout != FAAC_LAYOUT_WAV)
+        return FAAC_ERR_INVALID_ARGUMENT;
     /* The core runs on a per-channel rate. The bound is only a ceiling: it is
      * the ISO/IEC 14496-3 per-frame limit and therefore real, whereas the
      * format sets no minimum and the encoder's own floor already ends the
@@ -234,9 +227,6 @@ static faac_status validate_params(const faac_params *p, uint64_t *bit_rate_per_
         if (p->peak_bit_rate < bit_rate)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
-    /* reserved padding must be zero so future fields can claim it safely */
-    if (p->reserved[0] || p->reserved[1] || p->reserved[2])
-        return FAAC_ERR_INVALID_ARGUMENT;
     return FAAC_OK;
 }
 
@@ -273,7 +263,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *config, faac_encoder **
     cfg->mpegVersion   = config->stream_format == FAAC_STREAM_ADTS_MPEG2 ? MPEG2 : MPEG4;
     cfg->aacObjectType = (unsigned int)config->object_type;  /* LOW / HE_V1 / AUTO */
     cfg->jointmode     = (unsigned int)config->stereo_mode;
-    cfg->useLfe        = config->use_lfe ? 1 : 0;
+    cfg->useLfe        = (config->channels == 6 || config->channels == 8) ? 1 : 0;
     cfg->useTns        = (config->flags & FAAC_FLAG_TNS) ? 1 : 0;
     cfg->bitRate       = (unsigned long)bit_rate_per_channel;
     cfg->bandWidth     = config->bandwidth;
@@ -284,12 +274,22 @@ FAACAPI faac_status faac_encoder_open(const faac_params *config, faac_encoder **
     cfg->usePns        = (config->flags & FAAC_FLAG_PNS) ? 1 : 0;
     cfg->maxBitRate    = config->peak_bit_rate;
     cfg->rateControl   = rate_mode_to_core(config->rate_control);
-    if (config->channel_map) {
+    /* WAVE order must become AAC element order; each entry names the input
+     * channel that feeds that output slot. AAC input keeps the identity map
+     * faacEncOpen installed. */
+    if (config->channel_layout == FAAC_LAYOUT_WAV && config->channels >= 3) {
+        static const uint8_t wav_to_aac[][8] = {
+            {2, 0, 1},                   /* 3 channels */
+            {2, 0, 1, 3},                /* 4 */
+            {2, 0, 1, 3, 4},             /* 5 */
+            {2, 0, 1, 4, 5, 3},          /* 6 */
+            {0},                         /* 7: unsupported */
+            {2, 0, 1, 6, 7, 4, 5, 3},    /* 8 */
+        };
         uint32_t i;
         for (i = 0; i < config->channels; i++)
-            cfg->channel_map[i] = config->channel_map[i];
+            cfg->channel_map[i] = wav_to_aac[config->channels - 3][i];
     }
-    /* else: faacEncOpen already installed the identity map */
 
     applied = faacEncApplyConfig(h);
     if (applied != 1) {

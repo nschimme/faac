@@ -144,7 +144,6 @@ static void test_lfe_narrow_bandwidth(void)
     p.sample_rate = 64000;
     p.channels = CHANNELS;
     p.object_type = FAAC_OBJ_LC;
-    p.use_lfe = 1;
     p.bit_rate = 68000 * CHANNELS;
     p.bandwidth = 150;
     p.input_format = FAAC_INPUT_16BIT;

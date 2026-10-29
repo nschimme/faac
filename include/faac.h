@@ -31,9 +31,9 @@
  *   - Fixed-width integer types and width-pinned enums keep the ABI identical
  *     across 64-bit platforms (LP64 and LLP64), regardless of -fshort-enums.
  *     32-bit targets have their own layout because of pointer fields.
- *   - faac_encoder_info is 4-byte aligned: append only members of 4 bytes or
- *     less. faac_params and faac_library_info hold pointers, so appended
- *     members sit at multiples of their size, in blocks of 8 bytes.
+ *   - faac_params and faac_encoder_info are 4-byte aligned: append only members
+ *     of 4 bytes or less. faac_library_info holds pointers, so appended members
+ *     sit at multiples of their size, in blocks of 8 bytes.
  *   - faac_params grows only additively: new releases append named fields and
  *     grow sizeof(faac_params); callers MUST zero-initialize via
  *     faac_params_init() so struct_size lets the library reconcile versions.
@@ -52,7 +52,6 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 /*
  * Tracks the libfaac SONAME, not the project release version. Lets callers
@@ -159,6 +158,23 @@ enum faac_input_format {
     FAAC_INPUT_MAX = 0x7fffffff
 };
 
+/* Order of the interleaved input channels. */
+enum faac_channel_layout {
+    /* AAC element order: FC, front L/R, then BC (4 ch), back L/R (5/6 ch),
+     * or side L/R then back L/R (8 ch), with LFE last (6/8 ch). */
+    FAAC_LAYOUT_AAC = 0,
+    /* WAVE order: FL FR FC, then BC (4 ch), BL BR (5 ch), LFE BL BR (6 ch),
+     * or LFE BL BR SL SR (8 ch). The library reorders to AAC element order. */
+    FAAC_LAYOUT_WAV = 1,
+    FAAC_LAYOUT_MAX = 0x7fffffff
+};
+
+enum faac_flag {
+    FAAC_FLAG_TNS = 1u << 0,         /* temporal noise shaping                   */
+    FAAC_FLAG_PNS = 1u << 1,         /* perceptual noise substitution            */
+    FAAC_FLAG_MAX = 0x7fffffff
+};
+
 /*
  * Encoder parameters, supplied once to faac_encoder_open().
  *
@@ -175,12 +191,6 @@ enum faac_input_format {
  * behavior. Callers must check library support before requesting new behavior.
  * Existing field offsets, meanings and struct alignment, and baseline sizes stay fixed.
  */
-enum faac_flag {
-    FAAC_FLAG_TNS = 1u << 0,         /* temporal noise shaping                   */
-    FAAC_FLAG_PNS = 1u << 1,         /* perceptual noise substitution            */
-    FAAC_FLAG_MAX = 0x7fffffff
-};
-
 typedef struct faac_params {
     uint32_t                struct_size;   /* set by faac_params_init() */
 
@@ -191,9 +201,6 @@ typedef struct faac_params {
     enum faac_stereo_mode   stereo_mode;
     uint32_t                flags;         /* FAAC_FLAG_*; unknown bits are rejected */
 
-    bool                    use_lfe;       /* treat the last channel as LFE (>= 6 ch) */
-    uint8_t                 reserved[3];   /* reserved for future use; currently zero */
-
     uint32_t                bit_rate;      /* whole-stream bits/sec; 0 = 64 kbit/s per channel in ABR/CBR, must be 0 in VBR */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = from bit_rate, the curve's top in VBR (full band above 48 kHz at default quality or higher) */
     uint32_t                quality;       /* VBR quality 1..5000; 0 = default; must be 0 in ABR/CBR */
@@ -202,9 +209,7 @@ typedef struct faac_params {
     enum faac_input_format  input_format;
     enum faac_shortctl_mode short_control;
 
-    const int32_t          *channel_map;   /* optional reorder table, channels entries;
-                                            * NULL = identity. Caller-owned; copied by open(). */
-    uint32_t                channel_map_count; /* entries in channel_map (0 if NULL) */
+    enum faac_channel_layout channel_layout; /* input channel order; 6 and 8 channels carry an LFE */
 
     /* Ceiling on any single frame, for packet-oriented transports that cannot
      * fragment one -- a frame that overruns the link MTU is dropped, not split.

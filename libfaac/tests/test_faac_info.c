@@ -17,6 +17,7 @@
  * parameter flags reject unknown bits, and the rate controls take a
  * whole-stream bitrate. */
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include "faac.h"
 
@@ -34,6 +35,67 @@ static faac_status open_with(faac_encoder **enc, enum faac_object_type object,
     return faac_encoder_open(&p, enc);
 }
 
+/* Encode a few frames of 16-bit PCM and return the concatenated stream. */
+static size_t encode_stream(uint32_t channels, enum faac_channel_layout layout,
+                            const int16_t *pcm, uint32_t frames, uint8_t *out, size_t cap)
+{
+    faac_params p;
+    faac_encoder *enc = NULL;
+    faac_encoder_info info = { .struct_size = sizeof info };
+    size_t total = 0;
+    assert(faac_params_init(&p, sizeof p) == FAAC_OK);
+    p.sample_rate = 48000;
+    p.channels = channels;
+    p.bit_rate = 64000 * channels;
+    p.stream_format = FAAC_STREAM_ADTS;
+    p.channel_layout = layout;
+    assert(faac_encoder_open(&p, &enc) == FAAC_OK);
+    assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
+    for (uint32_t done = 0; done <= frames; done += info.frame_samples) {
+        uint32_t n = 0;
+        uint32_t left = frames - done < info.frame_samples ? frames - done : info.frame_samples;
+        assert(total + info.max_output_bytes <= cap);
+        assert(faac_encoder_encode(enc, left ? pcm + (size_t)done * channels : NULL,
+                                   left * channels, out + total, (uint32_t)(cap - total), &n) == FAAC_OK);
+        total += n;
+    }
+    assert(faac_encoder_close(&enc) == FAAC_OK);
+    return total;
+}
+
+/* WAVE order must encode exactly like the same samples laid out in AAC element order. */
+static void test_layouts(void)
+{
+    /* For each channel count, the WAVE channel that feeds each AAC slot. */
+    static const uint8_t aac_from_wav[][8] = {
+        {2, 0, 1}, {2, 0, 1, 3}, {2, 0, 1, 3, 4}, {2, 0, 1, 4, 5, 3},
+        {0}, {2, 0, 1, 6, 7, 4, 5, 3},
+    };
+    faac_library_info lib = { .struct_size = sizeof lib };
+    assert(faac_get_library_info(&lib) == FAAC_OK);
+    for (uint32_t ch = 3; ch <= 8 && ch <= lib.max_channels; ch++) {
+        if (ch == 7) continue;
+        const uint32_t frames = 4096;
+        int16_t *wav = malloc((size_t)frames * ch * sizeof *wav);
+        int16_t *aac = malloc((size_t)frames * ch * sizeof *aac);
+        uint8_t *a = malloc(1 << 20), *b = malloc(1 << 20);
+        assert(wav && aac && a && b);
+        for (uint32_t i = 0; i < frames; i++)
+            for (uint32_t c = 0; c < ch; c++)
+                wav[(size_t)i * ch + c] = (int16_t)(((i * (37 + 11 * c)) % 20011) - 10005 + 300 * (int)c);
+        for (uint32_t i = 0; i < frames; i++)
+            for (uint32_t c = 0; c < ch; c++)
+                aac[(size_t)i * ch + c] = wav[(size_t)i * ch + aac_from_wav[ch - 3][c]];
+        size_t na = encode_stream(ch, FAAC_LAYOUT_WAV, wav, frames, a, 1 << 20);
+        size_t nb = encode_stream(ch, FAAC_LAYOUT_AAC, aac, frames, b, 1 << 20);
+        assert(na > 0 && na == nb && memcmp(a, b, na) == 0);
+        /* A different order must not encode the same: the test would be vacuous. */
+        size_t nc = encode_stream(ch, FAAC_LAYOUT_AAC, wav, frames, a, 1 << 20);
+        assert(nc != nb || memcmp(a, b, nb) != 0);
+        free(wav); free(aac); free(a); free(b);
+    }
+}
+
 static int stereo_available(void)
 {
     faac_library_info lib = { .struct_size = sizeof lib };
@@ -44,6 +106,8 @@ int main(void)
 {
     if (!stereo_available())
         return 0; /* every case below encodes stereo */
+    test_layouts();
+
     faac_encoder *enc = NULL;
     faac_encoder_info info;
     const uint8_t *asc;
@@ -87,14 +151,14 @@ int main(void)
     assert(info.stream_format == FAAC_STREAM_ADTS && info.asc_size > 0);
     assert(faac_encoder_close(&enc) == FAAC_OK);
 
-    /* Unknown flag bits and nonzero reserved bytes are refused. */
+    /* Unknown flag bits and layouts are refused. */
     assert(open_with(&enc, FAAC_OBJ_LC, FAAC_STREAM_ADTS, 4) == FAAC_ERR_INVALID_ARGUMENT && !enc);
     {
         faac_params p;
         assert(faac_params_init(&p, sizeof p) == FAAC_OK);
         p.sample_rate = 44100;
         p.channels = 2;
-        p.reserved[2] = 1;
+        p.channel_layout = (enum faac_channel_layout)2;
         assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
     }
 
