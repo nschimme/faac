@@ -31,6 +31,9 @@
  *   - Fixed-width integer types and width-pinned enums keep the ABI identical
  *     across 64-bit platforms (LP64 and LLP64), regardless of -fshort-enums.
  *     32-bit targets have their own layout because of pointer fields.
+ *   - faac_encoder_info is 4-byte aligned: append only members of 4 bytes or
+ *     less. faac_params and faac_library_info hold pointers, so appended
+ *     members sit at multiples of their size, in blocks of 8 bytes.
  *   - faac_params grows only additively: new releases append named fields and
  *     grow sizeof(faac_params); callers MUST zero-initialize via
  *     faac_params_init() so struct_size lets the library reconcile versions.
@@ -114,12 +117,6 @@ enum faac_object_type {
     FAAC_OBJ_MAX       = 0x7fffffff
 };
 
-enum faac_mpeg_version {
-    FAAC_MPEG4 = 0,
-    FAAC_MPEG2 = 1,
-    FAAC_MPEG_MAX = 0x7fffffff
-};
-
 enum faac_stereo_mode {
     FAAC_STEREO_LR   = 0,            /* independent (L/R) stereo         */
     FAAC_STEREO_MS,                  /* mid/side                          */
@@ -137,7 +134,8 @@ enum faac_shortctl_mode {
 
 enum faac_stream_format {
     FAAC_STREAM_RAW  = 0,            /* raw AAC frames (needs out-of-band ASC) */
-    FAAC_STREAM_ADTS = 1,            /* self-framing ADTS                       */
+    FAAC_STREAM_ADTS = 1,            /* self-framing MPEG-4 ADTS                */
+    FAAC_STREAM_ADTS_MPEG2 = 2,      /* self-framing MPEG-2 ADTS; HE-AAC resolves to MPEG-4 */
     FAAC_STREAM_MAX  = 0x7fffffff
 };
 
@@ -178,20 +176,24 @@ enum faac_input_format {
  * behavior. Callers must check library support before requesting new behavior.
  * Existing field offsets, meanings and struct alignment, and baseline sizes stay fixed.
  */
+enum faac_flag {
+    FAAC_FLAG_TNS = 1u << 0,         /* temporal noise shaping                   */
+    FAAC_FLAG_PNS = 1u << 1,         /* perceptual noise substitution            */
+    FAAC_FLAG_MAX = 0x7fffffff
+};
+
 typedef struct faac_params {
     uint32_t                struct_size;   /* set by faac_params_init() */
 
     uint32_t                sample_rate;   /* input/output sample rate in Hz (required)      */
     uint32_t                channels;      /* channel count, 1..max_channels (required)       */
 
-    enum faac_mpeg_version  mpeg_version;
     enum faac_object_type   object_type;
     enum faac_stereo_mode   stereo_mode;
+    uint32_t                flags;         /* FAAC_FLAG_*; unknown bits are rejected */
 
     bool                    use_lfe;       /* treat the last channel as LFE (>= 6 ch) */
-    bool                    use_tns;       /* temporal noise shaping                   */
-    bool                    use_pns;       /* perceptual noise substitution            */
-    uint8_t                 reserved[1];   /* reserved for future use; currently zero              */
+    uint8_t                 reserved[3];   /* reserved for future use; currently zero */
 
     uint32_t                bit_rate;      /* target bits/sec PER CHANNEL; 0 = use quality */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = from bit_rate, the curve's top in VBR (full band above 48 kHz at default quality or higher) */
@@ -248,7 +250,7 @@ typedef struct faac_encoder_info {
     uint32_t                max_output_bytes; /* upper bound on one encode() call's output          */
     uint32_t                sample_rate;      /* nominal full output rate in Hz (HE: extended rate) */
     enum faac_object_type   object_type;      /* concrete type in effect (AUTO resolved)            */
-    enum faac_mpeg_version  mpeg_version;     /* version in effect (HE-AAC forces MPEG-4)           */
+    enum faac_stream_format stream_format;    /* resolved format (HE-AAC forces MPEG-4)              */
 
     uint32_t                bit_rate;         /* resolved bits/sec per channel (0 if quality-driven) */
     uint32_t                bandwidth;        /* resolved cutoff in Hz                               */
@@ -263,6 +265,13 @@ typedef struct faac_encoder_info {
     uint32_t                encoder_delay;
 
     enum faac_rate_control  rate_control;     /* resolved mode (AUTO becomes VBR or ABR)          */
+
+    /* AudioSpecificConfig for raw streams and containers, valid as soon as
+     * open() returns; copy the bytes if they are needed after this struct.
+     * Room for 14 bytes; the library writes 2 to 7 today. ADTS MPEG-2 has
+     * none (asc_size is 0). */
+    uint32_t                asc_size;
+    uint8_t                 asc[14];
 } faac_encoder_info;
 
 /*
@@ -291,6 +300,13 @@ typedef struct faac_library_info {
                                              * is analysed (1 = full quality). Build-time. */
 } faac_library_info;
 
+/* Offset just past the named field: the smallest struct size the library accepts. */
+#define FAAC_STRUCT_END(type, field) \
+    (offsetof(type, field) + sizeof(((type *)0)->field))
+#define FAAC_PARAMS_BASELINE FAAC_STRUCT_END(faac_params, rate_control)
+#define FAAC_ENCODER_INFO_BASELINE FAAC_STRUCT_END(faac_encoder_info, rate_control)
+#define FAAC_LIBRARY_INFO_BASELINE FAAC_STRUCT_END(faac_library_info, sbr_decimation)
+
 FAACAPI faac_status faac_get_library_info(faac_library_info *out_info);
 
 /* Zero-initialize *params and fill in library defaults and struct_size. Pass
@@ -298,14 +314,7 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out_info);
  * sizeof(faac_params)), so a caller stays safe even if the loaded library's
  * faac_params has grown since the caller was built. Returns
  * FAAC_ERR_INVALID_ARGUMENT if params is NULL or caller_size is smaller than
- * faac_params's SONAME-2 baseline layout, through rate_control.
- *
- * caller_size was added in SONAME 2; code that must build against both:
- *   #if FAAC_VERSION_MAJOR >= 2
- *       faac_params_init(&params, sizeof(params));
- *   #else
- *       faac_params_init(&params);
- *   #endif
+ * faac_params's minimum layout, through rate_control.
  */
 FAACAPI faac_status faac_params_init(faac_params *params, uint32_t caller_size);
 
@@ -334,7 +343,7 @@ FAACAPI faac_status faac_encoder_close(faac_encoder **encoder);
  * Use these values to size the input/output buffers and to report the effective
  * configuration back to the user.
  */
-FAACAPI faac_status faac_encoder_get_info(faac_encoder *encoder, faac_encoder_info *out_info);
+FAACAPI faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_encoder_info *out_info);
 
 /*
  * Return the AudioSpecificConfig (a.k.a. decoder-specific info) for this
@@ -342,7 +351,7 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *encoder, faac_encoder_in
  * encoder is closed; do NOT free it. Returns FAAC_ERR_UNSUPPORTED for
  * configurations that have no ASC (e.g. MPEG-2).
  */
-FAACAPI faac_status faac_encoder_asc(faac_encoder *encoder,
+FAACAPI faac_status faac_encoder_asc(const faac_encoder *encoder,
                                      const uint8_t **buf, uint32_t *len);
 
 /*

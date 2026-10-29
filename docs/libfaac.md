@@ -92,7 +92,7 @@ that compiles the sources directly must define the same macros: `PACKAGE`,
 | ADTS | Library supplies each frame's header |
 | RAW AAC | One access unit per emitted frame; MPEG-4 ASC available separately |
 | MP4/M4A | Mux outside the library using RAW access units and ASC |
-| MPEG-2 | AAC-LC; no ASC; explicit HE-AAC resolves to MPEG-4 |
+| MPEG-2 | `FAAC_STREAM_ADTS_MPEG2`: AAC-LC; no ASC; explicit HE-AAC resolves to MPEG-4 and reports `FAAC_STREAM_ADTS`. Raw frames are always MPEG-4 |
 | Channels | 1–6 or 8, within the compiled `max-channels` ceiling; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float; see below |
 
@@ -130,8 +130,9 @@ See [ABI compatibility](#abi-compatibility).
   `struct_size` first) and size your buffers from it: input PCM holds
   `info.frame_samples` × `channels` samples; the output buffer
   must be at least `info.max_output_bytes`. The same struct also reports the
-  resolved sample rate, object type, and rate-control settings. If you write a
-  raw stream, fetch the AudioSpecificConfig with `faac_encoder_asc()`
+  resolved stream format, sample rate, object type, and rate-control settings.
+  If you write a raw stream, read the AudioSpecificConfig from `info.asc`
+  (`info.asc_size` bytes), or fetch it with `faac_encoder_asc()`
   (library-owned — do **not** free it).
 - Call `faac_encoder_encode()` for each block of input; it emits at most
   one frame per call and reports the byte count via an out-parameter.
@@ -167,19 +168,19 @@ partial block first, then flush until zero output; close does not drain audio.
 
 ```c
 /* library-global facts: compiled channel ceiling, version/copyright */
-faac_status faac_get_library_info(faac_library_info *out);
+faac_status faac_get_library_info(faac_library_info *out_info);
 
-faac_status faac_params_init(faac_params *p, uint32_t caller_size);  /* sizeof(*p) */
-faac_status faac_encoder_open(const faac_params *p, faac_encoder **out);
-faac_status faac_encoder_close(faac_encoder **enc);   /* sets *enc = NULL */
+faac_status faac_params_init(faac_params *params, uint32_t caller_size);  /* sizeof(*params) */
+faac_status faac_encoder_open(const faac_params *config, faac_encoder **out);
+faac_status faac_encoder_close(faac_encoder **encoder);   /* sets *encoder = NULL */
 
-/* resolved properties, valid after open; set out.struct_size first */
-faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *out);
+/* resolved properties, valid after open; set out_info->struct_size first */
+faac_status faac_encoder_get_info(const faac_encoder *encoder, faac_encoder_info *out_info);
 
 /* AudioSpecificConfig: library-owned, valid until close, do NOT free */
-faac_status faac_encoder_asc(faac_encoder *enc, const uint8_t **buf, uint32_t *len);
+faac_status faac_encoder_asc(const faac_encoder *encoder, const uint8_t **buf, uint32_t *len);
 
-faac_status faac_encoder_encode(faac_encoder *enc,
+faac_status faac_encoder_encode(faac_encoder *encoder,
                                 const void *in, uint32_t in_samples,
                                 uint8_t *out, uint32_t out_cap,
                                 uint32_t *bytes_written);
@@ -565,19 +566,19 @@ shim — callers must move to `faac_*`. The changes are mechanical:
     `FAAC_OBJ_*` constants, numbered per the MPEG-4 AOT registry, rather
     than the old MAIN/LOW/SSR/LTP enum — MAIN, SSR, and LTP are retired,
     unimplemented object types).
-  - `mpegVersion` → `mpeg_version` (`FAAC_MPEG4` /
-    `FAAC_MPEG2`).
+  - `mpegVersion` → the stream format: `FAAC_STREAM_ADTS` is MPEG-4 and
+    `FAAC_STREAM_ADTS_MPEG2` is MPEG-2. Raw frames are always MPEG-4.
   - `jointmode` → `stereo_mode` (`FAAC_STEREO_*`).
     `allowMidside` was a compatibility alias sharing storage with
     `jointmode` in a union; it has no separate replacement, use
     `stereo_mode` directly.
-  - `useLfe` → `use_lfe`; `useTns` → `use_tns`
-    (now `bool`).
+  - `useLfe` → `use_lfe` (now `bool`); `useTns` → `FAAC_FLAG_TNS` in
+    `flags`.
   - `shortctl` → `short_control` (`FAAC_SHORTCTL_*`).
   - `bitRate` → `bit_rate`; `bandWidth` →
     `bandwidth`; `quantqual` → `quality`.
-  - `pnslevel` → `use_pns`: the level is now chosen by the
-    encoder, leaving the caller an on/off switch.
+  - `pnslevel` → `FAAC_FLAG_PNS` in `flags`: the level is now chosen by
+    the encoder, leaving the caller an on/off switch.
   - `outputFormat` → `stream_format` (`FAAC_STREAM_*`);
     `inputFormat` → `input_format` (`FAAC_INPUT_*`).
   - `channel_map[64]` → `channel_map` plus an explicit
@@ -630,6 +631,9 @@ calls and rebuild.
 | `FAAC_OBJ_LOW` | `FAAC_OBJ_LC`. |
 | `output_format` | `stream_format`. |
 | `FAAC_INPUT_32BIT` | `FAAC_INPUT_24IN32`; unchanged signed 24-bit scale in a native-endian 32-bit word. |
+| `mpeg_version`, `FAAC_MPEG4`, `FAAC_MPEG2` | `FAAC_STREAM_ADTS` is MPEG-4 and `FAAC_STREAM_ADTS_MPEG2` is MPEG-2; raw MPEG-2 frames are no longer expressible. `faac_encoder_info.stream_format` reports the resolved format (HE-AAC forces MPEG-4). |
+| `use_tns`, `use_pns` | Set `flags` with `FAAC_FLAG_TNS` and `FAAC_FLAG_PNS`; both are on by default and unknown bits are rejected. |
+| `faac_encoder_asc()` as the only way to read the ASC | The ASC is also in `faac_encoder_info.asc` and `asc_size`, valid as soon as `faac_encoder_open()` returns. `faac_encoder_get_info()` and `faac_encoder_asc()` take a const handle. |
 
 ## ABI compatibility
 

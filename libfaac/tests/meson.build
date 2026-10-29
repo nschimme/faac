@@ -40,3 +40,9 @@ test('test_unit_faac_ps_api',
         include_directories: ['..', '../..', '../../include'],
         link_with: libfaac,
         c_args: c_args + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG']))
+
+test('test_unit_faac_info',
+    executable('test_faac_info', 'test_faac_info.c',
+        include_directories: ['..', '../..', '../../include'],
+        link_with: libfaac,
+        c_args: c_args + [(cc.get_argument_syntax() == 'msvc') ? '/UNDEBUG' : '-UNDEBUG']))

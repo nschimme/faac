@@ -91,12 +91,12 @@ int main(void)
     }
     p.sample_rate = 44100;
     p.bit_rate = 6000;
-    p.mpeg_version = FAAC_MPEG2;
+    p.stream_format = FAAC_STREAM_ADTS_MPEG2;
     assert(faac_encoder_open(&p, &enc) == FAAC_OK);
     assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
     assert(info.object_type == FAAC_OBJ_LC);
     assert(faac_encoder_close(&enc) == FAAC_OK);
-    p.mpeg_version = FAAC_MPEG4;
+    p.stream_format = FAAC_STREAM_ADTS;
     p.bit_rate = 0;
     p.quality = 20;
     assert(faac_encoder_open(&p, &enc) == FAAC_OK);

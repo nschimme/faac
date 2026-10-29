@@ -89,7 +89,7 @@ static int test_options(void)
     init_encode_options(&opts);
     CHECK(opts.container_mp4);
     CHECK(opts.stream_format == FAAC_STREAM_ADTS);
-    CHECK(opts.mpeg_version == FAAC_MPEG4);
+    CHECK(opts.mpeg_version == 4);
     CHECK(opts.object_type == FAAC_OBJ_AUTO);
     CHECK(opts.quant_quality == 0 && opts.bit_rate == DEFAULT_ABR_KBPS * 1000);
     CHECK(opts.use_tns && opts.use_pns && opts.use_lfe == -1);

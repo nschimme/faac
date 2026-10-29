@@ -50,7 +50,7 @@ void init_encode_options(encode_options_t *opts)
     memset(opts, 0, sizeof(*opts));
     opts->container_mp4 = true;
     opts->stream_format = FAAC_STREAM_ADTS;
-    opts->mpeg_version = FAAC_MPEG4;
+    opts->mpeg_version = 4;
     opts->object_type = FAAC_OBJ_AUTO;
     opts->joint_mode = FAAC_STEREO_AUTO;
     opts->stream_format = FAAC_STREAM_ADTS;
@@ -568,11 +568,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_params_init(&params, sizeof(params));
     params.sample_rate = sample_rate;
     params.channels = num_channels;
-    params.mpeg_version = opts->mpeg_version;
     params.object_type = opts->object_type;
     params.stereo_mode = opts->joint_mode;
-    params.use_tns = opts->use_tns;
-    params.use_pns = opts->use_pns;
+    params.flags = (opts->use_tns ? FAAC_FLAG_TNS : 0) | (opts->use_pns ? FAAC_FLAG_PNS : 0);
     params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
 
@@ -598,6 +596,18 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     params.bandwidth = opts->bandwidth;
     params.stream_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
+    if (!opts->container_mp4 && opts->mpeg_version == 2) {
+        if (params.stream_format == FAAC_STREAM_ADTS)
+            params.stream_format = FAAC_STREAM_ADTS_MPEG2;
+        else {
+            /* Raw frames carry no MPEG ID; keep MPEG-2's LC choice and PNS gate.
+             * HE-AAC overrides the version, so it keeps PNS. */
+            if (params.object_type == FAAC_OBJ_AUTO)
+                params.object_type = FAAC_OBJ_LC;
+            if (params.object_type == FAAC_OBJ_LC)
+                params.flags &= ~FAAC_FLAG_PNS;
+        }
+    }
 
     if (opts->rate_auto && params.bit_rate > 0)
     {
@@ -697,7 +707,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder_get_info(hEncoder, &info);
 
     /* MPEG-2 AAC has no PNS. */
-    bool use_pns = params.use_pns && info.mpeg_version != FAAC_MPEG2;
+    bool mpeg2 = info.stream_format == FAAC_STREAM_ADTS_MPEG2 ||
+        (!opts->container_mp4 && opts->mpeg_version == 2 &&
+         info.stream_format == FAAC_STREAM_RAW && info.object_type == FAAC_OBJ_LC);
+    bool use_pns = (params.flags & FAAC_FLAG_PNS) && !mpeg2;
 
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;
@@ -791,7 +804,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
             .container_mp4 = opts->container_mp4,
             .stream_format = opts->stream_format,
-            .mpeg_version = info.mpeg_version,
+            .mpeg_version = mpeg2 ? 2u : 4u,
             .object_type = info.object_type,
             .use_pns = use_pns,
             .bandwidth = info.bandwidth,

@@ -72,7 +72,7 @@ typedef struct {
     uint16_t center_channel;
     uint16_t lfe_channel;
 
-    enum faac_mpeg_version mpeg_version;
+    unsigned int mpeg_version; /* 2 or 4 */
     enum faac_object_type object_type;
     enum faac_stereo_mode joint_mode;
     enum faac_stream_format stream_format;
@@ -144,7 +144,7 @@ typedef struct {
 
     bool container_mp4;
     enum faac_stream_format stream_format;
-    enum faac_mpeg_version mpeg_version; /* resolved: HE-AAC forces MPEG-4 */
+    unsigned int mpeg_version; /* resolved 2 or 4: HE-AAC forces MPEG-4 */
     enum faac_object_type object_type;
     bool use_pns;
     uint32_t bandwidth;
