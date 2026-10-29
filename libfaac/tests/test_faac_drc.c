@@ -230,7 +230,7 @@ static void test_drc_auto_encoder_integration(void)
             faac_status st = faac_encoder_open(&params, &enc);
             assert(st == FAAC_OK && enc != NULL);
 
-            int16_t pcm_buf[2048 * 2];
+            int16_t pcm_buf[2048 * 2] = {0};
             uint8_t outbuf[8192];
             uint32_t bytes_written = 0;
             uint32_t total_samples = 0;
@@ -287,7 +287,7 @@ static void test_drc_auto_encoder_integration(void)
             faac_status st = faac_encoder_open(&params, &enc);
             assert(st == FAAC_OK && enc != NULL);
 
-            float pcm_buf[2048 * 2];
+            float pcm_buf[2048 * 2] = {0};
             uint8_t outbuf[8192];
             uint32_t bytes_written = 0;
             uint32_t total_samples = 0;
