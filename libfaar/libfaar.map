@@ -1,0 +1,16 @@
+FAAR_3 {
+  global:
+    faar_config_init;
+    faar_get_library_info;
+    faar_strerror;
+    faar_resampler_open;
+    faar_resampler_close;
+    faar_resampler_get_info;
+    faar_resampler_process;
+    faar_resampler_finalize;
+    faar_design_open;
+    faar_design_close;
+    faar_resampler_open_from_design;
+  local:
+    *;
+};

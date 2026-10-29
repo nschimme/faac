@@ -1024,7 +1024,7 @@ static int reserve_history(faar_resampler *r, size_t additional, bool exact) {
     }
     if (needed <= r->hist_cap_per_ch) return 0;
     if (r->prepared) {
-        r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
+        r->last_error = FAAR_ERR_NO_MEMORY;
         return -1;
     }
     size_t growth = exact ? 1 : 2;
@@ -1043,7 +1043,7 @@ static int reserve_history(faar_resampler *r, size_t additional, bool exact) {
     for (uint16_t c = 0; c < r->channels; ++c) {
         faar_sample_t *next = aligned_malloc(capacity * sizeof(*next));
         if (!next) {
-            r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
+            r->last_error = FAAR_ERR_NO_MEMORY;
             return -1;
         }
         memcpy(next, r->hist[c], r->hist_len * sizeof(*next));
@@ -1086,7 +1086,7 @@ static faar_status prepare_internal(faar_resampler *r, size_t max_input,
         if (intermediate > SIZE_MAX / r->channels / sizeof(float))
             return FAAR_ERR_INVALID_ARGUMENT;
         if (!r->stage2) {
-            if (ensure_dft_intermediate(r, intermediate)) return FAAR_ERR_INSUFFICIENT_MEM;
+            if (ensure_dft_intermediate(r, intermediate)) return FAAR_ERR_NO_MEMORY;
             memset(r->dft_intermediate, 0,
                    r->dft_intermediate_capacity * r->channels * sizeof(float));
         }
@@ -1443,7 +1443,7 @@ static size_t process_internal(faar_resampler * restrict r, const float * restri
         }
         size_t temp_capacity = in_count * r->dft_expansion + 8192;
         if (!r->stage2 && ensure_dft_intermediate(r, temp_capacity)) {
-            r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
+            r->last_error = FAAR_ERR_NO_MEMORY;
             return 0;
         }
         size_t filtered = 0;
@@ -1548,7 +1548,7 @@ static size_t flush_internal(faar_resampler * r, float *out_samples, size_t max_
         max_out_count = output_capacity(r, max_out_count);
         const size_t temp_capacity = 8192;
         if (!r->stage2 && ensure_dft_intermediate(r, temp_capacity)) {
-            r->last_error = FAAR_ERR_INSUFFICIENT_MEM;
+            r->last_error = FAAR_ERR_NO_MEMORY;
             return 0;
         }
         size_t produced = 0, filtered;
@@ -1699,7 +1699,7 @@ FAARAPI faar_status faar_design_open(const faar_config *config, faar_design **ou
     faar_status status = open_stream(config, &prototype, false);
     if (status != FAAR_OK) return status;
     faar_design *plan = AllocMemory(sizeof(*plan));
-    if (!plan) { destroy_internal(prototype); return FAAR_ERR_INSUFFICIENT_MEM; }
+    if (!plan) { destroy_internal(prototype); return FAAR_ERR_NO_MEMORY; }
 #if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
     atomic_init(&plan->references, 1);
 #else
@@ -1724,9 +1724,9 @@ FAARAPI faar_status faar_resampler_open_from_design(faar_design *design,
     if (!out) return FAAR_ERR_INVALID_ARGUMENT;
     *out = NULL;
     if (!design) return FAAR_ERR_INVALID_ARGUMENT;
-    if (plan_retain(design)) return FAAR_ERR_INSUFFICIENT_MEM;
+    if (plan_retain(design)) return FAAR_ERR_NO_MEMORY;
     faar_resampler *r = clone_plan_internal(design->prototype);
-    if (!r) { plan_release(design); return FAAR_ERR_INSUFFICIENT_MEM; }
+    if (!r) { plan_release(design); return FAAR_ERR_NO_MEMORY; }
     r->plan = design;
     if (design->max_input_frames) {
         faar_status st = reserve_stream(r, design->max_input_frames);
@@ -1748,14 +1748,14 @@ FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size) 
     return FAAR_OK;
 }
 
-FAARAPI faar_status faar_get_library_info(faar_library_info *out) {
-    if (!out || out->struct_size < FAAR_LIBRARY_INFO_BASELINE)
+FAARAPI faar_status faar_get_library_info(faar_library_info *out_info) {
+    if (!out_info || out_info->struct_size < FAAR_LIBRARY_INFO_BASELINE)
         return FAAR_ERR_INVALID_ARGUMENT;
-    uint32_t caller_size = out->struct_size;
+    uint32_t caller_size = out_info->struct_size;
     faar_library_info info = {0};
     info.max_channels = MAX_CHANNELS;
 #ifndef FAAR_WIDE_HIGH
-    info.features |= FAAR_FEATURE_FLOAT_ONLY;
+    info.flags |= FAAR_LIB_FLOAT_ONLY;
 #endif
     info.version = FAAR_VERSION_STRING;
     info.copyright =
@@ -1763,7 +1763,7 @@ FAARAPI faar_status faar_get_library_info(faar_library_info *out) {
         " Copyright (C) 2026, Nils Schimmelmann";
     uint32_t n = caller_size < sizeof(info) ? caller_size : sizeof(info);
     info.struct_size = n;
-    memcpy(out, &info, n);
+    memcpy(out_info, &info, n);
     return FAAR_OK;
 }
 
@@ -1772,7 +1772,7 @@ FAARAPI const char *faar_strerror(faar_status status) {
         case FAAR_OK: return "success";
         case FAAR_ERR_INVALID_ARGUMENT: return "invalid argument or state";
         case FAAR_ERR_UNSUPPORTED: return "unsupported configuration";
-        case FAAR_ERR_INSUFFICIENT_MEM: return "out of memory";
+        case FAAR_ERR_NO_MEMORY: return "out of memory";
         case FAAR_ERR_PROCESSING: return "resampling failed; discard this stream";
         default: return "unknown FAAR status";
     }
@@ -1796,7 +1796,7 @@ static faar_status open_stream(const faar_config *config, faar_resampler **out,
         return FAAR_ERR_INVALID_ARGUMENT;
     faar_resampler * r = create_resampler_internal(cfg.in_rate, cfg.out_rate,
             (uint16_t)cfg.channels, cfg.quality, cfg.decimate_factor, 0, false, 0);
-    if (!r) return FAAR_ERR_INSUFFICIENT_MEM;
+    if (!r) return FAAR_ERR_NO_MEMORY;
     if (set_dither_internal(r, dither, dither_depth) != 0) {
         destroy_internal(r);
         return FAAR_ERR_INVALID_ARGUMENT;
@@ -1834,10 +1834,10 @@ FAARAPI faar_status faar_resampler_close(faar_resampler **resampler) {
 }
 
 FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
-                                             faar_resampler_info *out) {
-    if (!resampler || !out || out->struct_size < FAAR_RESAMPLER_INFO_BASELINE)
+                                             faar_resampler_info *out_info) {
+    if (!resampler || !out_info || out_info->struct_size < FAAR_RESAMPLER_INFO_BASELINE)
         return FAAR_ERR_INVALID_ARGUMENT;
-    uint32_t caller_size = out->struct_size;
+    uint32_t caller_size = out_info->struct_size;
     faar_resampler_info info = {0};
     info.decimate_factor = 1;
     for (const faar_resampler *s = resampler; s && s->stage1; s = s->stage2)
@@ -1846,7 +1846,7 @@ FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
     info.delay_frames = (uint32_t)resampler->delay;
     uint32_t n = caller_size < sizeof(info) ? caller_size : sizeof(info);
     info.struct_size = n;
-    memcpy(out, &info, n);
+    memcpy(out_info, &info, n);
     return FAAR_OK;
 }
 

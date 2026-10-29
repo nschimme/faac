@@ -41,12 +41,13 @@
  *     and, for output structs, writes at most struct_size bytes. New fields are
  *     appended at or after the previous sizeof(struct); compiler padding is
  *     never reused. Absent input fields take their zero value, so zero keeps
- *     the previous behavior. Explicit reserved fields must be zero on input
- *     and are zero on output until assigned a future meaning. They may be reused
- *     with their storage and offsets preserved and zero retaining the previous
- *     behavior. Callers must check library support (the struct_size written
- *     back by the library) before requesting new behavior. Baseline sizes, enum values, signatures
- *     and offsets of released fields stay fixed within a major version.
+ *     the previous behavior. faar_config and
+ *     faar_resampler_info are 4-byte aligned: append only members of 4 bytes or
+ *     less. Structs holding pointers take members at multiples of their size, in
+ *     blocks of 8 bytes.
+ *     Callers must check library support (the struct_size written back by the
+ *     library) before requesting new behavior. Baseline sizes, enum values,
+ *     signatures and offsets of released fields stay fixed within a major version.
  *   - FAAR_VERSION_MAJOR tracks the libfaar SONAME, not the project release.
  *     Structs hold fixed-width integers only; size_t appears in signatures and
  *     follows the platform ABI.
@@ -59,7 +60,7 @@
  *   - FAAR_ERR_UNSUPPORTED is reserved for a configuration a build refuses on
  *     purpose; this release does not return it.
  *   - An allocation that failed, or a filter design the planner could not
- *     build, returns FAAR_ERR_INSUFFICIENT_MEM.
+ *     build, returns FAAR_ERR_NO_MEMORY.
  *   - A failure while resampling returns FAAR_ERR_PROCESSING; discard and close
  *     that handle.
  *   - On failure open functions set *out to NULL before anything else, so the
@@ -75,7 +76,6 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #define FAAR_VERSION_MAJOR 3
 #define FAAR_VERSION_MINOR 0
@@ -131,17 +131,17 @@ typedef enum faar_status {
     FAAR_OK                   = 0,
     FAAR_ERR_INVALID_ARGUMENT = -1, /* NULL pointer, bad arguments or bad configuration  */
     FAAR_ERR_UNSUPPORTED      = -2, /* reserved; not returned by this release            */
-    FAAR_ERR_INSUFFICIENT_MEM = -3, /* allocation or filter design failed, or reserved queue exhausted */
+    FAAR_ERR_NO_MEMORY        = -3, /* allocation or filter design failed, or reserved queue exhausted */
     FAAR_ERR_PROCESSING       = -4, /* resampling failed; discard and close the handle   */
     FAAR_STATUS_MAX           = 0x7fffffff
 } faar_status;
 
-/* faar_library_info.features */
-enum faar_feature {
-    FAAR_FEATURE_FLOAT_ONLY = 0x1, /* resampler-float=true: the sample path never uses double,
+/* faar_library_info.flags */
+enum faar_library_flag {
+    FAAR_LIB_FLOAT_ONLY = 1u << 0, /* resampler-float=true: the sample path never uses double,
                                     * so High runs on emulated extended precision and costs
                                     * about ten times more than in the default build */
-    FAAR_FEATURE_MAX        = 0x7fffffff
+    FAAR_LIB_FLAG_MAX   = 0x7fffffff
 };
 
 /*
@@ -171,19 +171,19 @@ typedef struct faar_config {
 } faar_config;
 
 /*
- * Library-global facts, independent of any resampler. Set out->struct_size to
+ * Library-global facts, independent of any resampler. Set out_info->struct_size to
  * sizeof(faar_library_info) before the call; the struct grows only by
- * appending fields. version/copyright are static and library-owned; do not
- * free them.
+ * appending fields. struct_size reports bytes populated. version/copyright are
+ * static and library-owned; do not free them.
  */
 typedef struct faar_library_info {
     uint32_t       struct_size;       /* set by caller to sizeof(faar_library_info)        */
 
-    uint32_t       max_channels;      /* highest channel count this build resamples        */
-    uint32_t       features;          /* FAAR_FEATURE_* bits of this build                 */
-    uint32_t       reserved0;         /* reserved for future use; currently zero           */
     const char    *version;           /* library version string   (library-owned)          */
     const char    *copyright;         /* library copyright string (library-owned)          */
+
+    uint32_t       max_channels;      /* highest channel count this build resamples        */
+    uint32_t       flags;             /* FAAR_LIB_* bits of this build                     */
 } faar_library_info;
 
 /*
@@ -200,11 +200,11 @@ typedef struct faar_resampler_info {
     uint32_t       delay_frames;      /* filter lookahead in input frames, all stages      */
 } faar_resampler_info;
 
-/* Offset just past the named field: the size of a struct as first released. */
+/* Offset just past the named field: the smallest struct size the library accepts. */
 #define FAAR_STRUCT_END(type, field) \
     (offsetof(type, field) + sizeof(((type *)0)->field))
 #define FAAR_CONFIG_BASELINE FAAR_STRUCT_END(faar_config, max_input_frames)
-#define FAAR_LIBRARY_INFO_BASELINE FAAR_STRUCT_END(faar_library_info, copyright)
+#define FAAR_LIBRARY_INFO_BASELINE FAAR_STRUCT_END(faar_library_info, flags)
 #define FAAR_RESAMPLER_INFO_BASELINE FAAR_STRUCT_END(faar_resampler_info, delay_frames)
 
 /* Opaque resampler handle. */
@@ -219,8 +219,9 @@ typedef struct faar_design_struct faar_design;
  * channel count afterwards. */
 FAARAPI faar_status faar_config_init(faar_config *config, uint32_t caller_size);
 
-/* Query build-time facts. Set out->struct_size before calling. */
-FAARAPI faar_status faar_get_library_info(faar_library_info *out);
+/* Query build-time facts. Set out_info->struct_size before calling; it is updated
+ * to the bytes populated. */
+FAARAPI faar_status faar_get_library_info(faar_library_info *out_info);
 
 /* Human-readable, static description of a status code. Never returns NULL. */
 FAARAPI const char *faar_strerror(faar_status status);
@@ -249,11 +250,11 @@ FAARAPI faar_status faar_resampler_open_from_design(faar_design *design,
  * returns FAAR_OK; a NULL pointer is invalid. */
 FAARAPI faar_status faar_resampler_close(faar_resampler **resampler);
 
-/* Query the resolved settings and filter delay. Set out->struct_size to
+/* Query the resolved settings and filter delay. Set out_info->struct_size to
  * sizeof(faar_resampler_info); smaller baseline layouts are rejected, larger
  * layouts are accepted and only known bytes are written. */
 FAARAPI faar_status faar_resampler_get_info(const faar_resampler *resampler,
-                                             faar_resampler_info *out);
+                                             faar_resampler_info *out_info);
 
 /* Consume in_count input frames (interleaved floats on the FAAC integer scale,
  * +-32768.0) and write up to max_out_count output frames. Counts are frames
