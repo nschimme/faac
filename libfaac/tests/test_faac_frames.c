@@ -44,7 +44,7 @@ static stream encode(uint32_t channels, enum faac_rate_control rc, uint32_t bit_
     p.channels = channels;
     p.object_type = FAAC_OBJ_LC;
     p.rate_control = rc;
-    p.bit_rate = bit_rate;
+    p.bit_rate = bit_rate * channels; /* callers pass a per-channel rate */
     p.quality = quality;
     p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
@@ -145,7 +145,7 @@ static void test_lfe_narrow_bandwidth(void)
     p.channels = CHANNELS;
     p.object_type = FAAC_OBJ_LC;
     p.use_lfe = 1;
-    p.bit_rate = 68000;
+    p.bit_rate = 68000 * CHANNELS;
     p.bandwidth = 150;
     p.input_format = FAAC_INPUT_16BIT;
     p.stream_format = FAAC_STREAM_ADTS;

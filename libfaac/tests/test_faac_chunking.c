@@ -33,7 +33,7 @@ static size_t encode_chunked(const config *cfg, const int16_t *pcm, uint32_t fra
     p.sample_rate = cfg->rate;
     p.channels = cfg->channels;
     p.object_type = cfg->object;
-    p.bit_rate = cfg->bit_rate;
+    p.bit_rate = cfg->bit_rate * cfg->channels; /* the table lists per-channel rates */
     p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);

@@ -51,7 +51,7 @@ static decoded roundtrip(enum faac_object_type object, uint32_t rate, uint32_t c
     p.sample_rate = rate;
     p.channels = channels;
     p.object_type = object;
-    p.bit_rate = bit_rate;
+    p.bit_rate = bit_rate * channels;
     p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);

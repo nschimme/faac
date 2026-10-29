@@ -53,7 +53,7 @@ static uint32_t encode(enum faac_object_type obj, uint32_t channels, uint8_t *ou
     p.channels = channels;
     p.use_lfe = channels == 6;
     p.object_type = obj;
-    p.bit_rate = 48000;
+    p.bit_rate = 48000 * channels;
     p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     faac_encoder *enc = NULL;

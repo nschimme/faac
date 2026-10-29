@@ -13,8 +13,9 @@
  * Lesser General Public License for more details.
  */
 
-/* The encoder info reports the resolved stream format and the ASC, and the
- * parameter flags reject unknown bits. */
+/* The encoder info reports the resolved stream format and the ASC, the
+ * parameter flags reject unknown bits, and the rate controls take a
+ * whole-stream bitrate. */
 #include <assert.h>
 #include <string.h>
 #include "faac.h"
@@ -95,6 +96,57 @@ int main(void)
         p.channels = 2;
         p.reserved[2] = 1;
         assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
+    }
+
+    /* ABR and CBR take a whole-stream rate and floor it per channel; zero means
+     * 64 kbit/s for every channel. */
+    {
+        faac_library_info lib = { .struct_size = sizeof lib };
+        assert(faac_get_library_info(&lib) == FAAC_OK);
+        const uint32_t ch = lib.max_channels >= 3 ? 3 : lib.max_channels;
+        faac_params p;
+        assert(faac_params_init(&p, sizeof p) == FAAC_OK);
+        p.sample_rate = 48000;
+        p.channels = ch;
+        p.stream_format = FAAC_STREAM_ADTS;
+        assert(p.rate_control == FAAC_RC_ABR && p.bit_rate == 0 && p.quality == 0);
+        assert(faac_encoder_open(&p, &enc) == FAAC_OK);
+        info.struct_size = sizeof info;
+        assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
+        assert(info.rate_control == FAAC_RC_ABR && info.bit_rate == ch * 64000);
+        assert(faac_encoder_close(&enc) == FAAC_OK);
+
+        p.bit_rate = 97000; /* floored per channel: 96999 in all for three */
+        p.rate_control = FAAC_RC_CBR;
+        assert(faac_encoder_open(&p, &enc) == FAAC_OK);
+        assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
+        assert(info.rate_control == FAAC_RC_CBR && info.bit_rate == 97000 / ch * ch);
+        assert(faac_encoder_close(&enc) == FAAC_OK);
+
+        /* A quality only means something to VBR, and VBR takes no bitrate. */
+        p.quality = 100;
+        assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
+        p.rate_control = FAAC_RC_ABR;
+        assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
+        p.rate_control = FAAC_RC_VBR;
+        assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc); /* bit_rate set */
+        p.bit_rate = 0;
+        assert(faac_encoder_open(&p, &enc) == FAAC_OK);
+        assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
+        assert(info.rate_control == FAAC_RC_VBR && info.bit_rate == 0 && info.quality == 100);
+        assert(faac_encoder_close(&enc) == FAAC_OK);
+        p.quality = 5001;
+        assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
+
+        /* The peak cap is a whole-stream rate too and cannot undercut the average. */
+        p.rate_control = FAAC_RC_ABR;
+        p.quality = 0;
+        p.bit_rate = 192000;
+        p.peak_bit_rate = 191999;
+        assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
+        p.peak_bit_rate = 192000;
+        assert(faac_encoder_open(&p, &enc) == FAAC_OK);
+        assert(faac_encoder_close(&enc) == FAAC_OK);
     }
     return 0;
 }

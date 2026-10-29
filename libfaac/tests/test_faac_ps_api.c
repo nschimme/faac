@@ -39,6 +39,7 @@ int main(void)
     assert(enc == NULL);
 #if MAX_CHANNELS >= 2
     p.channels = 2;
+    p.bit_rate = 16000;
 #if FAAC_ENCODER_PS
     const unsigned rates[] = {32000, 44100, 48000};
     for (unsigned i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
@@ -75,7 +76,7 @@ int main(void)
         unsigned ceiling = p.sample_rate == 48000 ? 8000 : 6000;
         const unsigned bits[] = {3999, 4000, ceiling, ceiling + 1};
         for (unsigned j = 0; j < 4; j++) {
-            p.bit_rate = bits[j];
+            p.bit_rate = bits[j] * 2;
             assert(faac_encoder_open(&p, &enc) == FAAC_OK);
             assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
 #if FAAC_ENCODER_PS
@@ -90,13 +91,14 @@ int main(void)
         }
     }
     p.sample_rate = 44100;
-    p.bit_rate = 6000;
+    p.bit_rate = 12000;
     p.stream_format = FAAC_STREAM_ADTS_MPEG2;
     assert(faac_encoder_open(&p, &enc) == FAAC_OK);
     assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
     assert(info.object_type == FAAC_OBJ_LC);
     assert(faac_encoder_close(&enc) == FAAC_OK);
     p.stream_format = FAAC_STREAM_ADTS;
+    p.rate_control = FAAC_RC_VBR;
     p.bit_rate = 0;
     p.quality = 20;
     assert(faac_encoder_open(&p, &enc) == FAAC_OK);

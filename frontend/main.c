@@ -295,7 +295,7 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
         fprintf(stderr, "Initial quantization quality: %u\n", info->quant_quality);
         fprintf(stderr, "%s bitrate: %u kbps/channel\n",
                 info->rate_control == FAAC_RC_CBR ? "Constant" : "Average",
-                (info->bit_rate + 500) / 1000);
+                (info->bit_rate / (info->num_channels ? info->num_channels : 1) + 500) / 1000);
     }
     else
     {

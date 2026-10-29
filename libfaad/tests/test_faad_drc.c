@@ -111,7 +111,7 @@ static bytes encode_fixture(unsigned channels, unsigned kind)
     p.sample_rate = 44100;
     p.channels = channels;
     p.object_type = FAAC_OBJ_LC;
-    p.bit_rate = 96000;
+    p.bit_rate = 96000 * channels;
     p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     assert(faac_encoder_open(&p, &enc) == FAAC_OK);

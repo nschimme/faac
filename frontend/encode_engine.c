@@ -264,7 +264,7 @@ static uint32_t rc_advance(rate_conv_t *rc, uint64_t new_pos)
 
 /* Settings for the (c)too atom, in fdkaac's style: ", "-separated fields, each
    a short phrase ("ABR 64kbps", "cutoff 14500Hz"). Rates are the whole stream,
-   as -b takes them; info->bit_rate is per channel.
+   as -b takes them.
    Rate, object type and cutoff are always written: the build resolves them, so
    their defaults aren't stable. Options the user sets are written only when
    they differ from init_encode_options(). */
@@ -283,7 +283,7 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
     if (info->rate_control == FAAC_RC_VBR) {
         ADD("VBR quality %u", info->quality);
     } else {
-        uint32_t total = info->bit_rate * (num_channels ? num_channels : 1);
+        uint32_t total = info->bit_rate;
         ADD("%s %ukbps", info->rate_control == FAAC_RC_CBR ? "CBR" : "ABR", (total + 500) / 1000);
     }
 
@@ -576,12 +576,14 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {
+        params.rate_control = FAAC_RC_VBR;
         params.quality = opts->quant_quality;
         params.bit_rate = 0;
     }
     else if (opts->bit_rate > 0)
     {
-        params.bit_rate = opts->bit_rate / (num_channels ? num_channels : 1);
+        params.rate_control = opts->cbr ? FAAC_RC_CBR : FAAC_RC_ABR;
+        params.bit_rate = opts->bit_rate;
         params.quality = 0;
     }
 
@@ -591,7 +593,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
     {
         if (opts->bit_rate == 0)
             FAIL("--cbr needs a bitrate (-b)\n");
-        params.rate_control = FAAC_RC_CBR;
     }
 
     params.bandwidth = opts->bandwidth;
@@ -609,7 +610,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
         }
     }
 
-    if (opts->rate_auto && params.bit_rate > 0)
+    /* The resampling thresholds below are per channel. */
+    const uint32_t rate_per_channel = params.bit_rate / (num_channels ? num_channels : 1);
+    if (opts->rate_auto && rate_per_channel > 0)
     {
         /* Both engines gain on most clips through 18 kbps/ch at 48k and
            10 kbps/ch at 44.1k, not at 20 and 12; bracket centres. */
@@ -618,8 +621,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
         if (raw_sample_rate > 48000)
             target_rate = (raw_sample_rate % 44100 == 0) ? 44100 : 48000;
         else if (raw_sample_rate > 32000 &&
-                 ((raw_sample_rate % 8000 == 0 && params.bit_rate <= lc_48k_bps) ||
-                  (raw_sample_rate % 11025 == 0 && params.bit_rate <= lc_44k_bps)))
+                 ((raw_sample_rate % 8000 == 0 && rate_per_channel <= lc_48k_bps) ||
+                  (raw_sample_rate % 11025 == 0 && rate_per_channel <= lc_44k_bps)))
         {
             enum faac_object_type native_type;
             faac_status st = resolve_object_type(&params, &native_type);
