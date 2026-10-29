@@ -32,10 +32,11 @@
  *     signatures and struct alignment never change within a released major ABI
  *     version. Appended fields start at or after the previous sizeof(struct);
  *     compiler padding is never reused and baseline sizes stay fixed.
- *     Explicit reserved fields must be zero on input and are zero on output until
- *     assigned a future meaning. They may be reused with their storage and offsets
- *     preserved and zero retaining the previous behavior. Callers must check library
- *     support before requesting new behavior.
+ *     faad_config and faad_stream_info are 4-byte aligned: append only members
+ *     of 4 bytes or less. Structs holding pointers take members at multiples
+ *     of their size, in blocks of 8 bytes. Zero in a new field keeps the
+ *     previous behavior. Callers check library support through the struct_size
+ *     the library writes back.
  *   - Independent handles may be used concurrently; one handle is owned by
  *     one thread at a time. Instrumented stats builds are process-global.
  */
@@ -49,7 +50,6 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #define FAAD_VERSION_MAJOR 3
 #define FAAD_VERSION_MINOR 0
@@ -88,7 +88,7 @@ typedef enum faad_status {
     FAAD_OK                   = 0,
     FAAD_ERR_INVALID_ARGUMENT = -1,  /* NULL pointer or bad arguments                        */
     FAAD_ERR_UNSUPPORTED      = -2,  /* unsupported profile or bitstream feature             */
-    FAAD_ERR_INSUFFICIENT_MEM = -3,  /* allocation failed or provided state block too small   */
+    FAAD_ERR_NO_MEMORY        = -3,  /* allocation failed or provided state block too small   */
     FAAD_ERR_OUTPUT_TOO_SMALL = -4,  /* provided PCM output buffer capacity too small        */
     FAAD_ERR_NEED_MORE_DATA   = -5,  /* input buffer doesn't contain a full frame            */
     FAAD_ERR_DECODE_FAILED    = -6,  /* bitstream corruption or DSP error                    */
@@ -96,13 +96,19 @@ typedef enum faad_status {
     FAAD_STATUS_MAX           = 0x7fffffff
 } faad_status;
 
+enum faad_library_flag {
+    FAAD_LIB_SBR = 1u << 0,
+    FAAD_LIB_PS = 1u << 1,
+    FAAD_LIB_FLAG_MAX = 0x7fffffff
+};
+
 /*
  * Library-global facts, independent of any decoder instance. These reflect
  * build-time options (max-channels, decoder-sbr, decoder-ps) that the header
- * alone cannot report, so they are queried at runtime. Set out->struct_size to
+ * alone cannot report, so they are queried at runtime. Set out_info->struct_size to
  * sizeof(faad_library_info) before the call; the struct grows only by
- * appending fields. version/copyright are static and library-owned; do not
- * free them.
+ * appending fields. struct_size reports bytes populated. version/copyright
+ * are static and library-owned; do not free them.
  */
 typedef struct faad_library_info {
     uint32_t                struct_size;    /* set by caller to sizeof(faad_library_info) */
@@ -111,12 +117,10 @@ typedef struct faad_library_info {
     const char             *copyright;      /* library copyright string (library-owned) */
 
     uint32_t                max_channels;   /* highest channel count this build decodes */
-    bool                    sbr_supported;  /* SBR compiled in                          */
-    bool                    ps_supported;   /* Parametric Stereo compiled in            */
-    uint8_t                 reserved[2];    /* reserved for future use; currently zero */
+    uint32_t                flags;          /* FAAD_LIB_* */
 } faad_library_info;
 
-FAADAPI faad_status faad_get_library_info(faad_library_info *out);
+FAADAPI faad_status faad_get_library_info(faad_library_info *out_info);
 
 /* AAC object type, numbered per the MPEG-4 Audio Object Type (AOT) registry. */
 enum faad_object_type {
@@ -138,7 +142,7 @@ enum faad_output_format {
     FAAD_OUTPUT_NULL  = 0,           /* invalid / unset                          */
     FAAD_OUTPUT_16BIT,               /* native-endian int16                      */
     FAAD_OUTPUT_24BIT,               /* native-endian int24 packed in 3 bytes   */
-    FAAD_OUTPUT_32BIT,               /* native-endian int24 in 32 bits           */
+    FAAD_OUTPUT_24IN32,              /* 24 significant bits in a 32-bit word     */
     FAAD_OUTPUT_FLOAT,               /* 32-bit float, unity full scale (+-1.0)   */
     FAAD_OUTPUT_MAX   = 0x7fffffff
 };
@@ -165,8 +169,13 @@ typedef struct faad_config {
     uint8_t                 drc_cut;          /* attenuation scale, 0..127 */
     uint8_t                 drc_boost;        /* boost scale, 0..127 */
     uint8_t                 drc_target_level; /* 0 off, else 40..127 quarter-dB below FS */
-    uint8_t                 reserved[1];     /* reserved for future use; currently zero */
 } faad_config;
+
+enum faad_stream_flag {
+    FAAD_STREAM_FORMAT_KNOWN  = 1u << 0,
+    FAAD_STREAM_PROG_REF_LEVEL = 1u << 1, /* prog_ref_level carries a valid programme reference level */
+    FAAD_STREAM_FLAG_MAX      = 0x7fffffff
+};
 
 /*
  * Describes the most recently emitted PCM; before any PCM, the ASC/ADTS snapshot. Set
@@ -188,12 +197,17 @@ typedef struct faad_stream_info {
     uint32_t                frame_samples;    /* 1024, or 2048 with upsampled SBR output */
     uint32_t                max_output_bytes; /* Lifetime PCM capacity, including implicit SBR/PS */
     uint32_t                channel_mask;     /* WAVE speaker mask; 0 for unknown layout */
-    bool                    format_known;     /* Usable rate/channel snapshot; later frames may change it */
-    uint8_t                 reserved[3];      /* reserved for future use; currently zero */
-    uint8_t                 prog_ref_level;  /* quarter-dB below full scale */
-    bool                    prog_ref_level_present;
-    uint8_t                 reserved_drc[2]; /* reserved for future use; currently zero */
+    uint32_t                flags;            /* FAAD_STREAM_* */
+    uint8_t                 prog_ref_level;   /* quarter-dB below full scale; valid only
+                                               * when flags has FAAD_STREAM_PROG_REF_LEVEL */
 } faad_stream_info;
+
+/* Offset just past the named field: the smallest struct size the library accepts. */
+#define FAAD_STRUCT_END(type, field) \
+    (offsetof(type, field) + sizeof(((type *)0)->field))
+#define FAAD_CONFIG_BASELINE FAAD_STRUCT_END(faad_config, downmix_mode)
+#define FAAD_LIBRARY_INFO_BASELINE FAAD_STRUCT_END(faad_library_info, flags)
+#define FAAD_STREAM_INFO_BASELINE FAAD_STRUCT_END(faad_stream_info, flags)
 
 enum faad_frame_flag {
     FAAD_FRAME_FORMAT_CHANGED = 1u << 0, /* Emitted PCM format differs from the previous emitted frame;
@@ -208,11 +222,11 @@ enum faad_frame_flag {
 };
 
 
-/* Zero-initialize *cfg and fill in library defaults and struct_size. Pass
- * sizeof(*cfg) as caller_size; never writes past min(caller_size,
- * sizeof(faad_config)). Returns FAAD_ERR_INVALID_ARGUMENT if cfg is NULL or
+/* Zero-initialize *config and fill in library defaults and struct_size. Pass
+ * sizeof(*config) as caller_size; never writes past min(caller_size,
+ * sizeof(faad_config)). Returns FAAD_ERR_INVALID_ARGUMENT if config is NULL or
  * caller_size is smaller than faad_config's baseline layout. */
-FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
+FAADAPI faad_status faad_config_init(faad_config *config, uint32_t caller_size);
 
 
 /*
@@ -220,20 +234,21 @@ FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size);
  * asc_buf must contain a valid, nonempty AudioSpecificConfig for RAW streams;
  * it is optional for ADTS. Configuration and ASC need not outlive this call.
  */
-FAADAPI faad_status faad_decoder_open(const faad_config *cfg,
+FAADAPI faad_status faad_decoder_open(const faad_config *config,
                                         const uint8_t *asc_buf, uint32_t asc_len,
-                                        faad_decoder **out_dec);
+                                        faad_decoder **out);
 
 /*
  * Destroy a decoder. Pass the address of your handle; on success the handle is
  * set to NULL and all instance allocations are freed. A pointer to
  * a NULL handle is a no-op that returns FAAD_OK; a NULL pointer is invalid.
  */
-FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
+FAADAPI faad_status faad_decoder_close(faad_decoder **decoder);
 
 /*
  * Query current stream metadata. Safe immediately after open. Before ADTS
- * discovery, format_known is false and format fields are zero/FAAD_OBJ_NULL.
+ * discovery, FAAD_STREAM_FORMAT_KNOWN is clear in flags and format fields
+ * are zero/FAAD_OBJ_NULL.
  * ASC may supply a usable snapshot, but implicit SBR/PS can change it later;
  * frame metadata is authoritative for emitted PCM. Set
  * out_info->struct_size to sizeof(faad_stream_info); smaller baseline layouts
@@ -242,14 +257,14 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
  * ADTS/PCE use the build's channel capacity, fixed RAW layouts use their count
  * (at least two with PS support), and downmix reduces that bound.
  */
-FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_info *out_info);
+FAADAPI faad_status faad_decoder_get_info(const faad_decoder *decoder, faad_stream_info *out_info);
 
 /*
  * Discard audio history on seek/discontinuity, including concealment and
  * synthesis history. Preserves configuration, discovered format and capacity.
  * Does not drain PCM or generate missing packets. Reopen for a different stream.
  */
-FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
+FAADAPI faad_status faad_decoder_flush(faad_decoder *decoder);
 
 /*
  * Decode exactly ONE AAC access unit (packet/frame), zero-copy on the incoming
@@ -278,7 +293,7 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec);
  * frame_flags remains zero and the stream_info format is unchanged. Flush
  * preserves the last emitted format; it does not force FORMAT_CHANGED.
  */
-FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
+FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                                       const uint8_t *in_buf, uint32_t in_bytes,
                                       uint32_t *bytes_consumed,
                                       void *out_pcm, uint32_t out_cap_bytes,

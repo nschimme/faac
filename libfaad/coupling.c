@@ -24,7 +24,7 @@ faad_status decode_cce(BitReader *bs, struct faad_decoder *dec)
     while (cc && cc->tag != tag) cc = cc->next;
     if (!cc) {
         cc = AllocMemory(sizeof(*cc));
-        if (!cc) return FAAD_ERR_INSUFFICIENT_MEM;
+        if (!cc) return FAAD_ERR_NO_MEMORY;
         memset(cc, 0, sizeof(*cc));
         cc->tag = (uint8_t)tag;
         cc->next = dec->coupling;
@@ -48,7 +48,7 @@ faad_status decode_cce(BitReader *bs, struct faad_decoder *dec)
     cc->point = independent ? 2 : (uint8_t)domain;
     if (independent && !cc->overlap) {
         cc->overlap = AllocMemory(sizeof(float[FRAME_LEN_LONG]));
-        if (!cc->overlap) return FAAD_ERR_INSUFFICIENT_MEM;
+        if (!cc->overlap) return FAAD_ERR_NO_MEMORY;
         memset(cc->overlap, 0, sizeof(float[FRAME_LEN_LONG]));
         dec->allocated_bytes += sizeof(float[FRAME_LEN_LONG]);
         if (sizeof(float[FRAME_LEN_LONG]) > dec->largest_allocation)

@@ -36,8 +36,7 @@ typedef struct {
 typedef struct {
     uint32_t struct_size, sample_rate, channels, object_type, decoder_delay;
     uint32_t frame_samples, max_output_bytes, channel_mask;
-    bool format_known;
-    uint8_t reserved[3];
+    uint32_t flags;
 } stream_v3;
 #define BASE(T, field) ((uint32_t)(offsetof(T, field) + sizeof(((T *)0)->field)))
 
@@ -68,6 +67,14 @@ static void test_layouts(void)
     assert(faad_decoder_open((faad_config *)&cfg.value, NULL, 0, &dec) == FAAD_OK);
     assert_tail(&cfg, sizeof(config_v3), sizeof(cfg));
     assert(faad_decoder_close(&dec) == FAAD_OK);
+    /* A heap block of exactly the baseline size: ASan flags any read past it. */
+    faad_config *exact = malloc(FAAD_CONFIG_BASELINE);
+    assert(exact);
+    assert(faad_config_init(exact, FAAD_CONFIG_BASELINE) == FAAD_OK);
+    assert(exact->struct_size == FAAD_CONFIG_BASELINE);
+    assert(faad_decoder_open(exact, NULL, 0, &dec) == FAAD_OK);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+    free(exact);
     struct { faad_config value; uint8_t tail[16]; } future_cfg;
     memset(&future_cfg, 0xa5, sizeof(future_cfg));
     assert(faad_config_init(&future_cfg.value, sizeof(future_cfg)) == FAAD_OK);
@@ -83,9 +90,9 @@ static void test_layouts(void)
         assert(lib.value.version && lib.value.max_channels > 0);
         assert_tail(&lib, lib.value.struct_size, sizeof(lib));
         memset(&stream, 0xa5, sizeof(stream));
-        stream.value.struct_size = future ? sizeof(stream) : BASE(stream_v3, reserved);
+        stream.value.struct_size = future ? sizeof(stream) : BASE(stream_v3, flags);
         assert(faad_decoder_get_info(dec, (faad_stream_info *)&stream.value) == FAAD_OK);
-        assert(!stream.value.format_known && !stream.value.sample_rate && !stream.value.channels);
+        assert(!(stream.value.flags & FAAD_STREAM_FORMAT_KNOWN) && !stream.value.sample_rate && !stream.value.channels);
         assert(!stream.value.object_type && !stream.value.decoder_delay && !stream.value.channel_mask);
         assert(stream.value.max_output_bytes > 0);
         assert_tail(&stream, stream.value.struct_size, sizeof(stream));
@@ -183,7 +190,7 @@ static void test_boundaries(void)
     assert(used == sizeof(mono_adts) && written == 2048);
     assert(flags == (FAAD_FRAME_FORMAT_CHANGED | FAAD_FRAME_CONCEALED));
     info.struct_size = sizeof(info);
-    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.format_known && info.channels == 1 && info.channel_mask == 4);
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && (info.flags & FAAD_STREAM_FORMAT_KNOWN) && info.channels == 1 && info.channel_mask == 4);
     assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
         info.max_output_bytes, &written, &flags) == FAAD_OK);
     assert(written && flags == FAAD_FRAME_CONCEALED);
@@ -199,7 +206,7 @@ static void test_boundaries(void)
     uint32_t bound = info.max_output_bytes;
     assert(faad_decoder_flush(dec) == FAAD_OK);
     info.struct_size = sizeof(info);
-    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.max_output_bytes == bound && info.format_known);
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.max_output_bytes == bound && (info.flags & FAAD_STREAM_FORMAT_KNOWN));
     assert(faad_decode_frame(dec, mono_adts, sizeof(mono_adts), &used, pcm,
         info.max_output_bytes, &written, &flags) == FAAD_OK);
     assert(written && !(flags & FAAD_FRAME_FORMAT_CHANGED));
@@ -224,7 +231,7 @@ static void test_raw_init(void)
     assert(faad_decoder_open(&cfg, truncated, sizeof(truncated), &dec) == FAAD_ERR_INVALID_ARGUMENT && !dec);
     assert(faad_decoder_open(&cfg, asc, sizeof(asc), &dec) == FAAD_OK);
     faad_stream_info info = { .struct_size = sizeof(info) };
-    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.format_known && info.decoder_delay == 0);
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK && (info.flags & FAAD_STREAM_FORMAT_KNOWN) && info.decoder_delay == 0);
     assert(faad_decoder_close(&dec) == FAAD_OK);
 }
 
@@ -566,7 +573,7 @@ static void test_known_extensions(void)
         faad_decoder *dec;
         assert(faad_decoder_open(&cfg, parametric ? ps : he, sizeof(he), &dec) == FAAD_OK);
         faad_stream_info info = { .struct_size = sizeof(info) };
-        assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.format_known);
+        assert(faad_decoder_get_info(dec, &info) == FAAD_OK && (info.flags & FAAD_STREAM_FORMAT_KNOWN));
         uint32_t bound = info.max_output_bytes;
         void *pcm = malloc(bound);
         assert(pcm);
@@ -577,14 +584,14 @@ static void test_known_extensions(void)
             uint32_t len = parametric ? sizeof(end) : sizeof(adts);
             assert(faad_decode_frame(dec, packet, len, &used, pcm, bound, &written, &flags) == FAAD_OK);
             assert(flags & FAAD_FRAME_CONCEALED);
-            assert(!!(flags & FAAD_FRAME_SBR) == library.sbr_supported);
-            assert(!!(flags & FAAD_FRAME_PS) == (parametric && library.ps_supported));
+            assert(!!(flags & FAAD_FRAME_SBR) == !!(library.flags & FAAD_LIB_SBR));
+            assert(!!(flags & FAAD_FRAME_PS) == !!(parametric && (library.flags & FAAD_LIB_PS)));
             assert(!!(flags & FAAD_FRAME_FORMAT_CHANGED) == (seek == 0));
             info.struct_size = sizeof(info);
             assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
-            assert(info.channels == (parametric && library.ps_supported ? 2u : 1u));
-            assert(info.sample_rate == (library.sbr_supported ? 32000u : 16000u));
-            assert(info.decoder_delay == (library.sbr_supported ? 962u : 0u));
+            assert(info.channels == (parametric && (library.flags & FAAD_LIB_PS) ? 2u : 1u));
+            assert(info.sample_rate == ((library.flags & FAAD_LIB_SBR) ? 32000u : 16000u));
+            assert(info.decoder_delay == ((library.flags & FAAD_LIB_SBR) ? 962u : 0u));
             assert(faad_decoder_flush(dec) == FAAD_OK);
             faad_stream_info after = { .struct_size = sizeof(after) };
             assert(faad_decoder_get_info(dec, &after) == FAAD_OK);
@@ -618,8 +625,8 @@ static void test_ps_mono_downmix(void)
         faad_decoder *dec;
         assert(faad_decoder_open(&cfg, ps_asc, sizeof(ps_asc), &dec) == FAAD_OK);
         faad_stream_info info = { .struct_size = sizeof(info) };
-        assert(faad_decoder_get_info(dec, &info) == FAAD_OK && info.format_known);
-        uint32_t expected_channels = (mode == FAAD_DOWNMIX_MONO) ? 1 : (library.ps_supported ? 2 : 1);
+        assert(faad_decoder_get_info(dec, &info) == FAAD_OK && (info.flags & FAAD_STREAM_FORMAT_KNOWN));
+        uint32_t expected_channels = (mode == FAAD_DOWNMIX_MONO) ? 1 : ((library.flags & FAAD_LIB_PS) ? 2 : 1);
         assert(info.channels == expected_channels);
         assert(info.object_type == FAAD_OBJ_HE_AAC_V2);
 
@@ -630,9 +637,9 @@ static void test_ps_mono_downmix(void)
         uint32_t flags = 0, used = 0, written = 0;
         assert(faad_decode_frame(dec, end, sizeof(end), &used, pcm, bound, &written, &flags) == FAAD_OK);
         assert(flags & FAAD_FRAME_CONCEALED);
-        assert(!!(flags & FAAD_FRAME_SBR) == library.sbr_supported);
-        assert(!!(flags & FAAD_FRAME_PS) == library.ps_supported);
-        uint32_t expected_samples = library.sbr_supported ? 2048u : 1024u;
+        assert(!!(flags & FAAD_FRAME_SBR) == !!(library.flags & FAAD_LIB_SBR));
+        assert(!!(flags & FAAD_FRAME_PS) == !!(library.flags & FAAD_LIB_PS));
+        uint32_t expected_samples = (library.flags & FAAD_LIB_SBR) ? 2048u : 1024u;
         assert(written == expected_samples * expected_channels * sizeof(int16_t));
 
         info.struct_size = sizeof(info);

@@ -76,14 +76,14 @@ int main(int argc, char **argv)
             if (pcm[info.max_output_bytes + i] != 0xa5) { free(pcm); faad_decoder_close(&dec); fclose(f); return 5; }
         faad_decoder_get_info(dec, &info);
         uint32_t record[] = { (uint32_t)status, used, wrote, flags,
-                             info.prog_ref_level_present, info.prog_ref_level,
+                             (info.flags & FAAD_STREAM_PROG_REF_LEVEL), info.prog_ref_level,
                              dec->win_seq[0] == EIGHT_SHORT_SEQUENCE };
         fwrite(record, sizeof record, 1, stdout);
         fwrite(pcm, 1, wrote, stdout);
         if (++frame == (unsigned)atoi(argv[6])) {
             faad_decoder_flush(dec);
             faad_decoder_get_info(dec, &info);
-            if (info.prog_ref_level_present) { free(pcm); faad_decoder_close(&dec); fclose(f); return 4; }
+            if ((info.flags & FAAD_STREAM_PROG_REF_LEVEL)) { free(pcm); faad_decoder_close(&dec); fclose(f); return 4; }
         }
     }
     free(pcm);

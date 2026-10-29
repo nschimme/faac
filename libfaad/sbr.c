@@ -631,7 +631,7 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
 {
     int nch = (syntax_id == ID_CPE) ? 2 : 1;
     if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
-    if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
+    if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_NO_MEMORY;
     SBRElement *el = &dec->sbr_el[ch0];
     bool reset_synthesis = false;
     if (crc) bits_skip(bs, 10); /* bs_sbr_crc_bits, not verified */
@@ -768,7 +768,7 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
 #ifndef FAAD_DISABLE_PS
             if (id == PS_EXTENSION_DATA) {
                 uint32_t here = bits_get_consumed(bs);
-                if (faad_ensure_ps(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
+                if (faad_ensure_ps(dec) != FAAD_OK) return FAAD_ERR_NO_MEMORY;
                 ps_read_data(dec, bs, end > here ? end - here : 0);
 #ifdef FAAD_STATS
                 g_faadStats.framePsBits += bits_get_consumed(bs) - here;
@@ -800,7 +800,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
 {
     uint32_t nch = syntax_id == ID_CPE ? 2 : 1;
     if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
-    if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_INSUFFICIENT_MEM;
+    if (faad_ensure_sbr(dec) != FAAD_OK) return FAAD_ERR_NO_MEMORY;
     SBRElement saved_el = dec->sbr_el[ch0];
     uint8_t saved_ch[2][offsetof(SBRChannel, bw_array)];
     for (uint32_t c = 0; c < nch; c++) memcpy(saved_ch[c], &dec->sbr[ch0 + c], sizeof(saved_ch[c]));

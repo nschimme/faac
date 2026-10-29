@@ -253,15 +253,15 @@ int main(int argc, char **argv)
         test_alignment(FAAC_OBJ_LOW, 44100, 96000, "LC 44.1k");
     if (all || strcmp(argv[1], "align-lc-48000") == 0)
         test_alignment(FAAC_OBJ_LOW, 48000, 64000, "LC 48k");
-    if (dec.sbr_supported && (all || strcmp(argv[1], "align-he-48000") == 0))
+    if ((dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-48000") == 0))
         test_alignment(FAAC_OBJ_HE_AAC_V1, 48000, 48000, "HE 48k");
-    if (dec.sbr_supported && (all || strcmp(argv[1], "align-he-32000") == 0))
+    if ((dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-32000") == 0))
         test_alignment(FAAC_OBJ_HE_AAC_V1, 32000, 40000, "HE 32k");
     if (stereo && (all || strcmp(argv[1], "tone-level-and-channels") == 0))
         test_tone_level_and_channels();
     if (stereo && (all || strcmp(argv[1], "silence") == 0))
         test_silence();
-    if (stereo && dec.sbr_supported && (all || strcmp(argv[1], "he-aac-band") == 0))
+    if (stereo && (dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "he-aac-band") == 0))
         test_he_band();
 
     if (all || strcmp(argv[1], "align-lc-44100") == 0

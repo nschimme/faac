@@ -34,7 +34,7 @@ int main(void)
     lib_info.struct_size = sizeof(lib_info);
     faad_status st = faad_get_library_info(&lib_info);
     assert(st == FAAD_OK);
-    printf("Testing FAAD version %s (SBR: %d, PS: %d)\n", lib_info.version, lib_info.sbr_supported, lib_info.ps_supported);
+    printf("Testing FAAD version %s (SBR: %d, PS: %d)\n", lib_info.version, !!(lib_info.flags & FAAD_LIB_SBR), !!(lib_info.flags & FAAD_LIB_PS));
 
     /* Test 1: ASC build with 960 frame length (frame_length_flag = 1) */
     uint8_t asc_960[2] = { 0x12, 0x14 };
