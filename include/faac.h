@@ -178,6 +178,12 @@ enum faac_flag {
     FAAC_FLAG_MAX = 0x7fffffff
 };
 
+enum faac_drc_mode {
+    FAAC_DRC_OFF  = 0,               /* disable DRC gain element emission        */
+    FAAC_DRC_AUTO = 1,               /* automatic single-pass ITU-R BS.1770 DRC   */
+    FAAC_DRC_MAX  = 0x7fffffff
+};
+
 /*
  * Encoder parameters, supplied once to faac_encoder_open().
  *
@@ -234,6 +240,9 @@ typedef struct faac_params {
     uint32_t                peak_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
     enum faac_rate_control  rate_control;  /* see enum; zero selects ABR */
+
+    enum faac_drc_mode      drc_mode;      /* FAAC_DRC_OFF (default) or FAAC_DRC_AUTO  */
+    float                   drc_ref_level; /* target LUFS [-31.75, 0.0]; 0 = default (-23.0 LUFS) */
 } faac_params;
 
 /* Upper bound on faac_params.peak_bit_rate: far above any real stream rate, and
@@ -268,6 +277,9 @@ typedef struct faac_encoder_info {
      * SBR decoder delay, which decoders add themselves. */
     uint32_t                encoder_delay;
 
+    enum faac_drc_mode      drc_mode;         /* resolved DRC mode (OFF or AUTO)                  */
+    float                   drc_ref_level;    /* resolved target reference level in LUFS           */
+
     /* AudioSpecificConfig for raw streams and containers, valid as soon as
      * open() returns; copy the bytes if they are needed after this struct.
      * Up to 14 bytes: the eight-channel PCE and the HE-AAC extension add to
@@ -294,6 +306,7 @@ typedef struct faac_encoder_info {
 enum faac_library_flag {
     FAAC_LIB_SBR = 1u << 0,         /* HE-AAC v1 (SBR) is compiled in */
     FAAC_LIB_PS  = 1u << 1,         /* HE-AAC v2 (Parametric Stereo) is compiled in */
+    FAAC_LIB_DRC = 1u << 2,         /* Dynamic Range Control support is compiled in */
     FAAC_LIB_FLAG_MAX = 0x7fffffff
 };
 
@@ -376,6 +389,46 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
                                         const void *in, uint32_t in_samples,
                                         uint8_t *out, uint32_t out_cap,
                                         uint32_t *bytes_written);
+
+/*
+ * Dynamic Range Control (DRC) parameters (ISO/IEC 14496-3 §4.5.2.1).
+ * Used with faac_encoder_set_drc() to configure broadcast DRC metadata.
+ *
+ * Always set struct_size to sizeof(faac_drc_info); the struct grows only
+ * by appending named fields.
+ *
+ * Maintainers: appended fields must start at or after the previous sizeof(struct),
+ * never in its tail padding.
+ */
+typedef struct faac_drc_info {
+    uint32_t struct_size;          /* set to sizeof(faac_drc_info) */
+
+    bool     enabled;              /* true to enable DRC fill element for subsequent frames */
+    uint8_t  reserved[3];          /* explicit pad; must remain 0 */
+
+    float    dynamic_range_gain;   /* gain in dB (-31.75 to +31.75 dB; negative = cut, positive = boost) */
+    bool     prog_ref_level_present;/* true if program reference level is present */
+    uint8_t  reserved2[3];         /* explicit pad; must remain 0 */
+
+    float    prog_ref_level;       /* program reference level in dBFS (-31.75 to 0.0 dBFS) */
+} faac_drc_info;
+
+/*
+ * Set or update Dynamic Range Control (DRC) metadata for subsequent frames.
+ * Configured values are held and applied to all subsequent frames until changed
+ * or disabled.
+ *
+ * Valid ranges:
+ *   - dynamic_range_gain: [-31.75, +31.75] dB (finite value)
+ *   - prog_ref_level: [-31.75, 0.0] dBFS (finite value; must be <= 0.0)
+ *
+ * Returns FAAC_OK on success, FAAC_ERR_UNSUPPORTED if libfaac was compiled
+ * without DRC support, or FAAC_ERR_INVALID_ARGUMENT if struct_size is too
+ * small, parameters are non-finite, out of range, or prog_ref_level is positive.
+ * Pass drc = NULL or drc->enabled = false to disable DRC emission.
+ * Default is DRC disabled.
+ */
+FAACAPI faac_status faac_encoder_set_drc(faac_encoder *encoder, const faac_drc_info *drc);
 
 /* Human-readable, static description of a status code. Never returns NULL. */
 FAACAPI const char *faac_strerror(faac_status status);

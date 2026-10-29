@@ -259,6 +259,11 @@ unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx)
     return sCtx->fullSampleRateIdx;
 }
 
+unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
+{
+    return (sCtx && sCtx->fullSampleRate) ? sCtx->fullSampleRate : defaultRate;
+}
+
 unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
 {
     if (!sbrCtx || !sbrCtx->sbrInfo) return 0;

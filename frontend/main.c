@@ -84,7 +84,9 @@ enum flags
     OPT_NO_ENCODER_INFO,
     OPT_FASTSTART,
     LANG_FLAG,
-    RATE_FLAG
+    RATE_FLAG,
+    OPT_DRC,
+    OPT_DRC_REF_LEVEL
 };
 
 static const help_t help_qual[] = {
@@ -223,6 +225,10 @@ static const help_t help_advanced[] = {
      "Force AAC object type: lc, he-aac-v1, he-aac-v2, or auto (default)", NULL},
     {"--shortctl X",
      "Enforce block type (0 = both (default); 1 = no short; 2 = no long).", NULL},
+    {"--drc [off|auto]",
+     "Enable single-pass ITU-R BS.1770 DRC loudness metadata generation.", NULL},
+    {"--drc-ref-level <LUFS>",
+     "Set DRC target reference level in LUFS (default: -23.0; range: -31.75 to 0.0).", NULL},
     {NULL, NULL, NULL}
 };
 
@@ -393,6 +399,8 @@ int main(int argc, char *argv[])
     bool has_custom_tags = false;
     bool quality_given = false;
     bool bitrate_given = false;
+    bool drc_given = false;
+    bool drc_ref_level_given = false;
     const char *dieMessage = NULL;
     int ret = 0;
 
@@ -507,6 +515,8 @@ int main(int argc, char *argv[])
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
             {"rate", 1, 0, RATE_FLAG},
+            {"drc", optional_argument, 0, OPT_DRC},
+            {"drc-ref-level", required_argument, 0, OPT_DRC_REF_LEVEL},
             {0, 0, 0, 0}
         };
 
@@ -736,6 +746,29 @@ int main(int argc, char *argv[])
                 opts.rate_auto = false;
             }
             break;
+        case OPT_DRC:
+            drc_given = true;
+            if (!optarg || !strcmp(optarg, "auto")) {
+                opts.drc_mode = FAAC_DRC_AUTO;
+            } else if (!strcmp(optarg, "off")) {
+                opts.drc_mode = FAAC_DRC_OFF;
+            } else {
+                fprintf(stderr, "Invalid --drc mode '%s' (choose off or auto)\n", optarg);
+                return 1;
+            }
+            break;
+        case OPT_DRC_REF_LEVEL:
+            drc_ref_level_given = true;
+            {
+                char *endptr = NULL;
+                float val = strtof(optarg, &endptr);
+                if (!optarg || *optarg == '\0' || *endptr != '\0' || val < -31.75f || val > 0.0f) {
+                    fprintf(stderr, "Invalid --drc-ref-level '%s' (expected LUFS value in range -31.75 to 0.0)\n", optarg);
+                    return 1;
+                }
+                opts.drc_ref_level = val;
+            }
+            break;
         case HELP_QUAL:
         case HELP_IO:
         case HELP_MP4:
@@ -767,6 +800,9 @@ int main(int argc, char *argv[])
     /* The last one would silently win; the user meant one mode. */
     if (!dieMessage && quality_given && bitrate_given)
         dieMessage = "-q and -b are exclusive; use --cap-rate to bound VBR.\n";
+
+    if (!dieMessage && drc_ref_level_given && !drc_given)
+        dieMessage = "--drc-ref-level requires --drc\n";
 
     if (dieMessage)
     {

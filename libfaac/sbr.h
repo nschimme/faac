@@ -158,6 +158,7 @@ typedef struct SBRContext SBRContext;
 SBRContext *SbrContextInit(int channels);
 void SbrContextEnd(SBRContext *sbrCtx);
 unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx);
+unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate);
 unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx);
 int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int aacObjectType, int rateLimited);
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS]);
@@ -183,6 +184,12 @@ static inline unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx)
 {
     (void)sCtx;
     return 0;
+}
+
+static inline unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
+{
+    (void)sCtx;
+    return defaultRate;
 }
 
 static inline unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)

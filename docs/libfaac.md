@@ -78,6 +78,7 @@ the include path, and define `FAAC_BUILDING` for a Windows DLL.
 | RAW | One access unit per frame; the MPEG-4 ASC is available separately |
 | MP4/M4A | Mux outside the library from RAW frames and the ASC |
 | MPEG-2 | `FAAC_STREAM_ADTS_MPEG2`: AAC-LC only, no ASC. Explicit HE-AAC resolves to MPEG-4 and reports `FAAC_STREAM_ADTS`. RAW is always MPEG-4 |
+| Dynamic Range Control | Single-pass ITU-R BS.1770-4 DRC metadata fill elements (`FAAC_DRC_AUTO`); manual override via `faac_encoder_set_drc()`; requires `encoder-drc=true` |
 | Channels | 1-6 or 8, up to the compiled `max-channels`; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float |
 
@@ -136,6 +137,9 @@ faac_status faac_encoder_encode(faac_encoder *encoder,
                                 const void *in, uint32_t in_samples,
                                 uint8_t *out, uint32_t out_cap,
                                 uint32_t *bytes_written);
+
+/* Dynamic Range Control (DRC) manual gain override */
+faac_status faac_encoder_set_drc(faac_encoder *encoder, const faac_drc_info *drc);
 
 const char *faac_strerror(faac_status status);
 ```
