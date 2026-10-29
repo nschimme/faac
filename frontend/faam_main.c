@@ -1532,7 +1532,7 @@ static int cmd_mux(int argc, char **argv)
     faam_library_info library_info = {0};
     library_info.struct_size = sizeof(library_info);
     bool can_fragment = faam_get_library_info(&library_info) == FAAM_OK &&
-                        (library_info.features & FAAM_FEATURE_FRAGMENTED) != 0;
+                        (library_info.flags & FAAM_LIB_FRAGMENTED) != 0;
     mux_stream = mux_stdout && !faststart && !is_m4b && !gapless_given && can_fragment;
     if (mux_stream) cfg.fragment_ms = 1000;
     if (mux_stdout && !cli_binary_stream(stdout)) {
@@ -1595,7 +1595,7 @@ static int cmd_mux(int argc, char **argv)
                                               &frames[i], g_verbose > 0 ? mux_progress : NULL, &progress);
             free(vbuf_store[i]);
             vbuf_store[i] = NULL;
-            if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+            if (st == FAAM_ERR_NO_MEMORY) {
                 fprintf(stderr, "Error: out of memory\n");
                 goto done;
             }
@@ -1861,7 +1861,7 @@ static int cmd_demux(int argc, char **argv)
     progress_throttle_reset(&progress.throttle);
     st = faam_engine_demux_track(d, &ti, demux_write_sample, &output_ctx,
                                  g_verbose > 0 ? mux_progress : NULL, &progress);
-    if (st == FAAM_ERR_INSUFFICIENT_MEM) {
+    if (st == FAAM_ERR_NO_MEMORY) {
         fprintf(stderr, "Error: out of memory\n");
         goto done;
     }

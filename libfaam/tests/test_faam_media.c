@@ -144,7 +144,7 @@ static void check_video_roundtrip(memfile *f, const int32_t *cts, unsigned n) {
     while (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
         CHECK(i < n);
         CHECK(loc.cts_offset == (cts ? cts[i] : 0));
-        CHECK(loc.duration_ticks == 3000 && loc.is_keyframe == (i == 0));
+        CHECK(loc.duration_ticks == 3000 && !!(loc.flags & FAAM_FRAME_KEYFRAME) == (i == 0));
         CHECK(faam_demuxer_read_frame(d, frame, sizeof(frame), &bytes) == FAAM_OK && bytes == 40);
         CHECK(frame[0] == 0x30 + i && frame[39] == 0x30 + i);
         i++;
@@ -192,7 +192,7 @@ static void test_empty_stss(void) {
     CHECK(faam_demuxer_open(NULL, &io, &d) == FAAM_OK);
     faam_frame_loc loc = { .struct_size = sizeof(loc) };
     CHECK(faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK);
-    CHECK(!loc.is_keyframe);
+    CHECK(!(loc.flags & FAAM_FRAME_KEYFRAME));
     faam_demuxer_close(&d);
     free(f.buf);
 }
@@ -514,7 +514,7 @@ static void demux_all(const memfile *f, frame_list *got)
         CHECK(got->n < MAX_FRAMES);
         frame_rec *r = &got->f[got->n++];
         r->track = loc.track_id; r->size = loc.frame_bytes; r->duration = loc.duration_ticks;
-        r->cts = loc.cts_offset; r->key = loc.is_keyframe; r->offset = loc.file_offset;
+        r->cts = loc.cts_offset; r->key = !!(loc.flags & FAAM_FRAME_KEYFRAME); r->offset = loc.file_offset;
         uint32_t bytes;
         CHECK(faam_demuxer_read_frame(d, buf, sizeof(buf), &bytes) == FAAM_OK && bytes == r->size);
         r->fill = buf[0];

@@ -34,7 +34,7 @@ test_faam_abi = executable('test_faam_abi', 'test_faam_abi.c',
   include_directories: [libfaam_inc, '..'],
   link_with: libfaam_static,
   c_args: faam_args + ['-DFAAM_STATIC'])
-foreach abi_case : ['outputs', 'future_inputs', 'track_limits_ids', 'odd_and_many', 'updates_close_flags', 'video']
+foreach abi_case : ['outputs', 'future_inputs', 'track_limits_ids', 'odd_and_many', 'updates_close_flags', 'video', 'config_init', 'chapter_stride']
   test('test_unit_faam_abi_' + abi_case, test_faam_abi, args: [abi_case])
 endforeach
 

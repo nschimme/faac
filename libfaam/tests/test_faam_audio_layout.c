@@ -82,7 +82,7 @@ static void run_case(unsigned count, bool constant, bool wide_time, bool faststa
             }
         }
     }
-    faam_gapless_info gapless = { sizeof(faam_gapless_info), 1024, 512, 0, ticks - 1536 };
+    faam_gapless_info gapless = { sizeof(faam_gapless_info), 1024, 512, ticks - 1536 };
     CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_GAPLESS, .gapless = &gapless }) == FAAM_OK);
     CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_CREATION_TIME, .creation_time = 123 }) == FAAM_OK);
     CHECK(faam_muxer_finalize(m) == FAAM_OK);

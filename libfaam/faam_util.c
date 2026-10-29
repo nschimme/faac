@@ -19,24 +19,35 @@
 
 #include "libfaam_internal.h"
 
-FAAMAPI faam_status faam_get_library_info(faam_library_info *out)
+FAAMAPI faam_status faam_get_library_info(faam_library_info *out_info)
 {
-    if (!out || out->struct_size < FAAM_LIBRARY_INFO_BASELINE)
+    if (!out_info || out_info->struct_size < FAAM_LIBRARY_INFO_BASELINE)
         return FAAM_ERR_INVALID_ARGUMENT;
 
     faam_library_info info;
     memset(&info, 0, sizeof(info));
-    info.struct_size = sizeof(info);
     info.max_tracks = FAAM_MAX_TRACKS;
 #ifdef FAAM_MUXER_VIDEO
-    info.features |= FAAM_FEATURE_VIDEO;
+    info.flags |= FAAM_LIB_VIDEO;
 #endif
 #ifdef FAAM_MUXER_FRAGMENTED
-    info.features |= FAAM_FEATURE_FRAGMENTED;
+    info.flags |= FAAM_LIB_FRAGMENTED;
 #endif
     info.version = FAAM_VERSION_STRING;
     info.copyright = "Copyright (C) 2026 Nils Schimmelmann";
-    faam_copy_out(out, out->struct_size, &info, sizeof(info));
+    /* Write at most the caller's struct_size and report the bytes populated. */
+    uint32_t n = out_info->struct_size < sizeof(info) ? out_info->struct_size : (uint32_t)sizeof(info);
+    info.struct_size = n;
+    memcpy(out_info, &info, n);
+    return FAAM_OK;
+}
+
+faam_status faam_io_init(faam_io *io, uint32_t caller_size)
+{
+    if (!io || caller_size < FAAM_IO_BASELINE) return FAAM_ERR_INVALID_ARGUMENT;
+    uint32_t n = caller_size < sizeof(*io) ? caller_size : (uint32_t)sizeof(*io);
+    memset(io, 0, n);
+    io->struct_size = n;
     return FAAM_OK;
 }
 
@@ -63,7 +74,7 @@ const char *faam_strerror(faam_status status)
         return "Invalid argument or null pointer";
     case FAAM_ERR_UNSUPPORTED:
         return "Operation or content not supported";
-    case FAAM_ERR_INSUFFICIENT_MEM:
+    case FAAM_ERR_NO_MEMORY:
         return "Insufficient memory";
     case FAAM_ERR_OUTPUT_TOO_SMALL:
         return "Output buffer too small";

@@ -55,6 +55,14 @@ if default_lib == 'shared' or default_lib == 'both'
     'vs_module_defs': 'libfaam.def',
     'install': true,
   }
+  # GNU ld version script (ELF only). PE and Mach-O have no symbol versions, so skip them and probe the rest.
+  faam_map = meson.current_source_dir() / 'libfaam.map'
+  if host_machine.system() not in ['windows', 'cygwin', 'darwin'] and cc.has_link_argument('-Wl,--version-script=' + faam_map)
+    shared_kwargs += {
+      'link_args': ['-Wl,--version-script=' + faam_map],
+      'link_depends': [faam_map],
+    }
+  endif
   libfaam_shared = shared_library(
     'faam',
     libfaam_sources,
