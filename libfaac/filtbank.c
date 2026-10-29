@@ -291,7 +291,7 @@ void FilterBankElement(faacEncStruct* hEncoder, CoderInfo *coderInfo, const AACE
     int nch = (el->type == ID_CPE) ? 2 : 1;
     int bt = coderInfo[el->channels[0]].block_type;
     int prev = coderInfo[el->channels[0]].window_shape;
-    int shape = (el->type != ID_LFE) && hEncoder->config.aacObjectType != HE_V1 &&
+    int shape = (el->type != ID_LFE) && !IsSBR(hEncoder->config.aacObjectType) &&
                 (bt == ONLY_LONG_WINDOW || bt == SHORT_LONG_WINDOW) ? KBD_WINDOW : SINE_WINDOW;
     int c;
 
