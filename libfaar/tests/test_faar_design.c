@@ -16,11 +16,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef FAAR_PLAN_PTHREAD
-#include <pthread.h>
-#endif
 #ifdef FAAR_PLAN_ALLOC_TEST
 #include <faar_alloc_hooks.h>
+#elif !defined(_WIN32) || defined(__MINGW32__)
+/* The allocation hooks are not thread safe, so that build stays serial. */
+#include <pthread.h>
+#define FAAR_DESIGN_THREADS
 #endif
 
 #define N 321
@@ -149,7 +150,7 @@ static int multi_stream(const faar_config *c) {
   faar_design_close(&p);
   return 1;
 }
-#ifdef FAAR_PLAN_PTHREAD
+#ifdef FAAR_DESIGN_THREADS
 typedef struct {
   faar_design *plan;
   faar_config config;
@@ -298,7 +299,7 @@ int main(void) {
             return bad("route comparison or independent streams");
         }
       }
-#ifdef FAAR_PLAN_PTHREAD
+#ifdef FAAR_DESIGN_THREADS
   if (!config_for(&c, 96000, 32000, li.max_channels < 2 ? 1 : 2,
                   FAAR_QUALITY_HIGH, FAAR_DITHER_SHAPED) ||
       !concurrent(&c))

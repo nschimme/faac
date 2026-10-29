@@ -15,9 +15,9 @@
 #ifndef FAAR_DFT_FIR_H
 #define FAAR_DFT_FIR_H
 
-#include "fft_real.h"
+#include "fft.h"
 #include "libfaar_internal.h"
-#ifdef FAAR_COMPENSATED_FLOAT
+#ifndef FAAR_WIDE_HIGH
 #include "fft_float2.h"
 #endif
 
@@ -46,13 +46,13 @@ typedef struct faar_dft_fir {
     size_t stream_out;
     size_t lanes;
     faar_fft_plan in, out;
-#ifdef FAAR_COMPENSATED_FLOAT
+#ifndef FAAR_WIDE_HIGH
     faar_float2_plan precise_in, precise_out;
     float *spec_low;
     faar_float2 *precise_half_coeffs, *precise_half_work;
 #endif
 #ifdef FAAR_WIDE_HIGH
-    faar_rfftd_plan in_wide, out_wide;
+    faar_fftd_plan in_wide, out_wide;
     double *spec_wide;
     double *wide_half_coeffs, *wide_half_work;
 #endif

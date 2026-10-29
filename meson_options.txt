@@ -85,11 +85,10 @@ option('max-channels',
     max: 8,
     value: 8)
 
-option('faar-precision',
-    description: 'FAAR arithmetic policy (mixed runs High filter kernels in double; float is double-free in the sample path for FPU-less targets)',
-    type: 'combo',
-    choices: ['float', 'mixed'],
-    value: 'mixed')
+option('resampler-float',
+    description: 'FAAR resampler: use the float-only engine (double-free sample path for FPU-less targets); the default mixed build runs High filter kernels in double',
+    type: 'boolean',
+    value: false)
 
 # End-of-stream diagnostics banner on stderr: the encoder (FAAC_STATS) prints
 # Qavg, transient/tool-usage %, rate-control health, etc on faac_encoder_close();

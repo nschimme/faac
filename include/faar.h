@@ -138,7 +138,7 @@ typedef enum faar_status {
 
 /* faar_library_info.features */
 enum faar_feature {
-    FAAR_FEATURE_FLOAT_ONLY = 0x1, /* faar-precision=float: the sample path never uses double,
+    FAAR_FEATURE_FLOAT_ONLY = 0x1, /* resampler-float=true: the sample path never uses double,
                                     * so High runs on emulated extended precision and costs
                                     * about ten times more than in the default build */
     FAAR_FEATURE_MAX        = 0x7fffffff

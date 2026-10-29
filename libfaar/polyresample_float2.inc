@@ -13,7 +13,7 @@
  * Lesser General Public License for more details.
  */
 /* Compensated High phase bank. Sample histories remain ordinary float. */
-#ifdef FAAR_COMPENSATED_FLOAT
+#ifndef FAAR_WIDE_HIGH
 static inline faar_float2 precise_coefficient(const faar_resampler *r, size_t at) {
     return (faar_float2){r->polyphase_table[at], r->polyphase_low_table[at]};
 }

@@ -26,8 +26,7 @@ foreach group : faar_quality_groups
   test('test_faar_quality_' + group, test_faar_quality, args: [group])
 endforeach
 foreach group : ['streaming-0', 'streaming-1']
-  test('test_faar_quality_' + group, test_faar_quality,
-    args: [group], is_parallel: false)
+  test('test_faar_quality_' + group, test_faar_quality, args: [group])
 endforeach
 
 test_faar_matrix = executable('test_faar_matrix', 'test_faar_matrix.c',
@@ -36,12 +35,11 @@ test_faar_matrix = executable('test_faar_matrix', 'test_faar_matrix.c',
   dependencies: [libfaar_dep, m_dep],
 )
 foreach group : ['matrix-0', 'matrix-1', 'matrix-2', 'equal-rate', 'channels', 'decimate']
-  test('test_faar_matrix_' + group, test_faar_matrix,
-    args: [group], is_parallel: false)
+  test('test_faar_matrix_' + group, test_faar_matrix, args: [group])
 endforeach
 
 test_faar_dft_fir = executable('test_faar_dft_fir',
-  ['test_faar_dft_fir.c', '../dft_coeffs.c', '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
+  ['test_faar_dft_fir.c', '../dft_coeffs.c', '../dft_fir.c', '../fft.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -49,7 +47,7 @@ test_faar_dft_fir = executable('test_faar_dft_fir',
 test('test_faar_dft_fir', test_faar_dft_fir)
 
 test_faar_dft_shared = executable('test_faar_dft_shared',
-  ['test_faar_dft_shared.c', '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
+  ['test_faar_dft_shared.c', '../dft_fir.c', '../fft.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
@@ -69,7 +67,7 @@ test('test_faar_bounded', test_faar_bounded, timeout: 120)
 test_faar_design = executable('test_faar_design', 'test_faar_design.c',
   c_args: libfaar_args,
   include_directories: ['..', inc],
-  dependencies: [libfaar_dep, m_dep],
+  dependencies: [libfaar_dep, m_dep, dependency('threads', required: false)],
 )
 test('test_faar_design', test_faar_design, timeout: 180)
 
@@ -81,49 +79,41 @@ test_faar_design_alloc = executable('test_faar_design_alloc',
 )
 test('test_faar_design_alloc', test_faar_design_alloc, timeout: 180)
 
-if host_machine.system() != 'windows'
-  threads_dep = dependency('threads')
-  test_faar_design_threads = executable('test_faar_design_threads', 'test_faar_design.c',
-    c_args: libfaar_args + ['-DFAAR_PLAN_PTHREAD'],
-    include_directories: ['..', inc],
-    dependencies: [libfaar_dep, m_dep, threads_dep],
-  )
-  test('test_faar_design_threads', test_faar_design_threads, timeout: 180)
-endif
-
 test_faar_dft_prefilter = executable('test_faar_dft_prefilter',
   ['test_faar_dft_prefilter.c', '../dft_coeffs.c', '../dft_prefilter.c',
-   '../dft_fir.c', '../fft_real.c'] + libfaar_float2_sources,
+   '../dft_fir.c', '../fft.c'] + libfaar_float2_sources,
   c_args: libfaar_args,
   include_directories: ['..', inc],
   dependencies: [m_dep],
 )
 test('test_faar_dft_prefilter', test_faar_dft_prefilter)
 
-# Float and double FFT coverage includes the real transform wrappers.
-test_faar_fft_real = executable('test_faar_fft_real',
-  ['test_faar_fft_real.c', '../fft_real.c'],
+# Float and double FFT coverage; the double transform is otherwise built only
+# for native-double High.
+test_faar_fft = executable('test_faar_fft',
+  ['test_faar_fft.c', '../fft.c'],
+  c_args: ['-DFAAR_WIDE_HIGH'],
   include_directories: ['..', inc],
   dependencies: [m_dep],
 )
 foreach case : [
-  ['test_faar_fft_real_256', 'real', '256'],
-  ['test_faar_fft_real_1024', 'real', '1024'],
-  ['test_faar_fft_real_8192', 'real', '8192'],
-  ['test_faar_fft_real_65536', 'real', '65536'],
   ['test_faar_fft_complex_16', 'complex', '16'],
   ['test_faar_fft_complex_64', 'complex', '64'],
   ['test_faar_fft_complex_512', 'complex', '512'],
   ['test_faar_fft_complex_2048', 'complex', '2048'],
   ['test_faar_fft_complex_4096', 'complex', '4096'],
   ['test_faar_fft_complex_8192', 'complex', '8192'],
+  ['test_faar_fft_complex_16384', 'complex', '16384'],
+  ['test_faar_fft_complex_32768', 'complex', '32768'],
+  ['test_faar_fft_complex_65536', 'complex', '65536'],
 ]
-  test(case[0], test_faar_fft_real, args: [case[1], case[2]], timeout: 60)
+  test(case[0], test_faar_fft, args: [case[1], case[2]], timeout: 60)
 endforeach
 
-if get_option('faar-precision') == 'float'
+if get_option('resampler-float')
   test_faar_float2 = executable('test_faar_float2',
-    ['test_faar_float2.c', '../fft_float2.c', '../fft_real.c'],
+    ['test_faar_float2.c', '../fft_float2.c', '../fft.c'],
+    c_args: ['-DFAAR_WIDE_HIGH'],
     include_directories: ['..', inc],
     dependencies: [m_dep],
   )

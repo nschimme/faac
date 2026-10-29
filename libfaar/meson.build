@@ -6,19 +6,16 @@ libfaar_sources = files(
   'dft_coeffs.c',
   'dft_prefilter.c',
   'dft_fir.c',
-  'fft_real.c',
+  'fft.c',
 )
 
-if get_option('faar-precision') == 'mixed'
-  libfaar_args += ['-DFAAR_WIDE_HIGH']
-else
+if get_option('resampler-float')
   libfaar_float2_sources = files('fft_float2.c')
   libfaar_sources += libfaar_float2_sources
+else
+  libfaar_args += ['-DFAAR_WIDE_HIGH']
 endif
 libfaar_prepare_sources = libfaar_sources
-
-# Real-transform wrappers are exercised only by FFT verification.
-libfaar_args += '-DFAAR_FFT_LEAN'
 
 default_lib = get_option('default_library')
 

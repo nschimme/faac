@@ -62,10 +62,10 @@ selection options.
 
 ### Build options
 
-The default precision policy is mixed. `-Dfaar-precision=float` selects float arithmetic and supports Fast, Good, and
+The default precision policy is mixed. `-Dresampler-float=true` selects float arithmetic and supports Fast, Good, and
 High quality. Float High uses compensated float arithmetic and more CPU.
 Mixed is the float engine with High's filter kernels in native double: its
-output matches float at Fast/Good and double arithmetic at High. Use `float`
+output matches float at Fast/Good and double arithmetic at High. Use `resampler-float`
 for microcontrollers without a double-precision FPU. Filter
 coefficients and FFT twiddles still use double-precision setup calculations.
 The channel limit is controlled by `-Dmax-channels` (default 8, range 1–8).

@@ -6,7 +6,7 @@ endif
 
 # Keep the public-API harness buildable in ordinary configurations;
 # run.sh links it with libFuzzer and ASan/UBSan for fuzzing sessions.
-static_library('fuzz_faar', 'fuzz_faar.c',
+static_library('fuzz_faar_resampler', 'fuzz_faar_resampler.c',
     include_directories: ['../../include'],
     dependencies: [libfaar_dep],
     install: false)

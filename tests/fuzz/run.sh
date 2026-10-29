@@ -68,7 +68,7 @@ if grep -q '^#define FAAC_ENCODER_PS 1$' "$bd/config.h"; then
 fi
 
 # Source files for libfaar
-faar_src="$root/libfaar/polyresample.c $root/libfaar/dft_coeffs.c $root/libfaar/dft_prefilter.c $root/libfaar/dft_fir.c $root/libfaar/fft_real.c"
+faar_src="$root/libfaar/polyresample.c $root/libfaar/dft_coeffs.c $root/libfaar/dft_prefilter.c $root/libfaar/dft_fir.c $root/libfaar/fft.c"
 
 # Compile quantize_sse.c with gcc if available to bypass clang bug on immintrin.h
 q_sse_obj=""
@@ -80,11 +80,11 @@ if [ -n "$sse" ]; then
     fi
 fi
 
-# 1. fuzz_faar
-build_target "fuzz_faar" \
-    -include "$bd/config.h" -DFAAR_BUILDING -DFAAR_FFT_LEAN -DFAAR_WIDE_HIGH \
+# 1. fuzz_faar_resampler (libfaar streaming API)
+build_target "fuzz_faar_resampler" \
+    -include "$bd/config.h" -DFAAR_BUILDING -DFAAR_WIDE_HIGH \
     -I"$root/include" -I"$root/libfaar" \
-    "$root/tests/fuzz/fuzz_faar.c" $faar_src -lm
+    "$root/tests/fuzz/fuzz_faar_resampler.c" $faar_src -lm
 
 # 2. fuzz_encode
 build_target "fuzz_encode" \
@@ -160,7 +160,7 @@ fi
 
 cd "$out"
 
-all_targets="fuzz_faar fuzz_encode fuzz_wav fuzz_faad_adts fuzz_faad_raw960 fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_adts_header"
+all_targets="fuzz_faar_resampler fuzz_encode fuzz_wav fuzz_faad_adts fuzz_faad_raw960 fuzz_faad_mp4 fuzz_faad_mp4_full fuzz_faam_demux fuzz_faam_demux_full fuzz_faam_tags fuzz_faam_roundtrip fuzz_faam_annexb fuzz_adts_header"
 
 if [ -z "$targets" ]; then
     run_list="$all_targets"
