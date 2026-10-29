@@ -41,12 +41,12 @@ static stream encode(uint32_t channels, enum faac_rate_control rc, uint32_t bit_
     stream s = { NULL, 0 };
     FT_REQUIRE(faac_params_init(&p, sizeof(p)) == FAAC_OK);
     p.sample_rate = RATE;
-    p.num_channels = channels;
-    p.object_type = FAAC_OBJ_LOW;
+    p.channels = channels;
+    p.object_type = FAAC_OBJ_LC;
     p.rate_control = rc;
     p.bit_rate = bit_rate;
-    p.quant_quality = quality;
-    p.output_format = FAAC_STREAM_ADTS;
+    p.quality = quality;
+    p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);
     FT_REQUIRE(faac_encoder_get_info(enc, &info) == FAAC_OK);
@@ -142,13 +142,13 @@ static void test_lfe_narrow_bandwidth(void)
     faac_encoder_info info = { .struct_size = sizeof(info) };
     FT_REQUIRE(faac_params_init(&p, sizeof(p)) == FAAC_OK);
     p.sample_rate = 64000;
-    p.num_channels = CHANNELS;
-    p.object_type = FAAC_OBJ_LOW;
+    p.channels = CHANNELS;
+    p.object_type = FAAC_OBJ_LC;
     p.use_lfe = 1;
     p.bit_rate = 68000;
     p.bandwidth = 150;
     p.input_format = FAAC_INPUT_16BIT;
-    p.output_format = FAAC_STREAM_ADTS;
+    p.stream_format = FAAC_STREAM_ADTS;
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);
     FT_REQUIRE(faac_encoder_get_info(enc, &info) == FAAC_OK);
 

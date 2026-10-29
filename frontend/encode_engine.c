@@ -52,7 +52,7 @@ void init_encode_options(encode_options_t *opts)
     opts->stream_format = FAAC_STREAM_ADTS;
     opts->mpeg_version = FAAC_MPEG4;
     opts->object_type = FAAC_OBJ_AUTO;
-    opts->joint_mode = FAAC_JOINT_MIXED;
+    opts->joint_mode = FAAC_STEREO_AUTO;
     opts->stream_format = FAAC_STREAM_ADTS;
     opts->shortctl = FAAC_SHORTCTL_NORMAL;
     opts->use_tns = true;
@@ -281,7 +281,7 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
     } while (0)
 
     if (info->rate_control == FAAC_RC_VBR) {
-        ADD("VBR quality %u", info->quant_quality);
+        ADD("VBR quality %u", info->quality);
     } else {
         uint32_t total = info->bit_rate * (num_channels ? num_channels : 1);
         ADD("%s %ukbps", info->rate_control == FAAC_RC_CBR ? "CBR" : "ABR", (total + 500) / 1000);
@@ -298,9 +298,9 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
        never ran. */
     if (num_channels >= 2) {
         switch (opts->joint_mode) {
-        case FAAC_JOINT_NONE:  ADD(", stereo L/R"); break;
-        case FAAC_JOINT_MS:    ADD(", stereo M/S"); break;
-        case FAAC_JOINT_IS:    ADD(", stereo IS"); break;
+        case FAAC_STEREO_LR:  ADD(", stereo L/R"); break;
+        case FAAC_STEREO_MS:    ADD(", stereo M/S"); break;
+        case FAAC_STEREO_IS:    ADD(", stereo IS"); break;
         default: break;
         }
     }
@@ -567,10 +567,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_params params;
     faac_params_init(&params, sizeof(params));
     params.sample_rate = sample_rate;
-    params.num_channels = num_channels;
+    params.channels = num_channels;
     params.mpeg_version = opts->mpeg_version;
     params.object_type = opts->object_type;
-    params.joint_mode = opts->joint_mode;
+    params.stereo_mode = opts->joint_mode;
     params.use_tns = opts->use_tns;
     params.use_pns = opts->use_pns;
     params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
@@ -578,17 +578,17 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {
-        params.quant_quality = opts->quant_quality;
+        params.quality = opts->quant_quality;
         params.bit_rate = 0;
     }
     else if (opts->bit_rate > 0)
     {
         params.bit_rate = opts->bit_rate / (num_channels ? num_channels : 1);
-        params.quant_quality = 0;
+        params.quality = 0;
     }
 
     if (opts->max_bit_rate > 0)
-        params.max_bit_rate = opts->max_bit_rate;
+        params.peak_bit_rate = opts->max_bit_rate;
     if (opts->cbr)
     {
         if (opts->bit_rate == 0)
@@ -597,7 +597,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
     params.bandwidth = opts->bandwidth;
-    params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
+    params.stream_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
 
     if (opts->rate_auto && params.bit_rate > 0)
     {
@@ -616,11 +616,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
             if (st != FAAC_OK)
                 FAIL("Couldn't open encoder instance for %s: %s\n",
                      opts->input_filename, faac_strerror(st));
-            if (native_type == FAAC_OBJ_LOW)
+            if (native_type == FAAC_OBJ_LC)
             {
                 target_rate = 32000;
                 /* Keep AUTO from switching to HE at the new rate. */
-                params.object_type = FAAC_OBJ_LOW;
+                params.object_type = FAAC_OBJ_LC;
             }
         }
         sample_rate = target_rate;
@@ -795,7 +795,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .object_type = info.object_type,
             .use_pns = use_pns,
             .bandwidth = info.bandwidth,
-            .quant_quality = (uint16_t)info.quant_quality,
+            .quant_quality = (uint16_t)info.quality,
             .bit_rate = info.bit_rate,
             .rate_control = info.rate_control,
 

@@ -70,22 +70,22 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     flags = take(&c, 4);
     sel = take(&c, 1);
     p.sample_rate  = (sel & 0x80) ? take(&c, 4) : rates[sel % (sizeof(rates) / sizeof(rates[0]))];
-    p.num_channels = take(&c, 1) % 10;
+    p.channels = take(&c, 1) % 10;
     p.mpeg_version = (enum faac_mpeg_version)(flags & 3);
     p.object_type  = (enum faac_object_type)((flags >> 2 & 3) == 0 ? 0 : (flags >> 2 & 3) == 1 ? 2 :
                                               (flags >> 2 & 3) == 2 ? 5 : 29);
-    p.joint_mode   = (enum faac_joint_mode)(flags >> 4 & 7);
+    p.stereo_mode   = (enum faac_stereo_mode)(flags >> 4 & 7);
     p.use_lfe      = flags >> 7 & 1;
     p.use_tns      = flags >> 8 & 1;
     p.use_pns      = flags >> 9 & 1;
-    p.output_format = (enum faac_stream_format)(flags >> 10 & 3);
+    p.stream_format = (enum faac_stream_format)(flags >> 10 & 3);
     p.input_format = (enum faac_input_format)(flags >> 12 & 7);
     p.short_control = (enum faac_shortctl_mode)(flags >> 15 & 3);
     p.rate_control = (enum faac_rate_control)(flags >> 17 & 7);
     p.bit_rate     = (flags >> 20 & 1) ? take(&c, 4) : take(&c, 2) * 4;
     p.bandwidth    = (flags >> 21 & 1) ? take(&c, 4) : take(&c, 2);
-    p.quant_quality = (flags >> 22 & 1) ? take(&c, 4) : take(&c, 2) % 6000;
-    p.max_bit_rate = (flags >> 23 & 1) ? take(&c, 4) : 0;
+    p.quality = (flags >> 22 & 1) ? take(&c, 4) : take(&c, 2) % 6000;
+    p.peak_bit_rate = (flags >> 23 & 1) ? take(&c, 4) : 0;
     p.reserved[0]  = (flags >> 24 & 0xf) == 15;
     if (flags >> 28 & 1) {
         for (i = 0; i < 16; i++)
@@ -106,7 +106,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     {
         unsigned bps = p.input_format == FAAC_INPUT_16BIT ? 2 : 4;
-        uint32_t cap = info.frame_samples * p.num_channels;
+        uint32_t cap = info.frame_samples * p.channels;
         int calls;
 
         for (calls = 0; calls < MAX_CALLS && c.n; calls++) {

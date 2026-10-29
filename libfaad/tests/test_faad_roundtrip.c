@@ -49,10 +49,10 @@ static decoded roundtrip(enum faac_object_type object, uint32_t rate, uint32_t c
     decoded d = { NULL, 0, 0, 0, 0 };
     FT_REQUIRE(faac_params_init(&p, sizeof(p)) == FAAC_OK);
     p.sample_rate = rate;
-    p.num_channels = channels;
+    p.channels = channels;
     p.object_type = object;
     p.bit_rate = bit_rate;
-    p.output_format = FAAC_STREAM_ADTS;
+    p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);
     FT_REQUIRE(faac_encoder_get_info(enc, &info) == FAAC_OK);
@@ -165,7 +165,7 @@ static void test_tone_level_and_channels(void)
     enum { RATE = 44100, FRAMES = RATE * 2 };
     const double hz[2] = { 440.0, 1000.0 };
     int16_t *in = tones(RATE, 2, FRAMES, hz, 8192.0); /* -12 dBFS */
-    decoded d = roundtrip(FAAC_OBJ_LOW, RATE, 2, 96000, in, FRAMES);
+    decoded d = roundtrip(FAAC_OBJ_LC, RATE, 2, 96000, in, FRAMES);
     size_t from = RATE / 2, to = RATE + RATE / 2;
     for (uint32_t c = 0; c < 2; c++) {
         double own = tone_amplitude(d.pcm, 2, c, from + d.delay, to + d.delay, hz[c], RATE);
@@ -182,7 +182,7 @@ static void test_silence(void)
     enum { RATE = 44100, FRAMES = RATE };
     int16_t *in = (int16_t *)calloc((size_t)FRAMES * 2, sizeof(int16_t));
     FT_REQUIRE(in);
-    decoded d = roundtrip(FAAC_OBJ_LOW, RATE, 2, 64000, in, FRAMES);
+    decoded d = roundtrip(FAAC_OBJ_LC, RATE, 2, 64000, in, FRAMES);
     size_t nonzero = 0;
     for (size_t i = 0; i < d.frames * 2; i++) nonzero += d.pcm[i] != 0;
     FT_CHECK_INT(nonzero, 0);
@@ -250,9 +250,9 @@ int main(int argc, char **argv)
     if (argc > 2) goto invalid_case;
 
     if (all || strcmp(argv[1], "align-lc-44100") == 0)
-        test_alignment(FAAC_OBJ_LOW, 44100, 96000, "LC 44.1k");
+        test_alignment(FAAC_OBJ_LC, 44100, 96000, "LC 44.1k");
     if (all || strcmp(argv[1], "align-lc-48000") == 0)
-        test_alignment(FAAC_OBJ_LOW, 48000, 64000, "LC 48k");
+        test_alignment(FAAC_OBJ_LC, 48000, 64000, "LC 48k");
     if ((dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-48000") == 0))
         test_alignment(FAAC_OBJ_HE_AAC_V1, 48000, 48000, "HE 48k");
     if ((dec.flags & FAAD_LIB_SBR) && (all || strcmp(argv[1], "align-he-32000") == 0))
