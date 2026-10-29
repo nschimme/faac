@@ -136,7 +136,7 @@ static void test_window_transitions(void)
 
 static void test_lfe_narrow_bandwidth(void)
 {
-    enum { CHANNELS = 4 };
+    enum { CHANNELS = 6 };
     faac_params p;
     faac_encoder *enc = NULL;
     faac_encoder_info info = { .struct_size = sizeof(info) };
@@ -180,6 +180,6 @@ int main(void)
     FT_REQUIRE(faac_get_library_info(&lib) == FAAC_OK);
     test_ceiling(lib.max_channels);
     test_window_transitions();
-    if (lib.max_channels >= 4) test_lfe_narrow_bandwidth();
+    if (lib.max_channels >= 6) test_lfe_narrow_bandwidth();
     return ft_done();
 }
