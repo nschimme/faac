@@ -21,8 +21,7 @@ I/O, timestamps and playback; the library reads and writes no files. Include
 `<faar.h>` and link `-lfaar` (pkg-config module `faar`).
 
 The shared library is `libfaar` (`libfaar.so.0`, `libfaar.0.dylib` or
-`libfaar.dll`; a static archive is also built). The `faar` CLI in `frontend/` is an
-example of the API and is documented in `faar(1)`.
+`libfaar.dll`; a static archive is also built).
 
 ## Building and linking
 
@@ -33,8 +32,6 @@ meson install -C build-faar
 cc -std=c11 -Wall -Wextra app.c -o app $(pkg-config --cflags --libs faar)
 ```
 
-- The `faar` CLI is built when `-Dfrontend` and `-Dresampler` are both enabled (the
-  default).
 - Custom prefix: set `PKG_CONFIG_PATH` and the runtime library path. Static linking
   uses `pkg-config --cflags --libs --static faar` plus your toolchain's archive
   selection.
@@ -85,9 +82,11 @@ Pick the preset with `faar_config.quality`. Good is the default.
   float output.
 - **Good to High** buys about 15 dB more stopband rejection and lower residual and image
   floors for roughly 1.5-2x the CPU time and 10x the setup heap. High also adds about
-  28 ms of lookahead, which a caller must trim for gapless output (see `delay_frames` in
-  `faar_resampler_info`). Choose Good unless you need that margin; the `faac` CLI uses
-  Good by default and High only for sources above 48 kHz.
+  28 ms of lookahead (reported via `delay_frames` in `faar_resampler_info`). `libfaar`
+  centers the filter at stream start and flushes the tail in `faar_resampler_finalize()`,
+  so the total output frame count matches `ceil(input_frames * out_rate / in_rate)`
+  without requiring callers to trim filter delay. Choose Good unless you need that margin;
+  applications can use Good by default and High for sources above 48 kHz.
 - **Fast to Good** buys about 33 dB more stopband rejection and a flat passband. Fast's
   passband is about 3.4 dB down at 0.96 of the lower Nyquist rate (about 21 kHz for
   44.1 kHz output and 23 kHz for 48 kHz). Fast uses a little less CPU than Good, and
@@ -155,7 +154,7 @@ one thread at a time. You own all buffers and the handle.
 | Field | Meaning |
 |---|---|
 | `decimate_factor` | Total decimation of the cascade stages ahead of the final stage; 1 when the plan has none |
-| `delay_frames` | Filter lookahead in input frames, all stages; trim it for gapless output |
+| `delay_frames` | Filter lookahead in input frames, all stages; centering and tail flushing are handled internally |
 
 ### Functions
 
