@@ -353,16 +353,18 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
         da->lookahead_drc = curr_drc;
         da->has_lookahead = true;
         *out_drc = curr_drc;
-        da->prev_smooth_gain_db = g_smooth_db;
     } else {
         /* If incoming frame M requires a cut deeper than lookahead frame, advance cut to lookahead frame */
         if (curr_drc.gain_db < da->lookahead_drc.gain_db) {
             da->lookahead_drc.gain_db = curr_drc.gain_db;
         }
         *out_drc = da->lookahead_drc;
-        da->prev_smooth_gain_db = da->lookahead_drc.gain_db;
         da->lookahead_drc = curr_drc;
     }
+
+    /* Carry the unquantized gain: feeding back the 0.25 dB-rounded output
+     * freezes the 1 s release, whose per-frame step is far below the grid. */
+    da->prev_smooth_gain_db = g_smooth_db;
 }
 
 void DrcAnalyzerEnd(DrcAnalyzer *da)
