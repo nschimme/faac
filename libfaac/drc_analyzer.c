@@ -60,7 +60,7 @@ struct DrcAnalyzer {
     float b0_2, b1_2, b2_2;
     float a1_2, a2_2;
 
-    BiquadState *ch_state;
+    BiquadState ch_state[MAX_CHANNELS];
 
     /* Sub-block energy ring buffer for 3s / 400ms sliding windows */
     uint32_t subblock_size_samples;
@@ -128,7 +128,7 @@ static void ComputeRLBCoeffs(double fs, float *b0, float *b1, float *b2, float *
 DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
                              const bool *is_lfe_channel, float ref_level_lufs)
 {
-    if (sample_rate == 0 || num_channels == 0)
+    if (sample_rate == 0 || num_channels == 0 || num_channels > MAX_CHANNELS)
         return NULL;
 
     DrcAnalyzer *da = (DrcAnalyzer *)AllocMemory(sizeof(DrcAnalyzer));
@@ -139,13 +139,6 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     da->sample_rate = sample_rate;
     da->num_channels = num_channels;
     da->ref_level_lufs = ref_level_lufs;
-
-    da->ch_state = (BiquadState *)AllocMemory(num_channels * sizeof(BiquadState));
-    if (!da->ch_state) {
-        FreeMemory(da);
-        return NULL;
-    }
-    memset(da->ch_state, 0, num_channels * sizeof(BiquadState));
 
     ComputePreFilterCoeffs((double)sample_rate, &da->b0_1, &da->b1_1, &da->b2_1, &da->a1_1, &da->a2_1);
     ComputeRLBCoeffs((double)sample_rate, &da->b0_2, &da->b1_2, &da->b2_2, &da->a1_2, &da->a2_2);
@@ -178,49 +171,66 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
     double frame_sum_sq = 0.0;
     const float pcm_scale = 1.0f / 32768.0f;
 
-    /*
-     * Filter input samples through BS.1770 K-weighting biquads and accumulate
-     * squared channel-weighted outputs into frame and sub-block accumulators.
-     */
-    for (uint32_t i = 0; i < samples_per_ch; i++) {
-        double sample_sum_sq = 0.0;
+    /* Hoist biquad coefficients to local variables */
+    const float b0_1 = da->b0_1, b1_1 = da->b1_1, b2_1 = da->b2_1, a1_1 = da->a1_1, a2_1 = da->a2_1;
+    const float b0_2 = da->b0_2, b1_2 = da->b1_2, b2_2 = da->b2_2, a1_2 = da->a1_2, a2_2 = da->a2_2;
 
-        for (uint32_t ch = 0; ch < da->num_channels; ch++) {
-            float x = input_pcm[ch][i] * pcm_scale;
-            float abs_x = fabsf(x);
+    /* Process channel-by-channel for cache locality and SIMD vectorization */
+    for (uint32_t ch = 0; ch < da->num_channels; ch++) {
+        const float *pcm = input_pcm[ch];
+        const float weight = da->ch_state[ch].weight;
+
+        /* Find peak linear magnitude */
+        for (uint32_t i = 0; i < samples_per_ch; i++) {
+            float abs_x = fabsf(pcm[i] * pcm_scale);
             if (abs_x > max_peak_lin)
                 max_peak_lin = abs_x;
+        }
 
-            if (da->ch_state[ch].weight <= 0.0f)
-                continue;
+        if (weight <= 0.0f)
+            continue;
+
+        float v1_1 = da->ch_state[ch].v1_1, v2_1 = da->ch_state[ch].v2_1;
+        float v1_2 = da->ch_state[ch].v1_2, v2_2 = da->ch_state[ch].v2_2;
+        double ch_sum_sq = 0.0;
+
+        for (uint32_t i = 0; i < samples_per_ch; i++) {
+            float x = pcm[i] * pcm_scale;
 
             /* Stage 1: High-shelf pre-filter (Direct Form II Transposed) */
-            float y1 = da->b0_1 * x + da->ch_state[ch].v1_1;
-            da->ch_state[ch].v1_1 = da->b1_1 * x - da->a1_1 * y1 + da->ch_state[ch].v2_1;
-            da->ch_state[ch].v2_1 = da->b2_1 * x - da->a2_1 * y1;
+            float y1 = b0_1 * x + v1_1;
+            v1_1 = b1_1 * x - a1_1 * y1 + v2_1;
+            v2_1 = b2_1 * x - a2_1 * y1;
 
             /* Stage 2: RLB high-pass filter */
-            float y2 = da->b0_2 * y1 + da->ch_state[ch].v1_2;
-            da->ch_state[ch].v1_2 = da->b1_2 * y1 - da->a1_2 * y2 + da->ch_state[ch].v2_2;
-            da->ch_state[ch].v2_2 = da->b2_2 * y1 - da->a2_2 * y2;
+            float y2 = b0_2 * y1 + v1_2;
+            v1_2 = b1_2 * y1 - a1_2 * y2 + v2_2;
+            v2_2 = b2_2 * y1 - a2_2 * y2;
 
-            sample_sum_sq += (double)da->ch_state[ch].weight * (double)y2 * (double)y2;
+            ch_sum_sq += (double)y2 * (double)y2;
         }
 
-        frame_sum_sq += sample_sum_sq;
-        da->current_subblock_sum += sample_sum_sq;
-        da->subblock_sample_count++;
+        da->ch_state[ch].v1_1 = v1_1; da->ch_state[ch].v2_1 = v2_1;
+        da->ch_state[ch].v1_2 = v1_2; da->ch_state[ch].v2_2 = v2_2;
 
-        if (da->subblock_sample_count >= da->subblock_size_samples) {
-            float mean_sq = (float)(da->current_subblock_sum / (double)da->subblock_sample_count);
-            da->subblock_energy[da->subblock_head] = mean_sq;
-            da->subblock_head = (da->subblock_head + 1) % DRC_NUM_SUBBLOCKS_3S;
-            if (da->subblock_count < DRC_NUM_SUBBLOCKS_3S)
-                da->subblock_count++;
+        frame_sum_sq += (double)weight * ch_sum_sq;
+    }
 
+    /* Accumulate sub-block energy ring buffer */
+    da->current_subblock_sum += frame_sum_sq;
+    da->subblock_sample_count += samples_per_ch;
+
+    while (da->subblock_sample_count >= da->subblock_size_samples) {
+        float mean_sq = (float)(da->current_subblock_sum / (double)da->subblock_size_samples);
+        da->subblock_energy[da->subblock_head] = mean_sq;
+        da->subblock_head = (da->subblock_head + 1) % DRC_NUM_SUBBLOCKS_3S;
+        if (da->subblock_count < DRC_NUM_SUBBLOCKS_3S)
+            da->subblock_count++;
+
+        da->current_subblock_sum -= (double)mean_sq * (double)da->subblock_size_samples;
+        if (da->current_subblock_sum < 0.0)
             da->current_subblock_sum = 0.0;
-            da->subblock_sample_count = 0;
-        }
+        da->subblock_sample_count -= da->subblock_size_samples;
     }
 
     /*
@@ -357,9 +367,6 @@ void DrcAnalyzerEnd(DrcAnalyzer *da)
 {
     if (!da)
         return;
-
-    if (da->ch_state)
-        FreeMemory(da->ch_state);
 
     FreeMemory(da);
 }
