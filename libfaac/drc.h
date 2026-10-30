@@ -29,10 +29,9 @@ typedef struct BitStream BitStream;
 typedef struct faacEncStruct faacEncStruct;
 
 typedef struct DRCInfo {
-    bool  enabled;
-    float gain_db;                 /* -31.75 to +31.75 dB */
-    bool  prog_ref_level_present;
-    float prog_ref_level_db;       /* -31.75 to 0.0 dBFS */
+    bool    enabled;
+    int16_t gain_code;             /* 0.25 dB steps, -127..127 */
+    int16_t ref_code;              /* 0.25 dB steps, 0..127 */
 } DRCInfo;
 
 /*

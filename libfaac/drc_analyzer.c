@@ -88,6 +88,7 @@ struct DrcAnalyzer {
     uint32_t sample_rate;
     uint32_t num_channels;
     float ref_level_lufs;
+    int16_t ref_code;
     const DrcProfile *profile;
 
     /* BS.1770-4 K-weighting pre-filter biquad coefficients */
@@ -188,6 +189,10 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     da->sample_rate = sample_rate;
     da->num_channels = num_channels;
     da->ref_level_lufs = ref_level_lufs;
+    int ref_code = (int)(fabsf(ref_level_lufs) / 0.25f + 0.5f);
+    if (ref_code > 127)
+        ref_code = 127;
+    da->ref_code = (int16_t)ref_code;
     da->profile = &drc_profiles[profile - 1];
     da->delay = delay_frames;
 
@@ -357,18 +362,17 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
             g_smooth_db = headroom_db;
     }
 
-    /* Quantize to existing 0.25 dB grid */
-    float g_quant_db = roundf(g_smooth_db / 0.25f) * 0.25f;
-    if (g_quant_db > 31.75f)
-        g_quant_db = 31.75f;
-    if (g_quant_db < -31.75f)
-        g_quant_db = -31.75f;
+    /* Quantize to the existing 0.25 dB grid and keep the wire code. */
+    float g_quant = roundf(g_smooth_db / 0.25f);
+    if (g_quant > 127.0f)
+        g_quant = 127.0f;
+    if (g_quant < -127.0f)
+        g_quant = -127.0f;
 
     DRCInfo curr_drc;
     curr_drc.enabled = true;
-    curr_drc.gain_db = g_quant_db;
-    curr_drc.prog_ref_level_present = true;
-    curr_drc.prog_ref_level_db = da->ref_level_lufs;
+    curr_drc.gain_code = (int16_t)(int)g_quant;
+    curr_drc.ref_code = da->ref_code;
 
     /*
      * 1-Frame Lookahead Output:
@@ -380,8 +384,8 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
         *out_drc = curr_drc;
     } else {
         /* If incoming frame M requires a cut deeper than lookahead frame, advance cut to lookahead frame */
-        if (curr_drc.gain_db < da->lookahead_drc.gain_db) {
-            da->lookahead_drc.gain_db = curr_drc.gain_db;
+        if (curr_drc.gain_code < da->lookahead_drc.gain_code) {
+            da->lookahead_drc.gain_code = curr_drc.gain_code;
         }
         *out_drc = da->lookahead_drc;
         da->lookahead_drc = curr_drc;
