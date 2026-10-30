@@ -1,3 +1,31 @@
+Unreleased (3.0.0)
+
+	[ Nils Schimmelmann ]
+	* New libraries and tools: libfaad and faad (decoder), libfaam and faam
+	  (MP4 muxer, demuxer and tag editor) and libfaar and faar (sample
+	  rate converter); faac writes MP4 through libfaam and resamples
+	  through libfaar
+	* HE-AAC v2 encoding with Parametric Stereo behind -Dencoder-ps;
+	  stereo AUTO picks it for explicit bitrates up to the sample-rate
+	  dependent ceiling; -Dencoder-sbr=false builds an LC-only encoder
+	* libfaac ABI 3: faac_params takes a whole-stream bitrate with explicit
+	  ABR, VBR and CBR modes, channels, stereo_mode, stream_format
+	  (including MPEG-2 ADTS) and channel layouts; faac_encoder_info
+	  carries the AudioSpecificConfig; float input is unity full scale;
+	  faac_library_info reports SBR and PS through flags. Each shared
+	  library now has its own ABI version, separate from the release
+	* Eight-channel streams are signalled with a program config element in
+	  the AudioSpecificConfig and in every 32nd ADTS frame; faad and faam
+	  read them
+	* faad reports DAB+ and DRC support in FAAD_LIB_DAB and FAAD_LIB_DRC;
+	  faac and faad name the build option when a stream or request needs
+	  a feature that was compiled out
+	* The MP4 encoder tag records resampling (48000Hz->32000Hz) and labels
+	  the object type LC, HE v1 or HE v2
+	* Encoder retunes: stereo masking and M/S selection, short-window
+	  onset targets, SBR envelopes and transient borders, and the
+	  HE-AAC auto ceiling
+
 2.2 (Sep 29, 2026)
 
 	[ Robert Kausch ]
