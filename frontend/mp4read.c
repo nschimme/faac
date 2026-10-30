@@ -29,6 +29,7 @@
 #include "mp4read.h"
 #include "cli_io.h"
 #include "charset.h"
+#include "encoder_quirks.h"
 #include "endian.h"
 
 typedef struct {
@@ -209,15 +210,9 @@ static bool read_track_io(faam_io *io, const uint8_t *prefix, uint64_t file_size
             track->padding = gapless.end_padding;
         }
         if (faam_demuxer_get_num_metadata(d, &meta_count) == FAAM_OK) add_tags(track, d, meta_count);
-        if (track->delay == 0 && track->tags) {
-            for (uint32_t i = 0; i < track->num_tags; i++) {
-                if ((!strcmp(track->tags[i].name, "Encoder") || !strcmp(track->tags[i].name, "Tool")) &&
-                    track->tags[i].value && strstr(track->tags[i].value, "FAAC 1.")) {
-                    track->delay = 1024;
-                    break;
-                }
-            }
-        }
+        /* Shared with faam info: explicit container gapless metadata wins, and a
+         * metadata-less file falls back to the encoder quirk table. */
+        track->delay = encoder_quirk_resolve_delay(d, track_id, track->delay, NULL);
         collect_samples(d, track_id, file_size, track);
     }
 

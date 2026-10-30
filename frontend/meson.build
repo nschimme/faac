@@ -23,6 +23,7 @@ libfaam_for_frontend = get_option('frontend-static') ? libfaam_static : libfaam
 
 frontend_common = static_library('frontend_common',
     ['input.c', 'cli_io.c', 'cli_parse.c', 'charset.c', 'help.c', 'progress.c',
+     'encoder_quirks.c', 'encoder_quirks.h',
      'input.h', 'cli_io.h', 'cli_parse.h', 'charset.h', 'help.h', 'progress.h', git_version_h],
     include_directories: ['..', '../include', '../common'],
     c_args: c_args_list,

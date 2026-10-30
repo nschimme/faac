@@ -1133,12 +1133,6 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                             read_drc(decoder, bs, end);
                         }
 #endif
-                        if (ext_type == 0 && count >= 7) {
-                            uint8_t fill_str[8] = {0};
-                            BitReader fill_bs = bs;
-                            for (int i = 0; i < 7; i++) fill_str[i] = (uint8_t)bits_get(&fill_bs, 8);
-                            if (!memcmp(fill_str, "libfaac", 7)) decoder->legacy_faac = true;
-                        }
                         bits_skip(&bs, (count - 1) * 8 + 4);
                     }
                 }
@@ -1373,7 +1367,7 @@ output_done:
         || (decode_success && ch_idx > 0);
     decoder->sample_rate = sbr_active ? 2 * decoder->core_sample_rate : decoder->core_sample_rate;
     uint32_t mask = channel_mask(decoder, num_chs);
-    uint32_t delay = (sbr_active ? 2 * FAAD_SBR_CORE_DELAY : 0) + (decoder->legacy_faac ? 1024 : 0);
+    uint32_t delay = sbr_active ? 2 * FAAD_SBR_CORE_DELAY : 0;
     uint32_t flags = 0;
 #ifndef FAAD_DISABLE_DRC
     if (decoder->drc.applied) flags |= FAAD_FRAME_DRC;

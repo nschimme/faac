@@ -53,6 +53,7 @@
 #include "endian.h"
 #include "asc_codec.h"
 #include "cover_art.h"
+#include "encoder_quirks.h"
 
 static int g_verbose = 1;
 
@@ -791,6 +792,11 @@ static int cmd_info(int argc, char **argv)
     gapless.struct_size = sizeof(gapless);
     faam_demuxer_get_track_gapless(d, 0, &gapless);
 
+    /* Legacy encoders wrote no gapless metadata; report the delay faad will
+     * infer from their Encoder/Tool tag so the tools stay consistent. */
+    bool inferred_delay = false;
+    gapless.encoder_delay = encoder_quirk_resolve_delay(d, 0, gapless.encoder_delay, &inferred_delay);
+
     char brand[5] = {0};
     if (faam_demuxer_get_major_brand(d, brand) != FAAM_OK) brand[0] = '\0';
     for (int i = 3; i >= 0 && brand[i] == ' '; i--) brand[i] = '\0'; /* "M4A " */
@@ -867,7 +873,8 @@ static int cmd_info(int argc, char **argv)
 
     if (gapless.encoder_delay > 0 || gapless.end_padding > 0) {
         printf("\nGapless Audio Metadata:\n");
-        printf("  Encoder Delay: %u samples\n", gapless.encoder_delay);
+        printf("  Encoder Delay: %u samples%s\n", gapless.encoder_delay,
+               inferred_delay ? " (inferred from the encoder tag)" : "");
         printf("  Trailing Padding: %u samples\n", gapless.end_padding);
     }
 

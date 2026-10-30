@@ -85,7 +85,7 @@ endif
 
 if get_option('decoder') and not meson.is_cross_build()
     pcm_writer_test = executable('test_faad_pcm_writer',
-        ['test_faad_pcm_writer.c', '../mp4read.c', '../adts.c', '../cli_io.c', '../cli_parse.c', '../charset.c', '../help.c', git_version_h],
+        ['test_faad_pcm_writer.c', '../mp4read.c', '../adts.c', '../encoder_quirks.c', '../cli_io.c', '../cli_parse.c', '../charset.c', '../help.c', git_version_h],
         include_directories: ['..', '../..', '../../include', common_inc],
         link_with: [libfaad_for_frontend, libfaam_for_frontend],
         c_args: c_args_list,
