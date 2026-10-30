@@ -55,6 +55,15 @@ static void test_decode_engine_init(void)
     FT_CHECK_INT(opts.verbose, 1);
 }
 
+static void test_decode_engine_gapless_default(void)
+{
+    decode_options_t opts;
+    init_decode_options(&opts);
+    FT_CHECK(opts.gapless);
+    opts.gapless = false;
+    FT_CHECK(!opts.gapless);
+}
+
 static void test_decode_engine_nonexistent_file(void)
 {
     g_session_started = false;
@@ -81,6 +90,7 @@ static void test_decode_engine_nonexistent_file(void)
 int main(void)
 {
     test_decode_engine_init();
+    test_decode_engine_gapless_default();
     test_decode_engine_nonexistent_file();
     return ft_done();
 }

@@ -70,6 +70,7 @@ typedef struct {
     bool gapless;
     uint32_t samples_to_skip;
     uint32_t padding_samples;
+    uint32_t total_track_frames;
     bool gapless_scaled;
     uint32_t padding_bytes;
     bool fallback_mode;
@@ -354,7 +355,7 @@ static bool write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
 
 static bool pcm_writer_open(PCMWriter *w, const char *outfile, bool write_stdout, bool raw_format,
                             uint32_t bit_depth, bool is_float, bool is_mp4, bool gapless,
-                            uint32_t delay, uint32_t padding)
+                            uint32_t delay, uint32_t padding, uint32_t total_track_frames)
 {
     memset(w, 0, sizeof(*w));
     w->write_stdout = write_stdout;
@@ -365,6 +366,7 @@ static bool pcm_writer_open(PCMWriter *w, const char *outfile, bool write_stdout
     w->gapless = gapless;
     w->samples_to_skip = (is_mp4 && gapless) ? delay : 0;
     w->padding_samples = (is_mp4 && gapless) ? padding : 0;
+    w->total_track_frames = total_track_frames;
     w->header_pending = !raw_format;
 
     if (write_stdout) {
@@ -483,7 +485,7 @@ static bool pcm_writer_write_frame(PCMWriter *w, faad_decoder *dec, faad_stream_
     if (!w->gapless_scaled) {
         uint32_t core_rate = (flags & FAAD_FRAME_SBR) && sinfo->frame_samples == 2048
             ? sinfo->sample_rate / 2 : sinfo->sample_rate;
-        uint32_t timescale = track->timescale ? track->timescale : core_rate;
+        uint32_t timescale = (w->is_mp4 && track && track->timescale) ? track->timescale : core_rate;
         uint32_t delay = w->gapless ? sinfo->decoder_delay : 0;
         w->samples_to_skip = (uint32_t)((uint64_t)w->samples_to_skip * sinfo->sample_rate / timescale) + delay;
         w->padding_samples = (uint32_t)((uint64_t)w->padding_samples * sinfo->sample_rate / timescale);
@@ -879,6 +881,9 @@ int run_decoding_session_ext(const decode_options_t *opts,
         goto cleanup;
     }
 
+    uint64_t total_track_samples = is_mp4 ? track.num_samples * 1024 : 0;
+    uint32_t total_track_frames = is_mp4 ? track.num_samples : 0;
+
     if (!info_only) {
         if (!write_stdout && !outfile) {
             log_msgf(log_cb, user_data, 0, "No output filename specified\n");
@@ -894,7 +899,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
             ret_status = DECODE_ERROR;
             goto cleanup;
         }
-        if (!pcm_writer_open(&writer, outfile, write_stdout, raw_format, bit_depth, is_float, is_mp4, gapless, track.delay, track.padding)) {
+        if (!pcm_writer_open(&writer, outfile, write_stdout, raw_format, bit_depth, is_float, is_mp4, gapless, track.delay, track.padding, total_track_frames)) {
             log_msgf(log_cb, user_data, 0, "Error opening output file %s\n", outfile ? outfile : "stdout");
             ret_status = DECODE_ERROR;
             goto cleanup;
@@ -921,9 +926,6 @@ int run_decoding_session_ext(const decode_options_t *opts,
         }
         start_frame = (uint32_t)((jump_seconds * (double)sr) / (double)fl);
     }
-
-    uint64_t total_track_samples = is_mp4 ? track.num_samples * 1024 : 0;
-    uint32_t total_track_frames = is_mp4 ? track.num_samples : 0;
 
     faad_stream_info init_sinfo = { .struct_size = sizeof(init_sinfo) };
     if (faad_decoder_get_info(dec, &init_sinfo) == FAAD_OK) {

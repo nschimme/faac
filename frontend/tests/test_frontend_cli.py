@@ -350,6 +350,13 @@ def run_all(t, d):
     r = t.faam_run(["-i", "lc.aac", "-o", "plain.m4a"], d)
     check(r.returncode == 0 and smpb(read(os.path.join(d, "plain.m4a"))) is None, "no delay/padding: no iTunSMPB")
 
+    # plain.m4a has no iTunSMPB metadata or FAAC 1.x encoder tag.
+    r_default = t.run(t.faad, ["-q", "--overwrite", "-o", "plain_default.wav", "plain.m4a"], d)
+    r_nogap = t.run(t.faad, ["-q", "--no-gapless", "--overwrite", "-o", "plain_nogap.wav", "plain.m4a"], d)
+    check(r_default.returncode == 0 and r_nogap.returncode == 0, "plain.m4a faad decoding ok")
+    check(wav_data_len(os.path.join(d, "plain_default.wav")) == wav_data_len(os.path.join(d, "plain_nogap.wav")),
+          "plain.m4a without FAAC 1.x tag has no priming delay")
+
     # Stream input and output independently against the named-file mux.
     expected_mp4 = read(os.path.join(d, "plain.m4a"))
     piped = t.run(t.faam, ["-i", "-", "-o", "pipe_input.m4a"], d,
