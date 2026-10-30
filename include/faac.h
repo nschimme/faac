@@ -391,46 +391,6 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
                                         uint8_t *out, uint32_t out_cap,
                                         uint32_t *bytes_written);
 
-/*
- * Dynamic Range Control (DRC) parameters (ISO/IEC 14496-3 §4.5.2.1).
- * Used with faac_encoder_set_drc() to configure broadcast DRC metadata.
- *
- * Always set struct_size to sizeof(faac_drc_info); the struct grows only
- * by appending named fields.
- *
- * Maintainers: appended fields must start at or after the previous sizeof(struct),
- * never in its tail padding.
- */
-typedef struct faac_drc_info {
-    uint32_t struct_size;          /* set to sizeof(faac_drc_info) */
-
-    bool     enabled;              /* true to enable DRC fill element for subsequent frames */
-    uint8_t  reserved[3];          /* explicit pad; must remain 0 */
-
-    float    dynamic_range_gain;   /* gain in dB (-31.75 to +31.75 dB; negative = cut, positive = boost) */
-    bool     prog_ref_level_present;/* true if program reference level is present */
-    uint8_t  reserved2[3];         /* explicit pad; must remain 0 */
-
-    float    prog_ref_level;       /* program reference level in dBFS (-31.75 to 0.0 dBFS) */
-} faac_drc_info;
-
-/*
- * Set or update Dynamic Range Control (DRC) metadata for subsequent frames.
- * Configured values are held and applied to all subsequent frames until changed
- * or disabled.
- *
- * Valid ranges:
- *   - dynamic_range_gain: [-31.75, +31.75] dB (finite value)
- *   - prog_ref_level: [-31.75, 0.0] dBFS (finite value; must be <= 0.0)
- *
- * Returns FAAC_OK on success, FAAC_ERR_UNSUPPORTED if libfaac was compiled
- * without DRC support, or FAAC_ERR_INVALID_ARGUMENT if struct_size is too
- * small, parameters are non-finite, out of range, or prog_ref_level is positive.
- * Pass drc = NULL or drc->enabled = false to disable DRC emission.
- * Default is DRC disabled.
- */
-FAACAPI faac_status faac_encoder_set_drc(faac_encoder *encoder, const faac_drc_info *drc);
-
 /* Human-readable, static description of a status code. Never returns NULL. */
 FAACAPI const char *faac_strerror(faac_status status);
 

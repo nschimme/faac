@@ -119,9 +119,6 @@ void DrcInit(faacEncStruct *hEncoder)
 
 void DrcProcessFrame(faacEncStruct *hEncoder, float * const *input_pcm, uint32_t samples_per_ch)
 {
-    if (hEncoder->hasManualDrcOverride)
-        return;
-
     if (hEncoder->config.drcMode == DRC_AUTO && hEncoder->drcAnalyzer) {
         DrcAnalyzerProcessFrame(hEncoder->drcAnalyzer, input_pcm, samples_per_ch, &hEncoder->drcInfo);
     } else {

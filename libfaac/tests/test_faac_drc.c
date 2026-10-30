@@ -139,64 +139,6 @@ static void test_drc_off_baseline_hash(void)
     assert(hash != 0);
 }
 
-static void test_drc_invalid_inputs(void)
-{
-    faac_params params;
-    faac_params_init(&params, sizeof(params));
-    params.sample_rate = 44100;
-    params.channels = 2;
-
-    faac_encoder *enc = NULL;
-    faac_status st = faac_encoder_open(&params, &enc);
-    assert(st == FAAC_OK && enc != NULL);
-
-    faac_drc_info drc;
-
-    /* Too small struct_size */
-    memset(&drc, 0, sizeof(drc));
-    drc.struct_size = 4;
-    drc.enabled = true;
-    st = faac_encoder_set_drc(enc, &drc);
-    assert(st == FAAC_ERR_INVALID_ARGUMENT);
-
-    /* Out of range gain (> +31.75 dB) */
-    memset(&drc, 0, sizeof(drc));
-    drc.struct_size = sizeof(drc);
-    drc.enabled = true;
-    drc.dynamic_range_gain = 32.0f;
-    st = faac_encoder_set_drc(enc, &drc);
-    assert(st == FAAC_ERR_INVALID_ARGUMENT);
-
-    /* Out of range gain (< -31.75 dB) */
-    drc.dynamic_range_gain = -32.0f;
-    st = faac_encoder_set_drc(enc, &drc);
-    assert(st == FAAC_ERR_INVALID_ARGUMENT);
-
-    /* Positive prog_ref_level */
-    drc.dynamic_range_gain = 0.0f;
-    drc.prog_ref_level_present = true;
-    drc.prog_ref_level = 5.0f;
-    st = faac_encoder_set_drc(enc, &drc);
-    assert(st == FAAC_ERR_INVALID_ARGUMENT);
-
-    /* Out of range prog_ref_level (< -31.75 dBFS) */
-    drc.prog_ref_level = -35.0f;
-    st = faac_encoder_set_drc(enc, &drc);
-    assert(st == FAAC_ERR_INVALID_ARGUMENT);
-
-    /* Valid prog_ref_level (-20.0 dBFS) */
-    drc.prog_ref_level = -20.0f;
-    st = faac_encoder_set_drc(enc, &drc);
-    assert(st == FAAC_OK);
-
-    /* Larger struct_size (future ABI growth compatibility) */
-    drc.struct_size = sizeof(drc) + 16;
-    st = faac_encoder_set_drc(enc, &drc);
-    assert(st == FAAC_OK);
-
-    faac_encoder_close(&enc);
-}
-
 static void test_drc_auto_encoder_integration(void)
 {
     const enum faac_object_type obj_types[] = { FAAC_OBJ_LC, FAAC_OBJ_HE_AAC_V1 };
@@ -490,7 +432,6 @@ static void test_drc_gain_aligned_with_audio(void)
 int main(void)
 {
     test_drc_off_baseline_hash();
-    test_drc_invalid_inputs();
     test_drc_auto_encoder_integration();
     test_drc_release_reaches_target();
     test_drc_surround_weights_symmetric();
