@@ -106,5 +106,5 @@ option('stats',
 option('decoder-drc', type: 'boolean', value: true,
     description: 'Enable decoder dynamic range control')
 
-option('encoder-drc', type: 'boolean', value: false,
+option('encoder-drc', type: 'boolean', value: true,
     description: 'Enable dynamic range control metadata generation in libfaac')
