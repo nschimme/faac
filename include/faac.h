@@ -243,7 +243,8 @@ typedef struct faac_params {
     enum faac_rate_control  rate_control;  /* see enum; zero selects ABR */
 
     enum faac_drc_mode      drc_mode;      /* FAAC_DRC_OFF (default) or FAAC_DRC_AUTO  */
-    float                   drc_ref_level; /* target LUFS [-31.75, 0.0]; 0 = default (-23.0 LUFS) */
+    float                   drc_ref_level; /* target LUFS [-31.75, 0.0]; 0 = default (-23.0 LUFS); written
+                                              as prog_ref_level, whose field is nominally dBFS */
 } faac_params;
 
 /* Upper bound on faac_params.peak_bit_rate: far above any real stream rate, and
