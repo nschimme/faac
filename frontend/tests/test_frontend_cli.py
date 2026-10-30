@@ -350,6 +350,51 @@ def run_all(t, d):
     r = t.faam_run(["-i", "lc.aac", "-o", "plain.m4a"], d)
     check(r.returncode == 0 and smpb(read(os.path.join(d, "plain.m4a"))) is None, "no delay/padding: no iTunSMPB")
 
+    # plain.m4a has no iTunSMPB metadata or FAAC 1.x encoder tag.
+    r_default = t.run(t.faad, ["-q", "--overwrite", "-o", "plain_default.wav", "plain.m4a"], d)
+    r_nogap = t.run(t.faad, ["-q", "--no-gapless", "--overwrite", "-o", "plain_nogap.wav", "plain.m4a"], d)
+    check(r_default.returncode == 0 and r_nogap.returncode == 0, "plain.m4a faad decoding ok")
+    check(wav_data_len(os.path.join(d, "plain_default.wav")) == wav_data_len(os.path.join(d, "plain_nogap.wav")),
+          "plain.m4a without FAAC 1.x tag has no priming delay")
+
+    # faac through 1.31.1 wrote a "FAAC <version>" encoder tag but no iTunSMPB or
+    # edit list, so the 1024-sample MDCT priming is inferred from the tag alone.
+    legacy = os.path.join(d, "legacy.m4a")
+    shutil.copyfile(os.path.join(d, "plain.m4a"), legacy)
+    r = t.faam_run(["tag", "legacy.m4a", "--tag", "Encoder=FAAC 1.31.1"], d)
+    check(r.returncode == 0, "legacy.m4a encoder tag set: " + r.stderr.decode(errors="replace"))
+    check(smpb(read(legacy)) is None, "legacy.m4a still has no iTunSMPB")
+    r_default = t.run(t.faad, ["-q", "--overwrite", "-o", "legacy_default.wav", "legacy.m4a"], d)
+    r_nogap = t.run(t.faad, ["-q", "--no-gapless", "--overwrite", "-o", "legacy_nogap.wav", "legacy.m4a"], d)
+    check(r_default.returncode == 0 and r_nogap.returncode == 0, "legacy.m4a faad decoding ok")
+    primed = (wav_data_len(os.path.join(d, "legacy_nogap.wav")) - wav_data_len(os.path.join(d, "legacy_default.wav"))) // (CHANNELS * 2)
+    check(primed == 1024, f"legacy FAAC 1.x tag trims 1024 priming samples (got {primed})")
+    info = t.faam_run(["info", "legacy.m4a"], d).stdout.decode()
+    check("Encoder Delay: 1024 samples (inferred from the encoder tag)" in info,
+          "faam info reports the delay faad infers from the tag:\n" + info)
+
+    # Newer FAAC writes gapless metadata and primes HE modes differently, so its
+    # tag alone is not a quirk: a metadata-less file is left untouched.
+    shutil.copyfile(os.path.join(d, "plain.m4a"), os.path.join(d, "modern.m4a"))
+    r = t.faam_run(["tag", "modern.m4a", "--tag", "Encoder=FAAC 3.0.0"], d)
+    check(r.returncode == 0, "modern.m4a encoder tag set: " + r.stderr.decode(errors="replace"))
+    r_default = t.run(t.faad, ["-q", "--overwrite", "-o", "modern_default.wav", "modern.m4a"], d)
+    r_nogap = t.run(t.faad, ["-q", "--no-gapless", "--overwrite", "-o", "modern_nogap.wav", "modern.m4a"], d)
+    check(r_default.returncode == 0 and r_nogap.returncode == 0, "modern.m4a faad decoding ok")
+    check(wav_data_len(os.path.join(d, "modern_default.wav")) == wav_data_len(os.path.join(d, "modern_nogap.wav")),
+          "a non-legacy FAAC tag invents no priming")
+
+    # Explicit container gapless metadata takes precedence over the legacy tag.
+    r = t.faam_run(["-i", "lc.aac", "-o", "explicit.m4a", "--encoder-delay", "512"], d)
+    check(r.returncode == 0 and smpb(read(os.path.join(d, "explicit.m4a"))) is not None, "explicit.m4a has iTunSMPB")
+    r = t.faam_run(["tag", "explicit.m4a", "--tag", "Encoder=FAAC 1.31.1"], d)
+    check(r.returncode == 0, "explicit.m4a encoder tag set: " + r.stderr.decode(errors="replace"))
+    r_default = t.run(t.faad, ["-q", "--overwrite", "-o", "explicit_default.wav", "explicit.m4a"], d)
+    r_nogap = t.run(t.faad, ["-q", "--no-gapless", "--overwrite", "-o", "explicit_nogap.wav", "explicit.m4a"], d)
+    check(r_default.returncode == 0 and r_nogap.returncode == 0, "explicit.m4a faad decoding ok")
+    primed = (wav_data_len(os.path.join(d, "explicit_nogap.wav")) - wav_data_len(os.path.join(d, "explicit_default.wav"))) // (CHANNELS * 2)
+    check(primed == 512, f"explicit container delay wins over the legacy tag (got {primed})")
+
     # Stream input and output independently against the named-file mux.
     expected_mp4 = read(os.path.join(d, "plain.m4a"))
     piped = t.run(t.faam, ["-i", "-", "-o", "pipe_input.m4a"], d,
