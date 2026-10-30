@@ -328,11 +328,11 @@ Force AAC MPEG version, X can be 2 or 4
 .BR --shortctl\ \fIX\fP
 Enforce block type (0 = both (default); 1 = no short; 2 = no long).
 .TP
-.BR --drc[=\fIoff|auto\fP]
-Enable dynamic range control metadata generation (off or auto; default off when flag omitted, auto when flag passed without value). Operates a single-pass causal ITU-R BS.1770-4 K-weighted loudness analyzer. Requires an encoder built with \fBencoder-drc=true\fP.
+.BR --drc\ <\fIprofile\fP>
+Write dynamic range control metadata (ISO/IEC 14496-3 dynamic_range_info) so a decoder that applies it can compress the program. The profile is one of \fBoff\fP (default), \fBfilm\fP, \fBfilm-light\fP, \fBmusic\fP, \fBmusic-light\fP or \fBspeech\fP. Gains follow a BS.1770 K-weighted loudness measured on the input, relative to the program reference level. Requires an encoder built with \fBencoder-drc=true\fP.
 .TP
 .BR --drc-ref-level\ <\fILUFS\fP>
-Set the target reference level in LUFS for DRC analysis (range: -31.75 to 0.0 LUFS; default: -23.0 LUFS). Requires \fB--drc\fP.
+Set the program reference level of the content in LUFS, around which the profile's null band is placed (range: -31.75 to 0.0 LUFS; default: -23.0 LUFS). Requires \fB--drc\fP.
 .SH PATENTS
 The use of this software may require the payment of patent royalties. Consider
 this before building derivative works; the authors give no warranty or

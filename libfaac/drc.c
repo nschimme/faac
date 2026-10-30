@@ -101,7 +101,7 @@ int DrcGetBits(const DRCInfo *drc, BitStream *bs)
 
 void DrcInit(faacEncStruct *hEncoder)
 {
-    if (hEncoder->config.drcMode == DRC_AUTO) {
+    if (hEncoder->config.drcProfile != DRC_OFF) {
         /*
          * Note: hEncoder->sampleRate holds the halved core sample rate for HE-AAC,
          * but ITU-R BS.1770 K-weighting loudness measurement operates on full-rate PCM.
@@ -109,17 +109,18 @@ void DrcInit(faacEncStruct *hEncoder)
         uint32_t fullRate = (uint32_t)SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
         /* The access unit written on a tick carries audio that entered the FIFO
          * LOOKAHEAD_DEPTH ticks earlier, on the encoder timeline that
-         * encoder_delay also uses. The analyzer's own one-frame lookahead leaves
-         * the gain one frame ahead of that audio. */
+         * encoder_delay also uses. The analyzer's lookahead and the tick on
+         * which the 800 ms meter first sees an onset make up the difference, so
+         * the gain still lands one frame ahead of a loud onset. */
         hEncoder->drcAnalyzer = DrcAnalyzerInit(fullRate, hEncoder->numChannels,
                                                 hEncoder->isLfeChannel, hEncoder->config.drcRefLevel,
-                                                LOOKAHEAD_DEPTH);
+                                                hEncoder->config.drcProfile, LOOKAHEAD_DEPTH - 1);
     }
 }
 
 void DrcProcessFrame(faacEncStruct *hEncoder, float * const *input_pcm, uint32_t samples_per_ch)
 {
-    if (hEncoder->config.drcMode == DRC_AUTO && hEncoder->drcAnalyzer) {
+    if (hEncoder->config.drcProfile != DRC_OFF && hEncoder->drcAnalyzer) {
         DrcAnalyzerProcessFrame(hEncoder->drcAnalyzer, input_pcm, samples_per_ch, &hEncoder->drcInfo);
     } else {
         hEncoder->drcInfo.enabled = false;

@@ -95,7 +95,7 @@ Windows DLL.
 | RAW AAC | One access unit per emitted frame; MPEG-4 ASC available separately |
 | MP4/M4A | Mux outside the library using RAW access units and ASC |
 | MPEG-2 | `FAAC_STREAM_ADTS_MPEG2`: AAC-LC; no ASC; explicit HE-AAC resolves to MPEG-4 and reports `FAAC_STREAM_ADTS`. Raw frames are always MPEG-4 |
-| Dynamic Range Control | Single-pass ITU-R BS.1770-4 DRC metadata fill elements (`FAAC_DRC_AUTO`); requires `encoder-drc=true` |
+| Dynamic Range Control | `dynamic_range_info` fill elements from a single-pass ITU-R BS.1770-4 loudness analysis, selected by `drc_profile` (film, film-light, music, music-light, speech) and `drc_ref_level`; requires `encoder-drc=true` |
 | Channels | 1–6 or 8, within the compiled `max-channels` ceiling; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float; see below |
 

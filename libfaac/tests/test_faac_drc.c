@@ -40,51 +40,58 @@ static uint32_t fnv1a_hash(const uint8_t *data, size_t len)
 }
 
 /*
- * Simple ADTS DRC bitstream parser for test inspection.
+ * Simple ADTS DRC bitstream parser for test inspection: reads the FIL element
+ * that opens the raw_data_block bit by bit, field by field.
  */
+static uint32_t read_bits(const uint8_t *buf, size_t *pos, unsigned n)
+{
+    uint32_t v = 0;
+    while (n--) {
+        v = (v << 1) | ((buf[*pos >> 3] >> (7 - (*pos & 7))) & 1);
+        (*pos)++;
+    }
+    return v;
+}
+
 static bool parse_adts_drc(const uint8_t *buf, size_t len, float *out_gain, float *out_ref)
 {
-    if (len < 7)
+    if (len < 12)
         return false;
 
     /* Verify ADTS sync */
     if (buf[0] != 0xff || (buf[1] & 0xf0) != 0xf0)
         return false;
 
-    size_t idx = 7;
-    if (idx >= len)
+    size_t pos = 7 * 8;
+    if (read_bits(buf, &pos, 3) != 6) /* ID_FIL */
+        return false;
+    uint32_t cnt = read_bits(buf, &pos, 4);
+    if (cnt == 15)
+        cnt += read_bits(buf, &pos, 8) - 1;
+    if (read_bits(buf, &pos, 4) != 0x0b) /* EXT_DYNAMIC_RANGE */
         return false;
 
-    uint8_t id_fil = (buf[idx] >> 5) & 7;
-    if (id_fil != 6) /* ID_FIL */
+    bool pce = read_bits(buf, &pos, 1);
+    bool excluded = read_bits(buf, &pos, 1);
+    bool bands = read_bits(buf, &pos, 1);
+    bool ref_pres = read_bits(buf, &pos, 1);
+    if (pce || excluded || bands)
         return false;
 
-    uint8_t ext_type = ((buf[idx] & 1) << 3) | ((buf[idx + 1] >> 5) & 7);
-    if (ext_type != 0x0b) /* EXT_DYNAMIC_RANGE */
-        return false;
-
-    bool ref_pres = (buf[idx + 1] >> 0) & 1;
-    uint8_t ref_code = 0;
-    uint8_t sgn = 0;
-    uint8_t ctl = 0;
-
+    uint32_t ref_code = 0;
     if (ref_pres) {
-        ref_code = ((buf[idx + 2] & 0xfe) >> 1);
-        sgn = buf[idx + 2] & 1;
-        ctl = (buf[idx + 3] >> 1) & 0x7f;
-    } else {
-        sgn = buf[idx + 1] & 1;
-        ctl = (buf[idx + 2] >> 1) & 0x7f;
+        ref_code = read_bits(buf, &pos, 7);
+        read_bits(buf, &pos, 1); /* reserved */
     }
+    bool sgn = read_bits(buf, &pos, 1);
+    uint32_t ctl = read_bits(buf, &pos, 7);
 
     if (out_gain) {
         float gain = 0.25f * (float)ctl;
         *out_gain = sgn ? -gain : gain;
     }
-
-    if (out_ref) {
+    if (out_ref)
         *out_ref = -0.25f * (float)ref_code;
-    }
 
     return true;
 }
@@ -97,7 +104,7 @@ static void test_drc_off_baseline_hash(void)
     params.channels = 2;
     params.object_type = FAAC_OBJ_LC;
     params.bit_rate = 128000;
-    params.drc_mode = FAAC_DRC_OFF;
+    params.drc_profile = FAAC_DRC_OFF;
     params.stream_format = FAAC_STREAM_ADTS;
     params.input_format = FAAC_INPUT_16BIT;
 
@@ -163,7 +170,7 @@ static void test_drc_auto_encoder_integration(void)
             params.channels = 2;
             params.object_type = aot;
             params.bit_rate = br;
-            params.drc_mode = FAAC_DRC_AUTO;
+            params.drc_profile = FAAC_DRC_FILM;
             params.drc_ref_level = -23.0f;
             params.stream_format = FAAC_STREAM_ADTS;
             params.input_format = FAAC_INPUT_16BIT;
@@ -220,7 +227,7 @@ static void test_drc_auto_encoder_integration(void)
             params.channels = 2;
             params.object_type = aot;
             params.bit_rate = br;
-            params.drc_mode = FAAC_DRC_AUTO;
+            params.drc_profile = FAAC_DRC_FILM;
             params.drc_ref_level = -23.0f;
             params.stream_format = FAAC_STREAM_ADTS;
             params.input_format = FAAC_INPUT_FLOAT;
@@ -278,7 +285,7 @@ static void test_drc_auto_encoder_integration(void)
         assert(gains_16bit[100] >= 5.0f && gains_16bit[100] <= 6.0f);
 
         uint32_t loud_idx = count_16bit - 10;
-        assert(gains_16bit[loud_idx] <= -9.5f && gains_16bit[loud_idx] >= -10.5f);
+        assert(gains_16bit[loud_idx] <= -5.0f && gains_16bit[loud_idx] >= -20.0f);
 
         for (uint32_t i = 1; i < count_16bit; i++) {
             float step = gains_16bit[i - 1] - gains_16bit[i];
@@ -301,7 +308,7 @@ static float last_gain_after(uint32_t channels, int loud_ch, const float *amps,
     params.sample_rate = 48000;
     params.channels = channels;
     params.bit_rate = 64000 * channels / 2;
-    params.drc_mode = FAAC_DRC_AUTO;
+    params.drc_profile = FAAC_DRC_FILM;
     params.drc_ref_level = -23.0f;
     params.stream_format = FAAC_STREAM_ADTS;
     params.input_format = FAAC_INPUT_FLOAT;
@@ -363,7 +370,7 @@ static void test_drc_surround_weights_symmetric(void)
 
 /*
  * Index of the first access unit whose gain is cut by more than 1 dB when a
- * -40 dBFS tone jumps to -22 dBFS at a known sample.
+ * -40 dBFS tone jumps to -10 dBFS at a known sample.
  */
 static uint32_t first_cut_au(enum faac_object_type aot, uint32_t bit_rate,
                              uint32_t frame_len, uint32_t onset_sample)
@@ -374,7 +381,7 @@ static uint32_t first_cut_au(enum faac_object_type aot, uint32_t bit_rate,
     params.channels = 2;
     params.object_type = aot;
     params.bit_rate = bit_rate;
-    params.drc_mode = FAAC_DRC_AUTO;
+    params.drc_profile = FAAC_DRC_FILM;
     params.drc_ref_level = -23.0f;
     params.stream_format = FAAC_STREAM_ADTS;
     params.input_format = FAAC_INPUT_FLOAT;
@@ -390,7 +397,7 @@ static uint32_t first_cut_au(enum faac_object_type aot, uint32_t bit_rate,
 
     while (total < onset_sample + 40 * frame_len) {
         for (uint32_t i = 0; i < frame_len; i++) {
-            float amp = (total + i < onset_sample) ? 0.01f : 0.08f;
+            float amp = (total + i < onset_sample) ? 0.01f : 0.3f;
             float v = amp * (float)sin(2.0 * M_PI_DOUBLE * 997.0 * (double)(total + i) / 48000.0);
             pcm[2 * i] = v;
             pcm[2 * i + 1] = v;
@@ -416,17 +423,109 @@ static uint32_t first_cut_au(enum faac_object_type aot, uint32_t bit_rate,
 
 /*
  * The gain written into an access unit must describe the audio that unit
- * carries: the first cut lands on the onset frame or the one before it. Before
- * the gain was delayed it led by two to three frames, ducking quiet audio ahead
- * of the transient.
+ * carries: the first cut lands one frame ahead of the onset frame. Before the
+ * gain was delayed it led by three to four frames, ducking quiet audio ahead of
+ * the transient.
  */
 static void test_drc_gain_aligned_with_audio(void)
 {
     const uint32_t onset = 480000;
     uint32_t lc = first_cut_au(FAAC_OBJ_LC, 128000, 1024, onset);
     uint32_t he = first_cut_au(FAAC_OBJ_HE_AAC_V1, 48000, 2048, onset);
-    assert(lc + 1 >= onset / 1024 && lc <= onset / 1024);
-    assert(he + 1 >= onset / 2048 && he <= onset / 2048);
+    assert(lc + 1 == onset / 1024);
+    assert(he + 1 == onset / 2048);
+}
+
+/* Independent statement of the documented curves: {boost_start, boost_max,
+ * cut_start, cut_knee, cut_slope}, in LU relative to the reference level. */
+static float expected_gain(enum faac_drc_profile profile, float x)
+{
+    static const float t[5][5] = {
+        { -4.0f,   6.0f, 1.0f,   10.5f, 0.90f },
+        { -15.0f,  6.0f, 6.0f,   17.5f, 0.94f },
+        { -4.0f,  12.0f, 1.0f,   10.5f, 0.90f },
+        { -15.0f, 12.0f, 6.0f, 1000.0f, 0.50f },
+        { -4.0f,  15.0f, 1.0f,   10.5f, 0.90f },
+    };
+    const float *c = t[(int)profile - 1];
+    if (x < c[0])
+        return fminf(0.5f * (c[0] - x), c[1]);
+    if (x <= c[2])
+        return 0.0f;
+    if (x <= c[3])
+        return -0.5f * (x - c[2]);
+    return -0.5f * (c[3] - c[2]) - c[4] * (x - c[3]);
+}
+
+/* Steady 997 Hz stereo tone at x LU from the reference level ref. */
+static float steady_gain(enum faac_drc_profile profile, float ref, float x)
+{
+    faac_params params;
+    faac_params_init(&params, sizeof(params));
+    params.sample_rate = 48000;
+    params.channels = 2;
+    params.bit_rate = 128000;
+    params.drc_profile = profile;
+    params.drc_ref_level = ref;
+    params.stream_format = FAAC_STREAM_ADTS;
+    params.input_format = FAAC_INPUT_FLOAT;
+
+    faac_encoder *enc = NULL;
+    assert(faac_encoder_open(&params, &enc) == FAAC_OK && enc != NULL);
+
+    /* A stereo tone of amplitude A measures about 20 log10(A) LUFS at 997 Hz. */
+    float amp = powf(10.0f, (ref + x) / 20.0f);
+    float pcm[1024 * 2];
+    uint8_t outbuf[16384];
+    uint32_t bytes = 0, total = 0;
+    float last = 0.0f;
+
+    for (uint32_t f = 0; f < 12 * 48000 / 1024; f++) {
+        for (uint32_t i = 0; i < 1024; i++) {
+            float v = amp * (float)sin(2.0 * M_PI_DOUBLE * 997.0 * (double)(total + i) / 48000.0);
+            pcm[2 * i] = pcm[2 * i + 1] = v;
+        }
+        total += 1024;
+        assert(faac_encoder_encode(enc, pcm, 1024 * 2, outbuf, sizeof(outbuf), &bytes) == FAAC_OK);
+        float g;
+        if (bytes > 7 && parse_adts_drc(outbuf, bytes, &g, NULL))
+            last = g;
+    }
+    faac_encoder_close(&enc);
+    return last;
+}
+
+/* Each profile's static curve: boost, null band, 2:1 cut and the steeper tail. */
+static void test_drc_profile_curves(void)
+{
+    const float xs[] = { -45.0f, -30.0f, -10.0f, 0.0f, 5.0f, 8.0f, 15.0f, 24.0f };
+    for (int p = FAAC_DRC_FILM; p <= FAAC_DRC_SPEECH; p++) {
+        for (size_t i = 0; i < sizeof(xs) / sizeof(xs[0]); i++) {
+            float want = expected_gain((enum faac_drc_profile)p, xs[i]);
+            /* the reference is placed so loud tones stay below full scale and
+             * quiet ones above the boost taper */
+            float ref = xs[i] < -20.0f ? -5.0f : xs[i] > 10.0f ? -30.0f : -18.0f;
+            float got = steady_gain((enum faac_drc_profile)p, ref, xs[i]);
+            /* 1 LU of meter slack at 2:1 plus the 0.25 dB grid */
+            assert(fabsf(got - want) <= 0.9f);
+        }
+    }
+}
+
+static void test_drc_invalid_profile(void)
+{
+    faac_params params;
+    faac_encoder *enc = NULL;
+    faac_params_init(&params, sizeof(params));
+    params.sample_rate = 48000;
+    params.channels = 2;
+    params.drc_profile = (enum faac_drc_profile)99;
+    assert(faac_encoder_open(&params, &enc) == FAAC_ERR_INVALID_ARGUMENT);
+    params.drc_profile = FAAC_DRC_FILM;
+    params.drc_ref_level = 1.0f;
+    assert(faac_encoder_open(&params, &enc) == FAAC_ERR_INVALID_ARGUMENT);
+    params.drc_ref_level = -32.0f;
+    assert(faac_encoder_open(&params, &enc) == FAAC_ERR_INVALID_ARGUMENT);
 }
 
 int main(void)
@@ -436,6 +535,8 @@ int main(void)
     test_drc_release_reaches_target();
     test_drc_surround_weights_symmetric();
     test_drc_gain_aligned_with_audio();
+    test_drc_profile_curves();
+    test_drc_invalid_profile();
     printf("All DRC tests passed successfully.\n");
     return 0;
 }

@@ -36,13 +36,15 @@ typedef struct DrcAnalyzer DrcAnalyzer;
  *   sample_rate: full input PCM sample rate in Hz (e.g., 48000, 44100, 96000)
  *   num_channels: total input channel count
  *   is_lfe_channel: per-channel boolean array indicating LFE channels (or NULL)
- *   ref_level_lufs: target program reference level in LUFS (e.g., -23.0f)
+ *   ref_level_lufs: program reference level in LUFS (e.g., -23.0f); the
+ *                   profile's null band is placed relative to it
+ *   profile: 1-based index of the profile (enum faac_drc_profile minus FAAC_DRC_OFF)
  *   delay_frames: frames the emitted gain trails the analyzed input (0..4)
  * Returns pointer to opaque DrcAnalyzer or NULL on allocation failure.
  */
 DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
                              const bool *is_lfe_channel, float ref_level_lufs,
-                             uint32_t delay_frames);
+                             uint32_t profile, uint32_t delay_frames);
 
 /*
  * Process one frame of full-rate input PCM and produce the DRC gain metadata.
