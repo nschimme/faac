@@ -26,7 +26,6 @@
 
 /* Sliding window parameter constants */
 #define DRC_SUBBLOCK_DUR_SEC          0.100f  /* 100 ms sub-blocks */
-#define DRC_NUM_SUBBLOCKS_3S          30      /* 3.0 s short-term window (30 x 100 ms) */
 #define DRC_LOUDNESS_BLOCKS           8       /* 800 ms loudness window (8 x 100 ms) */
 
 /* Compression curve constants */
@@ -101,12 +100,12 @@ struct DrcAnalyzer {
 
     BiquadState ch_state[MAX_CHANNELS];
 
-    /* Sub-block energy ring buffer for the 3 s sliding window */
+    /* Sub-block energy ring buffer for the loudness window */
     uint32_t subblock_size_samples;
     uint32_t subblock_sample_count;
     double current_subblock_sum;
 
-    float subblock_energy[DRC_NUM_SUBBLOCKS_3S];
+    float subblock_energy[DRC_LOUDNESS_BLOCKS];
     uint32_t subblock_head;
     uint32_t subblock_count;
 
@@ -275,8 +274,8 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
          * energy forward with its samples. */
         float mean_sq = (float)(da->current_subblock_sum / (double)da->subblock_sample_count);
         da->subblock_energy[da->subblock_head] = mean_sq;
-        da->subblock_head = (da->subblock_head + 1) % DRC_NUM_SUBBLOCKS_3S;
-        if (da->subblock_count < DRC_NUM_SUBBLOCKS_3S)
+        da->subblock_head = (da->subblock_head + 1) % DRC_LOUDNESS_BLOCKS;
+        if (da->subblock_count < DRC_LOUDNESS_BLOCKS)
             da->subblock_count++;
 
         da->current_subblock_sum -= (double)mean_sq * (double)da->subblock_size_samples;
@@ -297,7 +296,7 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
     double count = (double)da->subblock_sample_count;
     uint32_t used = da->subblock_count < DRC_LOUDNESS_BLOCKS ? da->subblock_count : DRC_LOUDNESS_BLOCKS;
     for (uint32_t i = 0; i < used; i++) {
-        uint32_t idx = (da->subblock_head + DRC_NUM_SUBBLOCKS_3S - 1 - i) % DRC_NUM_SUBBLOCKS_3S;
+        uint32_t idx = (da->subblock_head + DRC_LOUDNESS_BLOCKS - 1 - i) % DRC_LOUDNESS_BLOCKS;
         energy += (double)da->subblock_energy[idx] * (double)da->subblock_size_samples;
     }
     count += (double)used * (double)da->subblock_size_samples;
