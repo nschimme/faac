@@ -530,6 +530,12 @@ static void test_drc_invalid_profile(void)
 
 int main(void)
 {
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    if (faac_get_library_info(&lib) == FAAC_OK && lib.max_channels < 2) {
+        printf("DRC unit tests require at least 2 channels (max_channels=%u).\n", lib.max_channels);
+        return 0;
+    }
+
     test_drc_off_baseline_hash();
     test_drc_auto_encoder_integration();
     test_drc_release_reaches_target();

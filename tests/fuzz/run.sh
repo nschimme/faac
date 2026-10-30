@@ -60,7 +60,11 @@ faad_src="$root/libfaad/asc.c $root/libfaad/bits.c $root/libfaad/coupling.c $roo
 faam_src="$root/libfaam/atom_patch.c $root/libfaam/chapter.c $root/libfaam/demux.c $root/libfaam/faam_util.c $root/libfaam/metadata.c $root/libfaam/mux.c $root/libfaam/tag.c"
 
 # Source files for libfaac
-faac_src="$root/libfaac/bitstream.c $root/libfaac/blockswitch.c $root/libfaac/channels.c $root/libfaac/cpu_compute.c $root/libfaac/faac.c $root/libfaac/filtbank.c $root/libfaac/frame.c $root/libfaac/huff2.c $root/libfaac/huffdata.c $root/libfaac/quantize.c $root/libfaac/ratecontrol.c $root/libfaac/stereo.c $root/libfaac/tns.c $root/libfaac/util.c"
+faac_src="$root/libfaac/bitstream.c $root/libfaac/blockswitch.c $root/libfaac/channels.c $root/libfaac/cpu_compute.c $root/libfaac/drc.c $root/libfaac/faac.c $root/libfaac/filtbank.c $root/libfaac/frame.c $root/libfaac/huff2.c $root/libfaac/huffdata.c $root/libfaac/quantize.c $root/libfaac/ratecontrol.c $root/libfaac/stereo.c $root/libfaac/tns.c $root/libfaac/util.c"
+
+if grep -q '^#define FAAC_ENCODER_DRC 1$' "$bd/config.h"; then
+    faac_src="$faac_src $root/libfaac/drc_analyzer.c"
+fi
 
 # Match the Meson feature settings: an LC-only build leaves the SBR sources out (sbr.h has stubs),
 # and PS is opt-in.
