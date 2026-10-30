@@ -265,6 +265,8 @@ static const char *open_error(faac_status st, const faac_params *params)
             return "HE-AAC v1 is not in this build (needs -Dencoder-sbr=true)";
         if (params->object_type == FAAC_OBJ_HE_AAC_V2 && !(lib.flags & FAAC_LIB_PS))
             return "HE-AAC v2 is not in this build (needs -Dencoder-ps=true)";
+        if (params->drc_profile != FAAC_DRC_OFF && !(lib.flags & FAAC_LIB_DRC))
+            return "Dynamic Range Control (DRC) is not in this build (needs -Dencoder-drc=true)";
     }
     return faac_strerror(st);
 }
