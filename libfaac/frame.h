@@ -118,7 +118,6 @@ typedef struct faacEncStruct {
 #if FAAC_ENCODER_DRC
     DrcAnalyzer *drcAnalyzer;
     DRCInfo drcInfo;
-    bool hasManualDrcOverride;
 #endif
 
     /* Keep frame controls before the large coder state, sized at open to

@@ -470,45 +470,6 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
     return FAAC_OK;
 }
 
-FAACAPI faac_status faac_encoder_set_drc(faac_encoder *encoder, const faac_drc_info *drc)
-{
-#if !FAAC_ENCODER_DRC
-    (void)encoder; (void)drc;
-    return FAAC_ERR_UNSUPPORTED;
-#else
-    faacEncStruct *h;
-
-    if (!encoder)
-        return FAAC_ERR_INVALID_ARGUMENT;
-    h = unwrap(encoder);
-
-    if (!drc || !drc->enabled) {
-        h->drcInfo.enabled = false;
-        h->hasManualDrcOverride = false;
-        return FAAC_OK;
-    }
-
-    if (drc->struct_size < sizeof(faac_drc_info))
-        return FAAC_ERR_INVALID_ARGUMENT;
-
-    if (isnan(drc->dynamic_range_gain) || drc->dynamic_range_gain < -31.75f || drc->dynamic_range_gain > 31.75f)
-        return FAAC_ERR_INVALID_ARGUMENT;
-
-    if (drc->prog_ref_level_present) {
-        if (isnan(drc->prog_ref_level) || drc->prog_ref_level < -31.75f || drc->prog_ref_level > 0.0f)
-            return FAAC_ERR_INVALID_ARGUMENT;
-    }
-
-    h->drcInfo.enabled = true;
-    h->drcInfo.gain_db = drc->dynamic_range_gain;
-    h->drcInfo.prog_ref_level_present = drc->prog_ref_level_present;
-    h->drcInfo.prog_ref_level_db = drc->prog_ref_level;
-    h->hasManualDrcOverride = true;
-
-    return FAAC_OK;
-#endif
-}
-
 FAACAPI const char *faac_strerror(faac_status status)
 {
     switch (status) {
