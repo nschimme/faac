@@ -755,8 +755,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
             return 0;
 
         /* Automatic DRC loudness measurement on incoming full-rate PCM frame in inputFifo */
-        if (realPerCh > 0)
-            DrcProcessFrame(hEncoder, hEncoder->inputFifo, frameSamplesPerCh);
+        DrcProcessFrame(hEncoder, realPerCh > 0 ? hEncoder->inputFifo : NULL,
+                        (uint32_t)(realPerCh > 0 ? frameSamplesPerCh : 0));
 
         /* HE-AAC: run SBR + downsample first; the core then encodes heHalfRate.
          * Flush frames (realPerCh == 0) included -- the SBR payload runs

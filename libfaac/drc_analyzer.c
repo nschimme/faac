@@ -41,6 +41,8 @@
 #define DRC_TAU_RELEASE               1.000f  /* 1000 ms slow release time constant */
 #define DRC_MAX_CUT_STEP_DB           3.00f   /* Maximum cut increase per frame (slew rate limit) */
 
+#define DRC_MAX_DELAY                 4       /* Deepest supported gain delay line, in frames */
+
 typedef struct BiquadState {
     float v1_1, v2_1; /* Pre-filter delay elements */
     float v1_2, v2_2; /* RLB filter delay elements */
@@ -77,6 +79,11 @@ struct DrcAnalyzer {
 
     bool has_lookahead;
     DRCInfo lookahead_drc;
+
+    /* Delay line from analyzed frame to emitted gain: hist[0] is the newest. */
+    uint32_t delay;
+    bool hist_primed;
+    DRCInfo hist[DRC_MAX_DELAY + 1];
 };
 
 /*
@@ -126,9 +133,11 @@ static void ComputeRLBCoeffs(double fs, float *b0, float *b1, float *b2, float *
 }
 
 DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
-                             const bool *is_lfe_channel, float ref_level_lufs)
+                             const bool *is_lfe_channel, float ref_level_lufs,
+                             uint32_t delay_frames)
 {
-    if (sample_rate == 0 || num_channels == 0 || num_channels > MAX_CHANNELS)
+    if (sample_rate == 0 || num_channels == 0 || num_channels > MAX_CHANNELS
+        || delay_frames > DRC_MAX_DELAY)
         return NULL;
 
     DrcAnalyzer *da = (DrcAnalyzer *)AllocMemory(sizeof(DrcAnalyzer));
@@ -139,6 +148,7 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     da->sample_rate = sample_rate;
     da->num_channels = num_channels;
     da->ref_level_lufs = ref_level_lufs;
+    da->delay = delay_frames;
 
     ComputePreFilterCoeffs((double)sample_rate, &da->b0_1, &da->b1_1, &da->b2_1, &da->a1_1, &da->a2_1);
     ComputeRLBCoeffs((double)sample_rate, &da->b0_2, &da->b1_2, &da->b2_2, &da->a1_2, &da->a2_2);
@@ -163,11 +173,9 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     return da;
 }
 
-void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
-                             uint32_t samples_per_ch, DRCInfo *out_drc)
+static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
+                         uint32_t samples_per_ch, DRCInfo *out_drc)
 {
-    if (!da || !input_pcm || samples_per_ch == 0 || !out_drc)
-        return;
 
     float max_peak_lin = 0.0f;
     double frame_sum_sq = 0.0;
@@ -365,6 +373,33 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
     /* Carry the unquantized gain: feeding back the 0.25 dB-rounded output
      * freezes the 1 s release, whose per-frame step is far below the grid. */
     da->prev_smooth_gain_db = g_smooth_db;
+}
+
+void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
+                             uint32_t samples_per_ch, DRCInfo *out_drc)
+{
+    if (!da || !out_drc)
+        return;
+
+    /* The analyzer sees the newest input frame, but the access unit being
+     * written carries audio that entered the encoder `delay` frames earlier.
+     * Delay the gain so the FIL describes the audio it travels with. A call
+     * without input (flush) keeps the pipeline ticking on the last gain. */
+    DRCInfo cur = da->hist[0];
+    if (input_pcm && samples_per_ch > 0)
+        AnalyzeFrame(da, input_pcm, samples_per_ch, &cur);
+    else if (!da->hist_primed)
+        return;
+
+    if (!da->hist_primed) {
+        for (uint32_t i = 0; i <= DRC_MAX_DELAY; i++)
+            da->hist[i] = cur;
+        da->hist_primed = true;
+    } else {
+        memmove(&da->hist[1], &da->hist[0], DRC_MAX_DELAY * sizeof(DRCInfo));
+        da->hist[0] = cur;
+    }
+    *out_drc = da->hist[da->delay];
 }
 
 void DrcAnalyzerEnd(DrcAnalyzer *da)
