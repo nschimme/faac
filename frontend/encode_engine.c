@@ -323,6 +323,12 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
         ADD(", noshort");
     else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
         ADD(", nolong");
+
+    if (opts->drc_profile != FAAC_DRC_OFF) {
+        static const char *prof_names[] = { "off", "film", "film-light", "music", "music-light", "speech" };
+        if ((int)opts->drc_profile >= 1 && (int)opts->drc_profile <= 5)
+            ADD(", drc %s (ref %.2f LUFS)", prof_names[opts->drc_profile], opts->drc_ref_level);
+    }
 #undef ADD
 
     return strdup(buf);
