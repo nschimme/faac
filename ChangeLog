@@ -160,7 +160,6 @@ Unreleased
 	* Add DAB+ 960-sample core and ADIF support with decoder-dab option
 	* faac: update SBR resampling filter
 	* Use PNS level 6 at or above 192 kbps
-	* test: cover explicit HE frame lengths and incomplete MP4 extraction
 	* quantize: document masking parameters and units
 	* quantize: use a compact stereo masking model
 	  Keep masking parameters together and interpolate tilt gains directly per band. Remove the per-band tilt arrays and their configuration loops while retaining the fitted anchor points and stereo LC eligibility.
@@ -175,30 +174,12 @@ Unreleased
 	  Parameters came from a coordinate search on 25 of the 49 benchmark clips
 	  against Zimtohrli; the other 24 clips and 44.1 kHz were held out.
 	* sbr: add two-region tables and count-only payload sizing
-	* libfaac: add automatic DRC analysis (#74)
-	  Add an automatic, single-pass, causal dynamic range control (DRC) analyzer
-	  driven by ITU-R BS.1770-4 K-weighting loudness measurement for broadcast
-	  delivery.
-	  - Derive K-weighting pre-filter and RLB biquad coefficients for all sample rates
-	  - Measure 400 ms momentary and 3 s short-term sliding window loudness
-	  - Apply 2:1 compression curve with -23 LUFS reference, -70 LUFS gate, and -70 to -50 LUFS boost taper
-	  - Apply 30 ms fast attack with 3.0 dB/frame max cut cap, 1000 ms slow release, and instantaneous peak clip protection
-	  - Expose drc_mode and drc_ref_level in faac_params and faac_encoder_info
-	  - Support manual faac_encoder_set_drc overrides until cleared
-	  - Expand unit tests in test_drc.c covering meter accuracy, curve bounds, alignment, and decoder simulation
-	  - Scale input PCM by 1/32768 in analyzer to match 16-bit, 24-bit, 32-bit int and float formats
-	  - Expand unit tests in test_drc.c covering meter accuracy, curve bounds, alignment, decoder simulation, and full encoder integration
-	* frontend: add --drc option (#75)
 	* quantize: run scalefactor nudge with compact stereo masking model
 	* Fix unused parameter in sbr.c, shadowed var in mux.c, and promote both to errors
 	  Remove unused parameter 'sbr' from 'sbr_adopt_envelope_grid' in libfaac/sbr.c.
 	  Fix variable shadowing of 'st' in 'faam_muxer_open' in libfaam/mux.c.
 	  Configure meson.build to treat unused parameters and shadowed variables as errors (-Werror=unused-parameter and -Werror=shadow for GCC/Clang, /we4100 and /we4456-/we4459 for MSVC).
 	* quantize: document tuned profile design and scalefactor nudging generalization
-	* Implement TVBR and CVBR rate controls in FAAC
-	  Added TVBR (True VBR) and CVBR (Constrained VBR) rate control modes in FAAC library and CLI.
-	  TVBR uses FAAC's native VBR quality scale (1..5000) for perceptual quality-driven encoding.
-	  CVBR enforces target average bitrate constraints while allowing quality flexibility on complex audio passages without bit inflation on simple passages.
 	* tns: implement complete ISO/IEC 14496-3 TNS engine
 	* Include short-window TNS evaluation evidence
 	* quantize: boost onset targets less below 2 kHz (LF exponent 0.25)
@@ -237,18 +218,6 @@ Unreleased
 	  direction 1. The LPC fit is unchanged; only which way the filter is applied to
 	  the spectrum differs, so side info and bitrate stay the same.
 	* libfaad: add the FAAD decoder and the faad tool
-	* tns: filter forward in a single bounded loop
-	  The forward filter had a startup ramp and a steady loop, so LTO kept an
-	  out-of-line filter_spec. One bounded loop, like the backward filter, drops
-	  the ramp. Same terms in the same order, so the output is unchanged; text
-	  shrinks by about 340 bytes.
-	* meson: centralize library ABI settings
-	  The three libraries versioned their SONAMEs independently.
-	  - keep the SONAMEs together in the top-level meson.build
-	  - assert each public header reports the same ABI version
-	  - install all shared libraries under lib/ for the static frontends
-	  - widen the multichannel frame budget before multiplying, since
-	  unsigned long is 32 bits on Windows
 	* filtbank: boost short-window targets at onsets to cut pre-echo
 	  Quantization noise in a short window spreads over the whole window, so
 	  the quiet samples ahead of an attack carry it as pre-echo. Windows that
@@ -262,172 +231,7 @@ Unreleased
 	  - Scale the band targets by the strongest gain in each short-window group
 	  - Apply it to LC and to the HE-AAC core alike
 	  - Leave long blocks and steady windows unchanged (gain 1)
-	* quantize: test zero target before the band average without goto
-	  Experiment: same logic as the previous commit, written as two early
-	  continues instead of a shared label, to see whether the aarch64 Ir
-	  cost on music LC comes from the label codegen.
-	* stereo: take M/S below 2 kHz on short windows at mid rates
-	  Short windows took M/S only from 80 kbps/ch, a threshold measured on
-	  160 and 192 kbps stereo LC. Below it they used intensity stereo from
-	  the lowest band, which collapsed the image at HE 48 kHz stereo 80 and
-	  96 kbps (40 and 48 kbps/ch) and at LC 96 to 144 kbps stereo.
-	  - Give non-starved short windows M/S below MS_SPLIT_HZ, as the starved
-	  tier already does; M/S on every band still starts at 80 kbps/ch
-	  - Leave HE VBR as before: it has no per-channel rate, and at a fixed
-	  quality the side channel's bits cost more rate than the image returns
-	  Local, 77 clips, ABR: HE stereo 80k/96k ic_err -0.014/-0.009 and MOS
-	  +0.024/+0.018 at the same size; LC 128k ic_err -0.0005; BD-rate over HE
-	  64-96k -3.9%. VBR LC 80-160k MOS +0.005 to +0.017 for +0.2 to +1.0%
-	  bytes. HE rungs at 64k and below and LC ABR from 160k are unchanged.
-	* Align CLI usage and progress callbacks across faad, faac, and faam
 	* Fix issue template redirect
-	* faam: add generic typed metadata
-	  Lyrics support needed a way to write the \251lyr atom, but the tag API
-	  modeled a fixed set of iTunes fields. Any other ilst atom, a second
-	  value for a key or a non-text type could not be written or read back.
-	  faam.h has not shipped, so the same change settles the parts of its
-	  shape that differed from libfaac and libfaad.
-	  Metadata
-	  - Replace the field-based faam_metadata with faam_metadata_entry
-	  (four-byte key, data type, locale, payload, optional freeform
-	  mean/name); lists are a pointer and a count like chapters
-	  - The demuxer gets faam_demuxer_get_num_metadata and
-	  faam_demuxer_get_metadata_entry; a progressive muxer that learns its
-	  tags late uses FAAM_UPDATE_METADATA
-	  - Add faam_update_metadata_stream, which patches only the supplied keys
-	  and keeps every other atom byte-for-byte; FAAM_METADATA_REMOVE and
-	  _UPDATE_CLEAR drop keys, and a fragmented recording can be tagged in
-	  place
-	  - Keep unknown atoms, data types and locales across a muxer or tag edit
-	  - Build the existing --title, --cover-art and --tag options on the
-	  generic entries and add --lyrics, --lyrics-file, --grouping,
-	  --copyright, --description, --work, --movement, --bpm and related
-	  options to faam
-	  - Store a genre as its text atom only, over the complete ID3v1 table
-	  (0 to 191, corrected spellings, other taggers' spellings accepted)
-	  and reject numbers above 191, so readers show it once
-	  API shape
-	  - Rename FAAM_ERR_INVALID_ARG to FAAM_ERR_INVALID_ARGUMENT and number
-	  the status codes contiguously, matching libfaac and libfaad
-	  - Move audio_sample_size into faam_track_config so fragmented
-	  recorders can set it
-	  - Add explicit padding to faam_io and the update params, number the
-	  exports in libfaam.def contiguously, and add the result-code and
-	  thread-safety notes faac.h and faad3.h carry
-	  Tests and docs
-	  - Port the C suites and fuzzers to the entry API, move cover format
-	  detection tests to the frontend, and add a Mutagen round trip
-	  - Cover tagging a crashed fragmented audio+video recording, the genre
-	  table and its variants, and genre removal in the CLI tests
-	  - libfaam.md: drop the CLI option table, fix the stale arena and
-	  NULL-config text, and port the examples
-	  - Name BMP in the faac --cover-art help
-	* ci: benchmark against a PS-enabled baseline
-	* common: detect host byte order without a build-system define
-	  WORDS_BIGENDIAN had to come from config.h, so builds outside Meson
-	  failed to compile. Use the compiler's __BYTE_ORDER__ where it exists,
-	  little-endian on MSVC, and a probe the optimizer folds elsewhere.
-	* libfaad: parse the ASC in one pass
-	* libfaad: align the public API with the FAAC 3 conventions
-	  libfaad3 is new in this release, so reshape its API before it ships.
-	  - report library facts through faad_library_info.flags (FAAD_LIB_SBR,
-	  FAAD_LIB_PS) in place of the bools and the reserved bytes
-	  - report the stream facts through faad_stream_info.flags
-	  (FAAD_STREAM_FORMAT_KNOWN, FAAD_STREAM_PROG_REF_LEVEL)
-	  - add the FAAD_*_BASELINE macros and write the append rules for the
-	  4-byte aligned structs into the header
-	  - rename FAAD_ERR_INSUFFICIENT_MEM to FAAD_ERR_NO_MEMORY
-	  - rename FAAD_OUTPUT_32BIT to FAAD_OUTPUT_24IN32; the PCM is unchanged
-	  - take out_info in the library query and name the handle and config
-	  parameters consistently
-	  - export only the public symbols through a GNU ld version script
-	  - point the docs at the faad3 pkg-config module and document the
-	  caller rules for struct_size
-	* libfaam: align the public API with the FAAC 3 conventions
-	  libfaam is new in this release, so reshape its API before it ships.
-	  - report library facts through faam_library_info.flags (FAAM_LIB_*) in
-	  place of the features bits, and the keyframe bit through
-	  faam_frame_loc.flags
-	  - drop the explicit reserved and padding fields; the append rules in the
-	  header now cover alignment
-	  - add faam_io_init, faam_track_config_init and faam_demuxer_config_init,
-	  which stamp struct_size like the existing muxer init
-	  - rename FAAM_ERR_INSUFFICIENT_MEM to FAAM_ERR_NO_MEMORY
-	  - take const demuxer and muxer handles in the getters, and name the
-	  handle and out parameters consistently
-	  - put the version and copyright pointers first in faam_library_info
-	  - export only the public symbols through a GNU ld version script
-	  - document the caller rules for struct_size in docs/libfaam.md
-	* libfaar: align the public API with the FAAC 3 conventions
-	  libfaar is new in this release, so reshape its API before it ships.
-	  - report library facts through faar_library_info.flags (FAAR_LIB_*) in
-	  place of the features bits and the reserved word
-	  - order faar_library_info so the pointers come first and the 4-byte
-	  members follow, and write the append rules for 4-byte aligned structs
-	  into the header
-	  - rename FAAR_ERR_INSUFFICIENT_MEM to FAAR_ERR_NO_MEMORY
-	  - take out_info in the query functions and say that struct_size reports
-	  the bytes populated
-	  - drop the stdbool include from faar.h
-	  - export only the public symbols through a GNU ld version script
-	  - document the caller rules for struct_size in docs/libfaar.md
-	* libfaac: fold the MPEG version and tool bools into the stream format and flags
-	  Say each fact once and let the encoder info report it.
-	  - faac_params.flags (FAAC_FLAG_TNS, FAAC_FLAG_PNS) replaces use_tns and
-	  use_pns; unknown bits and nonzero reserved bytes are refused
-	  - the MPEG version becomes part of the stream format: FAAC_STREAM_ADTS is
-	  MPEG-4 and FAAC_STREAM_ADTS_MPEG2 is MPEG-2. MPEG-2 raw frames are gone;
-	  the CLI keeps their LC choice and PNS gate
-	  - faac_encoder_info.stream_format reports the resolved format, replacing
-	  mpeg_version, since HE-AAC forces MPEG-4
-	  - faac_encoder_info carries the AudioSpecificConfig (asc_size, asc), so one
-	  call returns everything open() resolved
-	  - faac_encoder_get_info and faac_encoder_asc take a const handle
-	  - add the FAAC_*_BASELINE macros and write the append rules for the
-	  structs into the header
-	* libfaac: test the LFE path with a channel count that has an LFE
-	  The test asked for an LFE on four channels. Now that six and eight channels
-	  carry the LFE, four channels have none, so the test no longer reached the LFE
-	  bandwidth handling. Encode six channels and skip the case in builds that
-	  cannot.
-	* faac: add an encoder-sbr build option and report SBR and PS through flags
-	  HE-AAC takes the SBR analysis, the SBR bitstream writer and the
-	  resampler, about 21 KB of the library. A target that only encodes
-	  AAC-LC, a voice recorder on an ESP32 for example, has no use for
-	  them. Add -Dencoder-sbr, on by default, to leave them out, and let a
-	  caller ask which profiles a build has. The default build is
-	  unchanged.
-	  - Add the encoder-sbr option; when off, leave the SBR and resampler
-	  sources out and let sbr.h provide inline no-ops, so the call sites
-	  stay unconditional
-	  - Make encoder-ps require encoder-sbr
-	  - Return FAAC_ERR_UNSUPPORTED for FAAC_OBJ_HE_AAC_V1 in an LC-only
-	  build, and keep FAAC_OBJ_AUTO on LC
-	  - Add faac_library_info.flags with FAAC_LIB_SBR and FAAC_LIB_PS, and
-	  put the pointers first so the new member does not land in tail
-	  padding
-	  - Offer HE-AAC in the Windows GUI only when the library has it
-	  - Build -Dencoder-sbr=false in CI and check that HE-AAC is refused
-	  - Skip the tests that encode HE-AAC in an LC-only build, and let the
-	  fuzz script leave the SBR sources out of one
-	  - Document the option, the flags and the macros a build without Meson
-	  must define
-	* docs: rewrite the library guides and man pages
-	  The guides had grown long and repeated themselves, and the faac_* changes
-	  had left some statements wrong.
-	  - Restructure libfaac, libfaad, libfaar and libfaam around tables for
-	  parameters, defaults, errors and flags, keeping the examples
-	  - Describe FAAC_OBJ_AUTO's rules and the VBR quality requirement
-	  - Add the dynamic range control section and the stream info table to libfaad
-	  - Compare the FAAR Fast, Good and High presets in libfaar and faar(1)
-	  - Add the missing faad --drc-* options and the faar quality guidance to
-	  the man pages, and tighten the --rate and --object-type text in faac(1)
-	  - Correct the encoder delay unit for HE-AAC MP4 edit lists and the pool
-	  allocation notes
-	  - Drop the maintainer-only ABI rules, which the headers already carry
-	* libfaac: size the DRC sub-block ring by the loudness window
-	  The meter reads the newest 8 sub-blocks, but the ring still held 30 for the
-	  earlier 3 s window. Size it by DRC_LOUDNESS_BLOCKS and fix the comment.
 
 2.2 (Sep 29, 2026)
 
