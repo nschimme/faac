@@ -394,6 +394,19 @@ static float last_gain_after(uint32_t channels, int loud_ch, const float *amps,
     return last;
 }
 
+/*
+ * The 1 s release moves the gain by far less than the 0.25 dB grid per frame;
+ * it must still reach the boost target after a loud passage instead of
+ * freezing near the cut.
+ */
+static void test_drc_release_reaches_target(void)
+{
+    const float amps[] = { 0.707f, 0.010f };  /* -3 dBFS, then -40 dBFS */
+    const uint32_t secs[] = { 10, 30 };
+    float g = last_gain_after(2, -1, amps, secs, 2);
+    assert(g >= 5.0f);
+}
+
 /* Surround weighting must follow AAC order (C L R Ls Rs LFE): Ls and Rs equal. */
 static void test_drc_surround_weights_symmetric(void)
 {
@@ -411,6 +424,7 @@ int main(void)
     test_drc_off_baseline_hash();
     test_drc_invalid_inputs();
     test_drc_auto_encoder_integration();
+    test_drc_release_reaches_target();
     test_drc_surround_weights_symmetric();
     printf("All DRC tests passed successfully.\n");
     return 0;
