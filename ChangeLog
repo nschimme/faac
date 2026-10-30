@@ -1,3 +1,534 @@
+Unreleased
+
+	[ Claude ]
+	* Move the HE-AAC v1 retune to its own PR
+	  The SBR and masking-target retune from 6e51624 and e29e118 does not
+	  depend on the coarser-scalefactor pass and carries most of the gain, so
+	  it is reviewed and gated separately in nschimme/faac#76 (branched from
+	  master). This restores the tree of this branch to 4075fdb: the
+	  coarsening pass only.
+	* sbr: retune HE-AAC v1 for rich cores and raise the auto-mode ceiling
+	  SBR parameters that suit a starved core (crossover 15, strong inverse
+	  filtering, low transient threshold) cost quality once the core has bits
+	  to spare. At 20 kbps/ch and above, start the SBR band lower, use light
+	  inverse filtering and a higher transient threshold; keep the existing
+	  values below that, where per-clip MOS regresses otherwise.
+	  The stop-frequency search is capped so the master table stays one
+	  region (k2/kx <= 2.2449), which is what FAAD2 and the spec expect, and
+	  its step table is built once instead of per candidate.
+	  HE now beats LC in stereo up to about 44 kbps/ch at 44.1 and 48 kHz, so
+	  the auto-mode ceiling rises to 36 kbps/ch there. It stops short of 44
+	  because 5.1 at 224 kbps (37 kbps/ch) loses to LC, and multichannel was
+	  not measured. The 32 kHz end stays at 12 kbps/ch, where HE trails LC
+	  around 16 kbps/ch.
+	* Merge master into sbr-two-region-table
+	  master now carries the HE-AAC v1 retune as a squash commit (#49), so this
+	  branch's copy of he-v1-retune and master's differ only in history. The
+	  conflicts were comment text in sbr.c and sbr.h: keep this branch's
+	  two-region comments, and keep master's '8 kHz' wording for the rich start
+	  index now that the 6.3 kHz crossover is gone.
+	* Merge #81 VBR gate; gate the M/S bias on -q for VBR
+	* quantize: limit the scalefactor search to ABR/CBR from 48 kbps per channel, cut its cost
+	  Below that rate the search lost MOS on speech and low-rate stereo; VBR
+	  output stays as it was. The distortion loop now uses a q^(4/3) table and
+	  counts only nonzero lines.
+	* quantize: price scalefactor candidates from a magnitude summary instead of quantizing them
+	  Each coded band is summarized once in log-spaced magnitude slots; a candidate
+	  scalefactor is then priced from a few differences of those sums (error
+	  against the allowed noise, plus lambda times bits fitted per codebook class),
+	  and the Viterbi pass picks among three candidates. This avoids quantizing and
+	  Huffman-counting every candidate.
+	* quantize: model-priced scalefactor search, skipping bands under 16 lines
+	  About +17% instructions vs master, -1.4% BD-rate on the 49-clip ABR check.
+	  Kept for the record.
+	* quantize: greedy model-priced scalefactor search on every 4th line, bands of 16+ lines
+	  About +11% instructions vs master, -0.7% BD-rate on the 49-clip ABR check.
+	  Kept for the record.
+	* quantize: greedy scalefactor search with exact quantize and bit counts
+	  About +87% instructions vs master, -1.6% BD-rate on the 49-clip ABR check.
+	  Kept for the record.
+	* ci: add the FAAC benchmark workflow on top of upstream master
+	* quantize: nudge scalefactors by one step to make the deltas cheaper to code
+	  Each coded band may move its scalefactor one step either way. A Viterbi pass
+	  over the coded bands of a group picks the moves that minimize the Huffman
+	  bits of the scalefactor deltas (plus a quarter bit per step moved). Costs are
+	  integers, so the choice cannot differ between platforms. Stereo LC at a set
+	  rate only, like the masking target.
+	* quantize: run the scalefactor nudge for mono at a set rate
+	* quantize: run the scalefactor nudge for he at a set rate
+	* quantize: gate the scalefactor nudge on a set rate alone
+	  The nudge was enabled by a stack of special cases (tuned stereo LC from 32 kbps
+	  per channel, mono, HE-AAC stereo from 16 kbps per channel). Measured on LC
+	  stereo, mono, HE-AAC stereo and mono, and 5.1, it helps at every set rate from
+	  24 kbps per channel up and loses on some clips below, so the gate is now one
+	  constant in the masking model: bitrate per channel >= nudge_min_rate (24000).
+	  VBR has no rate and stays off. The two scalefactor passes in the nudge are
+	  also one loop now.
+	* probe: tuned-profile generalization and flatness at set rates
+	* probe: S12 pw=0.346 full-ladder check and fold B log (never merge)
+	  Fold B accepted peak_weight 0.45 to 0.346 and the held-out half agreed in
+	  direction, but on the full ladder it trades 0.13-0.29 points on the gate
+	  for 0.14-0.20 on the 49 clips and is flat at 64k and 80k. Not shipped.
+
+	[ Nils Schimmelmann ]
+	* bound the reservoir account symmetrically
+	  Bounding credit at capacity while letting debt run to eight frames replaced the
+	  overshoot with its mirror image: a 3.4% undershoot, with aggregate accuracy no
+	  better than before (87.6% -> 87.5%) because the arm had simply moved from missing
+	  high to missing low. Capacity is two frames, so the tight side was still shedding
+	  what it could not hold -- underspend was forgiven and overspend remembered, which
+	  is the original defect pointed the other way.
+	  Both sides are bookkeeping, so give them the same room. Measured per scenario
+	  against the previous two states, this is better on each one rather than better on
+	  average: 16k mono at a 16k target goes +6.88% -> +3.84%, at a 40k target
+	  -27.36% -> -22.30%, and the 48k stereo ladder runs +0.65% at 24k to -0.20% at
+	  256k, crossing zero near 56k.
+	  The remaining aggregate bias is one scenario: 16k mono held to a 40 kbps target
+	  sits at -22% because the content cannot absorb that budget, and at 353 of 1155
+	  clips it swamps the rest. The baseline's tidier headline bias came from stereo
+	  overshooting +2.6% and 16k mono overshooting +10.1%, cancelling that term rather
+	  than fixing it.
+	* quantize: take the floor from the group total and keep it out of the loop
+	  - Derive the floor from the group total BlocQuant already holds, so M/S
+	  frames use the same L/R total as the masking target
+	  - Pass the floors in rather than a flag tested inside the band loop, which
+	  GCC unswitched into a second copy of the loop
+	  - Leave the floor off when PNS is disabled
+	* blockswitch: sum each 128-sample half once
+	  Sub-block windows are 256 samples at a hop of 128, so each half serves two
+	  windows, yet every window was summed from scratch. Sum the nine halves of a
+	  frame once and add pairs. The two-half sum rounds differently from one
+	  256-term sum, but over 147 corpus clips at HE -q 50, -q 30 and -b 16 no frame
+	  changes window type and the decoded audio is identical, and LC audio is
+	  identical to master.
+	  Instruction counts vs master on the benchmark's synthetic signals (arm64): LC
+	  2 to 4% fewer (silence x0.958, music x0.978), HE -q 50 x1.007, geometric mean
+	  x0.989; a low-rate HE encode, which now runs this analysis too, costs 4% more
+	  instead of 7%.
+	* quantize: try each band one scalefactor step coarser
+	  Keep the step when the masking-weighted error it adds costs less than
+	  the bits it saves. Only below 56 kbps per channel, where rate is scarce,
+	  and only for bands whose magnitudes fit the small tables.
+	* Drop provenance and cross-library history from comments
+	* Reorder faad_decoder members to minimize struct padding gaps
+	* blockswitch: span the same time above 48 kHz
+	  The transient detector's 256-sample window covers half the time at
+	  96 kHz, so a bass note's phase swings the first-difference energy and
+	  trips short blocks on stationary material. Widen the window with the
+	  rate so it spans the same 5.3 ms. Output at 48 kHz and below is
+	  unchanged.
+	* faac.h: export only from the DLL build on Windows
+	  FAACAPI expanded to dllexport for every program that included the header.
+	  The shared library now defines FAAC_BUILDING; everyone else declares plain
+	  functions, which links against both the DLL import library and the static
+	  library without a define because the API exports no data.
+	* faac: write MP4 through libfaam and read RF64 and bounded WAV input
+	  Replace faac's built-in MP4 writer with a thin libfaam adapter, and read
+	  WAV input incrementally so large files encode without being loaded.
+	  Default .m4a output matches master byte for byte, apart from PNG cover
+	  typing and creation times past 2040.
+	  - Write MP4/M4A through libfaam, keeping tags, gapless info, the custom
+	  tag namespace and cover art.
+	  - Parse RIFF and RF64 headers incrementally; honour the declared data
+	  length, read to EOF when it is unknown, and let --ignorelength override
+	  it. Read float WAV in either byte order.
+	  - Buffer WAV reads and convert native 16-bit frames in batches.
+	  - Add --faststart to write moov before mdat (off by default).
+	  - Document the supported input and output formats and BMP covers.
+	* libfaam: add the MP4 muxer/demuxer library and the faam tool
+	  libfaam is a dependency-free ISO BMFF (MP4/M4A/M4B) muxer and demuxer
+	  that works through caller-supplied I/O callbacks, so it suits camera,
+	  SD-card and embedded recorders as well as files. faam is its command-line
+	  tool. No encoder code changes.
+	  Library:
+	  - Mux and demux AAC, H.264 and H.265 tracks with tags, cover art,
+	  chapters and gapless info; fragmented MP4 for crash-safe recording;
+	  edit tags and chapters of a finished file in place.
+	  - Write moov before mdat on request (FAAM_MUXER_FASTSTART) and report
+	  mp4v video as a generic entry with its size and VOL header.
+	  - Keep public structs append-only with flags in named enums, refuse I/O
+	  requests above INT32_MAX, and allocate only through open and close.
+	  Build:
+	  - Add the encoder, muxer, muxer-video and muxer-fragmented options;
+	  -Dencoder=false builds libfaam alone.
+	  - Version the project 3.0.0 and the shared libraries SONAME 3.
+	  - Export symbols only from the DLL build on Windows and check that the
+	  tools do not import the FAAC DLLs.
+	  Frontend:
+	  - Share file helpers, creation-time handling and cover detection between
+	  faac and faam; accept BMP artwork and reject creation times that do
+	  not fit the MP4 fields. Move the endian helpers to common/.
+	* quantize: raise the energy floors, lower the average-energy weight
+	  AVG_ENERGY_WEIGHT 0.20 -> 0.10, AVG_ENERGY_FLOOR_FRAC 0.0010 -> 0.0020
+	  (-27 dB), PEAK_ENERGY_FLOOR_FRAC 0.0050 -> 0.0200 (-17 dB).
+	  LOUDNESS_EXPONENT stays at 0.40: 0.35 gained more MOS on the gate clips
+	  but smeared HE attacks (haze gate atk_he_q50 +3.1 dB mean, +6.2 dB worst
+	  kick).
+	  Chosen from 63 grid points around master, scored on 126 held-out ABR
+	  encodes (gate clips excluded), paired against master:
+	  all  +0.0074 MOS  95% CI low +0.0014
+	  HE   +0.0081 MOS
+	  5 clips below -0.05, worst -0.081. Haze gate vs master constants: attack
+	  smear +0.21 dB mean, +0.32 dB worst kick.
+	  A higher PEAK floor (0.0400) scored +0.0127 but put five CBR clips past
+	  -0.10 in CI (worst -0.35, 12-German-male-speech at 48k_stereo_16k) at
+	  unchanged bitrate. This point keeps those five above -0.10 locally, but
+	  they were picked because they failed, so that is a weak check.
+	* sbr: code time deltas and couple stereo envelopes when cheaper
+	  Per envelope, pick the cheaper of frequency-delta and time-delta coding,
+	  and for stereo pairs the cheaper of L/R and level/balance coupling. The
+	  previous frame's last envelope is kept per channel by access-unit parity,
+	  so a frame the rate loop writes twice codes against the same reference.
+	  Time-delta books carry only the central entries (|d| <= 6); a wider jump
+	  is always cheaper as frequency deltas.
+	  Envelope levels are now clamped to the codable delta range as they are
+	  quantized, so the frequency-delta chain never needs an escape.
+	  The dry-run write no longer advances the reference, and the bitstream
+	  writer indexes the channel pair correctly.
+	  Saves about 33 bits/frame/channel of SBR payload on non-FIXFIX frames,
+	  which rate control hands to the core: +0.03 to +0.06 MOS at 24-48 kbps
+	  stereo, ~0 at 64 kbps.
+	* sbr: code time deltas, couple envelopes, and vectorize QMF analysis (#7)
+	  Choose frequency or time deltas for SBR envelopes and noise floors, and
+	  couple a stereo pair when that codes smaller. Store absolute envelope
+	  levels with the same frequency-delta limits and retain frame references
+	  across rate-control retries. Saved SBR bits go to the AAC core.
+	  Sum Huffman lengths when choosing deltas and pack the normative books
+	  into 16-bit entries. Size candidate payloads through the shared writer.
+	  Mirror the exact QMF filter taps and separate contiguous polyphase
+	  filtering from rotation so GCC can vectorize both loops. Reuse the FFT
+	  output buffer as workspace. Reserve the ADTS header and write it once
+	  the payload size is known. Correct the ASC sync-extension comment.
+	  GCC 13.3, -O3 and LTO: text + rodata + data falls from 77936 to 76136
+	  bytes, 88 bytes below upstream/master. Updated benchmark suite HE
+	  instruction counts fall 14.57% versus the first footprint pass; paired
+	  180-second workloads use about 17% less HE CPU time. LC instruction
+	  counts are essentially unchanged.
+	  Raw AAC and ADTS match the pre-optimization branch across 384 cases
+	  covering LC/HE, ABR/VBR/CBR, caps, rates and channel counts. ASC bytes
+	  match upstream in 56 supported configurations; MPEG-2 still rejects
+	  ASC. All QMF taps and Huffman codes retain their original bits.
+	* Merge remote-tracking branch 'upstream/master' into bench-base
+	* quantize: silence dither-level frames
+	  LSB dither sits above the 0.4 RMS silence gate and was coded at full
+	  relative SNR: 400+ kbps for flat dither at -q 700. Frames whose mean
+	  level over the energy-bearing bands is under 40 RMS are now silent.
+	  Flat dither drops to ~8 kbps; the 118-clip VBR gate is MOS-neutral.
+	* sbr: add a 4-envelope tier for steady frames
+	  Steady frames split into 2 envelopes from 17 kbps per channel. With time
+	  deltas coding the extra envelopes cheaply, try 4 from 36 kbps per channel
+	  (placeholder, to be swept).
+	  - raise SBR_MAX_ENVELOPES to 4; VARFIX still carries two
+	  - FIXFIX writes log2 of the envelope count
+	  - VARFIX bs_pointer is a fixed 2 bits, replacing an assert that no
+	  longer constrained anything
+	  LC and HE below the threshold are byte-identical to master. Library
+	  .text grows 256 bytes.
+	* sbr: add 4-envelope tier for FIXFIX SBR frames
+	  Extend non-transient (FIXFIX) SBR frames to support 4 envelopes when operating
+	  at or above SBR_FOUR_ENV_BITRATE_BPS (36000 bps/ch).
+	  - Raise SBR_MAX_ENVELOPES to 4 in sbr.h and sbr_analysis.h
+	  - Define SBR_FOUR_ENV_BITRATE_BPS as 36000u
+	  - Emit log2(num_env) in FIXFIX grid writer (2 bits: 0 for 1, 1 for 2, 2 for 4)
+	  - Keep VARFIX frames fixed at 2 envelopes and update VARFIX bs_pointer assert
+	  - Audit all envelope loops, arrays, delta choices, and reference storage
+	* sbr: build spec-compliant two-region master table
+	  Past a k2/kx ratio of 2.2449 the spec splits the master table at 2*kx and
+	  lets bs_alter_scale widen the upper region's bands. FAAC only ever built one
+	  region, which was safe at bs_start_freq 15 but gives a table that disagrees
+	  with the decoder's at any lower crossover: every envelope then lands in the
+	  wrong band. Follow the spec algorithm, including the re-sort after the
+	  upper region's narrowest band is widened.
+	  Output is unchanged at the current crossover.
+	* quantize: floor the VBR step at two LSB for all input
+	  Constant relative quality coded dither, fade tails and near-silence at
+	  the rate of loud music. At normal listening level the reference encoder
+	  does not, so floor the step at an absolute level: quiet 24-bit and 16-bit
+	  music now matches its rate at equal MOS. VBR only.
+	* Add DAB+ 960-sample core and ADIF support with decoder-dab option
+	* faac: update SBR resampling filter
+	* Use PNS level 6 at or above 192 kbps
+	* test: cover explicit HE frame lengths and incomplete MP4 extraction
+	* quantize: document masking parameters and units
+	* quantize: use a compact stereo masking model
+	  Keep masking parameters together and interpolate tilt gains directly per band. Remove the per-band tilt arrays and their configuration loops while retaining the fitted anchor points and stereo LC eligibility.
+	* sbr: count payload bits without a scratch buffer
+	  Allow bounded count-only PutBit streams and use them to size SBR payloads. Keep sizing and emission on the same writer path, remove the 2 KiB scratch array, and exercise count/write boundaries through Meson tests in CI.
+	* quantize: retune the masking target for stereo LC at a set rate
+	  For ABR/CBR plain stereo LC from 32 kbps per channel, take the loudness
+	  exponent 0.35 and average-energy weight 0.15, steepen the treble
+	  de-emphasis by 1.5x and apply a small frequency tilt (finer 1.5-3 kHz,
+	  coarser around 11 kHz, finer above 18 kHz). VBR, HE-AAC, mono and
+	  multichannel keep the original formula and stay bit-identical.
+	  Parameters came from a coordinate search on 25 of the 49 benchmark clips
+	  against Zimtohrli; the other 24 clips and 44.1 kHz were held out.
+	* sbr: add two-region tables and count-only payload sizing
+	* libfaac: add automatic DRC analysis (#74)
+	  Add an automatic, single-pass, causal dynamic range control (DRC) analyzer
+	  driven by ITU-R BS.1770-4 K-weighting loudness measurement for broadcast
+	  delivery.
+	  - Derive K-weighting pre-filter and RLB biquad coefficients for all sample rates
+	  - Measure 400 ms momentary and 3 s short-term sliding window loudness
+	  - Apply 2:1 compression curve with -23 LUFS reference, -70 LUFS gate, and -70 to -50 LUFS boost taper
+	  - Apply 30 ms fast attack with 3.0 dB/frame max cut cap, 1000 ms slow release, and instantaneous peak clip protection
+	  - Expose drc_mode and drc_ref_level in faac_params and faac_encoder_info
+	  - Support manual faac_encoder_set_drc overrides until cleared
+	  - Expand unit tests in test_drc.c covering meter accuracy, curve bounds, alignment, and decoder simulation
+	  - Scale input PCM by 1/32768 in analyzer to match 16-bit, 24-bit, 32-bit int and float formats
+	  - Expand unit tests in test_drc.c covering meter accuracy, curve bounds, alignment, decoder simulation, and full encoder integration
+	* frontend: add --drc option (#75)
+	* quantize: run scalefactor nudge with compact stereo masking model
+	* Fix unused parameter in sbr.c, shadowed var in mux.c, and promote both to errors
+	  Remove unused parameter 'sbr' from 'sbr_adopt_envelope_grid' in libfaac/sbr.c.
+	  Fix variable shadowing of 'st' in 'faam_muxer_open' in libfaam/mux.c.
+	  Configure meson.build to treat unused parameters and shadowed variables as errors (-Werror=unused-parameter and -Werror=shadow for GCC/Clang, /we4100 and /we4456-/we4459 for MSVC).
+	* quantize: document tuned profile design and scalefactor nudging generalization
+	* Implement TVBR and CVBR rate controls in FAAC
+	  Added TVBR (True VBR) and CVBR (Constrained VBR) rate control modes in FAAC library and CLI.
+	  TVBR uses FAAC's native VBR quality scale (1..5000) for perceptual quality-driven encoding.
+	  CVBR enforces target average bitrate constraints while allowing quality flexibility on complex audio passages without bit inflation on simple passages.
+	* tns: implement complete ISO/IEC 14496-3 TNS engine
+	* Include short-window TNS evaluation evidence
+	* quantize: boost onset targets less below 2 kHz (LF exponent 0.25)
+	  The onset gain lowered scalefactors by the same amount in every band, while
+	  the scored pre-echo region is above 2 kHz. Take the square root of the gain below 2 kHz.
+	* quantize: leave bands below 2 kHz unboosted at onsets
+	  The onset gain lowered scalefactors by the same amount in every band, while
+	  the scored pre-echo region is above 2 kHz. Skip the gain below 2 kHz.
+	* filtbank: apply the onset boost only with the tuned masking profile
+	  The boost was measured on stereo LC at 32 kbps per channel and up. Outside
+	  that domain (mono, low rates, VBR, 5.1) CI shows lower MOS on 16 kHz speech
+	  and 5-8% slower encodes at low rates, so leave those targets alone.
+	* tns: filter short windows whose onset starts late
+	  Port the short-window TNS filter (order 2, from 2.75 kHz) and apply it only to
+	  windows the onset boost marks as late attacks: the first block holding a tenth
+	  of the peak block's energy is block 4 or later. Long-window TNS and HE-AAC are
+	  unchanged.
+	  On the 77-clip 128 kbps set: pre-echo (NPER) over the 36 event clips falls
+	  0.27 dB for dMOS -0.001; post-onset residual +0.04 dB. Dense-transient music
+	  (fatboy) pays most of it. Text grows by about 4 KB.
+	* frame: choose LC where the HE-AAC auto ceiling is reached
+	  At one bit/s per channel per Hz LC gives up about 0.02 MOS for about 6 dB less pre-echo, inside HE-AAC's rate lead. Below that rate LC costs 0.07 to 0.10 MOS, so HE-AAC stays.
+	* filtbank: boost short-window targets at onsets in HE-AAC too
+	  On the HE-AAC core the boost brings 2 to 8 kHz pre-echo to about FDK-AAC's level; the remaining gap is in the SBR region.
+	* stats: count short-window TNS
+	  The banner reported only long-block TNS, so short-window TNS could not be
+	  told apart from not running. Count late-attack candidate windows, filtered
+	  windows and short channels with TNS. Only built with -Dstats.
+	* libfaad: name M/S mask modes with an enum
+	* tns: use one filter direction for long and short windows
+	  Both window types filter backward, so the direction field and the forward
+	  recurrence go away. The direction bit is still written whenever a filter is
+	  present.
+	* tns: filter long windows backward
+	  Run the long-window TNS filter from the high end of the spectrum and signal
+	  direction 1. The LPC fit is unchanged; only which way the filter is applied to
+	  the spectrum differs, so side info and bitrate stay the same.
+	* libfaad: add the FAAD decoder and the faad tool
+	* tns: filter forward in a single bounded loop
+	  The forward filter had a startup ramp and a steady loop, so LTO kept an
+	  out-of-line filter_spec. One bounded loop, like the backward filter, drops
+	  the ramp. Same terms in the same order, so the output is unchanged; text
+	  shrinks by about 340 bytes.
+	* meson: centralize library ABI settings
+	  The three libraries versioned their SONAMEs independently.
+	  - keep the SONAMEs together in the top-level meson.build
+	  - assert each public header reports the same ABI version
+	  - install all shared libraries under lib/ for the static frontends
+	  - widen the multichannel frame budget before multiplying, since
+	  unsigned long is 32 bits on Windows
+	* Merge the pre-rebase FAAR research line
+	  Joins the history that was on origin/faar-resampler-research before the
+	  rebase, keeping the rebased tree (newer: shared frontend library, MS
+	  mask enum).
+	  Carried over from the old line:
+	  - test_faad_alloc: coupling element allocation is lazy, fails cleanly
+	  and is not repeated after a flush (builds with three or more
+	  channels, which are the ones that have coupling)
+	  - fuzz_faad_adts: size the PCM buffer from max_output_bytes
+	  - static_archives_test: ignore asan_globals_registered
+	  Left behind: the three binary coupling seeds in tests/fuzz/corpus_adts,
+	  since AAC fixtures are not kept in the repo.
+	* filtbank: boost short-window targets at onsets to cut pre-echo
+	  Quantization noise in a short window spreads over the whole window, so
+	  the quiet samples ahead of an attack carry it as pre-echo. Windows that
+	  start quietly and then rise are coded finer.
+	  - Measure each short window's first-difference energy in its first
+	  quarter against its average, so the measure follows the high
+	  frequencies where pre-echo is audible
+	  - Turn the ratio into a per-window gain of at most ~10 and store it in
+	  CoderInfo
+	  - Share the 32-sample block energies between the overlapping windows
+	  - Scale the band targets by the strongest gain in each short-window group
+	  - Apply it to LC and to the HE-AAC core alike
+	  - Leave long blocks and steady windows unchanged (gain 1)
+	* quantize: test zero target before the band average without goto
+	  Experiment: same logic as the previous commit, written as two early
+	  continues instead of a shared label, to see whether the aarch64 Ir
+	  cost on music LC comes from the label codegen.
+	* stereo: take M/S below 2 kHz on short windows at mid rates
+	  Short windows took M/S only from 80 kbps/ch, a threshold measured on
+	  160 and 192 kbps stereo LC. Below it they used intensity stereo from
+	  the lowest band, which collapsed the image at HE 48 kHz stereo 80 and
+	  96 kbps (40 and 48 kbps/ch) and at LC 96 to 144 kbps stereo.
+	  - Give non-starved short windows M/S below MS_SPLIT_HZ, as the starved
+	  tier already does; M/S on every band still starts at 80 kbps/ch
+	  - Leave HE VBR as before: it has no per-channel rate, and at a fixed
+	  quality the side channel's bits cost more rate than the image returns
+	  Local, 77 clips, ABR: HE stereo 80k/96k ic_err -0.014/-0.009 and MOS
+	  +0.024/+0.018 at the same size; LC 128k ic_err -0.0005; BD-rate over HE
+	  64-96k -3.9%. VBR LC 80-160k MOS +0.005 to +0.017 for +0.2 to +1.0%
+	  bytes. HE rungs at 64k and below and LC ABR from 160k are unchanged.
+	* Align CLI usage and progress callbacks across faad, faac, and faam
+	* Fix issue template redirect
+	* faam: add generic typed metadata
+	  Lyrics support needed a way to write the \251lyr atom, but the tag API
+	  modeled a fixed set of iTunes fields. Any other ilst atom, a second
+	  value for a key or a non-text type could not be written or read back.
+	  faam.h has not shipped, so the same change settles the parts of its
+	  shape that differed from libfaac and libfaad.
+	  Metadata
+	  - Replace the field-based faam_metadata with faam_metadata_entry
+	  (four-byte key, data type, locale, payload, optional freeform
+	  mean/name); lists are a pointer and a count like chapters
+	  - The demuxer gets faam_demuxer_get_num_metadata and
+	  faam_demuxer_get_metadata_entry; a progressive muxer that learns its
+	  tags late uses FAAM_UPDATE_METADATA
+	  - Add faam_update_metadata_stream, which patches only the supplied keys
+	  and keeps every other atom byte-for-byte; FAAM_METADATA_REMOVE and
+	  _UPDATE_CLEAR drop keys, and a fragmented recording can be tagged in
+	  place
+	  - Keep unknown atoms, data types and locales across a muxer or tag edit
+	  - Build the existing --title, --cover-art and --tag options on the
+	  generic entries and add --lyrics, --lyrics-file, --grouping,
+	  --copyright, --description, --work, --movement, --bpm and related
+	  options to faam
+	  - Store a genre as its text atom only, over the complete ID3v1 table
+	  (0 to 191, corrected spellings, other taggers' spellings accepted)
+	  and reject numbers above 191, so readers show it once
+	  API shape
+	  - Rename FAAM_ERR_INVALID_ARG to FAAM_ERR_INVALID_ARGUMENT and number
+	  the status codes contiguously, matching libfaac and libfaad
+	  - Move audio_sample_size into faam_track_config so fragmented
+	  recorders can set it
+	  - Add explicit padding to faam_io and the update params, number the
+	  exports in libfaam.def contiguously, and add the result-code and
+	  thread-safety notes faac.h and faad3.h carry
+	  Tests and docs
+	  - Port the C suites and fuzzers to the entry API, move cover format
+	  detection tests to the frontend, and add a Mutagen round trip
+	  - Cover tagging a crashed fragmented audio+video recording, the genre
+	  table and its variants, and genre removal in the CLI tests
+	  - libfaam.md: drop the CLI option table, fix the stale arena and
+	  NULL-config text, and port the examples
+	  - Name BMP in the faac --cover-art help
+	* ci: benchmark against a PS-enabled baseline
+	* common: detect host byte order without a build-system define
+	  WORDS_BIGENDIAN had to come from config.h, so builds outside Meson
+	  failed to compile. Use the compiler's __BYTE_ORDER__ where it exists,
+	  little-endian on MSVC, and a probe the optimizer folds elsewhere.
+	* libfaad: parse the ASC in one pass
+	* libfaad: align the public API with the FAAC 3 conventions
+	  libfaad3 is new in this release, so reshape its API before it ships.
+	  - report library facts through faad_library_info.flags (FAAD_LIB_SBR,
+	  FAAD_LIB_PS) in place of the bools and the reserved bytes
+	  - report the stream facts through faad_stream_info.flags
+	  (FAAD_STREAM_FORMAT_KNOWN, FAAD_STREAM_PROG_REF_LEVEL)
+	  - add the FAAD_*_BASELINE macros and write the append rules for the
+	  4-byte aligned structs into the header
+	  - rename FAAD_ERR_INSUFFICIENT_MEM to FAAD_ERR_NO_MEMORY
+	  - rename FAAD_OUTPUT_32BIT to FAAD_OUTPUT_24IN32; the PCM is unchanged
+	  - take out_info in the library query and name the handle and config
+	  parameters consistently
+	  - export only the public symbols through a GNU ld version script
+	  - point the docs at the faad3 pkg-config module and document the
+	  caller rules for struct_size
+	* libfaam: align the public API with the FAAC 3 conventions
+	  libfaam is new in this release, so reshape its API before it ships.
+	  - report library facts through faam_library_info.flags (FAAM_LIB_*) in
+	  place of the features bits, and the keyframe bit through
+	  faam_frame_loc.flags
+	  - drop the explicit reserved and padding fields; the append rules in the
+	  header now cover alignment
+	  - add faam_io_init, faam_track_config_init and faam_demuxer_config_init,
+	  which stamp struct_size like the existing muxer init
+	  - rename FAAM_ERR_INSUFFICIENT_MEM to FAAM_ERR_NO_MEMORY
+	  - take const demuxer and muxer handles in the getters, and name the
+	  handle and out parameters consistently
+	  - put the version and copyright pointers first in faam_library_info
+	  - export only the public symbols through a GNU ld version script
+	  - document the caller rules for struct_size in docs/libfaam.md
+	* libfaar: align the public API with the FAAC 3 conventions
+	  libfaar is new in this release, so reshape its API before it ships.
+	  - report library facts through faar_library_info.flags (FAAR_LIB_*) in
+	  place of the features bits and the reserved word
+	  - order faar_library_info so the pointers come first and the 4-byte
+	  members follow, and write the append rules for 4-byte aligned structs
+	  into the header
+	  - rename FAAR_ERR_INSUFFICIENT_MEM to FAAR_ERR_NO_MEMORY
+	  - take out_info in the query functions and say that struct_size reports
+	  the bytes populated
+	  - drop the stdbool include from faar.h
+	  - export only the public symbols through a GNU ld version script
+	  - document the caller rules for struct_size in docs/libfaar.md
+	* libfaac: fold the MPEG version and tool bools into the stream format and flags
+	  Say each fact once and let the encoder info report it.
+	  - faac_params.flags (FAAC_FLAG_TNS, FAAC_FLAG_PNS) replaces use_tns and
+	  use_pns; unknown bits and nonzero reserved bytes are refused
+	  - the MPEG version becomes part of the stream format: FAAC_STREAM_ADTS is
+	  MPEG-4 and FAAC_STREAM_ADTS_MPEG2 is MPEG-2. MPEG-2 raw frames are gone;
+	  the CLI keeps their LC choice and PNS gate
+	  - faac_encoder_info.stream_format reports the resolved format, replacing
+	  mpeg_version, since HE-AAC forces MPEG-4
+	  - faac_encoder_info carries the AudioSpecificConfig (asc_size, asc), so one
+	  call returns everything open() resolved
+	  - faac_encoder_get_info and faac_encoder_asc take a const handle
+	  - add the FAAC_*_BASELINE macros and write the append rules for the
+	  structs into the header
+	* libfaac: test the LFE path with a channel count that has an LFE
+	  The test asked for an LFE on four channels. Now that six and eight channels
+	  carry the LFE, four channels have none, so the test no longer reached the LFE
+	  bandwidth handling. Encode six channels and skip the case in builds that
+	  cannot.
+	* faac: add an encoder-sbr build option and report SBR and PS through flags
+	  HE-AAC takes the SBR analysis, the SBR bitstream writer and the
+	  resampler, about 21 KB of the library. A target that only encodes
+	  AAC-LC, a voice recorder on an ESP32 for example, has no use for
+	  them. Add -Dencoder-sbr, on by default, to leave them out, and let a
+	  caller ask which profiles a build has. The default build is
+	  unchanged.
+	  - Add the encoder-sbr option; when off, leave the SBR and resampler
+	  sources out and let sbr.h provide inline no-ops, so the call sites
+	  stay unconditional
+	  - Make encoder-ps require encoder-sbr
+	  - Return FAAC_ERR_UNSUPPORTED for FAAC_OBJ_HE_AAC_V1 in an LC-only
+	  build, and keep FAAC_OBJ_AUTO on LC
+	  - Add faac_library_info.flags with FAAC_LIB_SBR and FAAC_LIB_PS, and
+	  put the pointers first so the new member does not land in tail
+	  padding
+	  - Offer HE-AAC in the Windows GUI only when the library has it
+	  - Build -Dencoder-sbr=false in CI and check that HE-AAC is refused
+	  - Skip the tests that encode HE-AAC in an LC-only build, and let the
+	  fuzz script leave the SBR sources out of one
+	  - Document the option, the flags and the macros a build without Meson
+	  must define
+	* docs: rewrite the library guides and man pages
+	  The guides had grown long and repeated themselves, and the faac_* changes
+	  had left some statements wrong.
+	  - Restructure libfaac, libfaad, libfaar and libfaam around tables for
+	  parameters, defaults, errors and flags, keeping the examples
+	  - Describe FAAC_OBJ_AUTO's rules and the VBR quality requirement
+	  - Add the dynamic range control section and the stream info table to libfaad
+	  - Compare the FAAR Fast, Good and High presets in libfaar and faar(1)
+	  - Add the missing faad --drc-* options and the faar quality guidance to
+	  the man pages, and tighten the --rate and --object-type text in faac(1)
+	  - Correct the encoder delay unit for HE-AAC MP4 edit lists and the pool
+	  allocation notes
+	  - Drop the maintainer-only ABI rules, which the headers already carry
+	* libfaac: size the DRC sub-block ring by the loudness window
+	  The meter reads the newest 8 sub-blocks, but the ring still held 30 for the
+	  earlier 3 s window. Size it by DRC_LOUDNESS_BLOCKS and fix the comment.
+
 2.2 (Sep 29, 2026)
 
 	[ Robert Kausch ]
