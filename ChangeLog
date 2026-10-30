@@ -17,9 +17,21 @@ Unreleased
 	* Eight-channel streams are signalled with a program config element in
 	  the AudioSpecificConfig and in every 32nd ADTS frame; faad and faam
 	  read them
-	* faam: generic typed metadata entries (faam_metadata_entry) supporting
-	  four-byte keys, data types, locales, lyrics, grouping, copyright, work,
-	  movement and BPM tags, with stream updating and ID3v1 genre mapping
+	* frontend: new standalone CLI tools faad (AAC/HE-AAC decoder to WAV/RF64/PCM),
+	  faam (MP4/M4A muxer, demuxer, tagger and chapter editor) and faar
+	  (polyphase Farrow Kaiser-sinc sample rate converter); faac reads WAV
+	  and RF64 headers incrementally, supports float PCM in either byte order,
+	  adds --faststart to write moov before mdat, and supports BMP artwork
+	* frontend tags: added generic typed metadata entries to faam and faac,
+	  supporting lyrics (--lyrics, --lyrics-file), grouping (--grouping),
+	  copyright (--copyright), description (--description), work (--work),
+	  movement (--movement), and BPM (--bpm) tags, with ID3v1 genre text mapping
+	* frontend CLI alignment: unified -v <level> verbosity control (-v0 quiet mode,
+	  -v1 progress updates, -v2 completion summaries) and aligned usage display
+	  across faac, faad, faam and faar; progress callbacks throttled to ~30 Hz
+	  with %7.1f bitrate formatting to prevent column shift on large bitrates
+	* Win32 GUI (faacgui): ported to shared encoding engine with libfaam MP4
+	  output, conditionally offering HE-AAC object types based on build flags
 	* faad reports DAB+ support in FAAD_LIB_DAB;
 	  faac and faad name the build option when a stream or request needs
 	  a feature that was compiled out
