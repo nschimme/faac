@@ -78,7 +78,7 @@ the include path, and define `FAAC_BUILDING` for a Windows DLL.
 | RAW | One access unit per frame; the MPEG-4 ASC is available separately |
 | MP4/M4A | Mux outside the library from RAW frames and the ASC |
 | MPEG-2 | `FAAC_STREAM_ADTS_MPEG2`: AAC-LC only, no ASC. Explicit HE-AAC resolves to MPEG-4 and reports `FAAC_STREAM_ADTS`. RAW is always MPEG-4 |
-| Dynamic Range Control | `dynamic_range_info` fill elements from a single-pass ITU-R BS.1770-4 loudness analysis, selected by `drc_profile` (film, film-light, music, music-light, speech) and `drc_ref_level`; requires `encoder-drc=true` |
+| Dynamic Range Control | `dynamic_range_info` fill elements from a single-pass ITU-R BS.1770-4 loudness analysis, selected by `drc_profile` (film, film-light, music, music-light, speech) and `drc_ref_level`; requires `encoder-drc=true` (the default) |
 | Channels | 1-6 or 8, up to the compiled `max-channels`; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float |
 
