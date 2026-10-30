@@ -81,7 +81,6 @@ typedef struct BiquadState {
 } BiquadState;
 
 struct DrcAnalyzer {
-    uint32_t sample_rate;
     uint32_t num_channels;
     float ref_level_lufs;
     int8_t ref_code;
@@ -98,8 +97,7 @@ struct DrcAnalyzer {
     BiquadState ch_state[MAX_CHANNELS];
 
     /* Ballistics and 1-frame lookahead state */
-    bool has_prev_gain;
-    bool has_fast_level;
+    bool primed;
     float prev_smooth_gain_db;
     float smooth_level_db;
     float fast_level_db;
@@ -109,12 +107,10 @@ struct DrcAnalyzer {
     float alpha_release;
     float alpha_fast_level;
 
-    bool has_lookahead;
-    DRCInfo lookahead_drc;
+    int8_t lookahead_gain_code;
 
     /* Delay line from analyzed frame to emitted gain: hist[0] is the newest. */
-    bool hist_primed;
-    DRCInfo hist[2];
+    int8_t hist[2];
 };
 
 /*
@@ -180,7 +176,6 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
         return NULL;
     memset(da, 0, sizeof(DrcAnalyzer));
 
-    da->sample_rate = sample_rate;
     da->num_channels = num_channels;
     da->ref_level_lufs = ref_level_lufs;
     int ref_code = (int)(fabsf(ref_level_lufs) / 0.25f + 0.5f);
@@ -195,8 +190,6 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     da->alpha_fast_release = 1.0f - expf(-frame_dur / da->profile->tau_fast_release);
     da->alpha_release = 1.0f - expf(-frame_dur / da->profile->tau_release);
     da->alpha_fast_level = 1.0f - expf(-frame_dur / DRC_TAU_FAST_LEVEL);
-    da->smooth_level_db = -135.0f;
-    da->fast_level_db = -135.0f;
 
     ComputePreFilterCoeffs((double)sample_rate, &da->b0_1, &da->b1_1, &da->b2_1, &da->a1_1, &da->a2_1);
     ComputeRLBCoeffs((double)sample_rate, &da->b0_2, &da->b1_2, &da->b2_2, &da->a1_2, &da->a2_2);
@@ -218,8 +211,9 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
 }
 
 static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
-                         uint32_t samples_per_ch, DRCInfo *out_drc)
+                         uint32_t samples_per_ch, int8_t *out_gain_code)
 {
+    const bool first = !da->primed;
 
     float max_peak_lin = 0.0f;
     double frame_sum_sq = 0.0;
@@ -234,27 +228,30 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
         const float *pcm = input_pcm[ch];
         const float weight = da->ch_state[ch].weight;
 
-        /* Find peak linear magnitude */
-        for (uint32_t i = 0; i < samples_per_ch; i++) {
-            float abs_x = fabsf(pcm[i] * pcm_scale);
-            if (abs_x > max_peak_lin)
-                max_peak_lin = abs_x;
-        }
-
-        if (weight <= 0.0f)
+        if (weight <= 0.0f) {
+            /* LFE samples still count toward peak protection. */
+            for (uint32_t i = 0; i < samples_per_ch; i++) {
+                float abs_x = fabsf(pcm[i] * pcm_scale);
+                if (abs_x > max_peak_lin)
+                    max_peak_lin = abs_x;
+            }
             continue;
+        }
 
         float v1_1 = da->ch_state[ch].v1_1, v2_1 = da->ch_state[ch].v2_1;
         float v1_2 = da->ch_state[ch].v1_2, v2_2 = da->ch_state[ch].v2_2;
         double ch_sum_sq = 0.0;
 
         for (uint32_t i = 0; i < samples_per_ch; i++) {
-            float x = pcm[i] * pcm_scale;
+            float scaled = pcm[i] * pcm_scale;
+            float abs_x = fabsf(scaled);
+            if (abs_x > max_peak_lin)
+                max_peak_lin = abs_x;
 
             /* Stage 1: High-shelf pre-filter (Direct Form II Transposed) */
-            float y1 = b0_1 * x + v1_1;
-            v1_1 = b1_1 * x - a1_1 * y1 + v2_1;
-            v2_1 = b2_1 * x - a2_1 * y1;
+            float y1 = b0_1 * scaled + v1_1;
+            v1_1 = b1_1 * scaled - a1_1 * y1 + v2_1;
+            v2_1 = b2_1 * scaled - a2_1 * y1;
 
             /* Stage 2: RLB high-pass filter */
             float y2 = b0_2 * y1 + v1_2;
@@ -275,11 +272,10 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
      * window. A short exponential level is the closest causal proxy: it reaches
      * a loud onset in a few frames but does not chatter on isolated samples.
      */
-    float frame_mean_sq = samples_per_ch ? (float)(frame_sum_sq / (double)samples_per_ch) : 0.0f;
+    float frame_mean_sq = (float)(frame_sum_sq / (double)samples_per_ch);
     float L_frame = (frame_mean_sq > 1e-12f) ? (-0.691f + 10.0f * log10f(frame_mean_sq)) : -100.0f;
-    if (!da->has_fast_level) {
+    if (first) {
         da->fast_level_db = L_frame;
-        da->has_fast_level = true;
     } else {
         da->fast_level_db += da->alpha_fast_level * (L_frame - da->fast_level_db);
     }
@@ -297,10 +293,9 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
      */
     float gain_smooth_db = da->prev_smooth_gain_db;
 
-    if (!da->has_prev_gain) {
+    if (first) {
         gain_smooth_db = 0.0f;
         da->smooth_level_db = da->fast_level_db;
-        da->has_prev_gain = true;
     } else {
         float level_delta = da->fast_level_db - da->smooth_level_db;
         float alpha;
@@ -335,31 +330,26 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
     if (gain_quant < -127.0f)
         gain_quant = -127.0f;
 
-    DRCInfo curr_drc;
-    curr_drc.enabled = true;
-    curr_drc.gain_code = (int8_t)(int)gain_quant;
-    curr_drc.ref_code = da->ref_code;
+    int8_t curr_gain_code = (int8_t)(int)gain_quant;
 
     /*
      * 1-Frame Lookahead Output:
      * Lookahead allows incoming transient cuts at frame M to take effect at frame M-1 (K_step - 1).
      */
-    if (!da->has_lookahead) {
-        da->lookahead_drc = curr_drc;
-        da->has_lookahead = true;
-        *out_drc = curr_drc;
+    if (first) {
+        da->lookahead_gain_code = curr_gain_code;
+        *out_gain_code = curr_gain_code;
     } else {
         /* If incoming frame M requires a cut deeper than lookahead frame, advance cut to lookahead frame */
-        if (curr_drc.gain_code < da->lookahead_drc.gain_code) {
-            da->lookahead_drc.gain_code = curr_drc.gain_code;
-        }
-        *out_drc = da->lookahead_drc;
-        da->lookahead_drc = curr_drc;
+        *out_gain_code = curr_gain_code < da->lookahead_gain_code
+                       ? curr_gain_code : da->lookahead_gain_code;
+        da->lookahead_gain_code = curr_gain_code;
     }
 
     /* Carry the unquantized gain: feeding back the 0.25 dB-rounded output
      * freezes the 1 s release, whose per-frame step is far below the grid. */
     da->prev_smooth_gain_db = gain_smooth_db;
+    da->primed = true;
 }
 
 void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
@@ -372,19 +362,21 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
      * written carries audio that entered the encoder one frame earlier. Delay
      * the gain so the FIL describes the audio it travels with. A call without
      * input (flush) keeps the pipeline ticking on the last gain. */
-    DRCInfo cur = da->hist[0];
+    const bool primed = da->primed;
+    int8_t cur = da->hist[0];
     if (input_pcm && samples_per_ch > 0)
         AnalyzeFrame(da, input_pcm, samples_per_ch, &cur);
-    else if (!da->hist_primed)
+    else if (!primed)
         return;
 
-    if (!da->hist_primed) {
+    if (!primed) {
         da->hist[1] = cur;
         da->hist[0] = cur;
-        da->hist_primed = true;
     } else {
         da->hist[1] = da->hist[0];
         da->hist[0] = cur;
     }
-    *out_drc = da->hist[1];
+    out_drc->enabled = true;
+    out_drc->ref_code = da->ref_code;
+    out_drc->gain_code = da->hist[1];
 }
