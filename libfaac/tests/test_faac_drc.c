@@ -116,7 +116,7 @@ static void test_drc_off_baseline_hash(void)
     faac_status st = faac_encoder_open(&params, &enc);
     assert(st == FAAC_OK && enc != NULL);
 
-    int16_t pcm[2048 * 2];
+    int16_t pcm[2048 * 2] = {0};
     for (int i = 0; i < 2048 * (int)ch; i++) {
         pcm[i] = (int16_t)(16000.0 * sin(2.0 * M_PI_DOUBLE * 440.0 * (i / ch) / 44100.0));
     }
@@ -507,7 +507,7 @@ static float steady_gain(enum faac_drc_profile profile, float ref, float x)
 
     /* BS.1770 total energy sums across channels; scale amplitude by sqrt(2/ch) so mono matches stereo loudness. */
     float amp = powf(10.0f, (ref + x) / 20.0f) * sqrtf(2.0f / (float)ch);
-    float pcm[1024 * 2];
+    float pcm[1024 * 2] = {0.0f};
     uint8_t outbuf[16384];
     uint32_t bytes = 0, total = 0;
     float last = 0.0f;
