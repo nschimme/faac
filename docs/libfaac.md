@@ -78,9 +78,16 @@ the include path, and define `FAAC_BUILDING` for a Windows DLL.
 | RAW | One access unit per frame; the MPEG-4 ASC is available separately |
 | MP4/M4A | Mux outside the library from RAW frames and the ASC |
 | MPEG-2 | `FAAC_STREAM_ADTS_MPEG2`: AAC-LC only, no ASC. Explicit HE-AAC resolves to MPEG-4 and reports `FAAC_STREAM_ADTS`. RAW is always MPEG-4 |
-| Dynamic Range Control | `dynamic_range_info` fill elements from a single-pass ITU-R BS.1770-4 loudness analysis, selected by `drc_profile` (film, film-light, music, music-light, speech) and `drc_ref_level`; requires `encoder-drc=true` (the default) |
+| Dynamic Range Control | `dynamic_range_info` fill elements from a single-pass K-weighted level analysis, selected by `drc_profile` (film, film-light, music, music-light, speech) and `drc_ref_level`; requires `encoder-drc=true` (the default) |
 | Channels | 1-6 or 8, up to the compiled `max-channels`; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float |
+
+The five DRC profiles follow the FDK line-mode curves: the static boost/cut
+shape, the 0.25 dB metadata grid, and the two-stage attack/release match the
+oracle's steady-state gain for a given `drc_ref_level`. The first access unit
+starts at 0 dB and releases into boost rather than jumping to the curve. A
+`drc_ref_level` of 0 LUFS is a valid request; `faac_params_init()` supplies the
+-23 LUFS default.
 
 **Sample rates.** Use a standard AAC rate: 8000, 11025, 12000, 16000, 22050,
 24000, 32000, 44100, 48000, 64000, 88200 or 96000 Hz. Open accepts 7350-96000 Hz,
