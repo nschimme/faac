@@ -148,10 +148,14 @@ static void test_drc_off_baseline_hash(void)
 
 static void test_drc_auto_encoder_integration(void)
 {
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    faac_get_library_info(&lib);
+
     const enum faac_object_type obj_types[] = { FAAC_OBJ_LC, FAAC_OBJ_HE_AAC_V1 };
     const uint32_t bit_rates[] = { 64000, 24000 };
+    int obj_count = (lib.flags & FAAC_LIB_SBR) ? 2 : 1;
 
-    for (int obj_idx = 0; obj_idx < 2; obj_idx++) {
+    for (int obj_idx = 0; obj_idx < obj_count; obj_idx++) {
         enum faac_object_type aot = obj_types[obj_idx];
         uint32_t br = bit_rates[obj_idx];
         uint32_t frame_samples_per_ch = (aot == FAAC_OBJ_HE_AAC_V1) ? 2048 : 1024;
@@ -429,11 +433,17 @@ static uint32_t first_cut_au(enum faac_object_type aot, uint32_t bit_rate,
  */
 static void test_drc_gain_aligned_with_audio(void)
 {
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    faac_get_library_info(&lib);
+
     const uint32_t onset = 480000;
     uint32_t lc = first_cut_au(FAAC_OBJ_LC, 128000, 1024, onset);
-    uint32_t he = first_cut_au(FAAC_OBJ_HE_AAC_V1, 48000, 2048, onset);
     assert(lc + 1 == onset / 1024);
-    assert(he + 1 == onset / 2048);
+
+    if (lib.flags & FAAC_LIB_SBR) {
+        uint32_t he = first_cut_au(FAAC_OBJ_HE_AAC_V1, 48000, 2048, onset);
+        assert(he + 1 == onset / 2048);
+    }
 }
 
 /* Independent statement of the documented curves: {boost_start, boost_max,
