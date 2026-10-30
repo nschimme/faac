@@ -106,7 +106,7 @@ jobs:
             }
           - {
               name: macOS Clang,
-              os: macos-latest,
+              os: macos-13,
               compiler: clang,
               shell: bash,
             }
