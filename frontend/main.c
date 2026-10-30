@@ -84,7 +84,8 @@ enum flags
     OPT_NO_ENCODER_INFO,
     OPT_FASTSTART,
     LANG_FLAG,
-    RATE_FLAG
+    RATE_FLAG,
+    STREAM_FORMAT_FLAG
 };
 
 static const help_t help_qual[] = {
@@ -93,15 +94,15 @@ static const help_t help_qual[] = {
      "VBR holds a quality and lets the bitrate follow the material; ABR holds an average over the file; CBR holds it in every frame. -q with --cap-rate is capped VBR: constant quality, no frame above the cap. -q and -b are exclusive."},
     {"-q <quality>",
      "Set encoding quality (1-5000, default 100). (VBR)",
-     "Constant quality, 1..5000, default 100; higher is better and costs more bits. The bitrate follows the material and moves between releases as the encoder is tuned. With --object-type auto, -q up to 75 uses HE-AAC v1; from 76 it is AAC-LC at a much higher bitrate. Use -b for a predictable size."},
+     "Constant quality, 1..5000, default 100; higher is better and costs more bits. The bitrate follows the material and moves between releases as the encoder is tuned. With --profile auto, -q up to 75 uses HE-AAC v1; from 76 it is AAC-LC at a much higher bitrate. Use -b for a predictable size."},
     {"-b <bitrate>",
      "Set average bitrate to <bitrate> kbps. (ABR)",
      "Approximate over the file; max. ~500 kbps (stereo)."},
     {"--cbr",
      "Hold -b as a constant bitrate. (CBR)",
      "A bit reservoir keeps every frame inside the decoder's input buffer and stuffs any frame that would otherwise overflow it, so the rate lands exactly; ADTS declares the buffer fullness, MP4 the buffer size. For constant-rate channels and matched-rate tests; on a file or a packet network the stuffing is bytes for nothing."},
-    {"-c <freq>",
-     "Cut the audio off above <freq> Hz.",
+    {"-c, --bandwidth <freq>",
+     "Cut the audio off above <freq> Hz. (Alias: --cutoff)",
      "Left out, the encoder chooses the cutoff from the bitrate, between 14 and 19 kHz on most stereo settings; VBR codes up to 19 kHz, or the full band for input above 48 kHz at the default quality or higher. It is printed at the start. Set it as high as half the sample rate to keep everything; the bitrate rises with it. HE-AAC sets its own and ignores this. The actual frequency is adjusted to a band edge."},
     {"--cap-rate <bitrate>",
      "Cap any single frame at <bitrate> kbps.",
@@ -113,6 +114,9 @@ static const help_t help_io[] = {
     {"-o <filename>",
      "Set output file name (only for one input file)",
      "Format is auto-detected from extension (.aac/.adts -> ADTS, .m4a/.mp4/.m4b -> MP4; default: MP4)."},
+    {"--stream-format <format>",
+     "Choose output container/stream format: auto, mp4, adts, or raw.",
+     "-a is alias for adts; -r is alias for raw. MP4 is default for .m4a/.mp4 extensions."},
     {"-a",
      "Use ADTS stream output format.",
      "Generate ADTS transport stream output."},
@@ -125,23 +129,23 @@ static const help_t help_io[] = {
     {"-r",
      "Use RAW AAC output file.",
      "Generate raw AAC bitstream (i.e. without any headers). Not advised: raw AAC files are practically useless."},
-    {"-P",
-     "Raw PCM input mode (default 44100 Hz, 16-bit, stereo).",
+    {"-P, --raw-pcm",
+     "Raw PCM input mode (default 44100 Hz, 16-bit, stereo). (Alias: --pcmraw)",
      "Raw PCM input mode (default: off, i.e. expecting a WAV header; necessary for input files or bitstreams without a header; using only -P assumes the default values for -R, -B and -C in the input file)."},
     {"--rate <auto|keep|hz>",
      "Choose output sample rate (default: auto; use keep to preserve input rate up to 96000 Hz).",
      "With ABR or CBR, auto selects the output rate from the input rate and bitrate; with VBR, it keeps the input rate when supported. Downsampling input above 48000 Hz uses FAAR High. Float builds use compensated float arithmetic for High, with greater CPU cost. A numeric value requests a lower AAC standard rate from 7350 to 96000 Hz."},
-    {"-R <samplerate>",
-     "Raw PCM input rate.",
+    {"-R, --raw-rate <samplerate>",
+     "Raw PCM input rate. (Alias: --pcmsamplerate)",
      "Raw PCM input sample rate in Hz (default: 44100 Hz, max. 96 kHz)"},
-    {"-B <samplebits>",
-     "Raw PCM input sample size (8, 16 (default), 24 or 32 bits).",
+    {"-B, --raw-bits <samplebits>",
+     "Raw PCM input sample size (8, 16 (default), 24 or 32 bits). (Alias: --pcmsamplebits)",
      "Raw PCM input sample size (default: 16, also possible 8, 24, 32 bit fixed or float input)."},
-    {"-C <channels>",
-     "Raw PCM input channels.",
+    {"-C, --raw-channels <channels>",
+     "Raw PCM input channels. (Alias: --pcmchannels)",
      "Raw PCM input channels (default: 2, max. 8)."},
-    {"-X",
-     "Swap raw PCM input byte order.",
+    {"-X, --raw-endian",
+     "Swap raw PCM input byte order. (Alias: --pcmswapbytes)",
      "Raw PCM input is read big-endian by default; -X reads it little-endian."},
     {"-I <C[,LFE]>",
      "Input channel config, default is 3,4 (Center third, LFE fourth)",
@@ -209,20 +213,14 @@ static const help_t help_advanced[] = {
      "Disable coding of TNS, temporal noise shaping (default: on).", NULL},
     {"--no-pns",
      "Disable coding of PNS, perceptual noise substitution (default: on).", NULL},
-    {"--joint 0",
-     "Disable joint stereo coding.", NULL},
-    {"--joint 1",
-     "Use Mid/Side coding.", NULL},
-    {"--joint 2",
-     "Use Intensity Stereo coding.", NULL},
-    {"--joint 3",
-     "Use Mixed Mode (dynamic M/S and IS) coding (default).", NULL},
-    {"--mpeg-vers X",
-     "Force AAC MPEG version, X can be 2 or 4", NULL},
-    {"--object-type X",
-     "Force AAC object type: lc, he-aac-v1, he-aac-v2, or auto (default)", NULL},
-    {"--shortctl X",
-     "Enforce block type (0 = both (default); 1 = no short; 2 = no long).", NULL},
+    {"--stereo-mode <lr|ms|is|auto>",
+     "Choose stereo coding mode (0=lr, 1=ms, 2=is, 3=auto; default: auto). (Alias: --joint)", NULL},
+    {"--mpeg-version <2|4>",
+     "Force AAC MPEG version (2 or 4). (Alias: --mpeg-vers)", NULL},
+    {"--profile <lc|he-v1|he-v2|auto>",
+     "Force AAC profile: lc, he-v1, he-v2, or auto (default). (Alias: --object-type)", NULL},
+    {"--block-type <normal|noshort|nolong>",
+     "Enforce block type (0=normal (both), 1=noshort, 2=nolong). (Alias: --shortctl)", NULL},
     {NULL, NULL, NULL}
 };
 
@@ -465,20 +463,30 @@ int main(int argc, char *argv[])
             {"help-mp4", 0, 0, HELP_MP4},
             {"help-advanced", 0, 0, HELP_ADVANCED},
             {"raw", 0, 0, 'r'},
+            {"stereo-mode", required_argument, 0, OPT_JOINT},
             {"joint", required_argument, 0, OPT_JOINT},
             {"no-pns", 0, 0, OPT_PNS_DISABLE},
+            {"bandwidth", 1, 0, 'c'},
             {"cutoff", 1, 0, 'c'},
             {"quality", 1, 0, 'q'},
+            {"raw-pcm", 0, 0, 'P'},
             {"pcmraw", 0, 0, 'P'},
+            {"raw-rate", 1, 0, 'R'},
             {"pcmsamplerate", 1, 0, 'R'},
+            {"raw-bits", 1, 0, 'B'},
             {"pcmsamplebits", 1, 0, 'B'},
+            {"raw-channels", 1, 0, 'C'},
             {"pcmchannels", 1, 0, 'C'},
+            {"block-type", 1, 0, SHORTCTL_FLAG},
             {"shortctl", 1, 0, SHORTCTL_FLAG},
             {"no-tns", 0, 0, OPT_TNS_DISABLE},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
+            {"mpeg-vers", 1, 0, MPEGVERS_FLAG},
+            {"profile", 1, 0, OBJTYPE_FLAG},
             {"object-type", 1, 0, OBJTYPE_FLAG},
             {"license", 0, 0, 'L'},
             {"adts", 0, 0, 'a'},
+            {"stream-format", 1, 0, STREAM_FORMAT_FLAG},
             {"artist", 1, 0, ARTIST_FLAG},
             {"artistsort", 1, 0, ARTIST_SORT_FLAG},
             {"title", 1, 0, TITLE_FLAG},
@@ -495,6 +503,7 @@ int main(int argc, char *argv[])
             {"composer", 1, 0, WRITER_FLAG},
             {"composersort", 1, 0, WRITER_SORT_FLAG},
             {"compilation", 0, 0, OPT_COMPILATION},
+            {"raw-endian", 0, 0, 'X'},
             {"pcmswapbytes", 0, 0, 'X'},
             {"ignorelength", 0, 0, OPT_IGNORE_LENGTH},
             {"tag", 1, 0, TAG_FLAG},
@@ -640,23 +649,67 @@ int main(int argc, char *argv[])
             default: dieMessage = "Unrecognised MPEG version!\n"; break;
             }
             break;
+        case STREAM_FORMAT_FLAG:
+            if (!strcmp(optarg, "mp4") || !strcmp(optarg, "m4a"))
+            {
+                opts.container_mp4 = true;
+                opts.stream_format = FAAC_STREAM_RAW;
+                stream_flag_given = true;
+            }
+            else if (!strcmp(optarg, "adts"))
+            {
+                opts.container_mp4 = false;
+                opts.stream_format = FAAC_STREAM_ADTS;
+                stream_flag_given = true;
+            }
+            else if (!strcmp(optarg, "raw"))
+            {
+                opts.container_mp4 = false;
+                opts.stream_format = FAAC_STREAM_RAW;
+                stream_flag_given = true;
+            }
+            else if (!strcmp(optarg, "auto"))
+            {
+                stream_flag_given = false;
+            }
+            else
+            {
+                dieMessage = "Unrecognised stream format (use auto, mp4, adts, or raw)!\n";
+            }
+            break;
         case OBJTYPE_FLAG:
             if (!strcmp(optarg, "lc"))
                 opts.object_type = FAAC_OBJ_LC;
-            else if (!strcmp(optarg, "he-aac-v1"))
+            else if (!strcmp(optarg, "he") || !strcmp(optarg, "he-v1") || !strcmp(optarg, "he-aac-v1"))
                 opts.object_type = FAAC_OBJ_HE_AAC_V1;
-            else if (!strcmp(optarg, "he-aac-v2"))
+            else if (!strcmp(optarg, "he-v2") || !strcmp(optarg, "he-aac-v2") || !strcmp(optarg, "ps"))
                 opts.object_type = FAAC_OBJ_HE_AAC_V2;
             else if (!strcmp(optarg, "auto"))
                 opts.object_type = FAAC_OBJ_AUTO;
             else
-                dieMessage = "Unrecognised object type (use lc, he-aac-v1, he-aac-v2, or auto)!\n";
+                dieMessage = "Unrecognised profile (use lc, he-v1, he-v2, or auto)!\n";
             break;
         case SHORTCTL_FLAG:
-            opts.shortctl = (enum faac_shortctl_mode)atoi(optarg);
+            if (!strcmp(optarg, "normal") || !strcmp(optarg, "both") || !strcmp(optarg, "0"))
+                opts.shortctl = FAAC_SHORTCTL_NORMAL;
+            else if (!strcmp(optarg, "noshort") || !strcmp(optarg, "1"))
+                opts.shortctl = FAAC_SHORTCTL_NOSHORT;
+            else if (!strcmp(optarg, "nolong") || !strcmp(optarg, "2"))
+                opts.shortctl = FAAC_SHORTCTL_NOLONG;
+            else
+                dieMessage = "Unrecognised block type (use normal/0, noshort/1, or nolong/2)!\n";
             break;
         case OPT_JOINT:
-            opts.joint_mode = (enum faac_stereo_mode)atoi(optarg);
+            if (!strcmp(optarg, "lr") || !strcmp(optarg, "0"))
+                opts.joint_mode = FAAC_STEREO_LR;
+            else if (!strcmp(optarg, "ms") || !strcmp(optarg, "1"))
+                opts.joint_mode = FAAC_STEREO_MS;
+            else if (!strcmp(optarg, "is") || !strcmp(optarg, "2"))
+                opts.joint_mode = FAAC_STEREO_IS;
+            else if (!strcmp(optarg, "auto") || !strcmp(optarg, "3"))
+                opts.joint_mode = FAAC_STEREO_AUTO;
+            else
+                dieMessage = "Unrecognised stereo mode (use lr/0, ms/1, is/2, or auto/3)!\n";
             break;
         case TAG_FLAG:
             {
