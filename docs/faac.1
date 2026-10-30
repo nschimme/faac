@@ -333,7 +333,7 @@ Force AAC MPEG version, X can be 2 or 4
 .BR --shortctl\ \fIX\fP
 Enforce block type (0 = both (default); 1 = no short; 2 = no long).
 .TP
-.BR --drc\ [\fIoff|auto\fP]
+.BR --drc[=\fIoff|auto\fP]
 Enable dynamic range control metadata generation (off or auto; default off when flag omitted, auto when flag passed without value). Operates a single-pass causal ITU-R BS.1770-4 K-weighted loudness analyzer. Requires an encoder built with \fBencoder-drc=true\fP.
 .TP
 .BR --drc-ref-level\ <\fILUFS\fP>
