@@ -323,6 +323,22 @@ def run_all(t, d):
             r = t.run(t.faac, ["-v0"] + extra + flag + ["-o", f"{name}.{ext}", "s.wav"], d)
             check(r.returncode == 0, f"faac {name}.{ext}")
 
+    # Test FAAD CLI aliases (--bit-depth, --sample-depth, --seek, --start-time, --extract-adts)
+    r_faad_bd = t.run(t.faad, ["-q", "--overwrite", "--bit-depth", "24", "-o", "faad_bd24.wav", "lc.m4a"], d)
+    r_faad_sd = t.run(t.faad, ["-q", "--overwrite", "--sample-depth", "24", "-o", "faad_sd24.wav", "lc.m4a"], d)
+    check(r_faad_bd.returncode == 0 and r_faad_sd.returncode == 0, "faad --bit-depth and --sample-depth succeed")
+    check(read(os.path.join(d, "faad_bd24.wav")) == read(os.path.join(d, "faad_sd24.wav")), "faad --bit-depth and --sample-depth outputs match")
+
+    r_faad_seek = t.run(t.faad, ["-q", "--overwrite", "--seek", "1.0", "-o", "faad_seek.wav", "lc.m4a"], d)
+    r_faad_start = t.run(t.faad, ["-q", "--overwrite", "--start-time", "1.0", "-o", "faad_start.wav", "lc.m4a"], d)
+    check(r_faad_seek.returncode == 0 and r_faad_start.returncode == 0, "faad --seek and --start-time succeed")
+    check(read(os.path.join(d, "faad_seek.wav")) == read(os.path.join(d, "faad_start.wav")), "faad --seek and --start-time outputs match")
+
+    r_faad_adts1 = t.run(t.faad, ["-q", "--overwrite", "--adts", "ext1.aac", "lc.m4a"], d)
+    r_faad_adts2 = t.run(t.faad, ["-q", "--overwrite", "--extract-adts", "ext2.aac", "lc.m4a"], d)
+    check(r_faad_adts1.returncode == 0 and r_faad_adts2.returncode == 0, "faad --adts and --extract-adts succeed")
+    check(read(os.path.join(d, "ext1.aac")) == read(os.path.join(d, "ext2.aac")), "faad --adts and --extract-adts outputs match")
+
     # AUTO picks HE-AAC v2 below the old 8 kbps stereo floor when PS is built.
     if ENCODER_PS and CHANNELS == 2:
         r = t.run(t.faac, ["-v0", "--profile", "auto", "-b", "6", "-o", "ps_auto.m4a", "s.wav"], d)
