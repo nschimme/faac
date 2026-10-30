@@ -88,21 +88,6 @@ Disable the gapless trim of encoder delay and trailing padding that is
 otherwise applied to MP4 input.
 The output then keeps the extra priming and padding samples.
 
-.TP
-.BR --drc-cut\ <\fIN\fP> ,\  --drc-boost\ <\fIN\fP>
-Dynamic range control strength, 0 through 127; the default 0 is off.
-.B --drc-cut
-attenuates loud passages and
-.B --drc-boost
-raises quiet ones, using the gain control the stream carries.
-Streams without DRC data are unaffected.
-Boosted integer output is soft-limited near full scale; float output is not.
-.TP
-.BR --drc-target\ <\fIN\fP>
-Normalise loudness to a target level: 0 is off, 40 through 127 is the level in
-quarter-dB below full scale (96 is \-24 dBFS).
-Needs a stream that carries a programme reference level.
-
 .SH INFORMATION AND GENERAL OPTIONS
 .TP
 .BR -i ,\  --info
@@ -149,11 +134,6 @@ Display copyright and license information.
 .TP
 .BR -h ,\  --help
 Display a short help text.
-.BR --help-io ,
-.B --help-processing
-and
-.B --help-info
-show the options of one group.
 
 .SH EXAMPLES
 Decode to

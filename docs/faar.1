@@ -1,4 +1,3 @@
-'\" t
 .TH FAAR 1 "2026-10-22" "3.0.0" "Freeware Advanced Audio Resampler"
 
 .SH NAME
@@ -53,11 +52,7 @@ Replace an existing output file. Input and output paths that refer to the same f
 Set target output sampling rate in Hz. Required. The accepted range is 7350 through 192000 Hz, or up to 384000 Hz with \fB--allow-extreme-rates\fR. A rate pair must also be supported by the library.
 .TP
 .BR \-\-quality " " \fIpreset\fR
-Set the filter quality preset: \fBfast\fR, \fBgood\fR (default) or \fBhigh\fR.
-See
-.B QUALITY PRESETS
-below for how they compare.
-Float builds (resampler-float) run High in compensated float arithmetic, which uses more CPU.
+Set filter quality preset: fast uses less processing with a narrower passband and weaker alias rejection; good (default) provides a wide passband and strong alias suppression; high keeps Good's passband while further reducing aliasing, at greater CPU and setup-memory cost. The default build runs High's filter kernels in native double. Float builds (resampler-float) support High with compensated float arithmetic, which uses more CPU; filter coefficients and FFT twiddles are still prepared with the existing double-precision calculations.
 .TP
 .BR \-d ", " \-\-dither " " \fItype\fR
 Set dithering mode for integer format output: \fBnone\fR (default), \fBtpdf\fR (triangular dither), or \fBshaped\fR (TPDF dither with high-pass noise shaping).
@@ -85,45 +80,6 @@ Display detailed descriptions of all options and examples, then exit.
 .BR \-\-license
 Display copyright and license information.
 
-.SH QUALITY PRESETS
-Choose
-.B good
-unless you have a reason not to.
-The figures are approximate, taken as the worst case over synthetic probes on seven
-conversions (96 to 44.1, 48 to 44.1, 44.1 to 48, 96 to 48, 192 to 44.1, 192 to 48 and
-48 to 24 kHz).
-They are not listening scores and vary with hardware, build and release.
-.PP
-.TS
-box;
-lb lb lb lb
-l r r r.
-	fast	good	high
-_
-Passband near Nyquist	about \-3.4 dB	flat	flat
-Min stopband rejection	about 106 dB	about 139 dB	about 154 dB
-Worst residual	about \-116 dB	about \-135 dB	about \-149 dB
-Min image rejection	about 116 dB	about 147 dB	about 162 dB
-Max filter delay	about 1 ms	about 3 ms	about 31 ms
-Setup memory	about 0.15 MiB	about 0.4 MiB	about 4 MiB
-CPU time vs good	about 0.85x	1x	about 1.5\(en2x
-.TE
-.PP
-For reference, 16-bit audio has a noise floor about 96 dB below full scale and 24-bit
-about 144 dB.
-.TP
-.B fast
-Least setup memory and delay, and a little less CPU than good.
-Its passband droops by about 3.4 dB near the Nyquist frequency.
-.TP
-.B good
-Flat passband and strong alias rejection for general use.
-.TP
-.B high
-About 15 dB more rejection than good, which matters mainly for 24-bit or float output.
-It costs roughly 1.5 to 2 times the CPU time, about ten times the setup memory and
-about 28 ms more delay, which gapless output must trim.
-.PP
 .SH EXAMPLES
 Resample a 96 kHz WAV file to 48 kHz WAV:
 .IP
@@ -167,6 +123,9 @@ is the MP4 muxer and tag tool.
 It is built and installed unless the
 .B muxer
 build option is disabled.
+.PP
+The library API is described in
+.IR docs/libfaar.md .
 
 .SH AUTHORS
 .B FAAR
