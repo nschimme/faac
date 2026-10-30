@@ -70,7 +70,6 @@ typedef struct {
     bool gapless;
     uint32_t samples_to_skip;
     uint32_t padding_samples;
-    uint32_t total_track_frames;
     bool gapless_scaled;
     uint32_t padding_bytes;
     bool fallback_mode;
@@ -355,7 +354,7 @@ static bool write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
 
 static bool pcm_writer_open(PCMWriter *w, const char *outfile, bool write_stdout, bool raw_format,
                             uint32_t bit_depth, bool is_float, bool is_mp4, bool gapless,
-                            uint32_t delay, uint32_t padding, uint32_t total_track_frames)
+                            uint32_t delay, uint32_t padding)
 {
     memset(w, 0, sizeof(*w));
     w->write_stdout = write_stdout;
@@ -366,7 +365,6 @@ static bool pcm_writer_open(PCMWriter *w, const char *outfile, bool write_stdout
     w->gapless = gapless;
     w->samples_to_skip = (is_mp4 && gapless) ? delay : 0;
     w->padding_samples = (is_mp4 && gapless) ? padding : 0;
-    w->total_track_frames = total_track_frames;
     w->header_pending = !raw_format;
 
     if (write_stdout) {
@@ -899,7 +897,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
             ret_status = DECODE_ERROR;
             goto cleanup;
         }
-        if (!pcm_writer_open(&writer, outfile, write_stdout, raw_format, bit_depth, is_float, is_mp4, gapless, track.delay, track.padding, total_track_frames)) {
+        if (!pcm_writer_open(&writer, outfile, write_stdout, raw_format, bit_depth, is_float, is_mp4, gapless, track.delay, track.padding)) {
             log_msgf(log_cb, user_data, 0, "Error opening output file %s\n", outfile ? outfile : "stdout");
             ret_status = DECODE_ERROR;
             goto cleanup;

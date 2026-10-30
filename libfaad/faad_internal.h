@@ -449,6 +449,7 @@ struct faad_decoder {
     struct {
         uint32_t sample_rate, channels, frame_samples, channel_mask, decoder_delay;
     } emitted_format;
+    bool legacy_faac;
     bool ps_seen;
     bool spectral_downmix_active;
     uint32_t spectral_downmix_channels;

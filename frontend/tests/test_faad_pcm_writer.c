@@ -25,7 +25,7 @@
 static int check_size(const char *path, uint64_t pcm_bytes, bool raw, bool gapless, bool expected_ok)
 {
     PCMWriter w;
-    if (!pcm_writer_open(&w, path, false, raw, 16, false, true, gapless, 0, 1920, 10)) return 1;
+    if (!pcm_writer_open(&w, path, false, raw, 16, false, true, gapless, 0, 1920)) return 1;
 #ifdef _WIN32
     /* NTFS needs an explicit sparse-file flag to avoid allocating gigabytes.
      * Skip on a filesystem that cannot provide sparse test fixtures. */
@@ -127,7 +127,7 @@ static int check_channel_masks(const char *path)
     const uint32_t masks[] = { 0, 0x3f, 0x60f };
     for (size_t i = 0; i < sizeof(masks) / sizeof(masks[0]); i++) {
         PCMWriter w;
-        if (!pcm_writer_open(&w, path, false, false, 16, false, false, false, 0, 0, 10)) return 1;
+        if (!pcm_writer_open(&w, path, false, false, 16, false, false, false, 0, 0)) return 1;
         uint32_t rate = 48000, channels = 6;
         enum faad_object_type object = FAAD_OBJ_LC;
         faad_stream_info info = { .struct_size = sizeof(info), .sample_rate = rate,
