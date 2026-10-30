@@ -97,11 +97,11 @@ subdir('tests/fuzz')
 if get_option('encoder')
     subdir('libfaac')
 endif
-subdir('libfaam')
 
 if get_option('decoder')
     subdir('libfaad')
 endif
+subdir('libfaam')
 
 if get_option('frontend')
     subdir('frontend')

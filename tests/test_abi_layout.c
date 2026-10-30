@@ -31,7 +31,7 @@
 #define BASELINE(T, B) _Static_assert((B) > sizeof(uint32_t) && (B) <= sizeof(T), #T " baseline")
 #define EXACT(T, N) _Static_assert(sizeof(T) == (N), #T " size changed")
 
-FIRST(faac_params); FIRST(faac_encoder_info); FIRST(faac_library_info);
+FIRST(faac_params); FIRST(faac_encoder_info); FIRST(faac_library_info); FIRST(faac_drc_info);
 FIRST(faad_config); FIRST(faad_stream_info); FIRST(faad_library_info);
 FIRST(faar_config); FIRST(faar_library_info); FIRST(faar_resampler_info);
 FIRST(faam_io); FIRST(faam_gapless_info); FIRST(faam_chapter);
@@ -64,7 +64,7 @@ BASELINE(faam_library_info, FAAM_LIBRARY_INFO_BASELINE);
 /* Pointer-free structs: released baselines and offsets are identical on every target. */
 #define BASELINE_IS(B, N) _Static_assert((B) == (N), #B " changed")
 BASELINE_IS(FAAC_PARAMS_BASELINE, 60);
-BASELINE_IS(FAAC_ENCODER_INFO_BASELINE, 36);
+BASELINE_IS(FAAC_ENCODER_INFO_BASELINE, 48);
 BASELINE_IS(FAAD_CONFIG_BASELINE, 16);
 BASELINE_IS(FAAD_STREAM_INFO_BASELINE, 36);
 BASELINE_IS(FAAR_CONFIG_BASELINE, 32);
@@ -76,7 +76,7 @@ _Static_assert(offsetof(faad_config, downmix_mode) == 12, "faad_config layout");
 
 /* Pointer-free structs stay 4-byte aligned so a caller's smaller struct is never mis-aligned. */
 #define ALIGN4(T) _Static_assert(_Alignof(T) == 4, #T " alignment")
-ALIGN4(faac_params); ALIGN4(faac_encoder_info); ALIGN4(faad_config); ALIGN4(faad_stream_info);
+ALIGN4(faac_params); ALIGN4(faac_encoder_info); ALIGN4(faac_drc_info); ALIGN4(faad_config); ALIGN4(faad_stream_info);
 ALIGN4(faar_config); ALIGN4(faar_resampler_info); ALIGN4(faam_demuxer_config);
 
 int main(void)

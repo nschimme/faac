@@ -57,7 +57,7 @@ if encoder_sbr
 endif
 
 if encoder_drc
-    libfaac_src += files('drc.c', 'drc_analyzer.c')
+    libfaac_src += files('drc.c')
 endif
 
 libfaac = disabler()

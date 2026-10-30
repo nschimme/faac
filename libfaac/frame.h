@@ -43,7 +43,6 @@ extern "C" {
 #include "ratecontrol.h"
 #include "stereo.h"
 #include "drc.h"
-#include "drc_analyzer.h"
 
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
@@ -116,8 +115,9 @@ typedef struct faacEncStruct {
     RateControl rc;
 
 #if FAAC_ENCODER_DRC
-    DrcAnalyzer *drcAnalyzer;
+    DrcAnalyzer drcAnalyzer;
     DRCInfo drcInfo;
+    bool hasManualDrcOverride;
 #endif
 
     /* Keep frame controls before the large coder state, sized at open to

@@ -259,11 +259,6 @@ unsigned int SbrContextGetFullRateIdx(SBRContext *sCtx)
     return sCtx->fullSampleRateIdx;
 }
 
-unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
-{
-    return (sCtx && sCtx->fullSampleRate) ? sCtx->fullSampleRate : defaultRate;
-}
-
 unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
 {
     if (!sbrCtx || !sbrCtx->sbrInfo) return 0;
@@ -326,6 +321,11 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         if (PsIsActive(sCtx->sbrInfo)) PsCommitCarrier(sCtx, rs->fullRate[0]);
         Resample(rs, 2 * FRAME_LEN);
     }
+}
+
+unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
+{
+    return (sCtx && sCtx->fullSampleRate) ? sCtx->fullSampleRate : defaultRate;
 }
 
 /* Dual-rate SBR: the AAC core encodes at Fs/2 while SBR reconstructs the top

@@ -93,8 +93,6 @@ static int test_options(void)
     CHECK(opts.object_type == FAAC_OBJ_AUTO);
     CHECK(opts.quant_quality == 0 && opts.bit_rate == DEFAULT_ABR_KBPS * 1000);
     CHECK(opts.use_tns && opts.use_pns);
-    /* A zero reference level is valid; the default must be explicit. */
-    CHECK(opts.drc_ref_level == -23.0f && opts.drc_profile == FAAC_DRC_OFF);
 
     parse_quality_or_bitrate("72", false, &opts);
     CHECK(opts.quant_quality == 72 && opts.bit_rate == 0);

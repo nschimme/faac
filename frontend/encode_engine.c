@@ -61,7 +61,6 @@ void init_encode_options(encode_options_t *opts)
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->rate_auto = true;
     opts->resample_rate = UINT32_MAX;
-    opts->drc_ref_level = -23.0f;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
     opts->raw_bits = 16;
@@ -266,8 +265,6 @@ static const char *open_error(faac_status st, const faac_params *params)
             return "HE-AAC v1 is not in this build (needs -Dencoder-sbr=true)";
         if (params->object_type == FAAC_OBJ_HE_AAC_V2 && !(lib.flags & FAAC_LIB_PS))
             return "HE-AAC v2 is not in this build (needs -Dencoder-ps=true)";
-        if (params->drc_profile != FAAC_DRC_OFF && !(lib.flags & FAAC_LIB_DRC))
-            return "Dynamic Range Control (DRC) is not in this build (needs -Dencoder-drc=true)";
     }
     return faac_strerror(st);
 }
@@ -279,8 +276,7 @@ static const char *open_error(faac_status st, const faac_params *params)
    their defaults aren't stable. Options the user sets are written only when
    they differ from init_encode_options(). */
 static char *format_encoding_params(const encode_options_t *opts, const faac_encoder_info *info,
-                                    uint16_t num_channels, uint32_t source_sample_rate,
-                                    uint32_t sample_rate)
+                                    uint16_t num_channels, uint32_t source_sample_rate)
 {
     char buf[512];
     int pos = 0;
@@ -291,20 +287,20 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
             pos += snprintf(buf + pos, sizeof(buf) - pos, __VA_ARGS__); \
     } while (0)
 
-    if (info->bit_rate == 0) {
+    if (info->rate_control == FAAC_RC_VBR) {
         ADD("VBR quality %u", info->quality);
     } else {
         uint32_t total = info->bit_rate;
-        ADD("%s %ukbps", opts->cbr ? "CBR" : "ABR", (total + 500) / 1000);
+        ADD("%s %ukbps", info->rate_control == FAAC_RC_CBR ? "CBR" : "ABR", (total + 500) / 1000);
     }
 
     if (opts->max_bit_rate > 0)
         ADD(", cap %ukbps", (opts->max_bit_rate + 500) / 1000);
 
-    if (source_sample_rate != sample_rate)
-        ADD(", %uHz->%uHz", source_sample_rate, sample_rate);
+    if (source_sample_rate != info->sample_rate)
+        ADD(", %uHz->%uHz", source_sample_rate, info->sample_rate);
     else
-        ADD(", %uHz", sample_rate);
+        ADD(", %uHz", info->sample_rate);
     ADD(", cutoff %uHz", info->bandwidth);
     ADD(", %s", info->object_type == FAAC_OBJ_HE_AAC_V2 ? "HE v2" :
                  info->object_type == FAAC_OBJ_HE_AAC_V1 ? "HE v1" : "LC");
@@ -327,20 +323,13 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
         ADD(", noshort");
     else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
         ADD(", nolong");
-
-    if (opts->drc_profile != FAAC_DRC_OFF) {
-        static const char *prof_names[] = { "off", "film", "film-light", "music", "music-light", "speech" };
-        if ((int)opts->drc_profile >= 1 && (int)opts->drc_profile <= 5)
-            ADD(", drc %s (ref %.2f LUFS)", prof_names[opts->drc_profile], opts->drc_ref_level);
-    }
 #undef ADD
 
     return strdup(buf);
 }
 
 static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts, uint16_t num_channels,
-                          uint32_t source_sample_rate, uint32_t sample_rate,
-                          log_message_callback_t log_cb, void *user_data)
+                          uint32_t source_sample_rate, log_message_callback_t log_cb, void *user_data)
 {
     char *allocated_tags[MP4TAG_COUNT + 1] = { 0 };
     int num_allocated = 0;
@@ -416,7 +405,7 @@ static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts, u
     {
         faac_encoder_info info = { .struct_size = sizeof(info) };
         faac_encoder_get_info(hEncoder, &info);
-        char *param_str = format_encoding_params(opts, &info, num_channels, source_sample_rate, sample_rate);
+        char *param_str = format_encoding_params(opts, &info, num_channels, source_sample_rate);
         if (param_str)
         {
             size_t len = strlen(metadata.encoder) + strlen(param_str) + 3;
@@ -608,7 +597,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         params.quality = 0;
     }
 
-    params.drc_profile = opts->drc_profile;
+    params.drc_mode = opts->drc_mode;
     params.drc_ref_level = opts->drc_ref_level;
 
     if (opts->max_bit_rate > 0)
@@ -835,7 +824,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .bandwidth = info.bandwidth,
             .quant_quality = (uint16_t)info.quality,
             .bit_rate = info.bit_rate,
-            .rate_control = params.rate_control,
+            .rate_control = info.rate_control,
 
             .remapping_channels = (chanmap != NULL),
             .center_channel = opts->center_channel,
@@ -1054,7 +1043,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         mp4_set_gapless(rc_scalar(rc, priming), rc_scalar(rc, padding),
                          rc_scalar(rc, gapless_samples));
 
-        if (!finalize_mp4(hEncoder, opts, num_channels, raw_sample_rate, sample_rate, log_cb, user_data))
+        if (!finalize_mp4(hEncoder, opts, num_channels, raw_sample_rate, log_cb, user_data))
         {
             ret = 1;
             goto cleanup;
