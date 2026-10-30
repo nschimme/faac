@@ -347,11 +347,71 @@ static void test_drc_auto_encoder_integration(void)
     }
 }
 
+/*
+ * Encode seconds of a 997 Hz float tone per phase and return the DRC gain of the
+ * last frame. loud_ch selects the one channel that carries signal (-1 = all).
+ */
+static float last_gain_after(uint32_t channels, int loud_ch, const float *amps,
+                             const uint32_t *secs, int phases)
+{
+    faac_params params;
+    faac_params_init(&params, sizeof(params));
+    params.sample_rate = 48000;
+    params.channels = channels;
+    params.bit_rate = 64000 * channels / 2;
+    params.drc_mode = FAAC_DRC_AUTO;
+    params.drc_ref_level = -23.0f;
+    params.stream_format = FAAC_STREAM_ADTS;
+    params.input_format = FAAC_INPUT_FLOAT;
+    params.channel_layout = FAAC_LAYOUT_AAC;
+
+    faac_encoder *enc = NULL;
+    faac_status st = faac_encoder_open(&params, &enc);
+    assert(st == FAAC_OK && enc != NULL);
+
+    float pcm[1024 * 8];
+    uint8_t outbuf[16384];
+    uint32_t bytes = 0, total = 0;
+    float last = 0.0f;
+
+    for (int ph = 0; ph < phases; ph++) {
+        uint32_t frames = secs[ph] * 48000 / 1024;
+        for (uint32_t f = 0; f < frames; f++) {
+            for (uint32_t i = 0; i < 1024; i++) {
+                float v = amps[ph] * (float)sin(2.0 * M_PI_DOUBLE * 997.0 * (double)(total + i) / 48000.0);
+                for (uint32_t c = 0; c < channels; c++)
+                    pcm[i * channels + c] = (loud_ch < 0 || (uint32_t)loud_ch == c) ? v : 0.0f;
+            }
+            total += 1024;
+            st = faac_encoder_encode(enc, pcm, 1024 * channels, outbuf, sizeof(outbuf), &bytes);
+            assert(st == FAAC_OK);
+            float g;
+            if (bytes > 7 && parse_adts_drc(outbuf, bytes, &g, NULL))
+                last = g;
+        }
+    }
+    faac_encoder_close(&enc);
+    return last;
+}
+
+/* Surround weighting must follow AAC order (C L R Ls Rs LFE): Ls and Rs equal. */
+static void test_drc_surround_weights_symmetric(void)
+{
+    const float amps[] = { 0.5f };
+    const uint32_t secs[] = { 12 };
+    float ls = last_gain_after(6, 3, amps, secs, 1);
+    float rs = last_gain_after(6, 4, amps, secs, 1);
+    float l  = last_gain_after(6, 1, amps, secs, 1);
+    assert(fabsf(ls - rs) < 0.01f);
+    assert(ls < l - 0.5f); /* surround weight (+1.5 dB) means a deeper cut than a front channel */
+}
+
 int main(void)
 {
     test_drc_off_baseline_hash();
     test_drc_invalid_inputs();
     test_drc_auto_encoder_integration();
+    test_drc_surround_weights_symmetric();
     printf("All DRC tests passed successfully.\n");
     return 0;
 }

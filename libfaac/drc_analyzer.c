@@ -147,8 +147,10 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     for (uint32_t ch = 0; ch < num_channels; ch++) {
         if (is_lfe_channel && is_lfe_channel[ch]) {
             da->ch_state[ch].weight = 0.0f; /* LFE is excluded from ITU-R BS.1770 loudness measurement */
-        } else if (num_channels >= 5 && (ch == 4 || ch == 5)) {
-            da->ch_state[ch].weight = 1.41f; /* Surround channels get ~1.5 dB (+1.41 linear) boost */
+        } else if (num_channels >= 5 && (ch == 3 || ch == 4)) {
+            /* The FIFO is in AAC order (C L R Ls Rs [LFE]), so surrounds sit
+             * at 3 and 4. They get the BS.1770 ~1.5 dB (+1.41 linear) boost. */
+            da->ch_state[ch].weight = 1.41f;
         } else {
             da->ch_state[ch].weight = 1.0f;  /* Main front/side/center channels */
         }
