@@ -39,12 +39,12 @@ typedef struct DrcAnalyzer DrcAnalyzer;
  *   ref_level_lufs: program reference level in LUFS (e.g., -23.0f); the
  *                   profile's null band is placed relative to it
  *   profile: 1-based index of the profile (enum faac_drc_profile minus FAAC_DRC_OFF)
- *   delay_frames: frames the emitted gain trails the analyzed input (0..4)
+ *   samples_per_ch: fixed full-rate frame size, used for the ballistic alphas
  * Returns pointer to opaque DrcAnalyzer or NULL on allocation failure.
  */
 DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
                              const bool *is_lfe_channel, float ref_level_lufs,
-                             uint32_t profile, uint32_t delay_frames);
+                             uint32_t profile, uint32_t samples_per_ch);
 
 /*
  * Process one frame of full-rate input PCM and produce the DRC gain metadata.
@@ -57,11 +57,6 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
  */
 void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
                              uint32_t samples_per_ch, DRCInfo *out_drc);
-
-/*
- * Destroy DRC analyzer instance and free associated resources.
- */
-void DrcAnalyzerEnd(DrcAnalyzer *da);
 
 #ifdef __cplusplus
 }

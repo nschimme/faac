@@ -36,8 +36,6 @@
 #define DRC_TAU_ATTACK                0.030f  /* 30 ms fast attack time constant */
 #define DRC_MAX_CUT_STEP_DB           3.00f   /* Maximum cut increase per frame (slew rate limit) */
 
-#define DRC_MAX_DELAY                 4       /* Deepest supported gain delay line, in frames */
-
 /*
  * Static curves, relative to the program reference level, as gain over
  * loudness x = L - ref: 2:1 boost below boost_start up to boost_max, a null
@@ -88,7 +86,7 @@ struct DrcAnalyzer {
     uint32_t sample_rate;
     uint32_t num_channels;
     float ref_level_lufs;
-    int16_t ref_code;
+    int8_t ref_code;
     const DrcProfile *profile;
 
     /* BS.1770-4 K-weighting pre-filter biquad coefficients */
@@ -113,14 +111,15 @@ struct DrcAnalyzer {
     /* Ballistics and 1-frame lookahead state */
     bool has_prev_gain;
     float prev_smooth_gain_db;
+    float alpha_attack;
+    float alpha_release;
 
     bool has_lookahead;
     DRCInfo lookahead_drc;
 
     /* Delay line from analyzed frame to emitted gain: hist[0] is the newest. */
-    uint32_t delay;
     bool hist_primed;
-    DRCInfo hist[DRC_MAX_DELAY + 1];
+    DRCInfo hist[2];
 };
 
 /*
@@ -174,10 +173,10 @@ static void ComputeRLBCoeffs(double fs, float *b0, float *b1, float *b2, float *
 
 DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
                              const bool *is_lfe_channel, float ref_level_lufs,
-                             uint32_t profile, uint32_t delay_frames)
+                             uint32_t profile, uint32_t samples_per_ch)
 {
     if (sample_rate == 0 || num_channels == 0 || num_channels > MAX_CHANNELS
-        || delay_frames > DRC_MAX_DELAY
+        || samples_per_ch == 0
         || profile < 1 || profile > sizeof(drc_profiles) / sizeof(drc_profiles[0]))
         return NULL;
 
@@ -192,9 +191,12 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     int ref_code = (int)(fabsf(ref_level_lufs) / 0.25f + 0.5f);
     if (ref_code > 127)
         ref_code = 127;
-    da->ref_code = (int16_t)ref_code;
+    da->ref_code = (int8_t)ref_code;
     da->profile = &drc_profiles[profile - 1];
-    da->delay = delay_frames;
+
+    float frame_dur = (float)samples_per_ch / (float)sample_rate;
+    da->alpha_attack = 1.0f - expf(-frame_dur / DRC_TAU_ATTACK);
+    da->alpha_release = 1.0f - expf(-frame_dur / da->profile->tau_release);
 
     ComputePreFilterCoeffs((double)sample_rate, &da->b0_1, &da->b1_1, &da->b2_1, &da->a1_1, &da->a2_1);
     ComputeRLBCoeffs((double)sample_rate, &da->b0_2, &da->b1_2, &da->b2_2, &da->a1_2, &da->a2_2);
@@ -317,14 +319,14 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
      * boost ramps in linearly up to the profile's maximum at -50 LUFS so noise
      * floors and fade tails are not lifted.
      */
-    float g_raw_db = 0.0f;
+    float gain_raw_db = 0.0f;
     if (L_eff >= DRC_GATE_ABS_LUFS) {
-        g_raw_db = ProfileCurveDb(da->profile, L_eff - da->ref_level_lufs);
-        if (g_raw_db > 0.0f && L_eff < DRC_TAPER_CEIL_LUFS) {
-            float g_taper = da->profile->boost_max
+        gain_raw_db = ProfileCurveDb(da->profile, L_eff - da->ref_level_lufs);
+        if (gain_raw_db > 0.0f && L_eff < DRC_TAPER_CEIL_LUFS) {
+            float gain_taper = da->profile->boost_max
                 * ((L_eff - DRC_GATE_ABS_LUFS) / (DRC_TAPER_CEIL_LUFS - DRC_GATE_ABS_LUFS));
-            if (g_taper < g_raw_db)
-                g_raw_db = g_taper;
+            if (gain_taper < gain_raw_db)
+                gain_raw_db = gain_taper;
         }
     }
 
@@ -333,45 +335,42 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
      * - Fast attack (tau = 30 ms) for cuts, capped by DRC_MAX_CUT_STEP_DB (3.0 dB / frame).
      * - Release (profile tau) for releases and boosts.
      */
-    float frame_dur = (float)samples_per_ch / (float)da->sample_rate;
-    float g_smooth_db = da->prev_smooth_gain_db;
+    float gain_smooth_db = da->prev_smooth_gain_db;
 
     if (!da->has_prev_gain) {
-        g_smooth_db = g_raw_db;
+        gain_smooth_db = gain_raw_db;
         da->has_prev_gain = true;
-    } else if (g_raw_db < da->prev_smooth_gain_db) {
+    } else if (gain_raw_db < da->prev_smooth_gain_db) {
         /* Gain cut (Attack) */
-        float alpha_attack = 1.0f - expf(-frame_dur / DRC_TAU_ATTACK);
-        g_smooth_db = da->prev_smooth_gain_db + alpha_attack * (g_raw_db - da->prev_smooth_gain_db);
-        if (g_smooth_db < da->prev_smooth_gain_db - DRC_MAX_CUT_STEP_DB)
-            g_smooth_db = da->prev_smooth_gain_db - DRC_MAX_CUT_STEP_DB;
+        gain_smooth_db = da->prev_smooth_gain_db + da->alpha_attack * (gain_raw_db - da->prev_smooth_gain_db);
+        if (gain_smooth_db < da->prev_smooth_gain_db - DRC_MAX_CUT_STEP_DB)
+            gain_smooth_db = da->prev_smooth_gain_db - DRC_MAX_CUT_STEP_DB;
     } else {
         /* Gain boost / Cut release */
-        float alpha_release = 1.0f - expf(-frame_dur / da->profile->tau_release);
-        g_smooth_db = da->prev_smooth_gain_db + alpha_release * (g_raw_db - da->prev_smooth_gain_db);
+        gain_smooth_db = da->prev_smooth_gain_db + da->alpha_release * (gain_raw_db - da->prev_smooth_gain_db);
     }
 
     /*
      * Peak Headroom Clip Protection:
      * Instantaneous limit preventing boost gain from exceeding headroom to 0 dBFS.
      */
-    if (g_smooth_db > 0.0f) {
+    if (gain_smooth_db > 0.0f) {
         float peak_dbfs = 20.0f * log10f((max_peak_lin > 1e-9f) ? max_peak_lin : 1e-9f);
         float headroom_db = (peak_dbfs < 0.0f) ? -peak_dbfs : 0.0f;
-        if (g_smooth_db > headroom_db)
-            g_smooth_db = headroom_db;
+        if (gain_smooth_db > headroom_db)
+            gain_smooth_db = headroom_db;
     }
 
     /* Quantize to the existing 0.25 dB grid and keep the wire code. */
-    float g_quant = roundf(g_smooth_db / 0.25f);
-    if (g_quant > 127.0f)
-        g_quant = 127.0f;
-    if (g_quant < -127.0f)
-        g_quant = -127.0f;
+    float gain_quant = roundf(gain_smooth_db / 0.25f);
+    if (gain_quant > 127.0f)
+        gain_quant = 127.0f;
+    if (gain_quant < -127.0f)
+        gain_quant = -127.0f;
 
     DRCInfo curr_drc;
     curr_drc.enabled = true;
-    curr_drc.gain_code = (int16_t)(int)g_quant;
+    curr_drc.gain_code = (int8_t)(int)gain_quant;
     curr_drc.ref_code = da->ref_code;
 
     /*
@@ -393,7 +392,7 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
 
     /* Carry the unquantized gain: feeding back the 0.25 dB-rounded output
      * freezes the 1 s release, whose per-frame step is far below the grid. */
-    da->prev_smooth_gain_db = g_smooth_db;
+    da->prev_smooth_gain_db = gain_smooth_db;
 }
 
 void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
@@ -403,9 +402,9 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
         return;
 
     /* The analyzer sees the newest input frame, but the access unit being
-     * written carries audio that entered the encoder `delay` frames earlier.
-     * Delay the gain so the FIL describes the audio it travels with. A call
-     * without input (flush) keeps the pipeline ticking on the last gain. */
+     * written carries audio that entered the encoder one frame earlier. Delay
+     * the gain so the FIL describes the audio it travels with. A call without
+     * input (flush) keeps the pipeline ticking on the last gain. */
     DRCInfo cur = da->hist[0];
     if (input_pcm && samples_per_ch > 0)
         AnalyzeFrame(da, input_pcm, samples_per_ch, &cur);
@@ -413,20 +412,12 @@ void DrcAnalyzerProcessFrame(DrcAnalyzer *da, float * const *input_pcm,
         return;
 
     if (!da->hist_primed) {
-        for (uint32_t i = 0; i <= DRC_MAX_DELAY; i++)
-            da->hist[i] = cur;
+        da->hist[1] = cur;
+        da->hist[0] = cur;
         da->hist_primed = true;
     } else {
-        memmove(&da->hist[1], &da->hist[0], DRC_MAX_DELAY * sizeof(DRCInfo));
+        da->hist[1] = da->hist[0];
         da->hist[0] = cur;
     }
-    *out_drc = da->hist[da->delay];
-}
-
-void DrcAnalyzerEnd(DrcAnalyzer *da)
-{
-    if (!da)
-        return;
-
-    FreeMemory(da);
+    *out_drc = da->hist[1];
 }

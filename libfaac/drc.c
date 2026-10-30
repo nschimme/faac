@@ -17,6 +17,7 @@
 #include "frame.h"
 #include "channels.h"
 #include "bitstream.h"
+#include "util.h"
 
 int DrcGetBits(const DRCInfo *drc, BitStream *bs)
 {
@@ -40,8 +41,6 @@ int DrcGetBits(const DRCInfo *drc, BitStream *bs)
 
     if (ctl > 127)
         ctl = 127;
-    if (ref_code > 127)
-        ref_code = 127;
 
     /* The fixed payload is exactly 3 bytes: extension_type (4 bits),
      * four presence flags (4), prog_ref_level plus reserved (8), and one
@@ -91,7 +90,7 @@ void DrcInit(faacEncStruct *hEncoder)
          * the gain still lands one frame ahead of a loud onset. */
         hEncoder->drcAnalyzer = DrcAnalyzerInit(fullRate, hEncoder->numChannels,
                                                 hEncoder->isLfeChannel, hEncoder->config.drcRefLevel,
-                                                hEncoder->config.drcProfile, LOOKAHEAD_DEPTH - 1);
+                                                hEncoder->config.drcProfile, faacFrameSamples(hEncoder));
     }
 }
 
@@ -107,7 +106,7 @@ void DrcProcessFrame(faacEncStruct *hEncoder, float * const *input_pcm, uint32_t
 void DrcClose(faacEncStruct *hEncoder)
 {
     if (hEncoder->drcAnalyzer) {
-        DrcAnalyzerEnd(hEncoder->drcAnalyzer);
+        FreeMemory(hEncoder->drcAnalyzer);
         hEncoder->drcAnalyzer = NULL;
     }
 }
