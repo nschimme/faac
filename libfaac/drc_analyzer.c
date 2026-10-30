@@ -231,7 +231,10 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
     da->subblock_sample_count += samples_per_ch;
 
     while (da->subblock_sample_count >= da->subblock_size_samples) {
-        float mean_sq = (float)(da->current_subblock_sum / (double)da->subblock_size_samples);
+        /* A frame can overshoot the sub-block boundary, so the sum covers
+         * sample_count samples; normalise by that and carry the remainder's
+         * energy forward with its samples. */
+        float mean_sq = (float)(da->current_subblock_sum / (double)da->subblock_sample_count);
         da->subblock_energy[da->subblock_head] = mean_sq;
         da->subblock_head = (da->subblock_head + 1) % DRC_NUM_SUBBLOCKS_3S;
         if (da->subblock_count < DRC_NUM_SUBBLOCKS_3S)
