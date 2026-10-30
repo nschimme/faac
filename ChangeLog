@@ -1,3 +1,56 @@
+Unreleased
+
+	[ Nils Schimmelmann ]
+	* New libraries and tools: libfaad and faad (decoder), libfaam and faam
+	  (MP4 muxer, demuxer and tag editor) and libfaar and faar (sample
+	  rate converter); faac writes MP4 through libfaam and resamples
+	  through libfaar (#29, #37, #38, #76)
+	* HE-AAC v2 encoding with Parametric Stereo behind -Dencoder-ps;
+	  stereo AUTO picks it for explicit bitrates up to the sample-rate
+	  dependent ceiling; -Dencoder-sbr=false builds an LC-only encoder
+	  (#46, #75, #92, #93)
+	* libfaac ABI 3: faac_params takes a whole-stream bitrate with explicit
+	  ABR, VBR and CBR modes, channels, stereo_mode, stream_format
+	  (including MPEG-2 ADTS) and channel layouts; faac_encoder_info
+	  carries the AudioSpecificConfig; float input is unity full scale;
+	  faac_library_info reports SBR and PS through flags. Each shared
+	  library now has its own ABI version, separate from the release
+	  (#81, #82, #83, #84, #85, #87, #97)
+	* Eight-channel streams are signalled with a program config element in
+	  the AudioSpecificConfig and in every 32nd ADTS frame; faad and faam
+	  read them (#88)
+	* frontend: record active encoding settings (rate, cutoff, profile,
+	  M/S, TNS) in the MP4 encoder tag (©too) with --no-encoder-info to
+	  omit it (#30); record resampling and HE profile in the tag (#91);
+	  initialize console code page to UTF-8 on Windows (#32); align option
+	  help columns (#24, #40); handle 5.0 and 7.1 channel ordering (#45)
+	* frontend tags: added generic typed metadata entries (faam_metadata_entry)
+	  to faam and faac, supporting lyrics (--lyrics, --lyrics-file), grouping
+	  (--grouping), copyright (--copyright), description (--description),
+	  work (--work), movement (--movement), and BPM (--bpm) tags, with ID3v1
+	  genre text mapping (#18, #73)
+	* frontend I/O & pipes: incremental WAV and RF64 header reading, float PCM
+	  support in either byte order, --faststart for MP4 moov positioning (#38),
+	  hardened MP4 pipe handling, and error reporting on stream failure (#51, #59)
+	* frontend CLI alignment: unified -v <level> verbosity control (-v0 quiet
+	  mode, -v1 progress updates, -v2 completion summaries) and aligned usage
+	  display across faac, faad, faam and faar; progress callbacks throttled
+	  to ~30 Hz with %7.1f bitrate formatting (#59, #63, #69); name build options
+	  when compiled-out features are requested (#95)
+	* Win32 GUI (faacgui): ported to shared encoding engine with libfaam MP4
+	  output, quality and stereo mode labels, and conditional HE-AAC options (#86)
+	* faad reports DAB+ support in FAAD_LIB_DAB; faac and faad name the
+	  build option when a stream or request needs a feature that was
+	  compiled out (#95)
+	* Encoder retunes: stereo masking and M/S selection (#52, #56, #60, #71),
+	  short-window onset targets (#65, #72), SBR envelopes and transient
+	  borders (#47, #49, #55, #58, #66), and HE-AAC auto ceiling (#49, #61)
+	* Documentation and man pages rewritten for libfaac, libfaad, libfaar
+	  and libfaam, with comprehensive tables for parameters, defaults,
+	  errors, and flags (#26, #96, #97)
+	* Build & tests: detect host byte order without config.h (#78); add
+	  unit, integration, ABI, link and fuzz test coverage (#62, #89, #90)
+
 2.2 (Sep 29, 2026)
 
 	[ Robert Kausch ]
