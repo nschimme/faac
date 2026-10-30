@@ -122,7 +122,7 @@ Flat passband and strong alias rejection for general use.
 .B high
 About 15 dB more rejection than good, which matters mainly for 24-bit or float output.
 It costs roughly 1.5 to 2 times the CPU time, about ten times the setup memory and
-about 28 ms more delay, which gapless output must trim.
+about 28 ms more filter lookahead.
 .PP
 .SH EXAMPLES
 Resample a 96 kHz WAV file to 48 kHz WAV:
