@@ -308,8 +308,8 @@ def run_all(t, d):
     # Raw PCM modern options vs legacy options
     raw_pcm_data = bytes(range(256)) * 100
     open(os.path.join(d, "raw_pcm.raw"), "wb").write(raw_pcm_data)
-    r_mod = t.run(t.faac, ["-v0", "--overwrite", "--raw-pcm", "--raw-rate", "44100", "--raw-bits", "16", "--raw-channels", "2", "--raw-endian", "-o", "raw_mod.m4a", "raw_pcm.raw"], d)
-    r_leg = t.run(t.faac, ["-v0", "--overwrite", "--pcmraw", "--pcmsamplerate", "44100", "--pcmsamplebits", "16", "--pcmchannels", "2", "--pcmswapbytes", "-o", "raw_leg.m4a", "raw_pcm.raw"], d)
+    r_mod = t.run(t.faac, ["-v0", "--overwrite", "--raw-pcm", "--raw-rate", "44100", "--raw-bits", "16", "--raw-channels", str(CHANNELS), "--raw-endian", "-o", "raw_mod.m4a", "raw_pcm.raw"], d)
+    r_leg = t.run(t.faac, ["-v0", "--overwrite", "--pcmraw", "--pcmsamplerate", "44100", "--pcmsamplebits", "16", "--pcmchannels", str(CHANNELS), "--pcmswapbytes", "-o", "raw_leg.m4a", "raw_pcm.raw"], d)
     check(r_mod.returncode == 0 and r_leg.returncode == 0, "faac raw PCM modern and legacy option encode succeeds")
 
     # ADTS and faac's own .m4a for the same audio: LC and HE-AAC v1
