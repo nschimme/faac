@@ -419,6 +419,74 @@ static void test_drc_surround_weights_symmetric(void)
     assert(ls < l - 0.5f); /* surround weight (+1.5 dB) means a deeper cut than a front channel */
 }
 
+/*
+ * Index of the first access unit whose gain is cut by more than 1 dB when a
+ * -40 dBFS tone jumps to -22 dBFS at a known sample.
+ */
+static uint32_t first_cut_au(enum faac_object_type aot, uint32_t bit_rate,
+                             uint32_t frame_len, uint32_t onset_sample)
+{
+    faac_params params;
+    faac_params_init(&params, sizeof(params));
+    params.sample_rate = 48000;
+    params.channels = 2;
+    params.object_type = aot;
+    params.bit_rate = bit_rate;
+    params.drc_mode = FAAC_DRC_AUTO;
+    params.drc_ref_level = -23.0f;
+    params.stream_format = FAAC_STREAM_ADTS;
+    params.input_format = FAAC_INPUT_FLOAT;
+
+    faac_encoder *enc = NULL;
+    assert(faac_encoder_open(&params, &enc) == FAAC_OK && enc != NULL);
+
+    float pcm[2048 * 2];
+    uint8_t outbuf[16384];
+    uint32_t bytes = 0, total = 0, au = 0;
+    float first_gain = 0.0f;
+    bool have_first = false;
+
+    while (total < onset_sample + 40 * frame_len) {
+        for (uint32_t i = 0; i < frame_len; i++) {
+            float amp = (total + i < onset_sample) ? 0.01f : 0.08f;
+            float v = amp * (float)sin(2.0 * M_PI_DOUBLE * 997.0 * (double)(total + i) / 48000.0);
+            pcm[2 * i] = v;
+            pcm[2 * i + 1] = v;
+        }
+        total += frame_len;
+        assert(faac_encoder_encode(enc, pcm, frame_len * 2, outbuf, sizeof(outbuf), &bytes) == FAAC_OK);
+        float g;
+        if (bytes > 7 && parse_adts_drc(outbuf, bytes, &g, NULL)) {
+            if (!have_first && au > 400 * 1024 / frame_len) {
+                first_gain = g;
+                have_first = true;
+            }
+            if (have_first && g < first_gain - 1.0f) {
+                faac_encoder_close(&enc);
+                return au;
+            }
+            au++;
+        }
+    }
+    faac_encoder_close(&enc);
+    return UINT32_MAX;
+}
+
+/*
+ * The gain written into an access unit must describe the audio that unit
+ * carries: the first cut lands on the onset frame or the one before it. Before
+ * the gain was delayed it led by two to three frames, ducking quiet audio ahead
+ * of the transient.
+ */
+static void test_drc_gain_aligned_with_audio(void)
+{
+    const uint32_t onset = 480000;
+    uint32_t lc = first_cut_au(FAAC_OBJ_LC, 128000, 1024, onset);
+    uint32_t he = first_cut_au(FAAC_OBJ_HE_AAC_V1, 48000, 2048, onset);
+    assert(lc + 1 >= onset / 1024 && lc <= onset / 1024);
+    assert(he + 1 >= onset / 2048 && he <= onset / 2048);
+}
+
 int main(void)
 {
     test_drc_off_baseline_hash();
@@ -426,6 +494,7 @@ int main(void)
     test_drc_auto_encoder_integration();
     test_drc_release_reaches_target();
     test_drc_surround_weights_symmetric();
+    test_drc_gain_aligned_with_audio();
     printf("All DRC tests passed successfully.\n");
     return 0;
 }

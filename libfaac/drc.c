@@ -107,8 +107,13 @@ void DrcInit(faacEncStruct *hEncoder)
          * but ITU-R BS.1770 K-weighting loudness measurement operates on full-rate PCM.
          */
         uint32_t fullRate = (uint32_t)SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
+        /* The access unit written on a tick carries audio that entered the FIFO
+         * LOOKAHEAD_DEPTH ticks earlier, on the encoder timeline that
+         * encoder_delay also uses. The analyzer's own one-frame lookahead leaves
+         * the gain one frame ahead of that audio. */
         hEncoder->drcAnalyzer = DrcAnalyzerInit(fullRate, hEncoder->numChannels,
-                                                hEncoder->isLfeChannel, hEncoder->config.drcRefLevel);
+                                                hEncoder->isLfeChannel, hEncoder->config.drcRefLevel,
+                                                LOOKAHEAD_DEPTH);
     }
 }
 
