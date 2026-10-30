@@ -13,7 +13,6 @@
  * Lesser General Public License for more details.
  */
 
-#include <assert.h>
 #include <math.h>
 
 #include "drc.h"
@@ -55,19 +54,15 @@ int DrcGetBits(const DRCInfo *drc, BitStream *bs)
             ref_code = 127;
     }
 
-    uint32_t payloadBits = 4 + 4 + (drc->prog_ref_level_present ? 8 : 0) + 8;
-    int fillBytes = (payloadBits + 7) / 8;
-
-    assert(fillBytes <= 14 + 255);
+    /* The fixed payload is exactly 2 or 3 bytes: extension_type (4 bits),
+     * four presence flags (4), optional prog_ref_level plus reserved (8),
+     * and one gain (8). It always fits the short fill_element form. */
+    int fillBytes = drc->prog_ref_level_present ? 3 : 2;
 
     if (bs) {
-        uint32_t startBit = bs->currentBit;
-
         /* Write fill_element header (ISO/IEC 14496-3 Table 4.11) */
         PutBit(bs, ID_FIL, 3);
-        PutBit(bs, fillBytes < 15 ? fillBytes : 15, 4);
-        if (fillBytes >= 15)
-            PutBit(bs, fillBytes - 14, 8);
+        PutBit(bs, fillBytes, 4);
 
         /* Write extension_payload: extension_type EXT_DYNAMIC_RANGE (0xB) */
         PutBit(bs, EXT_DYNAMIC_RANGE, 4);
@@ -87,14 +82,10 @@ int DrcGetBits(const DRCInfo *drc, BitStream *bs)
         PutBit(bs, sgn, 1);
         PutBit(bs, ctl, 7);
 
-        /* Pad payload to full bytes */
-        uint32_t writtenBits = bs->currentBit - (startBit + (fillBytes < 15 ? 7 : 15));
-        if (writtenBits < (uint32_t)fillBytes * 8)
-            PutBit(bs, 0, fillBytes * 8 - writtenBits);
+        /* The fields above are exactly fillBytes * 8 bits; no padding. */
     }
 
-    int headerBits = (fillBytes < 15) ? 7 : 15;
-    return headerBits + fillBytes * 8;
+    return 7 + fillBytes * 8;
 }
 
 #if FAAC_ENCODER_DRC

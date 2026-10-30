@@ -129,16 +129,19 @@ struct DrcAnalyzer {
 static void ComputePreFilterCoeffs(double fs, float *b0, float *b1, float *b2, float *a1, float *a2)
 {
     double f0 = 1681.974450955533;
-    double G  = 3.999843853973347;
     double Q  = 0.7071752369554196;
 
     double K = tan(M_PI_DOUBLE * f0 / fs);
-    double V0 = pow(10.0, G / 20.0);
+    /* pow(10, G/20) and its square root for the fixed shelf gain. Keeping
+     * them as literals avoids carrying the double-precision pow/sqrt path
+     * in every build; the values are the exact round-to-nearest results. */
+    double V0 = 1.5848647011308556;
+    double sv = 1.2589140960092773;
 
     double d = 1.0 + (1.0 / Q) * K + K * K;
-    double b0_d = (V0 + sqrt(V0) * (1.0 / Q) * K + K * K) / d;
+    double b0_d = (V0 + sv * (1.0 / Q) * K + K * K) / d;
     double b1_d = (2.0 * (K * K - V0)) / d;
-    double b2_d = (V0 - sqrt(V0) * (1.0 / Q) * K + K * K) / d;
+    double b2_d = (V0 - sv * (1.0 / Q) * K + K * K) / d;
     double a1_d = (2.0 * (K * K - 1.0)) / d;
     double a2_d = (1.0 - (1.0 / Q) * K + K * K) / d;
 
