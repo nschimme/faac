@@ -1,93 +1,6 @@
 Unreleased
 
-	[ Claude ]
-	* Move the HE-AAC v1 retune to its own PR
-	  The SBR and masking-target retune from 6e51624 and e29e118 does not
-	  depend on the coarser-scalefactor pass and carries most of the gain, so
-	  it is reviewed and gated separately in nschimme/faac#76 (branched from
-	  master). This restores the tree of this branch to 4075fdb: the
-	  coarsening pass only.
-	* sbr: retune HE-AAC v1 for rich cores and raise the auto-mode ceiling
-	  SBR parameters that suit a starved core (crossover 15, strong inverse
-	  filtering, low transient threshold) cost quality once the core has bits
-	  to spare. At 20 kbps/ch and above, start the SBR band lower, use light
-	  inverse filtering and a higher transient threshold; keep the existing
-	  values below that, where per-clip MOS regresses otherwise.
-	  The stop-frequency search is capped so the master table stays one
-	  region (k2/kx <= 2.2449), which is what FAAD2 and the spec expect, and
-	  its step table is built once instead of per candidate.
-	  HE now beats LC in stereo up to about 44 kbps/ch at 44.1 and 48 kHz, so
-	  the auto-mode ceiling rises to 36 kbps/ch there. It stops short of 44
-	  because 5.1 at 224 kbps (37 kbps/ch) loses to LC, and multichannel was
-	  not measured. The 32 kHz end stays at 12 kbps/ch, where HE trails LC
-	  around 16 kbps/ch.
-	* Merge master into sbr-two-region-table
-	  master now carries the HE-AAC v1 retune as a squash commit (#49), so this
-	  branch's copy of he-v1-retune and master's differ only in history. The
-	  conflicts were comment text in sbr.c and sbr.h: keep this branch's
-	  two-region comments, and keep master's '8 kHz' wording for the rich start
-	  index now that the 6.3 kHz crossover is gone.
-	* Merge #81 VBR gate; gate the M/S bias on -q for VBR
-	* quantize: limit the scalefactor search to ABR/CBR from 48 kbps per channel, cut its cost
-	  Below that rate the search lost MOS on speech and low-rate stereo; VBR
-	  output stays as it was. The distortion loop now uses a q^(4/3) table and
-	  counts only nonzero lines.
-	* quantize: price scalefactor candidates from a magnitude summary instead of quantizing them
-	  Each coded band is summarized once in log-spaced magnitude slots; a candidate
-	  scalefactor is then priced from a few differences of those sums (error
-	  against the allowed noise, plus lambda times bits fitted per codebook class),
-	  and the Viterbi pass picks among three candidates. This avoids quantizing and
-	  Huffman-counting every candidate.
-	* quantize: model-priced scalefactor search, skipping bands under 16 lines
-	  About +17% instructions vs master, -1.4% BD-rate on the 49-clip ABR check.
-	  Kept for the record.
-	* quantize: greedy model-priced scalefactor search on every 4th line, bands of 16+ lines
-	  About +11% instructions vs master, -0.7% BD-rate on the 49-clip ABR check.
-	  Kept for the record.
-	* quantize: greedy scalefactor search with exact quantize and bit counts
-	  About +87% instructions vs master, -1.6% BD-rate on the 49-clip ABR check.
-	  Kept for the record.
-	* ci: add the FAAC benchmark workflow on top of upstream master
-	* quantize: nudge scalefactors by one step to make the deltas cheaper to code
-	  Each coded band may move its scalefactor one step either way. A Viterbi pass
-	  over the coded bands of a group picks the moves that minimize the Huffman
-	  bits of the scalefactor deltas (plus a quarter bit per step moved). Costs are
-	  integers, so the choice cannot differ between platforms. Stereo LC at a set
-	  rate only, like the masking target.
-	* quantize: run the scalefactor nudge for mono at a set rate
-	* quantize: run the scalefactor nudge for he at a set rate
-	* quantize: gate the scalefactor nudge on a set rate alone
-	  The nudge was enabled by a stack of special cases (tuned stereo LC from 32 kbps
-	  per channel, mono, HE-AAC stereo from 16 kbps per channel). Measured on LC
-	  stereo, mono, HE-AAC stereo and mono, and 5.1, it helps at every set rate from
-	  24 kbps per channel up and loses on some clips below, so the gate is now one
-	  constant in the masking model: bitrate per channel >= nudge_min_rate (24000).
-	  VBR has no rate and stays off. The two scalefactor passes in the nudge are
-	  also one loop now.
-	* probe: tuned-profile generalization and flatness at set rates
-	* probe: S12 pw=0.346 full-ladder check and fold B log (never merge)
-	  Fold B accepted peak_weight 0.45 to 0.346 and the held-out half agreed in
-	  direction, but on the full ladder it trades 0.13-0.29 points on the gate
-	  for 0.14-0.20 on the 49 clips and is flat at 64k and 80k. Not shipped.
-
 	[ Nils Schimmelmann ]
-	* bound the reservoir account symmetrically
-	  Bounding credit at capacity while letting debt run to eight frames replaced the
-	  overshoot with its mirror image: a 3.4% undershoot, with aggregate accuracy no
-	  better than before (87.6% -> 87.5%) because the arm had simply moved from missing
-	  high to missing low. Capacity is two frames, so the tight side was still shedding
-	  what it could not hold -- underspend was forgiven and overspend remembered, which
-	  is the original defect pointed the other way.
-	  Both sides are bookkeeping, so give them the same room. Measured per scenario
-	  against the previous two states, this is better on each one rather than better on
-	  average: 16k mono at a 16k target goes +6.88% -> +3.84%, at a 40k target
-	  -27.36% -> -22.30%, and the 48k stereo ladder runs +0.65% at 24k to -0.20% at
-	  256k, crossing zero near 56k.
-	  The remaining aggregate bias is one scenario: 16k mono held to a 40 kbps target
-	  sits at -22% because the content cannot absorb that budget, and at 353 of 1155
-	  clips it swamps the rest. The baseline's tidier headline bias came from stereo
-	  overshooting +2.6% and 16k mono overshooting +10.1%, cancelling that term rather
-	  than fixing it.
 	* quantize: take the floor from the group total and keep it out of the loop
 	  - Derive the floor from the group total BlocQuant already holds, so M/S
 	  frames use the same L/R total as the masking target
@@ -208,7 +121,6 @@ Unreleased
 	  covering LC/HE, ABR/VBR/CBR, caps, rates and channel counts. ASC bytes
 	  match upstream in 56 supported configurations; MPEG-2 still rejects
 	  ASC. All QMF taps and Huffman codes retain their original bits.
-	* Merge remote-tracking branch 'upstream/master' into bench-base
 	* quantize: silence dither-level frames
 	  LSB dither sits above the 0.4 RMS silence gate and was coded at full
 	  relative SNR: 400+ kbps for flat dither at -q 700. Frames whose mean
@@ -337,18 +249,6 @@ Unreleased
 	  - install all shared libraries under lib/ for the static frontends
 	  - widen the multichannel frame budget before multiplying, since
 	  unsigned long is 32 bits on Windows
-	* Merge the pre-rebase FAAR research line
-	  Joins the history that was on origin/faar-resampler-research before the
-	  rebase, keeping the rebased tree (newer: shared frontend library, MS
-	  mask enum).
-	  Carried over from the old line:
-	  - test_faad_alloc: coupling element allocation is lazy, fails cleanly
-	  and is not repeated after a flush (builds with three or more
-	  channels, which are the ones that have coupling)
-	  - fuzz_faad_adts: size the PCM buffer from max_output_bytes
-	  - static_archives_test: ignore asan_globals_registered
-	  Left behind: the three binary coupling seeds in tests/fuzz/corpus_adts,
-	  since AAC fixtures are not kept in the repo.
 	* filtbank: boost short-window targets at onsets to cut pre-echo
 	  Quantization noise in a short window spreads over the whole window, so
 	  the quiet samples ahead of an attack carry it as pre-echo. Windows that
