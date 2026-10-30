@@ -55,7 +55,7 @@ int main(void)
     small_info->struct_size = FAAC_ENCODER_INFO_BASELINE;
     assert(faac_encoder_get_info(enc, small_info) == FAAC_OK);
     assert(small_info->struct_size == FAAC_ENCODER_INFO_BASELINE);
-    assert(small_info->frame_samples == 1024 && small_info->bit_rate == 64000);
+    assert(small_info->sample_rate == 48000 && small_info->rate_control == FAAC_RC_ABR);
     free(small_info);
     assert(faac_encoder_close(&enc) == FAAC_OK);
 

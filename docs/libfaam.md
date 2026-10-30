@@ -1,112 +1,124 @@
-# libfaam - MP4 muxer and demuxer library
+# FAAM - MP4 Muxer and Demuxer Library
 
 ## Contents
 
-- [Overview](#overview)
+- [Scope](#scope)
+- [Interface description](#interface-description)
 - [Building and linking](#building-and-linking)
 - [Supported content](#supported-content)
-- [Using the API](#using-the-api)
+- [API (faam.h)](#api-faamh)
   - [Stream I/O](#stream-io)
-  - [Errors](#errors)
-  - [Functions](#functions)
+  - [Error handling](#error-handling)
+  - [Function reference](#function-reference)
   - [Demuxer lifecycle](#demuxer-lifecycle)
   - [Muxer lifecycle](#muxer-lifecycle)
   - [Allocation and ownership](#allocation-and-ownership)
-- [Metadata, gapless and chapters](#metadata-gapless-and-chapters)
-- [Editing finished files](#editing-finished-files)
-- [Codec data and language](#codec-data-and-language)
-- [Video tracks](#video-tracks)
-- [Recording to removable storage](#recording-to-removable-storage)
-- [Moving the index to the front](#moving-the-index-to-the-front)
-- [Files with many tracks](#files-with-many-tracks)
-- [Reading MP4 for the FAAD decoder](#reading-mp4-for-the-faad-decoder)
-- [Thread safety](#thread-safety)
-- [Examples](#examples)
+  - [Gapless playback, metadata and chapters](#gapless-playback-metadata-and-chapters)
+  - [Editing finished files](#editing-finished-files)
+  - [Codec data and language](#codec-data-and-language)
+  - [Video tracks](#video-tracks)
+  - [Recording to removable storage](#recording-to-removable-storage)
+  - [Moving the index to the front](#moving-the-index-to-the-front)
+  - [Reading and editing tags without remuxing](#reading-and-editing-tags-without-remuxing)
+  - [Files with many tracks](#files-with-many-tracks)
+  - [Reading MP4 for the FAAD decoder](#reading-mp4-for-the-faad-decoder)
+  - [Thread safety](#thread-safety)
+  - [Complete examples](#complete-examples)
 - [ABI compatibility](#abi-compatibility)
 
-## Overview
+## Scope
 
-libfaam reads and writes ISO BMFF files (MP4, M4A, M4B). You supply encoded access
-units and decoder configuration; the library neither encodes nor decodes, and all
-stream access goes through your callbacks. Include `<faam.h>` and link `libfaam`
-(pkg-config module `faam`). The `faam` CLI in `frontend/` is documented in
-`faam(1)`.
+FAAM reads and writes ISO BMFF files: MP4, M4A and M4B. The application
+supplies encoded access units and decoder configuration; the library does no
+encoding or decoding. All stream access uses caller-supplied callbacks.
+The `faam` command-line tool in `frontend/` is documented in `faam(1)`.
 
-The library and header are built and installed whether or not the CLI is enabled.
+## Interface description
+
+Include `<faam.h>` and link against `libfaam`. Installed builds provide the
+`faam` pkg-config module. Meson builds shared and static libraries by default;
+`-Ddefault_library` selects one. The library and header are built and installed
+whether or not the `faam` command-line tool is enabled.
 
 ## Building and linking
+
+From the source directory, build and install the library with Meson. The
+frontends can be turned off:
 
 ```sh
 meson setup build-faam -Dfrontend=false
 meson compile -C build-faam
 meson install -C build-faam
+```
+
+The `faam` tool is built by default; `-Dmuxer=false` leaves it out. Video and
+fragmented files are enabled by default too (see the options below). For an
+installed library, compile an example from this guide with:
+
+```sh
 cc -std=c11 -Wall -Wextra inspect.c -o inspect $(pkg-config --cflags --libs faam)
 ```
 
-- Shared and static libraries are built by default; `-Ddefault_library` selects one.
-- The `faam` tool is built by default; `-Dmuxer=false` leaves it out. Video and
-  fragmented files are enabled by default (see [Supported content](#supported-content)).
-- Custom prefix: add its pkg-config directory to `PKG_CONFIG_PATH`. Inside the source
-  tree, link from the build directory and add `include/` to the include path.
-- Static linking: `pkg-config --cflags --libs --static faam` plus a static-only
-  install or your toolchain's archive selection.
+For a custom installation prefix, add its pkg-config directory to
+`PKG_CONFIG_PATH`. Within the source tree, link the library from the build
+directory and add `include/` to the include path.
 
-### Without Meson
+For static linking, use `pkg-config --cflags --libs --static faam` and select an
+installation containing only the static library, or use your toolchain's
+archive-selection options.
 
-Compile `libfaam/demux.c`, `mux.c`, `metadata.c`, `faam_util.c`, `tag.c`,
-`chapter.c` and `atom_patch.c` with `include/` and `common/` on the include path.
-Define `FAAM_BUILDING` for a Windows DLL, and `FAAM_MUXER_VIDEO=1` and
-`FAAM_MUXER_FRAGMENTED=1` to include those features (leave them undefined to omit
-them). Install `include/faam.h` with the library.
+Building without Meson: compile `libfaam/demux.c`, `mux.c`, `metadata.c`,
+`faam_util.c`, `tag.c`, `chapter.c` and `atom_patch.c` with `include/` and
+`common/` on the include path. Define `FAAM_BUILDING` when building a Windows DLL; nothing
+else needs a define. Define
+`FAAM_MUXER_VIDEO=1` and `FAAM_MUXER_FRAGMENTED=1` to include those features;
+leave the macros undefined to omit them. Install `include/faam.h` with the library.
 
 ## Supported content
 
-`faam_get_library_info()` (set `struct_size` first) returns `version` and
-`copyright` (static strings), `max_tracks` (tracks one muxer can write or one
-demuxer can hold) and `flags` with `FAAM_LIB_*` bits.
+Query `faam_get_library_info()` with `faam_library_info.struct_size` set.
+`flags` contains `FAAM_LIB_*` bits; `max_tracks` is the number one
+muxer can write or one demuxer can hold. `version` and `copyright` are static strings.
 
-| Feature | Option (default) | Runtime check | When absent |
+| Optional feature | Option (default) | Runtime detection | When absent |
 |---|---|---|---|
-| H.264/H.265, including Annex-B input and avc3/hev1 | `muxer-video` (true) | `FAAM_LIB_VIDEO` | Video muxing and nonzero CTS offsets return `FAAM_ERR_NOT_BUILT`. Video sample entries demux as `FAAM_CODEC_GENERIC` without sync/CTS parsing |
-| Fragmented MP4 | `muxer-fragmented` (true) | `FAAM_LIB_FRAGMENTED` | Fragmented muxing and demuxing return `FAAM_ERR_NOT_BUILT` |
+| H.264/H.265, including Annex-B input and avc3/hev1 | `muxer-video` (true) | `FAAM_LIB_VIDEO` | Video muxing and non-zero frame CTS offsets return `FAAM_ERR_NOT_BUILT`; video sample entries demux as `FAAM_CODEC_GENERIC`, without video sync/CTS parsing. |
+| Fragmented MP4 | `muxer-fragmented` (true) | `FAAM_LIB_FRAGMENTED` | Fragmented muxing/demuxing returns `FAAM_ERR_NOT_BUILT`. |
 
-## Using the API
+## API (faam.h)
 
-Every fallible call returns a `faam_status` and returns results through
-out-parameters. Set `struct_size` on every input and output struct, including nested
-pointer targets. The `flags` argument of `faam_update_chapters_stream()` is reserved
-and must be 0.
+Every fallible call returns `faam_status`; results use out-parameters. Set
+`struct_size` on every input and output struct, including nested pointer targets.
+The `flags` argument of `faam_update_chapters_stream()` is reserved and must be 0.
 
 ### Stream I/O
 
-`faam_io` holds `struct_size`, `user_data`, and the `read`, `write`, `seek`, `tell`
-and optional `flush` callbacks. The library copies it; keep `user_data` alive until
-close. Seek offsets are absolute byte offsets.
+`faam_io` starts with `struct_size`, followed by `user_data` and the `read`,
+`write`, `seek`, `tell` and optional `flush` callbacks. The library copies it;
+keep `user_data` alive until close. Seek offsets are absolute, in bytes.
 
 | Operation | Required callbacks |
 |---|---|
 | Demuxer open | `read`, `seek` |
-| Muxer open (both modes) | `write`, `seek`, `tell` |
+| Muxer open, both modes | `write`, `seek`, `tell` |
 | Muxer with `FAAM_MUXER_FASTSTART` | `read`, `write`, `seek`, `tell` |
-| Tag and chapter updates | `read`, `write`, `seek`, `tell` |
+| Tag/chapter updates | `read`, `write`, `seek`, `tell` |
 
-A missing required callback returns `FAAM_ERR_UNSUPPORTED` before any I/O.
+Missing required callbacks return `FAAM_ERR_UNSUPPORTED` before any I/O.
+`read` may return a short count: the library retries until satisfied. Zero
+means end of data; a negative count or one above the request is
+`FAAM_ERR_IO_READ`. During demuxer open, zero inside a structure is treated as
+truncation: the file opens with whatever was parsed, possibly no tracks.
+`write` must return exactly the requested count. Any other count, or a failed
+muxer seek/flush, is `FAAM_ERR_IO_WRITE`. Muxer I/O failures are sticky.
+The demuxer does not use write/tell; the muxer uses read only for `FAAM_MUXER_FASTSTART`.
+A single read or write request never exceeds `INT32_MAX` bytes, the largest count the
+callbacks can return; `faam_muxer_write_frame()` rejects a larger `frame_bytes` with
+`FAAM_ERR_INVALID_ARGUMENT`.
+Optional flush runs at muxer finalize and at fragmented open and fragment completion.
 
-- **`read`** may return a short count; the library retries. Zero means end of data.
-  A negative count or one above the request is `FAAM_ERR_IO_READ`. During demuxer
-  open, zero inside a structure counts as truncation: the file opens with whatever
-  was parsed, possibly no tracks.
-- **`write`** must return exactly the requested count. Any other count, or a failed
-  muxer seek or flush, is `FAAM_ERR_IO_WRITE`. Muxer I/O failures are sticky.
-- A single read or write request never exceeds `INT32_MAX` bytes;
-  `faam_muxer_write_frame()` rejects a larger `frame_bytes` with
-  `FAAM_ERR_INVALID_ARGUMENT`.
-- **`flush`** runs at muxer finalize and at fragmented open and fragment completion.
-- The demuxer never uses write or tell. The muxer uses read only for
-  `FAAM_MUXER_FASTSTART`.
-
-Save this adapter as `stdio_io.h` and include it before other headers, so the POSIX
-declarations and large-file offsets are enabled:
+Save this adapter as `stdio_io.h`. Include it before other headers so the
+POSIX declarations and large-file offsets are enabled:
 
 ```c
 /* stdio_io.h */
@@ -156,34 +168,33 @@ static faam_io stdio_io(FILE *f)
 }
 ```
 
-### Errors
+### Error handling
 
-`FAAM_OK` is 0 and errors are negative, but `FAAM_END_OF_STREAM` is +1: test for it
-explicitly in frame loops, and use `status < 0` to detect errors. `faam_strerror()`
-returns a static, non-NULL string.
+`FAAM_OK` is zero, errors are negative, and `FAAM_END_OF_STREAM` is +1.
+Test for end of stream explicitly in frame loops; `status < 0` detects errors.
+`faam_strerror()` returns a static, non-NULL string.
 
 | Status | Value | Meaning |
 |---|---|---|
 | `FAAM_OK` | 0 | Success |
 | `FAAM_ERR_INVALID_ARGUMENT` | -1 | NULL required pointer, invalid struct size, configuration, flags or call order |
-| `FAAM_ERR_UNSUPPORTED` | -2 | Missing required callback, unsupported content or call, or in-place 64-bit box header |
-| `FAAM_ERR_NO_MEMORY` | -3 | Allocation failed |
-| `FAAM_ERR_OUTPUT_TOO_SMALL` | -4 | Output capacity too small; the length out-parameter reports the required size |
-| `FAAM_ERR_IO_READ` | -5 | Failed read, or insufficient data for the operation |
+| `FAAM_ERR_UNSUPPORTED` | -2 | Missing required callback, unsupported content/call or in-place 64-bit box header |
+| `FAAM_ERR_NO_MEMORY` | -3 | An allocation failed |
+| `FAAM_ERR_OUTPUT_TOO_SMALL` | -4 | Output capacity too small; length out-parameter reports required capacity |
+| `FAAM_ERR_IO_READ` | -5 | Failed read or insufficient data for the requested operation |
 | `FAAM_ERR_IO_WRITE` | -6 | Failed write, muxer seek or flush |
 | `FAAM_ERR_BAD_CONTAINER` | -7 | Invalid atom structure or missing track; no `moov` for an in-place edit |
 | `FAAM_ERR_NO_TRACK` | -8 | No matching track |
-| `FAAM_ERR_NOT_BUILT` | -9 | Feature compiled out; check `faam_library_info.flags` |
+| `FAAM_ERR_NOT_BUILT` | -9 | Feature compiled out; query `faam_library_info.flags` |
 | `FAAM_END_OF_STREAM` | 1 | No more frames; not an error |
 
-- Init and open set the output handle to NULL before failing. Close takes the
-  handle's address and clears it; check its status too.
-- Muxer I/O and allocation failures are sticky, including at finalize and close.
-  Argument errors are not.
+Init/open set the output handle to NULL before failing. Close takes its
+address and clears it; check its status too. Muxer I/O/allocation failures
+are sticky, including at finalize/close. Argument errors are not sticky.
 
-### Functions
+### Function reference
 
-Output structs require `struct_size`.
+The declarations below are from `faam.h`; output structs require `struct_size`.
 
 ```c
 faam_status faam_get_library_info(faam_library_info *out_info);
@@ -230,353 +241,378 @@ faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *c
 
 ### Demuxer lifecycle
 
-1. Open with a `faam_demuxer_config` from `faam_demuxer_config_init()` (`flags`
-   stays 0), or NULL for defaults. Open retains `moov` and indexes progressive
-   samples; no `moov` means zero tracks.
-2. Get the held and total track counts, then query track info by index. Every other
-   track call takes the returned `track_id`.
-   - Codec data is copied into your buffer; NULL with capacity 0 queries the length,
-     and a too-small buffer returns `FAAM_ERR_OUTPUT_TOO_SMALL` with the required
-     length.
-   - The major brand is a 5-byte NUL-terminated string with padding spaces kept, and
-     is empty without `ftyp`.
-3. Set `faam_frame_loc.struct_size` and call `next_frame_loc` to inspect the next
-   sample without advancing. `flags` carries `FAAM_FRAME_KEYFRAME` for a sync sample
-   (all audio samples are keyframes). `read_frame` reads and advances; a NULL buffer
-   skips the frame, and a too-small buffer reports the needed size without advancing.
-   Stop on `FAAM_END_OF_STREAM` and report negative statuses. The `faam_demuxer_get_*`
-   queries take a const handle and never move the cursor.
-4. Read tags with `faam_demuxer_get_num_metadata()` and the indexed getter.
-5. Close the handle. It does not close your stream.
+1. Pass a `faam_demuxer_config` from `faam_demuxer_config_init()` (`flags` stays zero), or
+   NULL for defaults, to open. Opening retains `moov` and
+   indexes progressive samples; no `moov` means zero tracks.
+2. Get held/total counts, then query track info by index. Other track calls
+   use the returned `track_id`. Codec data is copied to your buffer; NULL
+   with capacity zero queries its length. An undersized buffer reports
+   `FAAM_ERR_OUTPUT_TOO_SMALL` and the required length. Major brand is a
+   five-byte NUL-terminated string, padding spaces retained, empty without `ftyp`.
+3. Initialize `faam_frame_loc.struct_size` and call next_frame_loc to inspect
+   the next sample. It does not advance. `flags` carries `FAAM_FRAME_KEYFRAME`
+   for a sync sample; audio samples are all keyframes. The `faam_demuxer_get_*`
+   queries take a const handle and do not change the cursor. read_frame reads and advances;
+   a NULL payload buffer skips it. An undersized buffer reports its required
+   size without advancing. Stop on `FAAM_END_OF_STREAM`, and report negative statuses.
+4. Query tags with `faam_demuxer_get_num_metadata()` and the indexed entry getter.
+5. Close the handle; it does not close your stream.
 
-Track info includes timescale, sample rate, channels, total frames and duration,
-maximum frame size, language, the big-endian sample-entry `fourcc`, flags,
-width and height, and clockwise rotation (0, 90, 180 or 270; other matrices read 0).
-
-- `FAAM_TRACK_OTHER` marks other handlers, including text, timecode and metadata.
-- `FAAM_TRACK_INFO_INBAND_PARAMS` marks avc3/hev1 entries.
-- Progressive duration is in track ticks. For fragmented files `total_frames` is 0,
-  duration comes from `mehd` (0 before finalization), and the maximum frame size is
-  the largest seen so far (0 before the first fragment loads).
+Track info includes timescale, sample rate, channels, total frames/duration,
+maximum frame size, language, big-endian sample-entry `fourcc`, flags,
+width/height and clockwise rotation (0, 90, 180, 270; other matrices read 0).
+`FAAM_TRACK_OTHER` identifies other handlers, including text/timecode/metadata.
+`FAAM_TRACK_INFO_INBAND_PARAMS` identifies avc3/hev1 entries.
+Progressive duration is in track ticks. Fragmented total_frames is zero,
+duration comes from `mehd` (zero before finalization), and maximum frame size
+is the largest seen so far, zero before the first fragment is loaded.
 
 ### Muxer lifecycle
 
-1. `faam_muxer_config_init(&cfg, sizeof cfg)`. Point `tracks` at an array of
-   `faam_track_config` and set `num_tracks` (1 to `max_tracks`). Every element needs
-   the same `struct_size`. Audio is `FAAM_TRACK_AUDIO` / `FAAM_CODEC_AAC`; video is
-   `FAAM_TRACK_VIDEO` with `FAAM_CODEC_H264` or `FAAM_CODEC_H265`.
-2. Optionally set `creation_time`, `fragment_ms`, `metadata` / `num_metadata`,
-   `chapters` / `num_chapters` and `gapless`. A config is required; a NULL config is
-   rejected. `flags` accepts only:
-   - `FAAM_MUXER_M4B`: progressive audio-only M4B branding
-   - `FAAM_MUXER_CONSTANT_RATE`: esds `maxBitrate` equals `avgBitrate`
-   - `FAAM_MUXER_FASTSTART`: see [Moving the index to the front](#moving-the-index-to-the-front)
-
+1. Call `faam_muxer_config_init(&cfg, sizeof(cfg))`. Set `tracks` to an array
+   of `faam_track_config` and `num_tracks` to its count, from 1 to max_tracks.
+   Set every element's struct_size to the same size. Audio uses
+   `FAAM_TRACK_AUDIO`/`FAAM_CODEC_AAC`; video uses
+   `FAAM_TRACK_VIDEO`/`FAAM_CODEC_H264` or `FAAM_CODEC_H265`.
+2. Set optional creation_time, fragment_ms, metadata/num_metadata, chapters/count and
+   gapless pointers. `flags` accepts `FAAM_MUXER_M4B` (progressive audio-only
+   M4B branding), `FAAM_MUXER_CONSTANT_RATE` (esds maxBitrate equals avgBitrate)
+   and `FAAM_MUXER_FASTSTART` (see [Moving the index to the front](#moving-the-index-to-the-front)).
    Any other bit is `FAAM_ERR_INVALID_ARGUMENT`.
-3. `faam_muxer_open()`. A track ID of 0 auto-assigns; read IDs back in config order
-   with `faam_muxer_get_track_id()`. Explicit IDs must be unique. Progressive open
-   writes ftyp and mdat. Video and fragmented files use `isom`; otherwise the brand
-   is M4A or M4B.
-4. Write one encoded access unit per `faam_muxer_write_frame()` call, in decode order
-   per track; tracks may interleave. `duration_ticks` is the DTS delta and
-   `cts_offset` is PTS minus DTS. `frame_bytes` must be nonzero. Pass
-   `FAAM_FRAME_KEYFRAME` for video sync samples; audio ignores it.
-5. Finalize to write the progressive moov and sample tables and patch mdat, or to
-   close the last fragment. Repeating a successful finalize succeeds; writing or
-   updating afterwards is invalid. `faam_muxer_get_info()` (set `struct_size`)
-   returns `frame_count`, `duration_ticks`, `file_bytes`, max and average bitrate and
-   `max_frame_size`. Close on every path and check its sticky status.
+   Supply a populated config: the current muxer rejects NULL.
+3. Open with `faam_muxer_open()`. Track ID zero auto-assigns;
+   `faam_muxer_get_track_id()` retrieves IDs in config order. Explicit IDs
+   must be unique. Progressive open writes ftyp/mdat; video and fragmented
+   files use isom, otherwise M4A or M4B.
+4. Write one encoded access unit per call using that ID, in decode order per
+   track. duration_ticks is the DTS delta; cts_offset is PTS minus DTS.
+   Frames from different tracks may interleave. frame_bytes must be non-zero.
+   Use `FAAM_FRAME_KEYFRAME` in frame_flags for video sync samples; audio
+   ignores that flag because every audio sample is a keyframe.
+5. Finalize to write progressive moov/sample tables and patch mdat, or close
+   the last fragment. Repeating a successful finalize succeeds; writing or
+   updating afterwards is invalid. Query `faam_muxer_info` (struct_size set)
+   for frame_count, duration_ticks, file_bytes, max/average bitrate and max_frame_size.
+   Close on every path and check the returned sticky status.
 
-Notes:
-
-- AAC: timescale and sample rate are the audio rate, with 1024 ticks per frame.
-  HE-AAC uses the core rate, still 1024 ticks per frame.
-- Audio track flags must be 0. GENERIC and OTHER tracks cannot be muxed.
-- Video needs dimensions and decoder configuration; only progressive Annex-B H.264
-  may derive it.
-- Codec data is at most `FAAM_CODEC_DATA_MAX` (1024) bytes.
-- Creation time is Unix seconds, 0 for unset. Version-1 time boxes avoid wrapping when
-  the 1904-epoch value reaches 2040.
+For AAC, timescale/sample_rate are the audio rate and duration is normally
+1024 samples. HE-AAC uses the core rate, still 1024 ticks per frame.
+Audio track flags must be zero; GENERIC/OTHER tracks are not muxable.
+Video needs dimensions and decoder configuration, except progressive Annex-B
+H.264 may derive it. Codec data is at most `FAAM_CODEC_DATA_MAX` (1024 bytes).
+Creation time is Unix seconds, zero unset; version-1 time boxes avoid wrapping
+when the stored 1904-epoch time reaches 2040.
 
 ### Allocation and ownership
 
-Open owns every instance allocation and close releases it.
+Open owns all instance allocations; close releases them. Muxer handles, tracks,
+fragment indexes and oversized codec configurations are independent blocks.
+Progressive sample tables and demuxer indexes/strings allocate as needed.
+Fragmented muxers allocate their entire index at open and allocate nothing while muxing.
+The demuxer uses views into its loaded `moov` buffer for temporary sample tables,
+avoiding duplicate allocations while constructing the final sample index.
 
-- Muxer handles, tracks, fragment indexes and oversized codec configs are separate
-  blocks.
-- Progressive sample tables and demuxer indexes and strings allocate as needed.
-- A fragmented muxer allocates its whole index at open and nothing while muxing.
-- The demuxer builds its final sample index from views into the loaded `moov`
-  buffer, avoiding duplicate allocations.
+Source builds can override `AllocMemory` and `FreeMemory` together using `-D`
+or a force-included header with function declarations. They default to
+`malloc`/`free`. Return storage aligned as `malloc` does, and allow NULL
+arguments to `FreeMemory`. Default builds use libc `realloc` for growing buffers;
+custom-allocator builds allocate, copy initialized bytes and free the old block,
+so growth preserves the custom allocator's memory placement. There are no
+separate fast-memory or reallocation hooks.
 
-A source build can override `AllocMemory` and `FreeMemory` together with `-D` or a
-force-included header (default `malloc`/`free`). Return `malloc`-aligned storage and
-accept NULL in `FreeMemory`. Default builds grow buffers with libc `realloc`;
-custom-allocator builds allocate, copy and free so growth stays in the custom
-memory. There are no separate fast-memory or realloc hooks.
-
-**Lifetimes**
-
-- Tracks and codec data are read or copied at open.
-- Progressive metadata and chapters are borrowed until finalize. Supply them at open,
-  or bind metadata later with `FAAM_UPDATE_METADATA`. Fragmented metadata and
-  chapters must be in the config; they are written at open.
-- Strings, artwork and list contents must stay valid through finalize or update, as
-  the header specifies.
-- Demuxer output pointers live until close. Library information and error strings
-  are static.
-- Metadata output is read by index, never as an array pointer.
+Tracks and codec data are read/copied at open. Progressive metadata and
+chapters are borrowed until finalize. Supply metadata entries and num_metadata at
+open, or bind them later with `FAAM_UPDATE_METADATA` for progressive files.
+Fragmented metadata/chapters must be supplied in the config and are written at open. Strings, artwork and input
+list contents must remain valid through finalize/update as specified by the
+header. Demuxer output pointers live until close. Library information and
+error strings are static. Metadata output is accessed by index, not an array pointer.
 
 #### Running without a heap
 
-A fixed pool can replace the system heap. Use the `pool_alloc` / `pool_free` bump
-allocator from the [FAAC example](libfaac.md#running-without-a-heap) and build libfaam
-with `-DAllocMemory=pool_alloc -DFreeMemory=pool_free`.
+A fixed-pool override can avoid the system heap. Force-include a header
+declaring `pool_alloc(size_t)` and `pool_free(void *)` when compiling libfaam with
+`-DAllocMemory=pool_alloc -DFreeMemory=pool_free`. Compile their definitions
+into your application:
 
-- Use one FAAM operation or instance at a time with this pool and serialize access.
-- Reset only after close or a failed open or standalone update, once no pool-backed
-  instance or borrowed output remains. If the pool is shared across libraries, reset
-  only after every pool-backed handle is closed.
-- Exhaustion returns `FAAM_ERR_NO_MEMORY`.
-- A bump allocator never reuses freed blocks, so budget every allocation over the
-  whole operation: temporary parsing buffers, and both old and new buffers during
-  growth. Progressive tables grow with recording length, and fragmented demuxing
-  allocates temporary buffers per fragment. Use a reclaiming pool for long or
-  unbounded work.
-- Fragmented muxing allocates everything at open and nothing while writing or
-  finalizing, so a bounded static pool is practical there.
-- I/O and PCM buffers, stack and the stream callback's storage are outside the pool.
+```c
+#include <stddef.h>
 
-## Metadata, gapless and chapters
+/* Define POOL_BYTES for your build and container workload. */
+static _Alignas(16) unsigned char pool[POOL_BYTES];
+static size_t used;
 
-### Gapless
+void *pool_alloc(size_t n)
+{
+    if (n > sizeof(pool) - used)
+        return NULL;
+    n = (n + 15u) & ~(size_t)15u;
+    if (n > sizeof(pool) - used)
+        return NULL;
+    void *p = pool + used;
+    used += n;
+    return p;
+}
 
-`faam_gapless_info` holds `encoder_delay`, `end_padding` and `total_samples`, in
-samples of the audio track timescale (the core rate for HE-AAC). You supply the
-codec's priming.
+void pool_free(void *p) { (void)p; }
+void pool_reset(void) { used = 0; }
+```
 
-- `cfg.gapless` provides iTunSMPB and every audio edit list; `track.gapless`
-  overrides that track's edit list. The edit list needs a nonzero delay.
-- Progressive finalize derives an unknown total from the coded duration minus
-  delay and padding, saturating at 0 for an empty programme.
-- Fragmented gapless data is written at open, and `total_samples` must be given for
-  its edit list.
-- `faam_demuxer_get_track_gapless()` takes a track ID, or 0 for the first audio
-  track. iTunSMPB wins on the first audio track; otherwise each track uses its own
-  edit list. Missing data reads as zeros.
+Use one FAAM operation or instance at a time with this pool and serialize
+access. Reset only after close or a failed open/standalone update, once no
+pool-backed instance or borrowed output remains. Allocation failure returns
+`FAAM_ERR_NO_MEMORY`.
 
-### Metadata entries
+A bump allocator never reuses freed blocks. Budget for every allocation over
+the whole operation, including temporary parsing buffers and both old and new
+buffers during growth. Progressive tables grow with recording length;
+fragmented demuxing allocates temporary buffers for each fragment. Use a
+reclaiming pool for long or unbounded workloads. Fragmented muxing allocates
+its state and complete index during open and allocates nothing while writing
+or finalizing, making a bounded static pool practical. Input/output buffers,
+stack and the stream callback's storage remain separate. See the matching
+[FAAC example](libfaac.md#running-without-a-heap) and
+[FAAD example](libfaad.md#running-without-a-heap).
 
-Metadata is a pointer and count of `faam_metadata_entry`: a 4-byte `key`, 24-bit
-`data_type`, 32-bit `locale`, `data` / `data_bytes`, `flags`, and optional freeform
-`mean` / `name`. No per-field code is needed for new tags. Set all struct sizes and
-zero other fields first.
+If this pool is shared across libraries, reset it only after every pool-backed
+handle is closed and no operation still uses its storage.
 
-- Lyrics use `FAAM_FOURCC(0xa9, 'l', 'y', 'r')`: the copyright byte in an atom key is
-  one byte, **not** a UTF-8 character.
-- UTF-8 payloads use `FAAM_METADATA_UTF8`; the length excludes the terminating NUL.
-  Line breaks are preserved.
-- Integers use `FAAM_METADATA_INTEGER` with big-endian bytes of the right width.
-- Unknown 24-bit types, arbitrary binary data and locale values pass through without
-  interpretation or validation.
+### Gapless playback, metadata and chapters
 
-| Key | Representation |
-|---|---|
-| `©nam`, `©ART`, `©alb`, sort names, lyrics, descriptions | UTF-8 |
-| `tmpo`, `©mvi`, `©mvc` | big-endian integer, 2 bytes |
-| `shwm`, `cpil` | integer, 1 byte |
-| `trkn`, `disk` | implicit bytes: reserved u16, number u16, total u16, reserved u16, all big-endian |
-| `covr` | raw image bytes; type JPEG 13, PNG 14, GIF 12 or BMP 27 |
+`faam_gapless_info` holds encoder_delay, end_padding and total_samples, in
+samples of the audio track timescale (HE-AAC core rate). Supply the codec's
+priming yourself. cfg.gapless supplies iTunSMPB and every audio edit list;
+track.gapless overrides that track's edit list. The edit list requires a
+non-zero delay. Progressive finalize derives an unknown total from coded
+duration minus delay/padding, saturating at zero for an empty programme.
+Fragmented gapless information is written at open; total_samples must be given
+for its edit list. Query `faam_demuxer_get_track_gapless()` by ID, or zero for
+the first audio track: iTunSMPB takes precedence on the first audio track,
+otherwise each track uses its own edit list. Missing information gives zeros.
 
-- Podcast and TV tags (`stik`, `pcst`, `tvsh`) and future native keys use the same
-  API even when the CLI has no named option for them. Year, comment and encoder are
-  ordinary UTF-8 entries.
-- Repeated entries carry multiple cover images or multiple values of a key.
-  Repeated atoms and multiple data children inside one atom are both enumerated, in
-  file order.
-- A freeform entry has key `FAAM_FOURCC('-', '-', '-', '-')` and a nonempty `name`;
-  NULL or empty `mean` defaults to `com.apple.iTunes`. Native entries must have NULL
-  `mean` and `name`. MusicBrainz IDs, ISRC, ReplayGain and similar tags need no extra
-  API; use the namespace and tag name each tool expects.
+Metadata is a list of entries supplied as a pointer and count.
+Every value uses `faam_metadata_entry`, with a four-byte `key`, 24-bit
+`data_type`, 32-bit `locale`, byte pointer/length (`data`/`data_bytes`),
+`flags`, and optional freeform `mean`/`name`. The library does not need a
+field-specific implementation for new metadata. Set all struct sizes and
+zero other fields before filling them.
 
-Reading: `faam_demuxer_get_num_metadata()` then `faam_demuxer_get_metadata_entry()` by
-index. Payloads, names and namespaces stay valid until close. Payload lengths are
-authoritative, so never treat binary or NUL-containing data as C strings. Opaque
-atoms without a usable data child are not enumerated but survive unrelated edits.
-Gapless data stays in its own API because it also drives track timing.
+Use `FAAM_FOURCC(0xa9, 'l', 'y', 'r')` for lyrics: the copyright byte in
+an atom key is one byte, **not** a UTF-8 character. A UTF-8 payload uses
+`FAAM_METADATA_UTF8`; its length excludes the terminating NUL. Line breaks
+are preserved. Integer payloads use `FAAM_METADATA_INTEGER` with big-endian
+bytes of the appropriate width. Unknown 24-bit types, arbitrary binary data,
+and locale values pass through without interpretation or content validation.
 
-### Chapters
+Library representations include:
 
-Each chapter has a `start_ms` and a non-NULL UTF-8 `title`, stored up to 255 bytes.
-Read them with `faam_demuxer_get_num_chapters()` and `faam_demuxer_get_chapter()`
-using an initialized output struct. Nero `chpl` allows at most 255 chapters;
-QuickTime chapter tracks are not interpreted.
+- `©nam`, `©ART`, `©alb`, sort names, lyrics and descriptions -> UTF-8.
+- `tmpo`, `©mvi`, `©mvc` -> big-endian integer, 2 bytes.
+- `shwm`, `cpil` -> integer, 1 byte.
+- `trkn`, `disk` -> implicit bytes: reserved u16, number u16, total u16, reserved u16, all big-endian.
+- `covr` -> raw image bytes, JPEG 13, PNG 14, GIF 12 or BMP 27.
 
-## Editing finished files
+Podcast/TV tags such as `stik`, `pcst`, and `tvsh`, and future native keys,
+use the same generic API even when the CLI has no named option for them.
+
+Sort names, year, comment, and encoder are ordinary UTF-8 entries too.
+Multiple cover images and multiple values of any key are
+represented by repeated entries. Both repeated atoms and multiple data children
+inside one atom are enumerated, in file order.
+
+A freeform entry has key `FAAM_FOURCC('-', '-', '-', '-')` and a nonempty
+`name`; NULL or empty `mean` defaults to `com.apple.iTunes`. Native entries
+must have NULL `mean` and `name`. MusicBrainz IDs, ISRC, ReplayGain, and other
+freeform tags need no additional library API. For example, use the conventional
+`com.apple.iTunes` namespace and the appropriate tag name for each tool.
+
+The demuxer returns the count through `faam_demuxer_get_num_metadata()`; retrieve values by
+index with `faam_demuxer_get_metadata_entry()`. Payloads, names and namespaces
+remain valid until close. Payload lengths are authoritative; binary data and
+text containing NUL bytes must not be treated as C strings. Opaque atoms
+without a usable data child are not enumerated, but survive unrelated edits.
+Gapless playback information remains available through the separate gapless
+API because it also controls track timing and edit lists.
+
+Chapters use start_ms and non-NULL UTF-8 title, stored up to 255 bytes.
+Use `faam_demuxer_get_num_chapters()` and `faam_demuxer_get_chapter()` with an
+initialized output struct. Nero chpl supports at most 255 chapters; QuickTime
+chapter tracks are not interpreted.
+
+### Editing finished files
 
 `faam_update_metadata_stream(io, entries, count, flags)` and
-`faam_update_chapters_stream(io, chapters, count, flags)` edit finished progressive
-files in place, with no remux. Supply only the entries to change; there is no need to
-open a demuxer and copy existing tags. Close any open demuxer and reopen it before
-reading the modified file. Only iTunes `ilst` metadata is handled; in-place editing
-rejects `mdta`.
+`faam_update_chapters_stream(io, chapters, count, flags)` edit finished
+progressive files in place. Chapter flags are reserved and must be zero;
+count zero writes an empty chapter list. Missing udta/meta/ilst/chpl atoms
+are created. Growing moov adjusts moov-first chunk offsets; shrinking leaves
+free space. A 64-bit size header on moov or an edited box is unsupported and
+leaves the file unchanged. No moov is `FAAM_ERR_BAD_CONTAINER`.
+A fragmented recording, finalized or cut short by a crash, can be tagged too: its
+completed fragments stay playable.
+These edits are not transactional; interrupted writes can damage the file.
 
-**Tags**
+### Codec data and language
 
-- With flags 0, each supplied key replaces **all** existing values of that key.
-  Identity is the native 4-byte key, or key plus namespace and name for freeform
-  tags; locale and data type do not affect it. Repeated input keys supply multiple
-  replacement values.
-- `FAAM_METADATA_REMOVE` with NULL data and zero length removes a key. Do not mix a
-  removal and values for the same key. An empty payload without REMOVE writes an
-  explicit empty value.
-- Untouched atoms, including unknown atoms, artwork and iTunSMPB, are preserved
-  byte-for-byte in their original order.
-- `FAAM_METADATA_UPDATE_CLEAR` drops all existing `ilst` atoms first. Chapters stay
-  intact, and chapter updates keep metadata.
-- Invalid arguments and malformed `ilst` child lengths fail before anything is
-  rewritten.
+Set informational PCM `audio_sample_size` in `faam_track_config` before open;
+zero selects the default 16 bits. It does not change encoded audio.
 
-**Chapters and file layout**
 
-- Chapter `flags` are reserved and must be 0; count 0 writes an empty chapter list.
-- Missing `udta`, `meta`, `ilst` and `chpl` atoms are created.
-- Growing `moov` adjusts moov-first chunk offsets; shrinking leaves free space.
-- A 64-bit size header on `moov` or an edited box is unsupported and leaves the file
-  unchanged. No `moov` is `FAAM_ERR_BAD_CONTAINER`.
-- A fragmented recording, finalized or cut short by a crash, can be tagged too; its
-  completed fragments stay playable.
-- Edits are not transactional: an interrupted write can damage the file.
-
-## Codec data and language
-
-Set the informational PCM `audio_sample_size` in `faam_track_config` before open; 0
-selects 16 bits. It does not change the encoded audio.
-
-For late progressive configuration, fill `faam_muxer_update_params` (set `struct_size`
-and `flags`) and call `faam_muxer_update()`:
+For late progressive configuration use `faam_muxer_update_params` with
+struct_size and flags set, then call `faam_muxer_update()`:
 
 | Flag | Fields applied |
 |---|---|
-| `FAAM_UPDATE_CREATION_TIME` | `creation_time` (Unix seconds) |
-| `FAAM_UPDATE_GAPLESS` | `gapless` pointer |
-| `FAAM_UPDATE_CODEC_DATA` | `track_id`, `codec_data`, `codec_data_len` (copied, at most `FAAM_CODEC_DATA_MAX`) |
-| `FAAM_UPDATE_LANGUAGE` | `track_id`, `language` |
-| `FAAM_UPDATE_METADATA` | `metadata`, `num_metadata` (borrowed until finalize) |
+| `FAAM_UPDATE_CREATION_TIME` | creation_time (Unix seconds) |
+| `FAAM_UPDATE_GAPLESS` | gapless pointer |
+| `FAAM_UPDATE_CODEC_DATA` | track_id, codec_data, codec_data_len (copied, at most FAAM_CODEC_DATA_MAX) |
+| `FAAM_UPDATE_LANGUAGE` | track_id, language |
+| `FAAM_UPDATE_METADATA` | metadata, num_metadata (borrowed until finalize) |
 
-- Unselected fields are ignored. Fragmented update returns `FAAM_ERR_UNSUPPORTED`;
-  update after finalize returns `FAAM_ERR_INVALID_ARGUMENT`.
-- Language is the first three ISO 639-2/T letters, lowercased. Short input or any
-  non-letter gives `und`.
-- Any AAC object type is carried as opaque `codec_data`. xHE-AAC/USAC passes through
-  the same way, untested end to end, and its channel count is not derived from the
-  USAC configuration.
+Unselected fields are ignored. Fragmented update returns
+`FAAM_ERR_UNSUPPORTED`; update after finalize returns `FAAM_ERR_INVALID_ARGUMENT`.
+Language uses the first three ISO 639-2/T letters, normalized lowercase;
+short NUL-terminated input or any non-letter gives und.
 
-## Video tracks
+Any AAC object type is carried as opaque `codec_data`. xHE-AAC/USAC passes
+through the same way, untested end to end, and the channel count is not derived
+from the USAC configuration.
 
-Set width, height, timescale (often 90000), `rotation_degrees` and `codec_data` (the
-avcC or hvcC payload).
+### Video tracks
 
-- A nonzero `cts_offset` allows negative values for B-frames, needs `FAAM_LIB_VIDEO`
-  and is invalid on audio. Progressive files write `ctts` only for nonzero offsets,
-  and an edit list compensates the first offset.
-- Set `FAAM_TRACK_INBAND_PARAMS` when samples repeat parameter sets; this selects
-  avc3/hev1 and still needs `codec_data` for the configuration boxes.
-- `FAAM_TRACK_ANNEXB` accepts `00 00 01` or `00 00 00 01` start codes and writes
-  4-byte length-prefixed NAL units without modifying your buffer or allocating.
-- Progressive H.264 may omit `codec_data` if the first access unit carries SPS then
-  PPS to derive avcC; finalize fails if none was found. H.265 always needs a supplied
-  hvcC. Dimensions are always required.
+Set width, height, timescale (often 90000), rotation_degrees and codec_data
+(avcC/hvcC payload). Non-zero cts_offset permits negative values for B-frames,
+requires FAAM_LIB_VIDEO and is invalid for audio. Progressive files write
+ctts only for non-zero offsets; the first offset is compensated by an edit list.
+Set `FAAM_TRACK_INBAND_PARAMS` when samples repeat parameter sets, selecting
+avc3/hev1; codec_data is still required for their configuration boxes.
 
-## Recording to removable storage
+`FAAM_TRACK_ANNEXB` accepts 00 00 01 or 00 00 00 01 start codes and writes
+four-byte length-prefixed NAL units without modifying the caller buffer or
+allocating. Progressive H.264 may omit codec_data: its first access unit must
+carry SPS then PPS to derive avcC. Finalize fails if none was obtained.
+H.265 always needs supplied hvcC. Dimensions are still required.
 
-Set `fragment_ms` above 0 and check `FAAM_LIB_FRAGMENTED`. `faam_muxer_open()`
-allocates the fragment index up front and writes ftyp and moov, then moof/mdat
-fragments follow.
+### Recording to removable storage
 
-- A fragment closes at the first video keyframe after the requested duration
-  (audio-only: accumulated audio duration), or earlier at the sample-index capacity
-  (about 128 samples per second of `fragment_ms`, at least 64) or 1 GiB.
-- Supply `flush` to persist every completed fragment; seek and tell are still
-  required.
-- A crash loses at most the open fragment. The demuxer ignores a fragment with
-  truncated data and exposes completed ones.
-- Finalize closes the last fragment and writes the `mehd` duration. Closing without
-  finalize keeps completed fragments; a progressive file closed without finalize has
-  no `moov` and cannot be recovered.
-- Fragmented video needs `codec_data` at open. Metadata, chapters and gapless are
-  fixed at open; update is unsupported. B-frame offsets go in `trun` without shifting
-  the first presentation time to zero.
+Set fragment_ms greater than zero and check FAAM_LIB_FRAGMENTED.
+Open with `faam_muxer_open()`; it allocates the fragment index up front.
+ftyp/moov are written at open, then moof/mdat fragments.
+A fragment closes at the first video keyframe after the requested duration
+(audio-only: accumulated audio duration), or earlier at sample-index capacity
+(about 128 samples per second of fragment_ms, at least 64) or 1 GiB.
+Supply flush to persist every completed fragment; seek/tell are still required.
 
-## Moving the index to the front
+A crash loses at most the open fragment. The demuxer ignores a fragment with
+truncated data and exposes completed fragments. Finalize closes the last one
+and writes mehd duration. Closing without finalize preserves completed
+fragments; progressive files closed without finalize have no moov and cannot
+be recovered. Fragmented video requires codec_data at open. Metadata,
+chapters and gapless are fixed at open; update is unsupported. B-frame offsets
+are stored in trun without shifting the first presentation time to zero.
 
-A progressive file ends with its `moov`, so a player fetching it over HTTP needs the
-whole file or a range request before it can start. `FAAM_MUXER_FASTSTART` fixes that:
-finalize writes `moov` at the end as usual, rebuilds it with the shifted chunk offsets
-(`stco` entries that no longer fit 32 bits become `co64`), and copies the sample data
-forward to make room in front.
+### Moving the index to the front
 
-- The io must provide `read` (`FAAM_ERR_UNSUPPORTED` otherwise), and the flag is
-  invalid with `fragment_ms`.
-- The copy rewrites the whole file: a second pass of I/O and flash wear, and the file
-  is not a valid MP4 until it finishes, so a power cut during finalize loses the
-  recording. A read failure during the copy is `FAAM_ERR_IO_READ` and, like a write
-  failure, is sticky.
-- Recorders writing to SD should leave it off and use fragmented files. The default
-  writes `moov` last. Tag and chapter updates work on either layout.
+A progressive file ends with its moov, so a player fetching it over HTTP needs the
+whole file or a range request before it can start. Set `FAAM_MUXER_FASTSTART` for
+a file served that way: finalize writes moov at the end as usual, rebuilds it with
+the shifted chunk offsets (stco entries that no longer fit 32 bits become co64),
+and copies the sample data forward to make room in front of it. The io must
+provide `read` (`FAAM_ERR_UNSUPPORTED` otherwise), and the flag is invalid with
+`fragment_ms`.
 
-## Files with many tracks
+The copy rewrites the whole file, which costs a second pass of I/O and flash
+wear, and the file is not a valid MP4 until it completes: a power cut during
+finalize loses the recording. A read that fails during the copy is
+`FAAM_ERR_IO_READ`, and like a write failure it is sticky. Recorders writing to SD should leave it off and use
+fragmented files instead. The default writes moov last. Tag and chapter updates
+work on either layout.
 
-`faam_demuxer_get_num_tracks()` returns the held count and optionally the total.
-Only indices below held are valid for `get_track_info`; the total can exceed
-`faam_library_info.max_tracks`. Store each returned `track_id` and use it for codec
-data and gapless queries; IDs are not indices.
+### Reading and editing tags without remuxing
 
-- Generic sample entries keep their fourcc and readable payloads; other handlers use
-  `FAAM_TRACK_OTHER`.
-- An `mp4v` (MPEG-4 Part 2) video entry is a generic one that also reports width and
-  height. `faam_demuxer_get_codec_data()` returns its esds DecoderSpecificInfo (the
-  VOL header) for a decoder; the muxer does not accept it.
-- `next_frame_loc` interleaves all held tracks in file order. Filter on its
-  `track_id` and read or skip every frame to advance.
+Read the count with `faam_demuxer_get_num_metadata()` and retrieve values with the indexed getter.
+To edit a file, call `faam_update_metadata_stream()` with just the entries to
+change; opening a demuxer and copying existing tags is unnecessary. Close any
+existing demuxer and reopen before reading the modified file.
+Only iTunes `ilst` metadata is handled; in-place editing rejects `mdta`.
 
-## Reading MP4 for the FAAD decoder
+With flags zero, each supplied key replaces **all** existing values of that
+key. Identity is the native four-byte key, or key plus namespace/name for
+freeform tags; locale and data type do not change identity. Repeated input
+keys supply multiple replacement values. Set `FAAM_METADATA_REMOVE` with
+NULL data and zero length to remove a key. Do not mix removals and values for
+the same key. An empty payload without REMOVE writes an explicit empty value.
+Untouched atoms, including unknown atoms, artwork and iTunSMPB, are preserved
+byte-for-byte in their original relative order.
 
-libfaam parses the container and [libfaad](libfaad.md) decodes its AAC access units.
-This replaces the legacy `faad.h` / mp4ff sequence:
+`FAAM_METADATA_UPDATE_CLEAR` drops all existing ilst atoms before applying
+the entries. Chapters remain intact; chapter updates keep metadata. Invalid
+arguments and malformed ilst child lengths fail before metadata is rewritten.
+
+### Files with many tracks
+
+`faam_demuxer_get_num_tracks()` returns held and optionally total counts.
+Only indices below held are valid for get_track_info; total can exceed
+`faam_library_info.max_tracks`. Store each returned track_id and use that ID
+for codec data and gapless queries. Do not confuse track IDs with indices.
+Generic sample entries retain fourcc and readable payloads; other handlers
+use FAAM_TRACK_OTHER. An `mp4v` (MPEG-4 Part 2) video entry is a generic one
+that also reports width and height, and `faam_demuxer_get_codec_data()` returns
+its esds DecoderSpecificInfo (the VOL header) for a decoder; the muxer does not
+accept it. next_frame_loc interleaves all held tracks in file order;
+filter its track_id and read or skip every frame to advance.
+
+### Reading MP4 for the FAAD decoder
+
+Applications using the legacy `faad.h`/mp4ff sequence can replace it with
+`faam.h` and [libfaad's current API](libfaad.md). libfaam parses the container;
+libfaad decodes its AAC access units.
 
 | Legacy step | Current calls |
 |---|---|
-| `mp4ff_open_read` | `faam_demuxer_open(NULL, &io, &demuxer)` with memory or stdio `faam_io` callbacks |
-| Find the audio track | `faam_demuxer_get_num_tracks()` and `faam_demuxer_get_track_info()`; pick `codec_id == FAAM_CODEC_AAC` and match `track_id` for an explicit selection |
-| `mp4ff_get_decoder_config` | `faam_demuxer_get_codec_data()` copies the track's AudioSpecificConfig (ASC) into your buffer |
-| `NeAACDecOpen` + `NeAACDecInit2` | Init `faad_config`, set `stream_format = FAAD_STREAM_RAW`, then `faad_decoder_open(&cfg, asc, asc_len, &decoder)` |
-| `mp4ff_read_sample` + decode loop | `faam_demuxer_next_frame_loc()`, `faam_demuxer_read_frame()`, `faad_decode_frame()`. Filter `loc.track_id`; skip other tracks with `read_frame(d, NULL, 0, &bytes)` |
-| mp4ff gapless and metadata | `faam_demuxer_get_track_gapless()`, `faam_demuxer_get_num_metadata()`, `faam_demuxer_get_metadata_entry()` |
+| `mp4ff_open_read` | `faam_demuxer_open(NULL, &io, &demuxer)`, with memory or stdio `faam_io` callbacks. |
+| Find the audio track | `faam_demuxer_get_num_tracks()` and `faam_demuxer_get_track_info()`; choose an audio track with `codec_id == FAAM_CODEC_AAC`. Match `track_id` for an explicit selection. |
+| `mp4ff_get_decoder_config` | `faam_demuxer_get_codec_data()` copies the track's AudioSpecificConfig (ASC) into your buffer. |
+| `NeAACDecOpen` + `NeAACDecInit2` | Initialize `faad_config`, set `stream_format = FAAD_STREAM_RAW`, then call `faad_decoder_open(&cfg, asc, asc_len, &decoder)`. |
+| `mp4ff_read_sample` + decode loop | `faam_demuxer_next_frame_loc()` then `faam_demuxer_read_frame()` and `faad_decode_frame()`. Filter `loc.track_id`; skip other tracks with `read_frame(d, NULL, 0, &bytes)`. |
+| mp4ff gapless/metadata | `faam_demuxer_get_track_gapless()`, `faam_demuxer_get_num_metadata()` and `faam_demuxer_get_metadata_entry()`. |
 
-- A file may hold several tracks. The CLI's `faad --track <id>` selects one (`faad -i`
-  lists them). An AAC codec ID alone does not guarantee a profile libfaad supports.
-- `frontend/mp4read.c` shows a memory-backed adapter: it skips each frame to advance
-  the demuxer, validates `file_offset` and `frame_bytes` against the input size, then
-  feeds the original bytes to libfaad without a copy. With a file stream you can
-  likewise read at `file_offset` yourself, but must still advance with `read_frame`.
+A file may hold several tracks; track IDs are not enumeration indices.
+The CLI's `faad --track <id>` selects one (`faad -i` lists them). AAC codec
+identification alone does not guarantee a profile supported by libfaad.
+`frontend/mp4read.c` shows a memory-backed adapter: it skips each frame to
+advance the demuxer, validates `file_offset`/`frame_bytes` against the input
+size, then feeds the original bytes to libfaad without a payload copy.
+With a file stream, you can likewise read at `file_offset` yourself, but must
+still advance the demuxer with `read_frame`.
 
-**Gapless.** Delay and padding are in track-timescale samples (the core rate for
-HE-AAC), so convert them to output samples and add libfaad's `decoder_delay` before
-trimming; the conversion and the HE-AAC timescale rule are in
-[Decoder delay](libfaad.md#decoder-delay) and `frontend/faad_main.c`. Query gapless
-data by the selected track ID (see [Gapless](#gapless)).
+Gapless values are track-timescale samples, normally the AAC core rate for
+HE-AAC, not output-rate samples. Query by the selected track ID; iTunSMPB
+applies to the first audio track, otherwise that track's edit list is used.
+As in `frontend/faad_main.c`, after output format discovery convert delay and
+padding with `(uint64_t)value * output_rate / track_timescale`. If timescale
+is zero, the frontend uses the core rate (half the output rate for SBR with
+2048-sample frames, otherwise the output rate). Add `decoder_delay` to the
+leading trim and subtract it from converted padding, bounded at zero.
+Drop leading samples per channel and retain enough trailing PCM to discard
+padding at EOF; re-query stream info on `FAAD_FRAME_FORMAT_CHANGED`. See
+[Decoder delay](libfaad.md#decoder-delay) for edit-list boundaries.
 
-**Tags, chapters and ownership.** Read them as in [Metadata entries](#metadata-entries)
-and [Chapters](#chapters). Metadata, artwork and chapter titles are borrowed until
-demuxer close, and the ASC is copied into your buffer so it need not outlive decoder
-open. Keep the stream context alive through demuxer close (it does not close the
-`FILE`), and close both handles and free your buffers on every exit path.
+For tags, query `faam_demuxer_get_num_metadata()`; initialize each entry
+with its struct_size and retrieve entries by index up to the count. For chapters, use
+`faam_demuxer_get_num_chapters()` and `faam_demuxer_get_chapter()` (Nero `chpl`,
+with start times in milliseconds). Initialize every output struct's
+`struct_size`. Metadata strings, artwork and chapter titles are borrowed
+until demuxer close; copy them if needed afterwards. ASC is copied into your
+buffer and consumed by decoder open, so it need not outlive that call.
+Keep the stream/callback context alive through demuxer close, which does not
+close the FILE. Encoded and aligned PCM buffers belong to the caller;
+close both handles and release the buffers on every exit path.
 
-`m4a_decode.c` decodes the first AAC track to native-endian interleaved signed 16-bit
-PCM, with no header or gapless trimming. It stops on demux or decode errors and
-accepts recovered PCM. It needs `stdio_io.h` from [Stream I/O](#stream-io) for 64-bit
-seeking.
+Save this as `m4a_decode.c`, alongside `stdio_io.h` from
+[Stream I/O](#stream-io), which supplies 64-bit seeking. It decodes the first
+AAC track to native-endian interleaved signed 16-bit PCM, with no header or
+gapless trimming. It stops on demux/decode errors and accepts recovered PCM.
 
 ```c
 /* m4a_decode.c */
@@ -656,31 +692,32 @@ done:
 }
 ```
 
-For an installed build, compile with `pkg-config --cflags --libs faam faad3`. For
-source-tree static archives built in `b/`:
+For an installed build, compile with `pkg-config --cflags --libs faam faad3`.
+For source-tree static archives built in `b/`:
 
 ```sh
 cc -std=c11 -Wall -Wextra -Iinclude -Icommon \
   m4a_decode.c b/libfaam/libfaam.a b/libfaad/libfaad3.a -lm -o m4a_decode
 ```
 
-Run `./m4a_decode input.m4a output.pcm`. On a little-endian host, compare with
-`faad --no-gapless -f raw -o reference.pcm input.m4a`. The CLI writes little-endian
-PCM, so byte-swap the example's output first on a big-endian host. Without
-`--no-gapless` the CLI trims container priming, padding and decoder delay, so its
-output differs.
+Run `./m4a_decode input.m4a output.pcm`. On a little-endian host,
+compare with `faad --no-gapless -f raw -o reference.pcm input.m4a`.
+The CLI writes little-endian PCM; byte-swap the example's output before
+comparison on a big-endian host. Omitting `--no-gapless` trims container
+priming/padding and decoder delay, so its output can differ.
 
-## Thread safety
+### Thread safety
 
-Serialize access to one handle. Separate handles are independent and callbacks run
-on the calling thread. The library has no global mutable state.
+Serialize access to one handle. Separate handles are independent; callbacks
+run on the calling thread. The library has no global mutable state.
 
-## Examples
+### Complete examples
 
-Each example uses `stdio_io.h` from [Stream I/O](#stream-io), prints errors to
-stderr, and returns nonzero on failure.
+Each example uses `stdio_io.h` from [Stream I/O](#stream-io). They print their
+errors to stderr and return non-zero on failure.
 
-**`inspect.c`** prints tracks, tags and chapters and counts frames per track:
+`inspect.c` opens a file with allocator-owned state, prints tracks, tags and
+chapters, and counts frames per track:
 
 ```c
 /* inspect.c */
@@ -758,16 +795,14 @@ int main(int argc, char **argv)
 }
 ```
 
-**`mux_adts.c`** writes an ADTS AAC file to M4A with gapless information, tags and
-chapters.
-
-- The delay comes from your encoder: 1024 for libfaac AAC-LC, and for HE-AAC the
-  core-rate value (1040 from libfaac); see [Gapless](#gapless). The program leaves
-  `end_padding` at 0, so it does not trim the end.
-- The loop assumes one raw data block of 1024 samples per ADTS frame and a constant
-  configuration.
-- It rebuilds only the ADTS-signaled ASC. Extensions such as explicit SBR need
-  encoder-supplied codec data for full signaling.
+`mux_adts.c` writes an ADTS AAC file to an M4A with gapless information, tags
+and chapters. The delay comes from your encoder (1024 for libfaac AAC-LC; for
+HE-AAC the core-rate value, 1040 from libfaac, see
+[Gapless playback](#gapless-playback-metadata-and-chapters)); the program
+leaves `end_padding` at 0 and so does not trim the end. The loop assumes one
+raw data block of 1024 samples per ADTS frame and a constant configuration.
+It reconstructs only the ADTS-signaled ASC; extensions such as explicit SBR
+need encoder-supplied codec data for full signaling:
 
 ```c
 /* mux_adts.c */
@@ -887,9 +922,10 @@ int main(int argc, char **argv)
 }
 ```
 
-**`record.c`** writes a fragmented, crash-safe file with a preallocated fragment
-index. It needs the `muxer-fragmented` option. Its synthetic payload only exercises
-container writing; use encoded AAC-LC stereo 44.1 kHz access units for playback.
+`record.c` writes a fragmented, crash-safe file with a preallocated fragment index. It
+needs the `muxer-fragmented` option. Its synthetic payload tests container
+writing only; replace it with encoded AAC-LC stereo 44.1 kHz access units
+for playback:
 
 ```c
 /* record.c */
@@ -938,8 +974,8 @@ int main(int argc, char **argv)
 }
 ```
 
-**`tag.c`** changes one tag of an existing file and keeps the others, as `faam tag`
-does. Only the changed key is supplied.
+`tag.c` changes one tag of an existing file and keeps the others, as
+`faam tag` does. Only the changed key is supplied:
 
 ```c
 /* tag.c */
@@ -965,49 +1001,67 @@ int main(int argc, char **argv)
 
 ## ABI compatibility
 
-The API and ABI are stable within a major version (SONAME) on a given platform ABI.
-Layouts follow the target's pointer width and alignment, so 32- and 64-bit differ,
-and the structs are not a serialization format.
+The API and ABI are stable within a major version / SONAME on a given platform
+ABI. Layouts follow the target's pointer width and alignment; they differ between
+32- and 64-bit targets and are not a serialization format.
 
-- Every struct you fill or receive starts with `uint32_t struct_size`. Initialize
-  `faam_muxer_config`, `faam_demuxer_config`, `faam_track_config` and `faam_io` with
-  `faam_muxer_config_init()`, `faam_demuxer_config_init()`,
-  `faam_track_config_init()` and `faam_io_init()` (pass `sizeof` the struct).
-- `faam_chapter`, `faam_metadata_entry`, `faam_gapless_info` and
-  `faam_muxer_update_params` have no init function: use `{ .struct_size = sizeof(x) }`.
-  Set `.struct_size` on every output struct and on nothing else.
+**Caller rules**
+
+- Every struct the caller fills or receives starts with `uint32_t struct_size`.
+  Initialize `faam_muxer_config`, `faam_demuxer_config`, `faam_track_config` and
+  `faam_io` with `faam_muxer_config_init()`, `faam_demuxer_config_init()`,
+  `faam_track_config_init()` and `faam_io_init()` (pass `sizeof` of the struct).
+  `faam_chapter`, `faam_metadata_entry`, `faam_gapless_info` and
+  `faam_muxer_update_params` have no init function: set `.struct_size = sizeof(x)`
+  and zero the rest (`{ .struct_size = sizeof(x) }`). Set `.struct_size` on every
+  output struct and on nothing else.
 - Initialization stores `min(caller size, library size)` in `struct_size`. That
-  write-back is the support probe: before using a field appended in a newer release,
-  check that `struct_size` covers it. Structs without an init function
+  write-back is the support probe: before using a field appended in a newer
+  release, check that `struct_size` covers it. Structs without an init function
   (`faam_chapter`, `faam_metadata_entry`, `faam_gapless_info`) are also getter
-  outputs, so a query reports the same probe. `faam_muxer_update_params` gates every
-  field behind a `flags` bit and rejects unknown bits, so a library that predates a
-  field refuses the update instead of ignoring it.
-- Queries write at most the caller's `struct_size` bytes and set `struct_size` to the
-  bytes populated. Reset it before each query.
+  outputs, so a query reports the same probe. `faam_muxer_update_params` gates
+  every field behind a `flags` bit and rejects unknown bits, so a library that
+  predates a field refuses the update instead of ignoring it.
+- Query functions write at most the caller's `struct_size` bytes and set
+  `struct_size` to the bytes populated. Reset it before each query.
 - The library reads only the input bytes `struct_size` covers; absent fields take
   their zero value. A `struct_size` below the matching `FAAM_*_BASELINE` returns
-  `FAAM_ERR_INVALID_ARGUMENT`. A garbage larger value is not detectable, so always
-  initialize.
-- Input lists (tracks, chapters, metadata entries) are a pointer and a count, strided
-  by the first element's `struct_size`, so every element shares one size. Output lists
-  use a count getter plus a getter by index. A getter reports the populated bytes in
-  `struct_size`, which can be below your `sizeof`, so set `struct_size =
-  sizeof(element)` again on every element before passing queried chapters or entries
-  back as input; mixed sizes are rejected.
-- `faam_demuxer_config.flags` is reserved and must be 0, and so is the `flags`
-  argument of `faam_update_chapters_stream()`.
-- Tolerate unknown enum values, flag bits and status codes in anything returned.
-  `FAAM_OK` is 0; `FAAM_ERR_INVALID_ARGUMENT`, `FAAM_ERR_UNSUPPORTED` and
+  `FAAM_ERR_INVALID_ARGUMENT`.
+- Input lists (tracks, chapters, metadata entries) are a pointer and a count,
+  strided by the first element's `struct_size`, so every element shares one size.
+  Output lists use a count getter plus a getter by index. A getter reports the
+  bytes populated in `struct_size`, which can be smaller than your `sizeof`, so
+  set `struct_size = sizeof(element)` again on every element before passing
+  queried chapters or metadata entries back as input; mixed sizes are rejected.
+- `faam_demuxer_config.flags` is reserved and must be 0; the demuxer rejects
+  anything else. A `struct_size` of 0 or below the baseline is detectable; a
+  garbage larger value is not, so always initialize.
+- Tolerate unknown enum values, flag bits and status codes in anything the
+  library returns.
+  `FAAM_OK` is 0 and `FAAM_ERR_INVALID_ARGUMENT`, `FAAM_ERR_UNSUPPORTED` and
   `FAAM_ERR_NO_MEMORY` are -1, -2 and -3; higher codes are specific to libfaam.
-- Compile-time options never change public layouts. Query `faam_get_library_info()`
-  for what a build supports, including `max_tracks`; do not compile against the
-  internal track cap.
-- `FAAM_VERSION_*` is the project release version that every library reports; the
-  SONAME is versioned separately, and `faam_get_library_info()` reports the linked
-  version.
-- Opaque handle contents, allocation and state sizes, and sample-index limits are
-  outside the ABI.
+  `faam_update_chapters_stream()` takes a `flags` argument that
+  must be 0.
+- Compile-time options never change public layouts; query
+  `faam_get_library_info()` for what a build supports, including `max_tracks`
+  (do not compile against the internal track cap).
+
+**Maintainer rules**
+
+- New fields are appended at or after the previous `sizeof(struct)`, never in its
+  tail padding. Place each appended member at an offset that is a multiple of its
+  size, add an explicit `uint32_t` first if needed, and keep each appended block a
+  multiple of 8 bytes. `faam_demuxer_config` has 4-byte alignment: append only
+  members of 4 bytes or less.
+- Zero in a new input field keeps the previous behaviour.
+- Baseline sizes (`FAAM_*_BASELINE` macros), released offsets, enum values, status
+  codes and signatures stay fixed within a major version.
+- No struct embeds another or holds an array of structs; the fixed `language`
+  byte arrays are not extensible lists. Open calls take config pointers so knobs
+  can be appended; only the demuxer accepts a NULL config.
+- `FAAM_VERSION_*` is the project release version, which every library reports; the
+  SONAME is versioned separately. Opaque handle contents, allocation/state sizes and sample-index limits
+  are outside the ABI.
 
 FAAM is free software, licensed under the GNU Lesser General Public License
 (LGPL), version 2.1 or later.

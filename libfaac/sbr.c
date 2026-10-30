@@ -323,6 +323,11 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
     }
 }
 
+unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
+{
+    return (sCtx && sCtx->fullSampleRate) ? sCtx->fullSampleRate : defaultRate;
+}
+
 /* Dual-rate SBR: the AAC core encodes at Fs/2 while SBR reconstructs the top
  * octave back to the full rate. Halve the core rate here; the full rate is kept
  * in the context for SBR and the ASC. */

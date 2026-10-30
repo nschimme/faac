@@ -280,6 +280,13 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
         bits = ADTS_HEADER_SIZE * 8;
         bs->currentBit += bits;
     }
+#if FAAC_ENCODER_DRC
+    /* DRC fill element is emitted once per frame before syntax elements. */
+    int drcBits = 0;
+    if (hEncoder->drcInfo.enabled)
+        drcBits = DrcGetBits(&hEncoder->drcInfo, bs);
+    bits += drcBits;
+#endif
 #if MAX_CHANNELS >= 8
     /* Repeat after priming so a joining ADTS decoder can recover the layout. */
     if (hEncoder->config.outputFormat == 1 && HasPCE((int)hEncoder->numChannels)

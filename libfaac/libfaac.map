@@ -7,6 +7,7 @@ FAAC_3 {
     faac_encoder_get_info;
     faac_encoder_asc;
     faac_encoder_encode;
+    faac_encoder_set_drc;
     faac_strerror;
   local:
     *;

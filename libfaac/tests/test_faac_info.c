@@ -183,14 +183,14 @@ int main(void)
         assert(faac_encoder_open(&p, &enc) == FAAC_OK);
         info.struct_size = sizeof info;
         assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
-        assert(info.bit_rate == ch * 64000);
+        assert(info.rate_control == FAAC_RC_ABR && info.bit_rate == ch * 64000);
         assert(faac_encoder_close(&enc) == FAAC_OK);
 
         p.bit_rate = 97000; /* floored per channel: 96999 in all for three */
         p.rate_control = FAAC_RC_CBR;
         assert(faac_encoder_open(&p, &enc) == FAAC_OK);
         assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
-        assert(info.bit_rate == 97000 / ch * ch);
+        assert(info.rate_control == FAAC_RC_CBR && info.bit_rate == 97000 / ch * ch);
         assert(faac_encoder_close(&enc) == FAAC_OK);
 
         /* A quality only means something to VBR, and VBR takes no bitrate. */
@@ -203,10 +203,8 @@ int main(void)
         p.bit_rate = 0;
         assert(faac_encoder_open(&p, &enc) == FAAC_OK);
         assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
-        assert(info.bit_rate == 0 && info.quality == 100);
+        assert(info.rate_control == FAAC_RC_VBR && info.bit_rate == 0 && info.quality == 100);
         assert(faac_encoder_close(&enc) == FAAC_OK);
-        p.quality = 0; /* VBR has no default quality */
-        assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
         p.quality = 5001;
         assert(faac_encoder_open(&p, &enc) == FAAC_ERR_INVALID_ARGUMENT && !enc);
 

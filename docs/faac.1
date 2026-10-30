@@ -82,10 +82,7 @@ Force the AAC object type:
 .BR encoder-ps=true ),
 or
 .B auto
-(default), which selects LC or HE-AAC v1 from the bitrate and sample rate:
-HE-AAC v1 from 8 kbit/s per channel up to 1 bit/s per Hz of sample rate, capped at
-48 kbit/s per channel (32 kbit/s at 32 kHz, 44.1 at 44.1 kHz, 48 at 48 kHz and above),
-for input of 32 kHz or more; AAC-LC otherwise.
+(default), which selects LC or HE-AAC v1 from the bitrate and sample rate.
 HE-AAC v1 targets low bitrates; its core is coded at half the input sample
 rate and reconstructed to full rate by SBR in the decoder.
 When built with encoder PS enabled, stereo AUTO uses HE-AAC v2 for explicit
@@ -194,12 +191,10 @@ input file).
 .BR \-\-rate\ <\fIauto|keep|hz\fP>
 Choose the output sample rate. The default, \fBauto\fP, chooses a rate from
 the input rate and rate-control mode. With ABR or CBR, it can downsample
-input above 48 kHz to 44.1 or 48 kHz, and input above 32 kHz up to 48 kHz to 32 kHz when AAC-LC
-is selected at 11 kbit/s per channel or less (44.1 kHz multiples) or 19 kbit/s per
-channel or less (48 kHz multiples). With
+high-rate input to 44.1 or 48 kHz and low-bitrate LC input to 32 kHz. With
 VBR, it keeps the input rate when supported, capped at 96 kHz. This is separate
 from \fB--object-type auto\fP, which selects AAC-LC or HE-AAC v1. Downsampling
-input above 48 kHz uses FAAR High, which costs more CPU than FAAR's default Good preset. Use
+input above 48 kHz uses FAAR High. Float builds use compensated float arithmetic for High, with greater CPU cost; filter coefficients and FFT twiddles retain the existing double-precision setup calculations. Use
 \fBkeep\fP to bypass automatic selection and preserve the input rate; input
 above 96 kHz is still reduced to 96 kHz, the highest AAC rate. A numeric rate explicitly requests an output rate in Hz; it must
 be lower than the input rate and one of the AAC-supported rates from 7350 to
@@ -332,6 +327,12 @@ Force AAC MPEG version, X can be 2 or 4
 .TP
 .BR --shortctl\ \fIX\fP
 Enforce block type (0 = both (default); 1 = no short; 2 = no long).
+.TP
+.BR --drc\ [\fIoff|auto\fP]
+Enable dynamic range control metadata generation (off or auto; default off when flag omitted, auto when flag passed without value). Operates a single-pass causal ITU-R BS.1770-4 K-weighted loudness analyzer. Requires an encoder built with \fBencoder-drc=true\fP.
+.TP
+.BR --drc-ref-level\ <\fILUFS\fP>
+Set the target reference level in LUFS for DRC analysis (range: -31.75 to 0.0 LUFS; default: -23.0 LUFS). Requires \fB--drc\fP.
 .SH PATENTS
 The use of this software may require the payment of patent royalties. Consider
 this before building derivative works; the authors give no warranty or

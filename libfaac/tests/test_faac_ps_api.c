@@ -53,7 +53,7 @@ int main(void)
         info.struct_size = sizeof(info);
         assert(faac_encoder_get_info(enc, &info) == FAAC_OK);
         assert(info.object_type == FAAC_OBJ_HE_AAC_V2);
-        assert(info.frame_samples == 2048);
+        assert(info.frame_samples == 2048 && info.sample_rate == rates[i]);
         assert(info.bit_rate == p.bit_rate);
         assert(faac_encoder_close(&enc) == FAAC_OK && enc == NULL);
     }

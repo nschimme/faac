@@ -162,6 +162,7 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx);
 int SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int aacObjectType, int rateLimited);
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS]);
 int SbrContextIsPresent(SBRContext *sCtx);
+unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate);
 void SbrContextResolveRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo);
 
 /* The EXT_SBR_DATA fill element following one SCE/CPE; none after an LFE. */
@@ -217,6 +218,13 @@ static inline int SbrContextIsPresent(SBRContext *sCtx)
 {
     (void)sCtx;
     return 0;
+}
+
+static inline unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
+{
+    (void)sCtx;
+    (void)defaultRate;
+    return defaultRate;
 }
 
 static inline void SbrContextResolveRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo)
