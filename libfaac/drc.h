@@ -41,11 +41,11 @@ typedef struct DRCInfo {
 int DrcGetBits(const DRCInfo *drc, BitStream *bs);
 
 #if FAAC_ENCODER_DRC
-void DrcInit(faacEncStruct *hEncoder);
+int DrcInit(faacEncStruct *hEncoder);
 void DrcProcessFrame(faacEncStruct *hEncoder, float * const *input_pcm, uint32_t samples_per_ch);
 void DrcClose(faacEncStruct *hEncoder);
 #else
-static inline void DrcInit(faacEncStruct *hEncoder) { (void)hEncoder; }
+static inline int DrcInit(faacEncStruct *hEncoder) { (void)hEncoder; return 0; }
 static inline void DrcProcessFrame(faacEncStruct *hEncoder, float * const *input_pcm, uint32_t samples_per_ch)
 {
     (void)hEncoder; (void)input_pcm; (void)samples_per_ch;

@@ -61,6 +61,7 @@ void init_encode_options(encode_options_t *opts)
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->rate_auto = true;
     opts->resample_rate = UINT32_MAX;
+    opts->drc_ref_level = -23.0f;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
     opts->raw_bits = 16;

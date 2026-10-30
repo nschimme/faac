@@ -75,7 +75,7 @@ int DrcGetBits(const DRCInfo *drc, BitStream *bs)
 
 #if FAAC_ENCODER_DRC
 
-void DrcInit(faacEncStruct *hEncoder)
+int DrcInit(faacEncStruct *hEncoder)
 {
     if (hEncoder->config.drcProfile != DRC_OFF) {
         /*
@@ -91,7 +91,10 @@ void DrcInit(faacEncStruct *hEncoder)
         hEncoder->drcAnalyzer = DrcAnalyzerInit(fullRate, hEncoder->numChannels,
                                                 hEncoder->isLfeChannel, hEncoder->config.drcRefLevel,
                                                 hEncoder->config.drcProfile, faacFrameSamples(hEncoder));
+        if (!hEncoder->drcAnalyzer)
+            return -1;
     }
+    return 0;
 }
 
 void DrcProcessFrame(faacEncStruct *hEncoder, float * const *input_pcm, uint32_t samples_per_ch)

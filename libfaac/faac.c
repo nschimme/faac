@@ -133,6 +133,7 @@ FAACAPI faac_status faac_params_init(faac_params *params, uint32_t caller_size)
     tmp.stream_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
+    tmp.drc_ref_level = -23.0f;
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_params; report the byte count actually set. */
@@ -298,7 +299,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *caller, faac_encoder **
     cfg->maxBitRate    = config->peak_bit_rate;
     cfg->rateControl   = rate_mode_to_core(config->rate_control);
     cfg->drcProfile    = (unsigned int)config->drc_profile;
-    cfg->drcRefLevel   = config->drc_ref_level == 0.0f ? -23.0f : config->drc_ref_level;
+    cfg->drcRefLevel   = config->drc_ref_level;
     /* WAVE order must become AAC element order; each entry names the input
      * channel that feeds that output slot. AAC input keeps the identity map
      * faacEncOpen installed. */

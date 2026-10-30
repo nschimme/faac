@@ -24,49 +24,47 @@
 # define M_PI_DOUBLE 3.14159265358979323846
 #endif
 
-/* Sliding window parameter constants */
-#define DRC_SUBBLOCK_DUR_SEC          0.100f  /* 100 ms sub-blocks */
-#define DRC_LOUDNESS_BLOCKS           8       /* 800 ms loudness window (8 x 100 ms) */
-
-/* Compression curve constants */
-#define DRC_GATE_ABS_LUFS             -70.0f  /* Absolute gate threshold in LUFS */
-#define DRC_TAPER_CEIL_LUFS           -50.0f  /* Taper ceiling threshold in LUFS */
-
-/* Ballistics constants */
-#define DRC_TAU_ATTACK                0.030f  /* 30 ms fast attack time constant */
-#define DRC_MAX_CUT_STEP_DB           3.00f   /* Maximum cut increase per frame (slew rate limit) */
+/* Ballistics constants, measured from the line-mode oracle's step response:
+ * a fast/slow attack and release, with the slow release carrying the profile
+ * time constant. The short level tracker lets a loud onset reach the curve
+ * within a frame or two without chattering on isolated samples. */
+#define DRC_TAU_FAST_ATTACK           0.050f
+#define DRC_TAU_SLOW_ATTACK           0.100f
+#define DRC_TAU_FAST_LEVEL            0.010f
+#define DRC_LEVEL_STEP_THRESHOLD      15.0f   /* dB of level change selecting fast ballistics */
+#define DRC_MAX_CUT_STEP_DB           6.00f   /* Maximum cut increase per frame (slew rate limit) */
 
 /*
  * Static curves, relative to the program reference level, as gain over
- * loudness x = L - ref: 2:1 boost below boost_start up to boost_max, a null
- * band, then 2:1 cut above cut_start that steepens to cut_slope past cut_knee.
- * Edges and release times follow the line-mode profiles of a reference
- * encoder, measured as a black box on noise ramps and steps, then shifted by
- * about -0.5 LU to line up with its gains on music and speech under this
- * analyzer's 800 ms meter.
+ * loudness x = L - ref: profile-slope boost below boost_start up to boost_max,
+ * a null band, then 2:1 cut above cut_start that steepens to cut_slope past
+ * cut_knee. The edges, slopes and release times match the FDK line-mode
+ * profiles on the 0.25 dB metadata grid; speech uses a steeper boost slope.
  */
 typedef struct DrcProfile {
     float boost_start;  /* LU below which boost begins (negative) */
     float boost_max;    /* dB */
+    float boost_slope;  /* dB per LU below boost_start */
     float cut_start;    /* LU above which cut begins */
     float cut_knee;     /* LU where the cut steepens; beyond the table range if never */
     float cut_slope;    /* dB per LU past the knee */
-    float tau_release;  /* seconds */
+    float tau_release;  /* seconds, slow release for boosts */
+    float tau_fast_release; /* seconds, release after a large level drop */
 } DrcProfile;
 
 static const DrcProfile drc_profiles[] = {
-    /* FAAC_DRC_FILM         */ { -4.0f,   6.0f,  1.0f,  10.5f, 0.90f, 2.5f  },
-    /* FAAC_DRC_FILM_LIGHT   */ { -15.0f,  6.0f,  6.0f,  17.5f, 0.94f, 2.5f  },
-    /* FAAC_DRC_MUSIC        */ { -4.0f,  12.0f,  1.0f,  10.5f, 0.90f, 7.5f  },
-    /* FAAC_DRC_MUSIC_LIGHT  */ { -15.0f, 12.0f,  6.0f, 1000.0f, 0.5f, 2.5f  },
-    /* FAAC_DRC_SPEECH       */ { -4.0f,  15.0f,  1.0f,  10.5f, 0.90f, 0.55f },
+    /* FAAC_DRC_FILM         */ { -3.5f,   6.0f, 0.5f,  1.5f,  12.0f, 0.944f, 3.0f,  1.0f },
+    /* FAAC_DRC_FILM_LIGHT   */ { -13.5f,  6.0f, 0.5f,  6.5f,  17.5f, 0.94f,  3.0f,  1.0f },
+    /* FAAC_DRC_MUSIC        */ { -3.5f,  12.0f, 0.5f,  1.5f,  12.0f, 0.944f, 10.0f, 1.0f },
+    /* FAAC_DRC_MUSIC_LIGHT  */ { -13.5f, 12.0f, 0.5f,  6.5f, 1000.0f, 0.5f,  3.0f,  1.0f },
+    /* FAAC_DRC_SPEECH       */ { -3.5f,  15.0f, 0.8f,  1.5f,  12.0f, 0.944f, 1.0f,  0.2f },
 };
 
 /* Gain in dB for loudness x LU relative to the program reference level. */
 static float ProfileCurveDb(const DrcProfile *pr, float x)
 {
     if (x < pr->boost_start) {
-        float g = 0.5f * (pr->boost_start - x);
+        float g = pr->boost_slope * (pr->boost_start - x);
         return g < pr->boost_max ? g : pr->boost_max;
     }
     if (x <= pr->cut_start)
@@ -99,20 +97,17 @@ struct DrcAnalyzer {
 
     BiquadState ch_state[MAX_CHANNELS];
 
-    /* Sub-block energy ring buffer for the loudness window */
-    uint32_t subblock_size_samples;
-    uint32_t subblock_sample_count;
-    double current_subblock_sum;
-
-    float subblock_energy[DRC_LOUDNESS_BLOCKS];
-    uint32_t subblock_head;
-    uint32_t subblock_count;
-
     /* Ballistics and 1-frame lookahead state */
     bool has_prev_gain;
+    bool has_fast_level;
     float prev_smooth_gain_db;
-    float alpha_attack;
+    float smooth_level_db;
+    float fast_level_db;
+    float alpha_fast_attack;
+    float alpha_slow_attack;
+    float alpha_fast_release;
     float alpha_release;
+    float alpha_fast_level;
 
     bool has_lookahead;
     DRCInfo lookahead_drc;
@@ -195,8 +190,13 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     da->profile = &drc_profiles[profile - 1];
 
     float frame_dur = (float)samples_per_ch / (float)sample_rate;
-    da->alpha_attack = 1.0f - expf(-frame_dur / DRC_TAU_ATTACK);
+    da->alpha_fast_attack = 1.0f - expf(-frame_dur / DRC_TAU_FAST_ATTACK);
+    da->alpha_slow_attack = 1.0f - expf(-frame_dur / DRC_TAU_SLOW_ATTACK);
+    da->alpha_fast_release = 1.0f - expf(-frame_dur / da->profile->tau_fast_release);
     da->alpha_release = 1.0f - expf(-frame_dur / da->profile->tau_release);
+    da->alpha_fast_level = 1.0f - expf(-frame_dur / DRC_TAU_FAST_LEVEL);
+    da->smooth_level_db = -135.0f;
+    da->fast_level_db = -135.0f;
 
     ComputePreFilterCoeffs((double)sample_rate, &da->b0_1, &da->b1_1, &da->b2_1, &da->a1_1, &da->a2_1);
     ComputeRLBCoeffs((double)sample_rate, &da->b0_2, &da->b1_2, &da->b2_2, &da->a1_2, &da->a2_2);
@@ -213,10 +213,6 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
             da->ch_state[ch].weight = 1.0f;  /* Main front/side/center channels */
         }
     }
-
-    da->subblock_size_samples = (uint32_t)((float)sample_rate * DRC_SUBBLOCK_DUR_SEC + 0.5f);
-    if (da->subblock_size_samples == 0)
-        da->subblock_size_samples = 1;
 
     return da;
 }
@@ -274,80 +270,51 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
         frame_sum_sq += (double)weight * ch_sum_sq;
     }
 
-    /* Accumulate sub-block energy ring buffer */
-    da->current_subblock_sum += frame_sum_sq;
-    da->subblock_sample_count += samples_per_ch;
-
-    while (da->subblock_sample_count >= da->subblock_size_samples) {
-        /* A frame can overshoot the sub-block boundary, so the sum covers
-         * sample_count samples; normalise by that and carry the remainder's
-         * energy forward with its samples. */
-        float mean_sq = (float)(da->current_subblock_sum / (double)da->subblock_sample_count);
-        da->subblock_energy[da->subblock_head] = mean_sq;
-        da->subblock_head = (da->subblock_head + 1) % DRC_LOUDNESS_BLOCKS;
-        if (da->subblock_count < DRC_LOUDNESS_BLOCKS)
-            da->subblock_count++;
-
-        da->current_subblock_sum -= (double)mean_sq * (double)da->subblock_size_samples;
-        if (da->current_subblock_sum < 0.0)
-            da->current_subblock_sum = 0.0;
-        da->subblock_sample_count -= da->subblock_size_samples;
-    }
-
     /*
-     * Loudness over the last 800 ms drives the curve. The sub-block still
-     * filling counts toward the mean, so an onset shows in the frame that
-     * carries it instead of up to 100 ms later. A louder per-frame value used
-     * as an attack override made cuts on dynamic music 1 to 4 dB deeper than
-     * the reference profiles, and a 3 s mean took over a second to follow a
-     * loud step.
+     * The oracle's compressor follows the per-frame level rather than a long
+     * window. A short exponential level is the closest causal proxy: it reaches
+     * a loud onset in a few frames but does not chatter on isolated samples.
      */
-    double energy = da->current_subblock_sum;
-    double count = (double)da->subblock_sample_count;
-    uint32_t used = da->subblock_count < DRC_LOUDNESS_BLOCKS ? da->subblock_count : DRC_LOUDNESS_BLOCKS;
-    for (uint32_t i = 0; i < used; i++) {
-        uint32_t idx = (da->subblock_head + DRC_LOUDNESS_BLOCKS - 1 - i) % DRC_LOUDNESS_BLOCKS;
-        energy += (double)da->subblock_energy[idx] * (double)da->subblock_size_samples;
-    }
-    count += (double)used * (double)da->subblock_size_samples;
-    float z_short = (float)(energy / count);
-
-    float L_eff = (z_short > 1e-12f) ? (-0.691f + 10.0f * log10f(z_short)) : -100.0f;
-
-    /*
-     * Profile curve, with an absolute gate: below -70 LUFS the gain is 0, and
-     * boost ramps in linearly up to the profile's maximum at -50 LUFS so noise
-     * floors and fade tails are not lifted.
-     */
-    float gain_raw_db = 0.0f;
-    if (L_eff >= DRC_GATE_ABS_LUFS) {
-        gain_raw_db = ProfileCurveDb(da->profile, L_eff - da->ref_level_lufs);
-        if (gain_raw_db > 0.0f && L_eff < DRC_TAPER_CEIL_LUFS) {
-            float gain_taper = da->profile->boost_max
-                * ((L_eff - DRC_GATE_ABS_LUFS) / (DRC_TAPER_CEIL_LUFS - DRC_GATE_ABS_LUFS));
-            if (gain_taper < gain_raw_db)
-                gain_raw_db = gain_taper;
-        }
+    float frame_mean_sq = samples_per_ch ? (float)(frame_sum_sq / (double)samples_per_ch) : 0.0f;
+    float L_frame = (frame_mean_sq > 1e-12f) ? (-0.691f + 10.0f * log10f(frame_mean_sq)) : -100.0f;
+    if (!da->has_fast_level) {
+        da->fast_level_db = L_frame;
+        da->has_fast_level = true;
+    } else {
+        da->fast_level_db += da->alpha_fast_level * (L_frame - da->fast_level_db);
     }
 
+    /* The FDK line-mode profiles have no absolute low-level gate: quiet
+     * program still receives the profile's boost. Follow that so the metadata
+     * matches the oracle at low levels as well. */
+    float gain_raw_db = ProfileCurveDb(da->profile, da->fast_level_db - da->ref_level_lufs);
+
     /*
-     * Ballistics & Slew-limiting:
-     * - Fast attack (tau = 30 ms) for cuts, capped by DRC_MAX_CUT_STEP_DB (3.0 dB / frame).
-     * - Release (profile tau) for releases and boosts.
+     * Two-stage ballistics measured from the oracle: a 50 ms fast attack when
+     * the level jumps, a 100 ms slow attack for gradual cuts, a 1 s fast
+     * release when the level drops, and the profile's slow release for boosts
+     * and gentle changes. Starting at 0 dB matches the oracle's cold start.
      */
     float gain_smooth_db = da->prev_smooth_gain_db;
 
     if (!da->has_prev_gain) {
-        gain_smooth_db = gain_raw_db;
+        gain_smooth_db = 0.0f;
+        da->smooth_level_db = da->fast_level_db;
         da->has_prev_gain = true;
-    } else if (gain_raw_db < da->prev_smooth_gain_db) {
-        /* Gain cut (Attack) */
-        gain_smooth_db = da->prev_smooth_gain_db + da->alpha_attack * (gain_raw_db - da->prev_smooth_gain_db);
+    } else {
+        float level_delta = da->fast_level_db - da->smooth_level_db;
+        float alpha;
+        if (gain_raw_db < da->prev_smooth_gain_db) {
+            alpha = level_delta > DRC_LEVEL_STEP_THRESHOLD ? da->alpha_fast_attack
+                                                           : da->alpha_slow_attack;
+        } else {
+            alpha = level_delta < -DRC_LEVEL_STEP_THRESHOLD ? da->alpha_fast_release
+                                                            : da->alpha_release;
+        }
+        da->smooth_level_db += alpha * level_delta;
+        gain_smooth_db = da->prev_smooth_gain_db + alpha * (gain_raw_db - da->prev_smooth_gain_db);
         if (gain_smooth_db < da->prev_smooth_gain_db - DRC_MAX_CUT_STEP_DB)
             gain_smooth_db = da->prev_smooth_gain_db - DRC_MAX_CUT_STEP_DB;
-    } else {
-        /* Gain boost / Cut release */
-        gain_smooth_db = da->prev_smooth_gain_db + da->alpha_release * (gain_raw_db - da->prev_smooth_gain_db);
     }
 
     /*

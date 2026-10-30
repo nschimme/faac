@@ -290,8 +290,14 @@ static void test_drc_auto_encoder_integration(void)
             assert(fabsf(gains_16bit[i] - gains_float[i]) <= 0.25f);
         }
 
-        assert(gains_16bit[0] >= 0.0f);
-        assert(gains_16bit[100] >= 5.0f && gains_16bit[100] <= 6.0f);
+        assert(gains_16bit[0] >= 0.0f && gains_16bit[0] <= 0.25f);
+        /* The FDK-parity start is 0 dB and releases into boost over ~3 s. */
+        float t100 = 100.0f * (float)frame_samples_per_ch / 48000.0f;
+        float t190 = 190.0f * (float)frame_samples_per_ch / 48000.0f;
+        float expect100 = 6.0f * (1.0f - expf(-t100 / 3.0f));
+        float expect190 = 6.0f * (1.0f - expf(-t190 / 3.0f));
+        assert(fabsf(gains_16bit[100] - expect100) <= 0.75f);
+        assert(fabsf(gains_16bit[190] - expect190) <= 0.75f);
 
         uint32_t loud_idx = count_16bit - 10;
         assert(gains_16bit[loud_idx] <= -5.0f && gains_16bit[loud_idx] >= -20.0f);
@@ -299,7 +305,7 @@ static void test_drc_auto_encoder_integration(void)
         for (uint32_t i = 1; i < count_16bit; i++) {
             float step = gains_16bit[i - 1] - gains_16bit[i];
             if (step > 0.0f) {
-                assert(step <= 3.00f + 1e-3f);
+                assert(step <= 6.00f + 1e-3f);
             }
         }
     }
@@ -465,24 +471,25 @@ static void test_drc_gain_aligned_with_audio(void)
 }
 
 /* Independent statement of the documented curves: {boost_start, boost_max,
- * cut_start, cut_knee, cut_slope}, in LU relative to the reference level. */
+ * boost_slope, cut_start, cut_knee, cut_slope}, in LU relative to the reference
+ * level. These are the FDK-parity values measured with the black-box oracle. */
 static float expected_gain(enum faac_drc_profile profile, float x)
 {
-    static const float t[5][5] = {
-        { -4.0f,   6.0f, 1.0f,   10.5f, 0.90f },
-        { -15.0f,  6.0f, 6.0f,   17.5f, 0.94f },
-        { -4.0f,  12.0f, 1.0f,   10.5f, 0.90f },
-        { -15.0f, 12.0f, 6.0f, 1000.0f, 0.50f },
-        { -4.0f,  15.0f, 1.0f,   10.5f, 0.90f },
+    static const float t[5][6] = {
+        { -3.5f,   6.0f, 0.5f,  1.5f,  12.0f, 0.944f },
+        { -13.5f,  6.0f, 0.5f,  6.5f,  17.5f, 0.94f  },
+        { -3.5f,  12.0f, 0.5f,  1.5f,  12.0f, 0.944f },
+        { -13.5f, 12.0f, 0.5f,  6.5f, 1000.0f, 0.50f },
+        { -3.5f,  15.0f, 0.8f,  1.5f,  12.0f, 0.944f },
     };
     const float *c = t[(int)profile - 1];
     if (x < c[0])
-        return fminf(0.5f * (c[0] - x), c[1]);
-    if (x <= c[2])
-        return 0.0f;
+        return fminf(c[2] * (c[0] - x), c[1]);
     if (x <= c[3])
-        return -0.5f * (x - c[2]);
-    return -0.5f * (c[3] - c[2]) - c[4] * (x - c[3]);
+        return 0.0f;
+    if (x <= c[4])
+        return -0.5f * (x - c[3]);
+    return -0.5f * (c[4] - c[3]) - c[5] * (x - c[4]);
 }
 
 /* Steady 997 Hz tone at x LU from the reference level ref. */
@@ -512,7 +519,8 @@ static float steady_gain(enum faac_drc_profile profile, float ref, float x)
     uint32_t bytes = 0, total = 0;
     float last = 0.0f;
 
-    for (uint32_t f = 0; f < 12 * 48000 / 1024; f++) {
+    uint32_t seconds = profile == FAAC_DRC_MUSIC ? 40u : 12u;
+    for (uint32_t f = 0; f < seconds * 48000 / 1024; f++) {
         for (uint32_t i = 0; i < 1024; i++) {
             float v = amp * (float)sin(2.0 * M_PI_DOUBLE * 997.0 * (double)(total + i) / 48000.0);
             for (uint32_t c = 0; c < ch; c++)
@@ -536,13 +544,100 @@ static void test_drc_profile_curves(void)
         for (size_t i = 0; i < sizeof(xs) / sizeof(xs[0]); i++) {
             float want = expected_gain((enum faac_drc_profile)p, xs[i]);
             /* the reference is placed so loud tones stay below full scale and
-             * quiet ones above the boost taper */
+             * quiet ones stay inside the measurable headroom */
             float ref = xs[i] < -20.0f ? -5.0f : xs[i] > 10.0f ? -30.0f : -18.0f;
             float got = steady_gain((enum faac_drc_profile)p, ref, xs[i]);
             /* 1 LU of meter slack at 2:1 plus the 0.25 dB grid */
             assert(fabsf(got - want) <= 0.9f);
         }
     }
+}
+
+static void test_drc_pce_before_fil(void)
+{
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    faac_get_library_info(&lib);
+    if (lib.max_channels < 8)
+        return;
+
+    faac_params params;
+    faac_params_init(&params, sizeof(params));
+    params.sample_rate = 48000;
+    params.channels = 8;
+    params.object_type = FAAC_OBJ_LC;
+    params.bit_rate = 256000;
+    params.drc_profile = FAAC_DRC_FILM;
+    params.drc_ref_level = -23.0f;
+    params.stream_format = FAAC_STREAM_ADTS;
+    params.input_format = FAAC_INPUT_FLOAT;
+
+    faac_encoder *enc = NULL;
+    assert(faac_encoder_open(&params, &enc) == FAAC_OK && enc != NULL);
+
+    float pcm[1024 * 8] = {0};
+    uint8_t outbuf[8192];
+    uint8_t first[8192];
+    uint32_t bytes = 0, first_len = 0;
+    for (int f = 0; f < 8; f++) {
+        assert(faac_encoder_encode(enc, pcm, 1024 * 8, outbuf, sizeof(outbuf), &bytes) == FAAC_OK);
+        if (!first_len && bytes > 7) {
+            memcpy(first, outbuf, bytes);
+            first_len = bytes;
+        }
+    }
+    faac_encoder_close(&enc);
+    assert(first_len > 12);
+    memcpy(outbuf, first, first_len);
+    bytes = first_len;
+
+    /* The PCE opens the raw_data_block, stays byte aligned (9 bytes), and the
+     * DRC fill element follows it. A 31-bit DRC element first would corrupt
+     * the PCE memcpy, which is what regressed 8-channel ADTS decoding. */
+    size_t pos = 7 * 8;
+    assert(read_bits(outbuf, &pos, 3) == 5 /* ID_PCE */);
+    pos = 7 * 8 + 9 * 8;
+    assert(read_bits(outbuf, &pos, 3) == 6 /* ID_FIL */);
+    uint32_t cnt = read_bits(outbuf, &pos, 4);
+    assert(cnt == 3);
+    assert(read_bits(outbuf, &pos, 4) == 0x0b);
+    assert(read_bits(outbuf, &pos, 1) == 0); /* pce tag */
+    assert(read_bits(outbuf, &pos, 1) == 0); /* excluded */
+    assert(read_bits(outbuf, &pos, 1) == 0); /* bands */
+    assert(read_bits(outbuf, &pos, 1) == 1); /* prog ref present */
+    assert(read_bits(outbuf, &pos, 7) == 92); /* -23 dBFS */
+}
+
+static void test_drc_zero_reference(void)
+{
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    faac_get_library_info(&lib);
+    uint32_t ch = lib.max_channels < 2 ? 1 : 2;
+
+    faac_params params;
+    faac_params_init(&params, sizeof(params));
+    assert(params.drc_ref_level == -23.0f);
+    params.sample_rate = 48000;
+    params.channels = ch;
+    params.bit_rate = 64000 * ch;
+    params.drc_profile = FAAC_DRC_FILM;
+    params.drc_ref_level = 0.0f; /* a real level, not the default sentinel */
+    params.stream_format = FAAC_STREAM_ADTS;
+    params.input_format = FAAC_INPUT_FLOAT;
+
+    faac_encoder *enc = NULL;
+    assert(faac_encoder_open(&params, &enc) == FAAC_OK && enc != NULL);
+
+    float pcm[1024 * 2] = {0};
+    uint8_t outbuf[8192];
+    uint32_t bytes = 0;
+    float ref = 123.0f;
+    for (int f = 0; f < 4 && ref == 123.0f; f++) {
+        assert(faac_encoder_encode(enc, pcm, 1024 * ch, outbuf, sizeof(outbuf), &bytes) == FAAC_OK);
+        if (bytes > 7)
+            parse_adts_drc(outbuf, bytes, NULL, &ref);
+    }
+    faac_encoder_close(&enc);
+    assert(ref == 0.0f);
 }
 
 static void test_drc_invalid_profile(void)
@@ -573,6 +668,8 @@ int main(void)
     test_drc_surround_weights_symmetric();
     test_drc_gain_aligned_with_audio();
     test_drc_profile_curves();
+    test_drc_pce_before_fil();
+    test_drc_zero_reference();
     test_drc_invalid_profile();
     printf("All DRC tests passed successfully.\n");
     return 0;

@@ -247,9 +247,10 @@ typedef struct faac_params {
 
     enum faac_drc_profile   drc_profile;   /* FAAC_DRC_OFF (default) or a line-mode profile */
     float                   drc_ref_level; /* program reference level of the content in LUFS
-                                              [-31.75, 0.0]; 0 = default (-23.0). The profile's null
-                                              band is centred on it, and it is written as
-                                              prog_ref_level, whose field is nominally dBFS */
+                                              [-31.75, 0.0]; faac_params_init() sets -23.0. The
+                                              profile's null band is centred on it, and it is
+                                              written as prog_ref_level, whose field is nominally
+                                              dBFS */
 } faac_params;
 
 /* Upper bound on faac_params.peak_bit_rate: far above any real stream rate, and
