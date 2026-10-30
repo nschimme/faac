@@ -90,7 +90,7 @@ typedef struct {
     uint32_t resample_rate; /* --rate target Hz, 0 = keep native, UINT32_MAX = auto */
     bool rate_auto;         /* automatic rate selection (the default) */
 
-    enum faac_drc_mode drc_mode;
+    enum faac_drc_profile drc_profile;
     float drc_ref_level;
 
     bool ignore_wav_length;

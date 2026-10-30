@@ -225,10 +225,10 @@ static const help_t help_advanced[] = {
      "Force AAC object type: lc, he-aac-v1, he-aac-v2, or auto (default)", NULL},
     {"--shortctl X",
      "Enforce block type (0 = both (default); 1 = no short; 2 = no long).", NULL},
-    {"--drc[=off|auto]",
-     "Enable single-pass ITU-R BS.1770 DRC loudness metadata generation.", NULL},
+    {"--drc <profile>",
+     "Write dynamic range control metadata: off (default), film, film-light, music, music-light or speech.", NULL},
     {"--drc-ref-level <LUFS>",
-     "Set DRC target reference level in LUFS (default: -23.0; range: -31.75 to 0.0).", NULL},
+     "Program reference level of the content in LUFS (default: -23.0; range: -31.75 to 0.0).", NULL},
     {NULL, NULL, NULL}
 };
 
@@ -515,7 +515,7 @@ int main(int argc, char *argv[])
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
             {"rate", 1, 0, RATE_FLAG},
-            {"drc", optional_argument, 0, OPT_DRC},
+            {"drc", required_argument, 0, OPT_DRC},
             {"drc-ref-level", required_argument, 0, OPT_DRC_REF_LEVEL},
             {0, 0, 0, 0}
         };
@@ -748,12 +748,20 @@ int main(int argc, char *argv[])
             break;
         case OPT_DRC:
             drc_given = true;
-            if (!optarg || !strcmp(optarg, "auto")) {
-                opts.drc_mode = FAAC_DRC_AUTO;
-            } else if (!strcmp(optarg, "off")) {
-                opts.drc_mode = FAAC_DRC_OFF;
+            if (!strcmp(optarg, "off")) {
+                opts.drc_profile = FAAC_DRC_OFF;
+            } else if (!strcmp(optarg, "film")) {
+                opts.drc_profile = FAAC_DRC_FILM;
+            } else if (!strcmp(optarg, "film-light")) {
+                opts.drc_profile = FAAC_DRC_FILM_LIGHT;
+            } else if (!strcmp(optarg, "music")) {
+                opts.drc_profile = FAAC_DRC_MUSIC;
+            } else if (!strcmp(optarg, "music-light")) {
+                opts.drc_profile = FAAC_DRC_MUSIC_LIGHT;
+            } else if (!strcmp(optarg, "speech")) {
+                opts.drc_profile = FAAC_DRC_SPEECH;
             } else {
-                fprintf(stderr, "Invalid --drc mode '%s' (choose off or auto)\n", optarg);
+                fprintf(stderr, "Invalid --drc profile '%s' (choose off, film, film-light, music, music-light or speech)\n", optarg);
                 return 1;
             }
             break;

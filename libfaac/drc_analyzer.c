@@ -27,21 +27,57 @@
 /* Sliding window parameter constants */
 #define DRC_SUBBLOCK_DUR_SEC          0.100f  /* 100 ms sub-blocks */
 #define DRC_NUM_SUBBLOCKS_3S          30      /* 3.0 s short-term window (30 x 100 ms) */
-#define DRC_NUM_SUBBLOCKS_400MS       4       /* 400 ms momentary window (4 x 100 ms) */
+#define DRC_LOUDNESS_BLOCKS           8       /* 800 ms loudness window (8 x 100 ms) */
 
 /* Compression curve constants */
 #define DRC_GATE_ABS_LUFS             -70.0f  /* Absolute gate threshold in LUFS */
 #define DRC_TAPER_CEIL_LUFS           -50.0f  /* Taper ceiling threshold in LUFS */
-#define DRC_MAX_BOOST_DB              6.0f    /* Maximum expansion boost in dB */
-#define DRC_MAX_CUT_DB                -15.0f  /* Maximum compression cut in dB */
-#define DRC_MOMENTARY_OVERRIDE_LU     3.0f    /* Transient attack override threshold */
 
 /* Ballistics constants */
 #define DRC_TAU_ATTACK                0.030f  /* 30 ms fast attack time constant */
-#define DRC_TAU_RELEASE               1.000f  /* 1000 ms slow release time constant */
 #define DRC_MAX_CUT_STEP_DB           3.00f   /* Maximum cut increase per frame (slew rate limit) */
 
 #define DRC_MAX_DELAY                 4       /* Deepest supported gain delay line, in frames */
+
+/*
+ * Static curves, relative to the program reference level, as gain over
+ * loudness x = L - ref: 2:1 boost below boost_start up to boost_max, a null
+ * band, then 2:1 cut above cut_start that steepens to cut_slope past cut_knee.
+ * Edges and release times follow the line-mode profiles of a reference
+ * encoder, measured as a black box on noise ramps and steps, then shifted by
+ * about -0.5 LU to line up with its gains on music and speech under this
+ * analyzer's 800 ms meter.
+ */
+typedef struct DrcProfile {
+    float boost_start;  /* LU below which boost begins (negative) */
+    float boost_max;    /* dB */
+    float cut_start;    /* LU above which cut begins */
+    float cut_knee;     /* LU where the cut steepens; beyond the table range if never */
+    float cut_slope;    /* dB per LU past the knee */
+    float tau_release;  /* seconds */
+} DrcProfile;
+
+static const DrcProfile drc_profiles[] = {
+    /* FAAC_DRC_FILM         */ { -4.0f,   6.0f,  1.0f,  10.5f, 0.90f, 2.5f  },
+    /* FAAC_DRC_FILM_LIGHT   */ { -15.0f,  6.0f,  6.0f,  17.5f, 0.94f, 2.5f  },
+    /* FAAC_DRC_MUSIC        */ { -4.0f,  12.0f,  1.0f,  10.5f, 0.90f, 7.5f  },
+    /* FAAC_DRC_MUSIC_LIGHT  */ { -15.0f, 12.0f,  6.0f, 1000.0f, 0.5f, 2.5f  },
+    /* FAAC_DRC_SPEECH       */ { -4.0f,  15.0f,  1.0f,  10.5f, 0.90f, 0.55f },
+};
+
+/* Gain in dB for loudness x LU relative to the program reference level. */
+static float ProfileCurveDb(const DrcProfile *pr, float x)
+{
+    if (x < pr->boost_start) {
+        float g = 0.5f * (pr->boost_start - x);
+        return g < pr->boost_max ? g : pr->boost_max;
+    }
+    if (x <= pr->cut_start)
+        return 0.0f;
+    if (x <= pr->cut_knee)
+        return -0.5f * (x - pr->cut_start);
+    return -0.5f * (pr->cut_knee - pr->cut_start) - pr->cut_slope * (x - pr->cut_knee);
+}
 
 typedef struct BiquadState {
     float v1_1, v2_1; /* Pre-filter delay elements */
@@ -53,6 +89,7 @@ struct DrcAnalyzer {
     uint32_t sample_rate;
     uint32_t num_channels;
     float ref_level_lufs;
+    const DrcProfile *profile;
 
     /* BS.1770-4 K-weighting pre-filter biquad coefficients */
     float b0_1, b1_1, b2_1;
@@ -64,7 +101,7 @@ struct DrcAnalyzer {
 
     BiquadState ch_state[MAX_CHANNELS];
 
-    /* Sub-block energy ring buffer for 3s / 400ms sliding windows */
+    /* Sub-block energy ring buffer for the 3 s sliding window */
     uint32_t subblock_size_samples;
     uint32_t subblock_sample_count;
     double current_subblock_sum;
@@ -134,10 +171,11 @@ static void ComputeRLBCoeffs(double fs, float *b0, float *b1, float *b2, float *
 
 DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
                              const bool *is_lfe_channel, float ref_level_lufs,
-                             uint32_t delay_frames)
+                             uint32_t profile, uint32_t delay_frames)
 {
     if (sample_rate == 0 || num_channels == 0 || num_channels > MAX_CHANNELS
-        || delay_frames > DRC_MAX_DELAY)
+        || delay_frames > DRC_MAX_DELAY
+        || profile < 1 || profile > sizeof(drc_profiles) / sizeof(drc_profiles[0]))
         return NULL;
 
     DrcAnalyzer *da = (DrcAnalyzer *)AllocMemory(sizeof(DrcAnalyzer));
@@ -148,6 +186,7 @@ DrcAnalyzer *DrcAnalyzerInit(uint32_t sample_rate, uint32_t num_channels,
     da->sample_rate = sample_rate;
     da->num_channels = num_channels;
     da->ref_level_lufs = ref_level_lufs;
+    da->profile = &drc_profiles[profile - 1];
     da->delay = delay_frames;
 
     ComputePreFilterCoeffs((double)sample_rate, &da->b0_1, &da->b1_1, &da->b2_1, &da->a1_1, &da->a2_1);
@@ -247,72 +286,45 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
     }
 
     /*
-     * Compute short-term (3 s), momentary (400 ms), and per-frame loudness.
+     * Loudness over the last 800 ms drives the curve. The sub-block still
+     * filling counts toward the mean, so an onset shows in the frame that
+     * carries it instead of up to 100 ms later. A louder per-frame value used
+     * as an attack override made cuts on dynamic music 1 to 4 dB deeper than
+     * the reference profiles, and a 3 s mean took over a second to follow a
+     * loud step.
      */
-    float z_short = 0.0f;
-    float z_momentary = 0.0f;
-    float z_frame = (float)(frame_sum_sq / (double)samples_per_ch);
-
-    if (da->subblock_count > 0) {
-        float sum_3s = 0.0f;
-        for (uint32_t i = 0; i < da->subblock_count; i++)
-            sum_3s += da->subblock_energy[i];
-        z_short = sum_3s / (float)da->subblock_count;
-
-        uint32_t m_count = (da->subblock_count < DRC_NUM_SUBBLOCKS_400MS)
-                         ? da->subblock_count : DRC_NUM_SUBBLOCKS_400MS;
-        float sum_400ms = 0.0f;
-        for (uint32_t i = 0; i < m_count; i++) {
-            uint32_t idx = (da->subblock_head + DRC_NUM_SUBBLOCKS_3S - 1 - i) % DRC_NUM_SUBBLOCKS_3S;
-            sum_400ms += da->subblock_energy[idx];
-        }
-        z_momentary = sum_400ms / (float)m_count;
-    } else {
-        z_short = z_momentary = z_frame;
+    double energy = da->current_subblock_sum;
+    double count = (double)da->subblock_sample_count;
+    uint32_t used = da->subblock_count < DRC_LOUDNESS_BLOCKS ? da->subblock_count : DRC_LOUDNESS_BLOCKS;
+    for (uint32_t i = 0; i < used; i++) {
+        uint32_t idx = (da->subblock_head + DRC_NUM_SUBBLOCKS_3S - 1 - i) % DRC_NUM_SUBBLOCKS_3S;
+        energy += (double)da->subblock_energy[idx] * (double)da->subblock_size_samples;
     }
+    count += (double)used * (double)da->subblock_size_samples;
+    float z_short = (float)(energy / count);
 
-    float L_short = (z_short > 1e-12f) ? (-0.691f + 10.0f * log10f(z_short)) : -100.0f;
-    float L_momentary = (z_momentary > 1e-12f) ? (-0.691f + 10.0f * log10f(z_momentary)) : -100.0f;
-    float L_frame = (z_frame > 1e-12f) ? (-0.691f + 10.0f * log10f(z_frame)) : -100.0f;
+    float L_eff = (z_short > 1e-12f) ? (-0.691f + 10.0f * log10f(z_short)) : -100.0f;
 
     /*
-     * Effective loudness selection: short-term baseline, overridden by per-frame
-     * or momentary loudness when a transient attack exceeds short-term by > 3.0 LU.
-     */
-    float L_eff = L_short;
-    if (L_frame > L_short + DRC_MOMENTARY_OVERRIDE_LU) {
-        L_eff = L_frame;
-    } else if (L_momentary > L_short + DRC_MOMENTARY_OVERRIDE_LU) {
-        L_eff = L_momentary;
-    }
-
-    /*
-     * Compression curve and gating:
-     * - Absolute gate: below -70.0 LUFS, gain is 0.0 dB (no boost).
-     * - Linear boost taper: between -70.0 LUFS and -50.0 LUFS, boost gain is linearly
-     *   tapered from 0.0 dB at -70.0 LUFS to +6.0 dB at -50.0 LUFS.
-     * - Full boost: between -50.0 LUFS and reference level, 2:1 boost up to +6.0 dB.
-     * - Cut: above reference level, 2:1 compression up to -15.0 dB max cut.
+     * Profile curve, with an absolute gate: below -70 LUFS the gain is 0, and
+     * boost ramps in linearly up to the profile's maximum at -50 LUFS so noise
+     * floors and fade tails are not lifted.
      */
     float g_raw_db = 0.0f;
-    if (L_eff < DRC_GATE_ABS_LUFS) {
-        g_raw_db = 0.0f;
-    } else if (L_eff < DRC_TAPER_CEIL_LUFS) {
-        float g_comp = -0.5f * (L_eff - da->ref_level_lufs);
-        float g_taper = 6.0f * ((L_eff - DRC_GATE_ABS_LUFS) / (DRC_TAPER_CEIL_LUFS - DRC_GATE_ABS_LUFS));
-        g_raw_db = (g_taper < g_comp) ? g_taper : g_comp;
-    } else if (L_eff < da->ref_level_lufs) {
-        float g_boost = -0.5f * (L_eff - da->ref_level_lufs);
-        g_raw_db = (g_boost < DRC_MAX_BOOST_DB) ? g_boost : DRC_MAX_BOOST_DB;
-    } else {
-        float g_cut = -0.5f * (L_eff - da->ref_level_lufs);
-        g_raw_db = (g_cut > DRC_MAX_CUT_DB) ? g_cut : DRC_MAX_CUT_DB;
+    if (L_eff >= DRC_GATE_ABS_LUFS) {
+        g_raw_db = ProfileCurveDb(da->profile, L_eff - da->ref_level_lufs);
+        if (g_raw_db > 0.0f && L_eff < DRC_TAPER_CEIL_LUFS) {
+            float g_taper = da->profile->boost_max
+                * ((L_eff - DRC_GATE_ABS_LUFS) / (DRC_TAPER_CEIL_LUFS - DRC_GATE_ABS_LUFS));
+            if (g_taper < g_raw_db)
+                g_raw_db = g_taper;
+        }
     }
 
     /*
      * Ballistics & Slew-limiting:
      * - Fast attack (tau = 30 ms) for cuts, capped by DRC_MAX_CUT_STEP_DB (3.0 dB / frame).
-     * - Slow release (tau = 1000 ms) for releases and boosts.
+     * - Release (profile tau) for releases and boosts.
      */
     float frame_dur = (float)samples_per_ch / (float)da->sample_rate;
     float g_smooth_db = da->prev_smooth_gain_db;
@@ -328,7 +340,7 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
             g_smooth_db = da->prev_smooth_gain_db - DRC_MAX_CUT_STEP_DB;
     } else {
         /* Gain boost / Cut release */
-        float alpha_release = 1.0f - expf(-frame_dur / DRC_TAU_RELEASE);
+        float alpha_release = 1.0f - expf(-frame_dur / da->profile->tau_release);
         g_smooth_db = da->prev_smooth_gain_db + alpha_release * (g_raw_db - da->prev_smooth_gain_db);
     }
 
