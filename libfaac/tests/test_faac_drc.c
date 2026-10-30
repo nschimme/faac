@@ -363,6 +363,11 @@ static void test_drc_release_reaches_target(void)
 /* Surround weighting must follow AAC order (C L R Ls Rs LFE): Ls and Rs equal. */
 static void test_drc_surround_weights_symmetric(void)
 {
+    faac_library_info lib = { .struct_size = sizeof(lib) };
+    faac_get_library_info(&lib);
+    if (lib.max_channels < 6)
+        return;
+
     const float amps[] = { 0.5f };
     const uint32_t secs[] = { 12 };
     float ls = last_gain_after(6, 3, amps, secs, 1);

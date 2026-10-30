@@ -55,11 +55,11 @@ jobs:
               options: -Dencoder-ps=true -Dstats=true,
             }
           - {
-              name: Linux GCC (encoder DRC disabled),
+              name: Linux GCC (encoder DRC enabled),
               os: ubuntu-latest,
               compiler: gcc,
               shell: bash,
-              options: -Dencoder-drc=false,
+              options: -Dencoder-drc=true,
             }
           - {
               name: Linux GCC (LC-only encoder),
