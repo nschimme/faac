@@ -51,7 +51,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     lib.struct_size = sizeof(lib);
     if (faad_get_library_info(&lib) != FAAD_OK || lib.struct_size < sizeof(lib))
         __builtin_trap();
-    if (lib.flags & ~(FAAD_LIB_SBR | FAAD_LIB_PS))
+    if (lib.flags & ~(FAAD_LIB_SBR | FAAD_LIB_PS | FAAD_LIB_DAB | FAAD_LIB_DRC))
         __builtin_trap();
 
     faad_config cfg;
