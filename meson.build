@@ -53,6 +53,8 @@ encoder_sbr = get_option('encoder-sbr')
 config_h.set10('FAAC_ENCODER_SBR', encoder_sbr)
 encoder_ps = get_option('encoder-ps') and get_option('max-channels') >= 2 and encoder_sbr
 config_h.set10('FAAC_ENCODER_PS', encoder_ps)
+encoder_drc = get_option('encoder-drc')
+config_h.set10('FAAC_ENCODER_DRC', encoder_drc)
 
 config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 

@@ -178,6 +178,16 @@ enum faac_flag {
     FAAC_FLAG_MAX = 0x7fffffff
 };
 
+enum faac_drc_profile {
+    FAAC_DRC_OFF         = 0,        /* no dynamic_range_info element (default)   */
+    FAAC_DRC_FILM        = 1,        /* film standard: +6 dB boost, wide cut      */
+    FAAC_DRC_FILM_LIGHT  = 2,        /* film light: wide null band, gentler cut   */
+    FAAC_DRC_MUSIC       = 3,        /* music standard: +12 dB boost, slow release */
+    FAAC_DRC_MUSIC_LIGHT = 4,        /* music light: wide null band, +12 dB boost */
+    FAAC_DRC_SPEECH      = 5,        /* speech: +15 dB boost, fast release        */
+    FAAC_DRC_MAX         = 0x7fffffff
+};
+
 /*
  * Encoder parameters, supplied once to faac_encoder_open().
  *
@@ -234,6 +244,13 @@ typedef struct faac_params {
     uint32_t                peak_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
     enum faac_rate_control  rate_control;  /* see enum; zero selects ABR */
+
+    enum faac_drc_profile   drc_profile;   /* FAAC_DRC_OFF (default) or a line-mode profile */
+    float                   drc_ref_level; /* program reference level of the content in LUFS
+                                              [-31.75, 0.0]; faac_params_init() sets -23.0. The
+                                              profile's null band is centred on it, and it is
+                                              written as prog_ref_level, whose field is nominally
+                                              dBFS */
 } faac_params;
 
 /* Upper bound on faac_params.peak_bit_rate: far above any real stream rate, and
@@ -268,6 +285,9 @@ typedef struct faac_encoder_info {
      * SBR decoder delay, which decoders add themselves. */
     uint32_t                encoder_delay;
 
+    enum faac_drc_profile   drc_profile;      /* resolved DRC profile                              */
+    float                   drc_ref_level;    /* resolved program reference level in LUFS          */
+
     /* AudioSpecificConfig for raw streams and containers, valid as soon as
      * open() returns; copy the bytes if they are needed after this struct.
      * Up to 14 bytes: the eight-channel PCE and the HE-AAC extension add to
@@ -294,6 +314,7 @@ typedef struct faac_encoder_info {
 enum faac_library_flag {
     FAAC_LIB_SBR = 1u << 0,         /* HE-AAC v1 (SBR) is compiled in */
     FAAC_LIB_PS  = 1u << 1,         /* HE-AAC v2 (Parametric Stereo) is compiled in */
+    FAAC_LIB_DRC = 1u << 2,         /* Dynamic Range Control support is compiled in */
     FAAC_LIB_FLAG_MAX = 0x7fffffff
 };
 

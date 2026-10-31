@@ -261,6 +261,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
     /* TNS tables depend on the resolved core rate. */
     TnsInit(hEncoder);
 
+    if (DrcInit(hEncoder) != 0)
+        return -1;
+
     if (config->bitRate && !config->bandWidth)
     {
         config->bandWidth = CalcBandwidth(config->bitRate);
@@ -646,6 +649,8 @@ int faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrContext = NULL;
     }
 
+    DrcClose(hEncoder);
+
     FreeMemory(hEncoder);
 
     return 0;
@@ -749,6 +754,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (hEncoder->flushFrame > flushBudget)
             return 0;
+
+        /* Automatic DRC loudness measurement on incoming full-rate PCM frame in inputFifo */
+        DrcProcessFrame(hEncoder, realPerCh > 0 ? hEncoder->inputFifo : NULL,
+                        (uint32_t)(realPerCh > 0 ? realPerCh : 0));
 
         /* HE-AAC: run SBR + downsample first; the core then encodes heHalfRate.
          * Flush frames (realPerCh == 0) included -- the SBR payload runs

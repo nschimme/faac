@@ -61,6 +61,7 @@ void init_encode_options(encode_options_t *opts)
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->rate_auto = true;
     opts->resample_rate = UINT32_MAX;
+    opts->drc_ref_level = -23.0f;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
     opts->raw_bits = 16;
@@ -265,6 +266,8 @@ static const char *open_error(faac_status st, const faac_params *params)
             return "HE-AAC v1 is not in this build (needs -Dencoder-sbr=true)";
         if (params->object_type == FAAC_OBJ_HE_AAC_V2 && !(lib.flags & FAAC_LIB_PS))
             return "HE-AAC v2 is not in this build (needs -Dencoder-ps=true)";
+        if (params->drc_profile != FAAC_DRC_OFF && !(lib.flags & FAAC_LIB_DRC))
+            return "Dynamic Range Control (DRC) is not in this build (needs -Dencoder-drc=true)";
     }
     return faac_strerror(st);
 }
@@ -324,6 +327,12 @@ static char *format_encoding_params(const encode_options_t *opts, const faac_enc
         ADD(", noshort");
     else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
         ADD(", nolong");
+
+    if (opts->drc_profile != FAAC_DRC_OFF) {
+        static const char *prof_names[] = { "off", "film", "film-light", "music", "music-light", "speech" };
+        if ((int)opts->drc_profile >= 1 && (int)opts->drc_profile <= 5)
+            ADD(", drc %s (ref %.2f LUFS)", prof_names[opts->drc_profile], opts->drc_ref_level);
+    }
 #undef ADD
 
     return strdup(buf);
@@ -598,6 +607,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
         params.bit_rate = opts->bit_rate;
         params.quality = 0;
     }
+
+    params.drc_profile = opts->drc_profile;
+    params.drc_ref_level = opts->drc_ref_level;
 
     if (opts->max_bit_rate > 0)
         params.peak_bit_rate = opts->max_bit_rate;

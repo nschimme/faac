@@ -72,6 +72,9 @@ enum stream_format { RAW_STREAM = 0, ADTS_STREAM = 1 };
 /* Mirrors enum faac_rate_control; faac.c asserts the values agree. */
 enum rate_control_mode { RATE_AUTO = 0, RATE_VBR, RATE_ABR, RATE_CBR };
 
+/* 0 is off; the other values are enum faac_drc_profile. */
+#define DRC_OFF 0
+
 typedef enum { JOINT_NONE = 0, JOINT_MS, JOINT_IS, JOINT_MIXED } JointMode;
 
 typedef struct faacEncConfiguration
@@ -91,6 +94,8 @@ typedef struct faacEncConfiguration
     int shortctl;
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolved by facade */
+    unsigned int drcProfile;         /* enum faac_drc_profile */
+    float drcRefLevel;               /* LUFS program reference level */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;
