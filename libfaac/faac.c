@@ -444,6 +444,14 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
     return FAAC_OK;
 }
 
+#include "ml_shaping.h"
+
+FAACAPI faac_status faac_set_log_shaping(const char *csv_path)
+{
+    MlShapingInitLogging(csv_path);
+    return FAAC_OK;
+}
+
 FAACAPI const char *faac_strerror(faac_status status)
 {
     switch (status) {

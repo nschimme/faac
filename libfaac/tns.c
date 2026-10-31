@@ -19,6 +19,7 @@
 #include "coder.h"
 #include "tns.h"
 #include "util.h"
+#include "ml_shaping.h"
 
 /* Per-sample-rate scalefactor-band range TNS is allowed to filter over, from
  * ISO/IEC 13818-7/14496-3's TNS tool tables (indexed by sampleRateIdx). Not
@@ -290,7 +291,8 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT)
+    float gain_limit = MlShapingTnsGainThreshold(0);
+    if (gain < gain_limit)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
      * so a high gain can't mean an unstable filter; isfinite() catches the

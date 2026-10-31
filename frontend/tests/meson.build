@@ -113,6 +113,8 @@ if get_option('muxer') and get_option('encoder') and get_option('decoder') and n
     test('test_e2e_frontend_cli', find_program('python3'),
         args: [files('test_frontend_cli.py'), faac, faam, faad, get_option('max-channels').to_string(),
                encoder_sbr.to_string(), encoder_ps.to_string()], timeout: 300)
+    test('test_e2e_faac_ml_shaping', find_program('python3'),
+        args: [files('test_faac_ml_shaping.py')])
     test('test_e2e_faad_frontend', find_program('python3'),
         args: [files('test_faad_frontend.py'), faac, faad, faam,
                get_option('max-channels').to_string(), get_option('decoder-sbr').to_string(),

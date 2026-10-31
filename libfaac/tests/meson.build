@@ -14,6 +14,13 @@ if is_variable('libfaac_static')
             c_args: common_args['c_args'] + ['-DFAAC_STATIC'],
             link_with: libfaac_static,
             dependencies: [libm]))
+
+    test('test_unit_faac_ml_shaping',
+        executable('test_faac_ml_shaping', 'test_faac_ml_shaping.c',
+            include_directories: ['..', '../..', '../../include', '../../common'],
+            c_args: common_args['c_args'] + ['-DFAAC_STATIC'],
+            link_with: libfaac_static,
+            dependencies: [libm]))
 endif
 
 # quantize.c is included into the test so the static kernels are reachable.

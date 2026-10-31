@@ -84,7 +84,8 @@ enum flags
     OPT_NO_ENCODER_INFO,
     OPT_FASTSTART,
     LANG_FLAG,
-    RATE_FLAG
+    RATE_FLAG,
+    OPT_LOG_SHAPING
 };
 
 static const help_t help_qual[] = {
@@ -223,6 +224,8 @@ static const help_t help_advanced[] = {
      "Force AAC object type: lc, he-aac-v1, he-aac-v2, or auto (default)", NULL},
     {"--shortctl X",
      "Enforce block type (0 = both (default); 1 = no short; 2 = no long).", NULL},
+    {"--log-shaping <file>",
+     "Log per-frame audio shaping telemetry (transients, SFM, M/S correlation) to CSV.", NULL},
     {NULL, NULL, NULL}
 };
 
@@ -507,6 +510,7 @@ int main(int argc, char *argv[])
             {"no-encoder-info", 0, 0, OPT_NO_ENCODER_INFO},
             {"faststart", 0, 0, OPT_FASTSTART},
             {"rate", 1, 0, RATE_FLAG},
+            {"log-shaping", 1, 0, OPT_LOG_SHAPING},
             {0, 0, 0, 0}
         };
 
@@ -519,6 +523,9 @@ int main(int argc, char *argv[])
 
         switch (c)
         {
+        case OPT_LOG_SHAPING:
+            faac_set_log_shaping(optarg);
+            break;
         case OPT_TNS_DISABLE: opts.use_tns = false; break;
         case OPT_PNS_DISABLE: opts.use_pns = false; break;
         case OPT_OVERWRITE: opts.overwrite = true; break;

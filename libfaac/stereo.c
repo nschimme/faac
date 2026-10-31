@@ -21,6 +21,7 @@
 #include "util.h"
 #include "faac_internal.h"
 #include "stats.h"
+#include "ml_shaping.h"
 
 /* Pan, in SF_STEP_ENRG steps, beyond which the quieter channel is inaudible
  * and is dropped to HCB_ZERO rather than intensity-coded. */
@@ -93,8 +94,9 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
      * L/R between. A window type without M/S takes intensity on every band past
      * the lowest. */
     cfg->mode = mode;
-    cfg->msTestFactor = 4.0f * ((mode == JOINT_MIXED && plainStereo &&
-                           bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f);
+    float ms_bias = (mode == JOINT_MIXED && plainStereo) ?
+                    MlShapingStereoMsBias((uint32_t)bitRatePerCh, 0.8f, sbr != 0) : 1.0f;
+    cfg->msTestFactor = 4.0f * ms_bias;
     for (int w = 0; w < 2; w++) {
         int n = sfbn[w], n2 = 2 * (w ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG);
         int ms = band_at(sfbOffset[w], n, msHz[w], n2, sampleRate);

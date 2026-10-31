@@ -28,6 +28,7 @@
 #include "quantize.h"
 #include "util.h"
 #include "tns.h"
+#include "ml_shaping.h"
 #include "stereo.h"
 #include "sbr.h"
 #include "ratecontrol.h"
@@ -646,6 +647,8 @@ int faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrContext = NULL;
     }
 
+    MlShapingCloseLogging();
+
     FreeMemory(hEncoder);
 
     return 0;
@@ -918,9 +921,29 @@ int faacEncEncode(faacEncHandle hpEncoder,
             g_faacStats.longBlocks++;
 #endif
 
-            /* No envelope yet (the first frames) means no basis to reject
-               on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
+            /* Compute real spectral flatness (SFM) for the channel's spectrum */
+            float sum_energy = 0.0f;
+            float sum_log_e = 0.0f;
+            float sfm = 0.0f;
+            for (int i = 0; i < BLOCK_LEN_LONG; i++) {
+                float val = hEncoder->freqBuff[channel][i];
+                float e = val * val;
+                sum_energy += e;
+                sum_log_e += logf(e > 1e-12f ? e : 1e-12f);
+            }
+            if (sum_energy > 1e-12f) {
+                float gm = expf(sum_log_e / (float)BLOCK_LEN_LONG);
+                float am = sum_energy / (float)BLOCK_LEN_LONG;
+                sfm = (am > 1e-12f) ? (gm / am) : 0.0f;
+            }
+
+            /* ML-Optimized TNS admission gate: evaluates attack ratio, SFM, bit budget, and bounds */
+            uint32_t br_per_ch = numChannels ? (uint32_t)(hEncoder->config.bitRate / numChannels) : 0;
+            bool is_lfe = false;
+#if MAX_CHANNELS >= 6
+            is_lfe = hEncoder->isLfeChannel[channel];
+#endif
+            if (!MlShapingTnsAdmit(attack, sfm, br_per_ch, coderInfo[channel].block_type, is_lfe)) {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
@@ -1081,6 +1104,54 @@ int faacEncEncode(faacEncHandle hpEncoder,
     if (hEncoder->config.bitRate)
         hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
                                                           hEncoder->aacquantCfg.quality, maxqual);
+
+    /* Telemetry logging if enabled */
+    if (MlShapingLoggingEnabled()) {
+        for (channel = 0; channel < numChannels; channel++) {
+            MlShapingTelemetry record;
+            memset(&record, 0, sizeof(record));
+            record.frame_idx = hEncoder->frameNum;
+            record.channel = (uint16_t)channel;
+            record.num_channels = (uint16_t)numChannels;
+            record.sample_rate = (uint32_t)hEncoder->sampleRate;
+            record.bitrate_per_ch = numChannels ? (uint32_t)(hEncoder->config.bitRate / numChannels) : 0;
+            record.block_type = coderInfo[channel].block_type;
+            record.attack_ratio = PsyGetAttack(&hEncoder->psyInfo[channel]);
+            record.tns_enabled = coderInfo[channel].tnsInfo.tnsDataPresent;
+            record.tns_order = coderInfo[channel].tnsInfo.windowData.numFilters > 0 ?
+                               coderInfo[channel].tnsInfo.windowData.tnsFilter[0].order : 0;
+            record.total_bands = coderInfo[channel].sfbn;
+
+            /* Compute energy and spectral flatness (SFM) */
+            float sum_energy_ch = 0.0f;
+            float sum_log_e_ch = 0.0f;
+            int spec_len = (record.block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+            for (int i = 0; i < spec_len; i++) {
+                float val = hEncoder->freqBuff[channel][i];
+                float e = val * val;
+                sum_energy_ch += e;
+                sum_log_e_ch += logf(e > 1e-12f ? e : 1e-12f);
+            }
+            record.total_energy = sum_energy_ch;
+            if (spec_len > 0 && sum_energy_ch > 1e-12f) {
+                float gm = expf(sum_log_e_ch / (float)spec_len);
+                float am = sum_energy_ch / (float)spec_len;
+                record.sfm = (am > 1e-12f) ? (gm / am) : 0.0f;
+            }
+
+            /* Stereo M/S stats */
+            if (numChannels >= 2 && channel == 0 && hEncoder->elements[0].type == ID_CPE) {
+                int ms_count = 0;
+                for (int b = 0; b < record.total_bands; b++) {
+                    if (hEncoder->elements[0].msInfo.ms_used[b])
+                        ms_count++;
+                }
+                record.ms_used_bands = ms_count;
+            }
+
+            MlShapingLogTelemetry(&record);
+        }
+    }
 
     return frameBytes;
 }

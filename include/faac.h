@@ -377,6 +377,10 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *encoder,
                                         uint8_t *out, uint32_t out_cap,
                                         uint32_t *bytes_written);
 
+/* Optional data logging for machine-learning audio shaping optimization.
+ * Pass a file path to log telemetry CSV, or NULL to disable. */
+FAACAPI faac_status faac_set_log_shaping(const char *csv_path);
+
 /* Human-readable, static description of a status code. Never returns NULL. */
 FAACAPI const char *faac_strerror(faac_status status);
 
