@@ -322,9 +322,9 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         coder[lch].msPeer = coder[rch].msEl;
         coder[rch].msPeer = coder[lch].msEl;
 
-        /* ML-Optimized M/S bias scaling at high stereo rates (>= 64 kbps/ch) */
+        /* ML-Optimized M/S bias scaling across rate-limited stereo (>= 32 kbps/ch) */
         float ms_factor = cfg->msTestFactor;
-        if (cfg->mode == JOINT_MIXED && cfg->isPlainStereo && cfg->bitRatePerCh >= 64000) {
+        if (cfg->mode == JOINT_MIXED && cfg->isPlainStereo && cfg->bitRatePerCh >= 32000) {
             float el_tot = 0.0f, er_tot = 0.0f, elr_tot = 0.0f;
             int total_spec = shortwin ? (BLOCK_LEN_SHORT * coder[lch].groups.n) : BLOCK_LEN_LONG;
             for (int i = 0; i < total_spec; i += 4) {
@@ -337,7 +337,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
             }
             float denom = sqrtf(el_tot * er_tot);
             float correlation = (denom > 1e-12f) ? (elr_tot / denom) : 0.0f;
-            if (correlation > 0.6f) {
+            if (correlation > 0.65f) {
                 float ms_bias = ml_model_stereo_ms_bias((uint32_t)cfg->bitRatePerCh, correlation, cfg->isSbr != 0);
                 ms_factor = 4.0f * ms_bias;
             }

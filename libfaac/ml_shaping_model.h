@@ -78,11 +78,11 @@ static const MaskingModel g_ml_masking_model = {
     .tilt_nyquist_khz = 24.0f,
     .profiles = {
         { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f },
-        { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.00f, .peak_floor = 0.0100f },
+        { .avg_weight = 0.15f, .loud_exponent = 0.32f, .slope_scale = 3.00f, .peak_floor = 0.0090f },
     },
     .tilt = {
         { 0.5f, 1.00000000f }, { 1.5f, 0.84139514f }, { 3.0f, 0.84139514f }, { 5.0f, 1.00000000f },
-        { 8.0f, 1.00000000f }, { 11.0f, 1.41253754f }, { 14.0f, 1.00000000f }, { 18.0f, 0.70794578f },
+        { 8.0f, 1.00000000f }, { 11.0f, 1.38000000f }, { 14.0f, 1.00000000f }, { 18.0f, 0.72000000f },
     },
 };
 
