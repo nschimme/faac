@@ -149,7 +149,7 @@ static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float corre
         if (correlation > 0.70f)
             return ML_SHAPING_MS_BIAS_HIGH;
         return 1.50f;
-    }} else if (bitrate_per_ch >= 32000) {{
+    }} else if (bitrate_per_ch >= 40000) {{
         return ML_SHAPING_MS_BIAS_MID;
     }}
     return ML_SHAPING_MS_BIAS_NORMAL;

@@ -4,6 +4,8 @@
  */
 
 #include "ml_shaping.h"
+#include "frame.h"
+#include "blockswitch.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -11,6 +13,7 @@
 static FILE *s_log_file = NULL;
 static bool s_logging_initialized = false;
 static bool s_logging_enabled = false;
+static int s_active_instances = 0;
 
 bool MlShapingLoggingEnabled(void)
 {
@@ -28,12 +31,8 @@ bool MlShapingLoggingEnabled(void)
 
 void MlShapingInitLogging(const char *csv_path)
 {
-    if (s_log_file) {
-        fclose(s_log_file);
-        s_log_file = NULL;
-    }
-
-    if (csv_path && strlen(csv_path) > 0) {
+    s_active_instances++;
+    if (!s_log_file && csv_path && strlen(csv_path) > 0) {
         s_log_file = fopen(csv_path, "w");
         if (s_log_file) {
             s_logging_enabled = true;
@@ -46,10 +45,57 @@ void MlShapingInitLogging(const char *csv_path)
         } else {
             s_logging_enabled = false;
         }
-    } else {
-        s_logging_enabled = false;
     }
     s_logging_initialized = true;
+}
+
+void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, int channel)
+{
+    if (!s_logging_enabled || !s_log_file || !hEncoder || !coderInfo)
+        return;
+
+    MlShapingTelemetry record;
+    memset(&record, 0, sizeof(record));
+    record.frame_idx = hEncoder->frameNum;
+    record.channel = (uint16_t)channel;
+    record.num_channels = (uint16_t)hEncoder->numChannels;
+    record.sample_rate = (uint32_t)hEncoder->sampleRate;
+    record.bitrate_per_ch = hEncoder->numChannels ? (uint32_t)(hEncoder->config.bitRate / hEncoder->numChannels) : 0;
+    record.block_type = coderInfo[channel].block_type;
+    record.attack_ratio = PsyGetAttack(&hEncoder->psyInfo[channel]);
+    record.tns_enabled = coderInfo[channel].tnsInfo.tnsDataPresent;
+    record.tns_order = coderInfo[channel].tnsInfo.windowData.numFilters > 0 ?
+                       coderInfo[channel].tnsInfo.windowData.tnsFilter[0].order : 0;
+    record.total_bands = coderInfo[channel].sfbn;
+
+    /* Compute energy and spectral flatness (SFM) */
+    float sum_energy_ch = 0.0f;
+    float sum_log_e_ch = 0.0f;
+    int spec_len = (record.block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    for (int i = 0; i < spec_len; i++) {
+        float val = hEncoder->freqBuff[channel][i];
+        float e = val * val;
+        sum_energy_ch += e;
+        sum_log_e_ch += logf(e > 1e-12f ? e : 1e-12f);
+    }
+    record.total_energy = sum_energy_ch;
+    if (spec_len > 0 && sum_energy_ch > 1e-12f) {
+        float gm = expf(sum_log_e_ch / (float)spec_len);
+        float am = sum_energy_ch / (float)spec_len;
+        record.sfm = (am > 1e-12f) ? (gm / am) : 0.0f;
+    }
+
+    /* Stereo M/S stats */
+    if (hEncoder->numChannels >= 2 && channel == 0 && hEncoder->elements[0].type == ID_CPE) {
+        int ms_count = 0;
+        for (int b = 0; b < record.total_bands; b++) {
+            if (hEncoder->elements[0].msInfo.ms_used[b])
+                ms_count++;
+        }
+        record.ms_used_bands = ms_count;
+    }
+
+    MlShapingLogTelemetry(&record);
 }
 
 void MlShapingLogTelemetry(const MlShapingTelemetry *record)
@@ -85,12 +131,15 @@ void MlShapingLogTelemetry(const MlShapingTelemetry *record)
 
 void MlShapingCloseLogging(void)
 {
-    if (s_log_file) {
+    if (s_active_instances > 0)
+        s_active_instances--;
+
+    if (s_active_instances == 0 && s_log_file) {
         fclose(s_log_file);
         s_log_file = NULL;
+        s_logging_enabled = false;
+        s_logging_initialized = false;
     }
-    s_logging_enabled = false;
-    s_logging_initialized = false;
 }
 
 bool MlShapingTnsAdmit(float attack, float sfm, uint32_t bitrate_per_ch, int block_type, bool is_lfe)

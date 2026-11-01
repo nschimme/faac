@@ -57,7 +57,7 @@ static void test_ml_stereo_bias(void)
     assert(MlShapingStereoMsBias(64000, 0.85f, false) >= 1.5f);
 
     /* Mid bitrates */
-    assert(MlShapingStereoMsBias(32000, 0.5f, false) >= 1.1f);
+    assert(MlShapingStereoMsBias(48000, 0.5f, false) >= 1.1f);
 }
 
 static void test_ml_telemetry_logging(void)

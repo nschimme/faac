@@ -13,6 +13,8 @@
 #include "faac_internal.h"
 #include "ml_shaping_model.h"
 
+struct faacEncStruct;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,6 +42,9 @@ bool MlShapingLoggingEnabled(void);
 
 /* Initialize telemetry logger if FAAC_LOG_SHAPING environment variable is set */
 void MlShapingInitLogging(const char *csv_path);
+
+/* Record shaping telemetry for a channel frame */
+void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, int channel);
 
 /* Log frame shaping telemetry row */
 void MlShapingLogTelemetry(const MlShapingTelemetry *record);
