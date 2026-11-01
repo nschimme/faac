@@ -82,7 +82,7 @@ the include path, and define `FAAC_BUILDING` for a Windows DLL.
 | Channels | 1-6 or 8, up to the compiled `max-channels`; 7 is unsupported |
 | PCM | Interleaved native-endian signed integer or float |
 
-The five DRC profiles follow the FDK line-mode curves: the static boost/cut
+The five DRC profiles follow the standard line-mode curves: the static boost/cut
 shape, the 0.25 dB metadata grid, and the two-stage attack/release match the
 oracle's steady-state gain for a given `drc_ref_level`. The first access unit
 starts at 0 dB and releases into boost rather than jumping to the curve. A

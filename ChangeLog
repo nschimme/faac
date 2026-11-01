@@ -133,7 +133,7 @@
 	  `global_gain` a valid regular scalefactor -- fixing energy drops,
 	  quiet-band artifacts, and a decoder out-of-range error.
 	* tns: Cap TNS filter order to 12 to fix AAC-LC decoder rejections and
-	  audio dropouts in FFmpeg/FAAD.
+	  audio dropouts in FAAD.
 	* Retire the never-implemented MAIN/SSR/LTP object types across
 	  filtbank, frame, and the frontend, and collapse the single-model
 	  psychoacoustic vtable into direct calls.

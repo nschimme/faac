@@ -38,7 +38,7 @@
  * Static curves, relative to the program reference level, as gain over
  * loudness x = L - ref: profile-slope boost below boost_start up to boost_max,
  * a null band, then 2:1 cut above cut_start that steepens to cut_slope past
- * cut_knee. The edges, slopes and release times match the FDK line-mode
+ * cut_knee. The edges, slopes and release times match the reference line-mode
  * profiles on the 0.25 dB metadata grid; speech uses a steeper boost slope.
  */
 typedef struct DrcProfile {
@@ -280,7 +280,7 @@ static void AnalyzeFrame(DrcAnalyzer *da, float * const *input_pcm,
         da->fast_level_db += da->alpha_fast_level * (L_frame - da->fast_level_db);
     }
 
-    /* The FDK line-mode profiles have no absolute low-level gate: quiet
+    /* The reference line-mode profiles have no absolute low-level gate: quiet
      * program still receives the profile's boost. Follow that so the metadata
      * matches the oracle at low levels as well. */
     float gain_raw_db = ProfileCurveDb(da->profile, da->fast_level_db - da->ref_level_lufs);

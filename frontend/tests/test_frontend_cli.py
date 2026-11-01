@@ -340,7 +340,7 @@ def run_all(t, d):
         check(wav_data_len(os.path.join(d, f"{name}_faac.wav")) == wav_data_len(os.path.join(d, f"{name}_faam.wav")) > 0,
               f"{name}: faad decoded length of faam file equals faac file")
         if subprocess.run(["which", "ffmpeg"], capture_output=True).returncode == 0:
-            # Normalize output channels: FFmpeg may infer PS for implicit mono SBR.
+            # Normalize output channels: the decoder may infer PS for implicit mono SBR.
             pcm_ref = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(d, f"{name}.m4a"), "-ac", str(CHANNELS), "-f", "s16le", "-"], capture_output=True)
             pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(d, out), "-ac", str(CHANNELS), "-f", "s16le", "-"], capture_output=True)
             check(pcm_ref.returncode == 0 and pcm.returncode == 0 and len(pcm.stdout) == len(pcm_ref.stdout),

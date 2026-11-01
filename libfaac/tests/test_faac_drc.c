@@ -291,7 +291,7 @@ static void test_drc_auto_encoder_integration(void)
         }
 
         assert(gains_16bit[0] >= 0.0f && gains_16bit[0] <= 0.25f);
-        /* The FDK-parity start is 0 dB and releases into boost over ~3 s. */
+        /* The reference start is 0 dB and releases into boost over ~3 s. */
         float t100 = 100.0f * (float)frame_samples_per_ch / 48000.0f;
         float t190 = 190.0f * (float)frame_samples_per_ch / 48000.0f;
         float expect100 = 6.0f * (1.0f - expf(-t100 / 3.0f));
@@ -472,7 +472,7 @@ static void test_drc_gain_aligned_with_audio(void)
 
 /* Independent statement of the documented curves: {boost_start, boost_max,
  * boost_slope, cut_start, cut_knee, cut_slope}, in LU relative to the reference
- * level. These are the FDK-parity values measured with the black-box oracle. */
+ * level. These are the reference values measured with the black-box oracle. */
 static float expected_gain(enum faac_drc_profile profile, float x)
 {
     static const float t[5][6] = {
