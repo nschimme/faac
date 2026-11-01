@@ -37,6 +37,8 @@ def parse_telemetry_csv(csv_path):
                     'tns_gain': float(row['tns_gain']),
                     'ms_used_bands': int(row['ms_used_bands']),
                     'total_bands': int(row['total_bands']),
+                    'sf_mean': float(row.get('sf_mean', 0.0)),
+                    'treble_energy_ratio': float(row.get('treble_energy_ratio', 0.0)),
                 }
                 records.append(record)
             except (ValueError, KeyError):

@@ -35,6 +35,8 @@ typedef struct {
     float tns_gain;
     int ms_used_bands;
     int total_bands;
+    float sf_mean;
+    float treble_energy_ratio;
 } MlShapingTelemetry;
 
 /* Check if telemetry logging is enabled */

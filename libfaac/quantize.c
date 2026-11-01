@@ -110,94 +110,9 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
     return gain;
 }
 
-enum { MASKING_TILT_KNOTS = 8, MASKING_PROFILE_DEFAULT = 0, MASKING_PROFILE_TUNED = 1 };
+#include "ml_shaping_model.h"
 
-typedef struct
-{
-    float frequency_khz;
-    float gain;
-} MaskingTiltKnot;
-
-typedef struct
-{
-    float avg_weight;
-    float loud_exponent;
-    float slope_scale;
-    float peak_floor;   /* fraction of the per-window reference, about -23 dB at 0.005 */
-} MaskingProfile;
-
-typedef struct
-{
-    float silence_rms;      /* 16-bit PCM units */
-    float peak_weight;
-    float avg_floor;
-    float quiet_band;
-    float sf_smooth;
-    float rich_slope;
-    unsigned tune_min_rate; /* bits/s per channel */
-    unsigned nudge_min_rate;
-    unsigned rich_min_rate;
-    unsigned slope_rate_threshold;
-    float slope_reference_rate;
-    float tilt_nyquist_khz;
-    MaskingProfile profiles[2];
-    MaskingTiltKnot tilt[MASKING_TILT_KNOTS];
-} MaskingModel;
-
-/* Masking-model parameters, not AAC syntax constants or an absolute hearing
- * threshold. The default balance and fitted stereo profile share these
- * controls; changing them redistributes quantization error between bands. */
-static const MaskingModel masking_model = {
-    /* Time-domain RMS in 16-bit PCM units; silence_energy() converts it to
-     * this MDCT's energy scale so the gate is independent of block length. */
-    .silence_rms = 0.4f,
-    .peak_weight = 0.45f,    /* tonal contribution after the average-energy share */
-    /* Fractions of uniform-energy baselines: average uses the group reference,
-     * peak uses the per-window reference (about -30 and -23 dB respectively).
-     * Floors keep weak bands' power-law terms from collapsing to zero; the peak
-     * floor is per profile. */
-    .avg_floor = 0.0010f,
-    /* Below about -35 dB relative to that reference, taper the target again
-     * so the floors do not spend bits on bands masked by the rest of the frame. */
-    .quiet_band = 0.0003f,
-    /* Pull coded long-block scalefactors 0.6 of the way toward the mean of
-     * their coded neighbours, reducing abrupt changes between bands. */
-    .sf_smooth = 0.6f,
-    /* Steeper treble de-emphasis leaves more bits for lower bands. Its rate
-     * threshold avoids starving treble when the available budget is small. */
-    .rich_slope = 3.0f,
-    .tune_min_rate = 32000, /* fitted profile's lower bound, bits/s per channel */
-    .rich_min_rate = 56000, /* steep-slope threshold, bits/s per channel */
-    /* Scalefactor nudge, for any channel count at a set rate. Measured on
-     * stereo and mono, LC and HE-AAC, and 5.1. At 24 kbps per channel, 16 kHz
-     * mono speech loses up to 0.18 MOS on a few clips; from 28 kbps no clip is
-     * past -0.10. */
-    .nudge_min_rate = 28000, /* bits/s per channel */
-    /* Empirical sample-rate policy, in Hz: above 48 kHz scale the per-line
-     * slope relative to 44.1 kHz. These are not the tilt's frequency units. */
-    .slope_rate_threshold = 48000,
-    .slope_reference_rate = 44100.0f,
-    .tilt_nyquist_khz = 24.0f, /* 48 kHz reference rate / 2, not stream Nyquist */
-    .profiles = {
-        /* Average-energy share, power-law loudness exponent, slope multiplier.
-         * The exponent compresses band/reference energy ratios; both weights
-         * balance noise-like average energy against tonal peak energy. */
-        { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f },
-        /* Calibrated for rate-limited stereo LC. Keep other stream types on
-         * the default balance; this fit does not establish their quality. */
-        { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.0f, .peak_floor = 0.0100f },
-    },
-    /* Empirical target offsets converted to linear multipliers at the knots.
-     * Positions are kHz at a 48 kHz reference, so they follow the same
-     * normalized bin position at other rates (physical kHz changes with rate).
-     * Interpolate gains between knots rather than dB, so
-     * intermediate targets differ from a dB-linear curve. Each stored gain is
-     * 10^(offset_dB/20): -1.5 dB, +3 dB and -3 dB retain the fitted anchors. */
-    .tilt = {
-        { 0.5f, 1.0f }, { 1.5f, 0.84139514f }, { 3.0f, 0.84139514f }, { 5.0f, 1.0f },
-        { 8.0f, 1.0f }, { 11.0f, 1.41253754f }, { 14.0f, 1.0f }, { 18.0f, 0.70794578f },
-    },
-};
+#define masking_model g_ml_masking_model
 
 typedef struct
 {

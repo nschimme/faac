@@ -16,14 +16,21 @@ class TestFaacMlShaping(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Allow passing faac binary and max_channels as CLI arguments from meson
-        if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
-            cls.faac_bin = os.path.abspath(sys.argv[1])
-            cls.max_channels = int(sys.argv[2]) if len(sys.argv) > 2 else 2
-        else:
-            cls.faac_bin = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "build", "frontend", "faac"))
-            if not os.path.exists(cls.faac_bin):
+        cls.faac_bin = None
+        cls.max_channels = 2
+        for arg in sys.argv[1:]:
+            if not arg.startswith("-") and not arg.endswith(".py"):
+                if cls.faac_bin is None and (os.path.isfile(arg) or os.access(arg, os.X_OK)):
+                    cls.faac_bin = os.path.abspath(arg)
+                elif arg.isdigit():
+                    cls.max_channels = int(arg)
+
+        if not cls.faac_bin or not os.path.exists(cls.faac_bin):
+            candidate = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "build", "frontend", "faac"))
+            if os.path.exists(candidate):
+                cls.faac_bin = candidate
+            else:
                 cls.faac_bin = os.path.abspath("build/frontend/faac")
-            cls.max_channels = 2
 
     def test_cli_log_shaping(self):
         channels = 1 if self.max_channels < 2 else 2
