@@ -932,7 +932,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 continue;
             }
 
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], br_per_ch);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
         }

@@ -37,7 +37,7 @@ def optimize_shaping_thresholds(dataset):
         'ms_bias_high': 1.50,
         'ms_bias_mid': 1.00,
         'ms_bias_normal': 1.00,
-        'sf_smooth': 0.60,
+        'sf_smooth': 0.62,
         'rich_slope': 3.00,
         'tilt_gains': [1.0, 0.84139514, 0.84139514, 1.0, 1.0, 1.41253754, 1.0, 0.70794578],
         'profile_tuned_loud_exp': 0.30,
@@ -203,12 +203,16 @@ static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {{
-    (void)correlation;
     if (is_sbr)
         return ML_SHAPING_MS_BIAS_NORMAL;
 
-    if (bitrate_per_ch >= 64000)
-        return ML_SHAPING_MS_BIAS_HIGH;
+    if (bitrate_per_ch >= 64000) {{
+        if (correlation > 0.80f)
+            return ML_SHAPING_MS_BIAS_HIGH;
+        else if (correlation < 0.20f)
+            return 1.10f;
+        return 1.35f;
+    }}
 
     return ML_SHAPING_MS_BIAS_NORMAL;
 }}

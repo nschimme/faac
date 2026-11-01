@@ -54,7 +54,7 @@ static const MaskingModel g_ml_masking_model = {
     .peak_weight = 0.45f,
     .avg_floor = 0.0010f,
     .quiet_band = 0.0003f,
-    .sf_smooth = 0.60f,
+    .sf_smooth = 0.62f,
     .rich_slope = 3.00f,
     .tune_min_rate = 32000,
     .rich_min_rate = 56000,
@@ -107,12 +107,18 @@ static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {
-    (void)correlation;
     if (is_sbr)
         return ML_SHAPING_MS_BIAS_NORMAL;
 
-    if (bitrate_per_ch >= 64000)
-        return ML_SHAPING_MS_BIAS_HIGH;
+    /* ML-Optimized M/S bias: at rates >= 64kbps, dynamically adapt to stereo correlation
+     * to prevent inter-channel smearing while maximizing energy compaction on coherent stereo. */
+    if (bitrate_per_ch >= 64000) {
+        if (correlation > 0.80f)
+            return ML_SHAPING_MS_BIAS_HIGH;
+        else if (correlation < 0.20f)
+            return 1.10f; /* Uncorrelated / out-of-phase: relax M/S bias to preserve imaging */
+        return 1.35f;
+    }
 
     return ML_SHAPING_MS_BIAS_NORMAL;
 }

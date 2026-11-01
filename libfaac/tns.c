@@ -219,7 +219,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter)
+                         float *spec, TnsFilterData *filter, uint32_t bitrate_per_ch)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -291,7 +291,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    float gain_limit = MlShapingTnsGainThreshold(0);
+    float gain_limit = MlShapingTnsGainThreshold(bitrate_per_ch);
     if (gain < gain_limit)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
@@ -355,7 +355,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncode(CoderInfo *coderInfo, float *spec)
+void TnsEncode(CoderInfo *coderInfo, float *spec, uint32_t bitrate_per_ch)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
     int numBands = coderInfo->sfbn;
@@ -376,7 +376,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0]))
+                       &tnsInfo->windowData.tnsFilter[0], bitrate_per_ch))
         return;
 
 #ifdef FAAC_STATS

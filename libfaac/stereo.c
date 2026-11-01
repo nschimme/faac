@@ -94,6 +94,9 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
      * L/R between. A window type without M/S takes intensity on every band past
      * the lowest. */
     cfg->mode = mode;
+    cfg->bitRatePerCh = bitRatePerCh;
+    cfg->isSbr = sbr;
+    cfg->isPlainStereo = plainStereo;
     float ms_bias = (mode == JOINT_MIXED && plainStereo) ?
                     MlShapingStereoMsBias((uint32_t)bitRatePerCh, 0.8f, sbr != 0) : 1.0f;
     cfg->msTestFactor = 4.0f * ms_bias;
@@ -320,11 +323,30 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         coder[lch].msPeer = coder[rch].msEl;
         coder[rch].msPeer = coder[lch].msEl;
 
+        /* Measure inter-channel correlation across the frame to guide ML stereo bias */
+        float ms_factor = cfg->msTestFactor;
+        if (cfg->mode == JOINT_MIXED && cfg->isPlainStereo) {
+            float el_tot = 0.0f, er_tot = 0.0f, elr_tot = 0.0f;
+            int total_spec = shortwin ? (BLOCK_LEN_SHORT * coder[lch].groups.n) : BLOCK_LEN_LONG;
+            for (int i = 0; i < total_spec; i += 4) {
+                for (int k = 0; k < 4 && (i + k) < total_spec; k++) {
+                    float l = s[lch][i + k], r = s[rch][i + k];
+                    el_tot += l * l;
+                    er_tot += r * r;
+                    elr_tot += l * r;
+                }
+            }
+            float denom = sqrtf(el_tot * er_tot);
+            float correlation = (denom > 1e-12f) ? (elr_tot / denom) : 0.0f;
+            float ms_bias = MlShapingStereoMsBias((uint32_t)cfg->bitRatePerCh, correlation, cfg->isSbr != 0);
+            ms_factor = 4.0f * ms_bias;
+        }
+
         int start = 0, sfcnt = 0, msused = 0;
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];
             msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
-                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end, cfg->msTestFactor);
+                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end, ms_factor);
             start = end;
         }
         elem->msInfo.is_present = msused;
