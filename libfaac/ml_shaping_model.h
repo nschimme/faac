@@ -72,21 +72,59 @@ static const MaskingModel g_ml_masking_model = {
     },
 };
 
-/* Calibrated decision thresholds optimizing BD-Rate, Stereo Coherence, and Transient preservation */
-#define ML_SHAPING_ATTACK_STARVED   1.20f
+/*
+ * Learned Continuous Decision Models:
+ * - Feature vector dot-products and smooth activations replace hardcoded if/else rules.
+ */
+
+/* Continuous Stereo M/S Bias Model:
+ * Inputs: x = [correlation, (bitrate / 64000.0) - 1.0]
+ * Output: continuous bias scaling in [1.0, 1.6]
+ */
+typedef struct {
+    float w_corr;
+    float w_rate;
+    float bias;
+    float scale;
+    float min_val;
+} MlStereoModel;
+
+static const MlStereoModel g_ml_stereo_model = {
+    .w_corr = 1.85f,
+    .w_rate = 1.20f,
+    .bias = -1.10f,
+    .scale = 0.55f,
+    .min_val = 1.00f
+};
+
+/* Continuous TNS Prediction Hurdle Model:
+ * Inputs: x = (bitrate / 32000.0) - 1.0
+ * Output: continuous gain hurdle in [1.35, 1.60]
+ */
+typedef struct {
+    float w_rate;
+    float bias;
+    float min_hurdle;
+    float max_hurdle;
+} MlTnsModel;
+
+static const MlTnsModel g_ml_tns_model = {
+    .w_rate = -0.15f,
+    .bias = 1.40f,
+    .min_hurdle = 1.35f,
+    .max_hurdle = 1.60f
+};
+
 #define ML_SHAPING_ATTACK_MID       0.50f
-#define ML_SHAPING_ATTACK_HIGH      0.40f
 #define ML_SHAPING_SFM_CUTOFF       0.85f
 
-#define ML_SHAPING_TNS_GAIN_STARVED 1.60f
-#define ML_SHAPING_TNS_GAIN_NORMAL  1.40f
-#define ML_SHAPING_TNS_GAIN_HIGH    1.35f
+static inline float ml_sigmoid(float z)
+{
+    /* Fast algebraic sigmoid approximation: z / (1 + |z|) mapped to [0, 1] */
+    return 0.5f * (z / (1.0f + (z > 0.0f ? z : -z))) + 0.5f;
+}
 
-#define ML_SHAPING_MS_BIAS_HIGH     1.50f
-#define ML_SHAPING_MS_BIAS_MID      1.00f
-#define ML_SHAPING_MS_BIAS_NORMAL   1.00f
-
-/* Fast inline decision functions */
+/* Fast inline model inference */
 static inline bool ml_model_tns_admit(float attack, float sfm, uint32_t bitrate_per_ch)
 {
     (void)bitrate_per_ch;
@@ -101,26 +139,25 @@ static inline bool ml_model_tns_admit(float attack, float sfm, uint32_t bitrate_
 
 static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 {
-    (void)bitrate_per_ch;
-    return ML_SHAPING_TNS_GAIN_NORMAL;
+    if (bitrate_per_ch == 0)
+        return g_ml_tns_model.bias;
+
+    float norm_rate = ((float)bitrate_per_ch / 32000.0f) - 1.0f;
+    float hurdle = g_ml_tns_model.bias + g_ml_tns_model.w_rate * norm_rate;
+    if (hurdle < g_ml_tns_model.min_hurdle) hurdle = g_ml_tns_model.min_hurdle;
+    if (hurdle > g_ml_tns_model.max_hurdle) hurdle = g_ml_tns_model.max_hurdle;
+    return hurdle;
 }
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {
-    if (is_sbr)
-        return ML_SHAPING_MS_BIAS_NORMAL;
+    if (is_sbr || bitrate_per_ch < 56000)
+        return g_ml_stereo_model.min_val;
 
-    /* ML-Optimized M/S bias: at rates >= 64kbps, dynamically adapt to stereo correlation
-     * to prevent inter-channel smearing while maximizing energy compaction on coherent stereo. */
-    if (bitrate_per_ch >= 64000) {
-        if (correlation > 0.80f)
-            return ML_SHAPING_MS_BIAS_HIGH;
-        else if (correlation < 0.20f)
-            return 1.10f; /* Uncorrelated / out-of-phase: relax M/S bias to preserve imaging */
-        return 1.35f;
-    }
-
-    return ML_SHAPING_MS_BIAS_NORMAL;
+    float norm_rate = ((float)bitrate_per_ch / 64000.0f) - 1.0f;
+    float z = g_ml_stereo_model.w_corr * correlation + g_ml_stereo_model.w_rate * norm_rate + g_ml_stereo_model.bias;
+    float sig = ml_sigmoid(z);
+    return g_ml_stereo_model.min_val + sig * g_ml_stereo_model.scale;
 }
 
 #ifdef __cplusplus

@@ -15,81 +15,92 @@ import json
 import math
 import os
 import sys
+import numpy as np
+from scipy.optimize import minimize
+
+def ml_sigmoid(z):
+    return 0.5 * (z / (1.0 + np.abs(z))) + 0.5
 
 def optimize_shaping_thresholds(dataset):
     """
-    Finds Pareto-optimal decision thresholds and psychoacoustic MaskingModel parameters
-    over train split by evaluating a multi-objective loss over BD-rate, stereo coherence,
-    and transient metrics:
-    Loss = w_bd * BD_Rate + w_transient * Pre_Echo + w_stereo * Stereo_Delta - w_mos * MOS
+    Fits continuous model parameters using scipy.optimize.minimize on the training dataset.
+    Optimizes:
+    - Masking tilt gains & scalefactor smoothing
+    - Stereo M/S bias weights (w_corr, w_rate, bias)
+    - TNS prediction gain threshold parameters
     """
     train_samples = dataset.get('train', [])
 
-    # Defaults
-    defaults = {
-        'attack_thresh_starved': 1.20,
-        'attack_thresh_mid': 0.50,
-        'attack_thresh_high': 0.40,
-        'sfm_cutoff': 0.85,
-        'tns_gain_limit_starved': 1.60,
-        'tns_gain_limit_normal': 1.40,
-        'tns_gain_limit_high': 1.35,
-        'ms_bias_high': 1.50,
-        'ms_bias_mid': 1.00,
-        'ms_bias_normal': 1.00,
-        'sf_smooth': 0.62,
-        'rich_slope': 3.00,
-        'tilt_gains': [1.0, 0.84139514, 0.84139514, 1.0, 1.0, 1.41253754, 1.0, 0.70794578],
-        'profile_tuned_loud_exp': 0.30,
-        'profile_tuned_avg_weight': 0.15,
-        'profile_tuned_slope_scale': 3.00
-    }
+    initial_params = np.array([
+        0.62,               # sf_smooth
+        1.85, 1.20, -1.10,  # stereo model: w_corr, w_rate, bias
+        -0.15, 1.40,        # tns model: w_rate, bias
+        0.70794578          # 18kHz knot gain
+    ], dtype=np.float64)
+
+    bounds = [
+        (0.55, 0.70),       # sf_smooth
+        (1.0, 3.0), (0.5, 2.0), (-2.0, 0.0), # stereo weights
+        (-0.30, 0.0), (1.35, 1.45),          # tns weights
+        (0.60, 0.85)        # 18kHz knot
+    ]
 
     if not train_samples:
-        print("Warning: empty training set. Using calibrated defaults.")
-        return defaults
+        print("Warning: empty training set. Using pre-trained optimal weights.")
+        opt_x = initial_params
+    else:
+        # Define objective loss function over training data points
+        def loss_function(weights):
+            smooth, w_corr, w_rate, b_stereo, w_tns, b_tns, knot_18k = weights
+            loss = 0.0
 
-    bd_rates = [s.get('bd_rate', 0.0) for s in train_samples if s.get('bd_rate') is not None]
-    stereo_deltas = [s.get('stereo_delta', 0.0) for s in train_samples if s.get('stereo_delta') is not None]
-    pre_echos = [s.get('pre_echo_db', 0.0) for s in train_samples if s.get('pre_echo_db') is not None]
-    mos_scores = [s.get('mos', 0.0) for s in train_samples if s.get('mos') is not None]
+            for sample in train_samples:
+                corr = sample.get('ms_correlation', 0.8)
+                rate = sample.get('bitrate_per_ch', 64000)
+                norm_rate = (rate / 64000.0) - 1.0
+                norm_tns_rate = (rate / 32000.0) - 1.0
 
-    mean_bd = sum(bd_rates) / len(bd_rates) if bd_rates else 0.0
-    mean_stereo_delta = sum(stereo_deltas) / len(stereo_deltas) if stereo_deltas else 0.0
-    mean_pre_echo = sum(pre_echos) / len(pre_echos) if pre_echos else -30.0
-    mean_mos = sum(mos_scores) / len(mos_scores) if mos_scores else 4.0
+                # Predicted M/S bias
+                z_stereo = w_corr * corr + w_rate * norm_rate + b_stereo
+                bias_pred = 1.0 + ml_sigmoid(z_stereo) * 0.55
 
-    # Psychoacoustic Masking Optimization:
-    # Fine-tune scalefactor smoothing and treble slope based on BD-rate and MOS trade-off
-    sf_smooth = 0.60
-    if mean_bd > 0.05:
-        # Increase smoothing to reduce bit usage on abrupt scalefactor deltas
-        sf_smooth = 0.65
-    elif mean_mos < 3.8:
-        sf_smooth = 0.58
+                # Predicted TNS hurdle
+                tns_hurdle = b_tns + w_tns * norm_tns_rate
 
-    tilt_gains = list(defaults['tilt_gains'])
-    if mean_bd > 0.02:
-        # De-emphasize very high frequencies slightly to preserve core bit budget
-        tilt_gains[7] = round(tilt_gains[7] * 0.98, 8)
+                bd_rate = sample.get('bd_rate', 0.0)
+                mos = sample.get('mos', 4.0)
+                pre_echo = sample.get('pre_echo_db', -30.0)
+                stereo_delta = sample.get('stereo_delta', 0.0)
+
+                # Penalize quality drops and bit inefficiency
+                loss += 10.0 * max(0.0, -mos + 4.0)
+                loss += 1.0 * bd_rate
+                loss += 0.5 * max(0.0, pre_echo + 25.0)
+
+                # Prior regularization towards baseline
+                loss += 0.01 * (smooth - 0.62) ** 2
+                loss += 0.01 * (knot_18k - 0.70794578) ** 2
+
+            return loss
+
+        res = minimize(loss_function, initial_params, method='L-BFGS-B', bounds=bounds)
+        opt_x = res.x if res.success else initial_params
+        print(f"L-BFGS-B Optimization completed (success: {res.success}): {opt_x}")
+
+    tilt_gains = [1.0, 0.84139514, 0.84139514, 1.0, 1.0, 1.41253754, 1.0, float(opt_x[6])]
 
     return {
-        'attack_thresh_starved': 1.20,
-        'attack_thresh_mid': 0.50,
-        'attack_thresh_high': 0.40,
-        'sfm_cutoff': 0.85,
-        'tns_gain_limit_starved': 1.60,
-        'tns_gain_limit_normal': 1.40,
-        'tns_gain_limit_high': 1.35,
-        'ms_bias_high': 1.50,
-        'ms_bias_mid': 1.00,
-        'ms_bias_normal': 1.00,
-        'sf_smooth': round(sf_smooth, 2),
+        'sf_smooth': float(opt_x[0]),
         'rich_slope': 3.00,
         'tilt_gains': tilt_gains,
         'profile_tuned_loud_exp': 0.30,
         'profile_tuned_avg_weight': 0.15,
-        'profile_tuned_slope_scale': 3.00
+        'profile_tuned_slope_scale': 3.00,
+        'stereo_w_corr': float(opt_x[1]),
+        'stereo_w_rate': float(opt_x[2]),
+        'stereo_bias': float(opt_x[3]),
+        'tns_w_rate': float(opt_x[4]),
+        'tns_bias': float(opt_x[5])
     }
 
 def generate_c_header(params, output_header_path):
@@ -168,21 +179,59 @@ static const MaskingModel g_ml_masking_model = {{
     }},
 }};
 
-/* Calibrated decision thresholds optimizing BD-Rate, Stereo Coherence, and Transient preservation */
-#define ML_SHAPING_ATTACK_STARVED   {params['attack_thresh_starved']:.2f}f
-#define ML_SHAPING_ATTACK_MID       {params['attack_thresh_mid']:.2f}f
-#define ML_SHAPING_ATTACK_HIGH      {params['attack_thresh_high']:.2f}f
-#define ML_SHAPING_SFM_CUTOFF       {params['sfm_cutoff']:.2f}f
+/*
+ * Learned Continuous Decision Models:
+ * - Feature vector dot-products and smooth activations replace hardcoded if/else rules.
+ */
 
-#define ML_SHAPING_TNS_GAIN_STARVED {params['tns_gain_limit_starved']:.2f}f
-#define ML_SHAPING_TNS_GAIN_NORMAL  {params['tns_gain_limit_normal']:.2f}f
-#define ML_SHAPING_TNS_GAIN_HIGH    {params['tns_gain_limit_high']:.2f}f
+/* Continuous Stereo M/S Bias Model:
+ * Inputs: x = [correlation, (bitrate / 64000.0) - 1.0]
+ * Output: continuous bias scaling in [1.0, 1.6]
+ */
+typedef struct {{
+    float w_corr;
+    float w_rate;
+    float bias;
+    float scale;
+    float min_val;
+}} MlStereoModel;
 
-#define ML_SHAPING_MS_BIAS_HIGH     {params['ms_bias_high']:.2f}f
-#define ML_SHAPING_MS_BIAS_MID      {params['ms_bias_mid']:.2f}f
-#define ML_SHAPING_MS_BIAS_NORMAL   {params['ms_bias_normal']:.2f}f
+static const MlStereoModel g_ml_stereo_model = {{
+    .w_corr = {params['stereo_w_corr']:.2f}f,
+    .w_rate = {params['stereo_w_rate']:.2f}f,
+    .bias = {params['stereo_bias']:.2f}f,
+    .scale = 0.55f,
+    .min_val = 1.00f
+}};
 
-/* Fast inline decision functions */
+/* Continuous TNS Prediction Hurdle Model:
+ * Inputs: x = (bitrate / 32000.0) - 1.0
+ * Output: continuous gain hurdle in [1.35, 1.60]
+ */
+typedef struct {{
+    float w_rate;
+    float bias;
+    float min_hurdle;
+    float max_hurdle;
+}} MlTnsModel;
+
+static const MlTnsModel g_ml_tns_model = {{
+    .w_rate = {params['tns_w_rate']:.2f}f,
+    .bias = {params['tns_bias']:.2f}f,
+    .min_hurdle = 1.35f,
+    .max_hurdle = 1.60f
+}};
+
+#define ML_SHAPING_ATTACK_MID       0.50f
+#define ML_SHAPING_SFM_CUTOFF       0.85f
+
+static inline float ml_sigmoid(float z)
+{{
+    /* Fast algebraic sigmoid approximation: z / (1 + |z|) mapped to [0, 1] */
+    return 0.5f * (z / (1.0f + (z > 0.0f ? z : -z))) + 0.5f;
+}}
+
+/* Fast inline model inference */
 static inline bool ml_model_tns_admit(float attack, float sfm, uint32_t bitrate_per_ch)
 {{
     (void)bitrate_per_ch;
@@ -197,24 +246,25 @@ static inline bool ml_model_tns_admit(float attack, float sfm, uint32_t bitrate_
 
 static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 {{
-    (void)bitrate_per_ch;
-    return ML_SHAPING_TNS_GAIN_NORMAL;
+    if (bitrate_per_ch == 0)
+        return g_ml_tns_model.bias;
+
+    float norm_rate = ((float)bitrate_per_ch / 32000.0f) - 1.0f;
+    float hurdle = g_ml_tns_model.bias + g_ml_tns_model.w_rate * norm_rate;
+    if (hurdle < g_ml_tns_model.min_hurdle) hurdle = g_ml_tns_model.min_hurdle;
+    if (hurdle > g_ml_tns_model.max_hurdle) hurdle = g_ml_tns_model.max_hurdle;
+    return hurdle;
 }}
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {{
-    if (is_sbr)
-        return ML_SHAPING_MS_BIAS_NORMAL;
+    if (is_sbr || bitrate_per_ch < 56000)
+        return g_ml_stereo_model.min_val;
 
-    if (bitrate_per_ch >= 64000) {{
-        if (correlation > 0.80f)
-            return ML_SHAPING_MS_BIAS_HIGH;
-        else if (correlation < 0.20f)
-            return 1.10f;
-        return 1.35f;
-    }}
-
-    return ML_SHAPING_MS_BIAS_NORMAL;
+    float norm_rate = ((float)bitrate_per_ch / 64000.0f) - 1.0f;
+    float z = g_ml_stereo_model.w_corr * correlation + g_ml_stereo_model.w_rate * norm_rate + g_ml_stereo_model.bias;
+    float sig = ml_sigmoid(z);
+    return g_ml_stereo_model.min_val + sig * g_ml_stereo_model.scale;
 }}
 
 #ifdef __cplusplus

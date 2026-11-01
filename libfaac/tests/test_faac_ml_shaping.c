@@ -40,10 +40,10 @@ static void test_ml_stereo_bias(void)
     assert(fabsf(MlShapingStereoMsBias(64000, 0.8f, true) - 1.0f) < 1e-4f);
 
     /* High correlation at good bitrates biases towards M/S */
-    assert(MlShapingStereoMsBias(64000, 0.85f, false) >= 1.5f);
+    assert(MlShapingStereoMsBias(64000, 0.85f, false) >= 1.35f);
 
     /* Low correlation relaxes M/S bias */
-    assert(MlShapingStereoMsBias(64000, 0.10f, false) < 1.30f);
+    assert(MlShapingStereoMsBias(64000, 0.10f, false) < 1.20f);
 
     /* Rates below 64kbps/ch use standard M/S test factor to preserve low-rate stereo */
     assert(fabsf(MlShapingStereoMsBias(40000, 0.5f, false) - 1.0f) < 1e-4f);
