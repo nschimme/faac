@@ -1,4 +1,4 @@
-faad_src = [
+faad_src = files(
     'decoder.c',
     'bits.c',
     'asc.c',
@@ -10,15 +10,15 @@ faad_src = [
     'imdct.c',
     'sbr.c',
     'ps.c',
-]
+)
 
 # Small mono/stereo builds omit the rarely used AAC coupling tool.
 if get_option('max-channels') >= 3
-    faad_src += ['coupling.c']
+    faad_src += files('coupling.c')
 endif
 
 if get_option('decoder-sbr')
-    faad_src += ['sbr_dec_tables.c']
+    faad_src += files('sbr_dec_tables.c')
 endif
 
 faad_c_args = c_args + ['-DCOMMON_PREFIX=faad_']

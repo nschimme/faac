@@ -264,11 +264,47 @@ jobs:
 
       - name: Build fuzz harnesses
         run: |
-          meson setup build -Dencoder-ps=true
-          FUZZ_BUILD_ONLY=1 tests/fuzz/run.sh build
+          CC=clang meson setup build -Dencoder-ps=true -Db_sanitize=address,undefined \
+              -Db_lundef=false -Db_lto=false --buildtype=plain '-Dc_args=-fsanitize=fuzzer-no-link -g -O1' \
+              -Dfuzzing-engine=-fsanitize=fuzzer
 
       - name: Test
-        run: meson test -C build --print-errorlogs
+        run: meson test -C build --suite fuzz --print-errorlogs
+
+      # Cache keys are immutable, so each run saves under a fresh key and
+      # restores the newest. PR caches are not visible to master, so the
+      # push-to-master run is what accumulates the corpus.
+      - name: Restore fuzz corpus
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/fuzz/corpus_*
+            build-audio/fuzz/corpus_*
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+
+      - name: Fuzz
+        run: tests/fuzz/run.sh build ${{ github.ref == 'refs/heads/master' && 60 || 10 }}
+
+      - name: Audio-only muxer build
+        # Disabling video and fragmented support compiles different code
+        # (NOT_BUILT stubs, no moof handling) that the full build never reaches.
+        run: |
+          CC=clang meson setup build-audio -Dmuxer-video=false -Dmuxer-fragmented=false \
+              -Db_sanitize=address,undefined -Db_lundef=false -Db_lto=false --buildtype=plain \
+              '-Dc_args=-fsanitize=fuzzer-no-link -g -O1' -Dfuzzing-engine=-fsanitize=fuzzer
+          meson test -C build-audio --suite fuzz --print-errorlogs
+          tests/fuzz/run.sh build-audio ${{ github.ref == 'refs/heads/master' && 60 || 10 }} $(cd build-audio/tests/fuzz && ls -d fuzz_faam_* | grep -Ev '\.|annexb')
+
+      - name: Upload fuzz failures
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-failures
+          path: |
+            build*/fuzz/crash-*
+            build*/fuzz/leak-*
+          if-no-files-found: ignore
 
   sanitize:
     name: Sanitizers (ASan + UBSan)

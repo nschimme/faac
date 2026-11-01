@@ -1,3 +1,6 @@
+# Include both the frontend source and build directories (git_version.h).
+frontend_inc = include_directories('.')
+
 # Only charset.c uses iconv, so keep detection scoped here, not project-wide.
 libiconv = cc.find_library('iconv', required: false)
 has_iconv = cc.has_header('iconv.h') and cc.has_function('iconv_open', dependencies: [libiconv])
