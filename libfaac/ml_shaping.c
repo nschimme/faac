@@ -10,6 +10,7 @@
 #include <string.h>
 #include <math.h>
 
+#if defined(FAAC_TELEMETRY) && FAAC_TELEMETRY
 static FILE *s_log_file = NULL;
 static bool s_logging_initialized = false;
 static bool s_logging_enabled = false;
@@ -159,6 +160,7 @@ void MlShapingCloseLogging(void)
         s_logging_initialized = false;
     }
 }
+#endif
 
 bool MlShapingTnsAdmit(float attack, float sfm, uint32_t bitrate_per_ch, int block_type, bool is_lfe)
 {

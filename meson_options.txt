@@ -105,3 +105,9 @@ option('stats',
 
 option('decoder-drc', type: 'boolean', value: true,
     description: 'Enable decoder dynamic range control')
+
+# Data logging for ML model training (disabled by default, zero runtime overhead)
+option('telemetry',
+    description: 'Enable audio shaping telemetry logging for ML training',
+    type: 'boolean',
+    value: false)

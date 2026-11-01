@@ -39,6 +39,7 @@ typedef struct {
     float treble_energy_ratio;
 } MlShapingTelemetry;
 
+#if defined(FAAC_TELEMETRY) && FAAC_TELEMETRY
 /* Check if telemetry logging is enabled */
 bool MlShapingLoggingEnabled(void);
 
@@ -53,6 +54,15 @@ void MlShapingLogTelemetry(const MlShapingTelemetry *record);
 
 /* Close telemetry logger */
 void MlShapingCloseLogging(void);
+#else
+static inline bool MlShapingLoggingEnabled(void) { return false; }
+static inline void MlShapingInitLogging(const char *csv_path) { (void)csv_path; }
+static inline void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, int channel) {
+    (void)hEncoder; (void)coderInfo; (void)channel;
+}
+static inline void MlShapingLogTelemetry(const MlShapingTelemetry *record) { (void)record; }
+static inline void MlShapingCloseLogging(void) {}
+#endif
 
 /* Decision: Should TNS be admitted for this frame given attack, SFM, and bit budget?
  * Evaluates ML model heuristics with strict safety bounds. */
