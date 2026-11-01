@@ -45,8 +45,9 @@ static void test_ml_stereo_bias(void)
     /* Low correlation relaxes M/S bias */
     assert(MlShapingStereoMsBias(64000, 0.10f, false) < 1.20f);
 
-    /* Rates below 64kbps/ch use standard M/S test factor to preserve low-rate stereo */
-    assert(fabsf(MlShapingStereoMsBias(40000, 0.5f, false) - 1.0f) < 1e-4f);
+    /* Continuous smooth scaling across rates and correlation */
+    assert(MlShapingStereoMsBias(40000, 0.5f, false) > 1.0f);
+    assert(MlShapingStereoMsBias(40000, 0.5f, false) < 1.35f);
 }
 
 static void test_ml_telemetry_logging(void)

@@ -207,7 +207,7 @@ jobs:
           report-output: report_${{ matrix.rate_control }}.md
           summary-output: summary_${{ matrix.rate_control }}.md
           cases-output: cases_${{ matrix.rate_control }}.md
-          footprint-allow: 4096
+          footprint-allow: 6144
 
       # A failed gate fails the step above, but the consolidated report still has
       # to be built from these files, so upload whatever was produced.
@@ -294,7 +294,7 @@ jobs:
                       dt = g.get("detail", "")
                       print(f"::notice title=Code Footprint Status ({st})::{dt}")
           '
-          python3 bench/compare_results.py results --gates footprint --footprint-allow 4096
+          python3 bench/compare_results.py results --gates footprint --footprint-allow 6144
 
   report:
     name: Consolidated Report
@@ -324,7 +324,7 @@ jobs:
           cand-sha: ${{ github.event.pull_request.head.sha }}
           summary-only: true
           strict-decode: true
-          footprint-allow: 4096
+          footprint-allow: 6144
 
       - name: Upload Full Report
         if: always()

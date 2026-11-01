@@ -54,7 +54,7 @@ static const MaskingModel g_ml_masking_model = {
     .peak_weight = 0.45f,
     .avg_floor = 0.0010f,
     .quiet_band = 0.0003f,
-    .sf_smooth = 0.62f,
+    .sf_smooth = 0.60f,
     .rich_slope = 3.00f,
     .tune_min_rate = 32000,
     .rich_min_rate = 56000,
@@ -151,10 +151,11 @@ static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {
-    if (is_sbr || bitrate_per_ch < 56000)
+    if (is_sbr)
         return g_ml_stereo_model.min_val;
 
-    float norm_rate = ((float)bitrate_per_ch / 64000.0f) - 1.0f;
+    /* Continuous ML function: scales smoothly across correlation and rate */
+    float norm_rate = bitrate_per_ch > 0 ? (((float)bitrate_per_ch / 64000.0f) - 1.0f) : -1.0f;
     float z = g_ml_stereo_model.w_corr * correlation + g_ml_stereo_model.w_rate * norm_rate + g_ml_stereo_model.bias;
     float sig = ml_sigmoid(z);
     return g_ml_stereo_model.min_val + sig * g_ml_stereo_model.scale;

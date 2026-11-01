@@ -32,7 +32,7 @@ def optimize_shaping_thresholds(dataset):
     train_samples = dataset.get('train', [])
 
     initial_params = np.array([
-        0.62,               # sf_smooth
+        0.60,               # sf_smooth
         1.85, 1.20, -1.10,  # stereo model: w_corr, w_rate, bias
         -0.15, 1.40,        # tns model: w_rate, bias
         0.70794578          # 18kHz knot gain
@@ -57,14 +57,14 @@ def optimize_shaping_thresholds(dataset):
             for sample in train_samples:
                 corr = sample.get('ms_correlation', 0.8)
                 rate = sample.get('bitrate_per_ch', 64000)
-                norm_rate = (rate / 64000.0) - 1.0
-                norm_tns_rate = (rate / 32000.0) - 1.0
+                norm_rate = (rate / 64000.0) - 1.0 if rate > 0 else -1.0
+                norm_tns_rate = (rate / 32000.0) - 1.0 if rate > 0 else -1.0
 
-                # Predicted M/S bias
+                # Predicted continuous M/S bias
                 z_stereo = w_corr * corr + w_rate * norm_rate + b_stereo
                 bias_pred = 1.0 + ml_sigmoid(z_stereo) * 0.55
 
-                # Predicted TNS hurdle
+                # Predicted continuous TNS hurdle
                 tns_hurdle = b_tns + w_tns * norm_tns_rate
 
                 bd_rate = sample.get('bd_rate', 0.0)
@@ -72,14 +72,18 @@ def optimize_shaping_thresholds(dataset):
                 pre_echo = sample.get('pre_echo_db', -30.0)
                 stereo_delta = sample.get('stereo_delta', 0.0)
 
-                # Penalize quality drops and bit inefficiency
+                # Objective: minimize BD-rate, optimize stereo coherence and transient pre-echo
+                # Model bias influences expected bits and stereo coherence
                 loss += 10.0 * max(0.0, -mos + 4.0)
-                loss += 1.0 * bd_rate
-                loss += 0.5 * max(0.0, pre_echo + 25.0)
+                loss += 1.0 * bd_rate * (1.0 / bias_pred)
+                loss += 0.5 * max(0.0, pre_echo + 25.0) * (tns_hurdle / 1.40)
+                loss += 2.0 * stereo_delta * (1.0 + abs(corr - 0.5) * bias_pred)
 
-                # Prior regularization towards baseline
-                loss += 0.01 * (smooth - 0.62) ** 2
+                # Regularization towards stable baselines
+                loss += 0.01 * (smooth - 0.60) ** 2
                 loss += 0.01 * (knot_18k - 0.70794578) ** 2
+                loss += 0.005 * (w_corr - 1.85) ** 2
+                loss += 0.005 * (w_rate - 1.20) ** 2
 
             return loss
 
@@ -258,10 +262,10 @@ static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {{
-    if (is_sbr || bitrate_per_ch < 56000)
+    if (is_sbr)
         return g_ml_stereo_model.min_val;
 
-    float norm_rate = ((float)bitrate_per_ch / 64000.0f) - 1.0f;
+    float norm_rate = bitrate_per_ch > 0 ? (((float)bitrate_per_ch / 64000.0f) - 1.0f) : -1.0f;
     float z = g_ml_stereo_model.w_corr * correlation + g_ml_stereo_model.w_rate * norm_rate + g_ml_stereo_model.bias;
     float sig = ml_sigmoid(z);
     return g_ml_stereo_model.min_val + sig * g_ml_stereo_model.scale;

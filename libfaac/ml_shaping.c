@@ -72,7 +72,7 @@ void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, 
     float sum_energy_ch = 0.0f;
     float sum_treble_energy = 0.0f;
     float sum_log_e_ch = 0.0f;
-    int spec_len = (record.block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    int spec_len = (record.block_type == ONLY_SHORT_WINDOW) ? (BLOCK_LEN_SHORT * 8) : BLOCK_LEN_LONG;
     int treble_start = spec_len / 2;
     for (int i = 0; i < spec_len; i++) {
         float val = hEncoder->freqBuff[channel][i];
