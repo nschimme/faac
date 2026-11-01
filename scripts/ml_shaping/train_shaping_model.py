@@ -2,7 +2,8 @@
 """
 FAAC ML Audio Shaping Model Trainer
 Optimizes continuous shaping decision parameters and psychacoustic thresholds
-from empirical telemetry logs using scipy.optimize and outputs a C header.
+from empirical telemetry logs using scipy.optimize against Pareto loss balancing
+BD-rate, stereo coherence, and transient pre-echo.
 """
 
 import argparse
@@ -15,6 +16,11 @@ try:
     from scipy.optimize import minimize
 except ImportError:
     minimize = None
+
+try:
+    from loss import compute_pareto_loss
+except ImportError:
+    from scripts.ml_shaping.loss import compute_pareto_loss
 
 
 def ml_sigmoid(z):
@@ -30,6 +36,7 @@ def train_model(dataset_path, output_header):
         data = json.load(f)
 
     train_samples = data.get('train', [])
+    metrics = data.get('benchmark_metrics', {})
     print(f"Loaded {len(train_samples)} training samples from {dataset_path}")
 
     # Baseline anchor parameters:
@@ -39,12 +46,52 @@ def train_model(dataset_path, output_header):
     initial_params = np.array([0.60, 1.85, 1.20, -1.10, -0.15, 1.40])
 
     if minimize is not None and len(train_samples) > 0:
-        # Multi-objective optimization on telemetry data
-        def loss_func(p):
+        def objective(p):
             sf_smooth, w_corr, w_rate, s_bias, t_rate, t_bias = p
-            loss = 0.0
 
-            # L2 regularization towards baseline stability
+            # Evaluate surrogate deltas over telemetry distribution
+            corr_scores = []
+            transient_risks = []
+            rate_savings = []
+
+            for s in train_samples[:300]:
+                br = s.get('bitrate_per_ch', 32000)
+                corr = s.get('ms_correlation', 0.5)
+                attack = s.get('attack_ratio', 0.0)
+                norm_rate = (br / 64000.0) - 1.0 if br > 0 else -1.0
+                pred_bias = 1.0 + 0.55 * ml_sigmoid(w_corr * corr + w_rate * norm_rate + s_bias)
+
+                # Stereo phase drift risk if M/S applied on decorrelated audio
+                if corr < 0.4:
+                    stereo_drift = max(0.0, (pred_bias - 1.0) * (0.4 - corr))
+                    corr_scores.append(stereo_drift)
+
+                # Transient pre-echo risk if TNS threshold is too high on strong attacks
+                norm_tns_rate = (br / 32000.0) - 1.0 if br > 0 else -1.0
+                pred_tns_hurdle = t_bias + t_rate * norm_tns_rate
+                if attack > 1.2:
+                    preecho_risk = max(0.0, (pred_tns_hurdle - 1.40) * attack)
+                    transient_risks.append(preecho_risk)
+
+                # Bitrate saving from M/S on correlated channels
+                if corr > 0.7:
+                    rate_savings.append(0.01 * (pred_bias - 1.0) * corr)
+
+            mean_stereo_delta = float(np.mean(corr_scores)) if corr_scores else 0.0
+            mean_transient_delta = float(np.mean(transient_risks)) if transient_risks else 0.0
+            bd_rate_delta = -float(np.mean(rate_savings)) if rate_savings else 0.0
+
+            loss = compute_pareto_loss(
+                bd_rate_delta=bd_rate_delta,
+                stereo_coherence_delta=mean_stereo_delta,
+                nper_preecho_delta=mean_transient_delta,
+                lambda_stereo=3.0,
+                lambda_transient=4.0,
+                max_stereo_loss=0.002,
+                max_transient_loss=0.05
+            )
+
+            # L2 regularization anchor to prevent drifting from verified baseline
             loss += 0.05 * (sf_smooth - 0.60) ** 2
             loss += 0.01 * (w_corr - 1.85) ** 2
             loss += 0.01 * (w_rate - 1.20) ** 2
@@ -52,30 +99,23 @@ def train_model(dataset_path, output_header):
             loss += 0.01 * (t_rate - (-0.15)) ** 2
             loss += 0.01 * (t_bias - 1.40) ** 2
 
-            for s in train_samples[:500]:
-                br = s.get('bitrate_per_ch', 32000)
-                corr = s.get('ms_correlation', 0.5)
-                norm_rate = (br / 64000.0) - 1.0 if br > 0 else -1.0
-                pred_bias = 1.0 + 0.55 * ml_sigmoid(w_corr * corr + w_rate * norm_rate + s_bias)
-                if corr > 0.8 and br >= 64000:
-                    loss -= 0.001 * pred_bias
             return loss
 
         bounds = [
-            (0.50, 0.70),
-            (1.0, 3.0),
-            (0.5, 2.5),
-            (-2.5, 0.0),
-            (-0.35, 0.0),
-            (1.30, 1.55),
+            (0.55, 0.65),
+            (1.5, 2.2),
+            (0.8, 1.6),
+            (-1.5, -0.8),
+            (-0.25, -0.05),
+            (1.35, 1.45),
         ]
 
-        res = minimize(loss_func, initial_params, method='L-BFGS-B', bounds=bounds)
+        res = minimize(objective, initial_params, method='L-BFGS-B', bounds=bounds)
         opt_params = res.x
-        print(f"Optimization finished: success={res.success}, fun={res.fun:.4f}")
+        print(f"Pareto optimization finished: success={res.success}, fun={res.fun:.5f}")
     else:
         opt_params = initial_params
-        print("Using standard anchor parameters.")
+        print("Using standard Pareto-optimal anchor parameters.")
 
     header_content = f"""/*
  * FAAC - Freeware Advanced Audio Coder
@@ -93,6 +133,40 @@ def train_model(dataset_path, output_header):
 extern "C" {{
 #endif
 
+enum {{ MASKING_TILT_KNOTS = 8, MASKING_PROFILE_DEFAULT = 0, MASKING_PROFILE_TUNED = 1 }};
+
+typedef struct
+{{
+    float frequency_khz;
+    float gain;
+}} MaskingTiltKnot;
+
+typedef struct
+{{
+    float avg_weight;
+    float loud_exponent;
+    float slope_scale;
+    float peak_floor;
+}} MaskingProfile;
+
+typedef struct
+{{
+    float silence_rms;
+    float peak_weight;
+    float avg_floor;
+    float quiet_band;
+    float sf_smooth;
+    float rich_slope;
+    unsigned tune_min_rate;
+    unsigned nudge_min_rate;
+    unsigned rich_min_rate;
+    unsigned slope_rate_threshold;
+    float slope_reference_rate;
+    float tilt_nyquist_khz;
+    MaskingProfile profiles[2];
+    MaskingTiltKnot tilt[MASKING_TILT_KNOTS];
+}} MaskingModel;
+
 typedef struct {{
     float w_corr;
     float w_rate;
@@ -100,6 +174,36 @@ typedef struct {{
     float scale;
     float min_val;
 }} MlStereoModel;
+
+typedef struct {{
+    float w_rate;
+    float bias;
+    float min_hurdle;
+    float max_hurdle;
+}} MlTnsModel;
+
+static const MaskingModel g_ml_masking_model = {{
+    .silence_rms = 0.4f,
+    .peak_weight = 0.45f,
+    .avg_floor = 0.0010f,
+    .quiet_band = 0.0003f,
+    .sf_smooth = {opt_params[0]:.4f}f,
+    .rich_slope = 3.00f,
+    .tune_min_rate = 32000,
+    .rich_min_rate = 56000,
+    .nudge_min_rate = 28000,
+    .slope_rate_threshold = 48000,
+    .slope_reference_rate = 44100.0f,
+    .tilt_nyquist_khz = 24.0f,
+    .profiles = {{
+        {{ .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f }},
+        {{ .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.00f, .peak_floor = 0.0100f }},
+    }},
+    .tilt = {{
+        {{ 0.5f, 1.00000000f }}, {{ 1.5f, 0.84139514f }}, {{ 3.0f, 0.84139514f }}, {{ 5.0f, 1.00000000f }},
+        {{ 8.0f, 1.00000000f }}, {{ 11.0f, 1.41253754f }}, {{ 14.0f, 1.00000000f }}, {{ 18.0f, 0.70794578f }},
+    }},
+}};
 
 static const MlStereoModel g_ml_stereo_model = {{
     .w_corr = {opt_params[1]:.4f}f,
@@ -109,19 +213,55 @@ static const MlStereoModel g_ml_stereo_model = {{
     .min_val = 1.00f
 }};
 
-typedef struct {{
-    float w_rate;
-    float bias;
-    float min_hurdle;
-    float max_hurdle;
-}} MlTnsModel;
-
 static const MlTnsModel g_ml_tns_model = {{
     .w_rate = {opt_params[4]:.4f}f,
     .bias = {opt_params[5]:.4f}f,
     .min_hurdle = 1.35f,
     .max_hurdle = 1.60f
 }};
+
+#define ML_SHAPING_ATTACK_MID       0.50f
+#define ML_SHAPING_SFM_CUTOFF       0.85f
+
+static inline float ml_sigmoid(float z)
+{{
+    return 0.5f * (z / (1.0f + (z > 0.0f ? z : -z))) + 0.5f;
+}}
+
+static inline bool ml_model_tns_admit(float attack, float sfm, uint32_t bitrate_per_ch)
+{{
+    (void)bitrate_per_ch;
+    if (sfm > ML_SHAPING_SFM_CUTOFF)
+        return false;
+
+    if (attack <= 0.0f)
+        return true;
+
+    return (attack >= ML_SHAPING_ATTACK_MID);
+}}
+
+static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
+{{
+    if (bitrate_per_ch == 0)
+        return g_ml_tns_model.bias;
+
+    float norm_rate = ((float)bitrate_per_ch / 32000.0f) - 1.0f;
+    float hurdle = g_ml_tns_model.bias + g_ml_tns_model.w_rate * norm_rate;
+    if (hurdle < g_ml_tns_model.min_hurdle) hurdle = g_ml_tns_model.min_hurdle;
+    if (hurdle > g_ml_tns_model.max_hurdle) hurdle = g_ml_tns_model.max_hurdle;
+    return hurdle;
+}}
+
+static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
+{{
+    if (is_sbr)
+        return g_ml_stereo_model.min_val;
+
+    float norm_rate = bitrate_per_ch > 0 ? (((float)bitrate_per_ch / 64000.0f) - 1.0f) : -1.0f;
+    float z = g_ml_stereo_model.w_corr * correlation + g_ml_stereo_model.w_rate * norm_rate + g_ml_stereo_model.bias;
+    float sig = ml_sigmoid(z);
+    return g_ml_stereo_model.min_val + sig * g_ml_stereo_model.scale;
+}}
 
 #ifdef __cplusplus
 }}

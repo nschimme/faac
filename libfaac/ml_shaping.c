@@ -68,6 +68,7 @@ void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, 
     record.tns_order = coderInfo[channel].tnsInfo.windowData.numFilters > 0 ?
                        coderInfo[channel].tnsInfo.windowData.tnsFilter[0].order : 0;
     record.total_bands = coderInfo[channel].sfbn;
+    record.tns_gain = coderInfo[channel].tnsInfo.tnsDataPresent ? 1.50f : 1.0f;
 
     /* Compute energy, treble energy ratio, and spectral flatness (SFM) */
     float sum_energy_ch = 0.0f;
@@ -107,6 +108,19 @@ void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, 
                 ms_count++;
         }
         record.ms_used_bands = ms_count;
+        /* Normalized inter-channel energy correlation */
+        float el_sum = 0.0f, er_sum = 0.0f, elr_sum = 0.0f;
+        for (int i = 0; i < spec_len; i += 4) {
+            for (int k = 0; k < 4 && (i + k) < spec_len; k++) {
+                float l = hEncoder->freqBuff[0][i + k];
+                float r = hEncoder->freqBuff[1][i + k];
+                el_sum += l * l;
+                er_sum += r * r;
+                elr_sum += l * r;
+            }
+        }
+        float denom = sqrtf(el_sum * er_sum);
+        record.ms_correlation = (denom > 1e-12f) ? (elr_sum / denom) : 0.0f;
     }
 
     MlShapingLogTelemetry(&record);

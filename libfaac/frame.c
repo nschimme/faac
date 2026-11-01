@@ -1085,7 +1085,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
                                                           hEncoder->aacquantCfg.quality, maxqual);
 
-    /* Telemetry logging if enabled */
+    /* Telemetry logging when enabled */
     if (MlShapingLoggingEnabled()) {
         for (channel = 0; channel < numChannels; channel++) {
             MlShapingRecordFrame(hEncoder, coderInfo, channel);

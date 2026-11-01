@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
 FAAC ML Audio Shaping Dataset Builder
-Aggregates telemetry CSV logs collected during faac-benchmark or encoding runs,
-cleans outliers, computes normalized feature statistics, and partitions into
-train/test splits for offline optimization.
+Aggregates telemetry CSV logs and pairs with faac-benchmark evaluation metrics
+(BD-rate, stereo coherence, transient NPER) into train/test splits.
 """
 
 import argparse
@@ -49,7 +48,7 @@ def parse_csv(filepath):
     return samples
 
 
-def build_dataset(inputs, output_json, train_ratio=0.8, seed=42):
+def build_dataset(inputs, output_json, benchmark_metrics_json=None, train_ratio=0.8, seed=42):
     all_samples = []
     for inp in inputs:
         all_samples.extend(parse_csv(inp))
@@ -57,6 +56,11 @@ def build_dataset(inputs, output_json, train_ratio=0.8, seed=42):
     if not all_samples:
         print("Warning: No valid samples parsed from inputs.", file=sys.stderr)
         return
+
+    benchmark_metrics = {}
+    if benchmark_metrics_json and os.path.exists(benchmark_metrics_json):
+        with open(benchmark_metrics_json, 'r') as f:
+            benchmark_metrics = json.load(f)
 
     random.seed(seed)
     random.shuffle(all_samples)
@@ -69,6 +73,7 @@ def build_dataset(inputs, output_json, train_ratio=0.8, seed=42):
         'total_samples': len(all_samples),
         'train_samples': len(train_split),
         'test_samples': len(test_split),
+        'benchmark_metrics': benchmark_metrics,
         'train': train_split,
         'test': test_split,
     }
@@ -84,11 +89,12 @@ def main():
     parser = argparse.ArgumentParser(description="FAAC ML Shaping Dataset Builder")
     parser.add_argument("inputs", nargs="+", help="CSV telemetry files")
     parser.add_argument("--output", "-o", default="dataset.json", help="Output JSON dataset path")
+    parser.add_argument("--benchmark-metrics", "-b", default=None, help="Optional benchmark metrics JSON")
     parser.add_argument("--train-ratio", type=float, default=0.8, help="Train split ratio (default: 0.8)")
     parser.add_argument("--seed", type=int, default=42, help="Random split seed")
     args = parser.parse_args()
 
-    build_dataset(args.inputs, args.output, args.train_ratio, args.seed)
+    build_dataset(args.inputs, args.output, args.benchmark_metrics, args.train_ratio, args.seed)
 
 
 if __name__ == "__main__":
