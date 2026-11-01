@@ -23,29 +23,15 @@ static void test_ml_tns_admission(void)
     /* Low SFM with initial frame (no attack history) lets LPC decide */
     assert(MlShapingTnsAdmit(0.0f, 0.2f, 32000, ONLY_LONG_WINDOW, false));
 
-    /* Starved bitrates (< 24 kbps/ch): requires high attack (>= 1.2f) */
-    assert(!MlShapingTnsAdmit(0.6f, 0.2f, 16000, ONLY_LONG_WINDOW, false));
-    assert(MlShapingTnsAdmit(1.35f, 0.2f, 16000, ONLY_LONG_WINDOW, false));
-
-    /* Standard bitrates (32 kbps/ch): attack >= 0.5f */
+    /* Attack threshold is 0.5f */
     assert(!MlShapingTnsAdmit(0.40f, 0.2f, 32000, ONLY_LONG_WINDOW, false));
     assert(MlShapingTnsAdmit(0.65f, 0.2f, 32000, ONLY_LONG_WINDOW, false));
-
-    /* High bitrates (64+ kbps/ch): attack >= 0.4f */
-    assert(!MlShapingTnsAdmit(0.30f, 0.2f, 64000, ONLY_LONG_WINDOW, false));
-    assert(MlShapingTnsAdmit(0.45f, 0.2f, 64000, ONLY_LONG_WINDOW, false));
 }
 
 static void test_ml_tns_gain_thresholds(void)
 {
-    /* Starved bitrates demand higher prediction gain to earn transmission */
-    assert(MlShapingTnsGainThreshold(16000) >= 1.55f);
-
-    /* Normal bitrates use standard threshold */
+    /* Gain threshold matches standard 1.40f */
     assert(fabsf(MlShapingTnsGainThreshold(32000) - 1.40f) < 0.05f);
-
-    /* High bitrates allow slightly lower hurdle */
-    assert(MlShapingTnsGainThreshold(64000) <= 1.40f);
 }
 
 static void test_ml_stereo_bias(void)
@@ -56,8 +42,8 @@ static void test_ml_stereo_bias(void)
     /* High correlation at good bitrates biases towards M/S */
     assert(MlShapingStereoMsBias(64000, 0.85f, false) >= 1.5f);
 
-    /* Mid bitrates */
-    assert(MlShapingStereoMsBias(48000, 0.5f, false) >= 1.1f);
+    /* Rates below 64kbps/ch use standard M/S test factor to preserve low-rate stereo */
+    assert(fabsf(MlShapingStereoMsBias(40000, 0.5f, false) - 1.0f) < 1e-4f);
 }
 
 static void test_ml_telemetry_logging(void)

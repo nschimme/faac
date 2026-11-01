@@ -77,8 +77,8 @@ def optimize_shaping_thresholds(dataset):
         'tns_gain_limit_starved': round(tns_gain_starved, 2),
         'tns_gain_limit_normal': 1.40,
         'tns_gain_limit_high': 1.35,
-        'ms_bias_high': round(ms_bias_high, 2),
-        'ms_bias_mid': 1.20,
+        'ms_bias_high': 1.50,
+        'ms_bias_mid': 1.00,
         'ms_bias_normal': 1.00
     }
 
@@ -123,35 +123,24 @@ static inline bool ml_model_tns_admit(float attack, float sfm, uint32_t bitrate_
     if (attack <= 0.0f)
         return true;
 
-    if (bitrate_per_ch > 0 && bitrate_per_ch < 24000)
-        return (attack >= ML_SHAPING_ATTACK_STARVED);
-    else if (bitrate_per_ch >= 64000)
-        return (attack >= ML_SHAPING_ATTACK_HIGH);
-    else
-        return (attack >= ML_SHAPING_ATTACK_MID);
+    return (attack >= ML_SHAPING_ATTACK_MID);
 }}
 
 static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 {{
-    if (bitrate_per_ch > 0 && bitrate_per_ch < 24000)
-        return ML_SHAPING_TNS_GAIN_STARVED;
-    else if (bitrate_per_ch >= 64000)
-        return ML_SHAPING_TNS_GAIN_HIGH;
+    (void)bitrate_per_ch;
     return ML_SHAPING_TNS_GAIN_NORMAL;
 }}
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {{
+    (void)correlation;
     if (is_sbr)
         return ML_SHAPING_MS_BIAS_NORMAL;
 
-    if (bitrate_per_ch >= 64000) {{
-        if (correlation > 0.70f)
-            return ML_SHAPING_MS_BIAS_HIGH;
-        return 1.50f;
-    }} else if (bitrate_per_ch >= 40000) {{
-        return ML_SHAPING_MS_BIAS_MID;
-    }}
+    if (bitrate_per_ch >= 64000)
+        return ML_SHAPING_MS_BIAS_HIGH;
+
     return ML_SHAPING_MS_BIAS_NORMAL;
 }}
 

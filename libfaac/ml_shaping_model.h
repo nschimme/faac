@@ -24,49 +24,39 @@ extern "C" {
 #define ML_SHAPING_TNS_GAIN_NORMAL  1.40f
 #define ML_SHAPING_TNS_GAIN_HIGH    1.35f
 
-#define ML_SHAPING_MS_BIAS_HIGH     1.60f
-#define ML_SHAPING_MS_BIAS_MID      1.20f
+#define ML_SHAPING_MS_BIAS_HIGH     1.50f
+#define ML_SHAPING_MS_BIAS_MID      1.00f
 #define ML_SHAPING_MS_BIAS_NORMAL   1.00f
 
 /* Fast inline decision functions */
 static inline bool ml_model_tns_admit(float attack, float sfm, uint32_t bitrate_per_ch)
 {
+    (void)bitrate_per_ch;
     if (sfm > ML_SHAPING_SFM_CUTOFF)
         return false;
 
     if (attack <= 0.0f)
         return true;
 
-    if (bitrate_per_ch > 0 && bitrate_per_ch < 24000)
-        return (attack >= ML_SHAPING_ATTACK_STARVED);
-    else if (bitrate_per_ch >= 64000)
-        return (attack >= ML_SHAPING_ATTACK_HIGH);
-    else
-        return (attack >= ML_SHAPING_ATTACK_MID);
+    /* Baseline FAAC behavior: TNS_ATTACK_MIN (0.5f) across bitrates */
+    return (attack >= ML_SHAPING_ATTACK_MID);
 }
 
 static inline float ml_model_tns_gain_threshold(uint32_t bitrate_per_ch)
 {
-    if (bitrate_per_ch > 0 && bitrate_per_ch < 24000)
-        return ML_SHAPING_TNS_GAIN_STARVED;
-    else if (bitrate_per_ch >= 64000)
-        return ML_SHAPING_TNS_GAIN_HIGH;
+    (void)bitrate_per_ch;
     return ML_SHAPING_TNS_GAIN_NORMAL;
 }
 
 static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
 {
+    (void)correlation;
     if (is_sbr)
         return ML_SHAPING_MS_BIAS_NORMAL;
 
-    if (bitrate_per_ch >= 64000) {
-        if (correlation > 0.70f)
-            return ML_SHAPING_MS_BIAS_HIGH;
-        return 1.50f;
-    } else if (bitrate_per_ch >= 40000) {
-        /* Keep mid-rates safe from premature MS down to 32k */
-        return ML_SHAPING_MS_BIAS_MID;
-    }
+    if (bitrate_per_ch >= 64000)
+        return ML_SHAPING_MS_BIAS_HIGH;
+
     return ML_SHAPING_MS_BIAS_NORMAL;
 }
 
