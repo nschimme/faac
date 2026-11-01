@@ -19,7 +19,6 @@
 #include "coder.h"
 #include "tns.h"
 #include "util.h"
-#include "ml_shaping.h"
 
 /* Per-sample-rate scalefactor-band range TNS is allowed to filter over, from
  * ISO/IEC 13818-7/14496-3's TNS tool tables (indexed by sampleRateIdx). Not
@@ -219,7 +218,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter, uint32_t bitrate_per_ch)
+                         float *spec, TnsFilterData *filter)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -291,8 +290,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    float gain_limit = MlShapingTnsGainThreshold(bitrate_per_ch);
-    if (gain < gain_limit)
+    if (gain < TNS_GAIN_LIMIT)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
      * so a high gain can't mean an unstable filter; isfinite() catches the
@@ -355,7 +353,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncode(CoderInfo *coderInfo, float *spec, uint32_t bitrate_per_ch)
+void TnsEncode(CoderInfo *coderInfo, float *spec)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
     int numBands = coderInfo->sfbn;
@@ -376,7 +374,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec, uint32_t bitrate_per_ch)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0], bitrate_per_ch))
+                       &tnsInfo->windowData.tnsFilter[0]))
         return;
 
 #ifdef FAAC_STATS

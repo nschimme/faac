@@ -6,19 +6,19 @@
 #ifndef ML_SHAPING_H
 #define ML_SHAPING_H
 
-#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include "faac.h"
 #include "coder.h"
-#include "faac_internal.h"
-#include "ml_shaping_model.h"
-
-struct faacEncStruct;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+struct faacEncStruct;
+
+/* ML Telemetry record per audio channel per frame */
 typedef struct {
     uint32_t frame_idx;
     uint16_t channel;
@@ -43,13 +43,13 @@ typedef struct {
 /* Check if telemetry logging is enabled */
 bool MlShapingLoggingEnabled(void);
 
-/* Initialize telemetry logger if FAAC_LOG_SHAPING environment variable is set */
+/* Initialize telemetry logger to a CSV file */
 void MlShapingInitLogging(const char *csv_path);
 
-/* Record shaping telemetry for a channel frame */
+/* Record per-frame feature telemetry */
 void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, int channel);
 
-/* Log frame shaping telemetry row */
+/* Log telemetry record directly */
 void MlShapingLogTelemetry(const MlShapingTelemetry *record);
 
 /* Close telemetry logger */
@@ -63,16 +63,6 @@ static inline void MlShapingRecordFrame(struct faacEncStruct *hEncoder, CoderInf
 static inline void MlShapingLogTelemetry(const MlShapingTelemetry *record) { (void)record; }
 static inline void MlShapingCloseLogging(void) {}
 #endif
-
-/* Decision: Should TNS be admitted for this frame given attack, SFM, and bit budget?
- * Evaluates ML model heuristics with strict safety bounds. */
-bool MlShapingTnsAdmit(float attack, float sfm, uint32_t bitrate_per_ch, int block_type, bool is_lfe);
-
-/* Decision: Optimal TNS prediction gain threshold */
-float MlShapingTnsGainThreshold(uint32_t bitrate_per_ch);
-
-/* Decision: M/S Bias adjustment factor based on rate budget and stereo correlation */
-float MlShapingStereoMsBias(uint32_t bitrate_per_ch, float correlation, bool is_sbr);
 
 #ifdef __cplusplus
 }

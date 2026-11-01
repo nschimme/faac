@@ -8,7 +8,6 @@ FAAC_3 {
     faac_encoder_asc;
     faac_encoder_encode;
     faac_strerror;
-    faac_set_log_shaping;
   local:
     *;
 };

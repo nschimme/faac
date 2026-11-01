@@ -39,15 +39,14 @@ libfaac_src = [
     'sbr_internal.h',
     'sbr_analysis.h',
     'resample.h',
-    'ml_shaping.c',
-    'ml_shaping.h',
-    'ml_shaping_model.h',
     'stereo.c',
     'stereo.h',
     'tns.c',
     'tns.h',
     'util.c',
     'util.h',
+    'ml_shaping.c',
+    'ml_shaping.h',
 ]
 
 encoder_codec_dep = codec_lc_dep

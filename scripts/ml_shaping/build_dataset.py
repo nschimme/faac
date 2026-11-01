@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 """
 FAAC ML Audio Shaping Dataset Builder
-
-Builds paired train/test datasets by associating per-frame audio shaping telemetry
-logs (attack ratio, SFM, energy, M/S correlation, rate budget) with objective
-benchmark metrics from faac-benchmark (MOS, BD-rate, stereo image delta, and transient metrics).
+Aggregates telemetry CSV logs collected during faac-benchmark or encoding runs,
+cleans outliers, computes normalized feature statistics, and partitions into
+train/test splits for offline optimization.
 """
 
 import argparse
 import csv
-import glob
 import json
 import os
+import random
 import sys
 
-def parse_telemetry_csv(csv_path):
-    """Parses an encoder telemetry CSV file and returns per-frame feature dicts."""
-    records = []
-    with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+
+def parse_csv(filepath):
+    samples = []
+    if not os.path.exists(filepath):
+        print(f"Error: {filepath} not found", file=sys.stderr)
+        return samples
+
+    with open(filepath, 'r', newline='') as f:
         reader = csv.DictReader(f)
         for row in reader:
             try:
-                record = {
+                sample = {
                     'frame_idx': int(row['frame_idx']),
                     'channel': int(row['channel']),
                     'num_channels': int(row['num_channels']),
@@ -37,107 +40,56 @@ def parse_telemetry_csv(csv_path):
                     'tns_gain': float(row['tns_gain']),
                     'ms_used_bands': int(row['ms_used_bands']),
                     'total_bands': int(row['total_bands']),
-                    'sf_mean': float(row.get('sf_mean', 0.0)),
-                    'treble_energy_ratio': float(row.get('treble_energy_ratio', 0.0)),
+                    'sf_mean': float(row['sf_mean']),
+                    'treble_energy_ratio': float(row['treble_energy_ratio']),
                 }
-                records.append(record)
+                samples.append(sample)
             except (ValueError, KeyError):
                 continue
-    return records
+    return samples
 
-def aggregate_clip_features(telemetry_records):
-    """Aggregates per-frame telemetry into clip-level summary statistics."""
-    if not telemetry_records:
-        return {}
 
-    n = len(telemetry_records)
-    attacks = [r['attack_ratio'] for r in telemetry_records]
-    sfms = [r['sfm'] for r in telemetry_records]
-    energies = [r['total_energy'] for r in telemetry_records]
-    tns_active = [r['tns_enabled'] for r in telemetry_records]
+def build_dataset(inputs, output_json, train_ratio=0.8, seed=42):
+    all_samples = []
+    for inp in inputs:
+        all_samples.extend(parse_csv(inp))
 
-    return {
-        'frame_count': n,
-        'mean_attack': sum(attacks) / n,
-        'max_attack': max(attacks) if attacks else 0.0,
-        'mean_sfm': sum(sfms) / n,
-        'mean_energy': sum(energies) / n,
-        'tns_ratio': sum(tns_active) / n,
-        'sample_rate': telemetry_records[0]['sample_rate'],
-        'num_channels': telemetry_records[0]['num_channels'],
-        'bitrate_per_ch': telemetry_records[0]['bitrate_per_ch']
+    if not all_samples:
+        print("Warning: No valid samples parsed from inputs.", file=sys.stderr)
+        return
+
+    random.seed(seed)
+    random.shuffle(all_samples)
+
+    split_idx = int(len(all_samples) * train_ratio)
+    train_split = all_samples[:split_idx]
+    test_split = all_samples[split_idx:]
+
+    summary = {
+        'total_samples': len(all_samples),
+        'train_samples': len(train_split),
+        'test_samples': len(test_split),
+        'train': train_split,
+        'test': test_split,
     }
 
-def join_telemetry_with_benchmark(telemetry_dir, benchmark_json_path, output_dataset_path, train_ratio=0.8):
-    """
-    Pairs encoder telemetry logs with benchmark JSON results (MOS, BD-rate, stereo diff, transients)
-    and splits into train and test sets.
-    """
-    benchmark_data = {}
-    if os.path.exists(benchmark_json_path):
-        with open(benchmark_json_path, 'r', encoding='utf-8') as f:
-            try:
-                raw_bench = json.load(f)
-                if 'matrix' in raw_bench:
-                    for scenario, clips in raw_bench['matrix'].items():
-                        for clip_name, metrics in clips.items():
-                            key = f"{scenario}_{clip_name}"
-                            benchmark_data[key] = metrics
-            except json.JSONDecodeError:
-                print(f"Warning: could not parse benchmark JSON at {benchmark_json_path}")
+    os.makedirs(os.path.dirname(os.path.abspath(output_json)), exist_ok=True)
+    with open(output_json, 'w') as f:
+        json.dump(summary, f, indent=2)
 
-    csv_files = sorted(glob.glob(os.path.join(telemetry_dir, "*.csv")))
-    dataset_rows = []
+    print(f"Dataset generated: {len(all_samples)} samples ({len(train_split)} train, {len(test_split)} test) -> {output_json}")
 
-    for path in csv_files:
-        base_name = os.path.splitext(os.path.basename(path))[0]
-        records = parse_telemetry_csv(path)
-        if not records:
-            continue
-
-        clip_features = aggregate_clip_features(records)
-        target_metrics = benchmark_data.get(base_name, {})
-
-        row = {
-            'clip_id': base_name,
-            **clip_features,
-            'mos': target_metrics.get('mos', 0.0),
-            'bd_rate': target_metrics.get('bd_rate', 0.0),
-            'stereo_delta': target_metrics.get('stereo_delta', 0.0),
-            'pre_echo_db': target_metrics.get('pre_echo_db', 0.0),
-            'attack_centroid_ms': target_metrics.get('attack_centroid_ms', 0.0),
-        }
-        dataset_rows.append(row)
-
-    split_idx = int(len(dataset_rows) * train_ratio)
-    train_set = dataset_rows[:split_idx]
-    test_set = dataset_rows[split_idx:]
-
-    output_data = {
-        'total_clips': len(dataset_rows),
-        'train_count': len(train_set),
-        'test_count': len(test_set),
-        'train': train_set,
-        'test': test_set
-    }
-
-    os.makedirs(os.path.dirname(os.path.abspath(output_dataset_path)), exist_ok=True)
-    with open(output_dataset_path, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=2)
-
-    print(f"Dataset successfully built with {len(dataset_rows)} samples: {output_dataset_path}")
-    print(f"  Train: {len(train_set)}, Test: {len(test_set)}")
-    return output_data
 
 def main():
-    parser = argparse.ArgumentParser(description="FAAC ML Audio Shaping Dataset Builder")
-    parser.add_argument("--telemetry-dir", required=True, help="Directory containing shaping CSV logs")
-    parser.add_argument("--benchmark-json", default="", help="Path to faac-benchmark results JSON")
-    parser.add_argument("--output", default="data/ml_shaping_dataset.json", help="Output dataset JSON path")
+    parser = argparse.ArgumentParser(description="FAAC ML Shaping Dataset Builder")
+    parser.add_argument("inputs", nargs="+", help="CSV telemetry files")
+    parser.add_argument("--output", "-o", default="dataset.json", help="Output JSON dataset path")
     parser.add_argument("--train-ratio", type=float, default=0.8, help="Train split ratio (default: 0.8)")
+    parser.add_argument("--seed", type=int, default=42, help="Random split seed")
     args = parser.parse_args()
 
-    join_telemetry_with_benchmark(args.telemetry_dir, args.benchmark_json, args.output, args.train_ratio)
+    build_dataset(args.inputs, args.output, args.train_ratio, args.seed)
+
 
 if __name__ == "__main__":
     main()

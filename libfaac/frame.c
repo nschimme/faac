@@ -28,10 +28,10 @@
 #include "quantize.h"
 #include "util.h"
 #include "tns.h"
-#include "ml_shaping.h"
 #include "stereo.h"
 #include "sbr.h"
 #include "ratecontrol.h"
+#include "ml_shaping.h"
 #include "atomic.h"
 #include "endian.h"
 
@@ -921,18 +921,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
             g_faacStats.longBlocks++;
 #endif
 
-            /* ML-Optimized TNS admission gate: evaluates attack ratio and bit budget without hot-path overhead */
-            uint32_t br_per_ch = numChannels ? (uint32_t)(hEncoder->config.bitRate / numChannels) : 0;
-            bool is_lfe = false;
-#if MAX_CHANNELS >= 6
-            is_lfe = hEncoder->isLfeChannel[channel];
-#endif
-            if (!MlShapingTnsAdmit(attack, 0.0f, br_per_ch, coderInfo[channel].block_type, is_lfe)) {
+            /* No envelope yet (the first frames) means no basis to reject
+               on, so admit and let the LPC gates decide. */
+            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
 
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], br_per_ch);
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
         }

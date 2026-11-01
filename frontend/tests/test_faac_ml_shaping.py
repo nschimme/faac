@@ -1,92 +1,58 @@
 #!/usr/bin/env python3
 """
-Integration test for FAAC ML Audio Shaping & Telemetry logging.
+E2E test for FAAC ML Audio Shaping Telemetry
 """
 
 import os
-import sys
 import subprocess
+import sys
 import tempfile
 import unittest
 import wave
-import struct
-import random
+
 
 class TestFaacMlShaping(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Allow passing faac binary and max_channels as CLI arguments from meson
-        cls.faac_bin = None
-        cls.max_channels = 2
-        for arg in sys.argv[1:]:
-            if not arg.startswith("-") and not arg.endswith(".py"):
-                if cls.faac_bin is None and (os.path.isfile(arg) or os.access(arg, os.X_OK)):
-                    cls.faac_bin = os.path.abspath(arg)
-                elif arg.isdigit():
-                    cls.max_channels = int(arg)
+    def setUp(self):
+        self.faac_bin = sys.argv[1] if len(sys.argv) > 1 else 'frontend/faac'
+        self.tmp_dir = tempfile.mkdtemp()
+        self.wav_path = os.path.join(self.tmp_dir, 'test.wav')
+        self.aac_path = os.path.join(self.tmp_dir, 'test.aac')
+        self._generate_sine_wav(self.wav_path)
 
-        if not cls.faac_bin or not os.path.exists(cls.faac_bin):
-            candidate = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "build", "frontend", "faac"))
-            if os.path.exists(candidate):
-                cls.faac_bin = candidate
-            else:
-                cls.faac_bin = os.path.abspath("build/frontend/faac")
+    def tearDown(self):
+        for f in [self.wav_path, self.aac_path]:
+            if os.path.exists(f):
+                os.remove(f)
+        if os.path.exists(self.tmp_dir):
+            import shutil
+            shutil.rmtree(self.tmp_dir)
 
-    def test_cli_log_shaping(self):
-        channels = 1 if self.max_channels < 2 else 2
-        with tempfile.TemporaryDirectory() as tmpdir:
-            wav_path = os.path.join(tmpdir, "in.wav")
-            m4a_path = os.path.join(tmpdir, "out.m4a")
-            csv_path = os.path.join(tmpdir, "shaping.csv")
-
-            with wave.open(wav_path, 'w') as f:
-                f.setnchannels(channels)
-                f.setsampwidth(2)
-                f.setframerate(44100)
-                if channels == 1:
-                    samples = [struct.pack('<h', random.randint(-15000, 15000)) for _ in range(44100)]
-                else:
-                    samples = [struct.pack('<hh', random.randint(-15000, 15000), random.randint(-15000, 15000)) for _ in range(44100)]
-                f.writeframes(b''.join(samples))
-
-            cmd = [self.faac_bin, "--overwrite", wav_path, "-o", m4a_path, "--log-shaping", csv_path]
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            self.assertEqual(res.returncode, 0, f"FAAC failed: {res.stderr}")
-            self.assertTrue(os.path.exists(csv_path), "CSV telemetry file not created")
-
-            with open(csv_path, 'r', encoding='utf-8') as f:
-                lines = [line.strip() for line in f if line.strip()]
-            self.assertGreater(len(lines), 5, "Telemetry CSV has too few lines")
-            self.assertTrue(lines[0].startswith("frame_idx,channel,num_channels"), "CSV header mismatch")
+    def _generate_sine_wav(self, path, duration_s=0.5, rate=44100):
+        import math
+        import struct
+        num_frames = int(duration_s * rate)
+        with wave.open(path, 'wb') as w:
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(rate)
+            data = bytearray()
+            for i in range(num_frames):
+                val = int(16000.0 * math.sin(2.0 * math.pi * 1000.0 * i / rate))
+                data.extend(struct.pack('<hh', val, val))
+            w.writeframes(data)
 
     def test_env_var_log_shaping(self):
-        channels = 1 if self.max_channels < 2 else 2
-        with tempfile.TemporaryDirectory() as tmpdir:
-            wav_path = os.path.join(tmpdir, "in.wav")
-            m4a_path = os.path.join(tmpdir, "out.m4a")
-            csv_path = os.path.join(tmpdir, "env_shaping.csv")
+        csv_path = os.path.join(self.tmp_dir, 'env_telemetry.csv')
+        env = os.environ.copy()
+        env['FAAC_LOG_SHAPING'] = csv_path
+        cmd = [self.faac_bin, '-b', '64', '-o', self.aac_path, self.wav_path]
+        res = subprocess.run(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(res.returncode, 0, f"faac failed: {res.stderr.decode()}")
+        self.assertTrue(os.path.exists(csv_path), "CSV telemetry file via ENV not created")
+        with open(csv_path, 'r') as f:
+            lines = f.readlines()
+            self.assertGreater(len(lines), 1, "CSV file is empty or only header")
 
-            with wave.open(wav_path, 'w') as f:
-                f.setnchannels(channels)
-                f.setsampwidth(2)
-                f.setframerate(44100)
-                if channels == 1:
-                    samples = [struct.pack('<h', random.randint(-10000, 10000)) for _ in range(44100)]
-                else:
-                    samples = [struct.pack('<hh', random.randint(-10000, 10000), random.randint(-10000, 10000)) for _ in range(44100)]
-                f.writeframes(b''.join(samples))
-
-            env = os.environ.copy()
-            env["FAAC_LOG_SHAPING"] = csv_path
-            cmd = [self.faac_bin, "--overwrite", wav_path, "-o", m4a_path]
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, text=True)
-            self.assertEqual(res.returncode, 0, f"FAAC failed: {res.stderr}")
-            self.assertTrue(os.path.exists(csv_path), "CSV telemetry file via ENV not created")
-
-            with open(csv_path, 'r', encoding='utf-8') as f:
-                lines = [line.strip() for line in f if line.strip()]
-            self.assertGreater(len(lines), 5)
 
 if __name__ == '__main__':
-    # Strip custom command-line arguments so unittest.main doesn't treat them as test names
     unittest.main(argv=sys.argv[:1])

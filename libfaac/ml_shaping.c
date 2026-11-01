@@ -161,21 +161,3 @@ void MlShapingCloseLogging(void)
     }
 }
 #endif
-
-bool MlShapingTnsAdmit(float attack, float sfm, uint32_t bitrate_per_ch, int block_type, bool is_lfe)
-{
-    if (is_lfe || block_type == ONLY_SHORT_WINDOW)
-        return false;
-
-    return ml_model_tns_admit(attack, sfm, bitrate_per_ch);
-}
-
-float MlShapingTnsGainThreshold(uint32_t bitrate_per_ch)
-{
-    return ml_model_tns_gain_threshold(bitrate_per_ch);
-}
-
-float MlShapingStereoMsBias(uint32_t bitrate_per_ch, float correlation, bool is_sbr)
-{
-    return ml_model_stereo_ms_bias(bitrate_per_ch, correlation, is_sbr);
-}
