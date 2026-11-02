@@ -50,13 +50,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&lib, 0, sizeof(lib));
     lib.struct_size = sizeof(lib);
     if (faad_get_library_info(&lib) != FAAD_OK || lib.struct_size < sizeof(lib))
-        __builtin_trap();
-    if (lib.flags & ~(FAAD_LIB_SBR | FAAD_LIB_PS))
-        __builtin_trap();
+        abort();
+    if (lib.flags & ~(FAAD_LIB_SBR | FAAD_LIB_PS | FAAD_LIB_DAB | FAAD_LIB_DRC))
+        abort();
 
     faad_config cfg;
     if (faad_config_init(&cfg, sizeof(cfg)) != FAAD_OK)
-        __builtin_trap();
+        abort();
     cfg.stream_format = FAAD_STREAM_RAW;
     cfg.output_format = (enum faad_output_format)(1 + ((data[0] >> 2) & 3));
     cfg.downmix_mode = (enum faad_downmix_mode)((data[0] >> 4) & 3);
@@ -91,7 +91,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&info, 0, sizeof(info));
     info.struct_size = sizeof(info);
     if (faad_decoder_get_info(dec, &info) != FAAD_OK || info.struct_size < sizeof(info))
-        __builtin_trap();
+        abort();
 
     uint32_t pcm_capacity = info.max_output_bytes;
     if (pcm_capacity < 16384)
@@ -117,7 +117,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
                                &consumed, pcm, pcm_capacity, &written, &flags);
 
         if (written > pcm_capacity)
-            __builtin_trap();
+            abort();
         if (st == FAAD_OK)
             decoded++;
         if (flags & FAAD_FRAME_FORMAT_CHANGED) {
@@ -136,13 +136,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     info.struct_size = sizeof(info);
     if (faad_decoder_get_info(dec, &info) != FAAD_OK)
-        __builtin_trap();
+        abort();
     if (info.flags & ~(FAAD_STREAM_FORMAT_KNOWN | FAAD_STREAM_PROG_REF_LEVEL))
-        __builtin_trap();
+        abort();
     if (decoded && !(info.flags & FAAD_STREAM_FORMAT_KNOWN))
-        __builtin_trap();
+        abort();
     if (info.channels > lib.max_channels || info.channels > 8)
-        __builtin_trap();
+        abort();
 
     free(pcm);
     faad_decoder_close(&dec);

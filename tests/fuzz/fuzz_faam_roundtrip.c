@@ -88,9 +88,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&lib, 0, sizeof(lib));
     lib.struct_size = sizeof(lib);
     if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
-        __builtin_trap();
+        abort();
     if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
-        __builtin_trap();
+        abort();
 
     uint8_t mode = data[0];
     uint8_t frame_count_target = (data[1] % 8) + 1;

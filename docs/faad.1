@@ -57,12 +57,15 @@ the 32-bit limit.
 .TP
 .BR -b ,\  --bits\ <\fIdepth\fP>
 Sample depth: 16 (default), 24, 32 (24-bit integer in 32-bit samples) or
-32f (32-bit float).
+32f (32-bit float). (Aliases:
+.BR --bit-depth ,
+.BR --sample-depth ).
 Any other value is an error.
 More than two channels are written as WAVE_FORMAT_EXTENSIBLE with a channel mask.
 .TP
 .BR -a ,\  --adts\ <\fIfile\fP>
-Extract the raw ADTS stream from an MP4 file without decoding.
+Extract the raw ADTS stream from an MP4 file without decoding. (Alias:
+.BR --extract-adts ).
 Requires MP4 input.
 
 .SH PROCESSING OPTIONS
@@ -79,7 +82,9 @@ Any other value is taken as the input file name.
 Has no effect on mono or stereo input.
 .TP
 .BR -j ,\  --jump\ <\fIseconds\fP>
-Start decoding from the specified timestamp, in seconds.
+Start decoding from the specified timestamp, in seconds. (Aliases:
+.BR --seek ,
+.BR --start-time ).
 Only applies to MP4 input.
 A timestamp past the end gives an empty output.
 .TP

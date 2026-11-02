@@ -70,20 +70,20 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&lib, 0, sizeof(lib));
     lib.struct_size = sizeof(lib);
     if (faac_get_library_info(&lib) != FAAC_OK || lib.struct_size < sizeof(lib))
-        __builtin_trap();
+        abort();
     if (lib.flags & ~(FAAC_LIB_SBR | FAAC_LIB_PS))
-        __builtin_trap();
+        abort();
 
     /* A truncated struct cannot describe the baseline layout and must be rejected. */
     if (data[0] & 0x80) {
         faac_params bad;
         memset(&bad, 0xa5, sizeof(bad));
         if (faac_params_init(&bad, 0) != FAAC_ERR_INVALID_ARGUMENT)
-            __builtin_trap();
+            abort();
     }
 
     if (faac_params_init(&p, sizeof(p)) != FAAC_OK)
-        __builtin_trap();
+        abort();
     flags = take(&c, 4);
     sel = take(&c, 1);
     p.sample_rate  = (sel & 0x80) ? take(&c, 4) : rates[sel % (sizeof(rates) / sizeof(rates[0]))];
@@ -139,32 +139,32 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&info, 0, sizeof(info));
     info.struct_size = sizeof(info);
     if (faac_encoder_get_info(enc, &info) != FAAC_OK || !info.frame_samples) {
-        __builtin_trap();
+        abort();
     }
     if (info.struct_size < sizeof(info) || info.max_output_bytes < 64) {
-        __builtin_trap();
+        abort();
     }
 
     /* The ASC is built at open; the getter must agree with the info snapshot. */
     if (faac_encoder_asc(enc, &asc, &asc_len) == FAAC_OK) {
         if (asc_len != info.asc_size || (asc_len && memcmp(asc, info.asc, asc_len) != 0))
-            __builtin_trap();
+            abort();
         /* AAC-LC ASCs carry the channel count directly, or in a PCE for 8 ch. */
         if (info.object_type == FAAC_OBJ_LC && info.asc_size) {
             AscInfo ai;
             asc_codec_parse(info.asc, info.asc_size, &ai);
             if (ai.num_channels != p.channels)
-                __builtin_trap();
+                abort();
             if (p.channels == 8) {
                 if (ai.channel_config != 0 || !ai.pce.wave71 ||
                     ai.pce.channels != 8 || info.asc_size > sizeof(info.asc))
-                    __builtin_trap();
+                    abort();
             } else if (ai.channel_config == 0) {
-                __builtin_trap();
+                abort();
             }
         }
     } else if (info.stream_format != FAAC_STREAM_ADTS_MPEG2 || info.asc_size != 0) {
-        __builtin_trap();
+        abort();
     }
 
     out = malloc(info.max_output_bytes);
@@ -204,13 +204,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
                           ? info.max_output_bytes / 2 : info.max_output_bytes;
             (void)faac_encoder_encode(enc, pcm, n, out, out_cap, &w);
             if (w > out_cap)
-                __builtin_trap();
+                abort();
         }
         for (i = 0; i < 8; i++) {
             if (faac_encoder_encode(enc, NULL, 0, out, info.max_output_bytes, &w) != FAAC_OK || !w)
                 break;
             if (w > info.max_output_bytes)
-                __builtin_trap();
+                abort();
         }
     }
     free(out);

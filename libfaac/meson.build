@@ -10,7 +10,7 @@ if config_h.get('HAVE_SSE2')
     quantize_simd_libs += quantize_sse
 endif
 
-libfaac_src = [
+libfaac_src = files(
     'bitstream.c',
     'bitstream.h',
     'blockswitch.c',
@@ -47,7 +47,7 @@ libfaac_src = [
     'util.h',
     'ml_shaping.c',
     'ml_shaping.h',
-]
+)
 
 encoder_codec_dep = codec_lc_dep
 if encoder_sbr

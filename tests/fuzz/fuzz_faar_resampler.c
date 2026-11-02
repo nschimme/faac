@@ -14,6 +14,7 @@
  */
 
 /* libFuzzer harness for the public FAAR streaming API. */
+#include <stdlib.h>
 #include <faar.h>
 
 #include <stdint.h>
@@ -51,9 +52,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     memset(&lib, 0, sizeof(lib));
     lib.struct_size = sizeof(lib);
     if (faar_get_library_info(&lib) != FAAR_OK || lib.struct_size < sizeof(lib))
-        __builtin_trap();
+        abort();
     if (lib.flags & ~FAAR_LIB_FLOAT_ONLY)
-        __builtin_trap();
+        abort();
 
     uint16_t channel_limit = MAX_CHANNELS > 0 ? MAX_CHANNELS : 1;
     if (channel_limit > 8) channel_limit = 8;
@@ -104,7 +105,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     info.struct_size = sizeof(info);
     if (faar_resampler_get_info(handle, &info) != FAAR_OK ||
         info.struct_size < sizeof(info))
-        __builtin_trap();
+        abort();
 
     /* A chunk above the reserved bound is rejected before consuming input. */
     if (config.max_input_frames && frames >= (size_t)config.max_input_frames + 1) {
@@ -112,7 +113,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         if (faar_resampler_process(handle, input, (size_t)config.max_input_frames + 1,
                 output, MAX_OUTPUT_FRAMES, &produced) != FAAR_ERR_INVALID_ARGUMENT ||
             produced != 0)
-            __builtin_trap();
+            abort();
     }
 
     size_t offset = 0;
@@ -122,7 +123,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         size_t produced = 0;
         if (faar_resampler_process(handle, input + offset * channels, block,
                 output, MAX_OUTPUT_FRAMES, &produced) != FAAR_OK) break;
-        if (produced > MAX_OUTPUT_FRAMES) __builtin_trap();
+        if (produced > MAX_OUTPUT_FRAMES) abort();
         drain_pending(handle, output, MAX_OUTPUT_FRAMES);
         offset += block;
     }
@@ -130,7 +131,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         size_t produced = 0;
         if (faar_resampler_finalize(handle, output, MAX_OUTPUT_FRAMES,
                 &produced) != FAAR_OK || produced == 0) break;
-        if (produced > MAX_OUTPUT_FRAMES) __builtin_trap();
+        if (produced > MAX_OUTPUT_FRAMES) abort();
     }
     faar_resampler_close(&handle);
     return 0;

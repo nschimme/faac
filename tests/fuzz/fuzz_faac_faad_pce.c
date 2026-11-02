@@ -68,7 +68,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     faac_params p;
     if (faac_params_init(&p, sizeof(p)) != FAAC_OK)
-        __builtin_trap();
+        abort();
     p.sample_rate = rate;
     p.channels = channels;
     p.object_type = FAAC_OBJ_LC;
@@ -87,7 +87,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     info.struct_size = sizeof(info);
     if (faac_encoder_get_info(enc, &info) != FAAC_OK || !info.frame_samples ||
         info.max_output_bytes > MAX_OUT)
-        __builtin_trap();
+        abort();
 
     /* Six channels use channelConfiguration 6; eight must use a 7.1 PCE. */
     if (channels == 8) {
@@ -95,9 +95,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         asc_codec_parse(info.asc, info.asc_size, &ai);
         if (ai.channel_config != 0 || !ai.pce.wave71 ||
             ai.pce.channels != 8 || ai.num_channels != 8)
-            __builtin_trap();
+            abort();
     } else if (info.asc_size && ((info.asc[1] >> 3) & 0x0f) != 6) {
-        __builtin_trap();
+        abort();
     }
 
     uint16_t *pcm = malloc((size_t)info.frame_samples * channels * sizeof(uint16_t));
@@ -163,7 +163,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     faad_config cfg;
     if (faad_config_init(&cfg, sizeof(cfg)) != FAAD_OK)
-        __builtin_trap();
+        abort();
     cfg.stream_format = raw ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
     cfg.output_format = FAAD_OUTPUT_16BIT;
 
@@ -177,7 +177,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&si, 0, sizeof(si));
     si.struct_size = sizeof(si);
     if (faad_decoder_get_info(dec, &si) != FAAD_OK)
-        __builtin_trap();
+        abort();
     uint8_t *pcm_out = malloc(si.max_output_bytes ? si.max_output_bytes : 4096);
     if (!pcm_out) {
         faad_decoder_close(&dec);
@@ -220,16 +220,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         if (flags & ~(FAAD_FRAME_FORMAT_CHANGED | FAAD_FRAME_SBR | FAAD_FRAME_PS |
                       FAAD_FRAME_CONCEALED | FAAD_FRAME_DEGRADED | FAAD_FRAME_DRC |
                       FAAD_FRAME_DRC_INFO))
-            __builtin_trap();
+            abort();
     }
 
     /* The encoder's own stream must decode to the layout it signalled. */
     if (ok && decoded && si.channels != channels)
-        __builtin_trap();
+        abort();
     if (ok && decoded && channels == 8 && si.channel_mask != 0x63f)
-        __builtin_trap();
+        abort();
     if (ok && decoded && channels == 6 && si.channel_mask != 0x3f)
-        __builtin_trap();
+        abort();
 
     free(pcm_out);
     faad_decoder_close(&dec);
