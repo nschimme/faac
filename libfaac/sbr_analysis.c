@@ -41,6 +41,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     float *workspace = sbr->workspace[0];
 
     float frameStrength = 0.0f;
+    int maxSlot = SBR_NUM_TIME_SLOTS / 2;
 
     /* The strongest non-LFE transient selects the shared envelope grid. */
     for (int ch = 0; ch < nch; ch++) {
@@ -48,6 +49,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         if (isLfe[ch]) continue;
 #endif
         float smax = 0.0f, ssum = 0.0f;
+        int chMaxSlot = 0;
         for (int slot = 0; slot < num_slots; slot++) {
             /* The analysed frame starts SBR_ANALYSIS_DELAY back, in the saved history. */
             int pos = slot * SBR_QMF_BANDS_64 - SBR_ANALYSIS_DELAY;
@@ -62,6 +64,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
 
             if (stot > smax) {
                 smax = stot;
+                chMaxSlot = slot;
             }
             ssum += stot;
         }
@@ -69,11 +72,16 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         float strength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
         if (strength > frameStrength) {
             frameStrength = strength;
+            maxSlot = chMaxSlot;
         }
     }
 
     if (frameStrength > (sbr->rich ? SBR_TRANSIENT_THRESH_RICH : SBR_TRANSIENT_THRESH_DEFAULT)) {
-        const int innerSbr = SBR_NUM_TIME_SLOTS / 2;
+        /* Map detected peak slot in analysis history to target SBR time slot */
+        int innerSbr = maxSlot * SBR_NUM_TIME_SLOTS / num_slots;
+        if (innerSbr < 2) innerSbr = 2;
+        if (innerSbr > SBR_NUM_TIME_SLOTS - 2) innerSbr = SBR_NUM_TIME_SLOTS - 2;
+
         sa->numEnvelopes = 2;
         sa->frameClass = SBR_FRAME_CLASS_VARFIX;
         sa->tEnv[0] = 0;

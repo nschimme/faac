@@ -77,8 +77,8 @@ struct BitStream;
  * is coded as two variable-border envelopes instead of the four-envelope
  * fixed grid. At rich rates the finer fixed grid is worth more than splitting
  * on a weak peak, so only strong attacks switch. */
-#define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
-#define SBR_TRANSIENT_THRESH_RICH       (8.0f)
+#define SBR_TRANSIENT_THRESH_DEFAULT    (2.8f)
+#define SBR_TRANSIENT_THRESH_RICH       (6.0f)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */
