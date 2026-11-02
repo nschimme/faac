@@ -36,7 +36,7 @@ typedef enum SbrFrameClass {
    the access unit actually carries, which is FIFO_PAST: the MDCT window spans
    (FIFO_PAST, FIFO_CURR) and, at 50% overlap, an access unit completes the first
    half of its own window. So the payload emitted on call N belongs to frame
-   N-(LOOKAHEAD_DEPTH+1), while SbrEncode has just analysed frame N -- that delay,
+   N-(LOOKAHEAD_DEPTH+1), while SbrEncode has just analyzed frame N -- that delay,
    plus a slot for the newest entry. */
 #define SBR_FRAME_FIFO (LOOKAHEAD_DEPTH + 2)
 
@@ -94,7 +94,7 @@ struct BitStream;
  * mode. */
 #define SBR_INVF_MODE                   3
 #define SBR_INVF_MODE_RICH              1
-/* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
+/* 6 = log2(64): normalizes 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
 #define SBR_ENV_LEVEL_LOG2_OFFSET       (6.0f)
 /* Envelope level step, 1 = 3 dB. The finer 1.5 dB grid costs more than it
  * buys at every rate; frames with one FIXFIX envelope use it regardless. */
@@ -136,7 +136,7 @@ struct BitStream;
 /* Below this per-channel rate the core is too starved to cover much, so the
  * envelope stops short of 20 kHz instead of spending bits on the quietest top
  * bands. Not at 32 kHz or below: Nyquist is 16 kHz there, so a 14 kHz stop
- * saves little and cuts bright programme material. */
+ * saves little and cuts bright program material. */
 #define SBR_NARROW_STOP_BPS             10000u
 #define SBR_NARROW_STOP_MIN_RATE        32000
 #define SBR_STOP_FREQ_TARGET_NARROW_HZ  14000

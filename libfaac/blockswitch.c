@@ -58,7 +58,7 @@ psydata_t;
  * better served by a long block, while a hard cut to near silence still needs
  * a short one so the coding noise does not smear into the silence. The
  * bit-starved HE core gains from more short windows than its attacks alone
- * call for, so it judges against the neighbouring sub-block alone, with a
+ * call for, so it judges against the neighboring sub-block alone, with a
  * tighter band either way. */
 #define PSY_LEVEL_RATIO_LC  (2.5f)
 #define PSY_DROP_RATIO_LC   (12.0f)

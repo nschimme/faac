@@ -58,7 +58,7 @@
 #define HE_SHORT_ONLY_QUANTQUAL 40
 
 /* Top of the bandwidth curve: widening past it loses at every reachable rate,
- * the band above holds ~0.006% of programme energy and sits at the edge of
+ * the band above holds ~0.006% of program energy and sits at the edge of
  * hearing. VBR, having no rate, codes at the top. */
 #define BANDWIDTH_CEILING     18750
 
@@ -161,7 +161,7 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder, unsigned char *buf)
     InitBitStream(&bs, buf, sizeof(hEncoder->asc));
     PutBit(&bs, he ? LOW : hEncoder->config.aacObjectType, 5);
     PutBit(&bs, hEncoder->sampleRateIdx, 4);
-    PutBit(&bs, SignalledChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels)), 4);
+    PutBit(&bs, SignaledChannelConfig(CoreChannels(hEncoder->config.aacObjectType, (int)hEncoder->numChannels)), 4);
     PutBit(&bs, 0, 3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
 #if MAX_CHANNELS >= 8
     if (HasPCE((int)hEncoder->numChannels)) {
@@ -746,7 +746,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         /* A pure (FIFO-empty) flush frame pushes silence to drain the core's
          * algorithmic delay; a final partial frame still carries real samples and is
-         * counted like a data frame, matching the pre-FIFO behaviour. */
+         * counted like a data frame, matching the pre-FIFO behavior. */
         if (realPerCh == 0)
             hEncoder->flushFrame++;
 

@@ -266,7 +266,7 @@ static int init_halfband(faar_dft_fir *stage, const double *taps,
         stage->wide_half_coeffs[tap_count / 4] = taps[tap_count / 2];
     }
 #endif
-    /* Odd taps and the centre: the even non-centre taps are zero. */
+    /* Odd taps and the center: the even non-center taps are zero. */
     stage->filter_spectrum = (faar_sample_t *)faar_alloc_zeroed(tap_count / 4 + 1,
                                                      sizeof(faar_sample_t));
     if (!stage->filter_spectrum || init_halfband_buffers(stage)) {

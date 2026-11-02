@@ -144,7 +144,7 @@ static const help_t help_mux[] = {
     {"--padding-delay <samples>",
      "Trailing padding samples in the same units as --encoder-delay; the total length is derived from the "
      "frames muxed",
-     "The programme duration is computed from total AAC frame duration minus encoder delay and trailing padding."},
+     "The program duration is computed from total AAC frame duration minus encoder delay and trailing padding."},
     {"--sbr-signaling <mode>",
      "How the AAC track announces SBR/PS, which ADTS cannot say: none (default, decoder detects), "
      "compatible, explicit, ps or ps-explicit (HE-AAC v2, which needs a mono core)",

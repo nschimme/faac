@@ -36,7 +36,7 @@ static const uint8_t asc[][11] = {
     { 0x11, 0x94 },                         /* LC, 48 kHz, stereo */
     { 0x2b, 0x11, 0x8a, 0x00 },             /* SBR, 24 -> 48 kHz, stereo */
     { 0xeb, 0x09, 0x8a, 0x00 },             /* PS, 24 -> 48 kHz, mono core */
-    { 0x11, 0x80, 0x04, 0xc8, 0x09, 0x00,   /* LC, 48 kHz, 7.1 signalled by a PCE */
+    { 0x11, 0x80, 0x04, 0xc8, 0x09, 0x00,   /* LC, 48 kHz, 7.1 signaled by a PCE */
       0x01, 0x08, 0xc8, 0x00, 0x00 },
 };
 static const uint32_t asc_len[] = { 2, 2, 4, 4, 11 };

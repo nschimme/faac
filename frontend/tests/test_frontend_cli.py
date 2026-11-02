@@ -978,7 +978,7 @@ def ffmpeg_pcm_len(path):
 
 def run_demux_header(t, d):
     """The ADTS header demux writes comes from the track's AudioSpecificConfig: core object type, core
-    rate and the real channel configuration, whatever way SBR/PS was signalled."""
+    rate and the real channel configuration, whatever way SBR/PS was signaled."""
     make_wav(os.path.join(d, "mono.wav"), channels=1)
     r = t.run(t.faac, ["-v0", "-q", "100", "--object-type", "lc", "-a", "-o", "mono.aac", "mono.wav"], d)
     check(r.returncode == 0, "faac mono.aac")
@@ -1151,14 +1151,14 @@ def run_info_and_chapters(t, d, have_video):
     other[8:12] = b"mp42"
     open(os.path.join(d, "mp42.m4a"), "wb").write(other)
     check("mp42" in info_line("mp42.m4a", "Container"), "info shows an unusual brand: " + info_line("mp42.m4a", "Container"))
-    check("AAC-LC" in info_line("lc.m4a", "AAC Object Type"), "LC is labelled AAC-LC")
+    check("AAC-LC" in info_line("lc.m4a", "AAC Object Type"), "LC is labeled AAC-LC")
     if ENCODER_SBR:
         for mode in ("compatible", "explicit"):
             t.faam_run(["-i", "he.aac", "-o", f"he_{mode}.m4a", "--sbr-signaling", mode, "--overwrite"], d)
             line = info_line(f"he_{mode}.m4a", "AAC Object Type")
-            check("HE-AAC v1" in line and "v2" not in line, f"{mode} SBR is labelled HE-AAC v1: {line}")
+            check("HE-AAC v1" in line and "v2" not in line, f"{mode} SBR is labeled HE-AAC v1: {line}")
     t.faam_run(["-i", "mono.aac", "-o", "ps_label.m4a", "--sbr-signaling", "ps", "--overwrite"], d)
-    check("HE-AAC v2" in info_line("ps_label.m4a", "AAC Object Type"), "PS is labelled HE-AAC v2")
+    check("HE-AAC v2" in info_line("ps_label.m4a", "AAC Object Type"), "PS is labeled HE-AAC v2")
     odd = bytes(read(os.path.join(d, "lc.m4a"))).replace(bytes((2, 0x11, 0x80 | CHANNELS << 3, 6)), b"\x02\x89\x90\x06")
     open(os.path.join(d, "odd.m4a"), "wb").write(odd)
     line = info_line("odd.m4a", "AAC Object Type")

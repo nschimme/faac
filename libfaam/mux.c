@@ -442,7 +442,7 @@ faam_status faam_muxer_open(const faam_muxer_config *config, const faam_io *io, 
 #endif
     }
 
-    /* Apple's decoders only honour iTunSMPB/edit-list gapless trimming in
+    /* Apple's decoders only honor iTunSMPB/edit-list gapless trimming in
      * files branded M4A/M4B, so audio-only files carry that brand. */
     bool audio_only = true;
     for (uint32_t t = 0; t < m->num_tracks; t++)
@@ -957,7 +957,7 @@ static uint32_t movie_timescale_of(const faam_muxer *m)
 
 /* A writer that learns only the delay and padding (the frame count is final at
  * finalize, not at open) still gets an exact edit: whatever the first audio track
- * holds beyond them is the programme. */
+ * holds beyond them is the program. */
 static const faam_gapless_info *track_gapless_info(const faam_muxer *m, const faam_muxer_track *tr)
 {
     if (tr->has_gapless) return &tr->gapless;
@@ -1048,8 +1048,8 @@ static void write_moov(faam_muxer *m, bool frag)
         bool edit = false;
         uint64_t edit_duration = 0, edit_start = 0;
         const faam_gapless_info *g = track_gapless_info(m, tr);
-        /* A progressive file's programme length is always known by now (given, or derived
-         * from the sample count), so an empty programme gets the empty edit that master's
+        /* A progressive file's program length is always known by now (given, or derived
+         * from the sample count), so an empty program gets the empty edit that master's
          * writer produces. A fragmented file only knows the length when the caller said
          * so up front; a zero-length edit there would play nothing. */
         if (tr->cfg.track_type == FAAM_TRACK_AUDIO && g->encoder_delay > 0 &&

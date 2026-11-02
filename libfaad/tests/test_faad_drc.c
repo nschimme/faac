@@ -493,7 +493,7 @@ static void test_short_window(void)
     free(input.data); free(original.data);
 }
 
-static void test_normalisation(const bytes *original)
+static void test_normalization(const bytes *original)
 {
     bitstream payload = {{0}, 0};
     make_payload(&payload, 1, 0, 124, NULL, NULL, 0, 0);
@@ -619,7 +619,7 @@ int main(void)
     test_oversized(&original);
     test_multiband();
     test_short_window();
-    test_normalisation(&original);
+    test_normalization(&original);
     free(original.data);
     return 0;
 }

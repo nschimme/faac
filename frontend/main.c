@@ -650,7 +650,7 @@ int main(int argc, char *argv[])
             {
             case 2: opts.mpeg_version = 2; break;
             case 4: opts.mpeg_version = 4; break;
-            default: dieMessage = "Unrecognised MPEG version!\n"; break;
+            default: dieMessage = "Unrecognized MPEG version!\n"; break;
             }
             break;
         case STREAM_FORMAT_FLAG:
@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                dieMessage = "Unrecognised stream format (use auto, mp4, adts, or raw)!\n";
+                dieMessage = "Unrecognized stream format (use auto, mp4, adts, or raw)!\n";
             }
             break;
         case OBJTYPE_FLAG:
@@ -693,7 +693,7 @@ int main(int argc, char *argv[])
             else if (!strcmp(optarg, "auto"))
                 opts.object_type = FAAC_OBJ_AUTO;
             else
-                dieMessage = "Unrecognised profile (use lc, he-v1, he-v2, or auto)!\n";
+                dieMessage = "Unrecognized profile (use lc, he-v1, he-v2, or auto)!\n";
             break;
         case SHORTCTL_FLAG:
             if (!strcmp(optarg, "normal") || !strcmp(optarg, "0"))
@@ -703,7 +703,7 @@ int main(int argc, char *argv[])
             else if (!strcmp(optarg, "nolong") || !strcmp(optarg, "2"))
                 opts.shortctl = FAAC_SHORTCTL_NOLONG;
             else
-                dieMessage = "Unrecognised block type (use normal/0, noshort/1, or nolong/2)!\n";
+                dieMessage = "Unrecognized block type (use normal/0, noshort/1, or nolong/2)!\n";
             break;
         case OPT_JOINT:
             if (!strcmp(optarg, "lr") || !strcmp(optarg, "0"))
@@ -715,7 +715,7 @@ int main(int argc, char *argv[])
             else if (!strcmp(optarg, "auto") || !strcmp(optarg, "3"))
                 opts.joint_mode = FAAC_STEREO_AUTO;
             else
-                dieMessage = "Unrecognised stereo mode (use lr/0, ms/1, is/2, or auto/3)!\n";
+                dieMessage = "Unrecognized stereo mode (use lr/0, ms/1, is/2, or auto/3)!\n";
             break;
         case TAG_FLAG:
             {
@@ -867,7 +867,7 @@ int main(int argc, char *argv[])
         goto cleanup;
     }
 
-    /* Refuse before encoding: the time is only applied once the MP4 is finalised. */
+    /* Refuse before encoding: the time is only applied once the MP4 is finalized. */
     if (opts.container_mp4)
     {
         char time_msg[512];

@@ -1,26 +1,21 @@
 # <img src="frontend/faac.svg" alt="FAAC" width="48" height="48" align="top" /> Freeware Advanced Audio Coder
 
-FAAC is an open-source, dependency-free AAC encoder, with FAAD as its decoder, aimed at embedded and pipeline use cases where footprint and throughput matter as much as quality.
+FAAC is an LGPL-licensed, dependency-free AAC encoder and decoder suite with a resampler and MP4 muxer. It targets high-throughput media pipelines and constrained devices where footprint, speed, and quality all matter.
 
-### Key features:
+## Key Features
 
-- MPEG-4 AAC-LC, HE-AAC v1 (SBR) and HE-AAC v2 (PS) encoding and decoding
-- Sample rates from 8 kHz to 96 kHz, supporting mono up to 7.1 multichannel
-- VBR, ABR and CBR rate control
-- Advanced encoding tools: Dynamic block-switching, PNS, and TNS
-- Flexible output options: ADTS and raw AAC streams
-- PCM sample-rate conversion with Fast, Good, and High presets; downsampling
-  input above 48 kHz uses High
+- **Codecs:** MPEG-4 AAC-LC, HE-AAC v1 (SBR), and HE-AAC v2 (PS) encoding and decoding.
+- **Formats:** 8 kHz to 96 kHz sample rates, mono up to 7.1 multichannel.
+- **Rate control:** VBR, ABR, and CBR.
+- **Embedded-ready:** No external dependencies; compile-time feature gating keeps binaries small.
+- **Libraries:** `libfaac` (encoder), `libfaad` (decoder), `libfaar` (resampler), `libfaam` (MP4 muxer/demuxer).
 
-### Command-line tools:
+## Command-line Tools
 
-- `faac` encodes WAV or raw PCM to AAC in ADTS or MP4/M4A; MP4 output includes
-  gapless playback info
-- `faad` decodes ADTS or MP4/M4A AAC to WAV or raw PCM, with optional mono or
-  stereo downmixing and stdin/stdout support
-- `faar` changes the sample rate of WAV or raw PCM audio, with adjustable
-  quality and optional dithering when converting to integer PCM
-- `faam` muxes, demuxes and tags MP4/M4A/M4B (AAC, H.264/H.265)
+- **`faac`**: Encodes WAV/PCM to AAC (ADTS or MP4/M4A) with automatic gapless metadata injection.
+- **`faad`**: Decodes ADTS or MP4/M4A AAC to WAV/PCM, supporting downmixing and `stdin`/`stdout` piping.
+- **`faar`**: Resamples WAV/PCM streams with adjustable quality tiers and optional PCM dithering.
+- **`faam`**: Muxes, demuxes, and tags MP4/M4A/M4B containers in-place (including H.264/H.265 video tracks).
 
 > **Important:** The use of this software may require the payment of patent royalties. You need to consider this issue before you start building derivative works. We are not warranting or indemnifying you in any way for patent royalties! **YOU ARE SOLELY RESPONSIBLE FOR YOUR OWN ACTIONS!**
 

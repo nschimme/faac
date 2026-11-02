@@ -232,7 +232,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
 
 /* Choose every band's book jointly: per window group, a Viterbi over books
  * where a band costs its codewords in that book and each new section costs
- * a header, so a band can take a dearer book to stay in its neighbours'
+ * a header, so a band can take a dearer book to stay in its neighbors'
  * section. qs holds the regular bands' values back to back, and book[] the
  * lowest book that covers each one's peak. State 0 stands for the band's
  * own zero/PNS/intensity book. Emits the codewords once the books are known. */

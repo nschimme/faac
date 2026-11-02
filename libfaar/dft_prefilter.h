@@ -39,7 +39,7 @@ faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
                                                size_t expansion,
                                                size_t decimation);
 /* halfband selects a sparse time-domain 2:1 stage (N = 4m+1, alternate
- * non-centre taps zero) and ignores the FFT geometry. */
+ * non-center taps zero) and ignores the FFT geometry. */
 faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                const double *taps,
                                                size_t tap_count,

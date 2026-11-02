@@ -1,5 +1,5 @@
 # Fuzz harnesses. Each is a real executable in every build and replays a
-# generated corpus as a "fuzz" suite test, so API and behaviour rot shows up
+# generated corpus as a "fuzz" suite test, so API and behavior rot shows up
 # in ordinary CI. They link the project's own static libraries.
 #
 # Real fuzzing: build with a sanitizer and coverage instrumentation, and name

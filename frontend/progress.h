@@ -38,7 +38,7 @@ typedef struct {
 } progress_info_t;
 
 /* Callback function type for reporting progress updates.
-   Return false from callback to signal user-cancelled encoding. */
+   Return false from callback to signal user-canceled encoding. */
 typedef bool (*progress_callback_t)(const progress_info_t *info, void *user_data);
 
 /* Shared rate-limiting for progress_callback_t implementations: encode_engine.c
