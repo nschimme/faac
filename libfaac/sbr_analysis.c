@@ -77,10 +77,12 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     }
 
     if (frameStrength > (sbr->rich ? SBR_TRANSIENT_THRESH_RICH : SBR_TRANSIENT_THRESH_DEFAULT)) {
-        /* Map detected peak slot in analysis history to target SBR time slot */
-        int innerSbr = maxSlot * SBR_NUM_TIME_SLOTS / num_slots;
+        /* Map detected peak slot in analysis history to target SBR time slot.
+         * SBR VARFIX syntax requires (tEnv[1] - tEnv[0] - 2) / 2 to fit in a 2-bit field (0..3),
+         * restricting compliant inner borders to {2, 4, 6, 8}. */
+        int innerSbr = (maxSlot * SBR_NUM_TIME_SLOTS / num_slots) & ~1;
         if (innerSbr < 2) innerSbr = 2;
-        if (innerSbr > SBR_NUM_TIME_SLOTS - 2) innerSbr = SBR_NUM_TIME_SLOTS - 2;
+        if (innerSbr > 8) innerSbr = 8;
 
         sa->numEnvelopes = 2;
         sa->frameClass = SBR_FRAME_CLASS_VARFIX;
