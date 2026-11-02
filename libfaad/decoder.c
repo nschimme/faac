@@ -323,9 +323,9 @@ static void read_drc(faad_decoder *dec, BitReader input, uint32_t end)
     }
     bool banded = DRC_READ(1) != 0;
     if (banded) {
-        bands += DRC_READ(4);
+        bands += DRC_READ(4) & 0xfu;
         (void)DRC_READ(4);
-        for (unsigned b = 0; b < bands; b++) {
+        for (unsigned b = 0; b < bands && b < sizeof(top); b++) {
             top[b] = (uint8_t)DRC_READ(8);
             if (b && top[b] <= top[b - 1]) bad = true;
         }

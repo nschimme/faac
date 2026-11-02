@@ -130,7 +130,7 @@ static void mux_file(memfile *out, const mux_opts *o) {
     tc.track_type = FAAM_TRACK_AUDIO; tc.codec_id = FAAM_CODEC_AAC; tc.track_id = 1;
     tc.timescale = tc.sample_rate = 44100; tc.channels = 2;
     tc.codec_data = asc_lc_44k; tc.codec_data_len = ASC_LEN;
-    if (o->language) strncpy(tc.language, o->language, 4);
+    if (o->language) memcpy(tc.language, o->language, strnlen(o->language, sizeof tc.language));
     CHECK(test_append_track(&cfg, cfg_tracks, &tc, NULL) == FAAM_OK);
     faam_io io = mem_io(out);
     faam_muxer *m = NULL;
@@ -796,7 +796,7 @@ static void test_language(void) {
         faam_muxer *m = NULL;
         CHECK(faam_muxer_open(&cfg, &io, &m) == FAAM_OK);
         faam_muxer_update_params language = { .struct_size = sizeof(language), .flags = FAAM_UPDATE_LANGUAGE, .track_id = 1 };
-        if (late[i][0]) strncpy(language.language, late[i][0], sizeof(language.language));
+        if (late[i][0]) memcpy(language.language, late[i][0], strnlen(late[i][0], sizeof(language.language)));
         CHECK(faam_muxer_update(m, &language) == FAAM_OK);
         CHECK(faam_muxer_update(m, &(faam_muxer_update_params){ .struct_size = sizeof(faam_muxer_update_params), .flags = FAAM_UPDATE_CODEC_DATA, .track_id = 1, .codec_data = asc_lc_44k, .codec_data_len = ASC_LEN }) == FAAM_OK);
         uint8_t one = 1;
