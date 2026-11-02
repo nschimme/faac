@@ -43,7 +43,7 @@ uint32_t adts_header_length(const uint8_t *h); /* 9 when a CRC follows */
 void adts_parse_header(const uint8_t *h, adts_params *out);
 
 /* How a track's AudioSpecificConfig reads as an ADTS header: the core object type (an
-   SBR/PS-signalled stream is described by its underlying AAC-LC, SBR and PS ride inside
+   SBR/PS-signaled stream is described by its underlying AAC-LC, SBR and PS ride inside
    the frames), the core sample rate and the channelConfiguration. Returns NULL, or why
    ADTS cannot say it.
    lenient is how faad has always extracted: an object type outside Main..LTP is written as

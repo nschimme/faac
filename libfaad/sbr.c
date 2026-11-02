@@ -1138,7 +1138,7 @@ static void sbr_hf_adjust(const SBRElement *el, SBRChannel *ch, SBRScratch *sc,
 
 /* Run the analysis bank on one channel's core PCM, filling the scratch
  * X_low buffer (previous tail + 32 new slots). */
-static void sbr_analyse(SBRChannel *ch, SBRScratch *sc, const float *pcm, int sbr_slots)
+static void sbr_analyze(SBRChannel *ch, SBRScratch *sc, const float *pcm, int sbr_slots)
 {
     for (int k = 0; k < 32; k++)
         memcpy(sc->x_low[k], ch->x_low_tail[k], sizeof(ch->x_low_tail[k]));
@@ -1158,7 +1158,7 @@ static void sbr_analyse(SBRChannel *ch, SBRScratch *sc, const float *pcm, int sb
 
 /* Assemble X from the low band and the adjusted HF, retaining slots for PS
  * look-ahead or synthesizing each immediately into PCM,
- * honouring the previous frame's band split where its last envelope reaches
+ * honoring the previous frame's band split where its last envelope reaches
  * into this frame (§4.6.18.7.6 / 4.6.18.8.1). */
 static inline void sbr_assemble_slot(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, bool have_hf, int i, int i_temp, float (*slot)[2], float (*low_head)[SBR_T_HFGEN][2], int sbr_slots)
 {
@@ -1232,7 +1232,7 @@ static void sbr_assemble(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, b
 static void sbr_prepare_channel(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, const float *pcm,
                                 float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, float (*low_head)[SBR_T_HFGEN][2], int sbr_slots)
 {
-    sbr_analyse(ch, sc, pcm, sbr_slots);
+    sbr_analyze(ch, sc, pcm, sbr_slots);
 
     int kx = have_hf ? el->kx : 32;
     /* A previous envelope may still use a higher crossover in the leading
@@ -1284,7 +1284,7 @@ static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch
 {
 #ifdef FAAD_DISABLE_PS
     /* Keep no-PS processing in one function so the compiler can optimize the hot path in context. */
-    sbr_analyse(ch, sc, pcm, sbr_slots);
+    sbr_analyze(ch, sc, pcm, sbr_slots);
 
     int kx = have_hf ? el->kx : 32;
     /* A previous envelope may still use a higher crossover in the leading

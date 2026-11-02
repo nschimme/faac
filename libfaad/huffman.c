@@ -528,8 +528,8 @@ static inline float pow_4_3_fast(int x)
     return copysignf(powf((float)abs_x, 4.0f / 3.0f), (float)x);
 }
 
-/* §4.6.4.3: a pulse adds to the quantised value, away from zero, before
- * inverse quantisation; the line is re-quantised from its dequantised
+/* §4.6.4.3: a pulse adds to the quantized value, away from zero, before
+ * inverse quantization; the line is re-quantized from its dequantized
  * value, which is exact for the integer magnitudes the books carry. */
 static void apply_pulses(const ICSInfo *ics, float *spec, int max_sfb)
 {

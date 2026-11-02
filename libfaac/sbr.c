@@ -205,7 +205,7 @@ void SbrEnd(SBRInfo *sbr)
     FreeMemory(sbr);
 }
 
-/* What analysing a silent frame yields. Needed because zeroed memory is not a
+/* What analyzing a silent frame yields. Needed because zeroed memory is not a
  * legal payload: numEnvelopes == 0 encodes no grid at all. */
 static void sbr_frame_silence(SbrFrameData *fd, int channels)
 {
@@ -311,7 +311,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         }
 
         /* Always the full padded frame, never [0, realPerCh): the grid unconditionally
-         * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
+         * claims SBR_NUM_TIME_SLOTS, so normalizing a short frame over fewer slots
          * would inflate its levels, and the QMF-overlap save below reads the last
          * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
         if (PsIsActive(sCtx->sbrInfo)) PsPrepareCarrier(sCtx, fullPtrs);

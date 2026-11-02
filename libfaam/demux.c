@@ -199,7 +199,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                                   faam_trak_tables *tb);
 
 /* One level down: the walk state travels in tb rather than as arguments, so the single outside
- * call does not get a copy of the whole walker specialised for its constants. */
+ * call does not get a copy of the whole walker specialized for its constants. */
 static void parse_children(const uint8_t *buf, long offset, long end, struct faam_demuxer *d,
                            int trak, faam_trak_tables *tb, int depth)
 {

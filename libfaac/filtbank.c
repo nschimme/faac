@@ -37,7 +37,7 @@ static fftfloat mdct_cos[FFT_TBL_LEN];
 static fftfloat mdct_sin[FFT_TBL_LEN];
 
 /* Kaiser-Bessel-derived window, alpha 4, rising half, ISO/IEC 14496-3
- * 4.6.11.3.2: the cumulative Kaiser kernel, normalised, under a square root.
+ * 4.6.11.3.2: the cumulative Kaiser kernel, normalized, under a square root.
  * The kernel is evaluated once into w[] and accumulated in place; its last
  * point (v = 1) is I0(0) = 1. With v = 2i/n - 1, 1 - v^2 = 4i(n - i)/n^2. */
 static void kbd_window(float *w, int n)

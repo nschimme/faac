@@ -58,7 +58,7 @@ static double bessel_i0(double x)
 }
 
 /* Kaiser-Bessel-derived window, first half (ISO/IEC 14496-3 §4.6.11.3.2):
- * the cumulative Kaiser kernel, normalised, under a square root. */
+ * the cumulative Kaiser kernel, normalized, under a square root. */
 static void kbd_window(float *w, int n, double alpha)
 {
     double sum = 0.0, run = 0.0;

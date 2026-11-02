@@ -374,7 +374,7 @@ static void test_gapless(void) {
     CHECK(e > 0 && be32(ex.buf + e + 12) == 100000);
     free(ex.buf);
 
-    /* Delay and padding bigger than the media: an empty programme, written as the empty
+    /* Delay and padding bigger than the media: an empty program, written as the empty
      * edit list a plain writer produces for it. */
     memfile tiny = {0};
     mux_opts ot = { .frames = 1, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1000, 1000, 0 } };
@@ -387,7 +387,7 @@ static void test_gapless(void) {
     free(tiny.buf);
 
     /* Saturation must also hold beyond a single frame; a nonempty one-frame
-     * programme must retain its exact sample count. */
+     * program must retain its exact sample count. */
     for (unsigned i = 0; i < 2; i++) {
         memfile short_file = {0};
         mux_opts os = { .frames = i ? 1 : 2, .ticks = 1024,
@@ -650,7 +650,7 @@ static void mux_two_rates(memfile *f, bool low_first, const faam_gapless_info *g
 
 static void test_multitrack_gapless(void) {
     /* The edit length is stored in movie ticks; both tracks' totals have to survive that
-     * conversion for arbitrary programme lengths, whichever track is first. */
+     * conversion for arbitrary program lengths, whichever track is first. */
     for (uint32_t k = 0; k < 400; k++) {
         bool low_first = k < 200;
         uint32_t n1 = 110, n2 = 100 + k % 3;
@@ -1250,7 +1250,7 @@ static void test_overrunning_child_refused(void) {
     f.pos = 0;
     CHECK(test_set_tags(&io, "Seed", NULL, 0) == FAAM_OK);
 
-    /* The ilst is no longer recognised, and its size now runs one byte past meta. */
+    /* The ilst is no longer recognized, and its size now runs one byte past meta. */
     long i = find_tag(&f, "ilst", 0);
     CHECK(i >= 4);
     memcpy(f.buf + i, "free", 4);

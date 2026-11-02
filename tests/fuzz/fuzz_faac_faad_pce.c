@@ -16,7 +16,7 @@
 /*
  * Cross-library harness for the program config element (PCE): encode six or
  * eight channels with libfaac, then decode the result with libfaad and check
- * the signalled channel count and WAVE mask. This is the only path where an
+ * the signaled channel count and WAVE mask. This is the only path where an
  * AAC stream describes its layout with a PCE instead of channelConfiguration.
  */
 #include <stdint.h>
@@ -223,7 +223,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             abort();
     }
 
-    /* The encoder's own stream must decode to the layout it signalled. */
+    /* The encoder's own stream must decode to the layout it signaled. */
     if (ok && decoded && si.channels != channels)
         abort();
     if (ok && decoded && channels == 8 && si.channel_mask != 0x63f)

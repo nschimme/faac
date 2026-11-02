@@ -331,7 +331,7 @@ static void design_band(const struct preset_spec *spec, double pb, double sb,
 }
 
 /* Kaiser length and beta for a preset spec at filter_rate. alignment is the
- * divisor N-1 must meet so the DFT stage stays centred on input zero. */
+ * divisor N-1 must meet so the DFT stage stays centered on input zero. */
 static void design_from_spec(faar_quality quality, uint32_t out_rate,
         uint32_t filter_rate, double stopband, size_t alignment, double reserve_db,
         size_t *tap_count, double *beta, double *cutoff) {
@@ -405,7 +405,7 @@ static const struct short_route_entry *short_dedicated_route(uint32_t in,
 }
 
 /* Bank input must oversample the output by this factor: High's 0.96 Nyquist
- * residual brackets it in [2.48, 2.52], so take the centre. */
+ * residual brackets it in [2.48, 2.52], so take the center. */
 static const double bank_oversample = 2.50;
 
 /* Upsampling without a dedicated entry designs its 2x prefilter from the
@@ -632,7 +632,7 @@ static unsigned short_halvings(uint32_t in, uint32_t out, faar_quality q,
     double minimum = short_work(in, out, q, 0, 0, 0);
     for (unsigned k = 1; k <= limit; ++k) {
         struct short_plan pre = short_preplan(in, out, q);
-        /* Paired odd coefficients plus the centre, per FINAL output. */
+        /* Paired odd coefficients plus the center, per FINAL output. */
         fir += (double)in / (2.0 * out) * (pre.taps / 4 + 1);
         visited += (double)in / out;
         in /= 2;

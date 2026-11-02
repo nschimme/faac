@@ -490,7 +490,7 @@ ADTS alone cannot carry gapless metadata. See `frontend/encode_engine.c` and
 whole-stream rate in bit/s that the library divides by the channel count; zero
 means 64000 per channel.
 
-| Mode | Behaviour |
+| Mode | Behavior |
 |---|---|
 | `FAAC_RC_ABR` | `bit_rate` is an average. Frames are bounded only by the ISO/IEC 14496-3 ceiling of 6144 bits per channel; a transient may take several times the mean and silence stays small |
 | `FAAC_RC_CBR` | A bit reservoir models the decoder's input buffer. Every frame fits `mean + fill`, frames that would overflow the buffer are stuffed, and the rate lands exactly |

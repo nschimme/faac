@@ -53,13 +53,13 @@ static const float ps_g1_q8[7]  = { 0.01565675600122f, 0.03752716391991f, 0.0541
 static const float ps_g2_q4[7]  = { -0.05908211155639f, -0.04871498374946f, 0.0f, 0.07778723915851f, 0.16486303567403f, 0.23279856662996f, 0.25f };
 static const float ps_g1_q2[7]  = { 0.0f, 0.01899487526049f, 0.0f, -0.07293139167538f, 0.0f, 0.30596630545168f, 0.5f };
 
-/* IID quantisation levels in dB (Tables 8.24 / 8.25) and ICC values (Table 8.26). */
+/* IID quantization levels in dB (Tables 8.24 / 8.25) and ICC values (Table 8.26). */
 static const int8_t ps_iid_db_default[15] = { -25, -18, -14, -10, -7, -4, -2, 0, 2, 4, 7, 10, 14, 18, 25 };
 static const int8_t ps_iid_db_fine[31] = { -50, -45, -40, -35, -30, -25, -22, -19, -16, -13, -10, -8, -6, -4, -2, 0,
                                            2, 4, 6, 8, 10, 13, 16, 19, 22, 25, 30, 35, 40, 45, 50 };
 static const float ps_icc_invq[8] = { 1.0f, 0.937f, 0.84118f, 0.60092f, 0.36764f, 0.0f, -0.589f, -1.0f };
 
-/* Sub-band centre frequencies in QMF-band units, hybrid bands only. */
+/* Sub-band center frequencies in QMF-band units, hybrid bands only. */
 static const int8_t ps_f_center_20[10] = { -3, -1, 1, 3, 5, 7, 10, 14, 18, 22 };            /* /8  */
 static const int8_t ps_f_center_34[32] = { 2, 6, 10, 14, 18, 22, 26, 30, 34, -10, -6, -2, 51, 57, 15, 21,
                                            27, 33, 39, 45, 54, 66, 78, 42, 102, 66, 78, 90, 102, 114, 126, 90 }; /* /24 */
@@ -370,7 +370,7 @@ static void ps_split_slot(float out[][2], float (*in)[2], float (*f)[7][2], int 
 }
 
 /* Two-way split with the real prototype g1_Q2, whose even taps are zero:
- * the two sub-bands are the centre tap plus and minus the odd-tap sum. */
+ * the two sub-bands are the center tap plus and minus the odd-tap sum. */
 static void ps_split2_slot(float out[2][2], float (*in)[2], int reverse)
 {
     float cr = ps_g1_q2[6] * in[6][0], ci = ps_g1_q2[6] * in[6][1];
@@ -385,7 +385,7 @@ static void ps_split2_slot(float out[2][2], float (*in)[2], int reverse)
 
 /* Slot n of the hybrid domain: the low QMF bands split, the rest passed
  * through. in_buf holds the QMF slots with six of look-back, so the filter
- * centred on slot n reads in_buf[n .. n+12]. */
+ * centered on slot n reads in_buf[n .. n+12]. */
 static void ps_hybrid_analysis_slot(PSState *ps, int n, float out[PS_NR_BANDS][2], float X[64][2])
 {
     if (ps->is34) {
@@ -528,23 +528,23 @@ static void ps_decorrelate_slot(PSState *ps, float s[PS_NR_BANDS][2], float d[PS
  * codes IPD/OPD on fewer bands: parameters and the previous frame's mixing
  * matrix have to be read on another grid. The 10-band layout pairs the
  * 20-band one. Between 20 and 34 bands, a target band takes the mean of the
- * source bands whose centre frequency falls inside it, or the nearest one;
- * those maps are built from the band centres at start. */
+ * source bands whose center frequency falls inside it, or the nearest one;
+ * those maps are built from the band centers at start. */
 typedef struct { uint8_t first, count; } PSBandMap;
 static PSBandMap ps_map_34_20[20], ps_map_20_34[34];
 
-static void ps_layout_centres(bool is34, float *centre)
+static void ps_layout_centers(bool is34, float *center)
 {
     const int8_t *k_to_b = is34 ? ps_k_to_b_34 : ps_k_to_b_20;
     int count[PS_NR_PAR] = { 0 };
-    for (int b = 0; b < ps_nr_par_bands[is34]; b++) centre[b] = 0.0f;
+    for (int b = 0; b < ps_nr_par_bands[is34]; b++) center[b] = 0.0f;
     for (int k = 0; k < ps_nr_bands[is34]; k++) {
         float f = !is34 ? ((k < 10) ? ps_f_center_20[k] / 8.0f : k - 6.5f)
                         : ((k < 32) ? ps_f_center_34[k] / 24.0f : k - 26.5f);
-        centre[k_to_b[k]] += fabsf(f);
+        center[k_to_b[k]] += fabsf(f);
         count[k_to_b[k]]++;
     }
-    for (int b = 0; b < ps_nr_par_bands[is34]; b++) centre[b] /= (float)count[b];
+    for (int b = 0; b < ps_nr_par_bands[is34]; b++) center[b] /= (float)count[b];
 }
 
 static void ps_build_band_map(PSBandMap *map, const float *src, int n_src, const float *dst, int n_dst)
@@ -572,8 +572,8 @@ static void ps_build_band_map(PSBandMap *map, const float *src, int n_src, const
 static void ps_init_band_maps(void)
 {
     float c20[PS_NR_PAR], c34[PS_NR_PAR];
-    ps_layout_centres(false, c20);
-    ps_layout_centres(true, c34);
+    ps_layout_centers(false, c20);
+    ps_layout_centers(true, c34);
     ps_build_band_map(ps_map_34_20, c34, 34, c20, 20);
     ps_build_band_map(ps_map_20_34, c20, 20, c34, 34);
 }

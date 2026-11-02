@@ -1207,7 +1207,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         }
     }
 
-    /* One buffer, one frame_samples-long run per channel: SBR analyses a
+    /* One buffer, one frame_samples-long run per channel: SBR analyzes a
      * channel's whole core frame before it synthesises that channel, so it
      * works in place over the core output at the start of each run. */
     if (decoder->sbr_present) decoder->sbr_seen = true;

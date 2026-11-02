@@ -161,7 +161,7 @@ static const MaskingModel masking_model = {
      * so the floors do not spend bits on bands masked by the rest of the frame. */
     .quiet_band = 0.0003f,
     /* Pull coded long-block scalefactors 0.6 of the way toward the mean of
-     * their coded neighbours, reducing abrupt changes between bands. */
+     * their coded neighbors, reducing abrupt changes between bands. */
     .sf_smooth = 0.6f,
     /* Steeper treble de-emphasis leaves more bits for lower bands. Its rate
      * threshold avoids starving treble when the available budget is small. */
@@ -208,7 +208,7 @@ typedef struct
 static float silence_energy(const CoderInfo *ci)
 {
     int len = (ci->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-    /* The unnormalised, doubled MDCT has 2*len times the input mean-square
+    /* The unnormalized, doubled MDCT has 2*len times the input mean-square
      * energy for a sine-windowed stationary signal. Keep the silence floor
      * in sample units rather than making it depend on the transform length. */
     return (2.0f * len) * (masking_model.silence_rms * masking_model.silence_rms);
@@ -394,8 +394,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int grou
                + (1.0f - avg_weight) * masking_model.peak_weight * loudness(peak / ref_win, loud_exp);
         if (cfg->mask_tuned)
         {
-            float centre = (float)(lo + hi);
-            float tilt = tilt_gain(0.5f * centre * (masking_model.tilt_nyquist_khz * inv_block_len));
+            float center = (float)(lo + hi);
+            float tilt = tilt_gain(0.5f * center * (masking_model.tilt_nyquist_khz * inv_block_len));
             target *= treble_rolloff(lo, hi, slope_per_line) * tilt;
         }
         else
@@ -455,7 +455,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 }
 
 /* The scalefactor a coded band wants. Long blocks pull it most of the way
- * towards the mean of its coded neighbours: the masking target tracks local
+ * towards the mean of its coded neighbors: the masking target tracks local
  * band energy too steeply, which quantizes peaks too coarsely and the bands
  * beside them too finely. */
 static int smoothed_sfac(int want, int prev, int next, int sf_bias, int smooth)
@@ -493,7 +493,7 @@ static void nudge_scalefactors(const CoderInfo *ci, int *sel, int n, int base, i
     unsigned char bp[NSFB_LONG];
     /* The previous group's scalefactor seeds the chain without a nudge. */
     int cost[SF_NUDGE_STATES] = {INT_MAX / 2, 0};
-    /* Retain the raw neighbour so smoothing is independent of in-place writes. */
+    /* Retain the raw neighbor so smoothing is independent of in-place writes. */
     int prev_a0 = last_abs, prev_want = INT_MIN, sb, c;
 
     for (sb = 0; sb < n; sb++)
@@ -642,11 +642,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         band_sf[sb] = ci->sf[band] - sfac;
     }
 
-    /* All raw neighbours are known before this buffer becomes gain scalefactors. */
+    /* All raw neighbors are known before this buffer becomes gain scalefactors. */
     nudge_scalefactors(ci, band_sf, n, base, smooth, *p_last_abs, sf_nudge);
 
     /* Pass 2: quantize the coded bands. Long blocks first pull each
-     * scalefactor most of the way towards the mean of its coded neighbours:
+     * scalefactor most of the way towards the mean of its coded neighbors:
      * the masking target tracks local band energy too steeply, which
      * quantizes peaks too coarsely and the bands beside them too finely. */
     for (sb = 0; sb < n; sb++)

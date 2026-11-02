@@ -103,7 +103,7 @@ typedef struct {
 /**
  * Maps channel count to ISO/IEC 14496-3 Table 1.19 channelConfiguration value.
  * Returns 1..6 for 1..6 channels, 7 for 8 channels, or 0 if unsupported.
- * Eight channels remain valid here, but signalling uses a PCE instead of 7.
+ * Eight channels remain valid here, but signaling uses a PCE instead of 7.
  */
 static inline int GetChannelConfig(int numChannels)
 {
@@ -115,7 +115,7 @@ static inline int GetChannelConfig(int numChannels)
 static inline bool HasPCE(int channels) { return channels == 8; }
 #endif
 
-static inline int SignalledChannelConfig(int channels)
+static inline int SignaledChannelConfig(int channels)
 {
     return (channels >= 1 && channels <= 6) ? channels : 0;
 }
