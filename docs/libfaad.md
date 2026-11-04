@@ -457,8 +457,8 @@ Replace `<neaacdec.h>` / `<faad.h>` with `<faad3.h>`, rebuild against `libfaad3`
 (ABI 3) and remove old include and library paths. There is no `NeAACDec*` or
 `faacDec*` compatibility code in this library. The FAAD2 repository
 (FreewareAdvancedAudio/faad2) ships a thin `libfaad.so.2` shim over libfaad3 for
-programs that cannot be rebuilt; it reproduces the behaviors in
-[Legacy behavior](#legacy-behavior-you-may-be-working-around). New code should use
+programs that cannot be rebuilt; it reproduces the behaviours in
+[Legacy behaviour](#legacy-behaviour-you-may-be-working-around). New code should use
 libfaad3 directly.
 
 | Legacy | Now |
@@ -486,12 +486,12 @@ the info `struct_size` once. The old structs cannot be cast to the new ones.
 Lengths and counts are `uint32_t`, not `unsigned long`; check larger container
 lengths before narrowing.
 
-### Legacy behavior you may be working around
+### Legacy behaviour you may be working around
 
 Programs written for FAAD2 often carry workarounds for these; the shim keeps the
-behaviors so such programs still work, but with libfaad3 the workarounds can go.
+behaviours so such programs still work, but with libfaad3 the workarounds can go.
 
-| Legacy behavior | libfaad3 |
+| Legacy behaviour | libfaad3 |
 |---|---|
 | The first decoded frame returned `samples == 0` | Every frame that produces PCM reports it; trim with `decoder_delay` and the container priming |
 | Streams with `dynamic_range_info` but no programme reference level came out 20 dB quieter (missing level treated as 0 dBFS) | No attenuation. `FAAD_STREAM_PROG_REF_LEVEL` says whether a level exists; `FAAD_FRAME_DRC_INFO` says the frame carried DRC data |

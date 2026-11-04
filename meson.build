@@ -92,6 +92,8 @@ subdir('include')
 subdir('common')
 subdir('libfaar')
 
+subdir('tests/fuzz')
+
 if get_option('encoder')
     subdir('libfaac')
 endif
@@ -105,5 +107,5 @@ if get_option('frontend')
     subdir('frontend')
 endif
 
-# Fuzzing is part of this, and needs the libraries and frontend defined above.
+# On Windows, verify both library variants link without import/export defines.
 subdir('tests')

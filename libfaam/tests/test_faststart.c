@@ -142,7 +142,7 @@ static void snap(memfile *f, snapshot *s) {
         }
     }
     CHECK(faam_demuxer_get_num_chapters(d, &s->num_chapters) == FAAM_OK && s->num_chapters <= 4);
-    for (uint32_t i = 0; i < s->num_chapters && i < 4; i++) {
+    for (uint32_t i = 0; i < s->num_chapters; i++) {
         faam_chapter c = { .struct_size = sizeof(c) };
         CHECK(faam_demuxer_get_chapter(d, i, &c) == FAAM_OK);
         s->chapter_ms[i] = c.start_ms;

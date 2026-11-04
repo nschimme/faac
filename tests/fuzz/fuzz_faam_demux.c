@@ -61,23 +61,23 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&lib, 0, sizeof(lib));
     lib.struct_size = sizeof(lib);
     if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
-        abort();
+        __builtin_trap();
     if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
-        abort();
+        __builtin_trap();
 
     mem_stream ms = { data, size, 0 };
     faam_io io = { .struct_size = sizeof(faam_io), .user_data = &ms, .read = mem_read, .write = NULL, .seek = mem_seek, .tell = mem_tell, .flush = NULL };
 
     faam_demuxer_config cfg;
     if (faam_demuxer_config_init(&cfg, sizeof(cfg)) != FAAM_OK)
-        abort();
+        __builtin_trap();
 
     /* The reserved flags must be refused before any I/O; every input still parses below. */
     faam_demuxer_config bad = cfg;
     bad.flags = ((uint32_t)data[1] << 8) | 1;
     faam_demuxer *refused = NULL;
     if (faam_demuxer_open(&bad, &io, &refused) != FAAM_ERR_INVALID_ARGUMENT || refused)
-        abort();
+        __builtin_trap();
 
     faam_demuxer *d = NULL;
     faam_status st = faam_demuxer_open(&cfg, &io, &d);
@@ -87,9 +87,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     uint32_t held = 0, total = 0;
     if (faam_demuxer_get_num_tracks(d, &held, &total) != FAAM_OK)
-        abort();
+        __builtin_trap();
     if (total < held)
-        abort();
+        __builtin_trap();
 
     char brand[5] = { 0 };
     (void)faam_demuxer_get_major_brand(d, brand);
@@ -102,22 +102,22 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     uint32_t meta_count = 0;
     if (faam_demuxer_get_num_metadata(d, &meta_count) == FAAM_OK) {
         if (meta_count > (1u << 20))
-            abort();
+            __builtin_trap();
         for (uint32_t i = 0; i < meta_count && i < 2048; i++) {
             faam_metadata_entry entry;
             memset(&entry, 0, sizeof(entry));
             entry.struct_size = sizeof(entry);
             if (faam_demuxer_get_metadata_entry(d, i, &entry) != FAAM_OK)
-                abort();
+                __builtin_trap();
             if (entry.struct_size < sizeof(entry))
-                abort();
+                __builtin_trap();
         }
     }
 
     uint32_t chapter_count = 0;
     if (faam_demuxer_get_num_chapters(d, &chapter_count) == FAAM_OK) {
         if (chapter_count > 255)
-            abort();
+            __builtin_trap();
         for (uint32_t i = 0; i < chapter_count && i < 16; i++) {
             faam_chapter chapter;
             memset(&chapter, 0, sizeof(chapter));
@@ -136,11 +136,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         memset(&ti, 0, sizeof(ti));
         ti.struct_size = sizeof(ti);
         if (faam_demuxer_get_track_info(d, i, &ti) != FAAM_OK)
-            abort();
+            __builtin_trap();
         if (ti.struct_size < sizeof(ti))
-            abort();
+            __builtin_trap();
         if (ti.flags & ~FAAM_TRACK_INFO_INBAND_PARAMS)
-            abort();
+            __builtin_trap();
 
         faam_gapless_info track_gap;
         memset(&track_gap, 0, sizeof(track_gap));
@@ -156,7 +156,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
                 uint32_t got = 0;
                 (void)faam_demuxer_get_codec_data(d, ti.track_id, buf, codec_len, &got);
                 if (got > codec_len)
-                    abort();
+                    __builtin_trap();
                 if (buf != stack_buf)
                     free(buf);
             }
@@ -175,22 +175,22 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         st = faam_demuxer_next_frame_loc(d, &loc);
         if (st != FAAM_OK) break;
         if (loc.struct_size < sizeof(loc))
-            abort();
+            __builtin_trap();
         if (loc.flags & ~FAAM_FRAME_KEYFRAME)
-            abort();
+            __builtin_trap();
 
         uint32_t read_bytes = 0;
         if (data[0] & 2) {
             /* Skip without reading, proving the cursor advances. */
             if (faam_demuxer_read_frame(d, NULL, 0, &read_bytes) != FAAM_OK)
-                abort();
+                __builtin_trap();
         } else if (loc.frame_bytes > sizeof(frame_buf) && loc.frame_bytes <= (1u << 20)) {
             /* Undersized first, then retry at the required size. */
             uint32_t needed = 0;
             st = faam_demuxer_read_frame(d, frame_buf, sizeof(frame_buf), &needed);
             if (st == FAAM_ERR_OUTPUT_TOO_SMALL) {
                 if (needed != loc.frame_bytes)
-                    abort();
+                    __builtin_trap();
                 uint8_t *big = malloc(needed);
                 if (big) {
                     st = faam_demuxer_read_frame(d, big, needed, &read_bytes);
@@ -198,7 +198,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
                     if (st != FAAM_OK)
                         break;
                     if (read_bytes != loc.frame_bytes)
-                        abort();
+                        __builtin_trap();
                 } else {
                     st = faam_demuxer_read_frame(d, NULL, 0, &read_bytes);
                 }
@@ -209,7 +209,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             uint32_t cap = loc.frame_bytes < sizeof(frame_buf) ? loc.frame_bytes : sizeof(frame_buf);
             st = faam_demuxer_read_frame(d, frame_buf, cap, &read_bytes);
             if (st == FAAM_OK && read_bytes != loc.frame_bytes)
-                abort();
+                __builtin_trap();
             if (st != FAAM_OK && st != FAAM_ERR_OUTPUT_TOO_SMALL)
                 break;
             if (st == FAAM_ERR_OUTPUT_TOO_SMALL) {

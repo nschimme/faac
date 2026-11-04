@@ -51,7 +51,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         float smax = 0.0f, ssum = 0.0f;
         int chMaxSlot = 0;
         for (int slot = 0; slot < num_slots; slot++) {
-            /* The analyzed frame starts SBR_ANALYSIS_DELAY back, in the saved history. */
+            /* The analysed frame starts SBR_ANALYSIS_DELAY back, in the saved history. */
             int pos = slot * SBR_QMF_BANDS_64 - SBR_ANALYSIS_DELAY;
             const float * restrict p_in = (pos < 0) ? sbr->ch[ch].qmfOvl64 + SBR_QMF_HIST_LEN + pos
                                                     : fullPtrs[ch] + pos;
@@ -97,7 +97,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
     }
 
-    /* Slots analyzed per envelope, for power normalization: the multiples of
+    /* Slots analysed per envelope, for power normalization: the multiples of
      * the decimation factor below each border. */
     for (int e = 0; e < sa->numEnvelopes; e++) {
         int n = (env_border(sa, e + 1, num_slots) + FAAC_SBR_DECIMATION - 1) / FAAC_SBR_DECIMATION

@@ -71,10 +71,8 @@ static void test_layouts(void)
     void *exact_buf = malloc(FAAD_CONFIG_BASELINE);
     assert(exact_buf);
     faad_config *exact = exact_buf;
-    uint32_t exact_size;
     assert(faad_config_init(exact, FAAD_CONFIG_BASELINE) == FAAD_OK);
-    memcpy(&exact_size, exact_buf, sizeof(exact_size));
-    assert(exact_size == FAAD_CONFIG_BASELINE);
+    assert(exact->struct_size == FAAD_CONFIG_BASELINE);
     assert(faad_decoder_open(exact, NULL, 0, &dec) == FAAD_OK);
     assert(faad_decoder_close(&dec) == FAAD_OK);
     free(exact);

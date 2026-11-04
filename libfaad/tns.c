@@ -94,7 +94,7 @@ void apply_tns(ICSInfo *ics, float *spec)
             float rc[TNS_MAX_ORDER];
             float lpc[TNS_MAX_ORDER];
             float lpc_tmp[TNS_MAX_ORDER];
-            /* §4.6.9.3: the quantizer is asymmetric, one more step on the
+            /* §4.6.9.3: the quantiser is asymmetric, one more step on the
              * negative side: iqfac = (2^(bits-1) -/+ 0.5) / (pi/2). */
             static const float tns_rc_lut[2][16] = {
                 { -0.342020143f, -0.642787610f, -0.866025404f, -0.984807753f, -0.984807753f, -0.866025404f, -0.642787610f, -0.342020143f, 0.000000000f, 0.433883739f, 0.781831482f, 0.974927912f, 0.974927912f, 0.781831482f, 0.433883739f, 0.000000000f },

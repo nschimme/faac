@@ -78,11 +78,11 @@ static void *thread_test_worker(void *arg)
 
 #endif /* !FAAD_STATS */
 
-/* AudioSpecificConfig signaling: the 0x2b7 sync extension carries a real
+/* AudioSpecificConfig signalling: the 0x2b7 sync extension carries a real
  * sbrPresentFlag, so an explicit "no SBR" (FFmpeg's default for AAC-LC in
  * MP4) must stay LC at the core rate, while faac's HE-AAC form and the
  * explicit hierarchical AOT 5/29 forms enable it. */
-static void test_asc_sbr_signaling(void)
+static void test_asc_sbr_signalling(void)
 {
     static const uint8_t lc_explicit_no_sbr[] = { 0x14, 0x08, 0x56, 0xe5, 0x00 };
     static const uint8_t lc_plain[]           = { 0x14, 0x08 };
@@ -203,7 +203,7 @@ static void test_struct_sizes_and_enums(void)
 int main(void)
 {
     test_struct_sizes_and_enums();
-    test_asc_sbr_signaling();
+    test_asc_sbr_signalling();
     test_asc_drm_rejection();
     test_asc_unlisted_core_rate_rejection();
 

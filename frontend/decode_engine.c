@@ -953,29 +953,25 @@ int run_decoding_session_ext(const decode_options_t *opts,
     uint16_t out_channels = (downmix == FAAD_DOWNMIX_MONO) ? 1 :
                             (downmix == FAAD_DOWNMIX_STEREO && num_channels > 2) ? 2 : num_channels;
 
-    decode_session_info_t sess_info = {
-        .input_filename = infile,
-        .output_filename = outfile,
-        .sample_rate = sample_rate,
-        .num_channels = out_channels,
-        .total_track_samples = total_track_samples,
-        .total_track_frames = total_track_frames,
-        .duration_sec = est_duration_sec,
-        .avg_bitrate_kbps = est_avg_bitrate_kbps,
-        .is_mp4 = is_mp4,
-        .raw_format = raw_format,
-        .bit_depth = bit_depth,
-        .is_float = is_float,
-        .object_type = obj_type,
-        .downmix = downmix,
-        .profile_name = object_type_name(obj_type)
-    };
-    /* ADTS carries no out-of-band header, so the decoder's real rate and
-     * channel count are only known after the first frame is parsed. */
-    bool session_emitted = false;
-    if (session_start_cb && is_mp4) {
+    if (session_start_cb) {
+        decode_session_info_t sess_info = {
+            .input_filename = infile,
+            .output_filename = outfile,
+            .sample_rate = sample_rate,
+            .num_channels = out_channels,
+            .total_track_samples = total_track_samples,
+            .total_track_frames = total_track_frames,
+            .duration_sec = est_duration_sec,
+            .avg_bitrate_kbps = est_avg_bitrate_kbps,
+            .is_mp4 = is_mp4,
+            .raw_format = raw_format,
+            .bit_depth = bit_depth,
+            .is_float = is_float,
+            .object_type = obj_type,
+            .downmix = downmix,
+            .profile_name = object_type_name(obj_type)
+        };
         session_start_cb(&sess_info, user_data);
-        session_emitted = true;
     }
 
     double start_time = get_wall_time_sec();
@@ -1114,15 +1110,6 @@ int run_decoding_session_ext(const decode_options_t *opts,
                 continue;
             }
             update_stream_info(dec, &sinfo, flags, &sample_rate, &num_channels, &obj_type);
-            if (session_start_cb && !session_emitted) {
-                sess_info.sample_rate = sample_rate;
-                sess_info.num_channels = (downmix == FAAD_DOWNMIX_MONO) ? 1 :
-                                         (downmix == FAAD_DOWNMIX_STEREO && num_channels > 2) ? 2 : num_channels;
-                sess_info.object_type = obj_type;
-                sess_info.profile_name = object_type_name(obj_type);
-                session_start_cb(&sess_info, user_data);
-                session_emitted = true;
-            }
             if (bytes_consumed > max_frame_bytes) max_frame_bytes = bytes_consumed;
             uint32_t frame_samples = bytes_written / ((is_float ? 4 : bit_depth / 8) * num_channels);
             double frame_duration = (double)frame_samples / sample_rate;

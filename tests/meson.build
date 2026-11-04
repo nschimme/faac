@@ -1,7 +1,3 @@
-# Fuzz harnesses are cross-component, so they live here rather than under a
-# single library's tests directory.
-subdir('fuzz')
-
 # Verify each library variant links with every exported function, so the symbol
 # map and .def cannot fall behind the header. On Windows this also proves the
 # import/export defines are not needed.

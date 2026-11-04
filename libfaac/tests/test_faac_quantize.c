@@ -51,7 +51,7 @@ int main(void)
     for (int sfac = -64; sfac <= 96; sfac += 8) {
         float gain = powf(2.0f, (float)sfac / 4.0f);
         int fill = 0;
-        /* Every rounding boundary q = (x*gain)^(3/4) + MAGIC, and its float neighbors. */
+        /* Every rounding boundary q = (x*gain)^(3/4) + MAGIC, and its float neighbours. */
         for (int q = 1; q <= MAX_HUFF_ESC_VAL; q++) {
             float edge = powf((float)q - MAGIC_NUMBER, 4.0f / 3.0f) / gain;
             float v[3] = { nextafterf(edge, 0.0f), edge, nextafterf(edge, INFINITY) };

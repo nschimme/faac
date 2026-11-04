@@ -52,7 +52,7 @@ static void test_matches_putbit(uint32_t seed)
         unsigned span = 1 + ft_rand(&rng) % 9;
         if (span > count - i) span = count - i;
         int use_accum = (int)(ft_rand(&rng) & 1);
-        BitAccumulator a = {0};
+        BitAccumulator a;
         if (use_accum) AccumBegin(&a, &got);
         for (unsigned k = 0; k < span; k++, i++) {
             FT_CHECK(PutBit(&want, fields[i].value, fields[i].bits) == 0);

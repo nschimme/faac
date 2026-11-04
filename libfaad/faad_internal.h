@@ -221,7 +221,7 @@ typedef struct {
     uint8_t global_gain;
 
     /* Pulse data: up to four spectral lines of a long window whose
-     * quantized magnitude is raised by pulse_amp */
+     * quantised magnitude is raised by pulse_amp */
     bool pulse_data_present;
     uint8_t pulse_count;
     uint8_t pulse_amp[4];
@@ -275,7 +275,7 @@ typedef struct {
 typedef struct {
     bool    start;          /* a header has been seen */
     bool    enable_iid, enable_icc, enable_ext, enable_ipdopd;
-    bool    iid_quant;      /* fine (31-step) IID quantization */
+    bool    iid_quant;      /* fine (31-step) IID quantisation */
     uint8_t icc_mode;
     uint8_t nr_iid_par, nr_icc_par, nr_ipdopd_par;
     uint8_t frame_class, num_env, num_env_old;

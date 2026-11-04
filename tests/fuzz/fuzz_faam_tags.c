@@ -95,9 +95,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&lib, 0, sizeof(lib));
     lib.struct_size = sizeof(lib);
     if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
-        abort();
+        __builtin_trap();
     if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
-        abort();
+        __builtin_trap();
 
     /* data[0] is configuration; data[1..5] seed one extra metadata entry. */
     uint8_t cfg_byte = data[0];

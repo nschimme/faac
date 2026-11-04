@@ -358,7 +358,7 @@ codec's priming.
 - `cfg.gapless` provides iTunSMPB and every audio edit list; `track.gapless`
   overrides that track's edit list. The edit list needs a nonzero delay.
 - Progressive finalize derives an unknown total from the coded duration minus
-  delay and padding, saturating at 0 for an empty program.
+  delay and padding, saturating at 0 for an empty programme.
 - Fragmented gapless data is written at open, and `total_samples` must be given for
   its edit list.
 - `faam_demuxer_get_track_gapless()` takes a track ID, or 0 for the first audio

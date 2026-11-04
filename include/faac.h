@@ -305,7 +305,7 @@ typedef struct faac_library_info {
 
     uint32_t                max_channels;   /* highest channels this build accepts */
     uint32_t                sbr_decimation; /* HE-AAC SBR analysis density: every Nth slot
-                                             * is analyzed (1 = full quality). Build-time. */
+                                             * is analysed (1 = full quality). Build-time. */
     uint32_t                flags;          /* FAAC_LIB_* */
 } faac_library_info;
 

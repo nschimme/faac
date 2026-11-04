@@ -26,7 +26,7 @@ tests/fuzz/run.sh /tmp/faac-fuzz 10 fuzz_faar_resampler
 ## High precision checks
 
 The `high_stopband` Meson group checks High's 150 dB rejection with one, two,
-three, and eight channels, including loud neighboring channels.
+three, and eight channels, including loud neighbouring channels.
 `test_faar_float2` compares the compensated FFT against the double FFT and
 checks inverse round trips and phase arithmetic.
 

@@ -67,7 +67,7 @@ option('encoder-ps',
     type: 'boolean',
     value: false)
 
-# SBR spectral analysis density: analyze every Nth slot per frame.
+# SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.
 # Only affects HE-AAC; LC encodes are identical regardless of this setting.
@@ -76,7 +76,7 @@ option('encoder-ps',
 #   4: every 4th   -- ~26% faster HE-AAC encode; MOS d: -0.010
 #   8: every 8th   -- ~30% faster HE-AAC encode; MOS d: -0.038
 option('sbr-decimation',
-    description: 'Encoder Spectral Band Replication analysis density: analyze every Nth slot (1=full quality, max=8)',
+    description: 'Encoder Spectral Band Replication analysis density: analyse every Nth slot (1=full quality, max=8)',
     type: 'integer',
     min: 1,
     max: 8,
@@ -105,17 +105,6 @@ option('stats',
 
 option('decoder-drc', type: 'boolean', value: true,
     description: 'Enable decoder dynamic range control')
-
-# The fuzz harnesses are always built and replay tests/fuzz/corpus as the
-# "fuzz" test suite. Name a libFuzzer-compatible engine here (for example
-# -fsanitize=fuzzer, or $LIB_FUZZING_ENGINE under OSS-Fuzz) to link it in place
-# of the file-replay driver. Instrument the libraries themselves through
-# b_sanitize and -fsanitize=fuzzer-no-link in c_args.
-option('fuzzing-engine',
-    description: 'Link argument that supplies main() to the fuzz harnesses (empty replays corpus files instead)',
-    type: 'string',
-    value: '')
-
 # Data logging for ML model training (disabled by default, zero runtime overhead)
 option('telemetry',
     description: 'Enable audio shaping telemetry logging for ML training',

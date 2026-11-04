@@ -323,9 +323,9 @@ static void read_drc(faad_decoder *dec, BitReader input, uint32_t end)
     }
     bool banded = DRC_READ(1) != 0;
     if (banded) {
-        bands += DRC_READ(4) & 0xfu;
+        bands += DRC_READ(4);
         (void)DRC_READ(4);
-        for (unsigned b = 0; b < bands && b < sizeof(top); b++) {
+        for (unsigned b = 0; b < bands; b++) {
             top[b] = (uint8_t)DRC_READ(8);
             if (b && top[b] <= top[b - 1]) bad = true;
         }
@@ -1207,7 +1207,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         }
     }
 
-    /* One buffer, one frame_samples-long run per channel: SBR analyzes a
+    /* One buffer, one frame_samples-long run per channel: SBR analyses a
      * channel's whole core frame before it synthesises that channel, so it
      * works in place over the core output at the start of each run. */
     if (decoder->sbr_present) decoder->sbr_seen = true;

@@ -206,7 +206,7 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
             fix = 1.0f;
     }
 
-    /* Stiffer damping when the account is far off center. Removing this
+    /* Stiffer damping when the account is far off centre. Removing this
        and the deadband below costs 16 kHz speech MOS under ABR. */
     float damping = RC_DAMPING_FACTOR;
     float fillRatio = 0.5f + 0.5f * (float)rc->balance / (float)bound;

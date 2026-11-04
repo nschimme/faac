@@ -94,7 +94,7 @@ static int code_deltas(const int *values, const int *previous, int count, int ti
 }
 
 /* Coupled rendition of a pair from the channels' own levels: the level of
- * (L + R) / 2, and the balance L - R at half resolution around its center. */
+ * (L + R) / 2, and the balance L - R at half resolution around its centre. */
 static void couple_envelopes(SBRInfo *sbr, const SbrFrameData *fd, int ch0)
 {
     int amp = fd->eff_amp_res;
@@ -190,7 +190,7 @@ static int put_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int
         int ch = coupled ? hi : lo;
         if (coupled ? lo : hi) {
             /* One band at a constant level: 5-bit absolute (the level, or for
-             * a coupled balance channel the center 6), or the time delta 0,
+             * a coupled balance channel the centre 6), or the time delta 0,
              * whose code is the single bit 0. */
             for (int q = 0; q < n_q; q++) {
                 int t = q | noiseLinked;

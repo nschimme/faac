@@ -627,7 +627,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->rate_auto && rate_per_channel > 0)
     {
         /* Both engines gain on most clips through 18 kbps/ch at 48k and
-           10 kbps/ch at 44.1k, not at 20 and 12; bracket centers. */
+           10 kbps/ch at 44.1k, not at 20 and 12; bracket centres. */
         const uint32_t lc_48k_bps = 19000;
         const uint32_t lc_44k_bps = 11000;
         if (raw_sample_rate > 48000)
@@ -674,7 +674,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
     /* Hand integer PCM to the encoder as it is: one conversion pass instead of
-       two, and nothing for it to sanitize. The encoder reorders the standard
+       two, and nothing for it to sanitise. The encoder reorders the standard
        WAVE layout; custom channel positions are permuted here, in float. */
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
     bool standard_layout = num_channels < 3 ||

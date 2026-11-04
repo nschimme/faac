@@ -190,7 +190,7 @@ The encoder reports it: see
 .TP
 .BR \-\-padding\-delay\ <\fIsamples\fP>
 Trailing padding samples of the audio, written as gapless information.
-The length of the program is derived from the frames muxed minus the delay
+The length of the programme is derived from the frames muxed minus the delay
 and the padding, so without this option the padding is not trimmed.
 .TP
 .BR \-\-sbr\-signaling\ <\fImode\fP>
@@ -241,7 +241,7 @@ than one raw data block (number_of_raw_data_blocks above 0) is an error.
 .IP \(bu 3
 A channel configuration of 0 means the layout is in a program config element,
 which the first frame must open with; the AudioSpecificConfig is built from it.
-Eight-channel streams from faac are signaled this way.
+Eight-channel streams from faac are signalled this way.
 .IP \(bu 3
 Bytes that are not a frame header are skipped, and so are frames whose
 profile, rate or channels differ from the first header's, as they are most

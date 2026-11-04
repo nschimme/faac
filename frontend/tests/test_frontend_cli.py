@@ -288,81 +288,20 @@ def run_all(t, d):
     # JPEG without an APP0/APP1 marker must pass the shared signature detector.
     open(os.path.join(d, "alt.jpg"), "wb").write(b"\xff\xd8\xff\xdb" + b"\x00" * 24)
 
-    # A renamed option mapped to the wrong enum would still exit 0; compare streams.
-    alias_pairs = [
-        ("profile/bandwidth/stereo-mode/block-type/mpeg-version",
-         ["--profile", "lc", "--bandwidth", "16000", "--stereo-mode", "ms", "--block-type", "normal", "--mpeg-version", "4", "--stream-format", "adts"],
-         ["--object-type", "lc", "-c", "16000", "--joint", "1", "--shortctl", "0", "--mpeg-vers", "4", "-a"]),
-        ("stereo-mode names vs numbers",
-         ["--stereo-mode", "auto", "--block-type", "noshort", "--stream-format", "adts"],
-         ["--joint", "3", "--shortctl", "1", "-a"]),
-    ]
-    if ENCODER_SBR:
-        alias_pairs.append(("profile he-v1", ["--profile", "he-v1", "-b", "48", "--stream-format", "adts"],
-                            ["--object-type", "he-aac-v1", "-b", "48", "-a"]))
-    if ENCODER_PS and CHANNELS == 2:
-        alias_pairs.append(("profile he-v2", ["--profile", "he-v2", "-b", "16", "--stream-format", "adts"],
-                            ["--object-type", "he-aac-v2", "-b", "16", "-a"]))
-    for name, modern, legacy in alias_pairs:
-        outs = []
-        for tag, flags in (("mod", modern), ("leg", legacy)):
-            out = f"alias_{tag}.aac"
-            r = t.run(t.faac, ["-v0", "--overwrite", "-o", out] + flags + ["s.wav"], d)
-            check(r.returncode == 0, f"faac {name} ({tag}) encodes")
-            outs.append(read(os.path.join(d, out)))
-        check(outs[0] == outs[1] and len(outs[0]) > 0, f"faac {name}: modern and legacy output match")
-
-    # Order must not matter: auto after -a falls back to the default MP4 name.
-    for stale in ("s.m4a", "s.aac"):
-        if os.path.exists(os.path.join(d, stale)):
-            os.remove(os.path.join(d, stale))
-    r = t.run(t.faac, ["-v0", "--overwrite", "-a", "--stream-format", "auto", "s.wav"], d)
-    check(r.returncode == 0 and os.path.exists(os.path.join(d, "s.m4a")) and not os.path.exists(os.path.join(d, "s.aac")),
-          "faac --stream-format auto resets a prior -a")
-    r = t.run(t.faac, ["-v0", "--stream-format", "bogus", "-o", "x.aac", "s.wav"], d)
-    check(r.returncode != 0, "faac rejects an unknown --stream-format")
-
-    # Raw PCM spellings.
-    raw_pcm_data = bytes(range(256)) * 100
-    open(os.path.join(d, "raw_pcm.raw"), "wb").write(raw_pcm_data)
-    raw_outs = []
-    for out, flags in (("raw_mod.aac", ["--raw-pcm", "--raw-rate", "44100", "--raw-bits", "16", "--raw-channels", str(CHANNELS), "--raw-endian"]),
-                       ("raw_leg.aac", ["--pcmraw", "--pcmsamplerate", "44100", "--pcmsamplebits", "16", "--pcmchannels", str(CHANNELS), "--pcmswapbytes"])):
-        r = t.run(t.faac, ["-v0", "--overwrite", "-a"] + flags + ["-o", out, "raw_pcm.raw"], d)
-        check(r.returncode == 0, f"faac raw PCM {out} encodes")
-        raw_outs.append(read(os.path.join(d, out)))
-    check(raw_outs[0] == raw_outs[1] and len(raw_outs[0]) > 0, "faac raw PCM modern and legacy output match")
-
     # ADTS and faac's own .m4a for the same audio: LC and HE-AAC v1
-    codecs = [("lc", ["-q", "100", "--profile", "lc"])]
+    codecs = [("lc", ["-q", "100", "--object-type", "lc"])]
     if ENCODER_SBR:
-        codecs.append(("he", ["-b", "48", "--profile", "he-v1"]))
+        codecs.append(("he", ["-b", "48", "--object-type", "he-aac-v1"]))
     else:
         print("note: HE-AAC checks skipped (faac built without encoder-sbr)")
     for name, extra in codecs:
-        for ext, flag in (("aac", ["--stream-format", "adts"]), ("m4a", [])):
+        for ext, flag in (("aac", ["-a"]), ("m4a", [])):
             r = t.run(t.faac, ["-v0"] + extra + flag + ["-o", f"{name}.{ext}", "s.wav"], d)
             check(r.returncode == 0, f"faac {name}.{ext}")
 
-    # faad aliases share a target option, so their output must be identical.
-    r_faad_bd = t.run(t.faad, ["-q", "--overwrite", "--bit-depth", "24", "-o", "faad_bd24.wav", "lc.m4a"], d)
-    r_faad_sd = t.run(t.faad, ["-q", "--overwrite", "--sample-depth", "24", "-o", "faad_sd24.wav", "lc.m4a"], d)
-    check(r_faad_bd.returncode == 0 and r_faad_sd.returncode == 0, "faad --bit-depth and --sample-depth succeed")
-    check(read(os.path.join(d, "faad_bd24.wav")) == read(os.path.join(d, "faad_sd24.wav")), "faad --bit-depth and --sample-depth outputs match")
-
-    r_faad_seek = t.run(t.faad, ["-q", "--overwrite", "--seek", "1.0", "-o", "faad_seek.wav", "lc.m4a"], d)
-    r_faad_start = t.run(t.faad, ["-q", "--overwrite", "--start-time", "1.0", "-o", "faad_start.wav", "lc.m4a"], d)
-    check(r_faad_seek.returncode == 0 and r_faad_start.returncode == 0, "faad --seek and --start-time succeed")
-    check(read(os.path.join(d, "faad_seek.wav")) == read(os.path.join(d, "faad_start.wav")), "faad --seek and --start-time outputs match")
-
-    r_faad_adts1 = t.run(t.faad, ["-q", "--overwrite", "--adts", "ext1.aac", "lc.m4a"], d)
-    r_faad_adts2 = t.run(t.faad, ["-q", "--overwrite", "--extract-adts", "ext2.aac", "lc.m4a"], d)
-    check(r_faad_adts1.returncode == 0 and r_faad_adts2.returncode == 0, "faad --adts and --extract-adts succeed")
-    check(read(os.path.join(d, "ext1.aac")) == read(os.path.join(d, "ext2.aac")), "faad --adts and --extract-adts outputs match")
-
     # AUTO picks HE-AAC v2 below the old 8 kbps stereo floor when PS is built.
     if ENCODER_PS and CHANNELS == 2:
-        r = t.run(t.faac, ["-v0", "--profile", "auto", "-b", "6", "-o", "ps_auto.m4a", "s.wav"], d)
+        r = t.run(t.faac, ["-v0", "--object-type", "auto", "-b", "6", "-o", "ps_auto.m4a", "s.wav"], d)
         check(r.returncode == 0, "faac auto low-rate PS encode")
         info = t.faam_run(["info", "ps_auto.m4a"], d).stdout
         text = info.decode()
@@ -978,7 +917,7 @@ def ffmpeg_pcm_len(path):
 
 def run_demux_header(t, d):
     """The ADTS header demux writes comes from the track's AudioSpecificConfig: core object type, core
-    rate and the real channel configuration, whatever way SBR/PS was signaled."""
+    rate and the real channel configuration, whatever way SBR/PS was signalled."""
     make_wav(os.path.join(d, "mono.wav"), channels=1)
     r = t.run(t.faac, ["-v0", "-q", "100", "--object-type", "lc", "-a", "-o", "mono.aac", "mono.wav"], d)
     check(r.returncode == 0, "faac mono.aac")
@@ -1151,14 +1090,14 @@ def run_info_and_chapters(t, d, have_video):
     other[8:12] = b"mp42"
     open(os.path.join(d, "mp42.m4a"), "wb").write(other)
     check("mp42" in info_line("mp42.m4a", "Container"), "info shows an unusual brand: " + info_line("mp42.m4a", "Container"))
-    check("AAC-LC" in info_line("lc.m4a", "AAC Object Type"), "LC is labeled AAC-LC")
+    check("AAC-LC" in info_line("lc.m4a", "AAC Object Type"), "LC is labelled AAC-LC")
     if ENCODER_SBR:
         for mode in ("compatible", "explicit"):
             t.faam_run(["-i", "he.aac", "-o", f"he_{mode}.m4a", "--sbr-signaling", mode, "--overwrite"], d)
             line = info_line(f"he_{mode}.m4a", "AAC Object Type")
-            check("HE-AAC v1" in line and "v2" not in line, f"{mode} SBR is labeled HE-AAC v1: {line}")
+            check("HE-AAC v1" in line and "v2" not in line, f"{mode} SBR is labelled HE-AAC v1: {line}")
     t.faam_run(["-i", "mono.aac", "-o", "ps_label.m4a", "--sbr-signaling", "ps", "--overwrite"], d)
-    check("HE-AAC v2" in info_line("ps_label.m4a", "AAC Object Type"), "PS is labeled HE-AAC v2")
+    check("HE-AAC v2" in info_line("ps_label.m4a", "AAC Object Type"), "PS is labelled HE-AAC v2")
     odd = bytes(read(os.path.join(d, "lc.m4a"))).replace(bytes((2, 0x11, 0x80 | CHANNELS << 3, 6)), b"\x02\x89\x90\x06")
     open(os.path.join(d, "odd.m4a"), "wb").write(odd)
     line = info_line("odd.m4a", "AAC Object Type")

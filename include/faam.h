@@ -205,7 +205,7 @@ FAAMAPI faam_status faam_io_init(faam_io *io, uint32_t caller_size);
  * of the audio track's timescale (for HE-AAC the core rate: one frame is 1024).
  * Progressive muxer: when total_samples is 0 and a delay or padding is set, finalize
  * derives it as the track's total sample duration minus delay and padding; if that is
- * not positive the program is empty and the edit list gets a zero segment length. The
+ * not positive the programme is empty and the edit list gets a zero segment length. The
  * edit list needs encoder_delay > 0. It is
  * written, identical, into every audio track unless a track config carries its own. A
  * fragmented muxer writes it only when total_samples is given at open. The demuxer fills
@@ -557,7 +557,7 @@ enum faam_update_flag {
 };
 
 /* Late configuration for progressive files whose writer learns something only after the
- * first frame (an encoder's AudioSpecificConfig, the program length). Fields not named
+ * first frame (an encoder's AudioSpecificConfig, the programme length). Fields not named
  * in flags are ignored. Returns FAAM_ERR_UNSUPPORTED on a fragmented muxer, whose moov is
  * already on disk, and FAAM_ERR_INVALID_ARGUMENT after finalize. codec_data is at most
  * FAAM_CODEC_DATA_MAX bytes and is copied; language follows the faam_track_config rule.

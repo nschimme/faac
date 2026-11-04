@@ -31,13 +31,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&lib, 0, sizeof(lib));
     lib.struct_size = sizeof(lib);
     if (faad_get_library_info(&lib) != FAAD_OK || lib.struct_size < sizeof(lib))
-        abort();
-    if (lib.flags & ~(FAAD_LIB_SBR | FAAD_LIB_PS | FAAD_LIB_DAB | FAAD_LIB_DRC))
-        abort();
+        __builtin_trap();
+    if (lib.flags & ~(FAAD_LIB_SBR | FAAD_LIB_PS))
+        __builtin_trap();
 
     faad_config cfg;
     if (faad_config_init(&cfg, sizeof(cfg)) != FAAD_OK)
-        abort();
+        __builtin_trap();
 
     uint8_t mode = data[0];
     const uint8_t *payload = data + 4;
@@ -64,7 +64,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(&info, 0, sizeof(info));
     info.struct_size = sizeof(info);
     if (faad_decoder_get_info(dec, &info) != FAAD_OK || info.struct_size < sizeof(info))
-        abort();
+        __builtin_trap();
 
     uint32_t pcm_capacity = info.max_output_bytes;
     if (pcm_capacity < 1024)
@@ -84,7 +84,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
                                &consumed, pcm, pcm_capacity, &written, &flags);
 
         if (written > pcm_capacity)
-            abort();
+            __builtin_trap();
         if (st == FAAD_OK)
             decoded++;
         if (flags & FAAD_FRAME_FORMAT_CHANGED) {
@@ -110,13 +110,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     info.struct_size = sizeof(info);
     if (faad_decoder_get_info(dec, &info) != FAAD_OK)
-        abort();
+        __builtin_trap();
     if (info.flags & ~(FAAD_STREAM_FORMAT_KNOWN | FAAD_STREAM_PROG_REF_LEVEL))
-        abort();
+        __builtin_trap();
     if (decoded && !(info.flags & FAAD_STREAM_FORMAT_KNOWN))
-        abort();
+        __builtin_trap();
     if (info.channels > lib.max_channels || info.channels > 8)
-        abort();
+        __builtin_trap();
 
     free(pcm);
     faad_decoder_close(&dec);
