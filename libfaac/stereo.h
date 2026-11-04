@@ -27,6 +27,9 @@ typedef struct {
     int isStart[2];       /* indexed by window type: 0 long, 1 short */
     int msEnd[2];         /* bands below may take M/S; 0 = none */
     float msTestFactor;   /* precomputed factor for the mid*side vs left*right energy test */
+    unsigned long bitRatePerCh;
+    int isSbr;
+    int isPlainStereo;
 } StereoConfig;
 
 void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned long bitRatePerCh, unsigned int channels, int sbr, const int *sfbOffset[2], const int sfbn[2]);

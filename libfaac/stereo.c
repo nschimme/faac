@@ -21,6 +21,7 @@
 #include "util.h"
 #include "faac_internal.h"
 #include "stats.h"
+#include "ml_shaping_model.h"
 
 /* Pan, in SF_STEP_ENRG steps, beyond which the quieter channel is inaudible
  * and is dropped to HCB_ZERO rather than intensity-coded. */
@@ -93,6 +94,9 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
      * L/R between. A window type without M/S takes intensity on every band past
      * the lowest. */
     cfg->mode = mode;
+    cfg->bitRatePerCh = bitRatePerCh;
+    cfg->isSbr = sbr;
+    cfg->isPlainStereo = plainStereo;
     cfg->msTestFactor = 4.0f * ((mode == JOINT_MIXED && plainStereo &&
                            bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f);
     for (int w = 0; w < 2; w++) {
@@ -318,11 +322,32 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         coder[lch].msPeer = coder[rch].msEl;
         coder[rch].msPeer = coder[lch].msEl;
 
+        /* Continuous ML joint-stereo bias scaling across rate-limited stereo (>= 32 kbps/ch) */
+        float ms_factor = cfg->msTestFactor;
+        if (cfg->mode == JOINT_MIXED && cfg->isPlainStereo && cfg->bitRatePerCh >= 32000) {
+            float el_tot = 0.0f, er_tot = 0.0f, elr_tot = 0.0f;
+            int total_spec = shortwin ? (BLOCK_LEN_SHORT * coder[lch].groups.n) : BLOCK_LEN_LONG;
+            for (int i = 0; i < total_spec; i += 4) {
+                for (int k = 0; k < 4 && (i + k) < total_spec; k++) {
+                    float l = s[lch][i + k], r = s[rch][i + k];
+                    el_tot += l * l;
+                    er_tot += r * r;
+                    elr_tot += l * r;
+                }
+            }
+            float denom = sqrtf(el_tot * er_tot);
+            float correlation = (denom > 1e-12f) ? (elr_tot / denom) : 0.0f;
+            if (correlation > 0.65f) {
+                float ms_bias = ml_model_stereo_ms_bias((uint32_t)cfg->bitRatePerCh, correlation, cfg->isSbr != 0);
+                ms_factor = 4.0f * ms_bias;
+            }
+        }
+
         int start = 0, sfcnt = 0, msused = 0;
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];
             msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
-                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end, cfg->msTestFactor);
+                                  &sfcnt, g, start, end, inv_isthr, is_start, ms_end, ms_factor);
             start = end;
         }
         elem->msInfo.is_present = msused;

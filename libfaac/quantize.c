@@ -185,7 +185,7 @@ static const MaskingModel masking_model = {
         { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f },
         /* Calibrated for rate-limited stereo LC. Keep other stream types on
          * the default balance; this fit does not establish their quality. */
-        { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.0f, .peak_floor = 0.0100f },
+        { .avg_weight = 0.15f, .loud_exponent = 0.32f, .slope_scale = 3.0f, .peak_floor = 0.0090f },
     },
     /* Empirical target offsets converted to linear multipliers at the knots.
      * Positions are kHz at a 48 kHz reference, so they follow the same
@@ -195,7 +195,7 @@ static const MaskingModel masking_model = {
      * 10^(offset_dB/20): -1.5 dB, +3 dB and -3 dB retain the fitted anchors. */
     .tilt = {
         { 0.5f, 1.0f }, { 1.5f, 0.84139514f }, { 3.0f, 0.84139514f }, { 5.0f, 1.0f },
-        { 8.0f, 1.0f }, { 11.0f, 1.41253754f }, { 14.0f, 1.0f }, { 18.0f, 0.70794578f },
+        { 8.0f, 1.0f }, { 11.0f, 1.38000000f }, { 14.0f, 1.0f }, { 18.0f, 0.72000000f },
     },
 };
 
