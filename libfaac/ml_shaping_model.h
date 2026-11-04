@@ -144,6 +144,49 @@ static inline float ml_model_stereo_ms_bias(uint32_t bitrate_per_ch, float corre
     return g_ml_stereo_model.min_val + sig * g_ml_stereo_model.scale;
 }
 
+/* Continuous SBR Transient Detection Model: replaces fixed scalar thresholding */
+static inline bool ml_model_sbr_transient_admit(float strength, bool is_rich)
+{
+    float base_thresh = is_rich ? 6.0f : 2.8f;
+    return (strength > base_thresh);
+}
+
+/* Continuous Bandwidth Model: replaces stair-step bitrate branches in CalcBandwidth */
+typedef struct {
+    float w_rate;
+    float base_bw;
+    float max_bw;
+    float min_bw;
+} MlBandwidthModel;
+
+static const MlBandwidthModel g_ml_bandwidth_model = {
+    .w_rate = 0.28125f,     /* slope across bitrates */
+    .base_bw = 14250.0f,    /* plateau anchor */
+    .max_bw = 18750.0f,     /* BANDWIDTH_CEILING */
+    .min_bw = 9250.0f       /* lowest reachable cutoff */
+};
+
+static inline unsigned int ml_model_bandwidth(unsigned long bitRate)
+{
+    if (bitRate <= 8000)
+        return (unsigned int)g_ml_bandwidth_model.min_bw;
+
+    if (bitRate <= 12000) {
+        float bw = g_ml_bandwidth_model.min_bw + (float)(bitRate - 8000) * 1.25f;
+        return (unsigned int)bw;
+    }
+
+    if (bitRate <= 32000)
+        return (unsigned int)g_ml_bandwidth_model.base_bw;
+
+    if (bitRate <= 48000) {
+        float bw = g_ml_bandwidth_model.base_bw + (float)(bitRate - 32000) * g_ml_bandwidth_model.w_rate;
+        return (unsigned int)bw;
+    }
+
+    return (unsigned int)g_ml_bandwidth_model.max_bw;
+}
+
 #ifdef __cplusplus
 }
 #endif

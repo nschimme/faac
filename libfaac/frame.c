@@ -32,6 +32,7 @@
 #include "sbr.h"
 #include "ratecontrol.h"
 #include "ml_shaping.h"
+#include "ml_shaping_model.h"
 #include "atomic.h"
 #include "endian.h"
 
@@ -88,22 +89,8 @@ static char *libCopyright =
 
 static unsigned int CalcBandwidth(unsigned long bitRate)
 {
-    /* Anchors land on long-block band edges, so CalcBW()'s snap is a no-op and
-     * these constants are the cutoff you actually get. Divisors are powers of
-     * two. LC in effect: HE reaches here too, but faacEncApplyConfig then
-     * overwrites bandWidth with the SBR crossover, which the core must meet. */
-    if (bitRate <= 12000) {
-        /* Unmeasured below here; ramp rather than extend the plateau down.
-         * bitRate is unsigned, so guard the subtraction. */
-        return (bitRate > 8000) ? 9250 + ((bitRate - 8000) * 5 / 4) : 9250;
-    }
-    if (bitRate <= 32000) {
-        /* Flat by measurement: the optimum does not move across this range. */
-        return 14250;
-    }
-    if (bitRate <= 48000)
-        return 14250 + ((bitRate - 32000) * 9 / 32);
-    return BANDWIDTH_CEILING;
+    /* Continuous ML Bandwidth Model: replaces stair-step branching with smooth continuous scaling */
+    return ml_model_bandwidth(bitRate);
 }
 
 /* Element-to-channel mapping is fixed for the session once InitElements has
