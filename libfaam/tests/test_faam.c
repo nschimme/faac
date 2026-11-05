@@ -308,7 +308,7 @@ int main(void)
     for (uint32_t i = 0; i < 2; i++) chaps[i].struct_size = sizeof(chaps[i]);
     chaps[0].start_ms = 0;
     chaps[0].title = "Intro";
-    chaps[1].start_ms = 5000;
+    chaps[1].start_ms = 100;
     chaps[1].title = "Event";
     cfg.chapters = chaps;
     cfg.num_chapters = 2;
@@ -554,8 +554,8 @@ int main(void)
         assert(st == FAAM_OK);
         faam_chapter updated[2] = {0};
         for (uint32_t i = 0; i < 2; i++) updated[i].struct_size = sizeof(updated[i]);
-        updated[0].start_ms = 123; updated[0].title = "First";
-        updated[1].start_ms = 4567; updated[1].title = "Second";
+        updated[0].start_ms = 0; updated[0].title = "First";
+        updated[1].start_ms = 150; updated[1].title = "Second";
         st = faam_update_chapters_stream(&tio, updated, 2, 0); assert(st == FAAM_OK);
         fclose(tf);
 
@@ -619,7 +619,7 @@ int main(void)
             updated_read[i].struct_size = sizeof(updated_read[i]);
         uint32_t updated_count;
         st = test_read_chapters(dd, updated_read, 2, &updated_count); assert(st == FAAM_OK);
-        assert(updated_count == 2 && updated_read[0].start_ms == 123 && updated_read[1].start_ms == 4567);
+        assert(updated_count == 2 && updated_read[0].start_ms == 0 && updated_read[1].start_ms == 150);
         assert(!strcmp(updated_read[1].title, "Second"));
         faam_gapless_info gapless; gapless.struct_size = sizeof(gapless);
         st = faam_demuxer_get_track_gapless(dd, 0, &gapless); assert(st == FAAM_OK);

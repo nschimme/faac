@@ -809,7 +809,8 @@ def run_all(t, d):
     for n in (64, 255):
         with open(os.path.join(d, f"ch{n}.txt"), "w") as f:
             for i in range(n):
-                f.write("%02d:%02d:%02d.%03d\tChapter %d\n" % (i // 3600, (i // 60) % 60, i % 60, (i * 7) % 1000, i))
+                ms = i * 7  # inside the 5 s source: chapters at or past the audio's end are refused
+                f.write("%02d:%02d:%02d.%03d\tChapter %d\n" % (ms // 3600000, ms // 60000 % 60, ms // 1000 % 60, ms % 1000, i))
         shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, f"cc{n}.m4a"))
         r = t.faam_run(["chapter", "import", f"cc{n}.m4a", "--chapters", f"ch{n}.txt"], d)
         check(r.returncode == 0, f"import {n} chapters")
@@ -1127,7 +1128,7 @@ def run_adts_validation(t, d):
 
 def run_info_and_chapters(t, d, have_video):
     # chapter fractions are decimal fractions of a second
-    open(os.path.join(d, "frac.txt"), "w").write("00:00:01.5\tHalf\n00:00:02.05\tFiftieth\n00:00:03.123\tExact\n00:00:04.50\tTwo\n")
+    open(os.path.join(d, "frac.txt"), "w").write("00:00:00.0\tZero\n00:00:01.5\tHalf\n00:00:02.05\tFiftieth\n00:00:03.123\tExact\n00:00:04.50\tTwo\n")
     shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, "frac.m4a"))
     r = t.faam_run(["chapter", "import", "frac.m4a", "--chapters", "frac.txt"], d)
     inf = t.faam_run(["info", "frac.m4a"], d).stdout.decode()

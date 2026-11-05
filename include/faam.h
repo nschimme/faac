@@ -220,10 +220,16 @@ typedef struct faam_gapless_info {
 } faam_gapless_info;
 #define FAAM_GAPLESS_INFO_BASELINE FAAM_STRUCT_END(faam_gapless_info, total_samples)
 
-/* Chapter Metadata Entry */
+/* Most chapters a file holds: the Nero chpl count is one byte. More is FAAM_ERR_INVALID_ARGUMENT. */
+#define FAAM_MAX_CHAPTERS ((uint32_t)255)
+
+/* Chapter Metadata Entry. The first start must be 0 and starts must strictly increase, and
+ * a chapter may not start at or after the audio's end (finalize and update of progressive
+ * files); anything else is FAAM_ERR_INVALID_ARGUMENT. Files carry the list twice, as a chpl
+ * atom and as a QuickTime chapter text track. */
 typedef struct faam_chapter {
     uint32_t struct_size;
-    uint64_t start_ms;         /* Chapter start time in milliseconds */
+    uint64_t start_ms;         /* Chapter start time in milliseconds, at most UINT32_MAX */
     const char *title;         /* Must not be NULL; at most 255 bytes are stored. Borrowed through
                                 * finalize/update; demux output lives until close */
 } faam_chapter;
@@ -457,7 +463,11 @@ FAAMAPI faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *demuxer,
 
 
 
-/* Up to 255 chapters exist (the Nero chpl count byte). Set out_chapter->struct_size to sizeof. */
+/* At most FAAM_MAX_CHAPTERS chapters. The QuickTime chapter text track (the one a tref/chap
+ * names) is read first and the chpl atom only when that track is absent, empty, shorter than
+ * its sample count, has a sample longer than its bytes, or an edit that starts the media
+ * anywhere but 0 (a leading empty edit is a lead-in and is honored). Set out_chapter->struct_size
+ * to sizeof. */
 FAAMAPI faam_status faam_demuxer_get_num_chapters(const faam_demuxer *demuxer, uint32_t *out_count);
 FAAMAPI faam_status faam_demuxer_get_chapter(const faam_demuxer *demuxer, uint32_t index, faam_chapter *out_chapter);
 
@@ -504,10 +514,13 @@ typedef struct faam_muxer_config {
                                           * >0: fragmented MP4 (needs the muxer-fragmented build option),
                                           * see faam_muxer_open */
     uint32_t            num_tracks;      /* 1 to max_tracks */
-    uint32_t            num_chapters;    /* Chapter count, at most 255 */
+    uint32_t            num_chapters;    /* Chapter count, at most FAAM_MAX_CHAPTERS */
     uint32_t            num_metadata;    /* Metadata entry count */
     const faam_track_config *tracks;     /* num_tracks entries */
-    const faam_chapter *chapters;        /* Chapters list to inject; every title must be non-NULL */
+    const faam_chapter *chapters;        /* Chapters list to inject; every title must be non-NULL. The chapter
+                                          * track takes the id after the last track, so with chapters the
+                                          * highest track_id must stay below UINT32_MAX - 1
+                                          * (FAAM_ERR_INVALID_ARGUMENT otherwise) */
     const faam_metadata_entry *metadata; /* num_metadata entries; NULL when 0 */
     const faam_gapless_info *gapless;    /* Priming/padding for iTunSMPB and the edit list; NULL: none */
 } faam_muxer_config;
@@ -626,11 +639,17 @@ FAAMAPI const char *faam_strerror(faam_status status);
  * seek and tell (FAAM_ERR_UNSUPPORTED if any is NULL) and grow the file as needed,
  * keeping the chunk offsets of moov-first files valid. A moov without udta, or a udta
  * without meta/ilst (tags) or chpl (chapters), gets the missing atoms created. Chapter
- * count is at most 255 and titles must be non-NULL; metadata payloads follow the usual
- * borrowing rules. FAAM_ERR_BAD_CONTAINER means the file has no moov; a moov or one of
- * the boxes being edited with a 64-bit size header is FAAM_ERR_UNSUPPORTED, and the file
- * is left as it was. A fragmented recording, finalized or cut short by a crash, can be
- * tagged too: its completed fragments stay playable. */
+ * count is at most FAAM_MAX_CHAPTERS and titles must be non-NULL; metadata payloads follow the
+ * usual borrowing rules. A chapter update rewrites both chapter forms (chpl and the text
+ * track with its tref/chap, reusing the file's chapter track) and zero chapters removes
+ * both; superseded text samples stay in the file as unreferenced mdat bytes.
+ * FAAM_ERR_BAD_CONTAINER means the file has no moov, or a chunk table or fragment index that
+ * growing the moov could not follow. A moov or edited box with a 64-bit size header, a
+ * tref/chap that names an audio or video track or more than one chapter track, and a file
+ * whose track ids leave none for a chapter track are FAAM_ERR_UNSUPPORTED. Both leave the
+ * file as it was; an I/O failure partway through may leave unreferenced bytes at the end.
+ * A fragmented recording, finalized or cut short by a crash, can be tagged too: its
+ * completed fragments stay playable. */
 
 /* faam_update_metadata_stream flags */
 enum faam_metadata_update_flag {

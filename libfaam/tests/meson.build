@@ -68,3 +68,9 @@ if not faam_alloc_sanitized
     c_args: faam_args + ['-DFAAM_STATIC', force_include, meson.current_source_dir() / 'test_faam_alloc.h'])
   test('test_unit_faam_alloc', test_faam_alloc)
 endif
+
+test_faam_chapter_layout = executable('test_faam_chapter_layout', 'test_faam_chapter_layout.c',
+  include_directories: [libfaam_inc, '..'],
+  link_with: libfaam_static,
+  c_args: faam_args + ['-DFAAM_STATIC'])
+test('test_unit_faam_chapter_layout', test_faam_chapter_layout)

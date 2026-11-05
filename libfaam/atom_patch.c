@@ -76,6 +76,19 @@ faam_status faam_atom_scan_top(const faam_io *io, faam_atom_ref *moov, faam_atom
     return FAAM_OK;
 }
 
+int faam_atom_child_at(const faam_io *io, uint64_t pos, uint64_t end, char type[4], faam_atom_ref *out) {
+    if (pos > end || end - pos < 8) return 0;
+    uint64_t size;
+    bool wide;
+    int r = read_atom_hdr(io, pos, type, &size, &wide);
+    if (r <= 0) return r;
+    if (size < 8 || size > end - pos) return 0;
+    if (wide) return -2;
+    out->offset = pos;
+    out->size = size;
+    return 1;
+}
+
 int faam_atom_find_child(const faam_io *io, uint64_t range_start, uint64_t range_end, const char name[4], faam_atom_ref *out) {
     uint64_t pos = range_start;
     while (pos <= range_end && range_end - pos >= 8) {
@@ -109,7 +122,7 @@ static bool is_offset_table_container(const char type[4]) {
 
 static bool shift_chunk_offsets(const faam_io *io, uint64_t box_offset, uint64_t box_size,
                                uint32_t header_size, uint32_t entry_size, int64_t delta,
-                               bool apply) {
+                               uint64_t from, bool apply) {
     if (box_size < header_size + 8) return false;
     uint8_t hdr[8];
     if (!io->seek(io->user_data, box_offset + header_size) || faam_io_read_full(io, hdr, 8) != 8) return false;
@@ -123,6 +136,8 @@ static bool shift_chunk_offsets(const faam_io *io, uint64_t box_offset, uint64_t
         if (!io->seek(io->user_data, off) || faam_io_read_full(io, buf, entry_size) != (int32_t)entry_size) return false;
         if (!apply) continue;
         uint64_t val = (entry_size == 8) ? read_u64_be(buf) : read_u32_be(buf);
+        /* Only data behind the insertion moved; an mdat ahead of it (moov last) stays put. */
+        if (val < from) continue;
         /* Chunk offsets wrap modulo 2^64 like the rest of the file arithmetic; a signed add
          * on a corrupt offset would be undefined behavior. */
         val += (uint64_t)delta;
@@ -133,7 +148,7 @@ static bool shift_chunk_offsets(const faam_io *io, uint64_t box_offset, uint64_t
 }
 
 static bool fixup_chunk_offsets(const faam_io *io, uint64_t start, uint64_t end,
-                                int64_t delta, bool apply) {
+                                int64_t delta, uint64_t from, bool apply) {
     uint64_t pos = start;
     while (pos <= end && end - pos >= 8) {
         char type[4];
@@ -144,11 +159,11 @@ static bool fixup_chunk_offsets(const faam_io *io, uint64_t start, uint64_t end,
         uint32_t header_size = wide ? 16u : 8u;
 
         if (memcmp(type, "stco", 4) == 0) {
-            if (!shift_chunk_offsets(io, pos, size, header_size, 4, delta, apply)) return false;
+            if (!shift_chunk_offsets(io, pos, size, header_size, 4, delta, from, apply)) return false;
         } else if (memcmp(type, "co64", 4) == 0) {
-            if (!shift_chunk_offsets(io, pos, size, header_size, 8, delta, apply)) return false;
+            if (!shift_chunk_offsets(io, pos, size, header_size, 8, delta, from, apply)) return false;
         } else if (is_offset_table_container(type)) {
-            if (!fixup_chunk_offsets(io, pos + header_size, pos + size, delta, apply)) return false;
+            if (!fixup_chunk_offsets(io, pos + header_size, pos + size, delta, from, apply)) return false;
         }
         pos += size;
     }
@@ -237,6 +252,17 @@ faam_status faam_io_move_forward(const faam_io *io, uint8_t *buf, uint32_t cap,
     return FAAM_OK;
 }
 
+faam_status faam_atom_offsets_check(const faam_io *io, const faam_atom_ref *moov, const faam_atom_ref *mdat,
+                                    uint64_t file_size)
+{
+    if (!moov || moov->size == 0) return FAAM_OK;
+    if (mdat && mdat->size > 0 && mdat->offset >= moov->offset &&
+        !fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size, 0, 0, false))
+        return FAAM_ERR_BAD_CONTAINER;
+    if (!shift_fragment_offsets(io, moov->offset + moov->size, file_size, 0, false)) return FAAM_ERR_BAD_CONTAINER;
+    return FAAM_OK;
+}
+
 faam_status faam_atom_resize(const faam_io *io,
                               uint64_t atom_offset, uint64_t old_size,
                               const uint8_t *new_atom, uint32_t new_size,
@@ -269,22 +295,27 @@ faam_status faam_atom_resize(const faam_io *io,
 
     /* mdat only moves if it starts at/after the atom being grown. When mdat
      * comes first (the common non-faststart layout this project's own muxer
-     * produces), nothing in moov's sample tables is affected. */
+     * produces), nothing in moov's sample tables is affected. A file can hold
+     * data on both sides (chapter samples trail moov), so offsets are shifted
+     * one by one against the insertion point. */
     if (mdat && mdat->size > 0 && mdat->offset >= atom_offset && moov && moov->size > 0) {
         /* Validate every table and box before writing any offset, so a later bad
          * layout cannot leave earlier chunk offsets partially adjusted. */
+        uint64_t from = atom_offset + old_size;
         if (!fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size,
-                                 (int64_t)delta, false) ||
-            !fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size,
-                                 (int64_t)delta, true))
+                                 (int64_t)delta, from, false))
+            return FAAM_ERR_BAD_CONTAINER;
+        if (!fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size,
+                                 (int64_t)delta, from, true))
             return FAAM_ERR_IO_WRITE;
     }
 
     if (moov && moov->size > 0 && atom_offset >= moov->offset && atom_offset <= moov->offset + moov->size) {
         uint64_t frags = moov->offset + moov->size;
-        if (!shift_fragment_offsets(io, frags, file_size, (int64_t)delta, false) ||
-            !shift_fragment_offsets(io, frags, file_size, (int64_t)delta, true))
+        if (!shift_fragment_offsets(io, frags, file_size, (int64_t)delta, false))
             return FAAM_ERR_BAD_CONTAINER;
+        if (!shift_fragment_offsets(io, frags, file_size, (int64_t)delta, true))
+            return FAAM_ERR_IO_WRITE;
     }
 
     uint64_t tail_start = atom_offset + old_size;
