@@ -38,6 +38,24 @@ foreach c : link_checks
             link_with: c[2]))
 endforeach
 
+# Static archives must not collide in a consumer's link. nm cannot read MSVC .lib files.
+nm = find_program('nm', required: false)
+if nm.found() and cc.get_argument_syntax() != 'msvc'
+    archive_paths = []
+    archive_targets = []
+    foreach c : link_checks
+        if c[1] == 'static'
+            archive_paths += [c[2].full_path()]
+            archive_targets += [c[2]]
+        endif
+    endforeach
+    if archive_paths.length() > 0
+        test('test_static_symbol_collisions', find_program('check_symbol_collisions.py'),
+            args: [nm.full_path()] + archive_paths,
+            depends: archive_targets)
+    endif
+endif
+
 # Compile-time guard for the public struct layouts; the checks are _Static_asserts.
 test('test_abi_layout',
     executable('test_abi_layout', 'test_abi_layout.c',
