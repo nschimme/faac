@@ -241,7 +241,7 @@ static faam_status mux(memfile *out, bool faststart, bool video, bool finalize_o
         { .struct_size = sizeof(faam_chapter), .start_ms = 1500, .title = "Two" },
     };
     cfg.chapters = chapters;
-    cfg.num_chapters = 2;
+    cfg.num_chapters = have_feature(FAAM_LIB_CHAPTERS) ? 2 : 0;
     faam_gapless_info gapless = { sizeof(faam_gapless_info), 1024, 512, 0 };
     cfg.gapless = &gapless;
 
@@ -314,12 +314,13 @@ static void check_update(void) {
     CHECK(faam_update_metadata_stream(&io, entries, 2, 0) == FAAM_OK);
     faam_chapter ch = { .struct_size = sizeof(ch), .start_ms = 0, .title = "Only" };
     fast.pos = 0;
-    CHECK(faam_update_chapters_stream(&io, &ch, 1, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, &ch, 1, 0) == (have_feature(FAAM_LIB_CHAPTERS) ? FAAM_OK : FAAM_ERR_NOT_BUILT));
 
     snap(&fast, &after);
     CHECK(!strcmp(after.title, replacement));
     CHECK(!strcmp(after.artist, "Other"));
-    CHECK(after.num_chapters == 1 && !strcmp(after.chapter_title[0], "Only"));
+    CHECK(after.num_chapters == (have_feature(FAAM_LIB_CHAPTERS) ? 1 : 0));
+    if (after.num_chapters) CHECK(!strcmp(after.chapter_title[0], "Only"));
     CHECK(after.num_frames == before.num_frames);
     for (unsigned i = 0; i < before.num_frames; i++)
         CHECK(after.frames[i].size == before.frames[i].size && after.frames[i].hash == before.frames[i].hash);

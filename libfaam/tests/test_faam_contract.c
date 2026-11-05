@@ -212,9 +212,9 @@ static void test_status_contract(void) {
     faam_muxer_config bad_cfg = cfg;
     bad_cfg.chapters = nulltitle; bad_cfg.num_chapters = 1;
     m = (faam_muxer *)0x1;
-    CHECK(faam_muxer_open(&bad_cfg, &full, &m) == FAAM_ERR_INVALID_ARGUMENT && !m);
+    CHECK(faam_muxer_open(&bad_cfg, &full, &m) == (TEST_HAVE_CHAPTERS ? FAAM_ERR_INVALID_ARGUMENT : FAAM_ERR_NOT_BUILT) && !m);
 
-#ifndef FAAM_MUXER_FRAGMENTED
+#if !FAAM_MUXER_FRAGMENTED
     faam_muxer_config frag = cfg; frag.fragment_ms = 1000;
     m = (faam_muxer *)0x1;
     CHECK(faam_muxer_open(&frag, &full, &m) == FAAM_ERR_NOT_BUILT && !m);
@@ -246,13 +246,13 @@ static void test_status_contract(void) {
     faam_chapter ch[1] = { { sizeof(faam_chapter), 0, "a" } };
     CHECK(test_set_tags(NULL, "t", NULL, 0) == FAAM_ERR_INVALID_ARGUMENT);
     CHECK(faam_update_chapters_stream(NULL, ch, 1, 0) == FAAM_ERR_INVALID_ARGUMENT);
-    CHECK(faam_update_chapters_stream(&full, ch, 256, 0) == FAAM_ERR_INVALID_ARGUMENT);
-    CHECK(faam_update_chapters_stream(&full, nulltitle, 1, 0) == FAAM_ERR_INVALID_ARGUMENT);
+    if (TEST_HAVE_CHAPTERS) CHECK(faam_update_chapters_stream(&full, ch, 256, 0) == FAAM_ERR_INVALID_ARGUMENT);
+    if (TEST_HAVE_CHAPTERS) CHECK(faam_update_chapters_stream(&full, nulltitle, 1, 0) == FAAM_ERR_INVALID_ARGUMENT);
     faam_io variants[4] = { full, full, full, full };
     variants[0].read = NULL; variants[1].write = NULL; variants[2].seek = NULL; variants[3].tell = NULL;
     for (int i = 0; i < 4; i++) {
         CHECK(test_set_tags(&variants[i], "t", NULL, 0) == FAAM_ERR_UNSUPPORTED);
-        CHECK(faam_update_chapters_stream(&variants[i], ch, 1, 0) == FAAM_ERR_UNSUPPORTED);
+        if (TEST_HAVE_CHAPTERS) CHECK(faam_update_chapters_stream(&variants[i], ch, 1, 0) == FAAM_ERR_UNSUPPORTED);
     }
     free(f.buf);
 }
@@ -262,7 +262,7 @@ static void test_status_contract(void) {
 static void test_short_reads(void) {
     memfile f = {0};
     faam_chapter ch[2] = { { sizeof(faam_chapter), 0, "One" }, { sizeof(faam_chapter), 500, "Two" } };
-    mux_opts o = { .frames = 40, .ticks = 1024, .num_chapters = 2, .chapters = ch };
+    mux_opts o = { .frames = 40, .ticks = 1024, .num_chapters = TEST_CHAPTERS(2), .chapters = ch };
     mux_file(&f, &o);
 
     for (uint32_t step = 1; step <= 7; step += 2) {
@@ -271,8 +271,8 @@ static void test_short_reads(void) {
         uint32_t n = 0;
         faam_chapter got[4];
         for (uint32_t i = 0; i < 4; i++) got[i].struct_size = sizeof(got[i]);
-        CHECK(test_read_chapters(d, got, 4, &n) == FAAM_OK && n == 2);
-        CHECK(!strcmp(got[1].title, "Two") && got[1].start_ms == 500);
+        CHECK(test_read_chapters(d, got, 4, &n) == FAAM_OK && n == TEST_CHAPTERS(2));
+        if (TEST_HAVE_CHAPTERS) CHECK(!strcmp(got[1].title, "Two") && got[1].start_ms == 500);
         faam_demuxer_close(&d);
     }
 
@@ -283,12 +283,12 @@ static void test_short_reads(void) {
     CHECK(test_set_tags(&io, "Trickled title that is rather longer than any earlier one", "A", 0) == FAAM_OK);
     faam_chapter more[3] = { { sizeof(faam_chapter), 0, "x" }, { sizeof(faam_chapter), 1, "y" }, { sizeof(faam_chapter), 2, "zz" } };
     u.pos = 0;
-    CHECK(faam_update_chapters_stream(&io, more, 3, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, more, 3, 0) == TEST_CHAPTER_UPDATE_STATUS);
     check_frames(&u, 40, 5);
     faam_demuxer *d = open_mem(&u, 5);
     char artist[16]; uint32_t n = 0;
     CHECK(test_get_text(d, TEST_KEY_ARTIST, artist, sizeof(artist)) && !strcmp(artist, "A"));
-    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == 3);
+    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == TEST_CHAPTERS(3));
     faam_demuxer_close(&d);
     free(u.buf);
 
@@ -308,7 +308,7 @@ static void test_short_reads(void) {
         faam_io rio = mem_io(&ro);
         CHECK(test_set_tags(&rio, "never written", NULL, 0) == FAAM_ERR_IO_READ);
         ro.pos = 0; ro.reads = 0;
-        CHECK(faam_update_chapters_stream(&rio, ch, 2, 0) == FAAM_ERR_IO_READ);
+        if (TEST_HAVE_CHAPTERS) CHECK(faam_update_chapters_stream(&rio, ch, 2, 0) == FAAM_ERR_IO_READ);
         CHECK(ro.len == f.len && !memcmp(ro.buf, f.buf, f.len));
     }
     free(ro.buf);
@@ -494,7 +494,7 @@ static void collect(memfile *f, uint32_t *n_chapters, char titles[4][16], faam_d
 static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
     memfile f = {0};
     faam_chapter seed[1] = { { sizeof(faam_chapter), 0, "seed" } };
-    mux_opts o = { .frames = 30, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 100, 0 }, .num_chapters = 1, .chapters = seed };
+    mux_opts o = { .frames = 30, .ticks = 1024, .gapless = { sizeof(faam_gapless_info), 1024, 100, 0 }, .num_chapters = TEST_CHAPTERS(1), .chapters = seed };
     mux_file(&f, &o);
     switch (kind) {
     case ABSENT_UDTA: rename_tag(&f, "udta", "free"); break;
@@ -521,7 +521,7 @@ static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
         bool tags = (step == 0) == tags_first;
         f.pos = 0;
         if (tags) CHECK(faam_update_metadata_stream(&io, entries, 3, 0) == FAAM_OK);
-        else CHECK(faam_update_chapters_stream(&io, chs, 3, 0) == FAAM_OK);
+        else CHECK(faam_update_chapters_stream(&io, chs, 3, 0) == TEST_CHAPTER_UPDATE_STATUS);
         check_frames(&f, 30, 0);
     }
     /* Whatever moved, the media bytes did not change. */
@@ -533,15 +533,17 @@ static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
 
     uint32_t n; char titles[4][16]; faam_demuxer_meta got;
     collect(&f, &n, titles, &got);
-    CHECK(n == 3 && !strcmp(titles[0], "Intro") && !strcmp(titles[2], "End"));
+    CHECK(n == TEST_CHAPTERS(3));
+    if (n) CHECK(!strcmp(titles[0], "Intro") && !strcmp(titles[2], "End"));
     CHECK(!strcmp(got.title, "Created title") && !strcmp(got.artist, "Created artist"));
     CHECK(got.track_num == 3 && got.track_total == 9);
     /* A second pass on a now complete file replaces in place. */
     faam_chapter one[1] = { { sizeof(faam_chapter), 0, "Only" } };
-    f.pos = 0; CHECK(faam_update_chapters_stream(&io, one, 1, 0) == FAAM_OK);
+    f.pos = 0; CHECK(faam_update_chapters_stream(&io, one, 1, 0) == TEST_CHAPTER_UPDATE_STATUS);
     f.pos = 0; CHECK(test_set_tags(&io, "Second", NULL, 0) == FAAM_OK);
     collect(&f, &n, titles, &got);
-    CHECK(n == 1 && !strcmp(titles[0], "Only") && !strcmp(got.title, "Second"));
+    CHECK(n == TEST_CHAPTERS(1) && !strcmp(got.title, "Second"));
+    if (n) CHECK(!strcmp(titles[0], "Only"));
     check_frames(&f, 30, 0);
     /* Gapless survives the rewrites. */
     faam_demuxer *d = open_mem(&f, 0);
@@ -554,35 +556,36 @@ static void run_udta_case(bool moov_first, bool tags_first, absent_kind kind) {
 static void test_udta_creation(void) {
     for (int moov_first = 0; moov_first < 2; moov_first++)
         for (int tags_first = 0; tags_first < 2; tags_first++)
-            for (int kind = ABSENT_UDTA; kind <= ABSENT_CHPL; kind++)
+            for (int kind = ABSENT_UDTA; kind <= (TEST_HAVE_CHAPTERS ? ABSENT_CHPL : ABSENT_ILST); kind++)
                 run_udta_case(moov_first, tags_first, (absent_kind)kind);
 }
 
 /* ---- 6. chapter limits ---- */
 
 static void test_chapter_counts(void) {
+    if (!TEST_HAVE_CHAPTERS) return;
     enum { N = 255 };
     static faam_chapter chs[N];
     for (uint32_t i = 0; i < N; i++) chs[i].struct_size = sizeof(chs[i]);
     static char names[N][12];
     for (int i = 0; i < N; i++) { snprintf(names[i], sizeof(names[i]), "Ch %d", i); chs[i].title = names[i]; chs[i].start_ms = (uint64_t)i; }
     memfile f = {0};
-    mux_opts o = { .frames = 20, .ticks = 1024, .num_chapters = N, .chapters = chs };
+    mux_opts o = { .frames = 20, .ticks = 1024, .num_chapters = TEST_CHAPTERS(N), .chapters = chs };
     mux_file(&f, &o);
     faam_demuxer *d = open_mem(&f, 0);
     uint32_t n = 0;
     faam_chapter got[10];
     for (uint32_t i = 0; i < 10; i++) got[i].struct_size = sizeof(got[i]);
-    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == N);
+    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == TEST_CHAPTERS(N));
     n = 0;
-    CHECK(test_read_chapters(d, got, 0, &n) == FAAM_OK && n == N);
+    CHECK(test_read_chapters(d, got, 0, &n) == FAAM_OK && n == TEST_CHAPTERS(N));
     n = 0;
-    CHECK(test_read_chapters(d, got, 10, &n) == FAAM_OK && n == N);
+    CHECK(test_read_chapters(d, got, 10, &n) == FAAM_OK && n == TEST_CHAPTERS(N));
     CHECK(!strcmp(got[9].title, "Ch 9") && got[9].start_ms == 9);
     static faam_chapter all[N];
     for (uint32_t i = 0; i < N; i++) all[i].struct_size = sizeof(all[i]);
     n = 0;
-    CHECK(test_read_chapters(d, all, N, &n) == FAAM_OK && n == N);
+    CHECK(test_read_chapters(d, all, N, &n) == FAAM_OK && n == TEST_CHAPTERS(N));
     CHECK(!strcmp(all[N - 1].title, "Ch 254") && all[N - 1].start_ms == 254);
     faam_demuxer_close(&d);
 
@@ -591,17 +594,17 @@ static void test_chapter_counts(void) {
     mux_opts o0 = { .frames = 20, .ticks = 1024 };
     mux_file(&u, &o0);
     faam_io io = mem_io(&u);
-    u.pos = 0; CHECK(faam_update_chapters_stream(&io, chs, N, 0) == FAAM_OK);
+    u.pos = 0; CHECK(faam_update_chapters_stream(&io, chs, N, 0) == TEST_CHAPTER_UPDATE_STATUS);
     d = open_mem(&u, 0);
-    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == N);
+    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == TEST_CHAPTERS(N));
     faam_demuxer_close(&d);
-    u.pos = 0; CHECK(faam_update_chapters_stream(&io, chs, 2, 0) == FAAM_OK);
+    u.pos = 0; CHECK(faam_update_chapters_stream(&io, chs, 2, 0) == TEST_CHAPTER_UPDATE_STATUS);
     d = open_mem(&u, 0);
-    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == 2);
+    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == TEST_CHAPTERS(2));
     faam_demuxer_close(&d);
-    u.pos = 0; CHECK(faam_update_chapters_stream(&io, chs, 0, 0) == FAAM_OK);
+    u.pos = 0; CHECK(faam_update_chapters_stream(&io, chs, 0, 0) == TEST_CHAPTER_UPDATE_STATUS);
     d = open_mem(&u, 0);
-    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == 0);
+    CHECK(test_read_chapters(d, NULL, 0, &n) == FAAM_OK && n == TEST_CHAPTERS(0));
     faam_demuxer_close(&d);
     free(u.buf);
     free(f.buf);
@@ -643,7 +646,20 @@ static faam_status mux_chapters_status(const faam_chapter *ch, uint32_t count) {
 
 static void test_chapter_forms(void) {
     faam_chapter ch[3] = { { sizeof(faam_chapter), 0, "One" }, { sizeof(faam_chapter), 300, "Two" }, { sizeof(faam_chapter), 600, "Three" } };
-    mux_opts o = { .frames = 40, .ticks = 1024, .num_chapters = 3, .chapters = ch };
+    if (!TEST_HAVE_CHAPTERS) {
+        /* Without muxer-chapters the input is refused and the library says so. */
+        CHECK(mux_chapters_status(ch, 3) == FAAM_ERR_NOT_BUILT);
+        CHECK(mux_chapters_status(NULL, 0) == FAAM_OK);
+        memfile none = {0};
+        mux_opts plain = { .frames = 40, .ticks = 1024 };
+        mux_file(&none, &plain);
+        faam_io nio = mem_io(&none);
+        CHECK(faam_update_chapters_stream(&nio, ch, 3, 0) == FAAM_ERR_NOT_BUILT);
+        CHECK(faam_update_chapters_stream(&nio, NULL, 0, 0) == FAAM_ERR_NOT_BUILT);
+        free(none.buf);
+        return;
+    }
+    mux_opts o = { .frames = 40, .ticks = 1024, .num_chapters = TEST_CHAPTERS(3), .chapters = ch };
     memfile f = {0};
     mux_file(&f, &o);
     uint32_t n, held = 0, total = 0;
@@ -692,13 +708,13 @@ static void test_chapter_forms(void) {
 
     /* Zero chapters removes the text track, its reference and chpl. */
     f.pos = 0;
-    CHECK(faam_update_chapters_stream(&io, NULL, 0, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, NULL, 0, 0) == TEST_CHAPTER_UPDATE_STATUS);
     CHECK(find_tag(&f, "tref", 0) < 0 && find_tag(&f, "chpl", 0) < 0);
     collect(&f, &n, titles, &meta);
     CHECK(n == 0);
     check_frames(&f, 40, 0);
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     /* A fragmented file has no duration when moov is written, so the end-of-audio check does not
      * apply, but it still carries the text track and every update keeps it in step with chpl. */
     memfile fr = {0};
@@ -706,11 +722,11 @@ static void test_chapter_forms(void) {
     CHECK(find_tag(&fr, "chpl", 0) > 0 && find_tag(&fr, "tref", 0) > 0);
     io = mem_io(&fr);
     fr.pos = 0;
-    CHECK(faam_update_chapters_stream(&io, ch, 2, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, ch, 2, 0) == TEST_CHAPTER_UPDATE_STATUS);
     collect(&fr, &n, titles, &meta);
     CHECK(n == 2 && !strcmp(titles[1], "Two") && find_tag(&fr, "tref", 0) > 0);
     fr.pos = 0;
-    CHECK(faam_update_chapters_stream(&io, NULL, 0, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, NULL, 0, 0) == TEST_CHAPTER_UPDATE_STATUS);
     collect(&fr, &n, titles, &meta);
     CHECK(n == 0 && find_tag(&fr, "chpl", 0) < 0 && find_tag(&fr, "tref", 0) < 0);
     free(fr.buf);
@@ -719,9 +735,9 @@ static void test_chapter_forms(void) {
 
     /* Adding them back reuses the slot and leaves one chapter track, whatever the input had. */
     f.pos = 0;
-    CHECK(faam_update_chapters_stream(&io, ch, 3, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, ch, 3, 0) == TEST_CHAPTER_UPDATE_STATUS);
     f.pos = 0;
-    CHECK(faam_update_chapters_stream(&io, ch, 2, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, ch, 2, 0) == TEST_CHAPTER_UPDATE_STATUS);
     collect(&f, &n, titles, &meta);
     CHECK(n == 2 && !strcmp(titles[1], "Two"));
     size_t traks = 0;
@@ -960,7 +976,7 @@ static void test_language(void) {
  * failed in turn, progressive and fragmented. */
 static void test_seek_failures(void) {
     for (int frag = 0; frag < 2; frag++) {
-#ifndef FAAM_MUXER_FRAGMENTED
+#if !FAAM_MUXER_FRAGMENTED
         if (frag) continue;
 #endif
         int failures = 0;
@@ -1033,7 +1049,7 @@ static void test_extended_moov(void) {
     CHECK(x.len == ref.len && !memcmp(x.buf, ref.buf, x.len));
     x.pos = 0;
     st = faam_update_chapters_stream(&io, ch, 1, 0);
-    CHECK(st == FAAM_ERR_UNSUPPORTED || st == FAAM_ERR_BAD_CONTAINER);
+    CHECK(st == (TEST_HAVE_CHAPTERS ? FAAM_ERR_UNSUPPORTED : FAAM_ERR_NOT_BUILT) || st == FAAM_ERR_BAD_CONTAINER);
     CHECK(x.len == ref.len && !memcmp(x.buf, ref.buf, x.len));
     free(ref.buf);
     free(x.buf);
@@ -1044,6 +1060,7 @@ static void test_extended_moov(void) {
 
 /* Chapter edits must preserve opaque metadata that the demuxer cannot model. */
 static void test_chapters_preserve_ilst(memfile *f) {
+    if (!TEST_HAVE_CHAPTERS) return;
     long pos = find_tag(f, "ilst", 0);
     CHECK(pos >= 4);
     uint32_t size = be32(f->buf + pos - 4);
@@ -1053,7 +1070,7 @@ static void test_chapters_preserve_ilst(memfile *f) {
     faam_io io = mem_io(f);
     faam_chapter chapters[2] = { { sizeof(faam_chapter), 0, "Intro" }, { sizeof(faam_chapter), 50, "End" } };
     f->pos = 0;
-    CHECK(faam_update_chapters_stream(&io, chapters, 2, 0) == FAAM_OK);
+    CHECK(faam_update_chapters_stream(&io, chapters, 2, 0) == TEST_CHAPTER_UPDATE_STATUS);
     pos = find_tag(f, "ilst", 0);
     CHECK(pos >= 4);
     CHECK(be32(f->buf + pos - 4) == size);
@@ -1406,7 +1423,7 @@ static void test_overrunning_child_refused(void) {
     faam_io gio = mem_io(&g);
     faam_chapter ch[1] = { { sizeof(faam_chapter), 0, "Chapter" } };
     g.pos = 0;
-    CHECK(faam_update_chapters_stream(&gio, ch, 1, 0) == FAAM_ERR_BAD_CONTAINER);
+    CHECK(faam_update_chapters_stream(&gio, ch, 1, 0) == (TEST_HAVE_CHAPTERS ? FAAM_ERR_BAD_CONTAINER : FAAM_ERR_NOT_BUILT));
     CHECK(g.len == gref.len && !memcmp(g.buf, gref.buf, g.len));
     g.pos = 0;
     CHECK(test_set_tags(&gio, "A longer title for the second edit", NULL, 0) == FAAM_ERR_BAD_CONTAINER);
@@ -1428,7 +1445,7 @@ static void test_overrunning_child_refused(void) {
     CHECK(href.buf);
     memcpy(href.buf, h.buf, h.len);
     h.pos = 0;
-    CHECK(faam_update_chapters_stream(&hio, ch, 1, 0) == FAAM_ERR_BAD_CONTAINER);
+    CHECK(faam_update_chapters_stream(&hio, ch, 1, 0) == (TEST_HAVE_CHAPTERS ? FAAM_ERR_BAD_CONTAINER : FAAM_ERR_NOT_BUILT));
     CHECK(h.len == href.len && !memcmp(h.buf, href.buf, h.len));
     free(href.buf);
     free(h.buf);
@@ -1559,6 +1576,7 @@ static void test_update_offset_wrap(void) {
         0,0,0,1,'f','r','e','e',255,255,255,255,255,255,255,240
     };
     for (unsigned tags = 0; tags < 2; tags++) {
+        if (!tags && !TEST_HAVE_CHAPTERS) continue;
         memfile f = { .buf = data, .len = sizeof(data), .cap = sizeof(data),
                       .fail_read_after = 12 };
         faam_io io = mem_io(&f);
@@ -1573,6 +1591,7 @@ static void test_update_offset_wrap(void) {
 static void test_update_chunk_table_bounds(void) {
     for (unsigned wide = 0; wide < 2; wide++) {
         for (unsigned tags = 0; tags < 2; tags++) {
+            if (!tags && !TEST_HAVE_CHAPTERS) continue;
             uint8_t data[92] = {0};
             unsigned extra = wide ? 4 : 0;
             const char *names[] = { "moov", "trak", "mdia", "minf", "stbl" };
@@ -1750,6 +1769,7 @@ static void chapter_id_exhausted(void) {
 
 /* A crafted file must neither lose a track to a chapter edit nor slip past the table bounds. */
 static void test_chapter_hostile_input(void) {
+    if (!TEST_HAVE_CHAPTERS) return;
     faam_chapter ch[2] = { { sizeof(faam_chapter), 0, "One" }, { sizeof(faam_chapter), 300, "Two" } };
     mux_opts o = { .frames = 40, .ticks = 1024, .num_chapters = 2, .chapters = ch };
 

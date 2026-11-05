@@ -276,7 +276,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
              * instead of recursing -- this is the reverse of tag.c's/mux.c's
              * ilst writers. */
             parse_ilst_children(buf, payload_offset, payload_end, d);
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
         } else if (memcmp(type, "mvex", 4) == 0) {
             d->fragmented = true;
             parse_children(buf, payload_offset, payload_end, d, current_trak_idx, tb, depth + 1);
@@ -296,7 +296,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
         } else if (memcmp(type, "mvex", 4) == 0) {
             d->error = FAAM_ERR_NOT_BUILT; /* fragmented file, fragment support compiled out */
 #endif
-        } else if (memcmp(type, "chpl", 4) == 0 && payload_offset + 9 <= payload_end) {
+        } else if (FAAM_MUXER_CHAPTERS && memcmp(type, "chpl", 4) == 0 && payload_offset + 9 <= payload_end) {
             long p = payload_offset + 8;
             uint32_t entry_count = buf[p++];
             if (d->chapters || !entry_count) { cur = payload_end; continue; }
@@ -380,7 +380,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                 parse_children(buf, payload_offset + 28 + (qt_version == 1 ? 16 : qt_version == 2 ? 36 : 0),
                                       payload_end, d, current_trak_idx, tb, depth + 1);
             }
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
         } else if ((memcmp(type, "avc1", 4) == 0 || memcmp(type, "avc3", 4) == 0 ||
                     memcmp(type, "hvc1", 4) == 0 || memcmp(type, "hev1", 4) == 0 ||
                     memcmp(type, "mp4v", 4) == 0) && current_trak_idx >= 0) {
@@ -427,7 +427,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                 tb->num_stts[current_trak_idx] = entries;
                 tb->stts[current_trak_idx] = buf + payload_offset + 8;
             }
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
         } else if (memcmp(type, "stss", 4) == 0 && current_trak_idx >= 0 && !tb->stss[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
             if (entries <= (uint64_t)(payload_end - payload_offset - 8) / 4) {
@@ -550,6 +550,8 @@ static uint32_t read_text_chapters(faam_demuxer *d, const uint8_t *buf, long moo
         cur += (long)size;
     }
     if (!chap_id) return 0;
+    /* The trak is still found so the track list hides it. */
+    if (!FAAM_MUXER_CHAPTERS) return chap_id;
 
     for (long cur = ms; cur + 8 <= me;) {
         uint32_t size = read_u32_be(buf + cur);
@@ -700,7 +702,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
         tr->total_frames = n_samples;
         tr->info.total_frames = n_samples;
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
         uint32_t sync_idx = 0;
         uint32_t ctts_entry_idx = 0;
         uint32_t ctts_run_remaining = tb->num_ctts[t] > 0 ? read_u32_be(tb->ctts[t]) : 0;
@@ -742,7 +744,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
 
                     /* Without stss every sample is a sync sample. */
                     bool is_keyframe = true;
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
                     if (tb->has_stss[t]) {
                         is_keyframe = false;
                         while (sync_idx < tb->num_stss[t] && read_u32_be(tb->stss[t] + (uint64_t)sync_idx * 4) < sample_idx + 1)
@@ -751,7 +753,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
                     }
 #endif
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
                     if (tb->ctts[t]) {
                         while (ctts_run_remaining == 0 && ctts_entry_idx + 1 < tb->num_ctts[t]) {
                             ctts_entry_idx++;
@@ -793,7 +795,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
     return d->error;
 }
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 /* Bounds the memory one hostile or corrupt fragment can claim. */
 enum { MOOF_MAX_BYTES = 16 << 20, TRUN_MAX_SAMPLES = 1 << 20 };
 
@@ -1003,7 +1005,7 @@ faam_status faam_demuxer_open(const faam_demuxer_config *config, const faam_io *
                         break;
                     }
                 }
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
                 d->frag_pos = pos + size;
                 if (d->fragmented && d->movie_timescale)
                     for (uint32_t t = 0; t < d->num_tracks; t++)
@@ -1195,7 +1197,7 @@ faam_status faam_demuxer_next_frame_loc(faam_demuxer *demuxer, faam_frame_loc *o
             }
         }
         if (tr) break;
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
         if (demuxer->fragmented && !demuxer->frag_done && load_fragment(demuxer) == FAAM_OK) continue;
 #endif
         return demuxer->error ? demuxer->error : FAAM_END_OF_STREAM;

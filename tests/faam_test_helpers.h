@@ -17,6 +17,14 @@
 #ifndef FAAM_TEST_HELPERS_H
 #define FAAM_TEST_HELPERS_H
 
+/* A build without muxer-chapters rejects chapter input and reads none back; n chapters become 0. */
+#ifndef FAAM_MUXER_CHAPTERS
+#error "build tests with faam_args so FAAM_MUXER_CHAPTERS is 0 or 1"
+#endif
+#define TEST_CHAPTERS(n) (FAAM_MUXER_CHAPTERS ? (n) : 0)
+#define TEST_HAVE_CHAPTERS (TEST_CHAPTERS(1) != 0)
+#define TEST_CHAPTER_UPDATE_STATUS (TEST_HAVE_CHAPTERS ? FAAM_OK : FAAM_ERR_NOT_BUILT)
+
 #define TEST_KEY_TITLE FAAM_FOURCC(0xa9, 'n', 'a', 'm')
 #define TEST_KEY_ARTIST FAAM_FOURCC(0xa9, 'A', 'R', 'T')
 

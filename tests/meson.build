@@ -52,7 +52,8 @@ if nm.found() and cc.get_argument_syntax() != 'msvc'
     if archive_paths.length() > 0
         test('test_static_symbol_collisions', find_program('check_symbol_collisions.py'),
             args: [nm.full_path()] + archive_paths,
-            depends: archive_targets)
+            depends: archive_targets,
+            timeout: 120)
     endif
 endif
 

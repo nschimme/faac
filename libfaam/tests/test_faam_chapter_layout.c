@@ -472,7 +472,7 @@ static void run_ffmpeg_style(void)
     mem_file f;
     build(&f, 1);
     check_layout(&f);
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     update(&f, &l2);
     list a, b;
     raw_chpl(&f, &a);
@@ -495,7 +495,7 @@ static void run_ffmpeg_style(void)
     free(f.buf);
 }
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 /* A recording that never finalized ends in an open fragment; appending there would overwrite it. */
 static void run_unfinished(void)
 {
@@ -595,13 +595,14 @@ static void run_fallback(void)
     }
 }
 
+#if FAAM_MUXER_CHAPTERS
 int main(void)
 {
     run_layout(LAYOUT_MOOV_LAST);
     run_layout(LAYOUT_FASTSTART);
     run_foreign(LAYOUT_MOOV_LAST);
     run_foreign(LAYOUT_FASTSTART);
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     run_layout(LAYOUT_FRAGMENTED);
     run_foreign(LAYOUT_FRAGMENTED);
     run_unfinished();
@@ -610,3 +611,32 @@ int main(void)
     run_fallback();
     return 0;
 }
+#else
+/* Without muxer-chapters nothing is written or read; both entry points say so. */
+int main(void)
+{
+    (void)run_layout; (void)run_foreign; (void)run_fallback; (void)run_ffmpeg_style;
+#if FAAM_MUXER_FRAGMENTED
+    (void)run_unfinished;
+#endif
+    faam_chapter ch = { .struct_size = sizeof(ch), .start_ms = 0, .title = "One" };
+    faam_muxer_config cfg;
+    CHECK(faam_muxer_config_init(&cfg, sizeof(cfg)) == FAAM_OK);
+    faam_track_config tc;
+    CHECK(faam_track_config_init(&tc, sizeof(tc)) == FAAM_OK);
+    tc.track_type = FAAM_TRACK_AUDIO; tc.codec_id = FAAM_CODEC_AAC; tc.track_id = 1;
+    tc.timescale = tc.sample_rate = 44100; tc.channels = 2;
+    tc.codec_data = asc_lc_44k; tc.codec_data_len = sizeof(asc_lc_44k);
+    cfg.num_tracks = 1;
+    cfg.tracks = &tc;
+    cfg.chapters = &ch;
+    cfg.num_chapters = 1;
+    mem_file f = { 0 };
+    faam_io io = mem_file_io(&f);
+    faam_muxer *m = NULL;
+    CHECK(faam_muxer_open(&cfg, &io, &m) == FAAM_ERR_NOT_BUILT);
+    CHECK(faam_update_chapters_stream(&io, &ch, 1, 0) == FAAM_ERR_NOT_BUILT);
+    free(f.buf);
+    return 0;
+}
+#endif

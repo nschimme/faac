@@ -187,7 +187,7 @@ static void test_virtual_mux(void) {
     assert(st == FAAM_OK && cfg.gapless == NULL);
     faam_track_config invalid = { .struct_size = sizeof(invalid) };
     invalid.track_type = FAAM_TRACK_VIDEO; invalid.codec_id = FAAM_CODEC_H264;
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     st = test_append_track(&cfg, cfg_tracks, &invalid, NULL); assert(st == FAAM_ERR_INVALID_ARGUMENT);
 #else
     st = test_append_track(&cfg, cfg_tracks, &invalid, NULL); assert(st == FAAM_ERR_NOT_BUILT);
@@ -311,7 +311,7 @@ int main(void)
     chaps[1].start_ms = 100;
     chaps[1].title = "Event";
     cfg.chapters = chaps;
-    cfg.num_chapters = 2;
+    cfg.num_chapters = TEST_CHAPTERS(2);
 
     /* Track 1: Audio */
     uint8_t dummy_asc[2] = { 0x12, 0x10 };
@@ -332,7 +332,7 @@ int main(void)
     assert(a_track_id == 1);
 
     /* Track 2: Video (H.264 Security Camera) */
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     uint8_t dummy_avcc[10] = { 0x01, 0x64, 0x00, 0x1F, 0xFF, 0xE1, 0x00, 0x02, 0x67, 0x64 };
     faam_track_config v_tr;
     memset(&v_tr, 0, sizeof(v_tr));
@@ -423,9 +423,11 @@ int main(void)
     uint32_t read_ch_count = 0;
     st = test_read_chapters(d, read_chaps, 10, &read_ch_count);
     assert(st == FAAM_OK);
-    assert(read_ch_count == 2);
-    assert(strcmp(read_chaps[0].title, "Intro") == 0);
-    assert(strcmp(read_chaps[1].title, "Event") == 0);
+    assert(read_ch_count == TEST_CHAPTERS(2));
+    if (TEST_HAVE_CHAPTERS) {
+        assert(strcmp(read_chaps[0].title, "Intro") == 0);
+        assert(strcmp(read_chaps[1].title, "Event") == 0);
+    }
 
     faam_demuxer_close(&d);
 
@@ -556,7 +558,7 @@ int main(void)
         for (uint32_t i = 0; i < 2; i++) updated[i].struct_size = sizeof(updated[i]);
         updated[0].start_ms = 0; updated[0].title = "First";
         updated[1].start_ms = 150; updated[1].title = "Second";
-        st = faam_update_chapters_stream(&tio, updated, 2, 0); assert(st == FAAM_OK);
+        st = faam_update_chapters_stream(&tio, updated, 2, 0); assert(st == TEST_CHAPTER_UPDATE_STATUS);
         fclose(tf);
 
         long size_after_grow = 0;
@@ -619,8 +621,11 @@ int main(void)
             updated_read[i].struct_size = sizeof(updated_read[i]);
         uint32_t updated_count;
         st = test_read_chapters(dd, updated_read, 2, &updated_count); assert(st == FAAM_OK);
-        assert(updated_count == 2 && updated_read[0].start_ms == 0 && updated_read[1].start_ms == 150);
-        assert(!strcmp(updated_read[1].title, "Second"));
+        assert(updated_count == TEST_CHAPTERS(2));
+        if (TEST_HAVE_CHAPTERS) {
+            assert(updated_read[0].start_ms == 0 && updated_read[1].start_ms == 150);
+            assert(!strcmp(updated_read[1].title, "Second"));
+        }
         faam_gapless_info gapless; gapless.struct_size = sizeof(gapless);
         st = faam_demuxer_get_track_gapless(dd, 0, &gapless); assert(st == FAAM_OK);
         assert(gapless.encoder_delay == 123 && gapless.end_padding == 45 && gapless.total_samples == 40000);

@@ -27,12 +27,13 @@ FAAMAPI faam_status faam_get_library_info(faam_library_info *out_info)
     faam_library_info info;
     memset(&info, 0, sizeof(info));
     info.max_tracks = FAAM_MAX_TRACKS;
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     info.flags |= FAAM_LIB_VIDEO;
 #endif
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     info.flags |= FAAM_LIB_FRAGMENTED;
 #endif
+    if (FAAM_MUXER_CHAPTERS) info.flags |= FAAM_LIB_CHAPTERS;
     info.version = FAAM_VERSION_STRING;
     info.copyright = "Copyright (C) 2026 Nils Schimmelmann";
     /* Write at most the caller's struct_size and report the bytes populated. */

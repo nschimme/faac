@@ -2281,6 +2281,13 @@ static int cmd_chapter(int argc, char **argv)
     }
     if (optind < sub_argc) filepath = sub_argv[optind];
 
+    faam_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    if (faam_get_library_info(&libinfo) == FAAM_OK && !(libinfo.flags & FAAM_LIB_CHAPTERS) &&
+        (!strcmp(subcmd, "import") || !strcmp(subcmd, "export"))) {
+        fprintf(stderr, "Error: this build of libfaam has no chapter support (built with -Dmuxer-chapters=false)\n");
+        return 1;
+    }
+
     if (!strcmp(subcmd, "import")) {
         if (!filepath || !chapters_path) {
             print_usage(HELP_CHAPTER);

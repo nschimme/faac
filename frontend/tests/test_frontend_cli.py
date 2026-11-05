@@ -267,6 +267,68 @@ def test_abi_track_count(t, d):
           f"info reports true and held track counts ({r.stdout!r})")
 
 
+def chapters_built(t, d):
+    """False in a -Dmuxer-chapters=false build, where the chapter commands refuse with a clear message."""
+    shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, "probe_chapters.m4a"))
+    r = t.faam_run(["chapter", "export", "probe_chapters.m4a", "-o", "probe_chapters.txt"], d)
+    return b"no chapter support" not in r.stderr
+
+
+def run_chapter_cli(t, d, m):
+    open(os.path.join(d, "noudta2.m4a"), "wb").write(m)
+    open(os.path.join(d, "c1.txt"), "w").write("00:00:00.000\tIntro\n00:00:02.500\tNext\n")
+    r = t.faam_run(["chapter", "import", "noudta2.m4a", "--chapters", "c1.txt"], d)
+    check(r.returncode == 0 and b"Chapter #2: start=2500 ms, title=\"Next\"" in t.faam_run(["info", "noudta2.m4a"], d).stdout,
+          "chapter import creates a missing udta")
+
+    # chapters: up to 255, an error above, info lists them all, export round trips
+    for n in (64, 255):
+        with open(os.path.join(d, f"ch{n}.txt"), "w") as f:
+            for i in range(n):
+                ms = i * 7  # inside the 5 s source: chapters at or past the audio's end are refused
+                f.write("%02d:%02d:%02d.%03d\tChapter %d\n" % (ms // 3600000, ms // 60000 % 60, ms // 1000 % 60, ms % 1000, i))
+        shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, f"cc{n}.m4a"))
+        r = t.faam_run(["chapter", "import", f"cc{n}.m4a", "--chapters", f"ch{n}.txt"], d)
+        check(r.returncode == 0, f"import {n} chapters")
+        inf = t.faam_run(["info", f"cc{n}.m4a"], d).stdout.decode()
+        check(inf.count("Chapter #") == n and f"({n} entries)" in inf, f"info lists all {n} chapters")
+        r = t.faam_run(["chapter", "export", f"cc{n}.m4a", "-o", f"exp{n}.txt"], d)
+        check(r.returncode == 0 and read(os.path.join(d, f"exp{n}.txt")) == read(os.path.join(d, f"ch{n}.txt")), f"export {n} chapters round trips")
+        if n == 64:
+            stream_export = t.faam_run(["chapter", "export", f"cc{n}.m4a", "-o", "-"], d)
+            check(stream_export.returncode == 0 and stream_export.stdout == read(os.path.join(d, f"ch{n}.txt")) and
+                  b"Successfully exported" in stream_export.stderr,
+                  "chapter export writes an uncontaminated chapter list to stdout")
+            stream_export = t.run(t.faam, ["chapter", "export", "-", "-o", "-"], d,
+                                  input_data=read(os.path.join(d, f"cc{n}.m4a")))
+            check(stream_export.returncode == 0 and stream_export.stdout == read(os.path.join(d, f"ch{n}.txt")),
+                  "chapter export reads MP4 from stdin")
+            shutil_copy(os.path.join(d, f"cc{n}.m4a"), os.path.join(d, "stream_chapters.m4a"))
+            stream_import = t.run(t.faam, ["chapter", "import", "stream_chapters.m4a", "--chapters", "-"], d,
+                                  input_data=read(os.path.join(d, f"ch{n}.txt")))
+            stream_info = t.faam_run(["info", "stream_chapters.m4a"], d).stdout
+            check(stream_import.returncode == 0 and stream_info.count(b"Chapter #") == n,
+                  "chapter import reads its chapter list from stdin")
+    check(t.run(t.faad, ["-q", "--overwrite", "-o", "cc255.wav", "cc255.m4a"], d).returncode == 0,
+          "255-chapter file decodes")
+    with open(os.path.join(d, "ch256.txt"), "w") as f:
+        for i in range(256):
+            f.write("00:%02d:%02d.000\tChapter %d\n" % ((i // 60) % 60, i % 60, i))
+    shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, "cc256.m4a"))
+    r = t.faam_run(["chapter", "import", "cc256.m4a", "--chapters", "ch256.txt"], d)
+    check(r.returncode == 1 and b"max 255" in r.stderr, "256 chapters rejected")
+    # chapter export: overwrite protection and no chapters
+    r = t.faam_run(["chapter", "export", "cc64.m4a", "-o", "exp64.txt"], d)
+    check(r.returncode == 1 and b"already exists (use --overwrite)" in r.stderr, "chapter export refuses to overwrite")
+    r = t.faam_run(["chapter", "export", "cc64.m4a", "-o", "exp64.txt", "--overwrite"], d)
+    check(r.returncode == 0, "chapter export --overwrite")
+    r = t.faam_run(["chapter", "export", "lc_faam.m4a", "-o", "nochap.txt"], d)
+    check(r.returncode == 1 and b"No chapters" in r.stderr and no_output(d, "nochap.txt"), "chapter export of a file without chapters is an error")
+    # tag and chapter import edit in place without --overwrite
+    r = t.faam_run(["chapter", "import", "cc64.m4a", "--chapters", "c1.txt"], d)
+    check(r.returncode == 0, "chapter import in place needs no --overwrite")
+
+
 def run_all(t, d):
     for name, exe in (("faac", t.faac), ("faad", t.faad), ("faam", t.faam)):
         for flag in ("-h", "-H"):
@@ -799,58 +861,12 @@ def run_all(t, d):
     check(r.returncode == 0 and "Title: Created" in ti, "tag creates a missing udta:\n" + ti)
     r = t.run(t.faad, ["-q", "--overwrite", "-o", "noudta.wav", "noudta.m4a"], d)
     check(r.returncode == 0, "udta-less file decodes after tagging")
-    open(os.path.join(d, "noudta2.m4a"), "wb").write(m)
-    open(os.path.join(d, "c1.txt"), "w").write("00:00:00.000\tIntro\n00:00:02.500\tNext\n")
-    r = t.faam_run(["chapter", "import", "noudta2.m4a", "--chapters", "c1.txt"], d)
-    check(r.returncode == 0 and b"Chapter #2: start=2500 ms, title=\"Next\"" in t.faam_run(["info", "noudta2.m4a"], d).stdout,
-          "chapter import creates a missing udta")
-
-    # chapters: up to 255, an error above, info lists them all, export round trips
-    for n in (64, 255):
-        with open(os.path.join(d, f"ch{n}.txt"), "w") as f:
-            for i in range(n):
-                ms = i * 7  # inside the 5 s source: chapters at or past the audio's end are refused
-                f.write("%02d:%02d:%02d.%03d\tChapter %d\n" % (ms // 3600000, ms // 60000 % 60, ms // 1000 % 60, ms % 1000, i))
-        shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, f"cc{n}.m4a"))
-        r = t.faam_run(["chapter", "import", f"cc{n}.m4a", "--chapters", f"ch{n}.txt"], d)
-        check(r.returncode == 0, f"import {n} chapters")
-        inf = t.faam_run(["info", f"cc{n}.m4a"], d).stdout.decode()
-        check(inf.count("Chapter #") == n and f"({n} entries)" in inf, f"info lists all {n} chapters")
-        r = t.faam_run(["chapter", "export", f"cc{n}.m4a", "-o", f"exp{n}.txt"], d)
-        check(r.returncode == 0 and read(os.path.join(d, f"exp{n}.txt")) == read(os.path.join(d, f"ch{n}.txt")), f"export {n} chapters round trips")
-        if n == 64:
-            stream_export = t.faam_run(["chapter", "export", f"cc{n}.m4a", "-o", "-"], d)
-            check(stream_export.returncode == 0 and stream_export.stdout == read(os.path.join(d, f"ch{n}.txt")) and
-                  b"Successfully exported" in stream_export.stderr,
-                  "chapter export writes an uncontaminated chapter list to stdout")
-            stream_export = t.run(t.faam, ["chapter", "export", "-", "-o", "-"], d,
-                                  input_data=read(os.path.join(d, f"cc{n}.m4a")))
-            check(stream_export.returncode == 0 and stream_export.stdout == read(os.path.join(d, f"ch{n}.txt")),
-                  "chapter export reads MP4 from stdin")
-            shutil_copy(os.path.join(d, f"cc{n}.m4a"), os.path.join(d, "stream_chapters.m4a"))
-            stream_import = t.run(t.faam, ["chapter", "import", "stream_chapters.m4a", "--chapters", "-"], d,
-                                  input_data=read(os.path.join(d, f"ch{n}.txt")))
-            stream_info = t.faam_run(["info", "stream_chapters.m4a"], d).stdout
-            check(stream_import.returncode == 0 and stream_info.count(b"Chapter #") == n,
-                  "chapter import reads its chapter list from stdin")
-    check(t.run(t.faad, ["-q", "--overwrite", "-o", "cc255.wav", "cc255.m4a"], d).returncode == 0,
-          "255-chapter file decodes")
-    with open(os.path.join(d, "ch256.txt"), "w") as f:
-        for i in range(256):
-            f.write("00:%02d:%02d.000\tChapter %d\n" % ((i // 60) % 60, i % 60, i))
-    shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, "cc256.m4a"))
-    r = t.faam_run(["chapter", "import", "cc256.m4a", "--chapters", "ch256.txt"], d)
-    check(r.returncode == 1 and b"max 255" in r.stderr, "256 chapters rejected")
-    # chapter export: overwrite protection and no chapters
-    r = t.faam_run(["chapter", "export", "cc64.m4a", "-o", "exp64.txt"], d)
-    check(r.returncode == 1 and b"already exists (use --overwrite)" in r.stderr, "chapter export refuses to overwrite")
-    r = t.faam_run(["chapter", "export", "cc64.m4a", "-o", "exp64.txt", "--overwrite"], d)
-    check(r.returncode == 0, "chapter export --overwrite")
-    r = t.faam_run(["chapter", "export", "lc_faam.m4a", "-o", "nochap.txt"], d)
-    check(r.returncode == 1 and b"No chapters" in r.stderr and no_output(d, "nochap.txt"), "chapter export of a file without chapters is an error")
-    # tag and chapter import edit in place without --overwrite
-    r = t.faam_run(["chapter", "import", "cc64.m4a", "--chapters", "c1.txt"], d)
-    check(r.returncode == 0, "chapter import in place needs no --overwrite")
+    if chapters_built(t, d):
+        run_chapter_cli(t, d, m)
+    else:
+        r = t.faam_run(["chapter", "export", "noudta2.m4a", "-o", "x.txt"], d)
+        check(r.returncode == 1 and b"no chapter support" in r.stderr and no_output(d, "x.txt"),
+              "a build without muxer-chapters says so instead of failing obscurely")
 
     # failed mux leaves no partial output when the sink fails (Linux only: /dev/full)
     if os.path.exists("/dev/full"):
@@ -1127,18 +1143,19 @@ def run_adts_validation(t, d):
 
 
 def run_info_and_chapters(t, d, have_video):
-    # chapter fractions are decimal fractions of a second
-    open(os.path.join(d, "frac.txt"), "w").write("00:00:00.0\tZero\n00:00:01.5\tHalf\n00:00:02.05\tFiftieth\n00:00:03.123\tExact\n00:00:04.50\tTwo\n")
-    shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, "frac.m4a"))
-    r = t.faam_run(["chapter", "import", "frac.m4a", "--chapters", "frac.txt"], d)
-    inf = t.faam_run(["info", "frac.m4a"], d).stdout.decode()
-    check(r.returncode == 0 and "start=1500 ms" in inf and "start=2050 ms" in inf and "start=3123 ms" in inf and "start=4500 ms" in inf,
-          "chapter fractions scale by digit count (.5 = 500 ms, .05 = 50 ms):\n" + inf)
-    open(os.path.join(d, "badfrac.txt"), "w").write("00:00:01.1234\tX\n")
-    before = sha(os.path.join(d, "frac.m4a"))
-    r = t.faam_run(["chapter", "import", "frac.m4a", "--chapters", "badfrac.txt"], d)
-    check(r.returncode == 1 and sha(os.path.join(d, "frac.m4a")) == before,
-          "malformed chapter import is rejected without changing the input")
+    if chapters_built(t, d):
+        # chapter fractions are decimal fractions of a second
+        open(os.path.join(d, "frac.txt"), "w").write("00:00:00.0\tZero\n00:00:01.5\tHalf\n00:00:02.05\tFiftieth\n00:00:03.123\tExact\n00:00:04.50\tTwo\n")
+        shutil_copy(os.path.join(d, "lc_faam.m4a"), os.path.join(d, "frac.m4a"))
+        r = t.faam_run(["chapter", "import", "frac.m4a", "--chapters", "frac.txt"], d)
+        inf = t.faam_run(["info", "frac.m4a"], d).stdout.decode()
+        check(r.returncode == 0 and "start=1500 ms" in inf and "start=2050 ms" in inf and "start=3123 ms" in inf and "start=4500 ms" in inf,
+              "chapter fractions scale by digit count (.5 = 500 ms, .05 = 50 ms):\n" + inf)
+        open(os.path.join(d, "badfrac.txt"), "w").write("00:00:01.1234\tX\n")
+        before = sha(os.path.join(d, "frac.m4a"))
+        r = t.faam_run(["chapter", "import", "frac.m4a", "--chapters", "badfrac.txt"], d)
+        check(r.returncode == 1 and sha(os.path.join(d, "frac.m4a")) == before,
+              "malformed chapter import is rejected without changing the input")
 
     # info names the real brand and object type
     def info_line(name, prefix):
@@ -1230,7 +1247,8 @@ def run_same_file(t, d):
     shutil_copy(os.path.join(d, "lc.aac"), os.path.join(w, "in.aac"))
     shutil_copy(os.path.join(d, "lc.aac"), os.path.join(w, "other.aac"))
     shutil_copy(os.path.join(d, "lc.m4a"), os.path.join(w, "in.m4a"))
-    shutil_copy(os.path.join(d, "cc64.m4a"), os.path.join(w, "chap.m4a"))
+    chap = "cc64.m4a" if os.path.exists(os.path.join(d, "cc64.m4a")) else "lc_faam.m4a"  # no chapters without muxer-chapters
+    shutil_copy(os.path.join(d, chap), os.path.join(w, "chap.m4a"))
     shutil_copy(os.path.join(d, "s.wav"), os.path.join(w, "in.wav"))
     original = slurp(os.path.join(d, "lc.aac"))
     r = t.faam_run(["-i", "other.aac", "-i", "in.aac", "-o", "./in.aac", "--overwrite"], w)
@@ -1355,10 +1373,11 @@ def run_large_files(t, d):
         check("Title: A title" in info_tags(t.faam_run(["info", name], d).stdout), f"{label}: tags show after the edit")
         r = t.faam_run(["demux", name, "-o", name + "2.aac", "--overwrite"], d)
         check(r.returncode == 0 and read(os.path.join(d, name + "2.aac")) == read(ref_aac), f"{label}: frames identical after the tag edit")
-        r = t.faam_run(["chapter", "import", name, "--chapters", "c1.txt"], d)
-        r2 = t.faam_run(["demux", name, "-o", name + "3.aac", "--overwrite"], d)
-        check(r.returncode == 0 and r2.returncode == 0 and read(os.path.join(d, name + "3.aac")) == read(ref_aac),
-              f"{label}: frames identical after a chapter import")
+        if chapters_built(t, d):
+            r = t.faam_run(["chapter", "import", name, "--chapters", "c1.txt"], d)
+            r2 = t.faam_run(["demux", name, "-o", name + "3.aac", "--overwrite"], d)
+            check(r.returncode == 0 and r2.returncode == 0 and read(os.path.join(d, name + "3.aac")) == read(ref_aac),
+                  f"{label}: frames identical after a chapter import")
         for leftover in [path] + [os.path.join(d, name + ext) for ext in (".aac", "2.aac", "3.aac")]:
             if os.path.exists(leftover):
                 os.remove(leftover)

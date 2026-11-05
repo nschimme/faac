@@ -22,6 +22,7 @@
 #include "endian.h"
 #include "libfaam_internal.h"
 
+
 /* Layout of the text trak ffmpeg writes (gmhd, text sample description), which Apple's and
  * mp4v2's readers accept. */
 static const uint8_t k_gmhd[68] = {
@@ -247,7 +248,7 @@ uint8_t *faam_chapter_trak_build(const faam_chapter *chapters, uint32_t count, u
     return buf;
 }
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 uint8_t *faam_chapter_frag_build(const faam_chapter *chapters, uint32_t count, uint32_t track_id, uint32_t seq,
                                  uint32_t last_dur_ms, uint32_t *len, uint32_t *last_dur_off)
 {
@@ -453,7 +454,7 @@ static faam_status strip_chap(const faam_io *io, const faam_atom_ref *moov, cons
     return st;
 }
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 /* The chapter samples of a fragmented file are unreferenced once their traf is a free box; a
  * moof that carried nothing else goes with its mdat. max_seq is the highest number still in use. */
 static faam_status drop_text_fragments(const faam_io *io, uint32_t track_id, uint64_t file_size, bool free_index,
@@ -564,7 +565,7 @@ static faam_status remove_chapters(const faam_io *io)
     if ((st = find_in(io, &moov, "udta", &udta)) != FAAM_OK) return st;
     if (udta.size && (st = find_in(io, &udta, "chpl", &chpl)) != FAAM_OK) return st;
     if (chpl.size && (st = erase_atom(io, &chpl)) != FAAM_OK) return st;
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     if (loc.fragmented && loc.has_chap) {
         uint32_t seq;
         if ((st = drop_text_fragments(io, loc.chap_id, file_size, false, &seq)) != FAAM_OK) return st;
@@ -755,7 +756,7 @@ static faam_status preflight(const faam_io *io, const faam_atom_ref *moov, const
     return ok ? FAAM_OK : FAAM_ERR_BAD_CONTAINER;
 }
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 /* A recording that never finalized ends in an mdat of size 0, which the top-level scan stops at: a
  * fragment appended there would overwrite its header. Any unparsed tail is refused the same way. */
 static faam_status reject_unparsed_tail(const faam_io *io, uint64_t file_size)
@@ -814,6 +815,7 @@ faam_status faam_update_chapters_stream(const faam_io *caller_io, const faam_cha
     faam_io loaded;
     const faam_io *io = &loaded;
     if (flags || !caller_io || !faam_io_load(&loaded, caller_io)) return FAAM_ERR_INVALID_ARGUMENT;
+    if (!FAAM_MUXER_CHAPTERS) return FAAM_ERR_NOT_BUILT;
     faam_status st = faam_chapters_check(chapters, count);
     if (st != FAAM_OK) return st;
     if (!io->read || !io->write || !io->seek || !io->tell) return FAAM_ERR_UNSUPPORTED;
@@ -823,7 +825,7 @@ faam_status faam_update_chapters_stream(const faam_io *caller_io, const faam_cha
     uint64_t file_size;
     chap_loc loc;
     if ((st = scan_and_locate(io, &moov, &mdat, &file_size, &loc)) != FAAM_OK) return st;
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     if (loc.fragmented) return update_fragmented(io, chapters, count);
 #else
     if (loc.fragmented) return FAAM_ERR_UNSUPPORTED;

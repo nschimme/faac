@@ -43,7 +43,7 @@
  *     of one struct size. Output lists are a count getter plus a getter by index.
  *   - Every open call takes a config struct (the demuxer's may be NULL for
  *     defaults), so a knob can be added later without changing a signature.
- *   - Compile-time options (muxer-video, muxer-fragmented) change what a call
+ *   - Compile-time options (muxer-video, muxer-fragmented, muxer-chapters) change what a call
  *     accepts, never a layout; faam_get_library_info() reports them.
  *   - Independent handles may be used concurrently; one handle is owned by one thread
  *     at a time. The library has no global mutable state.
@@ -148,6 +148,7 @@ typedef enum faam_status {
 enum faam_library_flag {
     FAAM_LIB_VIDEO = 1u << 0, /* muxer-video: H.264/H.265 tracks, Annex-B, B-frame offsets */
     FAAM_LIB_FRAGMENTED = 1u << 1, /* muxer-fragmented: fragmented MP4 recording and demuxing */
+    FAAM_LIB_CHAPTERS = 1u << 2, /* muxer-chapters: writing, updating and reading chapters */
     FAAM_LIB_FLAG_MAX = 0x7fffffff
 };
 
@@ -463,11 +464,11 @@ FAAMAPI faam_status faam_demuxer_get_metadata_entry(const faam_demuxer *demuxer,
 
 
 
-/* At most FAAM_MAX_CHAPTERS chapters. The QuickTime chapter text track (the one a tref/chap
- * names) is read first and the chpl atom only when that track is absent, empty, shorter than
- * its sample count, has a sample longer than its bytes, or an edit that starts the media
- * anywhere but 0 (a leading empty edit is a lead-in and is honored). Set out_chapter->struct_size
- * to sizeof. */
+/* At most FAAM_MAX_CHAPTERS chapters; a build without muxer-chapters reports none. The QuickTime
+ * chapter text track (the one a tref/chap names) is read first and the chpl atom only when that
+ * track is absent, empty, shorter than its sample count, has a sample longer than its bytes, or an
+ * edit that starts the media anywhere but 0 (a leading empty edit is a lead-in and is honored). Set
+ * out_chapter->struct_size to sizeof. */
 FAAMAPI faam_status faam_demuxer_get_num_chapters(const faam_demuxer *demuxer, uint32_t *out_count);
 FAAMAPI faam_status faam_demuxer_get_chapter(const faam_demuxer *demuxer, uint32_t index, faam_chapter *out_chapter);
 
@@ -517,9 +518,10 @@ typedef struct faam_muxer_config {
     uint32_t            num_chapters;    /* Chapter count, at most FAAM_MAX_CHAPTERS */
     uint32_t            num_metadata;    /* Metadata entry count */
     const faam_track_config *tracks;     /* num_tracks entries */
-    const faam_chapter *chapters;        /* Chapters list to inject; every title must be non-NULL. The chapter
-                                          * track takes the id after the last track, so with chapters the
-                                          * highest track_id must stay below UINT32_MAX - 1
+    const faam_chapter *chapters;        /* Chapters list to inject; every title must be non-NULL. Needs the
+                                          * muxer-chapters build option (FAAM_ERR_NOT_BUILT otherwise). The
+                                          * chapter track takes the id after the last track, so with chapters
+                                          * the highest track_id must stay below UINT32_MAX - 1
                                           * (FAAM_ERR_INVALID_ARGUMENT otherwise) */
     const faam_metadata_entry *metadata; /* num_metadata entries; NULL when 0 */
     const faam_gapless_info *gapless;    /* Priming/padding for iTunSMPB and the edit list; NULL: none */
@@ -649,7 +651,8 @@ FAAMAPI const char *faam_strerror(faam_status status);
  * whose track ids leave none for a chapter track are FAAM_ERR_UNSUPPORTED. Both leave the
  * file as it was; an I/O failure partway through may leave unreferenced bytes at the end.
  * A fragmented recording, finalized or cut short by a crash, can be tagged too: its
- * completed fragments stay playable. */
+ * completed fragments stay playable. Chapter updates return FAAM_ERR_NOT_BUILT without the
+ * muxer-chapters build option. */
 
 /* faam_update_metadata_stream flags */
 enum faam_metadata_update_flag {

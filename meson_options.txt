@@ -56,6 +56,11 @@ option('muxer-fragmented',
     type: 'boolean',
     value: true)
 
+option('muxer-chapters',
+    description: 'libfaam: write, update and read chapters (Nero chpl plus a QuickTime text track)',
+    type: 'boolean',
+    value: true)
+
 option('encoder-sbr',
     description: 'Enable Spectral Band Replication (HE-AAC v1) support in libfaac',
     type: 'boolean',

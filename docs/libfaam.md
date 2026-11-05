@@ -55,9 +55,10 @@ cc -std=c11 -Wall -Wextra inspect.c -o inspect $(pkg-config --cflags --libs faam
 
 Compile `libfaam/demux.c`, `mux.c`, `metadata.c`, `faam_util.c`, `tag.c`,
 `chapter.c` and `atom_patch.c` with `include/` and `common/` on the include path.
-Define `FAAM_BUILDING` for a Windows DLL, and `FAAM_MUXER_VIDEO=1` and
-`FAAM_MUXER_FRAGMENTED=1` to include those features (leave them undefined to omit
-them). Install `include/faam.h` with the library.
+Define `FAAM_BUILDING` for a Windows DLL. An undefined `FAAM_MUXER_VIDEO`,
+`FAAM_MUXER_FRAGMENTED` or `FAAM_MUXER_CHAPTERS` is 1, as in a default Meson build; define
+one as 0 to omit that feature. Check the result with `faam_get_library_info()`. Install
+`include/faam.h` with the library.
 
 ## Supported content
 
@@ -69,6 +70,7 @@ demuxer can hold) and `flags` with `FAAM_LIB_*` bits.
 |---|---|---|---|
 | H.264/H.265, including Annex-B input and avc3/hev1 | `muxer-video` (true) | `FAAM_LIB_VIDEO` | Video muxing and nonzero CTS offsets return `FAAM_ERR_NOT_BUILT`. Video sample entries demux as `FAAM_CODEC_GENERIC` without sync/CTS parsing |
 | Fragmented MP4 | `muxer-fragmented` (true) | `FAAM_LIB_FRAGMENTED` | Fragmented muxing and demuxing return `FAAM_ERR_NOT_BUILT` |
+| Chapters | `muxer-chapters` (true) | `FAAM_LIB_CHAPTERS` | Muxing with chapters and `faam_update_chapters_stream()` return `FAAM_ERR_NOT_BUILT`. The demuxer reports no chapters, and `faam chapter` says the build has no chapter support |
 
 ## Using the API
 

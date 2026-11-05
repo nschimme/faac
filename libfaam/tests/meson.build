@@ -9,7 +9,7 @@ test('test_unit_faam_smoke', test_faam)
 test_faam_audio_layout = executable('test_faam_audio_layout', 'test_faam_audio_layout.c',
   include_directories: [libfaam_inc, '..'],
   link_with: libfaam_static,
-  c_args: ['-DFAAM_STATIC'])
+  c_args: faam_args + ['-DFAAM_STATIC'])
 test('test_unit_faam_audio_layout', test_faam_audio_layout)
 
 test_faststart = executable('test_faststart', 'test_faststart.c',

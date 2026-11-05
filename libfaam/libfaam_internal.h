@@ -27,6 +27,18 @@
 
 #include "faam.h"
 
+/* Meson always defines these as 0 or 1; a build without it gets the meson_options.txt defaults. Callers
+ * branch on them, so the compiler drops the code of a feature that is 0. */
+#ifndef FAAM_MUXER_VIDEO
+#define FAAM_MUXER_VIDEO 1
+#endif
+#ifndef FAAM_MUXER_FRAGMENTED
+#define FAAM_MUXER_FRAGMENTED 1
+#endif
+#ifndef FAAM_MUXER_CHAPTERS
+#define FAAM_MUXER_CHAPTERS 1
+#endif
+
 /* Ports override both hooks with -D or a force-included header. Detect the
  * overrides first: libc realloc must never see a custom allocator's block. */
 #if defined(AllocMemory) != defined(FreeMemory)
@@ -366,7 +378,7 @@ void faam_chapter_samples_fill(const faam_chapter *chapters, uint32_t count, uin
 uint8_t *faam_chapter_trak_build(const faam_chapter *chapters, uint32_t count, uint32_t track_id,
                                  uint32_t movie_ts, uint64_t movie_dur, uint64_t creation,
                                  uint64_t chunk_offset, bool frag, uint32_t *len);
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 /* A fragmented file's chapter samples as one moof + mdat in the track's ms timescale. The last
  * chapter's length is unknown until finalize, so last_dur_off says where the caller patches it. */
 uint8_t *faam_chapter_frag_build(const faam_chapter *chapters, uint32_t count, uint32_t track_id, uint32_t seq,

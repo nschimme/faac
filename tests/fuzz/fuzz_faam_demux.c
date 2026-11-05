@@ -62,7 +62,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     lib.struct_size = sizeof(lib);
     if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
         abort();
-    if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
+    if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED | FAAM_LIB_CHAPTERS))
         abort();
 
     mem_stream ms = { data, size, 0 };
