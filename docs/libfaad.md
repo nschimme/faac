@@ -10,6 +10,7 @@
 - [Allocation and memory](#allocation-and-memory)
 - [PCM and format discovery](#pcm-and-format-discovery)
 - [Dynamic range control](#dynamic-range-control)
+- [Comparing against other decoders](#comparing-against-other-decoders)
 - [Decoder delay](#decoder-delay)
 - [Packet errors and seeking](#packet-errors-and-seeking)
 - [Porting from the legacy NeAACDec* API](#porting-from-the-legacy-neaacdec-api)
@@ -398,6 +399,14 @@ level. DRC is off unless you set a field; it needs the `decoder-drc` build optio
 Without DRC settings, streams with `dynamic_range_info` but no reference level are not
 attenuated (legacy FAAD2 treated the missing level as 0 dBFS and played them 20 dB
 quiet).
+
+## Comparing against other decoders
+
+Compare waveforms with PNS off. Each decoder generates PNS noise from its own
+generator, so two correct decoders differ on PNS bands: pairwise SNR on a 64 kbit/s
+speech stream is about 25 dB with PNS and 71 dB or better without it. Intensity
+stereo is deterministic and does not widen the gap. Encode comparison streams with
+`--no-pns`.
 
 ## Decoder delay
 
