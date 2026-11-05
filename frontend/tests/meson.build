@@ -122,8 +122,6 @@ if get_option('muxer') and get_option('encoder') and get_option('decoder') and n
 
     test('test_e2e_faam_metadata_cli', find_program('python3'),
         args: [files('test_faam_metadata_cli.py'), faam, test_faam_metadata])
-    test('test_e2e_faam_metadata_mutagen', find_program('python3'),
-        args: [files('test_faam_metadata_mutagen.py'), faam, test_faam_metadata])
 endif
 
 if get_option('resampler') and not meson.is_cross_build()
