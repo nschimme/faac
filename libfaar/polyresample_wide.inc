@@ -14,7 +14,7 @@
  */
 /* Mixed builds' High phase bank: double coefficients and accumulators over
  * float sample histories, where float builds use float2. */
-#ifdef FAAR_WIDE_HIGH
+#if !FAAR_RESAMPLER_FLOAT
 static void filter_wide_phase(const faar_resampler *r, size_t base,
         size_t phase, double d, bool reverse, float *output) {
     const size_t len = r->filter_len, half_len = (len - 1) / 2;

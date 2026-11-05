@@ -32,7 +32,7 @@
 #undef PLAN
 #undef PREFIX
 /* Double transforms serve the native-double High kernels. */
-#ifdef FAAR_WIDE_HIGH
+#if !FAAR_RESAMPLER_FLOAT
 #define REAL double
 #define PLAN faar_fftd_plan
 #define PREFIX faar_fftd_

@@ -368,7 +368,7 @@ static const uint32_t rates[][2] = {{48000,44100}, {96000,44100}, {44100,48000},
                retains the calibrated float32 projection ceiling; standalone
                float needs the higher FFT and accumulation noise ceiling. */
             double gain_db = 20.0 * log10(gain);
-#ifdef FAAR_WIDE_HIGH
+#if !FAAR_RESAMPLER_FLOAT
             double residual_limit = sqrt(0.5) * pow(10.0, -144.684142 / 20.0);
 #else
             double residual_limit = 4e-7;

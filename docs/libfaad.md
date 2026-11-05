@@ -45,11 +45,15 @@ cc -std=c11 -Wall -Wextra adts_decode.c -o adts_decode $(pkg-config --cflags --l
 
 ### Without Meson
 
-Every source includes the `config.h` that Meson writes. A build that compiles the
-sources directly must define `PACKAGE`, `PACKAGE_VERSION`, `MAX_CHANNELS`
-(`-Dmax-channels`, default 8) and, in a combined build with the encoder,
-`FAAC_SBR_DECIMATION`. Add `common/` and `include/` to the include path, and
-define `FAAD_BUILDING` for a Windows DLL.
+Compile every `libfaad/*.c` plus `common/fft.c`, `common/sbr_tables.c` and
+`common/sfb_tables.c`, with `common/` and `include/` on the include path. Define
+`PACKAGE`, `PACKAGE_VERSION` and `COMMON_PREFIX=faad_`, and `FAAD_BUILDING` for a
+Windows DLL.
+
+An undefined `MAX_CHANNELS` is 8 (`-Dmax-channels`), and every feature is built unless
+you define `FAAD_DISABLE_SBR`, `FAAD_DISABLE_PS`, `FAAD_DISABLE_DAB` or
+`FAAD_DISABLE_DRC`, which is what the `decoder-*` options do. Check the result with
+`faad_get_library_info()`.
 
 ## Supported streams
 

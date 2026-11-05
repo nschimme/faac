@@ -48,6 +48,21 @@ Filter coefficients and FFT twiddles are always computed in double at setup. The
 FFT engine keeps no static tables: each handle allocates its own twiddles, and
 float High adds per-handle expansion FFT workspaces.
 
+### Without Meson
+
+Compile `include/` on the include path and these sources from `libfaar/`:
+
+```sh
+cc -std=c11 -Iinclude -Ilibfaar app.c \
+   libfaar/polyresample.c libfaar/dft_coeffs.c libfaar/dft_prefilter.c \
+   libfaar/dft_fir.c libfaar/fft.c -lm
+```
+
+An undefined `FAAR_RESAMPLER_FLOAT` is 0 (`resampler-float=false`), the mixed engine. For
+the float-only engine, define `FAAR_RESAMPLER_FLOAT=1` and add `libfaar/fft_float2.c`.
+Check the build with `faar_get_library_info()`: `FAAR_LIB_FLOAT_ONLY` is set exactly
+then. Define `FAAR_BUILDING` for a Windows DLL.
+
 ## Resampling model
 
 The planner picks a filter from the rates and quality preset. Polyphase FIR filters

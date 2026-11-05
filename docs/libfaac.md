@@ -50,21 +50,27 @@ cc -std=c11 -Wall -Wextra adts_encode.c -o adts_encode $(pkg-config --cflags --l
 
 ### Without Meson
 
-Every source includes the `config.h` that Meson writes. A build that compiles the
-sources directly must define:
+Compile every `libfaac/*.c` except `quantize_sse.c` and `ps*.c`, plus `common/fft.c`,
+`common/sbr_tables.c` and `common/sfb_tables.c`, with `common/` and `include/` on the
+include path. Define `PACKAGE`, `PACKAGE_VERSION` and `COMMON_PREFIX=faac_`, and
+`FAAC_BUILDING` for a Windows DLL.
+
+An undefined option macro takes the `meson_options.txt` default, so the build above
+matches a default Meson build:
 
 | Macro | Meson option | Default |
 |---|---|---|
-| `PACKAGE`, `PACKAGE_VERSION` | | |
 | `MAX_CHANNELS` | `max-channels` | 8 |
 | `FAAC_SBR_DECIMATION` | `sbr-decimation` | 1 |
 | `FAAC_ENCODER_SBR` | `encoder-sbr` | 1 |
 | `FAAC_ENCODER_PS` | `encoder-ps` (needs SBR) | 0 |
+| `FAAC_ENCODER_DRC` | `encoder-drc` | 1 |
 | `FAAC_STATS` | `stats` | off |
 
-An undefined `FAAC_ENCODER_SBR` or `FAAC_ENCODER_PS` is 0 (no HE-AAC v1 or v2);
-leave the SBR sources out then, as Meson does. Add `common/` and `include/` to
-the include path, and define `FAAC_BUILDING` for a Windows DLL.
+To turn a feature off, define its macro as 0 and leave its sources out: `sbr*.c`,
+`resample.c` and `common/sbr_tables.c` for SBR, `drc.c` and `drc_analyzer.c` for DRC.
+To turn PS on, define `FAAC_ENCODER_PS=1` and add `ps.c` and `ps_huff_tables.c`.
+Check the result with `faac_get_library_info()`.
 
 ## Supported streams
 

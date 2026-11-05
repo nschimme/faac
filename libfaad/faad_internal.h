@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include "build_defaults.h"
 #include <math.h>
 #include <float.h>
 #include "endian.h"
@@ -90,9 +91,6 @@ extern const SBRHuffEntry ps_huff_opd_dt[PS_HUFF_OPD_DT_NSYMS];
 
 /* Channel capacity: the build's -Dmax-channels (config.h) when present. Every
  * per-channel buffer, including the SBR and PS state, scales with it. */
-#ifndef MAX_CHANNELS
-#define MAX_CHANNELS 8
-#endif
 #if (MAX_CHANNELS < 2 || defined(FAAD_DISABLE_SBR)) && !defined(FAAD_DISABLE_PS)
 #define FAAD_DISABLE_PS /* parametric stereo needs SBR's QMF domain and two output channels */
 #endif

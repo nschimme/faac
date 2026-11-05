@@ -13,7 +13,7 @@
  * Lesser General Public License for more details.
  */
 /* High's compensated float prefilter. Included after the ordinary kernels. */
-#ifndef FAAR_WIDE_HIGH
+#if FAAR_RESAMPLER_FLOAT
 static int init_precise_plans(faar_dft_fir *stage, const faar_dft_fir *owner) {
     size_t nin = stage->fft_size / stage->expansion;
     size_t nout = stage->fft_size / stage->decimation;
