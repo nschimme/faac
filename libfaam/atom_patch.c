@@ -155,6 +155,71 @@ static bool fixup_chunk_offsets(const faam_io *io, uint64_t start, uint64_t end,
     return true;
 }
 
+/* Fragments name their data by absolute file position when tfhd carries a base_data_offset
+ * (ffmpeg's default) and mfra indexes every moof the same way. Growing moov moves all of
+ * them, so each is moved with it; libfaam's own files use default-base-is-moof and need none.
+ * The first pass only validates, so a layout it cannot follow is refused before anything is
+ * written. */
+static bool shift_fragment_offsets(const faam_io *io, uint64_t start, uint64_t file_size, int64_t delta, bool apply)
+{
+    uint64_t pos = start;
+    while (file_size - pos >= 8) {
+        char type[4];
+        uint64_t size;
+        bool wide;
+        if (read_atom_hdr(io, pos, type, &size, &wide) != 1 || size < (wide ? 16u : 8u) || size > file_size - pos)
+            return true; /* only moof and mfra matter; what follows an unreadable box is not ours to judge */
+        uint32_t header = wide ? 16u : 8u;
+        if (memcmp(type, "moof", 4) == 0) {
+            for (uint64_t t = pos + header; file_size - t >= 8 && t < pos + size;) {
+                char tt[4];
+                uint64_t tsz;
+                bool tw;
+                if (read_atom_hdr(io, t, tt, &tsz, &tw) != 1 || tsz < 8 || tsz > pos + size - t) return false;
+                char ft[4];
+                uint64_t fsz;
+                uint8_t b[12];
+                if (memcmp(tt, "traf", 4) == 0 && read_atom_hdr(io, t + 8, ft, &fsz, &tw) == 1 && memcmp(ft, "tfhd", 4) == 0) {
+                    if (fsz < 16 || !io->seek(io->user_data, t + 8 + 8) || faam_io_read_full(io, b, 4) != 4) return false;
+                    if (b[3] & 1) {
+                        uint64_t at = t + 8 + 16;
+                        if (fsz < 24 || !io->seek(io->user_data, at) || faam_io_read_full(io, b, 8) != 8) return false;
+                        write_u64_be(b, read_u64_be(b) + (uint64_t)delta);
+                        if (apply && (!io->seek(io->user_data, at) || io->write(io->user_data, b, 8) != 8)) return false;
+                    }
+                }
+                t += tsz;
+            }
+        } else if (memcmp(type, "mfra", 4) == 0) {
+            for (uint64_t t = pos + header; file_size - t >= 8 && t < pos + size;) {
+                char tt[4];
+                uint64_t tsz;
+                bool tw;
+                if (read_atom_hdr(io, t, tt, &tsz, &tw) != 1 || tsz < 8 || tsz > pos + size - t) return false;
+                if (memcmp(tt, "tfra", 4) == 0) {
+                    uint8_t h[16];
+                    if (tsz < 24 || !io->seek(io->user_data, t + 8) || faam_io_read_full(io, h, 16) != 16) return false;
+                    uint32_t wide_times = h[0] == 1, lens = read_u32_be(h + 8), n = read_u32_be(h + 12);
+                    uint32_t step = (wide_times ? 16 : 8) + ((lens >> 4 & 3) + 1) + ((lens >> 2 & 3) + 1) + ((lens & 3) + 1);
+                    if (n > (tsz - 24) / step) return false;
+                    for (uint32_t i = 0; i < n; i++) {
+                        uint64_t at = t + 24 + (uint64_t)i * step + (wide_times ? 8 : 4);
+                        uint8_t v[8];
+                        uint32_t w = wide_times ? 8 : 4;
+                        if (!io->seek(io->user_data, at) || faam_io_read_full(io, v, w) != (int32_t)w) return false;
+                        if (wide_times) write_u64_be(v, read_u64_be(v) + (uint64_t)delta);
+                        else write_u32_be(v, read_u32_be(v) + (uint32_t)delta);
+                        if (apply && (!io->seek(io->user_data, at) || io->write(io->user_data, v, w) != (int32_t)w)) return false;
+                    }
+                }
+                t += tsz;
+            }
+        }
+        pos += size;
+    }
+    return true;
+}
+
 /* Moves [start, start+len) forward by delta through buf, from the end backward so a destination
  * that overlaps its source is only written after that source has been read. */
 faam_status faam_io_move_forward(const faam_io *io, uint8_t *buf, uint32_t cap,
@@ -213,6 +278,13 @@ faam_status faam_atom_resize(const faam_io *io,
             !fixup_chunk_offsets(io, moov->offset + 8, moov->offset + moov->size,
                                  (int64_t)delta, true))
             return FAAM_ERR_IO_WRITE;
+    }
+
+    if (moov && moov->size > 0 && atom_offset >= moov->offset && atom_offset <= moov->offset + moov->size) {
+        uint64_t frags = moov->offset + moov->size;
+        if (!shift_fragment_offsets(io, frags, file_size, (int64_t)delta, false) ||
+            !shift_fragment_offsets(io, frags, file_size, (int64_t)delta, true))
+            return FAAM_ERR_BAD_CONTAINER;
     }
 
     uint64_t tail_start = atom_offset + old_size;

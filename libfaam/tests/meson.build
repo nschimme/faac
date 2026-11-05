@@ -30,6 +30,12 @@ test_faam_contract = executable('test_faam_contract', 'test_faam_contract.c',
   c_args: faam_args + ['-DFAAM_STATIC'])
 test('test_unit_faam_contract', test_faam_contract)
 
+test_faam_fragment_offsets = executable('test_faam_fragment_offsets', 'test_faam_fragment_offsets.c',
+  include_directories: [libfaam_inc, '..'],
+  link_with: libfaam_static,
+  c_args: faam_args + ['-DFAAM_STATIC'])
+test('test_unit_faam_fragment_offsets', test_faam_fragment_offsets)
+
 test_faam_abi = executable('test_faam_abi', 'test_faam_abi.c',
   include_directories: [libfaam_inc, '..'],
   link_with: libfaam_static,
