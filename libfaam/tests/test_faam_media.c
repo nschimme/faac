@@ -26,7 +26,7 @@
 #define CHECK(c) do { if (!(c)) { \
     fprintf(stderr, "%s:%d: CHECK failed: %s\n", __FILE__, __LINE__, #c); exit(1); } } while (0)
 
-#if defined(FAAM_MUXER_VIDEO) || defined(FAAM_MUXER_FRAGMENTED)
+#if FAAM_MUXER_VIDEO || FAAM_MUXER_FRAGMENTED
 typedef struct {
     uint8_t *buf;
     size_t len, cap, pos;
@@ -69,7 +69,7 @@ static uint32_t be32(const uint8_t *b) {
     return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3];
 }
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
 static void test_write_be32(uint8_t *b, uint32_t value) {
     b[0] = (uint8_t)(value >> 24);
     b[1] = (uint8_t)(value >> 16);
@@ -93,13 +93,13 @@ static faam_muxer *open_muxer(const faam_muxer_config *cfg, const faam_io *io) {
 }
 #endif
 
-#if defined(FAAM_MUXER_VIDEO) || defined(FAAM_MUXER_FRAGMENTED)
+#if FAAM_MUXER_VIDEO || FAAM_MUXER_FRAGMENTED
 /* Decode order I P B B P B B at 3000 ticks per frame, display delayed by two frames. */
 static const int32_t k_cts[7] = { 6000, 12000, 3000, 3000, 12000, 3000, 3000 };
 
 #endif
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
 static const uint8_t k_avcc[] = { 0x01, 0x64, 0x00, 0x1F, 0xFF, 0xE1, 0x00, 0x02, 0x67, 0x64, 0x01, 0x00, 0x01, 0x68 };
 
 static faam_track_config video_track(void) {
@@ -405,7 +405,7 @@ static void test_annexb_many_nals(void) {
 #endif /* FAAM_MUXER_VIDEO */
 
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 enum { MAX_FRAMES = 1024, A_TRACK = 1, V_TRACK = 2, A_TS = 48000, V_TS = 90000 };
 
 typedef struct {
@@ -438,7 +438,7 @@ static faam_muxer *start_frag(memfile *out, uint32_t fragment_ms, bool with_vide
     a.timescale = a.sample_rate = A_TS; a.channels = 2;
     a.codec_data = k_asc; a.codec_data_len = sizeof(k_asc);
     CHECK(test_append_track(&cfg, cfg_tracks, &a, NULL) == FAAM_OK);
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     if (with_video) {
         faam_track_config v = video_track();
         CHECK(test_append_track(&cfg, cfg_tracks, &v, NULL) == FAAM_OK);
@@ -540,7 +540,7 @@ static void check_prefix_of(const frame_list *want, const frame_list *got)
     }
 }
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
 static unsigned frames_in(const frame_list *got, uint64_t lo, uint64_t hi)
 {
     unsigned c = 0;
@@ -702,7 +702,7 @@ static void test_fragmented(void)
     top_box box[512];
     unsigned n, fragments;
     faam_muxer *m;
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     test_fragmented_av();
 #endif
 
@@ -723,14 +723,14 @@ static void test_fragmented(void)
 #endif /* FAAM_MUXER_FRAGMENTED */
 
 int main(void) {
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     test_absent_stss();
     test_empty_stss();
     test_ctts();
     test_annexb();
     test_annexb_many_nals();
 #endif
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     test_fragmented();
 #else
     {

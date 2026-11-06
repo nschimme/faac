@@ -16,6 +16,13 @@
 #define LIBFAAR_INTERNAL_H
 
 #include "faar.h"
+#include "../common/build_defaults.h"
+
+/* resampler-float is off by default. */
+#ifndef FAAR_RESAMPLER_FLOAT
+#define FAAR_RESAMPLER_FLOAT 0
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -61,10 +68,10 @@ static inline void *faar_grow_memory(void *block, size_t used, size_t bytes)
 #endif
 }
 
-/* High's sensitive kernels need more than float precision. FAAR_WIDE_HIGH
- * runs them in native double, which is ten times faster; without it, float
- * builds emulate the precision with float2 so targets without a double FPU
- * still run High. */
+/* High's sensitive kernels need more than float precision. By default they
+ * run in native double, which is ten times faster; with FAAR_RESAMPLER_FLOAT
+ * float builds emulate the precision with float2 so targets without a double
+ * FPU still run High. */
 
 /* Sample planes; distinct from the API's float so storage stays greppable. */
 typedef float faar_sample_t;

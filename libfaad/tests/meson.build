@@ -137,3 +137,11 @@ if get_option('decoder-sbr') and (default_lib == 'static' or default_lib == 'bot
         link_with: [libfaad_static], dependencies: [libm])
     test('test_unit_faad_sbr_workspace', test_sbr_workspace)
 endif
+
+if get_option('decoder-sbr') and get_option('max-channels') >= 2 and (default_lib == 'static' or default_lib == 'both')
+    test_sbr_pairing = executable('test_sbr_pairing', 'test_sbr_pairing.c',
+        c_args: faad_c_args + ['-DFAAD_STATIC'],
+        include_directories: ['..', '../..', '../../include', common_inc],
+        link_with: [libfaad_static], dependencies: [libm])
+    test('test_unit_faad_sbr_pairing', test_sbr_pairing)
+endif

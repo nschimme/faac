@@ -55,9 +55,10 @@ cc -std=c11 -Wall -Wextra inspect.c -o inspect $(pkg-config --cflags --libs faam
 
 Compile `libfaam/demux.c`, `mux.c`, `metadata.c`, `faam_util.c`, `tag.c`,
 `chapter.c` and `atom_patch.c` with `include/` and `common/` on the include path.
-Define `FAAM_BUILDING` for a Windows DLL, and `FAAM_MUXER_VIDEO=1` and
-`FAAM_MUXER_FRAGMENTED=1` to include those features (leave them undefined to omit
-them). Install `include/faam.h` with the library.
+Define `FAAM_BUILDING` for a Windows DLL. An undefined `FAAM_MUXER_VIDEO`,
+`FAAM_MUXER_FRAGMENTED` or `FAAM_MUXER_CHAPTERS` is 1, as in a default Meson build; define
+one as 0 to omit that feature. Check the result with `faam_get_library_info()`. Install
+`include/faam.h` with the library.
 
 ## Supported content
 
@@ -69,6 +70,7 @@ demuxer can hold) and `flags` with `FAAM_LIB_*` bits.
 |---|---|---|---|
 | H.264/H.265, including Annex-B input and avc3/hev1 | `muxer-video` (true) | `FAAM_LIB_VIDEO` | Video muxing and nonzero CTS offsets return `FAAM_ERR_NOT_BUILT`. Video sample entries demux as `FAAM_CODEC_GENERIC` without sync/CTS parsing |
 | Fragmented MP4 | `muxer-fragmented` (true) | `FAAM_LIB_FRAGMENTED` | Fragmented muxing and demuxing return `FAAM_ERR_NOT_BUILT` |
+| Chapters | `muxer-chapters` (true) | `FAAM_LIB_CHAPTERS` | Muxing with chapters and `faam_update_chapters_stream()` return `FAAM_ERR_NOT_BUILT`. The demuxer reports no chapters, and `faam chapter` says the build has no chapter support |
 
 ## Using the API
 
@@ -407,10 +409,42 @@ Gapless data stays in its own API because it also drives track timing.
 
 ### Chapters
 
-Each chapter has a `start_ms` and a non-NULL UTF-8 `title`, stored up to 255 bytes.
-Read them with `faam_demuxer_get_num_chapters()` and `faam_demuxer_get_chapter()`
-using an initialized output struct. Nero `chpl` allows at most 255 chapters;
-QuickTime chapter tracks are not interpreted.
+Each chapter has a `start_ms` and a non-NULL UTF-8 `title`, stored up to 255 bytes
+(cut on a character boundary). Read them with `faam_demuxer_get_num_chapters()` and
+`faam_demuxer_get_chapter()` using an initialized output struct. A file holds at most
+`FAAM_MAX_CHAPTERS` (255, the Nero `chpl` count byte); more is `FAAM_ERR_INVALID_ARGUMENT`.
+
+One list is always written twice: as the Nero `chpl` atom and as a QuickTime chapter text
+track (timescale 1000, referenced by `tref`/`chap` from the first audio track, laid out as
+ffmpeg writes it, and not enabled), so players that read only one form agree. The text
+track is not listed as a media track.
+
+Reading takes the text track first, and falls back to `chpl` when:
+
+| Text track | Chapters come from |
+|---|---|
+| absent, empty or unreadable | `chpl` |
+| fewer samples than it declares | `chpl` |
+| a sample longer than its bytes | `chpl` |
+| an edit that starts the media anywhere but 0 | `chpl` |
+| in a fragmented file | `chpl` |
+
+A leading empty edit is honored as a lead-in: it shifts every chapter later.
+
+Writing refuses a list before any I/O with `FAAM_ERR_INVALID_ARGUMENT` unless:
+
+- the first chapter starts at 0, because a delayed first chapter would need an edit list
+  on the text track, which readers disagree on;
+- starts strictly increase;
+- every chapter begins before the audio ends, since some readers drop chapters at or past
+  the end; finalize and update of progressive files check this, and fragmented files do not,
+  since their duration is unknown at open.
+
+A fragmented file carries both forms too. The text samples are its first fragment, so a
+recording that stops early keeps its chapters, and the last chapter's length is a placeholder
+until finalize. An update frees the old text fragment in place and appends the new one,
+after moving any absolute `base_data_offset` and `mfra` entry that the larger `moov` pushed
+back.
 
 ## Editing finished files
 
@@ -420,6 +454,20 @@ files in place, with no remux. Supply only the entries to change; there is no ne
 open a demuxer and copy existing tags. Close any open demuxer and reopen it before
 reading the modified file. Only iTunes `ilst` metadata is handled; in-place editing
 rejects `mdta`.
+
+A chapter edit that cannot be applied leaves the file untouched:
+
+| Status | Cause |
+|---|---|
+| `FAAM_ERR_BAD_CONTAINER` | a chunk table or fragment index that cannot be followed |
+| `FAAM_ERR_UNSUPPORTED` | `tref/chap` names an audio or video track |
+| `FAAM_ERR_UNSUPPORTED` | `tref/chap` names more than one chapter track |
+| `FAAM_ERR_UNSUPPORTED` | no track id is left for a chapter track (the highest id must stay below `UINT32_MAX - 1`) |
+| `FAAM_ERR_UNSUPPORTED` | a fragmented recording that never finalized, which ends in an open fragment |
+| `FAAM_ERR_UNSUPPORTED` | a fragmented file in a build without `muxer-fragmented` |
+
+An I/O error partway through can leave the unreferenced bytes of a new text track at the end
+of the file.
 
 **Tags**
 
@@ -439,7 +487,12 @@ rejects `mdta`.
 
 **Chapters and file layout**
 
-- Chapter `flags` are reserved and must be 0; count 0 writes an empty chapter list.
+- Chapter `flags` are reserved and must be 0. An update rewrites both forms: the text
+  track keeps the file's chapter track ID and `tref` when it has them (a file with only
+  `chpl` or only the text track gets the missing form), so a file never holds two
+  chapter tracks. Count 0 removes the text track, its `tref`/`chap` and the `chpl` atom.
+- The new text samples are appended as a trailing `mdat`; the previous ones stay in the
+  file as unreferenced bytes.
 - Missing `udta`, `meta`, `ilst` and `chpl` atoms are created.
 - Growing `moov` adjusts moov-first chunk offsets; shrinking leaves free space.
 - A 64-bit size header on `moov` or an edited box is unsupported and leaves the file
@@ -504,9 +557,10 @@ fragments follow.
 - Finalize closes the last fragment and writes the `mehd` duration. Closing without
   finalize keeps completed fragments; a progressive file closed without finalize has
   no `moov` and cannot be recovered.
-- Fragmented video needs `codec_data` at open. Metadata, chapters and gapless are
-  fixed at open; update is unsupported. B-frame offsets go in `trun` without shifting
-  the first presentation time to zero.
+- Fragmented video needs `codec_data` at open. Metadata, chapters and gapless come from
+  the config at open, since `moov` is already on disk when finalize runs; the
+  `faam_update_*_stream()` calls still edit a finished file. B-frame offsets go in `trun`
+  without shifting the first presentation time to zero.
 
 ## Moving the index to the front
 

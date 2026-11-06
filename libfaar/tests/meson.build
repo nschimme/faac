@@ -92,7 +92,7 @@ test('test_faar_dft_prefilter', test_faar_dft_prefilter)
 # for native-double High.
 test_faar_fft = executable('test_faar_fft',
   ['test_faar_fft.c', '../fft.c'],
-  c_args: ['-DFAAR_WIDE_HIGH'],
+  c_args: ['-DFAAR_RESAMPLER_FLOAT=0'],
   include_directories: ['..', inc],
   dependencies: [m_dep],
 )
@@ -113,7 +113,7 @@ endforeach
 if get_option('resampler-float')
   test_faar_float2 = executable('test_faar_float2',
     ['test_faar_float2.c', '../fft_float2.c', '../fft.c'],
-    c_args: ['-DFAAR_WIDE_HIGH'],
+    c_args: ['-DFAAR_RESAMPLER_FLOAT=0'],
     include_directories: ['..', inc],
     dependencies: [m_dep],
   )

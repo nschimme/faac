@@ -9,6 +9,10 @@ on:
     branches: [ "**" ]
     paths-ignore: ['**.md']
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     name: ${{ matrix.config.name }}
@@ -74,6 +78,13 @@ jobs:
               compiler: gcc,
               shell: bash,
               options: -Dsbr-decimation=4,
+            }
+          - {
+              name: Linux GCC (muxer without chapters),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Dmuxer-chapters=false,
             }
           - {
               name: Linux GCC (muxer without video or fragmented),
@@ -282,7 +293,7 @@ jobs:
       # restores the newest. PR caches are not visible to master, so the
       # push-to-master run is what accumulates the corpus.
       - name: Restore fuzz corpus
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             build/fuzz/corpus_*
@@ -295,9 +306,9 @@ jobs:
 
       - name: Audio-only muxer build
         # Disabling video and fragmented support compiles different code
-        # (NOT_BUILT stubs, no moof handling) that the full build never reaches.
+        # (NOT_BUILT stubs, no moof handling, no chapters) that the full build never reaches.
         run: |
-          CC=clang meson setup build-audio -Dmuxer-video=false -Dmuxer-fragmented=false \
+          CC=clang meson setup build-audio -Dmuxer-video=false -Dmuxer-fragmented=false -Dmuxer-chapters=false \
               -Db_sanitize=address,undefined -Db_lundef=false -Db_lto=false --buildtype=plain \
               '-Dc_args=-fsanitize=fuzzer-no-link -g -O1' -Dfuzzing-engine=-fsanitize=fuzzer
           meson test -C build-audio --suite fuzz --print-errorlogs

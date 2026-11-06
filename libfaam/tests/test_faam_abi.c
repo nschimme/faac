@@ -35,7 +35,7 @@ _Static_assert(sizeof(enum faam_muxer_flag) == 4, "muxer_flag enum width");
 _Static_assert(sizeof(enum faam_update_flag) == 4, "update_flag enum width");
 _Static_assert(sizeof(enum faam_frame_flag) == 4, "frame_flag enum width");
 _Static_assert(sizeof(enum faam_metadata_update_flag) == 4, "metadata_update_flag enum width");
-_Static_assert(FAAM_LIB_VIDEO == 1 && FAAM_LIB_FRAGMENTED == 2, "feature values");
+_Static_assert(FAAM_LIB_VIDEO == 1 && FAAM_LIB_FRAGMENTED == 2 && FAAM_LIB_CHAPTERS == 4, "feature values");
 _Static_assert(FAAM_TRACK_ANNEXB == 1 && FAAM_TRACK_INBAND_PARAMS == 2, "track values");
 _Static_assert(FAAM_TRACK_INFO_INBAND_PARAMS == 1, "track info values");
 _Static_assert(FAAM_METADATA_IMPLICIT == 0 && FAAM_METADATA_UTF8 == 1 && FAAM_METADATA_UTF16 == 2
@@ -165,7 +165,7 @@ static void test_outputs(void) {
 
     faam_chapter ch = { .struct_size = sizeof(ch), .title = "Start" };
     faam_muxer_config cfg; STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK);
-    cfg.tracks = &t; cfg.num_tracks = 1; cfg.metadata = &entry; cfg.num_metadata = 1; cfg.chapters = &ch; cfg.num_chapters = 1;
+    cfg.tracks = &t; cfg.num_tracks = 1; cfg.metadata = &entry; cfg.num_metadata = 1; cfg.chapters = &ch; cfg.num_chapters = TEST_CHAPTERS(1);
     faam_muxer *m = start(&f, &cfg); frames(m, 1);
     {
         /* Library info reports the bytes populated rather than echoing struct_size. */
@@ -190,7 +190,7 @@ static void test_outputs(void) {
     uint32_t count = 0; STATUS(faam_demuxer_get_num_metadata(d, &count), FAAM_OK); CHECK(count == 1);
     STATUS(faam_demuxer_get_num_metadata(NULL, &count), FAAM_ERR_INVALID_ARGUMENT);
     STATUS(faam_demuxer_get_num_metadata(d, NULL), FAAM_ERR_INVALID_ARGUMENT);
-    OUTPUT(faam_chapter, FAAM_CHAPTER_BASELINE, faam_demuxer_get_chapter(d, 0, &out.v));
+    if (TEST_HAVE_CHAPTERS) OUTPUT(faam_chapter, FAAM_CHAPTER_BASELINE, faam_demuxer_get_chapter(d, 0, &out.v));
     OUTPUT(faam_metadata_entry, FAAM_METADATA_ENTRY_BASELINE, faam_demuxer_get_metadata_entry(d, 0, &out.v));
     OUTPUT(faam_frame_loc, FAAM_FRAME_LOC_BASELINE, faam_demuxer_next_frame_loc(d, &out.v));
     faam_frame_loc loc = { .struct_size = sizeof(loc) };
@@ -211,7 +211,7 @@ static void test_future_inputs(void) {
 
     faam_gapless_info gap = { sizeof(gap), 10, 20, 3000 };
     faam_muxer_config cfg; STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK);
-    cfg.tracks = tracks; cfg.num_tracks = 2; cfg.chapters = chapters; cfg.num_chapters = 2; cfg.metadata = tags; cfg.num_metadata = 2; cfg.gapless = &gap;
+    cfg.tracks = tracks; cfg.num_tracks = 2; cfg.chapters = chapters; cfg.num_chapters = TEST_CHAPTERS(2); cfg.metadata = tags; cfg.num_metadata = 2; cfg.gapless = &gap;
     faam_muxer_update_params update = { .struct_size = sizeof(update), .flags = FAAM_UPDATE_LANGUAGE, .track_id = 2, .language = "deu" };
     faam_muxer *m = start(&plain, &cfg); STATUS(faam_muxer_update(m, &update), FAAM_OK); frames(m, 2); finish(&m);
     FUTURE(faam_track_config) et[2]; FUTURE(faam_chapter) ec[2]; FUTURE(faam_metadata_entry) eg[2];
@@ -230,7 +230,7 @@ static void test_future_inputs(void) {
 #define BAD_INPUT(v, baseline, call) do { uint32_t saved = (v).struct_size; (v).struct_size = (baseline)-1; STATUS(call, FAAM_ERR_INVALID_ARGUMENT); (v).struct_size = saved; } while (0)
     BAD_INPUT(cx.v, FAAM_MUXER_CONFIG_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
     BAD_INPUT(et[0].v, FAAM_TRACK_CONFIG_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
-    BAD_INPUT(ec[0].v, FAAM_CHAPTER_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
+    if (TEST_HAVE_CHAPTERS) BAD_INPUT(ec[0].v, FAAM_CHAPTER_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
     BAD_INPUT(gapx.v, FAAM_GAPLESS_INFO_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
     BAD_INPUT(dx.v, FAAM_DEMUXER_CONFIG_BASELINE, faam_demuxer_open(&dx.v, &ix.v, &d));
     BAD_INPUT(ix.v, FAAM_IO_BASELINE, faam_muxer_open(&cx.v, &ix.v, &m));
@@ -335,7 +335,7 @@ static void test_updates_close_flags(void) {
     STATUS(faam_muxer_close(&m),FAAM_OK); STATUS(faam_muxer_close(NULL),FAAM_OK); free(f.buf);
     memset(&f,0,sizeof(f)); m=start(&f,&cfg); frames(m,1); f.fail_write_after=f.len+4;
     STATUS(faam_muxer_finalize(m),FAAM_ERR_IO_WRITE); STATUS(faam_muxer_close(&m),FAAM_ERR_IO_WRITE); free(f.buf);
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     memset(&f,0,sizeof(f)); cfg.fragment_ms=100; m=start(&f,&cfg);
     for (unsigned i=0; i<5; i++) { p.flags=flags[i]; STATUS(faam_muxer_update(m,&p),FAAM_ERR_UNSUPPORTED); } finish(&m); free(f.buf);
 #endif
@@ -346,7 +346,7 @@ static void test_video(void) {
     faam_track_config t={ .struct_size=sizeof(t), .track_type=FAAM_TRACK_VIDEO, .codec_id=FAAM_CODEC_H264,
         .timescale=90000, .width=320, .height=240, .codec_data=avcc, .codec_data_len=sizeof(avcc) };
     faam_muxer_config cfg; STATUS(faam_muxer_config_init(&cfg,sizeof(cfg)),FAAM_OK); cfg.tracks=&t; cfg.num_tracks=1;
-#ifndef FAAM_MUXER_VIDEO
+#if !FAAM_MUXER_VIDEO
     memfile f={0}; faam_io io=mem_io(&f); faam_muxer *m=NULL;
     STATUS(faam_muxer_open(&cfg,&io,&m),FAAM_ERR_NOT_BUILT); free(f.buf);
 #else
@@ -413,12 +413,12 @@ static void test_chapter_stride(void) {
     faam_chapter ch[2] = { { .struct_size = sizeof(ch[0]), .title = "A" },
                            { .struct_size = sizeof(ch[0]) - 8, .title = "B" } };
     memfile f = {0}; faam_io io = mem_io(&f);
-    STATUS(faam_update_chapters_stream(&io, ch, 2, 0), FAAM_ERR_INVALID_ARGUMENT);
+    STATUS(faam_update_chapters_stream(&io, ch, 2, 0), TEST_HAVE_CHAPTERS ? FAAM_ERR_INVALID_ARGUMENT : FAAM_ERR_NOT_BUILT);
     faam_track_config t = audio(); faam_muxer_config cfg;
     STATUS(faam_muxer_config_init(&cfg, sizeof(cfg)), FAAM_OK);
     cfg.tracks = &t; cfg.num_tracks = 1; cfg.chapters = ch; cfg.num_chapters = 2;
     faam_muxer *m = NULL;
-    STATUS(faam_muxer_open(&cfg, &io, &m), FAAM_ERR_INVALID_ARGUMENT);
+    STATUS(faam_muxer_open(&cfg, &io, &m), TEST_HAVE_CHAPTERS ? FAAM_ERR_INVALID_ARGUMENT : FAAM_ERR_NOT_BUILT);
 }
 
 int main(int argc, char **argv) {

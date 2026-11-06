@@ -851,9 +851,10 @@ static inline int16_t pcm_to_s16(float v)
     v = v < 32767.0f ? v : 32767.0f;
     v = v > -32768.0f ? v : -32768.0f;
     v += 12582912.0f;
-    int32_t bits;
-    memcpy(&bits, &v, sizeof(bits));
-    return (int16_t)bits;
+    /* A union, not memcpy: with -fno-builtin (ESP-IDF on Xtensa) memcpy becomes a call per sample. */
+    union { float f; int32_t i; } u;
+    u.f = v;
+    return (int16_t)u.i;
 }
 
 /* Both integer 24-bit containers share scaling, rounding and clipping. */

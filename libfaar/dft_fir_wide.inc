@@ -14,7 +14,7 @@
  */
 /* High's prefilter in mixed builds: double kernels over float sample planes.
  * Included after the ordinary kernels. */
-#ifdef FAAR_WIDE_HIGH
+#if !FAAR_RESAMPLER_FLOAT
 static void process_wide_halfband(faar_dft_fir *stage, float *output) {
     size_t n = stage->tap_count, count = stage->block_size / 2;
     double *acc = stage->wide_half_work;

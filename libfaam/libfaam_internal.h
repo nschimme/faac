@@ -27,6 +27,18 @@
 
 #include "faam.h"
 
+/* Meson always defines these as 0 or 1; a build without it gets the meson_options.txt defaults. Callers
+ * branch on them, so the compiler drops the code of a feature that is 0. */
+#ifndef FAAM_MUXER_VIDEO
+#define FAAM_MUXER_VIDEO 1
+#endif
+#ifndef FAAM_MUXER_FRAGMENTED
+#define FAAM_MUXER_FRAGMENTED 1
+#endif
+#ifndef FAAM_MUXER_CHAPTERS
+#define FAAM_MUXER_CHAPTERS 1
+#endif
+
 /* Ports override both hooks with -D or a force-included header. Detect the
  * overrides first: libc realloc must never see a custom allocator's block. */
 #if defined(AllocMemory) != defined(FreeMemory)
@@ -118,7 +130,7 @@ struct faam_demuxer {
     bool has_elst;
 
     uint32_t num_entries; /* ilst values collected in entries */
-    faam_chapter *chapters;  /* heap, sized by the chpl atom (at most 255) */
+    faam_chapter *chapters;  /* heap, at most FAAM_MAX_CHAPTERS */
     uint32_t num_chapters;
 
     faam_demuxer_track *tracks;
@@ -208,6 +220,7 @@ struct faam_muxer {
 
     uint64_t mdat_pos;
     uint64_t mdat_size;
+    uint64_t chap_offset;       /* the chapter text samples, at the end of the mdat */
     uint64_t faststart_shift;
 
     uint8_t staging[1024];
@@ -231,6 +244,8 @@ struct faam_muxer {
     uint32_t frag_seq;
     uint64_t frag_moof_pos;
     uint64_t mehd_pos;
+    uint64_t chap_dur_pos;      /* the last chapter's trun duration, patched at finalize */
+    uint64_t chap_last_start;   /* borrowed chapters may change before finalize */
     uint32_t *fi_off;        /* payload offset of each indexed sample */
     uint32_t *fi_dur;
     int32_t *fi_cts;         /* NULL unless the file has a video track */
@@ -329,6 +344,12 @@ int faam_atom_find_child(const faam_io *io, uint64_t range_start, uint64_t range
  * trak/mdia/minf/stbl boxes and adds the delta to every stco/co64 chunk
  * offset, since those are absolute file offsets into mdat.
  */
+/* Whether growing moov could move every offset that names media: BAD_CONTAINER when a chunk
+ * table or fragment index cannot be followed. Callers that write before they resize ask first,
+ * so a refused edit leaves the file as it was. */
+faam_status faam_atom_offsets_check(const faam_io *io, const faam_atom_ref *moov, const faam_atom_ref *mdat,
+                                    uint64_t file_size);
+
 faam_status faam_atom_resize(const faam_io *io,
                               uint64_t atom_offset, uint64_t old_size,
                               const uint8_t *new_atom, uint32_t new_size,
@@ -336,8 +357,35 @@ faam_status faam_atom_resize(const faam_io *io,
                               const faam_atom_ref *moov, const faam_atom_ref *mdat,
                               uint64_t file_size);
 
+/* Header of the child box at `pos` inside a container ending at `end`: 1 found (type and ref
+ * filled), 0 none, -1 read callback failed, -2 64-bit size header. */
+int faam_atom_child_at(const faam_io *io, uint64_t pos, uint64_t end, char type[4], faam_atom_ref *out);
+
 faam_status faam_io_move_forward(const faam_io *io, uint8_t *buf, uint32_t cap,
                                  uint64_t start, uint64_t len, uint64_t delta);
+
+/* Chapter encoding shared by the muxer and the in-place updater (chapter.c). The caller frees
+ * what the builders return with FreeMemory. */
+faam_status faam_chapters_check(const faam_chapter *chapters, uint32_t count);
+/* Chapters must start inside the audio: AVFoundation drops the others, so readers would disagree. */
+faam_status faam_chapters_fit(const faam_chapter *chapters, uint32_t count, uint32_t movie_ts, uint64_t movie_dur);
+uint32_t faam_chapter_title_len(const char *title);
+uint8_t *faam_chapter_chpl_build(const faam_chapter *chapters, uint32_t count, uint32_t *len);
+uint32_t faam_chapter_samples_len(const faam_chapter *chapters, uint32_t count);
+void faam_chapter_samples_fill(const faam_chapter *chapters, uint32_t count, uint8_t *out);
+/* The chapter trak for samples stored contiguously at chunk_offset. movie_dur is in movie_ts
+ * ticks; creation is the already-1904-based time stamp. */
+uint8_t *faam_chapter_trak_build(const faam_chapter *chapters, uint32_t count, uint32_t track_id,
+                                 uint32_t movie_ts, uint64_t movie_dur, uint64_t creation,
+                                 uint64_t chunk_offset, bool frag, uint32_t *len);
+#if FAAM_MUXER_FRAGMENTED
+/* A fragmented file's chapter samples as one moof + mdat in the track's ms timescale. The last
+ * chapter's length is unknown until finalize, so last_dur_off says where the caller patches it. */
+uint8_t *faam_chapter_frag_build(const faam_chapter *chapters, uint32_t count, uint32_t track_id, uint32_t seq,
+                                 uint32_t last_dur_ms, uint32_t *len, uint32_t *last_dur_off);
+#endif
+/* tref holding one chap reference to track_id. */
+void faam_chapter_tref_fill(uint32_t track_id, uint8_t out[20]);
 
 /* Appends a complete atom to moov's udta, creating the udta (inside moov) when the
  * file has none. `udta` is the located atom (size 0 if absent). */

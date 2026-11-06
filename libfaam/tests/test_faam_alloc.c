@@ -89,7 +89,7 @@ static void add_tracks(faam_muxer_config *cfg, faam_track_config tracks[8])
     a.timescale = a.sample_rate = 48000; a.channels = 2;
     a.codec_data = asc; a.codec_data_len = sizeof(asc);
     CHECK(test_append_track(cfg, tracks, &a, NULL) == FAAM_OK);
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     static const uint8_t avcc[] = { 1, 0x64, 0, 0x1F, 0xFF, 0xE1, 0, 2, 0x67, 0x64, 1, 0, 1, 0x68 };
     faam_track_config v;
     memset(&v, 0, sizeof(v)); v.struct_size = sizeof(v);
@@ -213,7 +213,7 @@ static faam_status mux_run(const faam_muxer_config *cfg, int io_failure)
     unsigned opened = g_allocs;
     for (unsigned i = 0; i < FRAMES && st == FAAM_OK; i++) {
         st = faam_muxer_write_frame(m, 1, frame, sizeof(frame), 1024 + i % 2, 0, FAAM_FRAME_KEYFRAME);
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
         if (cfg->num_tracks > 1 && st == FAAM_OK)
             st = faam_muxer_write_frame(m, 2, frame, sizeof(frame), 3000, (int32_t)(i % 3) * 3000, FAAM_FRAME_KEYFRAME);
 #endif
@@ -347,11 +347,11 @@ int main(void)
         { .struct_size = sizeof(faam_chapter), .title = "first" },
         { .struct_size = sizeof(faam_chapter), .start_ms = 1000, .title = "second" },
     };
-    cfg.chapters = chapters; cfg.num_chapters = 2;
+    cfg.chapters = chapters; cfg.num_chapters = TEST_CHAPTERS(2);
     mux_failures(&cfg);
     demux_failures(&cfg, false);
     demux_failures(&cfg, true);
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
     cfg.fragment_ms = 10000;
     mux_failures(&cfg);
     demux_failures(&cfg, false);

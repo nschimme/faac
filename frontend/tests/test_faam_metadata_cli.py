@@ -193,6 +193,8 @@ with tempfile.TemporaryDirectory() as directory:
     assert song.read_bytes() == before
     run("tag", song, "--genre", "191")
     assert values(song.read_bytes(), b"\xa9gen") == [(1, 0, b"Psybient")]
+    run("tag", song, "--genre", "Not A Genre")
+    assert values(song.read_bytes(), b"\xa9gen") == [(1, 0, b"Not A Genre")] and not values(song.read_bytes(), b"gnre")
     song.write_bytes(append_children(song.read_bytes(), atom(b"gnre", data_value(b"\0\x12", 0))))
     run("tag", song, "--remove", "genre")
     assert not values(song.read_bytes(), b"\xa9gen") and not values(song.read_bytes(), b"gnre")

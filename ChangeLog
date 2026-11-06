@@ -57,6 +57,11 @@ Unreleased
 	* Build & tests: detect host byte order without config.h; add
 	  unit, integration, ABI, link and fuzz test coverage
 
+	[ Mar Dominguez ]
+	* libfaad: pair and enhance SBR channels only for the element that filled
+	  them, so a change of element layout no longer reads uninitialized
+	  envelopes
+
 2.2 (Sep 29, 2026)
 
 	[ Robert Kausch ]

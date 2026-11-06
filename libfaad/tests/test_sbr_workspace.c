@@ -149,9 +149,11 @@ static void test_valid_header_reset_then_invalid_grid(void)
     }
     assert(found);
     initial.header_present = true;
+    initial.nch = 1;
     dec->sbr_el[0] = initial;
     memset(&dec->sbr[0], 0x35, sizeof(dec->sbr[0]));
     dec->sbr[0].have_frame = true;
+    dec->sbr[0].el_ch = 0; /* the element's own channel: only the header resets it */
     dec->sbr[0].E_prev[0] = 123;
     dec->sbr[0].Q_prev[0] = 456;
     SBRChannel *saved_ch = malloc(sizeof(*saved_ch));

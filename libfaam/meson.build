@@ -17,12 +17,9 @@ libfaam_headers = files(
 libfaam_inc = include_directories('../include', '../common')
 
 faam_args = []
-if get_option('muxer-video')
-    faam_args += ['-DFAAM_MUXER_VIDEO=1']
-endif
-if get_option('muxer-fragmented')
-    faam_args += ['-DFAAM_MUXER_FRAGMENTED=1']
-endif
+foreach feature : ['video', 'fragmented', 'chapters']
+    faam_args += ['-DFAAM_MUXER_' + feature.to_upper() + '=' + (get_option('muxer-' + feature) ? '1' : '0')]
+endforeach
 
 ffunc_args = []
 if cc.has_argument('-ffunction-sections')

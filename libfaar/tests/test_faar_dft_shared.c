@@ -98,11 +98,11 @@ static int run_paired_case(size_t expansion, size_t decimation,
         owner.in.twiddle != borrower.in.twiddle ||
         owner.out.twiddle != borrower.out.twiddle) goto error;
 
-#ifdef FAAR_WIDE_HIGH
+#if !FAAR_RESAMPLER_FLOAT
     if (compensated && (owner.in_wide.work != borrower.in_wide.work ||
                         owner.out_wide.work != borrower.out_wide.work)) goto error;
 #endif
-#ifndef FAAR_WIDE_HIGH
+#if FAAR_RESAMPLER_FLOAT
     if (compensated && (owner.precise_in.work != borrower.precise_in.work ||
                         owner.precise_out.work != borrower.precise_out.work)) goto error;
 #endif

@@ -103,7 +103,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     lib.struct_size = sizeof(lib);
     if (faam_get_library_info(&lib) != FAAM_OK || lib.struct_size < sizeof(lib))
         abort();
-    if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED))
+    if (lib.flags & ~(FAAM_LIB_VIDEO | FAAM_LIB_FRAGMENTED | FAAM_LIB_CHAPTERS))
         abort();
 
     annexb_codec codec = (data[0] & 1) ? ANNEXB_H265 : ANNEXB_H264;
@@ -119,7 +119,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     split_ctx ctx = { 0, 0 };
     (void)annexb_split(codec, payload, payload_len, sample_cb, &ctx);
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
     /* 3. Test libfaam FAAM_TRACK_ANNEXB path */
     faam_muxer_config cfg;
     faam_muxer_config_init(&cfg, sizeof(cfg));

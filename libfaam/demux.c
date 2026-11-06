@@ -276,7 +276,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
              * instead of recursing -- this is the reverse of tag.c's/mux.c's
              * ilst writers. */
             parse_ilst_children(buf, payload_offset, payload_end, d);
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
         } else if (memcmp(type, "mvex", 4) == 0) {
             d->fragmented = true;
             parse_children(buf, payload_offset, payload_end, d, current_trak_idx, tb, depth + 1);
@@ -296,7 +296,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
         } else if (memcmp(type, "mvex", 4) == 0) {
             d->error = FAAM_ERR_NOT_BUILT; /* fragmented file, fragment support compiled out */
 #endif
-        } else if (memcmp(type, "chpl", 4) == 0 && payload_offset + 9 <= payload_end) {
+        } else if (FAAM_MUXER_CHAPTERS && memcmp(type, "chpl", 4) == 0 && payload_offset + 9 <= payload_end) {
             long p = payload_offset + 8;
             uint32_t entry_count = buf[p++];
             if (d->chapters || !entry_count) { cur = payload_end; continue; }
@@ -380,7 +380,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                 parse_children(buf, payload_offset + 28 + (qt_version == 1 ? 16 : qt_version == 2 ? 36 : 0),
                                       payload_end, d, current_trak_idx, tb, depth + 1);
             }
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
         } else if ((memcmp(type, "avc1", 4) == 0 || memcmp(type, "avc3", 4) == 0 ||
                     memcmp(type, "hvc1", 4) == 0 || memcmp(type, "hev1", 4) == 0 ||
                     memcmp(type, "mp4v", 4) == 0) && current_trak_idx >= 0) {
@@ -427,7 +427,7 @@ static void parse_boxes_recursive(const uint8_t *buf, long offset, long end, str
                 tb->num_stts[current_trak_idx] = entries;
                 tb->stts[current_trak_idx] = buf + payload_offset + 8;
             }
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
         } else if (memcmp(type, "stss", 4) == 0 && current_trak_idx >= 0 && !tb->stss[current_trak_idx] && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_u32_be(buf + payload_offset + 4);
             if (entries <= (uint64_t)(payload_end - payload_offset - 8) / 4) {
@@ -514,6 +514,142 @@ static uint64_t stream_extent(const faam_io *io, uint64_t known)
     return lo;
 }
 
+/* Payload range of the first child `name` inside [*start, *end); both are narrowed to it. */
+static bool child_box(const uint8_t *buf, long *start, long *end, const char name[4])
+{
+    for (long cur = *start; cur + 8 <= *end;) {
+        uint32_t size = read_u32_be(buf + cur);
+        if (size < 8 || size > (uint64_t)(*end - cur)) return false;
+        if (!memcmp(buf + cur + 4, name, 4)) { *start = cur + 8; *end = cur + (long)size; return true; }
+        cur += (long)size;
+    }
+    return false;
+}
+
+static uint32_t trak_id_of(const uint8_t *buf, long ts, long te)
+{
+    long s = ts, e = te;
+    if (!child_box(buf, &s, &e, "tkhd") || s + 24 > e) return 0;
+    return read_u32_be(buf + s + (buf[s] == 1 ? 20 : 12));
+}
+
+/* The QuickTime chapter text track: the trak a tref/chap names, one text sample per chapter.
+ * On any shortfall the chpl list already parsed stays in force. */
+static uint32_t read_text_chapters(faam_demuxer *d, const uint8_t *buf, long moov_size)
+{
+    long ms = 0, me = moov_size;
+    if (!child_box(buf, &ms, &me, "moov")) return 0;
+
+    uint32_t chap_id = 0;
+    for (long cur = ms; !chap_id && cur + 8 <= me;) {
+        uint32_t size = read_u32_be(buf + cur);
+        if (size < 8 || size > (uint64_t)(me - cur)) return 0;
+        long s = cur + 8, e = cur + (long)size;
+        if (!memcmp(buf + cur + 4, "trak", 4) && child_box(buf, &s, &e, "tref") && child_box(buf, &s, &e, "chap") && e - s >= 4)
+            chap_id = read_u32_be(buf + s);
+        cur += (long)size;
+    }
+    if (!chap_id) return 0;
+    /* The trak is still found so the track list hides it. */
+    if (!FAAM_MUXER_CHAPTERS) return chap_id;
+
+    for (long cur = ms; cur + 8 <= me;) {
+        uint32_t size = read_u32_be(buf + cur);
+        if (size < 8 || size > (uint64_t)(me - cur)) return chap_id;
+        long ts = cur + 8, te = cur + (long)size;
+        bool is_trak = !memcmp(buf + cur + 4, "trak", 4);
+        cur += (long)size;
+        if (!is_trak || trak_id_of(buf, ts, te) != chap_id) continue;
+
+        long ds = ts, de = te;
+        if (!child_box(buf, &ds, &de, "mdia")) return chap_id;
+        long hs = ds, he = de;
+        if (!child_box(buf, &hs, &he, "mdhd") || hs + 24 > he) return chap_id;
+        uint32_t scale = read_u32_be(buf + hs + (buf[hs] == 1 ? 20 : 12));
+        if (!scale) return chap_id;
+        long tbs = ds, tbe = de;
+        if (!child_box(buf, &tbs, &tbe, "minf") || !child_box(buf, &tbs, &tbe, "stbl")) return chap_id;
+        long ss = tbs, se = tbe;
+        if (!child_box(buf, &ss, &se, "stsd") || ss + 16 > se) return chap_id;
+        if (memcmp(buf + ss + 12, "text", 4) && memcmp(buf + ss + 12, "tx3g", 4)) return chap_id;
+
+        long a, b;
+        a = tbs; b = tbe; if (!child_box(buf, &a, &b, "stts") || a + 8 > b) return chap_id;
+        const uint8_t *stts = buf + a + 8; uint32_t n_stts = read_u32_be(buf + a + 4);
+        if (n_stts > (uint64_t)(b - a - 8) / 8) return chap_id;
+        a = tbs; b = tbe; if (!child_box(buf, &a, &b, "stsc") || a + 8 > b) return chap_id;
+        const uint8_t *stsc = buf + a + 8; uint32_t n_stsc = read_u32_be(buf + a + 4);
+        if (!n_stsc || n_stsc > (uint64_t)(b - a - 8) / 12) return chap_id;
+        a = tbs; b = tbe; if (!child_box(buf, &a, &b, "stsz") || a + 12 > b) return chap_id;
+        uint32_t fixed = read_u32_be(buf + a + 4), n_samples = read_u32_be(buf + a + 8);
+        const uint8_t *stsz = buf + a + 12;
+        if (!fixed && n_samples > (uint64_t)(b - a - 12) / 4) return chap_id;
+        bool wide = false;
+        a = tbs; b = tbe;
+        if (!child_box(buf, &a, &b, "stco")) { a = tbs; b = tbe; if (!child_box(buf, &a, &b, "co64")) return chap_id; wide = true; }
+        if (a + 8 > b) return chap_id;
+        const uint8_t *stco = buf + a + 8; uint32_t n_chunks = read_u32_be(buf + a + 4);
+        if (n_chunks > (uint64_t)(b - a - 8) / (wide ? 8 : 4)) return chap_id;
+
+        /* The first sample's start is the track's own lead-in: an empty edit shifts the whole track. */
+        uint64_t lead_ms = 0;
+        long es = ts, ee = te;
+        if (d->movie_timescale && child_box(buf, &es, &ee, "edts") && child_box(buf, &es, &ee, "elst") && es + 8 <= ee) {
+            bool v1 = buf[es] == 1;
+            long step = v1 ? 20 : 12, at = es + 8;
+            uint32_t entries = read_u32_be(buf + es + 4);
+            for (uint32_t i = 0; i < entries && at + step <= ee; i++, at += step) {
+                uint64_t seg = v1 ? read_u64_be(buf + at) : read_u32_be(buf + at);
+                uint64_t mt = v1 ? read_u64_be(buf + at + 8) : read_u32_be(buf + at + 4);
+                bool empty = mt == (v1 ? UINT64_MAX : 0xFFFFFFFFULL);
+                if (i == 0 && empty) lead_ms = seg * 1000 / d->movie_timescale;
+                else if (mt) return chap_id; /* a trimmed or reordered text track is not a plain list; chpl serves */
+            }
+        }
+
+        uint32_t want = n_samples < FAAM_MAX_CHAPTERS ? n_samples : FAAM_MAX_CHAPTERS;
+        if (!want) return chap_id;
+        faam_chapter *list = (faam_chapter *)AllocMemory((size_t)want * sizeof(*list));
+        if (!list) { d->error = FAAM_ERR_NO_MEMORY; return chap_id; }
+        uint32_t got = 0, run_left = n_stts ? read_u32_be(stts) : 0, run = 0;
+        uint64_t ticks = 0;
+        bool ok = true;
+        for (uint32_t c = 0; ok && c < n_chunks && got < want; c++) {
+            uint32_t per_chunk = 0;
+            for (uint32_t e = 0; e < n_stsc && c + 1 >= read_u32_be(stsc + (size_t)e * 12); e++)
+                per_chunk = read_u32_be(stsc + (size_t)e * 12 + 4);
+            uint64_t off = wide ? read_u64_be(stco + (size_t)c * 8) : read_u32_be(stco + (size_t)c * 4);
+            for (uint32_t i = 0; ok && i < per_chunk && got < want; i++) {
+                uint32_t sz = fixed ? fixed : read_u32_be(stsz + (size_t)got * 4);
+                uint8_t text[2 + 256];
+                uint32_t n = sz < sizeof(text) ? sz : (uint32_t)sizeof(text);
+                if (n < 2 || read_at(&d->io, off, text, n) != (int32_t)n) { ok = false; break; }
+                uint32_t tlen = read_u16_be(text);
+                if (tlen > sz - 2) { ok = false; break; }
+                if (tlen > n - 2) tlen = n - 2;
+                if (tlen > 255) {
+                    tlen = 255;
+                    while (tlen && (text[2 + tlen] & 0xC0) == 0x80) tlen--;
+                }
+                list[got].struct_size = sizeof(faam_chapter);
+                list[got].start_ms = lead_ms + (ticks * 1000 + scale / 2) / scale;
+                list[got].title = own_string(d, text + 2, tlen);
+                if (!list[got].title) { ok = false; break; }
+                got++;
+                off += sz;
+                while (run_left == 0 && run + 1 < n_stts) run_left = read_u32_be(stts + (size_t)++run * 8);
+                if (run_left) { ticks += read_u32_be(stts + (size_t)run * 8 + 4); run_left--; }
+            }
+        }
+        if (!ok || got != want) { FreeMemory(list); return chap_id; }
+        FreeMemory(d->chapters);
+        d->chapters = list;
+        d->num_chapters = got;
+        return chap_id;
+    }
+    return chap_id;
+}
+
 static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf, long moov_size)
 {
     faam_trak_tables tables;
@@ -521,6 +657,8 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
     memset(tb, 0, sizeof(*tb));
 
     parse_children(buf, 0, moov_size, d, -1, tb, 0);
+    if (d->error) return d->error;
+    uint32_t chap_id = read_text_chapters(d, buf, moov_size);
     if (d->error) return d->error;
 
     /* Only the audio edit list carries priming; a video edit list (B-frame
@@ -564,7 +702,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
         tr->total_frames = n_samples;
         tr->info.total_frames = n_samples;
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
         uint32_t sync_idx = 0;
         uint32_t ctts_entry_idx = 0;
         uint32_t ctts_run_remaining = tb->num_ctts[t] > 0 ? read_u32_be(tb->ctts[t]) : 0;
@@ -606,7 +744,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
 
                     /* Without stss every sample is a sync sample. */
                     bool is_keyframe = true;
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
                     if (tb->has_stss[t]) {
                         is_keyframe = false;
                         while (sync_idx < tb->num_stss[t] && read_u32_be(tb->stss[t] + (uint64_t)sync_idx * 4) < sample_idx + 1)
@@ -615,7 +753,7 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
                     }
 #endif
 
-#ifdef FAAM_MUXER_VIDEO
+#if FAAM_MUXER_VIDEO
                     if (tb->ctts[t]) {
                         while (ctts_run_remaining == 0 && ctts_entry_idx + 1 < tb->num_ctts[t]) {
                             ctts_entry_idx++;
@@ -642,10 +780,22 @@ static faam_status faam_parse_stream(struct faam_demuxer *d, const uint8_t *buf,
         tr->info.total_duration = track_tot_duration;
     }
 
+    /* The chapter text track is not media: its samples are titles, not frames. */
+    for (uint32_t t = 0; chap_id && t < d->num_tracks; t++) {
+        faam_demuxer_track *tr = &d->tracks[t];
+        if (tr->info.track_id != chap_id || tr->info.track_type != FAAM_TRACK_OTHER) continue;
+        FreeMemory(tr->samples);
+        FreeMemory(tr->codec_data);
+        memmove(tr, tr + 1, (size_t)(d->num_tracks - t - 1) * sizeof(*tr));
+        memset(&d->tracks[--d->num_tracks], 0, sizeof(*tr));
+        d->total_tracks--;
+        break;
+    }
+
     return d->error;
 }
 
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
 /* Bounds the memory one hostile or corrupt fragment can claim. */
 enum { MOOF_MAX_BYTES = 16 << 20, TRUN_MAX_SAMPLES = 1 << 20 };
 
@@ -855,7 +1005,7 @@ faam_status faam_demuxer_open(const faam_demuxer_config *config, const faam_io *
                         break;
                     }
                 }
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
                 d->frag_pos = pos + size;
                 if (d->fragmented && d->movie_timescale)
                     for (uint32_t t = 0; t < d->num_tracks; t++)
@@ -1047,7 +1197,7 @@ faam_status faam_demuxer_next_frame_loc(faam_demuxer *demuxer, faam_frame_loc *o
             }
         }
         if (tr) break;
-#ifdef FAAM_MUXER_FRAGMENTED
+#if FAAM_MUXER_FRAGMENTED
         if (demuxer->fragmented && !demuxer->frag_done && load_fragment(demuxer) == FAAM_OK) continue;
 #endif
         return demuxer->error ? demuxer->error : FAAM_END_OF_STREAM;

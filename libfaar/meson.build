@@ -12,9 +12,8 @@ libfaar_sources = files(
 if get_option('resampler-float')
   libfaar_float2_sources = files('fft_float2.c')
   libfaar_sources += libfaar_float2_sources
-else
-  libfaar_args += ['-DFAAR_WIDE_HIGH']
 endif
+libfaar_args += ['-DFAAR_RESAMPLER_FLOAT=' + (get_option('resampler-float') ? '1' : '0')]
 libfaar_prepare_sources = libfaar_sources
 
 default_lib = get_option('default_library')

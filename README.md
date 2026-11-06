@@ -58,6 +58,7 @@ meson install -C build
 | `frontend-static` | false | Link the frontend executables to the static libraries |
 | `max-channels` | 8 | Maximum number of channels (1-8) |
 | `muxer` | true | Build the `faam` command-line tool (`libfaam` is always built) |
+| `muxer-chapters` | true | `libfaam`: writing, updating and reading chapters |
 | `muxer-fragmented` | true | `libfaam`: fragmented MP4 recording and demuxing |
 | `muxer-video` | true | `libfaam`: H.264/H.265 video tracks |
 | `resampler` | true | Build the `faar` command-line tool (`libfaar` is always built) |

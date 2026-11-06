@@ -246,7 +246,8 @@ static const help_t help_chapter[] = {
     {"--chapters <file>",
      "Chapter list to import: one \"HH:MM:SS.mmm<TAB>Title\" line per chapter (max 255); the fraction "
      "is 1 to 3 digits, .5 being 500 ms",
-     "Timestamps are interpreted as chapter start times. The maximum chapter count is 255."},
+     "Timestamps are interpreted as chapter start times. The maximum chapter count is 255. The first chapter "
+     "must start at 00:00:00, starts must increase, and each must fall inside the audio."},
     {"-o, --output <file>",
      "Chapter list to write, in the same format; - writes stdout",
      "This option is used by chapter export. When the path is -, chapter text is written to stdout."},
@@ -420,7 +421,6 @@ enum {
 };
 
 #define FAAM_CLI_TITLE_MAX 256 /* title buffer incl. NUL; longer titles are truncated */
-#define FAAM_CLI_MAX_CHAPTERS 255 /* what the library stores in a chpl atom */
 #define FAAM_TAG_MAX_REMOVE 32
 #define FAAM_MUX_MAX_TRACKS 8 /* matches faam_muxer_config.tracks[8] in include/faam.h */
 
@@ -2111,8 +2111,8 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
         return 1;
     }
 
-    faam_chapter chapters[FAAM_CLI_MAX_CHAPTERS];
-    char titles[FAAM_CLI_MAX_CHAPTERS][FAAM_CLI_TITLE_MAX];
+    faam_chapter chapters[FAAM_MAX_CHAPTERS];
+    char titles[FAAM_MAX_CHAPTERS][FAAM_CLI_TITLE_MAX];
     uint32_t count = 0;
     char line[512];
     int lineno = 0;
@@ -2122,8 +2122,8 @@ static int cmd_chapter_import(const char *filepath, const char *chapters_path)
         lineno++;
         if (line[0] == '\0' || line[0] == '\n') continue;
 
-        if (count >= FAAM_CLI_MAX_CHAPTERS) {
-            fprintf(stderr, "%s:%d: too many chapters (max %d)\n", chapters_path, lineno, FAAM_CLI_MAX_CHAPTERS);
+        if (count >= FAAM_MAX_CHAPTERS) {
+            fprintf(stderr, "%s:%d: too many chapters (max %d)\n", chapters_path, lineno, FAAM_MAX_CHAPTERS);
             bad = true;
             break;
         }
@@ -2280,6 +2280,13 @@ static int cmd_chapter(int argc, char **argv)
         }
     }
     if (optind < sub_argc) filepath = sub_argv[optind];
+
+    faam_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    if (faam_get_library_info(&libinfo) == FAAM_OK && !(libinfo.flags & FAAM_LIB_CHAPTERS) &&
+        (!strcmp(subcmd, "import") || !strcmp(subcmd, "export"))) {
+        fprintf(stderr, "Error: this build of libfaam has no chapter support (built with -Dmuxer-chapters=false)\n");
+        return 1;
+    }
 
     if (!strcmp(subcmd, "import")) {
         if (!filepath || !chapters_path) {

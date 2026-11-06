@@ -23,6 +23,12 @@
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #x); exit(1); } } while (0)
 #define OK(x) CHECK((x) == FAAM_OK)
+
+static bool chapters_built(void) {
+    faam_library_info info = { .struct_size = sizeof(info) };
+    OK(faam_get_library_info(&info));
+    return (info.flags & FAAM_LIB_CHAPTERS) != 0;
+}
 #define LYRICS FAAM_METADATA_KEY_LYRICS
 #define FREEFORM FAAM_METADATA_KEY_FREEFORM
 #define UNKNOWN FAAM_FOURCC('x', 't', 's', 't')
@@ -70,7 +76,7 @@ static void fixture(FILE *f, uint32_t flags, bool fragmented) {
     faam_muxer_config cfg;
     OK(faam_muxer_config_init(&cfg, sizeof(cfg)));
     cfg.tracks = &track; cfg.num_tracks = 1; cfg.metadata = entries; cfg.num_metadata = sizeof(entries) / sizeof(entries[0]);
-    cfg.chapters = &chapter; cfg.num_chapters = 1; cfg.gapless = &gapless;
+    cfg.chapters = &chapter; cfg.num_chapters = chapters_built() ? 1 : 0; cfg.gapless = &gapless;
     cfg.flags = flags; cfg.fragment_ms = fragmented ? 50 : 0;
     faam_io io = file_io(f);
     faam_muxer *m = NULL;
@@ -98,8 +104,8 @@ static uint32_t count_key(faam_demuxer *d, uint32_t key, const char *mean, const
 }
 static void verify_media(FILE *f, bool gapless) {
     faam_demuxer *d = open_demux(f);
-    uint32_t chapters = 0; OK(faam_demuxer_get_num_chapters(d, &chapters)); CHECK(chapters == 1);
-    faam_chapter ch = { .struct_size = sizeof(ch) }; OK(faam_demuxer_get_chapter(d, 0, &ch)); CHECK(!strcmp(ch.title, "Chapter"));
+    uint32_t chapters = 0; OK(faam_demuxer_get_num_chapters(d, &chapters)); CHECK(chapters == (chapters_built() ? 1 : 0));
+    if (chapters) { faam_chapter ch = { .struct_size = sizeof(ch) }; OK(faam_demuxer_get_chapter(d, 0, &ch)); CHECK(!strcmp(ch.title, "Chapter")); }
     if (gapless) {
         faam_gapless_info g = { .struct_size = sizeof(g) }; OK(faam_demuxer_get_track_gapless(d, 0, &g));
         CHECK(g.encoder_delay == 1024 && g.end_padding == 512 && g.total_samples == 6656);
