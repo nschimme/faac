@@ -118,10 +118,6 @@ static int run_paired_case(size_t expansion, size_t decimation,
         goto error;
     }
     for (size_t pass = 0; pass < 2; ++pass) {
-        if (pass) {
-            faar_dft_fir_reset(&owner); faar_dft_fir_reset(&owner_ref);
-            faar_dft_fir_reset(&borrower); faar_dft_fir_reset(&borrower_ref);
-        }
         for (size_t b = 0; b < BLOCKS; ++b) {
             fill_input(si, source_lanes, source_in, b, 37);
             fill_input(bi, borrower_lanes, borrow_in, b, 9127);
