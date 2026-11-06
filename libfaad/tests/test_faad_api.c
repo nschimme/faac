@@ -336,17 +336,19 @@ static void test_nonzero_conceal_history(void)
 }
 
 #if MAX_CHANNELS >= 2
+/* Channel configuration 1 is an SCE, 2 a CPE and 3 an SCE and a CPE. */
 static uint32_t make_silent_adts(uint8_t *packet, uint32_t channel_config)
 {
-    uint8_t payload[8] = { 0 };
+    uint8_t payload[16] = { 0 };
     uint32_t pos = 0;
-    if (channel_config == 1) {
+    if (channel_config != 2) {
         put_bits(payload, &pos, 0, 3);   /* SCE */
         put_bits(payload, &pos, 0, 4);   /* tag */
         put_bits(payload, &pos, 100, 8); /* global_gain */
         put_bits(payload, &pos, 0, 11);  /* long ICS, max_sfb=0, no prediction */
         put_bits(payload, &pos, 0, 3);   /* pulse/TNS/gain flags */
-    } else {
+    }
+    if (channel_config != 1) {
         put_bits(payload, &pos, 1, 3);   /* CPE */
         put_bits(payload, &pos, 0, 4);   /* tag */
         put_bits(payload, &pos, 0, 1);   /* no common window */
@@ -444,6 +446,42 @@ static void test_channel_history_rotation(void)
         &written, &flags) == FAAD_OK);
     assert(written == 4096 && flags == FAAD_FRAME_FORMAT_CHANGED);
     for (uint32_t i = 0; i < written; i++) assert(((uint8_t *)pcm)[i] == 0);
+    free(pcm);
+    assert(faad_decoder_close(&dec) == FAAD_OK);
+}
+
+/* SBR continues a channel only while the element that filled it does, so
+ * the core decode notes each frame's element layout; a concealed frame
+ * keeps the layout of the frame it repeats. */
+static void test_element_layout(void)
+{
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    faad_decoder *dec;
+    assert(faad_decoder_open(&cfg, NULL, 0, &dec) == FAAD_OK);
+    faad_stream_info info = { .struct_size = sizeof(info) };
+    assert(faad_decoder_get_info(dec, &info) == FAAD_OK);
+    void *pcm = malloc(info.max_output_bytes);
+    assert(pcm);
+    /* A stereo ADTS frame with no channel element, only END: concealed. */
+    const uint8_t conceal[] = { 0xff, 0xf1, 0x50, 0x80, 0x01, 0x1f, 0xfc, 0xe0 };
+    /* The channel count of the element at channels 0 to 2 of each configuration. */
+    static const uint8_t layouts[4][3] = { { 0 }, { 1, 0, 0 }, { 2, 0, 0 }, { 1, 2, 0 } };
+    uint8_t packet[24];
+    uint32_t used, written, flags;
+    for (uint32_t config = MAX_CHANNELS >= 3 ? 3 : 2; config > 0; config--) {
+        uint32_t len = make_silent_adts(packet, config);
+        assert(faad_decode_frame(dec, packet, len, &used, pcm, info.max_output_bytes,
+            &written, &flags) == FAAD_OK);
+        assert(!(flags & FAAD_FRAME_CONCEALED));
+        assert(memcmp(dec->elem_nch, layouts[config], MAX_CHANNELS < 3 ? MAX_CHANNELS : 3) == 0);
+        assert(faad_decode_frame(dec, conceal, sizeof(conceal), &used, pcm, info.max_output_bytes,
+            &written, &flags) == FAAD_OK);
+        assert(flags & FAAD_FRAME_CONCEALED);
+        assert(memcmp(dec->elem_nch, layouts[config], MAX_CHANNELS < 3 ? MAX_CHANNELS : 3) == 0);
+    }
+    assert(faad_decoder_flush(dec) == FAAD_OK);
+    assert(dec->elem_nch[0] == 0);
     free(pcm);
     assert(faad_decoder_close(&dec) == FAAD_OK);
 }
@@ -670,6 +708,7 @@ int main(void)
     test_layouts(); test_boundaries(); test_raw_init(); test_drc_config_validation(); test_endian_helpers(); test_short_sbr_fill(); test_degraded();
 #if MAX_CHANNELS >= 2
     test_channel_history_rotation();
+    test_element_layout();
 #endif
     test_nonzero_conceal_history();
     test_known_extensions();

@@ -1447,8 +1447,11 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm)
          * element's payload: pair and enhance only the channels this element
          * filled, so a coupled pair always shares one grid. A coupled
          * element whose partner now belongs to another element has no
-         * payload of its own to apply. */
-        bool own = dec->sbr[ch].el_ch == ch;
+         * payload of its own to apply. Only a fill moves a channel to another
+         * element, so one that takes another's place without a fill would
+         * inherit its payload: apply it only while this frame's element at
+         * ch has the size it was filled for. */
+        bool own = dec->sbr[ch].el_ch == ch && dec->elem_nch[ch] == el->nch;
         bool partner = el->nch == 2 && ch + 1 < num_ch;
         bool pair = el->header_present && partner && own && dec->sbr[ch + 1].el_ch == ch;
         int nch = pair ? 2 : 1;

@@ -490,6 +490,9 @@ struct faad_decoder {
 #endif
     uint8_t win_seq[MAX_CHANNELS];   /* this frame's window of each decoded channel, for the IMDCT */
     uint8_t win_shape[MAX_CHANNELS];
+    /* The element layout of the last frame decoded without error: the
+     * channel count of the element starting at each channel, 0 elsewhere. */
+    uint8_t elem_nch[MAX_CHANNELS];
 
     float *pcm; /* core output, then SBR output in place */
 };

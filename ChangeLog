@@ -101,6 +101,9 @@ Unreleased
 	* libfaad: pair and enhance SBR channels only for the element that filled
 	  them, so a change of element layout no longer reads uninitialized
 	  envelopes
+	* libfaad: apply SBR to a channel only while the element that filled it
+	  is still in the frame, so an element sent without SBR no longer
+	  inherits the payload of the one it replaced
 
 2.2 (Sep 29, 2026)
 
