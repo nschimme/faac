@@ -417,15 +417,6 @@ int FN(cinit)(PLAN *plan, int n)
     return FN(setup)(plan, n, NULL, 0, NULL);
 }
 
-/* The owner must outlive this plan; their executions must be serialized. */
-int FN(cinit_shared)(PLAN *plan, int n, const PLAN *owner)
-{
-    if (!plan || !owner || n < 16 || n > owner->size / 2
-            || (n & (n - 1))) return -1;
-    memset(plan, 0, sizeof(*plan));
-    return FN(setup)(plan, n, owner->scratch, 0, NULL);
-}
-
 /* Different-sized FIR plans consume the forward spectrum in a separate plan,
  * so a padded borrower never needs a second complex buffer. */
 int FN(cinit_shared_single)(PLAN *plan, int n, const PLAN *owner)

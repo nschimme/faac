@@ -79,7 +79,6 @@ typedef float faar_sample_t;
 #include "fft.h"
 #define faar_fft_plan faar_fftf_plan
 #define faar_fft_cinit faar_fftf_cinit
-#define faar_fft_cinit_shared faar_fftf_cinit_shared
 #define faar_fft_cinit_shared_single faar_fftf_cinit_shared_single
 #define faar_fft_cinit_filter_shared faar_fftf_cinit_filter_shared
 #define faar_fft_cbuffer faar_fftf_cbuffer

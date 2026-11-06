@@ -21,15 +21,6 @@
 
 typedef struct faar_dft_prefilter faar_dft_prefilter;
 
-faar_dft_prefilter *faar_dft_prefilter_create(uint16_t channels,
-                                               const double *taps,
-                                               size_t tap_count,
-                                               size_t fft_size);
-faar_dft_prefilter *faar_dft_prefilter_create_expanded(uint16_t channels,
-                                                const double *taps,
-                                                size_t tap_count,
-                                                size_t fft_size,
-                                                size_t expansion);
 /* Channel pairs share one complex FFT (a lone channel stacks its blocks),
  * in the build-selected precision. */
 faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,

@@ -38,11 +38,9 @@ void faar_fftf_prepare(faar_fftf_plan *plan, int both_buffers);
  * buffer holding the result: either one, so the caller never aliases it.
  * The inverse is conj(cforward(conj(x))) / n. */
 int faar_fftf_cinit(faar_fftf_plan *plan, int n);
-int faar_fftf_cinit_shared(faar_fftf_plan *plan, int n,
-                              const faar_fftf_plan *owner);
 /* Private paired-FIR variant for the smaller side of a padded plan. Only
- * cbuffer 0 is valid for padded plans initialized this way; the existing
- * cinit_shared function retains its two-buffer contract. */
+ * cbuffer 0 is valid for padded plans initialized this way. The owner must
+ * outlive the plan and their executions must be serialized. */
 int faar_fftf_cinit_shared_single(faar_fftf_plan *plan, int n,
                                      const faar_fftf_plan *owner);
 /* Shared filter twiddles with private work; workspace_owner is an optional
@@ -63,8 +61,6 @@ typedef struct faar_fftd_plan {
 void faar_fftd_clear(faar_fftd_plan *plan);
 void faar_fftd_prepare(faar_fftd_plan *plan, int both_buffers);
 int faar_fftd_cinit(faar_fftd_plan *plan, int n);
-int faar_fftd_cinit_shared(faar_fftd_plan *plan, int n,
-                              const faar_fftd_plan *owner);
 int faar_fftd_cinit_shared_single(faar_fftd_plan *plan, int n,
                                      const faar_fftd_plan *owner);
 /* Shared filter twiddles with private work; workspace_owner is an optional

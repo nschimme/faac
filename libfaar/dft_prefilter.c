@@ -179,23 +179,6 @@ static int feed_endpoint(faar_dft_prefilter *s, const float *values,
     return result;
 }
 
-faar_dft_prefilter *faar_dft_prefilter_create(uint16_t channels,
-                                               const double *taps,
-                                               size_t tap_count,
-                                               size_t fft_size) {
-    return faar_dft_prefilter_create_expanded(channels, taps, tap_count,
-                                               fft_size, 1);
-}
-
-faar_dft_prefilter *faar_dft_prefilter_create_expanded(uint16_t channels,
-                                               const double *taps,
-                                               size_t tap_count,
-                                               size_t fft_size,
-                                               size_t expansion) {
-    return faar_dft_prefilter_create_rate(channels, taps, tap_count,
-                                           fft_size, expansion, 1);
-}
-
 faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                const double *taps,
                                                size_t tap_count,
