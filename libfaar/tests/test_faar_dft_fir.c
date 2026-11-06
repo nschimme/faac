@@ -214,10 +214,29 @@ static int test_paired(void) {
     return 0;
 }
 
+/* The spectrum setup is radix-2 only, so a stage that cannot run it must
+ * fail at init rather than produce a filter with the wrong response. The
+ * 128-point call is the control: only the size differs between the two. */
+static int test_rejects_non_power_of_two(void) {
+    enum { TAPS = 13 };
+    double taps[TAPS] = {0};
+    faar_dft_fir stage;
+    taps[TAPS / 2] = 1.0;
+    if (faar_dft_fir_init_paired(&stage, taps, TAPS, 128, 1, 1, 1, 0))
+        return fail("paired FIR rejected a power-of-two FFT size");
+    faar_dft_fir_clear(&stage);
+    if (!faar_dft_fir_init_paired(&stage, taps, TAPS, 100, 1, 1, 1, 0)) {
+        faar_dft_fir_clear(&stage);
+        return fail("paired FIR accepted a non-power-of-two FFT size");
+    }
+    return 0;
+}
+
 int main(void) {
     if (test_designed_filter()) return 1;
     if (test_32_to_48_high_filter()) return 1;
     if (test_paired()) return 1;
+    if (test_rejects_non_power_of_two()) return 1;
     enum { TAPS = 31, FFT_SIZE = 128, BLOCK = FFT_SIZE - TAPS + 1,
            BLOCKS = 9 };
     double taps[TAPS];

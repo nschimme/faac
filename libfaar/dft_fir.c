@@ -79,6 +79,26 @@ static size_t overlap_stride(const faar_dft_fir *stage) {
 #undef PAIR_PLAN
 #undef PAIR_TAG
 #undef PAIR_FFT
+
+/* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
+ * and decimation averaging. Both scales are powers of two, so exact. */
+static int init_spectrum_wide(faar_dft_fir *stage, const double *taps) {
+    const size_t n = stage->fft_size, nout = n / stage->decimation;
+    const double scale = 1.0 / ((double)nout * (double)stage->decimation);
+    faar_fftd_plan plan;
+    double *h, *spectrum;
+    if (n > (size_t)INT_MAX || faar_fftd_cinit(&plan, (int)n)) return -1;
+    h = faar_fftd_cbuffer(&plan, 0);
+    memset(h, 0, 2 * n * sizeof(double));
+    for (size_t i = 0; i < stage->tap_count; ++i) h[i] = taps[i];
+    spectrum = (double *)AllocMemory(2 * n * sizeof(double));
+    if (!spectrum) { faar_fftd_clear(&plan); return -1; }
+    h = faar_fftd_cforward(&plan, h);
+    for (size_t i = 0; i < 2 * n; ++i) spectrum[i] = h[i] * scale;
+    faar_fftd_clear(&plan);
+    stage->spec_wide = spectrum;
+    return init_fft_plans_wide(stage);
+}
 #endif
 #include "dft_fir_float2.inc"
 #include "dft_fir_wide.inc"
@@ -146,11 +166,11 @@ static int double_spectrum(faar_sample_t *out, const double *taps,
 }
 
 /* Float-sample counterpart of init_spectrum_wide; the stored spectrum is
- * float but computed in double. Other transform sizes keep the float path. */
+ * float but computed in double. double_spectrum is radix-2 only. */
 static int init_spectrum_rounded(faar_dft_fir *stage, const double *taps) {
     const size_t n = stage->fft_size;
     if (n < 2 || (n & (n - 1)) || n > (size_t)INT_MAX)
-        return init_spectrum(stage, taps);
+        return -1;
     const double scale = 1.0 / ((double)(n / stage->decimation) * (double)stage->decimation);
     faar_sample_t *spectrum = (faar_sample_t *)AllocMemory(2 * n * sizeof(*spectrum));
     if (!spectrum) return -1;

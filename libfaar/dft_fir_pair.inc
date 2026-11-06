@@ -86,27 +86,6 @@ static int PAIR_FN(init_fft_plans_filter_shared)(faar_dft_fir *stage,
     return 0;
 }
 
-/* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
- * and decimation averaging. Both scales are powers of two, so exact. It is
- * computed once in the selected precision. */
-static int PAIR_FN(init_spectrum)(faar_dft_fir *stage, const double *taps) {
-    const size_t n = stage->fft_size, nout = n / stage->decimation;
-    const PAIR_REAL scale = 1.0 / ((PAIR_REAL)nout * (PAIR_REAL)stage->decimation);
-    PAIR_PLAN plan;
-    PAIR_REAL *h, *spectrum;
-    if (n > (size_t)INT_MAX || PAIR_FFT_FN(cinit)(&plan, (int)n)) return -1;
-    h = PAIR_FFT_FN(cbuffer)(&plan, 0);
-    memset(h, 0, 2 * n * sizeof(PAIR_REAL));
-    for (size_t i = 0; i < stage->tap_count; ++i) h[i] = taps[i];
-    spectrum = (PAIR_REAL *)AllocMemory(2 * n * sizeof(PAIR_REAL));
-    if (!spectrum) { PAIR_FFT_FN(clear)(&plan); return -1; }
-    h = PAIR_FFT_FN(cforward)(&plan, h);
-    for (size_t i = 0; i < 2 * n; ++i) spectrum[i] = h[i] * scale;
-    PAIR_FFT_FN(clear)(&plan);
-    stage->PAIR_FN(spec) = spectrum;
-    return PAIR_FN(init_fft_plans)(stage);
-}
-
 /* The imaginary part carries a second channel, or for a lone channel the
  * following block, whose window starts one block into the stacked input.
  * Zero insertion tiles the input spectrum and decimation sums its aliases;
