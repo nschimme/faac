@@ -101,11 +101,11 @@ static void convolve_precise(faar_dft_fir *stage, const float *input, float *out
 
 static void process_compensated_halfband(faar_dft_fir *stage, float *output) {
     size_t n = stage->tap_count, count = stage->block_size / 2;
-    faar_float2 *acc = stage->precise_half_work;
+    faar_float2 *acc = stage->half_work;
     for (size_t i = 0; i < count; ++i)
-        acc[i] = ff2_mulf(stage->precise_half_coeffs[n / 4], stage->work[2 * i + n / 2]);
+        acc[i] = ff2_mulf(stage->half_coeffs[n / 4], stage->work[2 * i + n / 2]);
     for (size_t j = 0; j < n / 4; ++j) {
-        faar_float2 coefficient = stage->precise_half_coeffs[j];
+        faar_float2 coefficient = stage->half_coeffs[j];
         const float *x = stage->work + 2 * j + 1;
         const float *y = stage->work + n - 2 - 2 * j;
         for (size_t i = 0; i < count; ++i) {

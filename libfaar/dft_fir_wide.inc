@@ -17,11 +17,11 @@
 #if !FAAR_RESAMPLER_FLOAT
 static void process_compensated_halfband(faar_dft_fir *stage, float *output) {
     size_t n = stage->tap_count, count = stage->block_size / 2;
-    double *acc = stage->wide_half_work;
+    double *acc = stage->half_work;
     for (size_t i = 0; i < count; ++i)
-        acc[i] = stage->wide_half_coeffs[n / 4] * stage->work[2 * i + n / 2];
+        acc[i] = stage->half_coeffs[n / 4] * stage->work[2 * i + n / 2];
     for (size_t j = 0; j < n / 4; ++j) {
-        const double coefficient = stage->wide_half_coeffs[j];
+        const double coefficient = stage->half_coeffs[j];
         const float *x = stage->work + 2 * j + 1;
         const float *y = stage->work + n - 2 - 2 * j;
         for (size_t i = 0; i < count; ++i)
