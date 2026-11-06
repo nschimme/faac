@@ -125,7 +125,4 @@ int faar_dft_fir_stream(faar_dft_fir *stage, const faar_sample_t *input,
 int faar_dft_fir_flush(faar_dft_fir *stage, faar_sample_t *output,
                        size_t output_capacity, size_t *produced);
 
-/* Return to the zero-history initial state. */
-void faar_dft_fir_reset(faar_dft_fir *stage);
-
 #endif

@@ -571,17 +571,6 @@ int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
     return 0;
 }
 
-void faar_dft_fir_reset(faar_dft_fir *stage) {
-    if (!stage || !stage->overlap) return;
-    memset(stage->overlap, 0, stage->lanes * overlap_stride(stage)
-                                  * sizeof(faar_sample_t));
-    stage->input_fill = 0;
-    stage->output_count = 0;
-    stage->output_offset = 0;
-    stage->finishing = 0;
-    stage->finished = 0;
-}
-
 /* Lane l of the caller's output starts l * stride samples in. */
 static size_t stream_drain(faar_dft_fir *stage, faar_sample_t *output, size_t stride,
                            size_t capacity) {

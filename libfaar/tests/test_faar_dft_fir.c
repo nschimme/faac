@@ -316,42 +316,6 @@ int main(void) {
             return fail("streaming FIR differs from direct causal convolution");
         }
     }
-    faar_dft_fir_reset(&stage);
-    if (stage.input_fill || stage.output_count || stage.finishing || stage.finished) {
-        faar_dft_fir_clear(&stage);
-        return fail("streaming FIR reset did not clear stream state");
-    }
-    input_offset = output_offset = 0;
-    size_t consumed = 0, produced = 0;
-    if (faar_dft_fir_stream(&stage, stream_input, STREAM_N, &consumed,
-                            stream_output + output_offset, STREAM_N, &produced)
-            || consumed != STREAM_N) {
-        faar_dft_fir_clear(&stage);
-        return fail("reset FIR stream did not consume full input");
-    }
-    output_offset += produced;
-    do {
-        produced = 0;
-        if (faar_dft_fir_flush(&stage, stream_output + output_offset,
-                               STREAM_N - output_offset, &produced)) {
-            faar_dft_fir_clear(&stage);
-            return fail("reset FIR flush failed");
-        }
-        output_offset += produced;
-    } while (produced);
-    if (output_offset != STREAM_N) {
-        faar_dft_fir_clear(&stage);
-        return fail("reset FIR stream output count mismatch");
-    }
-    for (size_t n = 0; n < STREAM_N; ++n) {
-        double expected = 0.0;
-        for (size_t k = 0; k < TAPS && k <= n; ++k)
-            expected += taps[k] * stream_input[n-k];
-        if (fabs(stream_output[n] - expected) > (sizeof(faar_sample_t) == sizeof(float) ? 2e-6 : 2e-12)) {
-            faar_dft_fir_clear(&stage);
-            return fail("reset FIR output depends on prior stream");
-        }
-    }
     faar_dft_fir_clear(&stage);
 
     /* A factor-two interpolating transform is compared against literal
