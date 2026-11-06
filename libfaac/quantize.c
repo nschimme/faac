@@ -183,8 +183,8 @@ static const MaskingModel masking_model = {
          * The exponent compresses band/reference energy ratios; both weights
          * balance noise-like average energy against tonal peak energy. */
         { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f },
-        /* Fit on rate-limited stereo LC; stereo HE at or above half the rate
-         * floor takes it too. Other stream types keep the default balance. */
+        /* Fit on rate-limited stereo LC; stereo and mono HE take it from half
+         * the rate floor. Other stream types keep the default balance. */
         { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.0f, .peak_floor = 0.0100f },
     },
     /* Empirical target offsets converted to linear multipliers at the knots.
@@ -313,7 +313,8 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
      * frame, so a given per-channel rate buys about twice the bits per coded
      * spectral line: an HE stream meets the same floor at half the rate. */
     const unsigned long fit_rate = is_he ? 2 * bitrate_per_ch : bitrate_per_ch;
-    const int tuned = fit_rate >= masking_model.tune_min_rate && channels == 2;
+    const int tuned = fit_rate >= masking_model.tune_min_rate
+                   && (channels == 2 || (is_he && channels == 1));
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
     /* The tilt knots are positioned for full-band LC frames. */
     cfg->mask_tuned = tuned && !is_he;
@@ -329,7 +330,7 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
     /* Any set rate (VBR has none) at or above the nudge's measured floor. */
     cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate
-                 || (is_he && channels == 2 && fit_rate >= masking_model.nudge_min_rate);
+                 || (is_he && channels <= 2 && fit_rate >= masking_model.nudge_min_rate);
     /* Below the tuned profile's reach, the HE core gets less back from the
      * full onset boost than it costs; VBR has no rate to re-spend what the
      * softer boost saves, so there it only smears attacks. */

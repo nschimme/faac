@@ -28,13 +28,13 @@ typedef struct
     float treble_slope;
     int mask_tuned;
     int sf_nudge;
-    /* Masking-target shape, set by QuantizeConfigureMask(). Untuned (VBR, mono,
+    /* Masking-target shape, set by QuantizeConfigureMask(). Untuned (VBR, LC mono,
      * multichannel and low rates) keeps the original formula. */
     float avg_weight;
     float loud_exponent;
     float peak_floor;
-    /* Stereo HE below the tuned profile's reach, at a set rate, takes the
-     * onset gain to the power 3/4. */
+    /* HE below the tuned profile's reach, at a set rate, takes the onset gain
+     * to the power 3/4. */
     int onset_soften;
 } AACQuantCfg;
 
