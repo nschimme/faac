@@ -82,7 +82,7 @@ static size_t overlap_stride(const faar_dft_fir *stage) {
 
 /* Filter spectrum in the e^{-j} convention, pre-scaled by the inverse FFT
  * and decimation averaging. Both scales are powers of two, so exact. */
-static int init_spectrum_wide(faar_dft_fir *stage, const double *taps) {
+static int init_compensated_spectrum(faar_dft_fir *stage, const double *taps) {
     const size_t n = stage->fft_size, nout = n / stage->decimation;
     const double scale = 1.0 / ((double)nout * (double)stage->decimation);
     faar_fftd_plan plan;
@@ -165,7 +165,7 @@ static int double_spectrum(faar_sample_t *out, const double *taps,
     return 0;
 }
 
-/* Float-sample counterpart of init_spectrum_wide; the stored spectrum is
+/* Float-sample counterpart of init_compensated_spectrum; the stored spectrum is
  * float but computed in double. double_spectrum is radix-2 only. */
 static int init_spectrum_rounded(faar_dft_fir *stage, const double *taps) {
     const size_t n = stage->fft_size;
@@ -183,13 +183,8 @@ static int init_spectrum_rounded(faar_dft_fir *stage, const double *taps) {
 }
 
 static int init_paired(faar_dft_fir *stage, const double *taps) {
-#if FAAR_RESAMPLER_FLOAT
     if (stage->compensated)
-        return init_precise_spectrum(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
-#else
-    if (stage->compensated)
-        return init_spectrum_wide(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
-#endif
+        return init_compensated_spectrum(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
     return init_spectrum_rounded(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
 }
 
@@ -537,19 +532,11 @@ int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
         const size_t block = stage->block_size;
         memcpy(stage->work, stage->overlap, (n - 1) * sizeof(faar_sample_t));
         memcpy(stage->work + n - 1, input, block * sizeof(faar_sample_t));
-#if FAAR_RESAMPLER_FLOAT
         if (stage->compensated) {
-            process_precise_halfband(stage, output);
+            process_compensated_halfband(stage, output);
             memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
             return 0;
         }
-#else
-        if (stage->compensated) {
-            process_wide_halfband(stage, output);
-            memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
-            return 0;
-        }
-#endif
         for (size_t i = 0; i < block / 2; ++i)
             output[i] = stage->filter_spectrum[n / 4] * stage->work[2 * i + n / 2];
         /* Vectorize across independent outputs, without reassociating a

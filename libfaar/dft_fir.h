@@ -27,7 +27,7 @@
 typedef struct faar_dft_fir {
     int shared_coeffs; /* Borrowed immutable coefficients; source outlives stage. */
     int shared_fft; /* Borrowed workspace; executions with source are serialized. */
-    int compensated; /* High in float builds: wider arithmetic in sensitive stages. */
+    int compensated; /* High: sensitive stages run in wider arithmetic (float2 or double). */
     int halfband; /* Sparse time-domain 2:1 FIR; otherwise paired FFT. */
     size_t fft_size;
     size_t tap_count;

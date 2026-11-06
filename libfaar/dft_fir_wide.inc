@@ -15,7 +15,7 @@
 /* High's prefilter in mixed builds: double kernels over float sample planes.
  * Included after the ordinary kernels. */
 #if !FAAR_RESAMPLER_FLOAT
-static void process_wide_halfband(faar_dft_fir *stage, float *output) {
+static void process_compensated_halfband(faar_dft_fir *stage, float *output) {
     size_t n = stage->tap_count, count = stage->block_size / 2;
     double *acc = stage->wide_half_work;
     for (size_t i = 0; i < count; ++i)
