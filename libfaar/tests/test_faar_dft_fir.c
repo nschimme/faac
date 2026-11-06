@@ -23,6 +23,25 @@
 #define M_PI 3.14159265358979323846264338327950288
 #endif
 
+/* Single-lane, unstacked shorthands for the general paired init. */
+static int fir_init_rate(faar_dft_fir *stage, const double *taps,
+                         size_t tap_count, size_t fft_size, size_t expansion,
+                         size_t decimation) {
+    return faar_dft_fir_init_paired(stage, taps, tap_count, fft_size,
+                                    expansion, decimation, 1, 0);
+}
+
+static int fir_init_expanded(faar_dft_fir *stage, const double *taps,
+                             size_t tap_count, size_t fft_size,
+                             size_t expansion) {
+    return fir_init_rate(stage, taps, tap_count, fft_size, expansion, 1);
+}
+
+static int fir_init(faar_dft_fir *stage, const double *taps,
+                    size_t tap_count, size_t fft_size) {
+    return fir_init_rate(stage, taps, tap_count, fft_size, 1, 1);
+}
+
 static int fail(const char *message) {
     fprintf(stderr, "FAIL: %s\n", message);
     return 1;
@@ -233,7 +252,7 @@ int main(void) {
     for (size_t i = 0; i < BLOCK * BLOCKS; ++i)
         input[i] = 0.3 * sin(0.071 * i) + 0.2 * cos(0.193 * i);
 
-    if (faar_dft_fir_init(&stage, taps, TAPS, FFT_SIZE))
+    if (fir_init(&stage, taps, TAPS, FFT_SIZE))
         return fail("DFT FIR init failed");
     if (stage.block_size != BLOCK) {
         faar_dft_fir_clear(&stage);
@@ -273,7 +292,7 @@ int main(void) {
     faar_sample_t stream_input[STREAM_N], stream_output[STREAM_N];
     for (size_t i = 0; i < STREAM_N; ++i)
         stream_input[i] = 0.25 * sin(0.037 * i) + 0.1 * cos(0.113 * i);
-    if (faar_dft_fir_init(&stage, taps, TAPS, FFT_SIZE))
+    if (fir_init(&stage, taps, TAPS, FFT_SIZE))
         return fail("streaming FIR init failed");
     size_t input_offset = 0, output_offset = 0;
     while (input_offset < STREAM_N) {
@@ -364,7 +383,7 @@ int main(void) {
         expanded[2 * i] = upsample_input[i];
         expanded[2 * i + 1] = 0.0;
     }
-    if (faar_dft_fir_init_expanded(&stage, taps, TAPS, FFT_SIZE, 2))
+    if (fir_init_expanded(&stage, taps, TAPS, FFT_SIZE, 2))
         return fail("factor-two DFT FIR init failed");
     size_t up_in = 0, up_out = 0;
     while (up_in < UPSAMPLE_N) {
@@ -413,8 +432,8 @@ int main(void) {
        transform. Compare it to every second sample from the full N inverse. */
     faar_sample_t half_rate_output[BLOCKS * BLOCK / 2];
     faar_dft_fir full_rate, half_rate;
-    if (faar_dft_fir_init(&full_rate, taps, TAPS, FFT_SIZE)
-            || faar_dft_fir_init_rate(&half_rate, taps, TAPS, FFT_SIZE,
+    if (fir_init(&full_rate, taps, TAPS, FFT_SIZE)
+            || fir_init_rate(&half_rate, taps, TAPS, FFT_SIZE,
                                       1, 2))
         return fail("half-rate FIR init failed");
     if (half_rate.output_block_size != BLOCK / 2) {
@@ -450,7 +469,7 @@ int main(void) {
     faar_sample_t half_stream_input[HALF_STREAM_N], half_stream_output[(HALF_STREAM_N+1)/2];
     for (size_t i = 0; i < HALF_STREAM_N; ++i)
         half_stream_input[i] = 0.25 * sin(0.037 * i) + 0.1 * cos(0.113 * i);
-    if (faar_dft_fir_init_rate(&stage, taps, TAPS, FFT_SIZE, 1, 2))
+    if (fir_init_rate(&stage, taps, TAPS, FFT_SIZE, 1, 2))
         return fail("half-rate streaming FIR init failed");
     size_t half_in = 0, half_out = 0;
     while (half_in < HALF_STREAM_N) {
@@ -512,8 +531,8 @@ int main(void) {
     for (size_t i = 0; i < BLOCK4 * BLOCKS4; ++i)
         input4[i] = 0.2 * sin(0.043 * i) - 0.1 * cos(0.127 * i);
     faar_dft_fir full4, quarter4;
-    if (faar_dft_fir_init(&full4, taps4, TAPS4, FFT4)
-            || faar_dft_fir_init_rate(&quarter4, taps4, TAPS4, FFT4,
+    if (fir_init(&full4, taps4, TAPS4, FFT4)
+            || fir_init_rate(&quarter4, taps4, TAPS4, FFT4,
                                       1, 4))
         return fail("quarter-rate FIR init failed");
     for (size_t b = 0; b < BLOCKS4; ++b) {
@@ -539,7 +558,7 @@ int main(void) {
     faar_sample_t stream4_input[STREAM4], stream4_output[(STREAM4 + 3) / 4];
     for (size_t i = 0; i < STREAM4; ++i)
         stream4_input[i] = 0.19 * sin(0.031 * i) + 0.08 * cos(0.097 * i);
-    if (faar_dft_fir_init_rate(&stage, taps4, TAPS4, FFT4, 1, 4))
+    if (fir_init_rate(&stage, taps4, TAPS4, FFT4, 1, 4))
         return fail("quarter-rate streaming FIR init failed");
     size_t in4 = 0, out4 = 0;
     while (in4 < STREAM4) {

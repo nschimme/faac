@@ -22,15 +22,9 @@
 typedef struct faar_dft_prefilter faar_dft_prefilter;
 
 /* Channel pairs share one complex FFT (a lone channel stacks its blocks),
- * in the build-selected precision. */
-faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
-                                               const double *taps,
-                                               size_t tap_count,
-                                               size_t fft_size,
-                                               size_t expansion,
-                                               size_t decimation);
-/* halfband selects a sparse time-domain 2:1 stage (N = 4m+1, alternate
- * non-center taps zero) and ignores the FFT geometry. */
+ * in the build-selected precision. halfband selects a sparse time-domain 2:1
+ * stage (N = 4m+1, alternate non-center taps zero) and ignores the FFT
+ * geometry. */
 faar_dft_prefilter *faar_dft_prefilter_create_stage(uint16_t channels,
                                                const double *taps,
                                                size_t tap_count,

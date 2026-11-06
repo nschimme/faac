@@ -248,16 +248,6 @@ fail:
     return NULL;
 }
 
-faar_dft_prefilter *faar_dft_prefilter_create_rate(uint16_t channels,
-                                               const double *taps,
-                                               size_t tap_count,
-                                               size_t fft_size,
-                                               size_t expansion,
-                                               size_t decimation) {
-    return faar_dft_prefilter_create_stage(channels, taps, tap_count, fft_size,
-                                           expansion, decimation, 0, 0);
-}
-
 faar_dft_prefilter *faar_dft_prefilter_clone_filter(
         const faar_dft_prefilter *source) {
     if (!source || !source->fir || !source->stages || !source->channels

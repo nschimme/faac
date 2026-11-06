@@ -67,8 +67,8 @@ static int run_boundary(size_t tap_count, size_t fft_size,
         free(taps); free(input); free(output); free(chunk);
         return fail("test filter design failed");
     }
-    faar_dft_prefilter *stage = faar_dft_prefilter_create_rate(CHANNELS, taps,
-            tap_count, fft_size, 1, 1);
+    faar_dft_prefilter *stage = faar_dft_prefilter_create_stage(CHANNELS, taps,
+            tap_count, fft_size, 1, 1, 0, 0);
     if (!stage) {
         faar_dft_prefilter_destroy(stage);
         free(taps); free(input); free(output); free(chunk);

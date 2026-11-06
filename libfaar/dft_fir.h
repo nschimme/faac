@@ -67,20 +67,13 @@ typedef struct faar_dft_fir {
 /* Input samples per half-band block. */
 #define FAAR_HALFBAND_BLOCK 256
 
-/* fft_size must be a supported power of two and at least tap_count. */
-int faar_dft_fir_init(faar_dft_fir *stage, const double *taps,
-                      size_t tap_count, size_t fft_size);
-int faar_dft_fir_init_expanded(faar_dft_fir *stage, const double *taps,
-                      size_t tap_count, size_t fft_size, size_t expansion);
-int faar_dft_fir_init_rate(faar_dft_fir *stage, const double *taps,
-                      size_t tap_count, size_t fft_size, size_t expansion,
-                      size_t decimation);
 /* Paired stage: `lanes` (1 or 2) channels share one complex FFT as
  * z = a + jb, so the two real outputs come out as real and imaginary parts.
  * With stacked, a lone channel instead pairs each block with the next, so the
- * stage runs once per two blocks (stream_in input samples). Rates and block
- * geometry are as for init_rate; fft_size must be a power of two the complex
- * FFT supports. Lane planes are laid out one after another: input lane l
+ * stage runs once per two blocks (stream_in input samples). expansion
+ * zero-inserts the input and decimation keeps every decimation-th output;
+ * fft_size must be at least tap_count and a power of two the complex FFT
+ * supports. Lane planes are laid out one after another: input lane l
  * starts at input + l * input_count, output lane l at output + l *
  * output_capacity (process: stream_in and stream_out). */
 int faar_dft_fir_init_paired(faar_dft_fir *stage, const double *taps,
