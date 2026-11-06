@@ -99,8 +99,7 @@ struct faar_resampler_struct {
     faar_sample_t *polyphase_reverse_table; /* Reversed exact rows, avoids per-output coefficient copies */
 #if FAAR_RESAMPLER_FLOAT
     float *polyphase_low_table; /* Low words of High's filter coefficients. */
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     double *polyphase_wide_table; /* Replaces polyphase_table for High. */
     double *polyphase_wide_reverse;
 #endif
@@ -1233,8 +1232,7 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
         faar_sample_t delta;
 #if FAAR_RESAMPLER_FLOAT
         faar_float2 precise_delta = ff2(0);
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         double wide_delta = 0;
 #endif
         if (r->exact_phase_bank) {
@@ -1272,8 +1270,7 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
             }
             delta = ff2_round(precise_delta);
         }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         else if (r->polyphase_wide_table) {
             double position = (double)phase_remainder / r->out_rate;
             reverse = position > 0.5;
@@ -1315,8 +1312,7 @@ static size_t polyresample_process_single(faar_resampler * restrict r, const flo
                                  out_samples + out_frames * r->channels);
             goto advance_output;
         }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         if (r->polyphase_wide_table) {
             if (r->exact_phase_bank) wide_delta = delta;
             filter_wide_phase(r, sample_base_idx, p_idx, wide_delta, reverse,
@@ -1620,8 +1616,7 @@ static void destroy_internal(faar_resampler * r) {
 #if !FAAR_RESAMPLER_FLOAT
         aligned_free(r->polyphase_wide_table);
         aligned_free(r->polyphase_wide_reverse);
-#endif
-#if FAAR_RESAMPLER_FLOAT
+#else
         if (r->polyphase_low_table) aligned_free(r->polyphase_low_table);
 #endif
     }

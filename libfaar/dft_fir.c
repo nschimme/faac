@@ -186,8 +186,7 @@ static int init_paired(faar_dft_fir *stage, const double *taps) {
 #if FAAR_RESAMPLER_FLOAT
     if (stage->compensated)
         return init_precise_spectrum(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     if (stage->compensated)
         return init_spectrum_wide(stage, taps) || init_paired_buffers(stage) ? -1 : 0;
 #endif
@@ -243,8 +242,7 @@ static int init_halfband_buffers(faar_dft_fir *stage) {
         stage->precise_half_work = faar_alloc_zeroed(stage->block_size / 2, sizeof(faar_float2));
         if (!stage->precise_half_work) return -1;
     }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     if (stage->compensated) {
         stage->wide_half_work = faar_alloc_zeroed(stage->block_size / 2, sizeof(double));
         if (!stage->wide_half_work) return -1;
@@ -276,8 +274,7 @@ static int init_halfband(faar_dft_fir *stage, const double *taps,
             stage->precise_half_coeffs[j] = ff2_setup(taps[2 * j + 1]);
         stage->precise_half_coeffs[tap_count / 4] = ff2_setup(taps[tap_count / 2]);
     }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     if (compensated) {
         stage->wide_half_coeffs = AllocMemory((tap_count / 4 + 1) * sizeof(double));
         if (!stage->wide_half_coeffs) { faar_dft_fir_clear(stage); return -1; }
@@ -329,8 +326,7 @@ static int init_shared_internal(faar_dft_fir *stage,
 #if FAAR_RESAMPLER_FLOAT
     stage->spec_low = source->spec_low;
     stage->precise_half_coeffs = source->precise_half_coeffs;
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     stage->spec_wide = source->spec_wide;
     stage->wide_half_coeffs = source->wide_half_coeffs;
 #endif
@@ -345,8 +341,7 @@ static int init_shared_internal(faar_dft_fir *stage,
 #if FAAR_RESAMPLER_FLOAT
         stage->precise_in = source->precise_in;
         stage->precise_out = source->precise_out;
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         stage->in_wide = source->in_wide;
         stage->out_wide = source->out_wide;
 #endif
@@ -360,8 +355,7 @@ static int init_shared_internal(faar_dft_fir *stage,
         if (stage->compensated)
             plan_bad = init_precise_plans(stage, source);
         else
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         if (stage->compensated)
             plan_bad = init_fft_plans_filter_shared_wide(stage, source);
         else
@@ -404,8 +398,7 @@ void faar_dft_fir_release_workspace(faar_dft_fir *stage) {
         stage->precise_in.work = NULL;
         stage->precise_out.work = NULL;
     }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     FreeMemory(stage->wide_half_work);
     stage->wide_half_work = NULL;
     if (stage->shared_fft) {
@@ -453,8 +446,7 @@ void faar_dft_fir_prepare(faar_dft_fir *stage) {
         if (stage->precise_half_work)
             memset(stage->precise_half_work, 0,
                     stage->block_size / 2 * sizeof(*stage->precise_half_work));
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         if (stage->wide_half_work)
             memset(stage->wide_half_work, 0,
                     stage->block_size / 2 * sizeof(*stage->wide_half_work));
@@ -465,8 +457,7 @@ void faar_dft_fir_prepare(faar_dft_fir *stage) {
         faar_float2_prepare(&stage->precise_in);
         faar_float2_prepare(&stage->precise_out);
     }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     else if (stage->compensated) {
         faar_fftd_prepare(&stage->in_wide, !stage->out_wide.size);
         faar_fftd_prepare(&stage->out_wide, 0);
@@ -490,8 +481,7 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
 #if FAAR_RESAMPLER_FLOAT
         FreeMemory(stage->spec_low);
         FreeMemory(stage->precise_half_coeffs);
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         FreeMemory(stage->spec_wide);
         FreeMemory(stage->wide_half_coeffs);
 #endif
@@ -506,8 +496,7 @@ void faar_dft_fir_clear(faar_dft_fir *stage) {
         faar_float2_clear(&stage->precise_in);
         faar_float2_clear(&stage->precise_out);
     }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     FreeMemory(stage->wide_half_work);
     if (!stage->shared_fft) {
         faar_fftd_clear(&stage->in_wide);
@@ -554,8 +543,7 @@ int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
             memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
             return 0;
         }
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
         if (stage->compensated) {
             process_wide_halfband(stage, output);
             memcpy(stage->overlap, stage->work + block, (n - 1) * sizeof(faar_sample_t));
@@ -581,8 +569,7 @@ int faar_dft_fir_process(faar_dft_fir *stage, const faar_sample_t *input,
 #if FAAR_RESAMPLER_FLOAT
     if (stage->compensated) convolve_precise(stage, input, output);
     else
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     if (stage->compensated) convolve_paired_wide(stage, input, output);
     else
 #endif

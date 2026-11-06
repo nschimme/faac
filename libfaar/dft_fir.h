@@ -50,8 +50,7 @@ typedef struct faar_dft_fir {
     faar_float2_plan precise_in, precise_out;
     float *spec_low;
     faar_float2 *precise_half_coeffs, *precise_half_work;
-#endif
-#if !FAAR_RESAMPLER_FLOAT
+#else
     faar_fftd_plan in_wide, out_wide;
     double *spec_wide;
     double *wide_half_coeffs, *wide_half_work;
