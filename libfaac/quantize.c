@@ -183,8 +183,8 @@ static const MaskingModel masking_model = {
          * The exponent compresses band/reference energy ratios; both weights
          * balance noise-like average energy against tonal peak energy. */
         { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f },
-        /* Calibrated for rate-limited stereo LC. Keep other stream types on
-         * the default balance; this fit does not establish their quality. */
+        /* Fit on rate-limited stereo LC; stereo HE at or above half the rate
+         * floor takes it too. Other stream types keep the default balance. */
         { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.0f, .peak_floor = 0.0100f },
     },
     /* Empirical target offsets converted to linear multipliers at the knots.
@@ -308,10 +308,15 @@ static float tilt_gain(float khz)
 void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
                            unsigned long bitrate_per_ch, unsigned channels, int is_he)
 {
-    const int tuned = bitrate_per_ch >= masking_model.tune_min_rate
-                   && channels == 2 && !is_he;
+    /* The profile, nudge and rate floors below were fit on LC. The HE core
+     * runs at half the sampling rate and SBR takes a small share of the
+     * frame, so a given per-channel rate buys about twice the bits per coded
+     * spectral line: an HE stream meets the same floor at half the rate. */
+    const unsigned long fit_rate = is_he ? 2 * bitrate_per_ch : bitrate_per_ch;
+    const int tuned = fit_rate >= masking_model.tune_min_rate && channels == 2;
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
-    cfg->mask_tuned = tuned;
+    /* The tilt knots are positioned for full-band LC frames. */
+    cfg->mask_tuned = tuned && !is_he;
     cfg->treble_slope = (bitrate_per_ch >= masking_model.rich_min_rate)
         ? masking_model.rich_slope : 1.0f;
     if (sample_rate > masking_model.slope_rate_threshold)
@@ -323,10 +328,12 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     if (tuned)
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
     /* Any set rate (VBR has none) at or above the nudge's measured floor. */
-    cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate;
-    /* VBR has no rate to re-spend what the softer boost saves, so there it
-     * only smears attacks. */
-    cfg->onset_soften = is_he && bitrate_per_ch;
+    cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate
+                 || (is_he && channels == 2 && fit_rate >= masking_model.nudge_min_rate);
+    /* Below the tuned profile's reach, the HE core gets less back from the
+     * full onset boost than it costs; VBR has no rate to re-spend what the
+     * softer boost saves, so there it only smears attacks. */
+    cfg->onset_soften = is_he && bitrate_per_ch && !tuned;
 }
 
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
@@ -353,9 +360,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, int grou
         for (win = group_start; win < group_start + gsize; win++)
             if (ci->temporal_gain[win] > group_gain)
                 group_gain = ci->temporal_gain[win];
-        /* At the same rate the HE core gets less back from the full boost than
-         * it costs; the power keeps most of the drop in pre-echo and caps the
-         * gain at ~5.6. */
+        /* Where the tuned profile does not apply the power keeps most of the
+         * drop in pre-echo and caps the gain at ~5.6. */
         if (cfg->onset_soften)
             group_gain = sqrtf(group_gain * sqrtf(group_gain));
     }
