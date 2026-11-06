@@ -54,6 +54,7 @@ if get_option('encoder')
         c_args: c_args_list,
         include_directories: ['..', '../include', common_inc],
         link_with: [libfaac_for_frontend, libfaar_for_frontend, libfrontend, libfaam_for_frontend],
+        link_args: gc_link_args,
         dependencies: [libshell32, cc.find_library('m', required: false)],
         install: true
     )
@@ -77,16 +78,10 @@ endif
 
 if get_option('decoder')
     libfaad_for_frontend = get_option('frontend-static') ? libfaad_static : libfaad
-    gc_args = []
-    if cc.has_link_argument('-Wl,--gc-sections')
-        gc_args += ['-Wl,--gc-sections']
-    elif cc.has_link_argument('-Wl,-dead_strip')
-        gc_args += ['-Wl,-dead_strip']
-    endif
     faad = executable('faad',
         ['faad_main.c', 'decode_engine.c', 'mp4read.c', 'adts.c'],
         link_with: [libfaad_for_frontend],
-        link_args: gc_args,
+        link_args: gc_link_args,
         dependencies: [libshell32, frontend_common_dep],
         install: true
     )
@@ -96,6 +91,7 @@ if get_option('muxer')
     faam = executable('faam',
         ['faam_main.c', 'faam_engine.c', 'adts.c', 'annexb.c',
          'faam_engine.h', 'adts.h', 'annexb.h'],
+        link_args: gc_link_args,
         dependencies: [libshell32, frontend_common_dep],
         install: true
     )
@@ -108,6 +104,7 @@ if get_option('resampler')
         include_directories: ['..', '../include', common_inc],
         link_with: [libfaar_for_faar_cli, libfaam_for_frontend],
         c_args: c_args_list,
+        link_args: gc_link_args,
         dependencies: [libshell32, libiconv],
         install: true
     )

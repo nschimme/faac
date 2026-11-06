@@ -35,6 +35,20 @@ if cc.get_argument_syntax() == 'msvc'
     add_global_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'c')
 endif
 
+# Static frontends link whole archives' objects; per-function sections let the
+# linker drop what no frontend calls. Shared builds already hide and strip it.
+gc_link_args = []
+if get_option('frontend-static')
+    if cc.has_link_argument('-Wl,--gc-sections')
+        gc_link_args += ['-Wl,--gc-sections']
+    elif cc.has_link_argument('-Wl,-dead_strip')
+        gc_link_args += ['-Wl,-dead_strip']
+    endif
+    if cc.has_argument('-ffunction-sections')
+        add_project_arguments('-ffunction-sections', '-fdata-sections', language: 'c')
+    endif
+endif
+
 config_h = configuration_data()
 config_h.set_quoted('PACKAGE', meson.project_name())
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
