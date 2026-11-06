@@ -235,6 +235,12 @@ jobs:
           path: candidate
           fetch-depth: 0
 
+      - name: Build Candidate
+        run: |
+          cd candidate
+          meson setup build --buildtype=release -Dencoder-ps=true
+          meson compile -C build
+
       - name: Resolve Baseline SHA
         id: baseline-sha
         run: |
@@ -245,7 +251,7 @@ jobs:
             echo "sha=$sha" >> $GITHUB_OUTPUT
           else
             echo "sha=" >> $GITHUB_OUTPUT
-            echo "::notice::No parent commit; skipping the footprint comparison."
+            echo "::notice::No parent commit; will measure candidate footprint standalone."
           fi
 
       - name: Checkout Baseline
@@ -255,45 +261,25 @@ jobs:
           ref: ${{ steps.baseline-sha.outputs.sha }}
           path: baseline
 
-      - name: Checkout Benchmark Suite
-        if: steps.baseline-sha.outputs.sha != ''
-        uses: actions/checkout@v4
-        with:
-          repository: nschimme/faac-benchmark
-          path: bench
-
-      - name: Build Both Sides
+      - name: Build Baseline
         if: steps.baseline-sha.outputs.sha != ''
         run: |
-          for d in baseline candidate; do
-            ( cd $d && meson setup build --buildtype=release -Dencoder-ps=true && meson compile -C build )
-          done
+          cd baseline
+          meson setup build --buildtype=release -Dencoder-ps=true
+          meson compile -C build
 
-      - name: Measure and Compare
-        if: steps.baseline-sha.outputs.sha != ''
+      - name: Measure and Compare Footprint
         run: |
-          mkdir -p results
-          for pair in "baseline:base" "candidate:cand"; do
-            d=${pair%%:*}; tag=${pair##*:}
-            python3 bench/phase1_encode.py \
-              lc results/lc_$tag.json \
-              --encoder-bin $d/build/frontend/faac \
-              --encoder-lib $d/build/libfaac/libfaac.so \
-              --skip-mos --build-dir $d/build
-          done
-          python3 -c '
-          import sys
-          sys.path.append("bench")
-          import compare_results
-          pair_data = compare_results.analyze_pair("results/lc_base.json", "results/lc_cand.json")
-          if pair_data and "gates" in pair_data:
-              for g in pair_data["gates"]:
-                  if g.get("name") == "footprint":
-                      st = g.get("status", "pass")
-                      dt = g.get("detail", "")
-                      print(f"::notice title=Code Footprint Status ({st})::{dt}")
-          '
-          python3 bench/compare_results.py results --gates footprint
+          if [ -d baseline/build ]; then
+            python3 candidate/scripts/check_footprint.py candidate/build \
+              --baseline baseline/build \
+              --github-summary \
+              --markdown-output footprint_summary.md
+          else
+            python3 candidate/scripts/check_footprint.py candidate/build \
+              --github-summary \
+              --markdown-output footprint_summary.md
+          fi
 
   report:
     name: Consolidated Report

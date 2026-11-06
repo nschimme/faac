@@ -107,3 +107,12 @@ endif
 
 # Fuzzing is part of this, and needs the libraries and frontend defined above.
 subdir('tests')
+
+python3 = import('python').find_installation('python3')
+run_target('footprint',
+    command: [
+        python3,
+        meson.project_source_root() / 'scripts' / 'check_footprint.py',
+        meson.current_build_dir()
+    ]
+)
