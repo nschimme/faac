@@ -276,12 +276,88 @@ static int test_channel_independence(void) {
 }
 
 static int test_decimate_cascade(void) {
-    for (uint32_t factor = 2; factor <= 4; factor += 2)
-        if (check_independence(96000, 22050, MAX_CHANNELS >= 2 ? 2 : 1, factor))
-            return 1;
+    /* The cascade's last stage is the direct polyphase path, which has its own
+     * one-, two- and six-channel input packing. */
+    const uint16_t counts[] = {MAX_CHANNELS >= 2 ? 2 : 1, 3, 6};
+    for (size_t i = 0; i < sizeof(counts) / sizeof(counts[0]); ++i)
+        for (uint32_t factor = 2; factor <= 4; factor += 2)
+            if (check_independence(96000, 22050, counts[i], factor))
+                return 1;
     /* Factors too large for the target fall back to a nearer intermediate rate. */
     return check_independence(96000, 48000, MAX_CHANNELS >= 2 ? 2 : 1, 4)
         || check_independence(48000, 44100, MAX_CHANNELS >= 2 ? 2 : 1, 4);
+}
+
+/* Splitting the input into any chunk size must not change the output.
+ * The stream is long enough to wrap the prefilter FIFO, and the routes cover
+ * the DFT prefilter, the polyphase path and the High cascade. */
+enum { CHUNK_FRAMES = 9000 };
+
+static int stream_chunks(uint32_t in_rate, uint32_t out_rate, uint16_t channels,
+        faar_quality quality, size_t block, const float *input,
+        result_t *result) {
+    faar_test_handle * handle = faar_test_create(in_rate, out_rate, channels, quality);
+    if (!handle) return fail("resampler creation failed", in_rate, out_rate);
+    size_t output_frames = (size_t)((uint64_t)block * out_rate / in_rate) + 256;
+    float *buffer = malloc(output_frames * channels * sizeof(float));
+    if (!buffer) {
+        faar_test_close(handle);
+        return fail("output allocation failed", in_rate, out_rate);
+    }
+    size_t capacity = 0;
+    int ok = 1;
+    for (size_t offset = 0; ok && offset < CHUNK_FRAMES;) {
+        size_t count = block;
+        if (count > CHUNK_FRAMES - offset) count = CHUNK_FRAMES - offset;
+        size_t made = faar_test_process(handle, input + offset * channels, count,
+                                        buffer, output_frames);
+        ok = append(result, &capacity, buffer, made * channels);
+        while (ok && (made = faar_test_process(handle, NULL, 0, buffer, output_frames)))
+            ok = append(result, &capacity, buffer, made * channels);
+        offset += count;
+    }
+    for (size_t made; ok && (made = faar_test_flush(handle, buffer, output_frames));)
+        ok = append(result, &capacity, buffer, made * channels);
+    free(buffer);
+    faar_test_close(handle);
+    return ok ? 0 : fail("chunked conversion failed", in_rate, out_rate);
+}
+
+static int check_chunks(uint32_t in_rate, uint32_t out_rate, uint16_t channels,
+        faar_quality quality) {
+    static const size_t blocks[] = {1, 7, 251, 4099};
+    static float input[CHUNK_FRAMES * 6];
+    if (channels > MAX_CHANNELS) {
+        puts("channel count exceeds the configured maximum; skipped");
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)CHUNK_FRAMES * channels; ++i)
+        input[i] = input_sample(i);
+    result_t whole = {0};
+    if (stream_chunks(in_rate, out_rate, channels, quality, CHUNK_FRAMES, input, &whole))
+        return 1;
+    for (size_t b = 0; b < sizeof(blocks) / sizeof(blocks[0]); ++b) {
+        result_t split = {0};
+        int bad = stream_chunks(in_rate, out_rate, channels, quality, blocks[b],
+                                input, &split);
+        if (!bad && (split.frames != whole.frames
+                || memcmp(split.data, whole.data, whole.frames * sizeof(float))))
+            bad = fail("chunked output differs from a single call", in_rate, out_rate);
+        free(split.data);
+        if (bad) { free(whole.data); return 1; }
+    }
+    free(whole.data);
+    return 0;
+}
+
+static int test_chunk_invariance(void) {
+    static const uint16_t counts[] = {1, 2, 6};
+    for (size_t i = 0; i < sizeof(counts) / sizeof(counts[0]); ++i)
+        if (check_chunks(96000, 44100, counts[i], FAAR_QUALITY_GOOD)
+                || check_chunks(44100, 48000, counts[i], FAAR_QUALITY_GOOD)
+                || check_chunks(192000, 48000, counts[i], FAAR_QUALITY_HIGH))
+            return 1;
+    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -291,7 +367,8 @@ int main(int argc, char **argv) {
         {"matrix-2", test_rate_matrix_2},
         {"equal-rate", test_equal_rate_identity},
         {"channels", test_channel_independence},
-        {"decimate", test_decimate_cascade}
+        {"decimate", test_decimate_cascade},
+        {"chunks", test_chunk_invariance}
     };
     return faar_run_groups(argc, argv, groups,
                            sizeof(groups) / sizeof(groups[0]));

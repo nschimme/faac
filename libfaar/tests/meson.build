@@ -34,7 +34,7 @@ test_faar_matrix = executable('test_faar_matrix', 'test_faar_matrix.c',
   include_directories: ['..', inc],
   dependencies: [libfaar_dep, m_dep],
 )
-foreach group : ['matrix-0', 'matrix-1', 'matrix-2', 'equal-rate', 'channels', 'decimate']
+foreach group : ['matrix-0', 'matrix-1', 'matrix-2', 'equal-rate', 'channels', 'decimate', 'chunks']
   test('test_faar_matrix_' + group, test_faar_matrix, args: [group])
 endforeach
 
