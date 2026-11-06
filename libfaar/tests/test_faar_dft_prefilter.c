@@ -159,7 +159,6 @@ static int run_boundary(size_t tap_count, size_t fft_size,
         free(taps); free(input); free(output); free(chunk);
         return fail("repeated prefilter flush was not empty");
     }
-    faar_dft_prefilter_reset(stage);
     faar_dft_prefilter_destroy(stage);
     free(taps); free(input); free(output); free(chunk);
     return 0;

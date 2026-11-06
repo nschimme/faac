@@ -55,6 +55,5 @@ int faar_dft_prefilter_flush(faar_dft_prefilter *stage, float *output,
 size_t faar_dft_prefilter_pending(const faar_dft_prefilter *stage);
 size_t faar_dft_prefilter_drain_planes(faar_dft_prefilter *stage,
         float *const output[], size_t output_capacity);
-void faar_dft_prefilter_reset(faar_dft_prefilter *stage);
 
 #endif

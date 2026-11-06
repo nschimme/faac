@@ -439,14 +439,3 @@ int faar_dft_prefilter_flush(faar_dft_prefilter *s, float *output,
     return 0;
 }
 
-void faar_dft_prefilter_reset(faar_dft_prefilter *s) {
-    if (!s) return;
-    for (uint16_t f = 0; f < s->stages; ++f) faar_dft_fir_reset(&s->fir[f]);
-    s->prefix_drop = 2 * s->half / s->decimation;
-    s->fifo_read = s->fifo_count = 0;
-    s->input_count = s->released_count = 0;
-    s->have_input = s->prefix_added = 0;
-    s->finishing = s->finished = 0;
-    memset(s->first, 0, sizeof(s->first));
-    memset(s->last, 0, sizeof(s->last));
-}
