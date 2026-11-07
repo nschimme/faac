@@ -193,12 +193,18 @@ static void filter_spec(int length, int order, const float * a, const float * sr
     }
 }
 
+/* Admission gate and LPC prediction hurdles for TNS:
+ * TNS shapes noise along the temporal envelope. Screening on the envelope
+ * (attackMin scaled to PsyGetAttack's relative energy jump) skips LPC work
+ * on frames without transient onsets.
+ *
+ * Tuned thresholds (gainLimit = 1.08f, attackMin = 0.25f) engage across
+ * transient onsets at full audio rates (>= 44.1 kHz) on LC profiles with
+ * adequate bitrate, while conservative hurdles (gainLimit = 1.40f, attackMin = 0.50f)
+ * protect narrow-band speech, SBR cores, and low-rate streams from bit starvation
+ * and formant whitening. */
 void TnsConfigure(TnsConfig *cfg, unsigned long sampleRate, unsigned long bitRatePerCh, unsigned long quantqual, int isHe)
 {
-    /* Tuned TNS thresholds for full audio rates (>= 44.1 kHz) on LC profiles
-     * with adequate bitrate/quality, allowing TNS to engage across transient onsets
-     * while protecting narrow-band speech, SBR cores, and low-rate streams from
-     * bit starvation and formant whitening. */
     int tuned = !isHe && sampleRate >= 44100 &&
                 (bitRatePerCh == 0 ? quantqual >= 120 : bitRatePerCh >= 48000);
 

@@ -670,16 +670,6 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
                            (int)hEncoder->flushFrame, hEncoder->inputFifo, heHalfRate);
 }
 
-/* Admission gate: TNS shapes noise along the temporal envelope, so a window
- * with no envelope discontinuity has nothing for it to do, but the LPC gate
- * only discovers that after normalization, autocorrelation and Levinson-Durbin
- * have run. Screening on the envelope first skips that work for frames headed
- * for rejection anyway.
- *
- * Scaled to PsyGetAttack's statistic (largest relative energy jump between
- * adjacent sub-blocks). Not portable to a different sub-block count/size --
- * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
                           unsigned int samplesInput,
