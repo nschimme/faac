@@ -447,6 +447,9 @@ struct faad_decoder {
     /* The channel layout is fixed once PCM has been emitted; a PCE that arrives
      * later would move channel state between output slots. */
     bool layout_latched;
+    /* A configuration 0 stream whose first frame has the 7.1 element sequence
+     * is read as the 7.1 layout before its PCE arrives. */
+    bool layout_inferred71;
     /* Parsing and synthesis may advance on rejected packets; only emitted PCM
      * may replace the output format that callers use. */
     struct {
