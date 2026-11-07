@@ -67,6 +67,7 @@ core
 *.m4a
 *.mp4
 *.wav
+!/frontend/tests/data/encoders/*
 
 # Caches, Tool Configs, and Local Experiments
 .cache/
