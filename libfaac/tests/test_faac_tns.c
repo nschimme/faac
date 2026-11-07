@@ -90,7 +90,7 @@ static void test_tonal_spectrum_emits_stable_filter(void)
     const TnsFilterData *filter = &coder->tnsInfo.windowData.tnsFilter[0];
     assert(filter->order > 0 && filter->order <= TNS_MAX_ORDER);
     assert(filter->length == coder->sfbn - coder->tnsInfo.tnsMinBandNumberLong);
-    assert(filter->direction == 0);
+    assert(filter->direction == 1);
     assert(filter->coefCompress == 0 || filter->coefCompress == 1);
     for (int i = 1; i <= filter->order; i++)
         assert(filter->index[i] >= -(1 << (DEF_TNS_COEFF_RES - 1))

@@ -34,8 +34,8 @@ static const struct {
 #define TNS_LPC_ORDER       8     /* fixed filter order; the spec allows up to 20, but higher orders rarely paid for themselves here */
 _Static_assert(TNS_LPC_ORDER <= TNS_MAX_ORDER,
                "coder.h's TNS array bound must cover the order tns.c actually fits");
-#define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
+#define TNS_GAIN_LIMIT      1.08f /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
+#define TNS_MEASURED_GAIN   1.08f /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
 
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
@@ -184,18 +184,11 @@ static void finalize_filter(int order, const float * k, float * a)
 static void filter_spec(int length, int order, const float * a, const float * src, float * dst)
 {
     int i, j;
-    int limit = order < length ? order : length;
 
-    for (i = 0; i < limit; i++) {
+    for (i = length - 1; i >= 0; i--) {
         float acc = src[i];
-        for (j = 1; j <= i; j++)
-            acc += a[j] * src[i - j];
-        dst[i] = acc;
-    }
-    for (; i < length; i++) {
-        float acc = src[i];
-        for (j = 1; j <= order; j++)
-            acc += a[j] * src[i - j];
+        for (j = 1; j <= order && i + j < length; j++)
+            acc += a[j] * src[i + j];
         dst[i] = acc;
     }
 }
@@ -310,11 +303,12 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     filter->order = order;
 
-    /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
+    /* Fixed, not chosen: calc_autocorr_f is invariant under sequence
      * reversal, so both directions give the same LPC fit and prediction gain.
-     * Picking the right one needs the time-domain transient position, which
-     * this function never sees. */
-    filter->direction = 0;
+     * Backward filtering (direction = 1) shapes quantization noise after
+     * attacks (where post-masking renders it inaudible), suppressing
+     * backward pre-echo. */
+    filter->direction = 1;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */
