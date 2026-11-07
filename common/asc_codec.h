@@ -45,11 +45,19 @@ static inline int asc_codec_sr_idx(uint32_t rate)
 
 /* Tags in config-7 native order: center, front, side, back, LFE.
  * Unrecognized PCEs retain only their channel count. */
+/* PCE shapes with a WAVE speaker layout. The names are the layout with its
+ * surround pair in the back (B) or at the side (S). */
+enum {
+    ASC_LAYOUT_NONE = 0,
+    ASC_LAYOUT_50B, ASC_LAYOUT_51B, ASC_LAYOUT_50S, ASC_LAYOUT_51S,
+    ASC_LAYOUT_70, ASC_LAYOUT_71, ASC_LAYOUT_61B
+};
+
 typedef struct {
     uint8_t channels;
     uint8_t profile, sr_index;
     uint8_t tags[5];
-    bool wave71;
+    uint8_t layout;
     /* Where the fields sit in the parsed buffer, so the element can be
      * rewritten into another one: start bit, length before the byte
      * alignment, and comment bytes. */
@@ -101,16 +109,32 @@ static inline uint32_t asc_parse_sample_rate(asc_bitreader *br)
     return idx == 15 ? asc_br_get(br, 24) : asc_codec_sample_rates[idx];
 }
 
-/* Two back pairs use the rear-surround convention: first side, then back.
- * Pair tags must be distinct, since tags select elements, not positions. */
-static inline bool asc_pce_wave71(const AscPce *pce, uint32_t front,
-                                uint32_t side, uint32_t back, uint32_t lfe,
-                                bool pairs)
+/* The layout a PCE describes, from its element lists: pair_mask has bit i set
+ * when element i (front, then side, then back) is a pair. Two back pairs use
+ * the rear-surround convention: first side, then back. Tags select elements,
+ * not positions, so those of one kind must be distinct. */
+static inline uint8_t asc_pce_layout(const AscPce *pce, uint32_t front, uint32_t side,
+                                     uint32_t back, uint32_t lfe, uint32_t pair_mask)
 {
-    return pairs && front == 2 && lfe == 1
-        && ((side == 0 && back == 2) || (side == 1 && back == 1))
-        && pce->tags[1] != pce->tags[2] && pce->tags[1] != pce->tags[3]
-        && pce->tags[2] != pce->tags[3];
+    uint32_t elements = front + side + back;
+    uint8_t layout = ASC_LAYOUT_NONE;
+
+    if (front != 2 || lfe > 1 || elements < 3 || elements > 4 || (pair_mask & 3u) != 2u)
+        return ASC_LAYOUT_NONE;
+    /* Side count, back count and the pair flags of the elements after the front. */
+    switch ((side << 8) | (back << 4) | (pair_mask >> 2)) {
+    case 0x011: layout = lfe ? ASC_LAYOUT_51B : ASC_LAYOUT_50B; break;
+    case 0x101: layout = lfe ? ASC_LAYOUT_51S : ASC_LAYOUT_50S; break;
+    case 0x023:
+    case 0x113: layout = lfe ? ASC_LAYOUT_71 : ASC_LAYOUT_70; break;
+    case 0x021: layout = lfe ? ASC_LAYOUT_61B : ASC_LAYOUT_NONE; break;
+    default: break;
+    }
+    for (uint32_t i = 0; layout != ASC_LAYOUT_NONE && i < elements; i++)
+        for (uint32_t j = i + 1; j < elements; j++)
+            if (((pair_mask >> i) & 1u) == ((pair_mask >> j) & 1u) && pce->tags[i] == pce->tags[j])
+                layout = ASC_LAYOUT_NONE;
+    return layout;
 }
 
 /* PCE lists carry element tags rather than PCM positions. Count only audio
@@ -129,7 +153,7 @@ static inline uint8_t asc_parse_pce(asc_bitreader *br, AscPce *pce)
     uint32_t lfe = asc_br_get(br, 2);
     uint32_t assoc = asc_br_get(br, 3);
     uint32_t cc = asc_br_get(br, 4);
-    bool pairs = true;
+    uint32_t pair_mask = 0;
     if (asc_br_get(br, 1)) asc_br_get(br, 4);
     if (asc_br_get(br, 1)) asc_br_get(br, 4);
     if (asc_br_get(br, 1)) asc_br_get(br, 3);
@@ -141,7 +165,7 @@ static inline uint8_t asc_parse_pce(asc_bitreader *br, AscPce *pce)
         uint8_t tag = (uint8_t)asc_br_get(br, 4);
         channels += 1 + pair;
         if (i < 4) pce->tags[i] = tag;
-        pairs = pairs && pair == (i != 0);
+        if (i < 4) pair_mask |= pair << i;
     }
     for (uint32_t i = 0; i < lfe; i++) {
         uint8_t tag = (uint8_t)asc_br_get(br, 4);
@@ -157,7 +181,7 @@ static inline uint8_t asc_parse_pce(asc_bitreader *br, AscPce *pce)
     pce->pos = (uint16_t)start;
     pce->comment_bytes = (uint8_t)(comment_bits / 8);
     pce->channels = (uint8_t)channels;
-    pce->wave71 = asc_pce_wave71(pce, front, side, back, lfe, pairs);
+    pce->layout = asc_pce_layout(pce, front, side, back, lfe, pair_mask);
     return pce->channels;
 }
 
