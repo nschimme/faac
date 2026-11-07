@@ -42,6 +42,7 @@ extern "C" {
 #include "stats.h"
 #include "ratecontrol.h"
 #include "stereo.h"
+#include "tns.h"
 #include "drc.h"
 #include "drc_analyzer.h"
 
@@ -87,6 +88,7 @@ typedef struct faacEncStruct {
     AACQuantCfg aacquantCfg;
 
     StereoConfig stereoCfg;
+    TnsConfig tnsCfg;
 
     /* FFT Tables */
 

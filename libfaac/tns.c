@@ -193,6 +193,19 @@ static void filter_spec(int length, int order, const float * a, const float * sr
     }
 }
 
+void TnsConfigure(TnsConfig *cfg, unsigned long sampleRate, unsigned long bitRatePerCh, unsigned long quantqual, int isHe)
+{
+    /* Tuned TNS thresholds for full audio rates (>= 44.1 kHz) on LC profiles
+     * with adequate bitrate/quality, allowing TNS to engage across transient onsets
+     * while protecting narrow-band speech, SBR cores, and low-rate streams from
+     * bit starvation and formant whitening. */
+    int tuned = !isHe && sampleRate >= 44100 &&
+                (bitRatePerCh == 0 ? quantqual >= 120 : bitRatePerCh >= 48000);
+
+    cfg->gainLimit = tuned ? 1.08f : 1.40f;
+    cfg->attackMin = tuned ? 0.25f : 0.50f;
+}
+
 void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int ch;
@@ -346,7 +359,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncode(CoderInfo *coderInfo, float *spec, float gain_limit)
+void TnsEncode(CoderInfo *coderInfo, float *spec, const TnsConfig *cfg)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
     int numBands = coderInfo->sfbn;
@@ -367,7 +380,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec, float gain_limit)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0], gain_limit))
+                       &tnsInfo->windowData.tnsFilter[0], cfg ? cfg->gainLimit : 1.40f))
         return;
 
 #ifdef FAAC_STATS

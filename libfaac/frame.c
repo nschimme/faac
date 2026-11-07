@@ -394,6 +394,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
                         hEncoder->config.bitRate,
                         CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels),
                         IsSBR(hEncoder->config.aacObjectType), sfbOffset, sfbn);
+        TnsConfigure(&hEncoder->tnsCfg, hEncoder->sampleRate, hEncoder->config.bitRate,
+                     hEncoder->config.quantqual, IsSBR(hEncoder->config.aacObjectType));
     }
 
     /* Initialize psychoacoustic state for the resolved core rate. */
@@ -677,7 +679,6 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * Scaled to PsyGetAttack's statistic (largest relative energy jump between
  * adjacent sub-blocks). Not portable to a different sub-block count/size --
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.25f
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
@@ -929,15 +930,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
             /* No envelope yet (the first frames) means no basis to reject
                on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
+            if (attack > 0.0f && attack < hEncoder->tnsCfg.attackMin) {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
 
-            float tns_gain = (hEncoder->sampleRate >= 44100 &&
-                              (hEncoder->config.bitRate == 0 ? hEncoder->config.quantqual >= 120 : hEncoder->config.bitRate >= 48000))
-                             ? 1.08f : 1.40f;
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], tns_gain);
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->tnsCfg);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
         }

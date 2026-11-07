@@ -29,12 +29,23 @@
 extern "C" {
 #endif /* __cplusplus */
 
+struct faacEncStruct;
+typedef struct faacEncStruct faacEncStruct;
+
+typedef struct {
+    float gainLimit;
+    float attackMin;
+} TnsConfig;
+
 /* Latch the per-channel band limits from the sample rate's TNS tool table. */
 void TnsInit(faacEncStruct* hEncoder);
 
+/* Configure TNS shaping thresholds based on rate and stream context. */
+void TnsConfigure(TnsConfig *cfg, unsigned long sampleRate, unsigned long bitRatePerCh, unsigned long quantqual, int isHe);
+
 /* Analyze one channel and, if it pays off, whiten `spec` in place.
  * Long blocks only -- the caller must not pass an ONLY_SHORT_WINDOW channel. */
-void TnsEncode(CoderInfo *coderInfo, float *spec, float gain_limit);
+void TnsEncode(CoderInfo *coderInfo, float *spec, const TnsConfig *cfg);
 
 #ifdef __cplusplus
 }
