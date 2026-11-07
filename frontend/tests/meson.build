@@ -107,7 +107,8 @@ if get_option('encoder') and get_option('decoder') and not meson.is_cross_build(
                get_option('max-channels').to_string()])
     if get_option('max-channels') >= 2 and encoder_sbr and get_option('decoder-sbr')
         test('test_e2e_faad_late_join', find_program('python3'),
-            args: [files('test_faad_late_join.py'), faac, faad])
+            args: [files('test_faad_late_join.py'), faac, faad,
+                   (encoder_ps and get_option('decoder-ps')).to_string()])
     endif
     if get_option('max-channels') >= 2 and encoder_ps and get_option('decoder-sbr') and get_option('decoder-ps')
         test('test_e2e_faac_ps_frontend', find_program('python3'),

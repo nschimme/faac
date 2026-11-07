@@ -12,9 +12,10 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
 
-"""An HE-AAC ADTS stream joined between SBR headers keeps one output format.
+"""An HE-AAC ADTS stream joined between SBR headers keeps one output format,
+and a joined HE-AAC v2 stream is stereo from its first sample.
 
-Usage: test_faad_late_join.py <faac> <faad>
+Usage: test_faad_late_join.py <faac> <faad> <ps: true|false>
 """
 import math
 import os
@@ -52,6 +53,7 @@ def wav_info(path):
 
 def main():
     faac, faad = sys.argv[1:3]
+    with_ps = sys.argv[3] == 'true'
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, 'in.wav')
         write_wav(src, 48000, 4)
@@ -77,6 +79,21 @@ def main():
             got = wav_info(out)
             assert got[:2] == (rate, channels), (skip, got)
             assert got[2] >= (len(frames) - skip - 1) * 2048, (skip, got)
+        if with_ps:
+            ps = os.path.join(d, 'ps.aac')
+            r = subprocess.run([faac, '--profile', 'he-v2', '-b', '24', '--stream-format', 'adts',
+                                '-o', ps, src], capture_output=True)
+            assert r.returncode == 0, r.stderr.decode(errors='replace')
+            ps_frames = adts_frames(open(ps, 'rb').read())
+            for skip in (1, 5):
+                cut = os.path.join(d, 'ps%d.aac' % skip)
+                open(cut, 'wb').write(b''.join(ps_frames[skip:]))
+                out = cut + '.wav'
+                r = subprocess.run([faad, '-o', out, cut], capture_output=True)
+                assert r.returncode == 0, (skip, r.stderr.decode(errors='replace'))
+                got = wav_info(out)
+                assert got[:2] == (48000, 2), (skip, got)
+                assert got[2] >= (len(ps_frames) - skip - 1) * 2048, (skip, got)
     print('ok')
 
 

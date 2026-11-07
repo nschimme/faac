@@ -53,6 +53,11 @@ typedef struct {
     uint32_t fill;
 } PCMFifo;
 
+/* A stream joined before its first SBR header may be HE-AAC v2, whose stereo
+ * comes from PS data that cannot be parsed earlier. The first SBR header of a
+ * stream follows within about 30 frames. */
+#define SETTLE_FRAMES 40
+
 typedef struct {
     FILE *fout;
     char *io_buf;
@@ -78,6 +83,14 @@ typedef struct {
     bool trim_file;
     uint64_t data_offset;
     PCMFifo fifo;
+
+    /* Mono ADTS output held until the channel count settles */
+    uint8_t *held;
+    uint32_t held_bytes;
+    uint32_t held_len[SETTLE_FRAMES];
+    uint32_t held_flags[SETTLE_FRAMES];
+    uint32_t held_frames;
+    bool hold_done;
 } PCMWriter;
 
 void init_decode_options(decode_options_t *opts)
@@ -418,7 +431,7 @@ static const char *object_type_name(enum faad_object_type obj_type)
     }
 }
 
-static bool pcm_writer_write_frame(PCMWriter *w, faad_decoder *dec, faad_stream_info *sinfo,
+static bool pcm_writer_emit_frame(PCMWriter *w, faad_decoder *dec, faad_stream_info *sinfo,
                                    const MP4Track *track, uint32_t flags, uint8_t *outbuf,
                                    uint32_t bytes_written, uint32_t *sample_rate,
                                    uint32_t *num_channels, enum faad_object_type *obj_type)
@@ -562,6 +575,80 @@ static bool pcm_writer_write_frame(PCMWriter *w, faad_decoder *dec, faad_stream_
     return true;
 }
 
+static bool pcm_writer_hold_frame(PCMWriter *w, const uint8_t *pcm, uint32_t bytes, uint32_t flags)
+{
+    uint8_t *grown = (uint8_t *)realloc(w->held, (size_t)w->held_bytes + bytes);
+    if (!grown) return false;
+    w->held = grown;
+    memcpy(w->held + w->held_bytes, pcm, bytes);
+    w->held_bytes += bytes;
+    w->held_len[w->held_frames] = bytes;
+    w->held_flags[w->held_frames] = flags;
+    w->held_frames++;
+    return true;
+}
+
+/* Write the held mono frames in the channel count the decoder has now. */
+static bool pcm_writer_release(PCMWriter *w, faad_decoder *dec, faad_stream_info *sinfo,
+                               const MP4Track *track, uint32_t *sample_rate,
+                               uint32_t *num_channels, enum faad_object_type *obj_type)
+{
+    uint32_t sample_bytes = w->is_float ? 4 : w->bit_depth / 8;
+    uint32_t offset = 0;
+    uint8_t *stereo = NULL;
+    bool ok = true;
+
+    w->hold_done = true;
+    if (w->held_frames == 0) return true;
+    faad_decoder_get_info(dec, sinfo);
+    bool upmix = sinfo->channels == 2;
+    for (uint32_t i = 0; ok && i < w->held_frames; i++) {
+        uint8_t *pcm = w->held + offset;
+        uint32_t bytes = w->held_len[i];
+        uint32_t flags = w->held_flags[i] & ~(uint32_t)FAAD_FRAME_FORMAT_CHANGED;
+        if (i == 0) flags |= FAAD_FRAME_FORMAT_CHANGED;
+        offset += bytes;
+        if (upmix) {
+            uint8_t *grown = (uint8_t *)realloc(stereo, (size_t)bytes * 2);
+            if (!grown) { ok = false; break; }
+            stereo = grown;
+            for (uint32_t n = 0; n < bytes / sample_bytes; n++) {
+                memcpy(stereo + (size_t)2 * n * sample_bytes, pcm + (size_t)n * sample_bytes, sample_bytes);
+                memcpy(stereo + (size_t)(2 * n + 1) * sample_bytes, pcm + (size_t)n * sample_bytes, sample_bytes);
+            }
+            pcm = stereo;
+            bytes *= 2;
+        }
+        ok = pcm_writer_emit_frame(w, dec, sinfo, track, flags, pcm, bytes, sample_rate, num_channels, obj_type);
+    }
+    free(stereo);
+    free(w->held);
+    w->held = NULL;
+    w->held_bytes = 0;
+    w->held_frames = 0;
+    return ok;
+}
+
+/* WAV and raw PCM output cannot change channel count, and an ADTS stream
+ * joined before its first SBR header starts as mono and becomes stereo at the
+ * header if it is HE-AAC v2. Hold the first mono frames until the count
+ * settles, then write them as stereo. */
+static bool pcm_writer_write_frame(PCMWriter *w, faad_decoder *dec, faad_stream_info *sinfo,
+                                   const MP4Track *track, uint32_t flags, uint8_t *outbuf,
+                                   uint32_t bytes_written, uint32_t *sample_rate,
+                                   uint32_t *num_channels, enum faad_object_type *obj_type)
+{
+    if (w->is_mp4 || w->hold_done)
+        return pcm_writer_emit_frame(w, dec, sinfo, track, flags, outbuf, bytes_written,
+                                     sample_rate, num_channels, obj_type);
+    update_stream_info(dec, sinfo, flags, sample_rate, num_channels, obj_type);
+    if (*num_channels == 1 && w->held_frames < SETTLE_FRAMES)
+        return pcm_writer_hold_frame(w, outbuf, bytes_written, flags);
+    if (!pcm_writer_release(w, dec, sinfo, track, sample_rate, num_channels, obj_type)) return false;
+    return pcm_writer_emit_frame(w, dec, sinfo, track, flags, outbuf, bytes_written,
+                                 sample_rate, num_channels, obj_type);
+}
+
 static bool pcm_writer_finish(PCMWriter *w, uint32_t sample_rate, uint32_t num_channels)
 {
     if (w->fout && ferror(w->fout)) return false;
@@ -622,6 +709,8 @@ static void pcm_writer_close(PCMWriter *w)
         w->io_buf = NULL;
     }
     fifo_free(&w->fifo);
+    free(w->held);
+    w->held = NULL;
 }
 
 static void print_strict_error(const char *filename, uint64_t offset, uint64_t frame_idx, faad_status st)
@@ -1158,7 +1247,8 @@ int run_decoding_session_ext(const decode_options_t *opts,
     }
 
     if (!info_only) {
-        if (!pcm_writer_finish(&writer, sample_rate, num_channels)) {
+        if (!pcm_writer_release(&writer, dec, &sinfo, &track, &sample_rate, &num_channels, &obj_type) ||
+            !pcm_writer_finish(&writer, sample_rate, num_channels)) {
             log_msgf(log_cb, user_data, 0, "Error finalizing PCM output\n");
             ret_status = DECODE_ERROR;
             goto cleanup;
