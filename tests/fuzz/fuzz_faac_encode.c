@@ -179,7 +179,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             if (ai.num_channels != p.channels)
                 abort();
             if (p.channels == 8) {
-                if (ai.channel_config != 0 || !ai.pce.wave71 ||
+                if (ai.channel_config != 0 || ai.pce.n_el != 5 ||
                     ai.pce.channels != 8 || info.asc_size > sizeof(info.asc))
                     abort();
             } else if (ai.channel_config == 0) {
