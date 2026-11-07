@@ -137,23 +137,27 @@ static const uint8_t *output_channel_map(const faad_decoder *dec, uint32_t num_c
  * so a full-scale input cannot clip; mono as (Lo + Ro) / 2. Returns the
  * output channel count, num_chs itself when there is nothing to mix. */
 static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uint32_t num_chs,
-                            uint32_t frame_samples, float *dst[])
+                            uint32_t layout, uint32_t frame_samples, float *dst[])
 {
     if (mode == FAAD_DOWNMIX_NONE || num_chs < 2 || (mode == FAAD_DOWNMIX_STEREO && num_chs == 2))
         return num_chs;
     /* surround indices in the WAV order output_channel_map() produces */
-    int c = -1, ls = -1, rs = -1;
+    int c = -1, ls = -1, rs = -1, side_l = -1, side_r = -1, bc = -1;
     switch (num_chs) {
     case 3: c = 2; break;
     case 4: c = 2; ls = rs = 3; break;
     case 5: c = 2; ls = 3; rs = 4; break;
     case 6: c = 2; ls = 4; rs = 5; break;
-    case 8: c = 2; ls = 4; rs = 5; break; /* the side pair is folded in below */
+    case 7:
+        if (layout == LY_70) { c = 2; ls = 3; rs = 4; side_l = 5; side_r = 6; }  /* FL FR FC BL BR SL SR */
+        else if (layout == LY_61B) { c = 2; ls = 4; rs = 5; bc = 6; }             /* FL FR FC LFE BL BR BC */
+        break;
+    case 8: c = 2; ls = 4; rs = 5; side_l = 6; side_r = 7; break;
     default: break;
     }
     const float k = 0.70710678f;
     float gain = 1.0f / (1.0f + (c >= 0 ? k : 0.0f) + (ls >= 0 ? (ls == rs ? 0.5f * k : k) : 0.0f)
-                               + (num_chs == 8 ? k : 0.0f));
+                               + (side_l >= 0 ? k : 0.0f) + (bc >= 0 ? k : 0.0f));
 #if MAX_CHANNELS >= 3
     float lsw = (ls == rs) ? 0.5f * k : k; /* a single rear channel feeds both sides */
 #endif
@@ -163,8 +167,9 @@ static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uin
         if (c >= 0) { lo += k * src[c][i]; ro += k * src[c][i]; }
         if (ls >= 0) { lo += lsw * src[ls][i]; ro += lsw * src[rs][i]; }
 #endif
-#if MAX_CHANNELS >= 8
-        if (num_chs == 8) { lo += k * src[6][i]; ro += k * src[7][i]; }
+#if MAX_CHANNELS >= 7
+        if (side_l >= 0) { lo += k * src[side_l][i]; ro += k * src[side_r][i]; }
+        if (bc >= 0) { lo += 0.5f * k * src[bc][i]; ro += 0.5f * k * src[bc][i]; }
 #endif
         if (num_chs > 2) { lo *= gain; ro *= gain; }
         if (mode == FAAD_DOWNMIX_MONO) {
@@ -233,7 +238,7 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs,
         float *dst[2] = { pcm, pcm + FRAME_LEN_LONG };
         for (uint32_t ch = 0; ch < num_chs; ch++)
             src[ch] = dec->overlap[map ? map[ch] : ch];
-        uint32_t out_channels = downmix_pcm(mode, src, num_chs, FRAME_LEN_LONG, dst);
+        uint32_t out_channels = downmix_pcm(mode, src, num_chs, layout_of(dec), FRAME_LEN_LONG, dst);
         memcpy(dec->overlap[nl], dst[0], FRAME_LEN_LONG * sizeof(float));
         if (out_channels == 2)
             memcpy(dec->overlap[nr], dst[1], FRAME_LEN_LONG * sizeof(float));
@@ -248,7 +253,7 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs,
     float *dst[2] = { dec->spec[nl], dec->spec[nr] };
     for (uint32_t ch = 0; ch < num_chs; ch++)
         src[ch] = dec->spec[map ? map[ch] : ch];
-    downmix_pcm(mode, src, num_chs, FRAME_LEN_LONG, dst);
+    downmix_pcm(mode, src, num_chs, layout_of(dec), FRAME_LEN_LONG, dst);
 
     uint8_t seq = dec->win_seq[nl], shape = dec->win_shape[nl];
     imdct_and_window(dec, nl, seq, shape, dec->spec[nl], pcm);
@@ -1378,7 +1383,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         for (uint32_t c = 0; c < num_chs; c++)
             src[c] = pcm_final + (map ? map[c] : c) * pcm_stride;
         float *dst[2] = { pcm_final, pcm_final + pcm_stride };
-        num_chs = downmix_pcm(decoder->config.downmix_mode, src, num_chs, frame_samples, dst);
+        num_chs = downmix_pcm(decoder->config.downmix_mode, src, num_chs, layout_of(decoder), frame_samples, dst);
     }
     if (num_chs <= 2)
         for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * pcm_stride;

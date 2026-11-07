@@ -58,6 +58,19 @@ def tone_of(samples, channels, channel, start, count):
     return best
 
 
+def amplitude(samples, channels, channel, freq, start=3000, count=4096):
+    re = sum(samples[(start + i) * channels + channel] * math.cos(2 * math.pi * freq * i / RATE) for i in range(count))
+    im = sum(samples[(start + i) * channels + channel] * math.sin(2 * math.pi * freq * i / RATE) for i in range(count))
+    return 2 * math.hypot(re, im) / count
+
+
+# Stereo downmix: which input channels (by number in WAVE order) reach the left and right output.
+DOWNMIX = {
+    'ffmpeg_70.m4a': ({0, 2, 3, 5}, {1, 2, 4, 6}),   # FL FC BL SL / FR FC BR SR
+    'ffmpeg_61.m4a': ({0, 2, 4, 6}, {1, 2, 5, 6}),   # FL FC BL BC / FR FC BR BC
+}
+
+
 def main():
     faad, data = sys.argv[1:3]
     with tempfile.TemporaryDirectory() as d:
@@ -71,6 +84,16 @@ def main():
             for start in (3000, total // 2):
                 for ch in range(check):
                     assert tone_of(samples, channels, ch, start, 1024) == ch, (name, start, ch)
+        for name, (left, right) in DOWNMIX.items():
+            out = os.path.join(d, name + '.stereo.wav')
+            r = subprocess.run([faad, '-d', 'stereo', '-o', out, os.path.join(data, name)], capture_output=True)
+            assert r.returncode == 0, (name, r.stderr.decode(errors='replace'))
+            got_channels, _, samples = read_wav(out)
+            assert got_channels == 2, (name, got_channels)
+            for ch, wanted in ((0, left), (1, right)):
+                for k in (0, 1, 2, 4, 5, 6):   # the LFE tone is too low to measure
+                    present = amplitude(samples, 2, ch, TONES[k]) > 300
+                    assert present == (k in wanted), (name, 'left' if ch == 0 else 'right', k)
     print('ok')
 
 
