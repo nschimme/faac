@@ -1411,6 +1411,7 @@ output_done:
         decoder->emitted_format.channel_mask = mask;
         decoder->emitted_format.decoder_delay = delay;
         decoder->pcm_emitted = true;
+        decoder->layout_latched = true;
         decoder->format_known = true;
         if (frame_flags) *frame_flags = flags;
     }

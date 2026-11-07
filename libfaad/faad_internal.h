@@ -444,6 +444,9 @@ struct faad_decoder {
     size_t allocated_bytes, largest_allocation;
     bool format_known;
     bool pcm_emitted;
+    /* The channel layout is fixed once PCM has been emitted; a PCE that arrives
+     * later would move channel state between output slots. */
+    bool layout_latched;
     /* Parsing and synthesis may advance on rejected packets; only emitted PCM
      * may replace the output format that callers use. */
     struct {
