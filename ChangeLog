@@ -49,6 +49,13 @@ Unreleased
 	* faac warns when a WAVE_FORMAT_EXTENSIBLE file's channel mask is not the
 	  order it reads (quad or 6.0, for example) and rejects 7-channel input
 	  with a clear message; encoded output is unchanged
+	* faad puts FFmpeg's and Apple's 5.1, 6.1, 7.0 and 7.1 PCE streams, fdkaac's
+	  7.1 and channelConfiguration 11 and 12 streams in WAVE order with the
+	  matching channel mask from the first frame, and keeps the order when a
+	  stream is joined between PCEs (except FFmpeg's 7.0, whose two back pairs
+	  swap until a PCE arrives); configurations 11 and 12 were refused before,
+	  and the frames of a stream before its first PCE decoded as noise on the
+	  pair channels
 	* Eight-channel streams from 2.2 and earlier used channelConfiguration 7
 	  and coded the input's BL BR as the side pair and SL SR as the back
 	  pair; faad, FFmpeg and Apple's decoder all return them with those two

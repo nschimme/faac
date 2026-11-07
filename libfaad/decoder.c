@@ -37,11 +37,12 @@ static uint32_t bounded_size(uint32_t caller_size, size_t library_size)
     return caller_size < library_size ? caller_size : (uint32_t)library_size;
 }
 
-/* Channels a channel_configuration carries (7 is 7.1); 0, a PCE, is
- * learnt from the first decoded frame, so start from stereo. */
+/* Channels a channel_configuration carries (7 and 12 are 7.1, 11 is 6.1); 0,
+ * a PCE, is learnt from the first decoded frame, so start from stereo. */
 static uint32_t config_channels(uint32_t channel_config)
 {
-    return channel_config == 7 ? 8 : (channel_config >= 1 && channel_config <= 6) ? channel_config : (MAX_CHANNELS < 2 ? 1 : 2);
+    return channel_config == 7 || channel_config == 12 ? 8 : channel_config == 11 ? 7
+        : (channel_config >= 1 && channel_config <= 6) ? channel_config : (MAX_CHANNELS < 2 ? 1 : 2);
 }
 
 static uint32_t asc_channels(const AudioSpecificConfig *asc)
@@ -49,41 +50,85 @@ static uint32_t asc_channels(const AudioSpecificConfig *asc)
     return asc->pce.channels ? asc->pce.channels : config_channels(asc->num_channels);
 }
 
-static uint32_t layout_config(const faad_decoder *dec)
+/* The speaker layouts the decoder puts in WAVE order. Channel slots are the
+ * element order of ISO/IEC 14496-3 (C, L R, then the surround pairs, then the
+ * LFE); map[] gives the slot of each output channel in WAVE order. */
+enum layout_id {
+    LY_NONE, LY_3, LY_4, LY_50, LY_51, LY_50S, LY_51S, LY_70, LY_71, LY_61B, LY_COUNT
+};
+
+static const struct {
+    uint8_t channels;
+    uint16_t mask;
+    uint8_t map[8];
+} layouts[LY_COUNT] = {
+    [LY_3]   = { 3, 0x007, { 1, 2, 0 } },                      /* C L R -> L R C */
+    [LY_4]   = { 4, 0x107, { 1, 2, 0, 3 } },                   /* C L R Cs -> L R C Cs */
+    [LY_50]  = { 5, 0x037, { 1, 2, 0, 3, 4 } },                /* C L R Ls Rs */
+    [LY_51]  = { 6, 0x03f, { 1, 2, 0, 5, 3, 4 } },             /* C L R Ls Rs LFE -> L R C LFE Ls Rs */
+    [LY_50S] = { 5, 0x607, { 1, 2, 0, 3, 4 } },
+    [LY_51S] = { 6, 0x60f, { 1, 2, 0, 5, 3, 4 } },
+    [LY_70]  = { 7, 0x637, { 1, 2, 0, 5, 6, 3, 4 } },          /* C L R Ls Rs Lb Rb -> L R C Lb Rb Ls Rs */
+    [LY_71]  = { 8, 0x63f, { 1, 2, 0, 7, 5, 6, 3, 4 } },       /* C L R Ls Rs Lb Rb LFE -> L R C LFE Lb Rb Ls Rs */
+    [LY_61B] = { 7, 0x13f, { 1, 2, 0, 6, 3, 4, 5 } },          /* C L R Lb Rb Cb LFE -> L R C LFE Lb Rb Cb */
+};
+
+static uint32_t pce_layout_id(uint32_t pce_layout)
 {
-    return (dec->asc.pce.wave71 || dec->layout_inferred71) ? 7 : dec->asc.num_channels;
+    switch (pce_layout) {
+    case ASC_LAYOUT_50B: return LY_50;
+    case ASC_LAYOUT_51B: return LY_51;
+    case ASC_LAYOUT_50S: return LY_50S;
+    case ASC_LAYOUT_51S: return LY_51S;
+    case ASC_LAYOUT_70:  return LY_70;
+    case ASC_LAYOUT_71:  return LY_71;
+    case ASC_LAYOUT_61B: return LY_61B;
+    default:             return LY_NONE;
+    }
+}
+
+/* The layout of the stream: its PCE, the element sequence of its first frame
+ * when no PCE had arrived yet, or its channel configuration. */
+static uint32_t layout_of(const faad_decoder *dec)
+{
+    uint32_t id = pce_layout_id(dec->asc.pce.layout);
+    if (id == LY_NONE) id = pce_layout_id(dec->layout_inferred);
+    if (id != LY_NONE || dec->asc.num_channels == 0) return id;
+    switch (dec->asc.num_channels) {
+    case 3:  return LY_3;
+    case 4:  return LY_4;
+    case 5:  return LY_50;
+    case 6:  return LY_51;
+    case 7:
+    case 12: return LY_71;
+    case 11: return LY_61B;
+    default: return LY_NONE;
+    }
 }
 
 /* PCE tags bind channel history to positions even if packet elements move. */
 static uint32_t pce_channel(const AscPce *pce, uint32_t type, uint32_t tag)
 {
-    if (type == ID_SCE && tag == pce->tags[0]) return 0;
-    if (type == ID_LFE && tag == pce->tags[4]) return 7;
+    uint32_t slots = layouts[pce_layout_id(pce->layout)].channels;
+    if (type == ID_SCE) {
+        if (tag == pce->tags[0]) return 0;
+        if (pce->layout == ASC_LAYOUT_61B && tag == pce->tags[3]) return 5;
+    }
+    if (type == ID_LFE && tag == pce->tags[4]) return slots - 1;
     if (type == ID_CPE) {
-        for (uint32_t i = 1; i <= 3; i++)
-            if (tag == pce->tags[i]) return 2 * i - 1;
+        if (tag == pce->tags[1]) return 1;
+        if (tag == pce->tags[2]) return 3;
+        if ((pce->layout == ASC_LAYOUT_70 || pce->layout == ASC_LAYOUT_71) && tag == pce->tags[3]) return 5;
     }
     return MAX_CHANNELS;
 }
 
-/* Native (element) index of each output channel, WAV / SMPTE order, for
- * channel configurations 3..7 (ISO/IEC 14496-3 Table 1.19); NULL keeps
- * the element order (mono, stereo, unresolved PCE layouts). */
-static const uint8_t *output_channel_map(uint32_t channel_config, uint32_t num_chs)
+/* Native (element) index of each output channel in WAV / SMPTE order; NULL
+ * keeps the element order (mono, stereo, unresolved PCE layouts). */
+static const uint8_t *output_channel_map(const faad_decoder *dec, uint32_t num_chs)
 {
-    static const uint8_t map3[] = { 1, 2, 0 };                   /* C L R -> L R C */
-    static const uint8_t map4[] = { 1, 2, 0, 3 };                /* C L R Cs -> L R C Cs */
-    static const uint8_t map5[] = { 1, 2, 0, 3, 4 };             /* C L R Ls Rs -> L R C Ls Rs */
-    static const uint8_t map6[] = { 1, 2, 0, 5, 3, 4 };          /* C L R Ls Rs LFE -> L R C LFE Ls Rs */
-    static const uint8_t map8[] = { 1, 2, 0, 7, 5, 6, 3, 4 };    /* C L R Ls Rs Lb Rb LFE -> L R C LFE Lb Rb Ls Rs */
-    switch (channel_config) {
-    case 3: return num_chs == 3 ? map3 : NULL;
-    case 4: return num_chs == 4 ? map4 : NULL;
-    case 5: return num_chs == 5 ? map5 : NULL;
-    case 6: return num_chs == 6 ? map6 : NULL;
-    case 7: return num_chs == 8 ? map8 : NULL;
-    default: return NULL;
-    }
+    uint32_t id = layout_of(dec);
+    return layouts[id].channels == num_chs && id != LY_NONE ? layouts[id].map : NULL;
 }
 
 /* Time-domain downmix of the WAV-ordered channels src[] into pcm (one
@@ -92,23 +137,27 @@ static const uint8_t *output_channel_map(uint32_t channel_config, uint32_t num_c
  * so a full-scale input cannot clip; mono as (Lo + Ro) / 2. Returns the
  * output channel count, num_chs itself when there is nothing to mix. */
 static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uint32_t num_chs,
-                            uint32_t frame_samples, float *dst[])
+                            uint32_t layout, uint32_t frame_samples, float *dst[])
 {
     if (mode == FAAD_DOWNMIX_NONE || num_chs < 2 || (mode == FAAD_DOWNMIX_STEREO && num_chs == 2))
         return num_chs;
     /* surround indices in the WAV order output_channel_map() produces */
-    int c = -1, ls = -1, rs = -1;
+    int c = -1, ls = -1, rs = -1, side_l = -1, side_r = -1, bc = -1;
     switch (num_chs) {
     case 3: c = 2; break;
     case 4: c = 2; ls = rs = 3; break;
     case 5: c = 2; ls = 3; rs = 4; break;
     case 6: c = 2; ls = 4; rs = 5; break;
-    case 8: c = 2; ls = 4; rs = 5; break; /* the side pair is folded in below */
+    case 7:
+        if (layout == LY_70) { c = 2; ls = 3; rs = 4; side_l = 5; side_r = 6; }  /* FL FR FC BL BR SL SR */
+        else if (layout == LY_61B) { c = 2; ls = 4; rs = 5; bc = 6; }             /* FL FR FC LFE BL BR BC */
+        break;
+    case 8: c = 2; ls = 4; rs = 5; side_l = 6; side_r = 7; break;
     default: break;
     }
     const float k = 0.70710678f;
     float gain = 1.0f / (1.0f + (c >= 0 ? k : 0.0f) + (ls >= 0 ? (ls == rs ? 0.5f * k : k) : 0.0f)
-                               + (num_chs == 8 ? k : 0.0f));
+                               + (side_l >= 0 ? k : 0.0f) + (bc >= 0 ? k : 0.0f));
 #if MAX_CHANNELS >= 3
     float lsw = (ls == rs) ? 0.5f * k : k; /* a single rear channel feeds both sides */
 #endif
@@ -118,8 +167,9 @@ static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uin
         if (c >= 0) { lo += k * src[c][i]; ro += k * src[c][i]; }
         if (ls >= 0) { lo += lsw * src[ls][i]; ro += lsw * src[rs][i]; }
 #endif
-#if MAX_CHANNELS >= 8
-        if (num_chs == 8) { lo += k * src[6][i]; ro += k * src[7][i]; }
+#if MAX_CHANNELS >= 7
+        if (side_l >= 0) { lo += k * src[side_l][i]; ro += k * src[side_r][i]; }
+        if (bc >= 0) { lo += 0.5f * k * src[bc][i]; ro += 0.5f * k * src[bc][i]; }
 #endif
         if (num_chs > 2) { lo *= gain; ro *= gain; }
         if (mode == FAAD_DOWNMIX_MONO) {
@@ -135,7 +185,7 @@ static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uin
 static bool spectral_downmix_windows_match(struct faad_decoder *dec, uint32_t num_chs)
 {
     if (num_chs == 7) return false;
-    const uint8_t *map = output_channel_map(layout_config(dec), num_chs);
+    const uint8_t *map = output_channel_map(dec, num_chs);
     uint32_t first = map ? map[0] : 0;
     uint32_t lfe = num_chs == 6 ? (map ? map[3] : 3)
         : num_chs == 8 ? (map ? map[3] : 3) : UINT32_MAX;
@@ -181,14 +231,14 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs,
         return false;
 
     if (num_chs < 3 || num_chs > 8 || num_chs == 7) return false;
-    const uint8_t *map = output_channel_map(layout_config(dec), num_chs);
+    const uint8_t *map = output_channel_map(dec, num_chs);
     uint32_t nl = map ? map[0] : 0, nr = map ? map[1] : 1;
     if (!dec->spectral_downmix_active) {
         const float *src[MAX_CHANNELS];
         float *dst[2] = { pcm, pcm + FRAME_LEN_LONG };
         for (uint32_t ch = 0; ch < num_chs; ch++)
             src[ch] = dec->overlap[map ? map[ch] : ch];
-        uint32_t out_channels = downmix_pcm(mode, src, num_chs, FRAME_LEN_LONG, dst);
+        uint32_t out_channels = downmix_pcm(mode, src, num_chs, layout_of(dec), FRAME_LEN_LONG, dst);
         memcpy(dec->overlap[nl], dst[0], FRAME_LEN_LONG * sizeof(float));
         if (out_channels == 2)
             memcpy(dec->overlap[nr], dst[1], FRAME_LEN_LONG * sizeof(float));
@@ -203,7 +253,7 @@ static bool try_spectral_downmix(struct faad_decoder *dec, uint32_t num_chs,
     float *dst[2] = { dec->spec[nl], dec->spec[nr] };
     for (uint32_t ch = 0; ch < num_chs; ch++)
         src[ch] = dec->spec[map ? map[ch] : ch];
-    downmix_pcm(mode, src, num_chs, FRAME_LEN_LONG, dst);
+    downmix_pcm(mode, src, num_chs, layout_of(dec), FRAME_LEN_LONG, dst);
 
     uint8_t seq = dec->win_seq[nl], shape = dec->win_shape[nl];
     imdct_and_window(dec, nl, seq, shape, dec->spec[nl], pcm);
@@ -294,9 +344,9 @@ static uint32_t output_capacity(const faad_decoder *dec)
 
 static uint32_t channel_mask(const faad_decoder *dec, uint32_t channels)
 {
-    static const uint32_t masks[] = { 0, 0x4, 0x3, 0x7, 0x107, 0x37, 0x3f, 0, 0x63f };
-    return channels <= 8 && (channels <= 2 || (layout_config(dec)
-        && config_channels(layout_config(dec)) == channels)) ? masks[channels] : 0;
+    if (channels <= 2) return channels == 1 ? 0x4 : channels == 2 ? 0x3 : 0;
+    uint32_t id = layout_of(dec);
+    return id != LY_NONE && layouts[id].channels == channels ? layouts[id].mask : 0;
 }
 
 #ifndef FAAD_DISABLE_DRC
@@ -928,7 +978,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         }
         if (!asc.num_channels) asc.pce = decoder->asc.pce;
         decoder->asc = asc;
-        decoder->core_channels = asc_channels(&asc);
+        /* Without a configuration or PCE a frame starts from the channel count of
+         * the frames before it, not from a stereo guess. */
+        decoder->core_channels = (!asc.num_channels && !asc.pce.channels && decoder->pcm_emitted)
+            ? decoder->core_channels : asc_channels(&asc);
         decoder->core_sample_rate = asc.sample_rate;
         bs.len = adts_frame_len;
     }
@@ -965,7 +1018,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
     uint32_t last_elem_type = ID_SCE;
     uint32_t last_elem_ch = 0;
     uint32_t occupied = 0;
-    uint8_t seq_type[8] = {0}, seq_tag[8] = {0};
+    uint8_t seq_type[8] = {0};
     uint32_t seq_n = 0;
 #ifndef FAAD_DISABLE_SBR
     uint8_t elem_nch[MAX_CHANNELS] = {0};
@@ -984,12 +1037,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                 saw_end = true;
                 break;
             } else if (syntax_id == ID_SCE || syntax_id == ID_LFE) {
-                if (seq_n < 8) { seq_type[seq_n] = (uint8_t)syntax_id; seq_tag[seq_n] = (uint8_t)bits_show(&bs, 4); }
+                if (seq_n < 8) seq_type[seq_n] = (uint8_t)syntax_id;
                 seq_n++;
-                uint32_t elem_ch = decoder->asc.pce.wave71
+                uint32_t elem_ch = decoder->asc.pce.layout
                     ? pce_channel(&decoder->asc.pce, syntax_id, bits_show(&bs, 4)) : ch_idx;
                 if (elem_ch >= MAX_CHANNELS
-                    || (decoder->asc.pce.wave71 && (occupied & (1u << elem_ch)))) {
+                    || (decoder->asc.pce.layout && (occupied & (1u << elem_ch)))) {
                     decode_success = false; break;
                 }
                 occupied |= 1u << elem_ch;
@@ -1024,12 +1077,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                 decode_success = false; /* a pair cannot fit in the channel ceiling */
                 break;
 #else
-                if (seq_n < 8) { seq_type[seq_n] = ID_CPE; seq_tag[seq_n] = (uint8_t)bits_show(&bs, 4); }
+                if (seq_n < 8) seq_type[seq_n] = ID_CPE;
                 seq_n++;
-                uint32_t elem_ch = decoder->asc.pce.wave71
+                uint32_t elem_ch = decoder->asc.pce.layout
                     ? pce_channel(&decoder->asc.pce, syntax_id, bits_show(&bs, 4)) : ch_idx;
                 if (elem_ch + 1 >= MAX_CHANNELS
-                    || (decoder->asc.pce.wave71 && (occupied & (3u << elem_ch)))) {
+                    || (decoder->asc.pce.layout && (occupied & (3u << elem_ch)))) {
                     decode_success = false; break;
                 }
                 occupied |= 3u << elem_ch;
@@ -1181,14 +1234,29 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
     if (!decode_success)
         for (CouplingChannel *cc = decoder->coupling; cc; cc = cc->next) cc->present = false;
 #endif
-    if (decoder->asc.pce.wave71 && occupied != 0xff) decode_success = false;
+    /* A frame with another channel count than the one that fixed the layout (a
+     * damaged first frame, say) was not read against the right layout. */
+    if (decode_success && decoder->layout_latched && ch_idx > 0 && ch_idx != decoder->latched_channels) {
+        decoder->layout_latched = false;
+        decoder->layout_inferred = ASC_LAYOUT_NONE;
+    }
+    if (decoder->asc.pce.layout
+        && occupied != (1u << layouts[pce_layout_id(decoder->asc.pce.layout)].channels) - 1)
+        decode_success = false;
     /* The PCE of such a stream may only arrive a few frames in; the output
      * layout must not depend on when that is. */
-    if (decode_success && !decoder->layout_latched && !decoder->asc.num_channels && !decoder->asc.pce.channels
-        && seq_n == 5 && seq_type[0] == ID_SCE && seq_type[1] == ID_CPE && seq_type[2] == ID_CPE
-        && seq_type[3] == ID_CPE && seq_type[4] == ID_LFE
-        && seq_tag[1] != seq_tag[2] && seq_tag[1] != seq_tag[3] && seq_tag[2] != seq_tag[3])
-        decoder->layout_inferred71 = true;
+    if (decode_success && !decoder->layout_latched && !decoder->asc.num_channels && !decoder->asc.pce.channels) {
+        static const struct { uint8_t layout, count, seq[5]; } shapes[] = {
+            { ASC_LAYOUT_50B, 3, { ID_SCE, ID_CPE, ID_CPE } },
+            { ASC_LAYOUT_51B, 4, { ID_SCE, ID_CPE, ID_CPE, ID_LFE } },
+            { ASC_LAYOUT_70,  4, { ID_SCE, ID_CPE, ID_CPE, ID_CPE } },
+            { ASC_LAYOUT_71,  5, { ID_SCE, ID_CPE, ID_CPE, ID_CPE, ID_LFE } },
+            { ASC_LAYOUT_61B, 5, { ID_SCE, ID_CPE, ID_CPE, ID_SCE, ID_LFE } },
+        };
+        for (unsigned i = 0; i < sizeof(shapes) / sizeof(shapes[0]); i++)
+            if (seq_n == shapes[i].count && memcmp(seq_type, shapes[i].seq, shapes[i].count) == 0)
+                decoder->layout_inferred = shapes[i].layout;
+    }
     /* A fixed RAW layout also fixes the lifetime output capacity. */
     if (decoder->config.stream_format == FAAD_STREAM_RAW && (decoder->asc.num_channels || decoder->asc.pce.channels)
         && ch_idx > asc_channels(&decoder->asc))
@@ -1311,11 +1379,11 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
     const float *src[MAX_CHANNELS < 2 ? 2 : MAX_CHANNELS];
     if (!spectral_downmixed) {
         num_chs = decoder->num_channels;
-        const uint8_t *map = output_channel_map(layout_config(decoder), num_chs);
+        const uint8_t *map = output_channel_map(decoder, num_chs);
         for (uint32_t c = 0; c < num_chs; c++)
             src[c] = pcm_final + (map ? map[c] : c) * pcm_stride;
         float *dst[2] = { pcm_final, pcm_final + pcm_stride };
-        num_chs = downmix_pcm(decoder->config.downmix_mode, src, num_chs, frame_samples, dst);
+        num_chs = downmix_pcm(decoder->config.downmix_mode, src, num_chs, layout_of(decoder), frame_samples, dst);
     }
     if (num_chs <= 2)
         for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * pcm_stride;
@@ -1425,6 +1493,7 @@ output_done:
         decoder->emitted_format.decoder_delay = delay;
         decoder->pcm_emitted = true;
         decoder->layout_latched = true;
+        decoder->latched_channels = (uint8_t)decoder->core_channels;
         decoder->format_known = true;
         if (frame_flags) *frame_flags = flags;
     }

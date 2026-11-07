@@ -186,11 +186,14 @@ enum faad_stream_flag {
  *
  * Configured output order (WAVE order, so it can be fed straight back to the
  * encoder as FAAC_LAYOUT_WAV): mono FC; stereo FL FR; surround FL FR FC, then BC
- * (4), BL BR (5), LFE BL BR (6), or LFE BL BR SL SR (8). Eight channels from
- * channelConfiguration 0 with an equivalent PCE are reported in WAVE order
- * with side and back pairs. FAAC signals front C/front pair, side pair,
- * back pair and LFE, unambiguously for Apple, FDK, FFmpeg and faad.
- * Configuration 7 streams are also accepted as common side/back 7.1.
+ * (4), BL BR (5), LFE BL BR (6), BL BR SL SR (7.0) or LFE BL BR SL SR (8), or
+ * LFE BL BR BC (6.1). Streams with channelConfiguration 0 and a PCE of 5.0, 5.1,
+ * 6.1, 7.0 or 7.1 shape (side and back pairs, a back centre, an LFE) are reported
+ * in WAVE order with that mask, whatever order their elements are sent in. FAAC
+ * signals front C/front pair, side pair, back pair and LFE, unambiguously for
+ * Apple, FDK, FFmpeg and faad. Configurations 7 and 12 are read as side/back
+ * 7.1 and 11 as 6.1. A stream whose PCE has not arrived yet is read from the
+ * elements of its first frame, and the layout does not change afterwards.
  * Other PCE surround layouts retain element order and report mask 0.
  */
 typedef struct faad_stream_info {

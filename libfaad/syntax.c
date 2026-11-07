@@ -94,9 +94,9 @@ faad_status decode_pce(BitReader *bs, struct faad_decoder *dec)
         return FAAD_ERR_UNSUPPORTED;
     if (!dec->asc.num_channels) {
         /* Elements keep the slots they have had since the first PCM. */
-        bool wave71 = dec->asc.pce.wave71;
+        uint8_t layout = dec->asc.pce.layout;
         dec->asc.pce = pce;
-        if (dec->layout_latched) dec->asc.pce.wave71 = wave71;
+        if (dec->layout_latched) dec->asc.pce.layout = layout;
     }
     return FAAD_OK;
 }

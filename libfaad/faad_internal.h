@@ -447,9 +447,10 @@ struct faad_decoder {
     /* The channel layout is fixed once PCM has been emitted; a PCE that arrives
      * later would move channel state between output slots. */
     bool layout_latched;
-    /* A configuration 0 stream whose first frame has the 7.1 element sequence
-     * is read as the 7.1 layout before its PCE arrives. */
-    bool layout_inferred71;
+    uint8_t latched_channels; /* core channels of the frame that latched it */
+    /* A configuration 0 stream whose first frame has the element sequence of a
+     * known layout is read as that layout before its PCE arrives. */
+    uint8_t layout_inferred; /* ASC_LAYOUT_* */
     /* Parsing and synthesis may advance on rejected packets; only emitted PCM
      * may replace the output format that callers use. */
     struct {
@@ -512,7 +513,8 @@ static inline uint32_t faad_downmix_lfe_channel(const struct faad_decoder *dec, 
         || dec->config.downmix_mode == FAAD_DOWNMIX_NONE)
         return UINT32_MAX;
     if (dec->asc.num_channels == 6 && num_chs == 6) return 5;
-    if ((dec->asc.num_channels == 7 || dec->asc.pce.wave71) && num_chs == 8) return 7;
+    if ((dec->asc.num_channels == 7 || dec->asc.num_channels == 12 || dec->asc.pce.layout == ASC_LAYOUT_71)
+        && num_chs == 8) return 7;
     return UINT32_MAX;
 }
 
