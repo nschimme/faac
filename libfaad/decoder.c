@@ -38,13 +38,16 @@ static uint32_t bounded_size(uint32_t caller_size, size_t library_size)
 }
 
 /* channel_configuration (ISO/IEC 14496-3 Table 1.19); 0 takes its layout from a PCE. */
-enum channel_config { CFG_PCE, CFG_MONO, CFG_STEREO, CFG_3_0, CFG_4_0, CFG_5_0, CFG_5_1, CFG_7_1, CFG_COUNT };
+enum channel_config { CFG_PCE, CFG_MONO, CFG_STEREO, CFG_3_0, CFG_4_0, CFG_5_0, CFG_5_1, CFG_7_1,
+                      CFG_6_1 = 11, CFG_7_1_SIDE_BACK = 12, CFG_COUNT };
 
 /* Channels a channel_configuration carries (7 is 7.1 wide); 0, a PCE, is
  * learnt from the first decoded frame, so start from stereo. */
 static uint32_t config_channels(uint32_t channel_config)
 {
-    return channel_config == CFG_7_1 ? 8 : (channel_config >= CFG_MONO && channel_config <= CFG_5_1)
+    return channel_config == CFG_7_1 || channel_config == CFG_7_1_SIDE_BACK ? 8
+        : channel_config == CFG_6_1 ? 7
+        : (channel_config >= CFG_MONO && channel_config <= CFG_5_1)
         ? channel_config : (MAX_CHANNELS < 2 ? 1 : 2);
 }
 
@@ -77,6 +80,13 @@ static const uint8_t config_elements[CFG_COUNT][6] = {
     [CFG_5_0] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 1), 0xff },
     [CFG_5_1] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 1), EL(ASC_PCE_LFE, 0), 0xff },
     [CFG_7_1] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 1),
+                  EL(ASC_PCE_LFE, 0) },
+    /* The 2013 amendment: 6.1 with a back centre, and the side/back 7.1 that
+     * configuration 7 cannot name. Only a MP4 or raw ASC carries them, as an ADTS
+     * header has three bits for the configuration. */
+    [CFG_6_1] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 1), EL(ASC_PCE_BACK, 0),
+                  EL(ASC_PCE_LFE, 0) },
+    [CFG_7_1_SIDE_BACK] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_SIDE, 1), EL(ASC_PCE_BACK, 1),
                   EL(ASC_PCE_LFE, 0) },
 };
 
