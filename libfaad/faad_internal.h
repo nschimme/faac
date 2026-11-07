@@ -447,6 +447,7 @@ struct faad_decoder {
     /* The channel layout is fixed once PCM has been emitted; a PCE that arrives
      * later would move channel state between output slots. */
     bool layout_latched;
+    uint8_t latched_channels; /* core channels of the frame that latched it */
     /* A configuration 0 stream whose first frame has the element sequence of a
      * known layout is read as that layout before its PCE arrives. */
     uint8_t layout_inferred; /* ASC_LAYOUT_* */

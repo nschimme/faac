@@ -1226,6 +1226,12 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
     if (!decode_success)
         for (CouplingChannel *cc = decoder->coupling; cc; cc = cc->next) cc->present = false;
 #endif
+    /* A frame with another channel count than the one that fixed the layout (a
+     * damaged first frame, say) was not read against the right layout. */
+    if (decode_success && decoder->layout_latched && ch_idx > 0 && ch_idx != decoder->latched_channels) {
+        decoder->layout_latched = false;
+        decoder->layout_inferred = ASC_LAYOUT_NONE;
+    }
     if (decoder->asc.pce.layout
         && occupied != (1u << layouts[pce_layout_id(decoder->asc.pce.layout)].channels) - 1)
         decode_success = false;
@@ -1479,6 +1485,7 @@ output_done:
         decoder->emitted_format.decoder_delay = delay;
         decoder->pcm_emitted = true;
         decoder->layout_latched = true;
+        decoder->latched_channels = (uint8_t)decoder->core_channels;
         decoder->format_known = true;
         if (frame_flags) *frame_flags = flags;
     }
