@@ -565,7 +565,19 @@ legacy position constants.
   BL/BR. With two back CPEs and no side CPE, the first back pair is SL/SR and the
   second BL/BR (the FDK rear-surround convention). Element tags select the channels
   in both ASC and in-band PCEs.
-- Other PCE surround layouts keep element order and report mask 0.
+- Other PCE layouts are placed the same way: a front SCE is FC, a front CPE
+  FL/FR, a side CPE SL/SR, a back SCE BC and a back CPE
+  BL/BR, and the output follows WAVE speaker order. A PCE that puts two elements on one
+  speaker, or lists a second front pair or a side SCE, keeps element order and reports mask 0, and so does a stream with neither
+  a configuration nor a PCE whose elements match no standard configuration.
+- A stream joined before its PCE arrives takes the standard configuration its first
+  frame's elements match, and keeps it. Its channel order is right; the mask names
+  the standard speakers, so a side-surround 5.1 stream reports `0x3F` until it
+  is decoded from its PCE.
+- A stream with a placed PCE has its elements bound to the PCE's channels by tag, and
+  a frame must fill exactly the channels the PCE lists or it is rejected. A tag the PCE
+  does not list makes the stream read in element order, provided the elements so far
+  were already in that order.
 - For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels) the output order is the
   order `faac` reads, so decoded PCM can be passed to the encoder with every channel
   in place. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off

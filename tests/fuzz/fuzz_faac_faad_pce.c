@@ -93,7 +93,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (channels == 8) {
         AscInfo ai;
         asc_codec_parse(info.asc, info.asc_size, &ai);
-        if (ai.channel_config != 0 || !ai.pce.wave71 ||
+        if (ai.channel_config != 0 || ai.pce.n_el != 5 ||
             ai.pce.channels != 8 || ai.num_channels != 8)
             abort();
     } else if (info.asc_size && ((info.asc[1] >> 3) & 0x0f) != 6) {
