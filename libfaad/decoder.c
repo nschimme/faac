@@ -51,7 +51,7 @@ static uint32_t asc_channels(const AudioSpecificConfig *asc)
 
 static uint32_t layout_config(const faad_decoder *dec)
 {
-    return dec->asc.pce.wave71 ? 7 : dec->asc.num_channels;
+    return (dec->asc.pce.wave71 || dec->layout_inferred71) ? 7 : dec->asc.num_channels;
 }
 
 /* PCE tags bind channel history to positions even if packet elements move. */
@@ -965,6 +965,8 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
     uint32_t last_elem_type = ID_SCE;
     uint32_t last_elem_ch = 0;
     uint32_t occupied = 0;
+    uint8_t seq_type[8] = {0}, seq_tag[8] = {0};
+    uint32_t seq_n = 0;
 #ifndef FAAD_DISABLE_SBR
     uint8_t elem_nch[MAX_CHANNELS] = {0};
 #endif
@@ -982,6 +984,8 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                 saw_end = true;
                 break;
             } else if (syntax_id == ID_SCE || syntax_id == ID_LFE) {
+                if (seq_n < 8) { seq_type[seq_n] = (uint8_t)syntax_id; seq_tag[seq_n] = (uint8_t)bits_show(&bs, 4); }
+                seq_n++;
                 uint32_t elem_ch = decoder->asc.pce.wave71
                     ? pce_channel(&decoder->asc.pce, syntax_id, bits_show(&bs, 4)) : ch_idx;
                 if (elem_ch >= MAX_CHANNELS
@@ -1020,6 +1024,8 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                 decode_success = false; /* a pair cannot fit in the channel ceiling */
                 break;
 #else
+                if (seq_n < 8) { seq_type[seq_n] = ID_CPE; seq_tag[seq_n] = (uint8_t)bits_show(&bs, 4); }
+                seq_n++;
                 uint32_t elem_ch = decoder->asc.pce.wave71
                     ? pce_channel(&decoder->asc.pce, syntax_id, bits_show(&bs, 4)) : ch_idx;
                 if (elem_ch + 1 >= MAX_CHANNELS
@@ -1176,6 +1182,13 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         for (CouplingChannel *cc = decoder->coupling; cc; cc = cc->next) cc->present = false;
 #endif
     if (decoder->asc.pce.wave71 && occupied != 0xff) decode_success = false;
+    /* The PCE of such a stream may only arrive a few frames in; the output
+     * layout must not depend on when that is. */
+    if (decode_success && !decoder->layout_latched && !decoder->asc.num_channels && !decoder->asc.pce.channels
+        && seq_n == 5 && seq_type[0] == ID_SCE && seq_type[1] == ID_CPE && seq_type[2] == ID_CPE
+        && seq_type[3] == ID_CPE && seq_type[4] == ID_LFE
+        && seq_tag[1] != seq_tag[2] && seq_tag[1] != seq_tag[3] && seq_tag[2] != seq_tag[3])
+        decoder->layout_inferred71 = true;
     /* A fixed RAW layout also fixes the lifetime output capacity. */
     if (decoder->config.stream_format == FAAD_STREAM_RAW && (decoder->asc.num_channels || decoder->asc.pce.channels)
         && ch_idx > asc_channels(&decoder->asc))
@@ -1411,6 +1424,7 @@ output_done:
         decoder->emitted_format.channel_mask = mask;
         decoder->emitted_format.decoder_delay = delay;
         decoder->pcm_emitted = true;
+        decoder->layout_latched = true;
         decoder->format_known = true;
         if (frame_flags) *frame_flags = flags;
     }
