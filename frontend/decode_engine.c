@@ -53,9 +53,9 @@ typedef struct {
     uint32_t fill;
 } PCMFifo;
 
-/* A stream joined before its first SBR header may be HE-AAC v2, whose stereo
- * comes from PS data that cannot be parsed earlier. The first SBR header of a
- * stream follows within about 30 frames. */
+/* A mono stream with SBR joined before its first SBR header may be HE-AAC v2,
+ * whose stereo comes from PS data that cannot be parsed earlier. The first SBR
+ * header of a stream follows within about 30 frames. */
 #define SETTLE_FRAMES 40
 
 typedef struct {
@@ -642,7 +642,7 @@ static bool pcm_writer_write_frame(PCMWriter *w, faad_decoder *dec, faad_stream_
         return pcm_writer_emit_frame(w, dec, sinfo, track, flags, outbuf, bytes_written,
                                      sample_rate, num_channels, obj_type);
     update_stream_info(dec, sinfo, flags, sample_rate, num_channels, obj_type);
-    if (*num_channels == 1 && w->held_frames < SETTLE_FRAMES)
+    if (*num_channels == 1 && (flags & FAAD_FRAME_SBR) && w->held_frames < SETTLE_FRAMES)
         return pcm_writer_hold_frame(w, outbuf, bytes_written, flags);
     if (!pcm_writer_release(w, dec, sinfo, track, sample_rate, num_channels, obj_type)) return false;
     return pcm_writer_emit_frame(w, dec, sinfo, track, flags, outbuf, bytes_written,
