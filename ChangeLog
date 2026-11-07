@@ -46,6 +46,10 @@ Unreleased
 	* Eight-channel streams are signalled with a program config element in
 	  the AudioSpecificConfig and in every 32nd ADTS frame; faad and faam
 	  read them
+	* Eight-channel streams from 2.2 and earlier used channelConfiguration 7;
+	  faad decodes them with the back and side pairs exchanged (the BL BR and
+	  SL SR channels of the input come out swapped), so encode 7.1 again from
+	  the source instead of relying on the channel order of old streams
 	* Filter bank: AAC-LC long windows use a Kaiser-Bessel Derived window
 	  again instead of the sine window, to cut spectral leakage from loud
 	  low-frequency tones into the broadband noise floor (bass-heavy intros at

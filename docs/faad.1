@@ -50,7 +50,8 @@ A WAV header written to stdout declares an unknown length, so readers
 consume it until end of file.
 .TP
 .BR -f ,\  --format\ <\fItype\fP>
-Output container format: wav (default) or raw (headerless PCM).
+Output container format: wav (default) or raw (headerless PCM, little-endian;
+faac reads it with -P -X, or pipe -w WAV output instead).
 Any other value is an error.
 Seekable WAV output automatically uses RF64 when its RIFF size exceeds
 the 32-bit limit.
@@ -61,7 +62,8 @@ Sample depth: 16 (default), 24, 32 (24-bit integer in 32-bit samples) or
 .BR --bit-depth ,
 .BR --sample-depth ).
 Any other value is an error.
-More than two channels are written as WAVE_FORMAT_EXTENSIBLE with a channel mask.
+More than two channels are written as WAVE_FORMAT_EXTENSIBLE with a channel mask,
+which is 0 for layouts that have no WAVE equivalent; their channels keep the stream's element order.
 .TP
 .BR -a ,\  --adts\ <\fIfile\fP>
 Extract the raw ADTS stream from an MP4 file without decoding. (Alias:

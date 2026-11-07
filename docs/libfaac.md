@@ -387,6 +387,7 @@ Mono and stereo use mono and L/R. For three or more channels,
 - `FAAC_LAYOUT_WAV` lets WAVE files and decoder output go straight in; the library
   reorders to AAC element order. It only reorders, never mixes or downmixes.
 - Six and eight channels always carry an LFE as the trailing unpaired channel.
+  Seven channels are not supported, and neither is six channels without an LFE.
 - For any other order, permute the samples yourself and pass `FAAC_LAYOUT_AAC`.
 - Eight channels use channelConfiguration 0 and a program config element (PCE)
   listing front, side and back pairs, so Apple, FDK, FFmpeg and libfaad read the
