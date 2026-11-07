@@ -34,8 +34,8 @@ static const struct {
 #define TNS_LPC_ORDER       8     /* fixed filter order; the spec allows up to 20, but higher orders rarely paid for themselves here */
 _Static_assert(TNS_LPC_ORDER <= TNS_MAX_ORDER,
                "coder.h's TNS array bound must cover the order tns.c actually fits");
-#define TNS_GAIN_LIMIT      1.08f /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_MEASURED_GAIN   1.08f /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
+#define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
+#define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
 
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
@@ -211,7 +211,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter)
+                         float *spec, TnsFilterData *filter, float gain_limit)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -283,7 +283,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT)
+    if (gain < gain_limit)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
      * so a high gain can't mean an unstable filter; isfinite() catches the
@@ -303,11 +303,10 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     filter->order = order;
 
-    /* Fixed, not chosen: calc_autocorr_f is invariant under sequence
+    /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
      * reversal, so both directions give the same LPC fit and prediction gain.
-     * Backward filtering (direction = 1) shapes quantization noise after
-     * attacks (where post-masking renders it inaudible), suppressing
-     * backward pre-echo. */
+     * Picking the right one needs the time-domain transient position, which
+     * this function never sees. */
     filter->direction = 1;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
@@ -338,7 +337,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
             filt_e += trial[i] * trial[i];
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
-        if (r[0] < TNS_MEASURED_GAIN * filt_e)
+        if (r[0] < gain_limit * filt_e)
             return 0;
     }
 
@@ -347,7 +346,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncode(CoderInfo *coderInfo, float *spec)
+void TnsEncode(CoderInfo *coderInfo, float *spec, float gain_limit)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
     int numBands = coderInfo->sfbn;
@@ -368,7 +367,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0]))
+                       &tnsInfo->windowData.tnsFilter[0], gain_limit))
         return;
 
 #ifdef FAAC_STATS

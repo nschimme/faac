@@ -34,7 +34,7 @@ void TnsInit(faacEncStruct* hEncoder);
 
 /* Analyze one channel and, if it pays off, whiten `spec` in place.
  * Long blocks only -- the caller must not pass an ONLY_SHORT_WINDOW channel. */
-void TnsEncode(CoderInfo *coderInfo, float *spec);
+void TnsEncode(CoderInfo *coderInfo, float *spec, float gain_limit);
 
 #ifdef __cplusplus
 }

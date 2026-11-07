@@ -910,12 +910,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
 #if MAX_CHANNELS >= 6
-        if (!hEncoder->isLfeChannel[channel] && useTns &&
-            coderInfo[channel].block_type != ONLY_SHORT_WINDOW &&
-            !IsSBR(hEncoder->config.aacObjectType) && hEncoder->sampleRate >= 32000) {
+        if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW && !IsSBR(hEncoder->config.aacObjectType)) {
 #else
-        if (useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW &&
-            !IsSBR(hEncoder->config.aacObjectType) && hEncoder->sampleRate >= 32000) {
+        if (useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW && !IsSBR(hEncoder->config.aacObjectType)) {
 #endif
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
@@ -937,7 +934,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 continue;
             }
 
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+            float tns_gain = (hEncoder->sampleRate >= 44100 &&
+                              (hEncoder->config.bitRate == 0 ? hEncoder->config.quantqual >= 120 : hEncoder->config.bitRate >= 48000))
+                             ? 1.08f : 1.40f;
+            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], tns_gain);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
         }
