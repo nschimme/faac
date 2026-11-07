@@ -188,12 +188,15 @@ _
 4	L R C BC	0x107
 5	L R C Ls Rs	0x37
 6	L R C LFE Ls Rs	0x3F
+7	L R C LFE BL BR BC (6.1)	0x13F
+7	L R C BL BR SL SR (7.0)	0x637
 8	L R C LFE BL BR SL SR	0x63F
 .TE
 .PP
 Mono and stereo are written as plain WAV without a mask.
-Any other layout, such as 7 channels, keeps the stream's element order and is written
-with a channel mask of 0.
+A 5.0 or 5.1 stream whose surround pair is signalled at the side is written with the
+side mask, 0x607 or 0x60F.
+Any other layout keeps the stream's element order and is written with a channel mask of 0.
 Raw output
 .RB ( "-f raw" )
 has no header, so the order has to be known by whatever reads it.

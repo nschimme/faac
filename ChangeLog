@@ -51,8 +51,11 @@ Unreleased
 	  with a clear message; encoded output is unchanged
 	* faad puts FFmpeg's and Apple's 5.1, 6.1, 7.0 and 7.1 PCE streams, fdkaac's
 	  7.1 and channelConfiguration 11 and 12 streams in WAVE order with the
-	  matching channel mask, from the first frame, however the stream is joined;
-	  configurations 11 and 12 were refused before
+	  matching channel mask from the first frame, and keeps the order when a
+	  stream is joined between PCEs (except FFmpeg's 7.0, whose two back pairs
+	  swap until a PCE arrives); configurations 11 and 12 were refused before,
+	  and the frames of a stream before its first PCE decoded as noise on the
+	  pair channels
 	* faad reads channelConfiguration 7 as 7.1 wide (centre, FLC/FRC, FL/FR,
 	  surrounds, LFE), as Apple's decoder and FDK's do; FFmpeg reads it as
 	  front, side and back pairs unless run with -strict 1, and FAAD2 returns
