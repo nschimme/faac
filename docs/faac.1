@@ -391,6 +391,43 @@ before the audio data, so the file starts playing while it downloads.
 The file is rewritten when encoding ends, which takes a little longer; the output must be
 seekable and readable.
 By default the index is written last.
+.SH EXAMPLES
+Encode to
+.BR song.m4a :
+.IP
+.B faac song.wav
+.PP
+Encode at an average 128 kbit/s:
+.IP
+.B faac -b 128 -o out.m4a song.wav
+.PP
+Encode with variable bitrate:
+.IP
+.B faac -q 100 -o out.m4a song.wav
+.PP
+Low bitrate stereo with HE-AAC v1:
+.IP
+.B faac --profile he-v1 -b 48 -o out.m4a song.wav
+.PP
+Write a plain ADTS stream instead of an MP4 file:
+.IP
+.B faac --stream-format adts -b 128 -o out.aac song.wav
+.PP
+Encode a 5.1 WAV file:
+.IP
+.B faac -b 384 -o movie.m4a movie51.wav
+.PP
+Re-encode an AAC file by piping the decoder into the encoder:
+.IP
+.B faad -w in.m4a | faac -b 128 -o out.m4a -
+.PP
+Encode headerless 16-bit little-endian stereo PCM at 48 kHz:
+.IP
+.B faac -P -X -R 48000 -C 2 -b 128 -o out.m4a in.pcm
+.PP
+Encode a 5.1 file whose channels are in AAC order (center first, LFE last):
+.IP
+.B faac -I 1,6 -b 384 -o out.m4a movie51-aac-order.wav
 .SH ADVANCED OPTIONS, ONLY FOR TESTING PURPOSES
 .TP
 .BR --mpeg-version\ <2|4>
