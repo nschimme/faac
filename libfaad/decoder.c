@@ -40,7 +40,7 @@ static uint32_t bounded_size(uint32_t caller_size, size_t library_size)
 /* channel_configuration (ISO/IEC 14496-3 Table 1.19); 0 takes its layout from a PCE. */
 enum channel_config { CFG_PCE, CFG_MONO, CFG_STEREO, CFG_3_0, CFG_4_0, CFG_5_0, CFG_5_1, CFG_7_1, CFG_COUNT };
 
-/* Channels a channel_configuration carries (7 is 7.1); 0, a PCE, is
+/* Channels a channel_configuration carries (7 is 7.1 wide); 0, a PCE, is
  * learnt from the first decoded frame, so start from stereo. */
 static uint32_t config_channels(uint32_t channel_config)
 {
@@ -65,7 +65,10 @@ enum speaker {
 
 #if MAX_CHANNELS >= 3
 #define EL(cat, cpe) (uint8_t)((cat) << 5 | (cpe) << 4)
-/* Table 1.19: each channel_configuration as the element list a PCE would give. */
+/* Table 1.19: each channel_configuration as the element list a PCE would give.
+ * Configuration 7 is 7.1 wide: centre, the two front pairs from the centre
+ * outward, then the surrounds. Apple, FDK and the specification read it so; the
+ * side/back 7.1 that older encoders also wrote as 7 cannot be told from it. */
 static const uint8_t config_elements[CFG_COUNT][6] = {
     [CFG_MONO] = { EL(ASC_PCE_FRONT, 0), 0xff },
     [CFG_STEREO] = { EL(ASC_PCE_FRONT, 1), 0xff },
@@ -73,9 +76,14 @@ static const uint8_t config_elements[CFG_COUNT][6] = {
     [CFG_4_0] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 0), 0xff },
     [CFG_5_0] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 1), 0xff },
     [CFG_5_1] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 1), EL(ASC_PCE_LFE, 0), 0xff },
-    [CFG_7_1] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_SIDE, 1), EL(ASC_PCE_BACK, 1),
+    [CFG_7_1] = { EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_BACK, 1),
                   EL(ASC_PCE_LFE, 0) },
 };
+
+/* A configuration 0 stream whose PCE has not arrived yet comes from a writer
+ * that signals layouts by PCE, whose 7.1 is front, side, back. */
+static const uint8_t pce_side_back_7_1[5] = {
+    EL(ASC_PCE_FRONT, 0), EL(ASC_PCE_FRONT, 1), EL(ASC_PCE_SIDE, 1), EL(ASC_PCE_BACK, 1), EL(ASC_PCE_LFE, 0) };
 
 /* Gives each element its speakers (a WAVE mask bit per channel) and orders
  * the output by position. A layout whose elements cannot be placed, or two of
@@ -86,17 +94,22 @@ static void layout_build(struct faad_decoder *dec, const uint8_t *el, uint32_t n
     static const uint16_t speakers[4][2] = { { SPK_FC, SPK_FRONT }, { 0, SPK_SIDE }, { SPK_BC, SPK_BACK }, { SPK_LFE, 0 } };
     struct faad_layout *L = &dec->layout;
     uint16_t spk[MAX_CHANNELS];
-    uint32_t mask = 0, ch = 0, front_pairs = 0, back_pairs = 0, side = 0;
+    uint32_t mask = 0, ch = 0, front_pairs = 0, back_pairs = 0, side = 0, front_total = 0;
     memset(L, 0, sizeof(*L));
     L->lfe = 0xff;
     for (uint32_t i = 0; i < n; i++) {
         side += el[i] >> 5 == ASC_PCE_SIDE;
         back_pairs += el[i] >> 4 == (ASC_PCE_BACK << 1 | 1);
+        front_total += el[i] >> 4 == (ASC_PCE_FRONT << 1 | 1);
     }
     bool rear_pairs = back_pairs == 2 && !side;
     for (uint32_t i = 0; i < n; i++) {
         uint32_t cat = el[i] >> 5, pair = el[i] >> 4 & 1, bits = speakers[cat][pair];
-        if (cat == ASC_PCE_FRONT && pair && front_pairs++) bits = 0; /* wider pairs are not placed */
+        if (cat == ASC_PCE_FRONT && pair) {
+            /* Front pairs are listed from the centre outward: with two, the inner one is FLC/FRC. */
+            if (front_total > 2) bits = 0;
+            else if (front_total == 2 && !front_pairs++) bits = SPK_FLC | SPK_FRC;
+        }
         if (rear_pairs && cat == ASC_PCE_BACK && pair && !(mask & SPK_SIDE)) bits = SPK_SIDE;
         if (!bits || (mask & bits) || ch + 1 + pair > MAX_CHANNELS) return;
         mask |= bits;
@@ -150,7 +163,7 @@ void faad_layout_infer(struct faad_decoder *dec, uint32_t seq)
             want = want << 2 | ((e >> 5) == ASC_PCE_LFE ? ID_LFE : (e >> 4) & 1 ? ID_CPE : ID_SCE);
         }
         if (want == seq) {
-            layout_build(dec, config_elements[cfg], n, false);
+            layout_build(dec, cfg == CFG_7_1 ? pce_side_back_7_1 : config_elements[cfg], n, false);
             return;
         }
     }

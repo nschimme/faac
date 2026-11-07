@@ -190,7 +190,7 @@ enum faad_stream_flag {
  * channelConfiguration 0 with an equivalent PCE are reported in WAVE order
  * with side and back pairs. FAAC signals front C/front pair, side pair,
  * back pair and LFE, unambiguously for Apple, FDK, FFmpeg and faad.
- * Configuration 7 streams are also accepted as common side/back 7.1.
+ * Configuration 7 streams are read as 7.1 wide: FL FR FC LFE BL BR FLC FRC.
  * Other PCE surround layouts retain element order and report mask 0.
  */
 typedef struct faad_stream_info {

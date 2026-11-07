@@ -559,16 +559,20 @@ legacy position constants.
   C/pair, side pair, back pair and LFE, matching fdkaac and unambiguous for Apple,
   FDK, FFmpeg and faad. ADTS repeats the in-band PCE every 32 frames from frame 0;
   MP4/RAW carry it only in the ASC.
-- Configuration 7 streams are still accepted as common side/back 7.1. Both report
-  WAVE order FL FR FC LFE BL BR SL SR and mask `0x63F`.
+- Configuration 7 is 7.1 wide, as Apple, FDK and FAAD2 read it: centre, the inner
+  front pair (FLC/FRC), the front pair, the surrounds (BL/BR) and LFE. It reports WAVE
+  order FL FR FC LFE BL BR FLC FRC and mask `0xFF`. Older encoders also wrote side/back
+  7.1 as configuration 7; the stream cannot tell the two apart, so that content is
+  placed as wide.
 - A PCE with front SCE/CPE, one side CPE and one back CPE maps them to SL/SR and
   BL/BR. With two back CPEs and no side CPE, the first back pair is SL/SR and the
   second BL/BR (the FDK rear-surround convention). Element tags select the channels
   in both ASC and in-band PCEs.
 - Other PCE layouts are placed the same way: a front SCE is FC, a front CPE
   FL/FR, a side CPE SL/SR, a back SCE BC and a back CPE
-  BL/BR, and the output follows WAVE speaker order. A PCE that puts two elements on one
-  speaker, or lists a second front pair or a side SCE, keeps element order and reports mask 0, and so does a stream with neither
+  BL/BR, and the output follows WAVE speaker order. With two front CPEs the first is
+  FLC/FRC and the second FL/FR. A PCE that puts two elements on one
+  speaker, lists more than two front pairs or a side SCE, keeps element order and reports mask 0, and so does a stream with neither
   a configuration nor a PCE whose elements match no standard configuration.
 - A stream joined before its PCE arrives takes the standard configuration its first
   frame's elements match, and keeps it. Its channel order is right; the mask names
