@@ -910,9 +910,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
 #if MAX_CHANNELS >= 6
-        if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+        if (!hEncoder->isLfeChannel[channel] && useTns &&
+            coderInfo[channel].block_type != ONLY_SHORT_WINDOW &&
+            !IsSBR(hEncoder->config.aacObjectType) && hEncoder->sampleRate >= 32000) {
 #else
-        if (useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+        if (useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW &&
+            !IsSBR(hEncoder->config.aacObjectType) && hEncoder->sampleRate >= 32000) {
 #endif
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
