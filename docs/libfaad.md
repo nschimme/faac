@@ -566,6 +566,9 @@ legacy position constants.
   tell the two apart, so that content is placed as wide, with its side pair on FL/FR
   and its front pair on FLC/FRC. FFmpeg's decoder reads it the other way. FAAC and
   fdkaac signal side/back 7.1 with a PCE.
+- Configurations 11 (6.1 with a back centre) and 12 (7.1 with side and back pairs) are
+  accepted from a MP4 or raw ASC; an ADTS header has three bits for the configuration
+  and cannot carry them.
 - A PCE with front SCE/CPE, one side CPE and one back CPE maps them to SL/SR and
   BL/BR. With two back CPEs and no side CPE, the first back pair is SL/SR and the
   second BL/BR (the FDK rear-surround convention). Element tags select the channels
@@ -588,9 +591,11 @@ legacy position constants.
 - For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels with side and back pairs)
   the output order is the order `faac` reads, so decoded PCM can be passed to the
   encoder with every channel in place. A configuration 7 stream decodes with FLC/FRC
-  in the last two channels, which `faac` codes as SL/SR; it warns about the mask. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off
-  through `AAC_PCM_MAX_OUTPUT_CHANNELS`) return the same order; Apple's decoder returns
-  native element order, C L R first and the LFE last.
+  in the last two channels, which `faac` codes as SL/SR; it warns about the mask.
+  FFmpeg returns the same order and masks for FFmpeg, Apple and fdkaac streams;
+  libfdk-aac (with its default mix-down to six channels switched off through
+  `AAC_PCM_MAX_OUTPUT_CHANNELS`) returns the same order for 5.1 and 7.1 but reports no
+  mask; Apple's decoder returns native element order, C L R first and the LFE last.
 - A RAW ASC's PCE channel count sizes the output buffer before the first frame;
   ADTS discovery uses the build capacity.
 
