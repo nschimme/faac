@@ -37,6 +37,7 @@ typedef struct
   bool bounded_data;
   bool bigendian;
   bool isfloat;
+  uint32_t channel_mask; /* WAVE_FORMAT_EXTENSIBLE speaker mask; 0 when absent */
 } pcmfile_t;
 
 /* Why wav_open_read_ex() failed. NOT_WAV means the header is not RIFF/RF64,
@@ -51,6 +52,12 @@ typedef enum
 
 pcmfile_t *wav_open_read(const char *path, bool rawchans);
 pcmfile_t *wav_open_read_ex(const char *path, bool rawchans, wav_open_error_t *err);
+/* The input order FAAC encodes for a channel count, as WAVE speaker names, or
+   NULL for a count it has no layout for. */
+const char *wav_layout_name(uint16_t channels);
+/* True when a WAVE speaker mask lists the speakers of that layout in the
+   order FAAC reads them. A zero mask says nothing and always matches. */
+bool wav_mask_matches_layout(uint16_t channels, uint32_t mask);
 size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map);
 int wav_close(pcmfile_t *file);
 

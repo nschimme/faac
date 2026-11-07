@@ -586,6 +586,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
         FAIL("Input file %s has %u channels, but this build supports at most %u (rebuild with -Dmax-channels=%u).\n",
              opts->input_filename, num_channels, libinfo.max_channels, num_channels);
 
+    if (num_channels == 7)
+        FAIL("Input file %s has 7 channels; FAAC encodes 1 to 6 or 8 channels.\n",
+             opts->input_filename);
+
     faac_params params;
     faac_params_init(&params, sizeof(params));
     params.sample_rate = sample_rate;
@@ -692,6 +696,14 @@ int run_encoding_session_ext(const encode_options_t *opts,
     bool standard_layout = num_channels < 3 ||
         (opts->center_channel == 3 && opts->lfe_channel == 4);
     params.channel_layout = standard_layout ? FAAC_LAYOUT_WAV : FAAC_LAYOUT_AAC;
+    /* A mask that differs would otherwise be coded by position without a word:
+       6.0 loses a full-range channel to the LFE low-pass, quad plays its
+       rear pair from the centre. -I means the caller chose the order. */
+    if (standard_layout && !wav_mask_matches_layout(num_channels, infile->channel_mask))
+        log_msgf(log_cb, user_data, 1,
+                 "Warning: the WAVE channel mask 0x%X does not match the %s order FAAC reads for %u channels.%s\n",
+                 (unsigned)infile->channel_mask, wav_layout_name(num_channels), (unsigned)num_channels,
+                 num_channels >= 6 ? " Channel 4 is coded as the LFE." : "");
     bool native = standard_layout && wav_native_ok(infile) && !resample_active;
     params.input_format = !native ? FAAC_INPUT_FLOAT :
                           infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;

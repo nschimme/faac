@@ -317,6 +317,8 @@ pcmfile_t *wav_open_read_ex(const char *name, bool rawinput, wav_open_error_t *e
     } else {
       sndf->isfloat = (wave.SubFormat[0] == WAVE_FORMAT_FLOAT);
     }
+    if (le16toh(wave.Format.wFormatTag) == WAVE_FORMAT_EXTENSIBLE)
+      sndf->channel_mask = le32toh(wave.dwChannelMask);
   }
 
   if (rawinput)
@@ -368,6 +370,37 @@ bad:
 pcmfile_t *wav_open_read(const char *name, bool rawinput)
 {
   return wav_open_read_ex(name, rawinput, NULL);
+}
+
+const char *wav_layout_name(uint16_t channels)
+{
+  switch (channels)
+  {
+    case 3: return "L R C";
+    case 4: return "L R C BC";
+    case 5: return "L R C Ls Rs";
+    case 6: return "L R C LFE Ls Rs";
+    case 8: return "L R C LFE BL BR SL SR";
+    default: return NULL;
+  }
+}
+
+/* Both 5.1 and 5.0 spellings are common: side surrounds (0x60F, 0x607) are
+   what FFmpeg writes, back surrounds (0x3F, 0x37) what most other tools do. */
+bool wav_mask_matches_layout(uint16_t channels, uint32_t mask)
+{
+  if (!mask)
+    return true;
+
+  switch (channels)
+  {
+    case 3: return mask == 0x7;
+    case 4: return mask == 0x107;
+    case 5: return mask == 0x37 || mask == 0x607;
+    case 6: return mask == 0x3F || mask == 0x60F;
+    case 8: return mask == 0x63F;
+    default: return true;
+  }
 }
 
 int *mk_chan_map(uint16_t channels, uint16_t center, uint16_t lf)
