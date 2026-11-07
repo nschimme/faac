@@ -114,6 +114,9 @@ static void layout_build(struct faad_decoder *dec, const uint8_t *el, uint32_t n
         if (!bits || (mask & bits) || ch + 1 + pair > MAX_CHANNELS) return;
         mask |= bits;
         L->el_key[i] = (uint8_t)((cat == ASC_PCE_LFE ? ID_LFE : pair) << 4 | (el[i] & 0xf));
+        /* Tags select the elements, so two of one kind cannot share one. */
+        for (uint32_t j = 0; by_tag && j < i; j++)
+            if (L->el_key[j] == L->el_key[i]) return;
         L->el_slot[i] = (uint8_t)ch;
         spk[ch] = (uint16_t)(bits & (0u - bits));
         if (pair) spk[ch + 1] = (uint16_t)(bits & (bits - 1));
