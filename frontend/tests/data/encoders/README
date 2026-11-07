@@ -1,0 +1,15 @@
+Surround streams written by other encoders, for test_faad_encoder_streams.py.
+Each carries a distinct sine per channel (440, 660, 880, 60, 1320, 1760, 2200,
+2640 Hz in WAVE order), 0.4 s at 48 kHz, 64 kbit/s:
+
+  ffmpeg_51.aac    ffmpeg -c:a aac        5.1  (FL FR FC LFE BL BR)           ADTS, PCE
+  ffmpeg_61.m4a    ffmpeg -c:a aac        6.1  (FL FR FC LFE BL BR BC)        channelConfiguration 11
+  ffmpeg_70.m4a    ffmpeg -c:a aac        7.0  (FL FR FC BL BR SL SR)         PCE, back pairs listed side first
+  ffmpeg_71.m4a    ffmpeg -c:a aac        7.1                                 channelConfiguration 12
+  apple_61.m4a     ffmpeg -c:a aac_at     6.1                                 channelConfiguration 11
+  apple_70.m4a     ffmpeg -c:a aac_at     7.0                                 PCE
+  fdkaac_71.aac    fdkaac -p 2 -f 2       7.1                                 ADTS, first PCE in frame 9
+
+The sources are WAVE_FORMAT_EXTENSIBLE files with the layout's mask. Apple's
+encoder repeats surround content on some channels of its 6.1 stream; FFmpeg's
+decoder shows the same, so only the channels it keeps are checked.

@@ -561,16 +561,27 @@ legacy position constants.
   MP4/RAW carry it only in the ASC.
 - Configuration 7 streams are still accepted as common side/back 7.1. Both report
   WAVE order FL FR FC LFE BL BR SL SR and mask `0x63F`.
-- A PCE with front SCE/CPE, one side CPE and one back CPE maps them to SL/SR and
-  BL/BR. With two back CPEs and no side CPE, the first back pair is SL/SR and the
-  second BL/BR (the FDK rear-surround convention). Element tags select the channels
-  in both ASC and in-band PCEs.
+- A PCE whose lists have one of these shapes is read as a layout and reported in
+  WAVE order with its mask: front SCE and CPE with one back CPE (5.0, `0x37`; 5.1
+  with an LFE, `0x3F`) or one side CPE (`0x607`, `0x60F`); with one side and one back
+  CPE, or two back CPEs, 7.0 (`0x637`) and 7.1 (`0x63F`), where the first back pair is
+  SL/SR and the second BL/BR (the FDK rear-surround convention); with a back CPE, a
+  back SCE and an LFE, 6.1 (`0x13F`). Element tags select the channels in both ASC
+  and in-band PCEs, whatever order the elements are sent in.
+- Configurations 11 (6.1) and 12 (7.1 with side and rear pairs) are accepted.
+- A configuration 0 stream whose PCE has not arrived yet is read from the element
+  sequence of its first frame (SCE CPE CPE, with an LFE, SCE CPE CPE CPE, with an
+  LFE, or SCE CPE CPE SCE LFE). The layout is fixed from the first PCM on, so a PCE
+  arriving later does not change the channel order. A stream joined before its first
+  PCE cannot tell which pair is the side one when two back pairs are sent in another
+  order than the PCE lists them.
 - Other PCE surround layouts keep element order and report mask 0.
 - For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels) the output order is the
   order `faac` reads, so decoded PCM can be passed to the encoder with every channel
-  in place. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off
-  through `AAC_PCM_MAX_OUTPUT_CHANNELS`) return the same order; Apple's decoder returns
-  native element order, C L R first and the LFE last.
+  in place. FFmpeg returns the same order and masks for FFmpeg, Apple and fdkaac streams;
+  libfdk-aac (with its default mix-down to six channels switched off through
+  `AAC_PCM_MAX_OUTPUT_CHANNELS`) returns the same order for 5.1 and 7.1 but reports no
+  mask; Apple's decoder returns native element order, C L R first and the LFE last.
 - A RAW ASC's PCE channel count sizes the output buffer before the first frame;
   ADTS discovery uses the build capacity.
 
