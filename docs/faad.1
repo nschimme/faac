@@ -187,6 +187,12 @@ Downmix surround to stereo:
 .IP
 .B faad -d stereo -o out.wav surround.m4a
 .PP
+Re-encode with
+.BR faac (1),
+keeping every channel in place:
+.IP
+.B faad -w song.m4a | faac -b 128 -o out.m4a -
+.PP
 Print stream information as JSON:
 .IP
 .B faad --json song.m4a

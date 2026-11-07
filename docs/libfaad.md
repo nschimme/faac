@@ -567,8 +567,8 @@ legacy position constants.
   in both ASC and in-band PCEs.
 - Other PCE surround layouts keep element order and report mask 0.
 - For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels) the output order is the
-  order `faac` reads, so `faad -w in.m4a | faac -o out.m4a -` keeps every channel in
-  place. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off
+  order `faac` reads, so decoded PCM can be passed to the encoder with every channel
+  in place. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off
   through `AAC_PCM_MAX_OUTPUT_CHANNELS`) return the same order; Apple's decoder returns
   native element order, C L R first and the LFE last.
 - A RAW ASC's PCE channel count sizes the output buffer before the first frame;
