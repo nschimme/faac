@@ -19,6 +19,7 @@
 #include "sbr.c"
 #undef NDEBUG
 #include <assert.h>
+#include <stdlib.h>
 
 static void put_bits(uint8_t *out, unsigned *pos, unsigned value, unsigned count)
 {
@@ -164,7 +165,7 @@ static void fill(faad_decoder *dec, uint32_t ch0, uint32_t syntax_id)
 }
 
 /* The syntax ids of a frame's channel elements, in channel order. */
-typedef struct { uint8_t id[3]; uint32_t n; } Elems;
+typedef struct { uint8_t id[8]; uint32_t n; } Elems;
 #define ELEMS_INIT(...) { { __VA_ARGS__ }, sizeof((uint8_t[]){ __VA_ARGS__ }) }
 #define ELEMS(...) ((Elems)ELEMS_INIT(__VA_ARGS__))
 
@@ -427,13 +428,97 @@ static void test_sbr_read_extension_restarts_taken_channels(void)
     assert(faad_decoder_close(&dec) == FAAD_OK);
 }
 
-int main(void)
+/* Every way to split up to max_ch channels into SCEs and CPEs, in channel order. */
+static uint32_t all_layouts(Elems *out, uint32_t count, Elems prefix, uint32_t used, uint32_t max_ch)
+{
+    if (prefix.n) out[count++] = prefix;
+    for (uint32_t id = ID_SCE; id <= ID_CPE; id++) {
+        uint32_t nch = id == ID_CPE ? 2 : 1;
+        if (used + nch > max_ch) continue;
+        Elems next = prefix;
+        next.id[next.n++] = (uint8_t)id;
+        count = all_layouts(out, count, next, used + nch, max_ch);
+    }
+    return count;
+}
+
+static uint32_t start_of(Elems e, uint32_t index)
+{
+    uint32_t ch = 0;
+    for (uint32_t i = 0; i < index; i++) ch += e.id[i] == ID_CPE ? 2 : 1;
+    return ch;
+}
+
+static void fill_elements(faad_decoder *dec, Elems e)
+{
+    for (uint32_t i = 0; i < e.n; i++) fill(dec, start_of(e, i), e.id[i]);
+}
+
+/* Whatever layout follows any other, with no fills: an element in the same
+ * place and size as one of the old layout continues its own last payload,
+ * and every other element decodes like channels whose SBR never started. */
+static void test_sbr_apply_every_layout_change(uint32_t max_ch)
+{
+    enum { MAX_TESTED = 6, MAX_LAYOUTS = 32 }; /* 32 splits of up to 6 channels */
+    assert(max_ch <= MAX_TESTED);
+    if (max_ch > MAX_CHANNELS) max_ch = MAX_CHANNELS;
+    Elems layouts[MAX_LAYOUTS];
+    uint32_t count = all_layouts(layouts, 0, (Elems){ { 0 }, 0 }, 0, max_ch);
+    assert(count <= MAX_LAYOUTS);
+    for (uint32_t b = 0; b < count; b++) {
+        for (uint32_t a = 0; a < count; a++) {
+            Elems before = layouts[b], after = layouts[a];
+            faad_decoder *changed = open_sbr(), *continuing = open_sbr(), *reference = open_sbr();
+            int frame = 0;
+            for (; frame < 2; frame++) {
+                fill_elements(changed, before);
+                fill_elements(continuing, before);
+                run_frame(changed, frame, before);
+                run_frame(continuing, frame, before);
+                run_frame(reference, frame, before);
+            }
+            for (; frame < 4; frame++) {
+                for (uint32_t i = 0; i < after.n; i++) {
+                    uint32_t start = start_of(after, i);
+                    for (uint32_t j = 0; j < before.n; j++)
+                        if (start_of(before, j) == start && before.id[j] == after.id[i])
+                            fill(continuing, start, after.id[i]);
+                }
+                run_frame(changed, frame, after);
+                run_frame(continuing, frame, after);
+                run_frame(reference, frame, after);
+            }
+            for (uint32_t i = 0; i < after.n; i++) {
+                uint32_t start = start_of(after, i), nch = after.id[i] == ID_CPE ? 2 : 1;
+                bool same = false;
+                for (uint32_t j = 0; j < before.n; j++)
+                    same |= start_of(before, j) == start && before.id[j] == after.id[i];
+                const faad_decoder *expected = same ? continuing : reference;
+                for (uint32_t c = start; c < start + nch; c++)
+                    assert(memcmp(changed->pcm + c * SBR_OUT_LEN, expected->pcm + c * SBR_OUT_LEN,
+                                  sizeof(float[SBR_OUT_LEN])) == 0);
+            }
+            assert(faad_decoder_close(&changed) == FAAD_OK);
+            assert(faad_decoder_close(&continuing) == FAAD_OK);
+            assert(faad_decoder_close(&reference) == FAAD_OK);
+        }
+    }
+}
+
+/* No argument: the quick tests, with the layout sweep over up to three
+ * channels. A channel count: only the sweep, over up to that many. */
+int main(int argc, char **argv)
 {
     build_fills();
+    if (argc > 1) {
+        test_sbr_apply_every_layout_change((uint32_t)atoi(argv[1]));
+        return 0;
+    }
     test_sbr_apply_layout_change_unpairs();
     test_sbr_apply_stale_partner_not_enhanced();
     test_sbr_apply_unfilled_element_not_enhanced();
     test_sbr_apply_returning_pair_not_enhanced();
+    test_sbr_apply_every_layout_change(3);
     test_sbr_apply_skipped_fill_continues();
 #if MAX_CHANNELS >= 3
     test_sbr_apply_layout_change_beyond_first_pair();
