@@ -50,8 +50,10 @@ Unreleased
 	  order it reads (quad or 6.0, for example) and rejects 7-channel input
 	  with a clear message; encoded output is unchanged
 	* faad reads channelConfiguration 7 as 7.1 wide (centre, FLC/FRC, FL/FR,
-	  surrounds, LFE), as Apple's decoder, fdkaac and FAAD2 do; FFmpeg reads
-	  it as front, side and back pairs unless run with -strict 1.
+	  surrounds, LFE), as Apple's decoder and fdkaac do; FFmpeg reads it as
+	  front, side and back pairs unless run with -strict 1, and FAAD2 returns
+	  the pairs in stream order labelled front, side and back (the faad2 shim
+	  reports those labels).
 	  Eight-channel streams from 2.2 and earlier used configuration 7 and
 	  coded the input's BL BR as the second pair and SL SR as the third, so
 	  they come out with the pairs moved; encode 7.1 again from the source
