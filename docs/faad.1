@@ -62,8 +62,9 @@ Sample depth: 16 (default), 24, 32 (24-bit integer in 32-bit samples) or
 .BR --bit-depth ,
 .BR --sample-depth ).
 Any other value is an error.
-More than two channels are written as WAVE_FORMAT_EXTENSIBLE with a channel mask,
-which is 0 for layouts that have no WAVE equivalent; their channels keep the stream's element order.
+More than two channels are written as WAVE_FORMAT_EXTENSIBLE with a channel mask;
+see
+.BR "CHANNEL ORDER" .
 .TP
 .BR -a ,\  --adts\ <\fIfile\fP>
 Extract the raw ADTS stream from an MP4 file without decoding. (Alias:
@@ -169,6 +170,41 @@ and
 .B --help-info
 show the options of one group.
 
+.SH CHANNEL ORDER
+Surround output is in WAVE order, the same order
+.BR faac (1)
+reads, so decoded audio can be passed straight back to the encoder or to a player that
+reads the WAVE channel mask.
+.PP
+.TS
+box;
+lb lb lb
+r l l.
+Channels	Output order	Channel mask
+_
+1	C	\(em
+2	L R	\(em
+3	L R C	0x7
+4	L R C BC	0x107
+5	L R C Ls Rs	0x37
+6	L R C LFE Ls Rs	0x3F
+8	L R C LFE BL BR SL SR	0x63F
+.TE
+.PP
+Mono and stereo are written as plain WAV without a mask.
+Any other layout, such as 7 channels, keeps the stream's element order and is written
+with a channel mask of 0.
+Raw output
+.RB ( "-f raw" )
+has no header, so the order has to be known by whatever reads it.
+.PP
+.BR aplay (1)
+ignores the channel mask and ALSA's own 5.1 and 7.1 devices use a different order (front,
+rear, center, LFE), so surround audio piped to it plays from the wrong speakers.
+Use a player that reads the mask, such as ffplay or mpv, or give
+.B aplay
+a channel map with
+.BR -m .
 .SH EXAMPLES
 Decode to
 .BR song.wav :
@@ -179,9 +215,13 @@ Decode to 24-bit WAV:
 .IP
 .B faad -b 24 -o out.wav song.m4a
 .PP
+Play a stereo file with ALSA:
+.IP
+.B faad -w song.m4a | aplay
+.PP
 Stream raw 16-bit PCM to another program:
 .IP
-.B faad -w -f raw song.m4a | aplay -f cd
+.B faad -f raw -o - song.m4a
 .PP
 Downmix surround to stereo:
 .IP
