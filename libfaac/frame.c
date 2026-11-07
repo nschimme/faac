@@ -694,7 +694,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels);
-    unsigned int useTns = hEncoder->config.useTns;
+    unsigned int useTns = hEncoder->config.useTns && !IsSBR(hEncoder->config.aacObjectType);
     unsigned int shortctl = hEncoder->config.shortctl;
     /* A starved HE core can't afford a long window's scalefactors and
      * sections; the frequency resolution they buy loses to the bits.
@@ -909,36 +909,42 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
+    if (useTns) {
+        const float attackMin = hEncoder->tnsCfg.attackMin;
+        for (channel = 0; channel < numChannels; channel++) {
 #if MAX_CHANNELS >= 6
-        if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW && !IsSBR(hEncoder->config.aacObjectType)) {
+            if (!hEncoder->isLfeChannel[channel] && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
 #else
-        if (useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW && !IsSBR(hEncoder->config.aacObjectType)) {
+            if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
 #endif
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
 #ifdef FAAC_STATS
-            if (attack > 0.0f && isfinite(attack)) {
-                g_faacStats.totalAttack += attack;
-                if (attack > g_faacStats.maxAttack) {
-                    g_faacStats.maxAttack = attack;
+                if (attack > 0.0f && isfinite(attack)) {
+                    g_faacStats.totalAttack += attack;
+                    if (attack > g_faacStats.maxAttack) {
+                        g_faacStats.maxAttack = attack;
+                    }
+                    g_faacStats.attackCount++;
                 }
-                g_faacStats.attackCount++;
-            }
-            g_faacStats.longBlocks++;
+                g_faacStats.longBlocks++;
 #endif
 
-            /* No envelope yet (the first frames) means no basis to reject
-               on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < hEncoder->tnsCfg.attackMin) {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                continue;
-            }
+                /* No envelope yet (the first frames) means no basis to reject
+                   on, so admit and let the LPC gates decide. */
+                if (attack > 0.0f && attack < attackMin) {
+                    coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+                    continue;
+                }
 
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->tnsCfg);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
+                TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->tnsCfg);
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
+            }
         }
+    } else {
+        for (channel = 0; channel < numChannels; channel++)
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
     }
 
 #if MAX_CHANNELS >= 6
