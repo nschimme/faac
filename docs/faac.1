@@ -262,13 +262,32 @@ Raw PCM input is read big-endian by default; -X reads it little-endian,
 which is what faad -f raw writes. Piping faad -w (WAV) into faac needs no option.
 .TP
 .BR -I\ <\fIC[,LFE]\fP>
-Input channel positions of the Center and LFE channels (1-based), default 3,4 as in a 5.1 WAV.
-Only needed for multichannel files that are not in WAV order. With the default, FAAC reads
-the channels in this order: 3 L R C; 4 L R C BC; 5 L R C Ls Rs; 6 L R C LFE Ls Rs;
-8 L R C LFE BL BR SL SR. Six and eight channels always carry an LFE as the fourth input
-channel, and 7 channels are not supported. For a WAVE_FORMAT_EXTENSIBLE input the channel
-mask is not used to reorder anything; FAAC prints a warning when it differs from the order
-above (for example quad or 6.0), because the channels are still coded by position.
+Input channel positions of the Center and LFE channels, counted from 1; the default
+is 3,4. Use it only for a multichannel file whose channels are not already in the
+order below.
+.PP
+With the default, faac reads the channels in this order:
+.PP
+.TS
+box;
+lb lb
+r l.
+Channels	Input order
+_
+3	L R C
+4	L R C BC
+5	L R C Ls Rs
+6	L R C LFE Ls Rs
+8	L R C LFE BL BR SL SR
+.TE
+.PP
+Six and eight channels always include an LFE. Other counts, such as 7 channels or
+6 channels without an LFE, are not supported.
+.PP
+Channels are coded by position. For a WAVE_FORMAT_EXTENSIBLE file faac does not use
+the channel mask to reorder anything; it prints a warning when the mask is not the
+order above (quad or 6.0, for example), because those channels would be coded as the
+wrong speakers.
 .TP
 .BR --ignorelength
 Ignore the WAV data length in the header and read to EOF.
