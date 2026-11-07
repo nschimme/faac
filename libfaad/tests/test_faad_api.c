@@ -450,6 +450,7 @@ static void test_channel_history_rotation(void)
     assert(faad_decoder_close(&dec) == FAAD_OK);
 }
 
+#ifndef FAAD_DISABLE_SBR
 /* SBR continues a channel only while the element that filled it does, so
  * the core decode notes each frame's element layout; a concealed frame
  * keeps the layout of the frame it repeats. */
@@ -485,6 +486,7 @@ static void test_element_layout(void)
     free(pcm);
     assert(faad_decoder_close(&dec) == FAAD_OK);
 }
+#endif
 #endif
 
 static void test_short_sbr_fill(void)
@@ -708,7 +710,9 @@ int main(void)
     test_layouts(); test_boundaries(); test_raw_init(); test_drc_config_validation(); test_endian_helpers(); test_short_sbr_fill(); test_degraded();
 #if MAX_CHANNELS >= 2
     test_channel_history_rotation();
+#ifndef FAAD_DISABLE_SBR
     test_element_layout();
+#endif
 #endif
     test_nonzero_conceal_history();
     test_known_extensions();

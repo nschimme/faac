@@ -756,7 +756,9 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *decoder)
     memset(decoder->prev_window_seq, 0, sizeof(decoder->prev_window_seq));
     memset(decoder->win_shape, 0, sizeof(decoder->win_shape));
     memset(decoder->win_seq, 0, sizeof(decoder->win_seq));
+#ifndef FAAD_DISABLE_SBR
     memset(decoder->elem_nch, 0, sizeof(decoder->elem_nch));
+#endif
     memset(decoder->pcm, 0, sizeof(float[MAX_CHANNELS * FRAME_SAMPLES_MAX]));
     decoder->spectral_downmix_active = false;
     decoder->spectral_downmix_channels = 0;
@@ -963,7 +965,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
     uint32_t last_elem_type = ID_SCE;
     uint32_t last_elem_ch = 0;
     uint32_t occupied = 0;
+#ifndef FAAD_DISABLE_SBR
     uint8_t elem_nch[MAX_CHANNELS] = {0};
+#endif
 
     bool saw_end = false;
     if (decode_success) {
@@ -985,7 +989,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                     decode_success = false; break;
                 }
                 occupied |= 1u << elem_ch;
+#ifndef FAAD_DISABLE_SBR
                 elem_nch[elem_ch] = 1;
+#endif
                 last_elem_ch = elem_ch;
 #if MAX_CHANNELS >= 3
                 coupling_targets[coupling_target_count++] = (CouplingTarget){
@@ -1021,7 +1027,9 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
                     decode_success = false; break;
                 }
                 occupied |= 3u << elem_ch;
+#ifndef FAAD_DISABLE_SBR
                 elem_nch[elem_ch] = 2;
+#endif
                 last_elem_ch = elem_ch;
 #if MAX_CHANNELS >= 3
                 coupling_targets[coupling_target_count++] = (CouplingTarget){
@@ -1177,8 +1185,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         decoder->consecutive_errors = 0;
         decoder->num_channels = ch_idx;
         decoder->core_channels = ch_idx;
+#ifndef FAAD_DISABLE_SBR
         /* A concealed frame keeps the layout of the frame it repeats. */
         memcpy(decoder->elem_nch, elem_nch, sizeof(elem_nch));
+#endif
 #ifdef FAAD_STATS
         if (!g_faadStats.haveLastChannels) {
             g_faadStats.haveLastChannels = true;
