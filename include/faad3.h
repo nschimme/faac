@@ -191,7 +191,8 @@ enum faad_stream_flag {
  * with side and back pairs. FAAC signals front C/front pair, side pair,
  * back pair and LFE, unambiguously for Apple, FDK, FFmpeg and faad.
  * Configuration 7 streams are read as 7.1 wide: FL FR FC LFE BL BR FLC FRC.
- * Other PCE surround layouts retain element order and report mask 0.
+ * Other PCE layouts are placed by their elements' speakers; a layout that cannot be
+ * placed retains element order and reports mask 0.
  */
 typedef struct faad_stream_info {
     uint32_t                struct_size;      /* set by caller to sizeof(faad_stream_info) */

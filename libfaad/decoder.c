@@ -218,9 +218,9 @@ static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uin
         return num_chs;
     /* what each speaker adds to the left and right output */
 #define K 0.70710678f
-    static const float tl[POS_COUNT] = { [POS_FL] = 1.0f, [POS_FC] = K, [POS_BL] = K,
+    static const float tl[POS_COUNT] = { [POS_FL] = 1.0f, [POS_FC] = K, [POS_BL] = K, [POS_FLC] = K,
                                          [POS_BC] = 0.5f * K, [POS_SL] = K };
-    static const float tr[POS_COUNT] = { [POS_FR] = 1.0f, [POS_FC] = K, [POS_BR] = K,
+    static const float tr[POS_COUNT] = { [POS_FR] = 1.0f, [POS_FC] = K, [POS_BR] = K, [POS_FRC] = K,
                                          [POS_BC] = 0.5f * K, [POS_SR] = K };
 #undef K
     float lw[MAX_CHANNELS] = {0}, rw[MAX_CHANNELS] = {0}, sum = 0.0f;

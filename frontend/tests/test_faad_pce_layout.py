@@ -75,6 +75,13 @@ def tone_of(samples, channels, channel, start, count):
     return best
 
 
+def tone_power(samples, channels, channel, start, count, freq):
+    xs = [samples[(start + i) * channels + channel] for i in range(count)]
+    re = sum(x * math.cos(2 * math.pi * freq * i / RATE) for i, x in enumerate(xs))
+    im = sum(x * math.sin(2 * math.pi * freq * i / RATE) for i, x in enumerate(xs))
+    return math.hypot(re, im) / count
+
+
 def decode(faad, source, out, extra=()):
     r = subprocess.run([faad, *extra, '-o', out, source], capture_output=True)
     assert r.returncode == 0, r.stderr.decode(errors='replace')
@@ -153,7 +160,8 @@ def check_switch(faad, d, frames):
         path = os.path.join(d, 'switch_%s.aac' % name)
         open(path, 'wb').write(plain + b''.join(tail))
         channels, mask, samples = decode(faad, path, path + '.wav')
-        # The format is the one the configuration 7 stream opened with.
+        # The format is the one the configuration 7 stream opened with, so the
+        # side/back segment that follows is written under the wide mask.
         assert (channels, mask) == (CHANNELS, MASK_71_WIDE), (name, channels, hex(mask))
         total = len(samples) // channels
         for ch in range(CHANNELS):
@@ -170,6 +178,13 @@ def check_config7_wide(faad, d, frames):
     total = len(samples) // channels
     for ch, tone in enumerate((6, 7, 2, 3, 4, 5, 0, 1)):
         assert tone_of(samples, channels, ch, total - 8192, 2048) == tone, ('config7', ch)
+    # The inner front pair is part of the stereo downmix, at the weight of the centre.
+    channels, _, samples = decode(faad, path, path + '.dm.wav', ['-d', 'stereo'])
+    total = len(samples) // channels
+    for ch, (inner, front) in enumerate(((TONES[0], TONES[6]), (TONES[1], TONES[7]))):
+        ratio = tone_power(samples, channels, ch, total - 8192, 4096, inner) / \
+            tone_power(samples, channels, ch, total - 8192, 4096, front)
+        assert 0.5 < ratio < 0.9, ('config7 downmix', ch, ratio)
 
 
 def check_layouts(faac, faad, d):

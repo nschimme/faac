@@ -559,11 +559,13 @@ legacy position constants.
   C/pair, side pair, back pair and LFE, matching fdkaac and unambiguous for Apple,
   FDK, FFmpeg and faad. ADTS repeats the in-band PCE every 32 frames from frame 0;
   MP4/RAW carry it only in the ASC.
-- Configuration 7 is 7.1 wide, as Apple, FDK and FAAD2 read it: centre, the inner
-  front pair (FLC/FRC), the front pair, the surrounds (BL/BR) and LFE. It reports WAVE
-  order FL FR FC LFE BL BR FLC FRC and mask `0xFF`. Older encoders also wrote side/back
-  7.1 as configuration 7; the stream cannot tell the two apart, so that content is
-  placed as wide.
+- Configuration 7 is 7.1 wide, as ISO/IEC 14496-3 Table 1.19, FDK and Apple read it:
+  centre, the inner front pair (FLC/FRC), the front pair, the surrounds (BL/BR) and
+  LFE. It reports WAVE order FL FR FC LFE BL BR FLC FRC and mask `0xFF`. Some encoders,
+  FFmpeg's among them, write side/back 7.1 as configuration 7 as well; the stream cannot
+  tell the two apart, so that content is placed as wide, with its side pair on FL/FR
+  and its front pair on FLC/FRC. FFmpeg's decoder reads it the other way. FAAC and
+  fdkaac signal side/back 7.1 with a PCE.
 - A PCE with front SCE/CPE, one side CPE and one back CPE maps them to SL/SR and
   BL/BR. With two back CPEs and no side CPE, the first back pair is SL/SR and the
   second BL/BR (the FDK rear-surround convention). Element tags select the channels
@@ -575,16 +577,18 @@ legacy position constants.
   speaker, lists more than two front pairs or a side SCE, keeps element order and reports mask 0, and so does a stream with neither
   a configuration nor a PCE whose elements match no standard configuration.
 - A stream joined before its PCE arrives takes the standard configuration its first
-  frame's elements match, and keeps it. Its channel order is right; the mask names
-  the standard speakers, so a side-surround 5.1 stream reports `0x3F` until it
-  is decoded from its PCE.
+  frame's elements match, and keeps it. Eight channels are read as the front, side,
+  back 7.1 that PCE writers use, not as configuration 7. Its channel order is right;
+  the mask names the standard speakers, so a side-surround 5.1 stream reports `0x3F`
+  until it is decoded from its PCE.
 - A stream with a placed PCE has its elements bound to the PCE's channels by tag, and
   a frame must fill exactly the channels the PCE lists or it is rejected. A tag the PCE
   does not list makes the stream read in element order, provided the elements so far
   were already in that order.
-- For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels) the output order is the
-  order `faac` reads, so decoded PCM can be passed to the encoder with every channel
-  in place. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off
+- For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels with side and back pairs)
+  the output order is the order `faac` reads, so decoded PCM can be passed to the
+  encoder with every channel in place. A configuration 7 stream decodes with FLC/FRC
+  in the last two channels, which `faac` codes as SL/SR; it warns about the mask. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off
   through `AAC_PCM_MAX_OUTPUT_CHANNELS`) return the same order; Apple's decoder returns
   native element order, C L R first and the LFE last.
 - A RAW ASC's PCE channel count sizes the output buffer before the first frame;
