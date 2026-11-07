@@ -713,7 +713,13 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
         }
 #endif
     }
-    if (!el->header_present) return FAAD_OK; /* nothing to reconstruct against yet */
+    if (!el->header_present) {
+        /* A stream joined between SBR headers has no tables yet, but its output
+         * format must not change when the first header arrives: play the core at
+         * the SBR rate until then. */
+        dec->sbr_present = true;
+        return FAAD_OK;
+    }
 
     SBRChannel *chs[2] = { &dec->sbr[ch0], &dec->sbr[ch0 + (nch > 1 ? 1 : 0)] };
     /* A channel continues only from this element's previous fill. New tables
