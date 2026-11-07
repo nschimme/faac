@@ -313,8 +313,10 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
      * frame, so a given per-channel rate buys about twice the bits per coded
      * spectral line: an HE stream meets the same floor at half the rate. */
     const unsigned long fit_rate = is_he ? 2 * bitrate_per_ch : bitrate_per_ch;
+    /* Every stereo pair, surround element and HE stream shares one tuned
+     * shape; only mono LC keeps the speech-derived default. */
     const int tuned = fit_rate >= masking_model.tune_min_rate
-                   && (channels == 2 || (is_he && channels == 1));
+                   && (channels >= 2 || is_he);
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
     /* The tilt knots are positioned for full-band LC frames. */
     cfg->mask_tuned = tuned && !is_he;
@@ -330,7 +332,7 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
         cfg->treble_slope *= masking_model.profiles[profile].slope_scale;
     /* Any set rate (VBR has none) at or above the nudge's measured floor. */
     cfg->sf_nudge = bitrate_per_ch >= masking_model.nudge_min_rate
-                 || (is_he && channels <= 2 && fit_rate >= masking_model.nudge_min_rate);
+                 || (is_he && fit_rate >= masking_model.nudge_min_rate);
     /* Below the tuned profile's reach, the HE core gets less back from the
      * full onset boost than it costs; VBR has no rate to re-spend what the
      * softer boost saves, so there it only smears attacks. */
