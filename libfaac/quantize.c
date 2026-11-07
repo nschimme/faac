@@ -183,8 +183,9 @@ static const MaskingModel masking_model = {
          * The exponent compresses band/reference energy ratios; both weights
          * balance noise-like average energy against tonal peak energy. */
         { .avg_weight = 0.2f, .loud_exponent = 0.4f, .slope_scale = 1.0f, .peak_floor = 0.0050f },
-        /* Fit on rate-limited stereo LC; stereo and mono HE take it from half
-         * the rate floor. Other stream types keep the default balance. */
+        /* Fit on rate-limited stereo LC; HE takes it from half the rate floor
+         * and surround takes it per element. Only mono LC keeps the default
+         * balance. */
         { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.0f, .peak_floor = 0.0100f },
     },
     /* Empirical target offsets converted to linear multipliers at the knots.
@@ -313,8 +314,8 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
      * frame, so a given per-channel rate buys about twice the bits per coded
      * spectral line: an HE stream meets the same floor at half the rate. */
     const unsigned long fit_rate = is_he ? 2 * bitrate_per_ch : bitrate_per_ch;
-    /* Every stereo pair, surround element and HE stream shares one tuned
-     * shape; only mono LC keeps the speech-derived default. */
+    /* Mono LC keeps the default balance; every other stream takes the tuned
+     * shape once its rate clears the floor. */
     const int tuned = fit_rate >= masking_model.tune_min_rate
                    && (channels >= 2 || is_he);
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
