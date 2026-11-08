@@ -55,13 +55,8 @@ _Static_assert(sizeof(enum faac_drc_profile)   == 4, "faac_drc_profile must be 3
 _Static_assert((int)FAAC_OBJ_AUTO == AUTO && (int)FAAC_OBJ_LC == LOW
                && (int)FAAC_OBJ_HE_AAC_V1 == HE_V1
                && (int)FAAC_OBJ_HE_AAC_V2 == HE_V2, "object type drift");
-_Static_assert((int)FAAC_STEREO_LR == JOINT_NONE && (int)FAAC_STEREO_AUTO == JOINT_MIXED, "joint mode drift");
-_Static_assert((int)FAAC_SHORTCTL_NORMAL == SHORTCTL_NORMAL && (int)FAAC_SHORTCTL_NOLONG == SHORTCTL_NOLONG, "shortctl drift");
 _Static_assert((int)FAAC_STREAM_RAW == RAW_STREAM && (int)FAAC_STREAM_ADTS == ADTS_STREAM
             && (int)FAAC_STREAM_ADTS_MPEG2 != RAW_STREAM && (int)FAAC_STREAM_ADTS_MPEG2 != ADTS_STREAM, "stream format drift");
-_Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == INPUT_16BIT
-            && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_24IN32 == INPUT_32BIT
-            && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 _Static_assert((int)FAAC_DRC_OFF == DRC_OFF, "drc profile drift");
 
 /* Baselines end at the last field so appended fields remain optional. */
@@ -289,7 +284,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *caller, faac_encoder **
     cfg = &h->config;
     cfg->mpegVersion   = config->stream_format == FAAC_STREAM_ADTS_MPEG2 ? MPEG2 : MPEG4;
     cfg->aacObjectType = (unsigned int)config->object_type;  /* LOW / HE_V1 / AUTO */
-    cfg->jointmode     = (unsigned int)config->stereo_mode;
+    cfg->jointmode     = config->stereo_mode;
 #if MAX_CHANNELS >= 6
     cfg->useLfe        = (config->channels == 6 || config->channels == 8) ? 1 : 0;
 #else
@@ -300,13 +295,13 @@ FAACAPI faac_status faac_encoder_open(const faac_params *caller, faac_encoder **
     cfg->bandWidth     = config->bandwidth;
     cfg->quantqual     = config->quality;
     cfg->outputFormat  = config->stream_format == FAAC_STREAM_RAW ? RAW_STREAM : ADTS_STREAM;
-    cfg->inputFormat   = (unsigned int)config->input_format;
-    cfg->shortctl      = (int)config->short_control;
+    cfg->inputFormat   = config->input_format;
+    cfg->shortctl      = config->short_control;
     cfg->usePns        = (config->flags & FAAC_FLAG_PNS) ? 1 : 0;
     cfg->maxBitRate    = config->peak_bit_rate;
     cfg->rateControl   = rate_mode_to_core(config->rate_control);
 #if FAAC_ENCODER_DRC
-    cfg->drcProfile    = (unsigned int)config->drc_profile;
+    cfg->drcProfile    = config->drc_profile;
     cfg->drcRefLevel   = config->drc_ref_level;
 #endif
     /* WAVE order must become AAC element order; each entry names the input

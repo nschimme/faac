@@ -3,7 +3,7 @@ if is_variable('libfaac_static')
     foreach t : ['chunking', 'float', 'frames', 'bitstream']
         test('test_unit_faac_' + t,
             executable('test_faac_' + t, 'test_faac_' + t + '.c',
-                include_directories: ['..', '../..', '../../include'],
+                include_directories: ['..', '../..', '../../include', common_inc],
                 link_with: libfaac_static,
                 dependencies: [libm]))
     endforeach
