@@ -49,11 +49,21 @@ Unreleased
 	* faac warns when a WAVE_FORMAT_EXTENSIBLE file's channel mask is not the
 	  order it reads (quad or 6.0, for example) and rejects 7-channel input
 	  with a clear message; encoded output is unchanged
-	* Eight-channel streams from 2.2 and earlier used channelConfiguration 7
-	  and coded the input's BL BR as the side pair and SL SR as the back
-	  pair; faad, FFmpeg and Apple's decoder all return them with those two
-	  pairs exchanged, so encode 7.1 again from the source instead of relying
-	  on the channel order of old streams
+	* faad puts FFmpeg's and Apple's 5.1, 6.1, 7.0 and 7.1 PCE streams,
+	  fdkaac's 7.1 and channelConfiguration 11 and 12 streams in WAVE order
+	  with the matching channel mask from the first frame, and keeps the
+	  order when a stream is joined between PCEs (except FFmpeg's 7.0, whose
+	  two back pairs swap until a PCE arrives); configurations 11 and 12
+	  were refused before
+	* faad reads channelConfiguration 7 as 7.1 wide (centre, FLC/FRC, FL/FR,
+	  surrounds, LFE), as Apple's decoder and FDK's do; FFmpeg reads it as
+	  front, side and back pairs unless run with -strict 1, and FAAD2 returns
+	  the pairs in stream order labelled front, side and back (the faad2 shim
+	  reports those labels).
+	  Eight-channel streams from 2.2 and earlier used configuration 7 and
+	  coded the input's BL BR as the second pair and SL SR as the third, so
+	  they come out with the pairs moved; encode 7.1 again from the source
+	  instead of relying on the channel order of old streams
 	* Filter bank: AAC-LC long windows use a Kaiser-Bessel Derived window
 	  again instead of the sine window, to cut spectral leakage from loud
 	  low-frequency tones into the broadband noise floor (bass-heavy intros at

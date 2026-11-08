@@ -28,6 +28,7 @@ CHANNELS = 8
 # Distinct tone per input channel, in WAVE order L R C LFE BL BR SL SR.
 TONES = [440, 660, 880, 110, 1320, 1760, 2200, 2640]
 MASK_71 = 0x63F
+MASK_71_WIDE = 0xFF
 
 
 def write_wav(path, channels=CHANNELS, tones=TONES, mask=MASK_71):
@@ -72,6 +73,13 @@ def tone_of(samples, channels, channel, start, count):
         if re * re + im * im > best_power:
             best, best_power = k, re * re + im * im
     return best
+
+
+def tone_power(samples, channels, channel, start, count, freq):
+    xs = [samples[(start + i) * channels + channel] for i in range(count)]
+    re = sum(x * math.cos(2 * math.pi * freq * i / RATE) for i, x in enumerate(xs))
+    im = sum(x * math.sin(2 * math.pi * freq * i / RATE) for i, x in enumerate(xs))
+    return math.hypot(re, im) / count
 
 
 def decode(faad, source, out, extra=()):
@@ -152,10 +160,31 @@ def check_switch(faad, d, frames):
         path = os.path.join(d, 'switch_%s.aac' % name)
         open(path, 'wb').write(plain + b''.join(tail))
         channels, mask, samples = decode(faad, path, path + '.wav')
-        assert (channels, mask) == (CHANNELS, MASK_71), (name, channels, hex(mask))
+        # The format is the one the configuration 7 stream opened with, so the
+        # side/back segment that follows is written under the wide mask.
+        assert (channels, mask) == (CHANNELS, MASK_71_WIDE), (name, channels, hex(mask))
         total = len(samples) // channels
         for ch in range(CHANNELS):
             assert tone_of(samples, channels, ch, total - 8192, 2048) == ch, ('switch', name, ch)
+
+
+def check_config7_wide(faad, d, frames):
+    """Configuration 7 is 7.1 wide: the pair after the centre is FLC/FRC, then FL/FR, then the surrounds."""
+    path = os.path.join(d, 'config7.aac')
+    open(path, 'wb').write(as_config7(frames))
+    channels, mask, samples = decode(faad, path, path + '.wav')
+    assert (channels, mask) == (CHANNELS, MASK_71_WIDE), (channels, hex(mask))
+    # Output FL FR FC LFE BL BR FLC FRC carries the stream's pairs 2, 2, C, LFE, 3, 3, 1, 1.
+    total = len(samples) // channels
+    for ch, tone in enumerate((6, 7, 2, 3, 4, 5, 0, 1)):
+        assert tone_of(samples, channels, ch, total - 8192, 2048) == tone, ('config7', ch)
+    # The inner front pair is part of the stereo downmix, at the weight of the centre.
+    channels, _, samples = decode(faad, path, path + '.dm.wav', ['-d', 'stereo'])
+    total = len(samples) // channels
+    for ch, (inner, front) in enumerate(((TONES[0], TONES[6]), (TONES[1], TONES[7]))):
+        ratio = tone_power(samples, channels, ch, total - 8192, 4096, inner) / \
+            tone_power(samples, channels, ch, total - 8192, 4096, front)
+        assert 0.5 < ratio < 0.9, ('config7 downmix', ch, ratio)
 
 
 def check_layouts(faac, faad, d):
@@ -219,6 +248,7 @@ def main():
                 for ch in range(CHANNELS):
                     assert tone_of(samples, channels, ch, start, 2048) == ch, (skip, start, ch)
         check_switch(faad, d, frames)
+        check_config7_wide(faad, d, frames)
         check_layouts(faac, faad, d)
     print('ok')
 

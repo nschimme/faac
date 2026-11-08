@@ -555,37 +555,55 @@ behaviors so such programs still work, but with libfaad3 the workarounds can go.
 output starts FL, FR, FC, and `channel_mask` uses WAVE speaker bits rather than the
 legacy position constants.
 
+The output order and mask depend on the signalled layout:
+
+| Signalled layout | Output order | `channel_mask` | Notes |
+|---|---|---|---|
+| `channelConfiguration` 1 | FC | `0` | mono, written as plain WAV |
+| `channelConfiguration` 2 | FL FR | `0` | stereo, written as plain WAV |
+| `channelConfiguration` 3 | FL FR FC | `0x7` | |
+| `channelConfiguration` 4 | FL FR FC BC | `0x107` | |
+| `channelConfiguration` 5 | FL FR FC BL BR | `0x37` | back pair |
+| `channelConfiguration` 6 | FL FR FC LFE BL BR | `0x3F` | back pair |
+| PCE 5.0 side | FL FR FC SL SR | `0x607` | side pair |
+| PCE 5.1 side | FL FR FC LFE SL SR | `0x60F` | side pair |
+| `channelConfiguration` 7 | FL FR FC LFE BL BR FLC FRC | `0xFF` | 7.1 wide; side/back 7.1 written as 7 cannot be distinguished and is placed as wide |
+| `channelConfiguration` 11 | FL FR FC LFE BL BR BC | `0x13F` | 6.1; MP4/RAW ASC only |
+| `channelConfiguration` 12 | FL FR FC LFE BL BR SL SR | `0x63F` | 7.1 side/back; MP4/RAW ASC only |
+| PCE 7.0 | FL FR FC BL BR SL SR | `0x637` | two back pairs |
+| PCE with an unplaceable layout | element order | `0` | duplicate tags or speakers, more than two front pairs, side SCE, or no matching configuration |
+
+An inferred layout is fixed once PCM has been emitted; a PCE that arrives later
+does not change the output order or mask.
+
 - FAAC signals eight channels with `channelConfiguration` 0 plus a PCE: front
-  C/pair, side pair, back pair and LFE, matching fdkaac and unambiguous for Apple,
-  FDK, FFmpeg and faad. ADTS repeats the in-band PCE every 32 frames from frame 0;
-  MP4/RAW carry it only in the ASC.
-- Configuration 7 streams are still accepted as common side/back 7.1. Both report
-  WAVE order FL FR FC LFE BL BR SL SR and mask `0x63F`.
-- A PCE with front SCE/CPE, one side CPE and one back CPE maps them to SL/SR and
-  BL/BR. With two back CPEs and no side CPE, the first back pair is SL/SR and the
-  second BL/BR (the FDK rear-surround convention). Element tags select the channels
-  in both ASC and in-band PCEs.
-- Other PCE layouts are placed by their elements' speakers: a front SCE is FC,
-  a front CPE FL/FR, a side CPE SL/SR, a back SCE BC and a back CPE BL/BR. The
-  output follows WAVE speaker order.
-- A PCE that puts two elements on one speaker, lists a second front pair or a
-  side SCE, or a stream with neither a configuration nor a PCE whose elements
-  match no standard configuration keeps element order and reports mask 0.
-- A stream joined before its PCE arrives takes the standard configuration its first
-  frame's elements match, and keeps it. The layout and mask are fixed once PCM has
-  been emitted, so a late PCE does not move the channels: a side-surround 5.1
-  stream that started before its PCE keeps `0x3F`, not `0x60F`.
-- A stream with a placed PCE has its elements bound to the PCE's channels by tag, and
-  a frame must fill exactly the channels the PCE lists or it is rejected. A tag the PCE
-  does not list makes the stream read in element order, provided the elements so far
-  were already in that order.
-- For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels) the output order is the
-  order `faac` reads, so decoded PCM can be passed to the encoder with every channel
-  in place. FFmpeg and libfdk-aac (with its default mix-down to six channels switched off
-  through `AAC_PCM_MAX_OUTPUT_CHANNELS`) return the same order; Apple's decoder returns
-  native element order, C L R first and the LFE last.
-- A RAW ASC's PCE channel count sizes the output buffer before the first frame;
-  ADTS discovery uses the build capacity.
+  C/pair, side pair, back pair and LFE. ADTS repeats the in-band PCE every 32
+  frames from frame 0; MP4/RAW carry it only in the ASC.
+- A PCE maps a front SCE to FC, a front CPE to FL/FR, a side CPE to SL/SR, a
+  back SCE to BC and a back CPE to BL/BR. With two front CPEs the first is
+  FLC/FRC and the second FL/FR. With two back CPEs and no side CPE, the first
+  back pair is SL/SR and the second BL/BR (the FDK rear-surround convention).
+- A stream joined before its PCE arrives takes the standard configuration its
+  first frame's elements match, and keeps it. Eight channels are read as the
+  front, side, back 7.1 that PCE writers use, not as configuration 7. A
+  side-surround 5.1 stream that started before its PCE keeps `0x3F`, not
+  `0x60F`.
+- A stream with a placed PCE has its elements bound to the PCE's channels by
+  tag, and a frame must fill exactly the channels the PCE lists or it is
+  rejected. A tag the PCE does not list makes the stream read in element
+  order, provided the elements so far were already in that order.
+- For the layouts FAAC encodes (3, 4, 5, 6 and 8 channels with side and back
+  pairs) the output order is the order `faac` reads, so decoded PCM can be
+  passed to the encoder with every channel in place. A configuration 7 stream
+  decodes with FLC/FRC in the last two channels, which `faac` codes as SL/SR;
+  it warns about the mask.
+- A RAW ASC's PCE channel count sizes the output buffer before the first
+  frame; ADTS discovery uses the build capacity.
+
+FFmpeg's decoder matches these orders and masks for 5.1, 6.1, 7.0 and
+side/back 7.1, except that it reads configuration 7 as front, side and back.
+libfdk-aac matches 5.1 and 7.1 with mix-down disabled but reports no mask;
+Apple's decoder returns native element order, C L R first and the LFE last.
 
 ## ABI compatibility
 
