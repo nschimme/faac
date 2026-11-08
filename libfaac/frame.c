@@ -390,7 +390,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
         QuantizeConfigureMask(&hEncoder->aacquantCfg, hEncoder->sampleRate,
                               hEncoder->config.bitRate, hEncoder->numChannels,
                               IsSBR(hEncoder->config.aacObjectType));
-        StereoConfigure(&hEncoder->stereoCfg, (JointMode)hEncoder->config.jointmode, hEncoder->sampleRate,
+        StereoConfigure(&hEncoder->stereoCfg, hEncoder->config.jointmode, hEncoder->sampleRate,
                         hEncoder->config.bitRate,
                         CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels),
                         IsSBR(hEncoder->config.aacObjectType), sfbOffset, sfbn);
@@ -517,12 +517,12 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
     for (channel = 0; channel < numChannels; channel++) {
         float *dst = hEncoder->inputFifo[channel] + hEncoder->inputFifoFill;
         switch (hEncoder->config.inputFormat) {
-            case INPUT_16BIT: {
+            case FAAC_INPUT_16BIT: {
                 short *src = (short *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
                 break;
             }
-            case INPUT_24BIT: {
+            case FAAC_INPUT_24BIT: {
                 const uint8_t *src_base = (const uint8_t *)inputBuffer;
                 for (i = 0; i < spch; i++) {
                     const uint8_t *src = src_base + (i * numChannels + hEncoder->config.channel_map[channel]) * 3;
@@ -531,12 +531,12 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 }
                 break;
             }
-            case INPUT_32BIT: {
+            case FAAC_INPUT_24IN32: {
                 int32_t *src = (int32_t *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < spch; i++) { dst[i] = (1.0f/256) * (float)*src; src += numChannels; }
                 break;
             }
-            case INPUT_FLOAT: {
+            case FAAC_INPUT_FLOAT: {
                 float *src = (float *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < spch; i++) { dst[i] = 32768.0f * *src; src += numChannels; }
                 /* Not audio: silence NaN, Inf and anything past the limit. A
@@ -694,7 +694,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = CoreChannels(hEncoder->config.aacObjectType, hEncoder->numChannels);
     unsigned int useTns = hEncoder->config.useTns;
-    unsigned int shortctl = hEncoder->config.shortctl;
+    enum faac_shortctl_mode shortctl = hEncoder->config.shortctl;
     /* A starved HE core can't afford a long window's scalefactors and
      * sections; the frequency resolution they buy loses to the bits.
      * PS concentrates the core bits in mono; forcing short windows in VBR
@@ -706,7 +706,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 && hEncoder->config.quantqual < HE_SHORT_ONLY_QUANTQUAL);
     hEncoder->gpsyInfo.needBass = shortOnly && !IsPS(hEncoder->config.aacObjectType);
     if (IsPS(hEncoder->config.aacObjectType) && shortOnly)
-        shortctl = SHORTCTL_NOLONG;
+        shortctl = FAAC_SHORTCTL_NOLONG;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
     /* The input FIFO decouples the caller's chunk size from the encoder frame
@@ -800,9 +800,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
              * and forced short windows neither switch nor run TNS, so the
              * transient analysis below would be discarded -- skip it. */
 #if MAX_CHANNELS >= 6
-            if (!hEncoder->isLfeChannel[channel] && shortctl != SHORTCTL_NOLONG)
+            if (!hEncoder->isLfeChannel[channel] && shortctl != FAAC_SHORTCTL_NOLONG)
 #else
-            if (shortctl != SHORTCTL_NOLONG)
+            if (shortctl != FAAC_SHORTCTL_NOLONG)
 #endif
             {
                 PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
@@ -840,12 +840,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++)
     {
 #if MAX_CHANNELS >= 6
-        if (hEncoder->isLfeChannel[channel] || shortctl == SHORTCTL_NOSHORT)
+        if (hEncoder->isLfeChannel[channel] || shortctl == FAAC_SHORTCTL_NOSHORT)
 #else
-        if (shortctl == SHORTCTL_NOSHORT)
+        if (shortctl == FAAC_SHORTCTL_NOSHORT)
 #endif
             coderInfo[channel].block_type = ONLY_LONG_WINDOW;
-        else if ((hEncoder->frameNum <= (LOOKAHEAD_DEPTH + 1)) || (shortctl == SHORTCTL_NOLONG))
+        else if ((hEncoder->frameNum <= (LOOKAHEAD_DEPTH + 1)) || (shortctl == FAAC_SHORTCTL_NOLONG))
             coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
     }
 

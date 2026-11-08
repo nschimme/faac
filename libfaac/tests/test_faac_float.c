@@ -15,10 +15,13 @@
 
 /* FAAC_INPUT_FLOAT is unity full scale, so a 16-bit sample divided by 32768 must encode
  * exactly like the 16-bit sample itself. NaN, infinity and magnitudes of 256 or more are
- * not audio and must encode as silence. */
+ * not audio and must encode as silence.
+ * FAAC_INPUT_24BIT and FAAC_INPUT_24IN32 scale by 256 relative to 16-bit PCM,
+ * so (sample << 8) must encode bit-identically across 16-bit, 24-bit, 24-in-32, and float. */
 #include <stdio.h>
 #include <string.h>
 #include "faac.h"
+#include "endian.h"
 #include "test_faac_pcm.h"
 
 #define RATE 44100
@@ -80,9 +83,14 @@ int main(void)
     float *unity = (float *)malloc(n * sizeof(*unity));
     float *silent = (float *)malloc(n * sizeof(*silent));
     int16_t *zeros = (int16_t *)calloc(n, sizeof(*zeros));
-    FT_REQUIRE(unity && silent && zeros);
+    uint8_t *pcm24 = (uint8_t *)malloc(n * 3);
+    int32_t *pcm24in32 = (int32_t *)malloc(n * sizeof(*pcm24in32));
+    FT_REQUIRE(unity && silent && zeros && pcm24 && pcm24in32);
     for (size_t i = 0; i < n; i++) {
         unity[i] = (float)pcm[i] / 32768.0f;
+        int32_t s24 = (int32_t)pcm[i] * 256;
+        write_pcm24(pcm24 + i * 3, s24, FAAC_BIG_ENDIAN);
+        pcm24in32[i] = s24;
         /* Old-scale samples, NaN and infinity cycle through the buffer. */
         switch (i % 4) {
             case 0: silent[i] = (float)pcm[i] + ((pcm[i] < 0) ? -256.0f : 256.0f); break;
@@ -93,17 +101,24 @@ int main(void)
     }
 
     uint8_t *as_int = NULL, *as_float = NULL, *as_zero = NULL, *as_silent = NULL;
+    uint8_t *as_24 = NULL, *as_24in32 = NULL;
     size_t int_len = encode(FAAC_INPUT_16BIT, pcm, sizeof(*pcm), frames, &as_int);
     size_t float_len = encode(FAAC_INPUT_FLOAT, unity, sizeof(*unity), frames, &as_float);
     size_t zero_len = encode(FAAC_INPUT_16BIT, zeros, sizeof(*zeros), frames, &as_zero);
     size_t silent_len = encode(FAAC_INPUT_FLOAT, silent, sizeof(*silent), frames, &as_silent);
+    size_t len_24 = encode(FAAC_INPUT_24BIT, pcm24, 3, frames, &as_24);
+    size_t len_24in32 = encode(FAAC_INPUT_24IN32, pcm24in32, sizeof(*pcm24in32), frames, &as_24in32);
 
     FT_CHECK(int_len > 0);
     expect_same("unity float vs 16-bit", as_float, float_len, as_int, int_len);
+    expect_same("24-bit packed vs 16-bit", as_24, len_24, as_int, int_len);
+    expect_same("24-in-32 vs 16-bit", as_24in32, len_24in32, as_int, int_len);
     expect_same("non-audio float vs silence", as_silent, silent_len, as_zero, zero_len);
     FT_CHECK(int_len != zero_len || memcmp(as_int, as_zero, int_len)); /* the signal is not silent */
 
     free(as_int); free(as_float); free(as_zero); free(as_silent);
+    free(as_24); free(as_24in32);
+    free(pcm24); free(pcm24in32);
     free(pcm); free(unity); free(silent); free(zeros);
     return ft_done();
 }
