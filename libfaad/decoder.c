@@ -1069,7 +1069,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         if (!asc.num_channels) asc.pce = decoder->asc.pce;
         decoder->asc = asc;
         faad_layout_update(decoder);
-        decoder->core_channels = asc_channels(&asc);
+        /* Without a configuration or PCE a frame starts from the channel count of
+         * the frames before it, not from a stereo guess. */
+        decoder->core_channels = (!asc.num_channels && !asc.pce.channels && decoder->pcm_emitted)
+            ? decoder->core_channels : asc_channels(&asc);
         decoder->core_sample_rate = asc.sample_rate;
         bs.len = adts_frame_len;
     }
