@@ -20,7 +20,6 @@
 #endif
 
 #include "atomic.h"
-#include "bits.h"
 #include "endian.h"
 
 /* Baselines end at the last field so appended fields remain optional. */
@@ -135,7 +134,8 @@ static void layout_build(struct faad_decoder *dec, const uint8_t *el, uint32_t n
     }
     if (!ch) return;
     for (uint32_t i = 0; i < ch; i++) {
-        uint32_t rank = faac_popcount32(mask & (spk[i] - 1u)); /* speakers before this one */
+        uint32_t rank = 0;
+        for (uint32_t m = mask & (spk[i] - 1u); m; m &= m - 1) rank++; /* speakers before this one */
         L->map[rank] = (uint8_t)i;
         if (spk[i] == SPK_LFE) L->lfe = (uint8_t)i;
     }
@@ -205,21 +205,31 @@ static uint32_t element_slot(faad_decoder *dec, uint32_t type, uint32_t tag, uin
 #define SLOTS_BY_TAG(dec) 0
 #endif
 
-static bool downmix_mode_is_valid(enum faad_downmix_mode mode)
-{
-    uint32_t n = faac_popcount32((uint32_t)mode);
-    return mode == FAAD_DOWNMIX_NONE || (!((uint32_t)mode >> POS_COUNT) && n <= 8);
-}
-
-/* Channels out of a downmix to mode, from channels in. */
-static uint32_t downmix_out_chs(enum faad_downmix_mode mode, uint32_t channels)
-{
-    uint32_t n = mode == FAAD_DOWNMIX_MONO ? 1 : faac_popcount32((uint32_t)mode);
-    return mode != FAAD_DOWNMIX_NONE && channels > n ? n : channels;
-}
-
 /* Speakers the downmix weighs, in output order; a stream of unknown
  * positions is taken to follow the WAV order of its channel count. */
+static inline uint32_t popcount32(uint32_t v)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return (uint32_t)__builtin_popcount(v);
+#elif defined(_MSC_VER)
+    return (uint32_t)__popcnt(v);
+#else
+    v = v - ((v >> 1) & 0x55555555);
+    v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
+    return (((v + (v >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+#endif
+}
+
+static inline bool downmix_mode_is_valid(enum faad_downmix_mode mode)
+{
+    if (mode == FAAD_DOWNMIX_NONE) return true;
+    uint32_t mask = (uint32_t)mode;
+    uint32_t known = (1u << POS_COUNT) - 1u;
+    if (!mask || (mask & ~known)) return false;
+    uint32_t n = popcount32(mask);
+    return n >= 1 && n <= 8;
+}
+
 static uint32_t downmix_mask(const faad_decoder *dec, uint32_t num_chs)
 {
     static const uint16_t canon[] = {
@@ -231,89 +241,135 @@ static uint32_t downmix_mask(const faad_decoder *dec, uint32_t num_chs)
     return mask ? mask : canon[num_chs <= 8 ? num_chs : 0];
 }
 
-#define DM_K 0.70710678f
-/* A stereo target needs two rows even when the build keeps one channel. */
-#define DM_CH (MAX_CHANNELS < 2 ? 2 : MAX_CHANNELS)
-/* Weighs input channel in_c into the output that carries speaker spk, if the
- * target layout has one. */
-static void dm_add(float w[][DM_CH], uint32_t tm, uint32_t in_c, uint32_t spk, float v)
-{
-    if (tm & spk) w[faac_popcount32(tm & (spk - 1))][in_c] += v;
-}
-
-/* Time-domain downmix of channels src[], ordered as the speakers of mask, to
- * the speakers of the mode: surround to stereo as Lo = L + 0.707 (C + Ls),
- * Ro = R + 0.707 (C + Rs), a lone rear channel at half that, LFE dropped,
- * each output scaled so a full-scale input cannot clip; mono as (Lo + Ro) / 2.
- * The outputs go to dst[] (one frame_samples run each). Returns the output
- * channel count, num_chs itself when there is nothing to mix. */
+/* Time-domain downmix of channels src[], ordered as the speakers of mask, into
+ * dst[] (one frame_samples run per output channel): surround to stereo as
+ * Lo = L + 0.707 (C + Ls), Ro = R + 0.707 (C + Rs), a lone rear channel at
+ * half that, LFE dropped, scaled so a full-scale input cannot clip; mono as
+ * (Lo + Ro) / 2; or generic downmix to a target WAVE speaker mask.
+ * Returns the output channel count, num_chs itself when there is nothing to mix. */
+/* Time-domain downmix of channels src[], ordered as the speakers of mask, into
+ * dst[] (one frame_samples run per output channel): surround to stereo as
+ * Lo = L + 0.707 (C + Ls), Ro = R + 0.707 (C + Rs), a lone rear channel at
+ * half that, LFE dropped, scaled so a full-scale input cannot clip; mono as
+ * (Lo + Ro) / 2; or generic downmix to a target WAVE speaker mask.
+ * Returns the output channel count, num_chs itself when there is nothing to mix. */
 static uint32_t downmix_pcm(enum faad_downmix_mode mode, const float *src[], uint32_t num_chs,
                             uint32_t mask, uint32_t frame_samples, float *dst[])
 {
-    bool mono = mode == FAAD_DOWNMIX_MONO;
-    uint32_t tm = mono ? SPK_FRONT : (uint32_t)mode, tn = faac_popcount32(tm);
-    if (mode == FAAD_DOWNMIX_NONE || num_chs < 2 || (!mono && num_chs <= tn))
+    if (mode == FAAD_DOWNMIX_NONE || num_chs < 2 || (mode == FAAD_DOWNMIX_STEREO && num_chs == 2))
         return num_chs;
 
-    float w[DM_CH][DM_CH] = {{0}};
-    for (uint32_t p = 0, in = 0; p < POS_COUNT && in < num_chs; p++) {
+    bool is_mono = (mode == FAAD_DOWNMIX_MONO);
+    bool is_stereo = (mode == FAAD_DOWNMIX_STEREO);
+    uint32_t tgt_mask = is_mono ? SPK_FRONT : (uint32_t)mode;
+    uint32_t tgt_n = is_mono ? 2 : popcount32(tgt_mask);
+    if (!is_mono && (!tgt_n || num_chs <= tgt_n)) return num_chs;
+
+#define K 0.70710678f
+    float weights[MAX_CHANNELS][MAX_CHANNELS] = {{0}};
+    float out_sum[MAX_CHANNELS] = {0};
+
+    for (uint32_t p = 0, in_c = 0; p < POS_COUNT && in_c < num_chs; p++) {
         if (!(mask >> p & 1)) continue;
-        uint32_t c = in++, spk = 1u << p;
-        if (tm & spk) {
-            dm_add(w, tm, c, spk, 1.0f);
-            continue;
+        uint32_t in_spk = 1 << p;
+        uint32_t spk_a = 0, spk_b = 0;
+        float w_a = 0.0f, w_b = 0.0f;
+
+        if (tgt_mask & in_spk) {
+            spk_a = in_spk; w_a = 1.0f;
+        } else {
+            switch (p) {
+            case POS_FLC:
+                spk_a = SPK_FL; w_a = K;
+                if (tgt_mask & SPK_FC) { spk_b = SPK_FC; w_b = K; }
+                break;
+            case POS_FRC:
+                spk_a = SPK_FR; w_a = K;
+                if (tgt_mask & SPK_FC) { spk_b = SPK_FC; w_b = K; }
+                break;
+            case POS_FC:
+                if (tgt_mask & SPK_FL) { spk_a = SPK_FL; w_a = K; }
+                if (tgt_mask & SPK_FR) { spk_b = SPK_FR; w_b = K; }
+                break;
+            case POS_BC:
+                if ((tgt_mask & SPK_BACK) == SPK_BACK) {
+                    spk_a = SPK_BL; w_a = 0.5f * K;
+                    spk_b = SPK_BR; w_b = 0.5f * K;
+                } else if ((tgt_mask & SPK_SIDE) == SPK_SIDE) {
+                    spk_a = SPK_SL; w_a = 0.5f * K;
+                    spk_b = SPK_SR; w_b = 0.5f * K;
+                } else if (tgt_mask & SPK_FRONT) {
+                    spk_a = SPK_FL; w_a = 0.5f * K;
+                    spk_b = SPK_FR; w_b = 0.5f * K;
+                }
+                break;
+            case POS_BL:
+                if (tgt_mask & SPK_SL) { spk_a = SPK_SL; w_a = 1.0f; }
+                else if (tgt_mask & SPK_FL) { spk_a = SPK_FL; w_a = K; }
+                break;
+            case POS_BR:
+                if (tgt_mask & SPK_SR) { spk_a = SPK_SR; w_a = 1.0f; }
+                else if (tgt_mask & SPK_FR) { spk_a = SPK_FR; w_a = K; }
+                break;
+            case POS_SL:
+                if (tgt_mask & SPK_BL) { spk_a = SPK_BL; w_a = 1.0f; }
+                else if (tgt_mask & SPK_FL) { spk_a = SPK_FL; w_a = K; }
+                break;
+            case POS_SR:
+                if (tgt_mask & SPK_BR) { spk_a = SPK_BR; w_a = 1.0f; }
+                else if (tgt_mask & SPK_FR) { spk_a = SPK_FR; w_a = K; }
+                break;
+            default:
+                break;
+            }
         }
-        switch (p) {
-        case POS_FLC: case POS_FRC:
-            dm_add(w, tm, c, p == POS_FLC ? SPK_FL : SPK_FR, DM_K);
-            dm_add(w, tm, c, SPK_FC, DM_K);
-            break;
-        case POS_FC:
-            dm_add(w, tm, c, SPK_FL, DM_K);
-            dm_add(w, tm, c, SPK_FR, DM_K);
-            break;
-        case POS_BC: {
-            uint32_t pair = (tm & SPK_BACK) == SPK_BACK ? SPK_BACK
-                          : (tm & SPK_SIDE) == SPK_SIDE ? SPK_SIDE : SPK_FRONT;
-            dm_add(w, tm, c, pair & -pair, 0.5f * DM_K);
-            dm_add(w, tm, c, pair & (pair - 1), 0.5f * DM_K);
-            break;
+
+        for (uint32_t tp = 0, out_c = 0; tp < POS_COUNT && out_c < tgt_n; tp++) {
+            if (!(tgt_mask >> tp & 1)) continue;
+            uint32_t tspk = 1 << tp;
+            if (spk_a == tspk) { weights[out_c][in_c] += w_a; out_sum[out_c] += w_a; }
+            if (spk_b == tspk) { weights[out_c][in_c] += w_b; out_sum[out_c] += w_b; }
+            out_c++;
         }
-        case POS_BL: case POS_BR: case POS_SL: case POS_SR: {
-            bool right = p == POS_BR || p == POS_SR, back = p == POS_BL || p == POS_BR;
-            uint32_t alt = back ? (right ? SPK_SR : SPK_SL) : (right ? SPK_BR : SPK_BL);
-            if (tm & alt) dm_add(w, tm, c, alt, 1.0f);
-            else dm_add(w, tm, c, right ? SPK_FR : SPK_FL, DM_K);
-            break;
-        }
-        default:
-            break;
-        }
+        in_c++;
+    }
+#undef K
+
+    float norm[MAX_CHANNELS];
+    for (uint32_t out_c = 0; out_c < tgt_n; out_c++) {
+        if ((is_mono || is_stereo) && num_chs > 2)
+            norm[out_c] = out_sum[0] > 0.0f ? 1.0f / out_sum[0] : 1.0f;
+        else
+            norm[out_c] = out_sum[out_c] > 1.0f ? 1.0f / out_sum[out_c] : 1.0f;
     }
 
-    uint32_t on = mono ? 1 : tn;
-    for (uint32_t o = 0; o < tn; o++) {
-        float sum = 0.0f;
-        for (uint32_t c = 0; c < num_chs; c++) sum += w[o][c];
-        float g = sum > 1.0f ? 1.0f / sum : 1.0f;
-        for (uint32_t c = 0; c < num_chs; c++) w[o][c] *= g;
-    }
-    if (mono)
-        for (uint32_t c = 0; c < num_chs; c++) w[0][c] = 0.5f * (w[0][c] + w[1][c]);
-
-    /* Channel by channel over a block, in output order; dst may alias src,
-     * which is only written once the block has been read. */
     enum { BLOCK = 64 };
     for (uint32_t b = 0; b < frame_samples; b += BLOCK) {
         uint32_t n = frame_samples - b < BLOCK ? frame_samples - b : BLOCK;
-        float ob[DM_CH][BLOCK] = {{0}};
-        for (uint32_t o = 0; o < on; o++)
-            for (uint32_t c = 0; c < num_chs; c++)
-                if (w[o][c] != 0.0f)
-                    for (uint32_t i = 0; i < n; i++) ob[o][i] += w[o][c] * src[c][b + i];
-        for (uint32_t o = 0; o < on; o++) memcpy(dst[o] + b, ob[o], n * sizeof(float));
+        float out_buf[MAX_CHANNELS][BLOCK] = {{0}};
+        for (uint32_t out_c = 0; out_c < tgt_n; out_c++) {
+            for (uint32_t in_c = 0; in_c < num_chs; in_c++) {
+                float w = weights[out_c][in_c];
+                if (w != 0.0f) {
+                    const float *x = src[in_c] + b;
+                    for (uint32_t i = 0; i < n; i++)
+                        out_buf[out_c][i] += w * x[i];
+                }
+            }
+        }
+        if (is_mono) {
+            float g = norm[0] * 0.5f;
+            for (uint32_t i = 0; i < n; i++)
+                dst[0][b + i] = (out_buf[0][i] + out_buf[1][i]) * g;
+        } else {
+            for (uint32_t out_c = 0; out_c < tgt_n; out_c++) {
+                float g = norm[out_c];
+                for (uint32_t i = 0; i < n; i++)
+                    dst[out_c][b + i] = out_buf[out_c][i] * g;
+            }
+        }
     }
-    return on;
+    return is_mono ? 1 : tgt_n;
 }
 
 static bool spectral_downmix_windows_match(struct faad_decoder *dec, uint32_t num_chs)
@@ -471,7 +527,10 @@ static uint32_t output_capacity(const faad_decoder *dec)
 #ifndef FAAD_DISABLE_PS
     if (channels < 2) channels = 2;
 #endif
-    channels = downmix_out_chs(dec->config.downmix_mode, channels);
+    if (dec->config.downmix_mode != FAAD_DOWNMIX_NONE) {
+        uint32_t tgt_n = popcount32((uint32_t)dec->config.downmix_mode);
+        if (tgt_n && channels > tgt_n) channels = tgt_n;
+    }
     uint32_t samples = FRAME_IS_960(dec) ? 960 : 1024;
 #ifndef FAAD_DISABLE_SBR
     samples *= 2;
@@ -481,7 +540,8 @@ static uint32_t output_capacity(const faad_decoder *dec)
 
 static uint32_t channel_mask(const faad_decoder *dec, uint32_t channels)
 {
-    if (channels < dec->num_channels) /* mixed: the stream is in the target layout */
+    if (dec->config.downmix_mode != FAAD_DOWNMIX_NONE
+        && channels == popcount32((uint32_t)dec->config.downmix_mode))
         return (uint32_t)dec->config.downmix_mode;
     static const uint32_t masks[] = { 0, SPK_FC, SPK_FRONT };
     return channels <= 2 ? masks[channels] : faad_layout_mask(dec, channels);
@@ -913,7 +973,10 @@ FAADAPI faad_status faad_decoder_get_info(const faad_decoder *decoder, faad_stre
 #ifndef FAAD_DISABLE_PS
     if (decoder->ps_seen && info.channels == 1) info.channels = 2;
 #endif
-    info.channels = downmix_out_chs(decoder->config.downmix_mode, info.channels);
+    if (decoder->config.downmix_mode != FAAD_DOWNMIX_NONE) {
+        uint32_t tgt_n = popcount32((uint32_t)decoder->config.downmix_mode);
+        if (tgt_n && info.channels > tgt_n) info.channels = tgt_n;
+    }
     info.object_type = (decoder->asc.is_ps || decoder->ps_seen) ? FAAD_OBJ_HE_AAC_V2
         : sbr ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 #ifndef FAAD_DISABLE_SBR
@@ -1497,15 +1560,14 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
         const uint8_t *map = faad_layout_map(decoder, num_chs);
         for (uint32_t c = 0; c < num_chs; c++)
             src[c] = pcm_final + (map ? map[c] : c) * pcm_stride;
-        float *dst[DM_CH];
-        for (uint32_t c = 0; c < DM_CH; c++)
+        float *dst[MAX_CHANNELS];
+        for (uint32_t c = 0; c < (MAX_CHANNELS < 2 ? 2 : MAX_CHANNELS); c++)
             dst[c] = pcm_final + c * pcm_stride;
-        uint32_t mixed = downmix_pcm(decoder->config.downmix_mode, src, num_chs,
-                                     downmix_mask(decoder, num_chs), frame_samples, dst);
-        if (mixed != num_chs)
-            for (num_chs = mixed; mixed--; ) src[mixed] = dst[mixed];
+        num_chs = downmix_pcm(decoder->config.downmix_mode, src, num_chs,
+                              downmix_mask(decoder, num_chs), frame_samples, dst);
     }
-    if (num_chs <= 2)
+    if (num_chs <= 2 || (decoder->config.downmix_mode != FAAD_DOWNMIX_NONE
+                         && num_chs == popcount32((uint32_t)decoder->config.downmix_mode)))
         for (uint32_t c = 0; c < num_chs; c++) src[c] = pcm_final + c * pcm_stride;
 
     uint32_t required_bytes = frame_samples * num_chs * output_sample_bytes(decoder->config.output_format);

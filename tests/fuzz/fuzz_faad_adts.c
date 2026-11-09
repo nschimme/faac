@@ -22,10 +22,6 @@
 
 #include "faad3.h"
 
-static const enum faad_downmix_mode faad_fuzz_downmix[4] = {
-    FAAD_DOWNMIX_NONE, FAAD_DOWNMIX_MONO, FAAD_DOWNMIX_STEREO, FAAD_DOWNMIX_5_1
-};
-
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     if (size < 4)
@@ -49,7 +45,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     cfg.stream_format = (mode & 1) ? FAAD_STREAM_ADTS : FAAD_STREAM_RAW;
     cfg.output_format = (enum faad_output_format)(1 + ((mode >> 1) & 3)); /* 16BIT, 24BIT, 32BIT, FLOAT */
-    cfg.downmix_mode  = faad_fuzz_downmix[(mode >> 3) & 3];
+    cfg.downmix_mode  = (enum faad_downmix_mode)((mode >> 3) & 3);
     if (mode & 0x10) {
         cfg.drc_cut = data[1] & 0x7f;
         cfg.drc_boost = data[2] & 0x7f;

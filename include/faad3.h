@@ -151,8 +151,8 @@ enum faad_output_format {
 
 enum faad_downmix_mode {
     FAAD_DOWNMIX_NONE       = 0,         /* preserve native channel layout           */
-    FAAD_DOWNMIX_MONO       = 0x4,       /* downmix all channels to mono (front centre) */
-    FAAD_DOWNMIX_STEREO     = 0x3,       /* downmix surround to stereo (front pair)  */
+    FAAD_DOWNMIX_MONO       = 0x4,       /* downmix all channels to mono (SPK_FC)    */
+    FAAD_DOWNMIX_STEREO     = 0x3,       /* downmix surround to stereo (SPK_FRONT)   */
     FAAD_DOWNMIX_3_0        = 0x7,       /* 3.0 surround (FL FR FC)                  */
     FAAD_DOWNMIX_4_0        = 0x33,      /* 4.0 quad (FL FR BL BR)                   */
     FAAD_DOWNMIX_5_0        = 0x37,      /* 5.0 surround (FL FR FC BL BR)            */

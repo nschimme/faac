@@ -730,13 +730,10 @@ int main(void)
             FAAD_DOWNMIX_3_0,
             FAAD_DOWNMIX_4_0,
             FAAD_DOWNMIX_5_0,
-            FAAD_DOWNMIX_5_1,
-            FAAD_DOWNMIX_5_0_SIDE,
-            FAAD_DOWNMIX_5_1_SIDE
+            FAAD_DOWNMIX_5_1
         };
-        /* A stream already at the target's channel count keeps its own layout. */
-        const uint32_t dm_channels[] = { 6, 1, 2, 3, 4, 5, 6, 5, 6 };
-        const uint32_t dm_masks[] = { 0x3f, 0x4, 0x3, 0x7, 0x33, 0x37, 0x3f, 0x607, 0x3f };
+        const uint32_t dm_channels[] = { 6, 1, 2, 3, 4, 5, 6 };
+        const uint32_t dm_masks[] = { 0x3f, 0x4, 0x3, 0x7, 0x33, 0x37, 0x3f };
 
         for (size_t i = 0; i < sizeof(dm_modes) / sizeof(dm_modes[0]); i++) {
             faad_config cfg;

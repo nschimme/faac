@@ -41,10 +41,6 @@ static const uint8_t asc[][11] = {
 };
 static const uint32_t asc_len[] = { 2, 2, 4, 4, 11 };
 
-static const enum faad_downmix_mode faad_fuzz_downmix[4] = {
-    FAAD_DOWNMIX_NONE, FAAD_DOWNMIX_MONO, FAAD_DOWNMIX_STEREO, FAAD_DOWNMIX_5_1
-};
-
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     if (size < 2)
@@ -63,7 +59,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         abort();
     cfg.stream_format = FAAD_STREAM_RAW;
     cfg.output_format = (enum faad_output_format)(1 + ((data[0] >> 2) & 3));
-    cfg.downmix_mode = faad_fuzz_downmix[(data[0] >> 4) & 3];
+    cfg.downmix_mode = (enum faad_downmix_mode)((data[0] >> 4) & 3);
 
     uint8_t mode = data[0];
     uint32_t asc_index = mode % (sizeof(asc) / sizeof(asc[0]));

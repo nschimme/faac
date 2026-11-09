@@ -36,7 +36,6 @@
 #include "adts.h"
 #include "charset.h"
 #include "cli_io.h"
-#include "bits.h"
 #include "endian.h"
 #include "asc_codec.h"
 #include "mp4read.h"
@@ -1043,7 +1042,10 @@ int run_decoding_session_ext(const decode_options_t *opts,
 
     double est_avg_bitrate_kbps = (file_len * 8.0) / (est_duration_sec > 0.0 ? est_duration_sec * 1000.0 : 1.0);
 
-    uint32_t dm_n = faac_popcount32((uint32_t)downmix);
+    uint32_t dm_mask = (uint32_t)downmix;
+    dm_mask = dm_mask - ((dm_mask >> 1) & 0x55555555);
+    dm_mask = (dm_mask & 0x33333333) + ((dm_mask >> 2) & 0x33333333);
+    uint32_t dm_n = (downmix != FAAD_DOWNMIX_NONE) ? ((((dm_mask + (dm_mask >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24) : 0;
     uint16_t out_channels = (dm_n && num_channels > dm_n) ? (uint16_t)dm_n : (uint16_t)num_channels;
 
     decode_session_info_t sess_info = {
