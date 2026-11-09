@@ -140,6 +140,7 @@ typedef struct
     unsigned slope_rate_threshold;
     float slope_reference_rate;
     float tilt_nyquist_khz;
+    unsigned tilt_physical_below;
     MaskingProfile profiles[2];
     MaskingTiltKnot tilt[MASKING_TILT_KNOTS];
 } MaskingModel;
@@ -177,7 +178,8 @@ static const MaskingModel masking_model = {
      * slope relative to 44.1 kHz. These are not the tilt's frequency units. */
     .slope_rate_threshold = 48000,
     .slope_reference_rate = 44100.0f,
-    .tilt_nyquist_khz = 24.0f, /* ceiling: Nyquist of the 48 kHz stream the knots were fit on */
+    .tilt_nyquist_khz = 24.0f, /* kHz at the top bin for streams at or above tilt_physical_below */
+    .tilt_physical_below = 44100,
     .profiles = {
         /* Average-energy share, power-law loudness exponent, slope multiplier.
          * The exponent compresses band/reference energy ratios; both weights
@@ -190,10 +192,11 @@ static const MaskingModel masking_model = {
         { .avg_weight = 0.15f, .loud_exponent = 0.30f, .slope_scale = 3.0f, .peak_floor = 0.0100f },
     },
     /* Empirical target offsets converted to linear multipliers at the knots.
-     * Positions are physical kHz up to a 48 kHz stream. Read as a fraction of
-     * Nyquist they slid the 14-18 kHz dip down to 9-12 kHz at 32 kHz, which
-     * starved treble bands of bits and moved some into noise substitution.
-     * Above 48 kHz they stay at the 48 kHz normalized position.
+     * Positions are physical kHz below 44.1 kHz. Read as a fraction of a
+     * 24 kHz Nyquist they slid the 14-18 kHz dip down to 9-12 kHz at 32 kHz,
+     * which starved treble bands of bits and moved some into noise
+     * substitution. From 44.1 kHz up they keep the fraction-of-Nyquist
+     * reading the knots were tuned with.
      * Interpolate gains between knots rather than dB, so
      * intermediate targets differ from a dB-linear curve. Each stored gain is
      * 10^(offset_dB/20): -1.5 dB, +3 dB and -3 dB retain the fitted anchors. */
@@ -329,7 +332,8 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     if (sample_rate > masking_model.slope_rate_threshold)
         cfg->treble_slope *= ((float)sample_rate / masking_model.slope_reference_rate);
 
-    cfg->tilt_nyquist_khz = fminf((float)sample_rate / 2000.0f, masking_model.tilt_nyquist_khz);
+    cfg->tilt_nyquist_khz = sample_rate < masking_model.tilt_physical_below
+        ? (float)sample_rate / 2000.0f : masking_model.tilt_nyquist_khz;
     cfg->avg_weight = masking_model.profiles[profile].avg_weight;
     cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
     cfg->peak_floor = masking_model.profiles[profile].peak_floor;
