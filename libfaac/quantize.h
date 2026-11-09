@@ -26,6 +26,7 @@ typedef struct
     int max_l;
     int pnslevel;
     float treble_slope;
+    float tilt_nyquist_khz; /* stream Nyquist the tilt knots are read against */
     int mask_tuned;
     int sf_nudge;
     /* Masking-target shape, set by QuantizeConfigureMask(). Untuned (VBR, LC mono,
