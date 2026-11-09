@@ -293,7 +293,8 @@ static float loudness(float energy_ratio, float exponent)
     return powf(energy_ratio, exponent);
 }
 
-/* Frequency is normalized to a 48 kHz rate. Interpolate the empirical knot
+/* Frequency is physical kHz below 44.1 kHz and the 24 kHz-Nyquist position
+ * from 44.1 kHz up (see QuantizeConfigureMask). Interpolate the empirical knot
  * gains directly; this is a lower-cost approximation to dB interpolation. */
 static float tilt_gain(float khz)
 {
