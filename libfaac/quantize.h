@@ -26,7 +26,7 @@ typedef struct
     int max_l;
     int pnslevel;
     float treble_slope;
-    float tilt_nyquist_khz; /* kHz at the top bin the tilt knots are read against */
+    float tilt_nyquist_khz; /* Nyquist in kHz; the tilt knots are physical kHz */
     int mask_tuned;
     int sf_nudge;
     /* Masking-target shape, set by QuantizeConfigureMask(). Untuned (VBR, LC mono,
