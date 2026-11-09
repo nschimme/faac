@@ -36,6 +36,7 @@
 #include "adts.h"
 #include "charset.h"
 #include "cli_io.h"
+#include "bits.h"
 #include "endian.h"
 #include "asc_codec.h"
 #include "mp4read.h"
@@ -1042,8 +1043,8 @@ int run_decoding_session_ext(const decode_options_t *opts,
 
     double est_avg_bitrate_kbps = (file_len * 8.0) / (est_duration_sec > 0.0 ? est_duration_sec * 1000.0 : 1.0);
 
-    uint16_t out_channels = (downmix == FAAD_DOWNMIX_MONO) ? 1 :
-                            (downmix == FAAD_DOWNMIX_STEREO && num_channels > 2) ? 2 : num_channels;
+    uint32_t dm_n = faac_popcount32((uint32_t)downmix);
+    uint16_t out_channels = (dm_n && num_channels > dm_n) ? (uint16_t)dm_n : (uint16_t)num_channels;
 
     decode_session_info_t sess_info = {
         .input_filename = infile,
@@ -1208,8 +1209,7 @@ int run_decoding_session_ext(const decode_options_t *opts,
             update_stream_info(dec, &sinfo, flags, &sample_rate, &num_channels, &obj_type);
             if (session_start_cb && !session_emitted) {
                 sess_info.sample_rate = sample_rate;
-                sess_info.num_channels = (downmix == FAAD_DOWNMIX_MONO) ? 1 :
-                                         (downmix == FAAD_DOWNMIX_STEREO && num_channels > 2) ? 2 : num_channels;
+                sess_info.num_channels = out_channels;
                 sess_info.object_type = obj_type;
                 sess_info.profile_name = object_type_name(obj_type);
                 session_start_cb(&sess_info, user_data);

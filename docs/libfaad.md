@@ -137,7 +137,7 @@ const char *faad_strerror(faad_status status);
 |---|---|---|
 | `stream_format` | `FAAD_STREAM_ADTS` | `ADTS`, or `RAW` (needs an ASC at open) |
 | `output_format` | `FAAD_OUTPUT_16BIT` | `16BIT`, `24BIT` (packed), `24IN32` or `FLOAT` |
-| `downmix_mode` | `FAAD_DOWNMIX_NONE` | `NONE` keeps the layout; `STEREO` or `MONO` downmix |
+| `downmix_mode` | `FAAD_DOWNMIX_NONE` | `NONE` keeps the layout. Any other mode is the WAVE speaker mask of the target (`MONO` 0x4, `STEREO` 0x3, `3_0`, `4_0`, `5_0`, `5_1`, `5_0_SIDE`, `5_1_SIDE`) and mixes down to it. A stream with no more channels than the target is not mixed and keeps its own layout and `channel_mask`. A mask with an unknown speaker bit, or more than 8 speakers, is rejected at open |
 | `drc_cut`, `drc_boost` | 0 | DRC strength 0-127; 0 is off. See [Dynamic range control](#dynamic-range-control) |
 | `drc_target_level` | 0.0 | 0.0 is off, else -31.75 to -10.0 dBFS, snapped to 0.25 dB. See [Dynamic range control](#dynamic-range-control) |
 
@@ -525,7 +525,7 @@ behaviors so such programs still work, but with libfaad3 the workarounds can go.
 | Legacy `NeAACDecConfiguration` | New |
 |---|---|
 | `outputFormat` | `output_format`: `FAAD_FMT_16BIT`, `FAAD_FMT_24BIT`, `FAAD_FMT_32BIT`, `FAAD_FMT_FLOAT` become `FAAD_OUTPUT_16BIT`, `FAAD_OUTPUT_24BIT`, `FAAD_OUTPUT_24IN32`, `FAAD_OUTPUT_FLOAT` |
-| `downMatrix` | `downmix_mode`: `FAAD_DOWNMIX_STEREO` for the old stereo downmix, `FAAD_DOWNMIX_NONE` to keep the layout, `FAAD_DOWNMIX_MONO` also available |
+| `downMatrix` | `downmix_mode`: `FAAD_DOWNMIX_STEREO` for the old stereo downmix, `FAAD_DOWNMIX_NONE` to keep the layout, `FAAD_DOWNMIX_MONO` also available. A literal `1` is now the front-left mask, so pass the enum |
 | `defObjectType`, `defSampleRate` | none; ADTS or the required RAW ASC supplies them |
 | `useOldADTSFormat` | none |
 | `dontUpSampleImplicitSBR` | none; read `sample_rate` after `FAAD_FRAME_FORMAT_CHANGED` and resample outside the decoder |

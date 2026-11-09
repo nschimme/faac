@@ -371,6 +371,16 @@ def main():
                 if check_mono:
                     mono_raw = raw_float(path, ("--downmix", "mono"))
                     assert len(mono_raw) == frames * 4, "--downmix mono output shape"
+                if channels >= 6:
+                    dm51_raw = raw_float(path, ("--downmix", "5.1"))
+                    expected_51_chs = min(channels, 6)
+                    assert len(dm51_raw) == frames * expected_51_chs * 4, "--downmix 5.1 output shape"
+                    dm50_raw = raw_float(path, ("--downmix", "5.0"))
+                    assert len(dm50_raw) == frames * 5 * 4, "--downmix 5.0 output shape"
+                    dm40_raw = raw_float(path, ("--downmix", "4.0"))
+                    assert len(dm40_raw) == frames * 4 * 4, "--downmix 4.0 output shape"
+                    dm30_raw = raw_float(path, ("--downmix", "3.0"))
+                    assert len(dm30_raw) == frames * 3 * 4, "--downmix 3.0 output shape"
 
             check_downmix_cli_shapes(three_ch_adts, 3)
 

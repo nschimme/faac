@@ -717,6 +717,42 @@ int main(void)
     test_nonzero_conceal_history();
     test_known_extensions();
     test_ps_mono_downmix();
+
+    /* Test downmix modes on 5.1 ASC */
+    faad_library_info libinfo = { .struct_size = sizeof(libinfo) };
+    assert(faad_get_library_info(&libinfo) == FAAD_OK);
+    if (libinfo.max_channels >= 6) {
+        const uint8_t six_ch_asc[] = { 0x12, 0x30 }; /* AAC-LC, 44.1kHz, 5.1 */
+        const enum faad_downmix_mode dm_modes[] = {
+            FAAD_DOWNMIX_NONE,
+            FAAD_DOWNMIX_MONO,
+            FAAD_DOWNMIX_STEREO,
+            FAAD_DOWNMIX_3_0,
+            FAAD_DOWNMIX_4_0,
+            FAAD_DOWNMIX_5_0,
+            FAAD_DOWNMIX_5_1,
+            FAAD_DOWNMIX_5_0_SIDE,
+            FAAD_DOWNMIX_5_1_SIDE
+        };
+        /* A stream already at the target's channel count keeps its own layout. */
+        const uint32_t dm_channels[] = { 6, 1, 2, 3, 4, 5, 6, 5, 6 };
+        const uint32_t dm_masks[] = { 0x3f, 0x4, 0x3, 0x7, 0x33, 0x37, 0x3f, 0x607, 0x3f };
+
+        for (size_t i = 0; i < sizeof(dm_modes) / sizeof(dm_modes[0]); i++) {
+            faad_config cfg;
+            faad_config_init(&cfg, sizeof(cfg));
+            cfg.stream_format = FAAD_STREAM_RAW;
+            cfg.downmix_mode = dm_modes[i];
+            faad_decoder *dec = NULL;
+            assert(faad_decoder_open(&cfg, six_ch_asc, sizeof(six_ch_asc), &dec) == FAAD_OK);
+            faad_stream_info sinfo = { .struct_size = sizeof(sinfo) };
+            assert(faad_decoder_get_info(dec, &sinfo) == FAAD_OK);
+            assert(sinfo.channels == dm_channels[i]);
+            assert(sinfo.channel_mask == dm_masks[i]);
+            assert(faad_decoder_close(&dec) == FAAD_OK);
+        }
+    }
+
     puts("FAAD ABI, packet boundaries and endian helpers passed");
     return 0;
 }

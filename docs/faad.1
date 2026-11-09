@@ -74,15 +74,16 @@ Requires MP4 input.
 .SH PROCESSING OPTIONS
 .TP
 .BR -d ,\  --downmix\ [\fImode\fP]
-Downmix audio to mono (mono or 1, the default) or stereo (stereo or 2).
+Downmix audio to mono (mono or 1, the default), stereo (stereo or 2), 3.0 (3.0 or 3),
+4.0 (4.0, 4, or quad), 5.0 (5.0 or 5), or 5.1 (5.1 or 6).
 The mode may follow as a separate argument, as in
 .BR "-d stereo" ,
 or be attached, as in
 .B -dstereo
 or
-.BR --downmix=2 .
+.BR --downmix=5.1 .
 Any other value is taken as the input file name.
-Has no effect on mono or stereo input.
+Has no effect when the input channel count is already less than or equal to the target downmix mode.
 .TP
 .BR -j ,\  --jump\ <\fIseconds\fP>
 Start decoding from the specified timestamp, in seconds. (Aliases:
@@ -235,6 +236,10 @@ Stream raw 16-bit PCM to another program:
 Downmix surround to stereo:
 .IP
 .B faad -d stereo -o out.wav surround.m4a
+.PP
+Downmix 7.1 to 5.1:
+.IP
+.B faad -d 5.1 -o out.wav surround.m4a
 .PP
 Re-encode with
 .BR faac (1),

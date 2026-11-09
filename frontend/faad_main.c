@@ -80,8 +80,8 @@ static const help_t help_processing[] = {
     {"--drc-target-level <dB>", "Normalize to a level in dBFS, -31.75 to -10 (default: off)",
      "Level normalization moves the stream's program reference level (faac --drc-ref-level) to this level, so -16 plays a stream written with a reference of -23 about 7 dB louder. It does nothing for a stream without a reference level. 0 leaves it off."},
     {"-d, --downmix [mode]",
-     "Downmix audio (mono/1 or stereo/2, default: mono)",
-     "Choose one or two output channels. Without a mode, mono is selected. This affects decoded PCM, not ADTS extraction."},
+     "Downmix audio (mono/1, stereo/2, 3.0/3, 4.0/4/quad, 5.0/5, 5.1/6, default: mono)",
+     "Choose target output channels/layout. Without a mode, mono is selected. This affects decoded PCM, not ADTS extraction."},
     {"-j, --jump <seconds>",
      "Start decoding from specified timestamp.",
      "Only applies to MP4 input. A timestamp past the end produces an empty output; ADTS input starts at the beginning. Aliases: --seek, --start-time."},
@@ -354,11 +354,19 @@ int main(int argc, char **argv)
         case 'd': {
             const char *mode = optarg;
             if (!mode && optind < argc && (!strcmp(argv[optind], "mono") || !strcmp(argv[optind], "stereo") ||
-                                           !strcmp(argv[optind], "1") || !strcmp(argv[optind], "2")))
+                                           !strcmp(argv[optind], "1") || !strcmp(argv[optind], "2") ||
+                                           !strcmp(argv[optind], "3.0") || !strcmp(argv[optind], "3") ||
+                                           !strcmp(argv[optind], "4.0") || !strcmp(argv[optind], "4") || !strcmp(argv[optind], "quad") ||
+                                           !strcmp(argv[optind], "5.0") || !strcmp(argv[optind], "5") ||
+                                           !strcmp(argv[optind], "5.1") || !strcmp(argv[optind], "6")))
                 mode = argv[optind++];
             if (!mode || !strcmp(mode, "mono") || !strcmp(mode, "1")) opts.downmix = FAAD_DOWNMIX_MONO;
             else if (!strcmp(mode, "stereo") || !strcmp(mode, "2")) opts.downmix = FAAD_DOWNMIX_STEREO;
-            else { fprintf(stderr, "Unknown downmix mode '%s' (mono/1 or stereo/2)\n", mode); return 1; }
+            else if (!strcmp(mode, "3.0") || !strcmp(mode, "3")) opts.downmix = FAAD_DOWNMIX_3_0;
+            else if (!strcmp(mode, "4.0") || !strcmp(mode, "4") || !strcmp(mode, "quad")) opts.downmix = FAAD_DOWNMIX_4_0;
+            else if (!strcmp(mode, "5.0") || !strcmp(mode, "5")) opts.downmix = FAAD_DOWNMIX_5_0;
+            else if (!strcmp(mode, "5.1") || !strcmp(mode, "6")) opts.downmix = FAAD_DOWNMIX_5_1;
+            else { fprintf(stderr, "Unknown downmix mode '%s' (mono/1, stereo/2, 3.0/3, 4.0/4/quad, 5.0/5, or 5.1/6)\n", mode); return 1; }
             break;
         }
         case 'j': {
