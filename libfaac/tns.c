@@ -184,20 +184,32 @@ static void finalize_filter(int order, const float * k, float * a)
 static void filter_spec(int length, int order, const float * a, const float * src, float * dst)
 {
     int i, j;
-    int limit = order < length ? order : length;
 
-    for (i = 0; i < limit; i++) {
+    for (i = length - 1; i >= 0; i--) {
         float acc = src[i];
-        for (j = 1; j <= i; j++)
-            acc += a[j] * src[i - j];
+        for (j = 1; j <= order && i + j < length; j++)
+            acc += a[j] * src[i + j];
         dst[i] = acc;
     }
-    for (; i < length; i++) {
-        float acc = src[i];
-        for (j = 1; j <= order; j++)
-            acc += a[j] * src[i - j];
-        dst[i] = acc;
-    }
+}
+
+/* Admission gate and LPC prediction hurdles for TNS:
+ * TNS shapes noise along the temporal envelope. Screening on the envelope
+ * (attackMin scaled to PsyGetAttack's relative energy jump) skips LPC work
+ * on frames without transient onsets.
+ *
+ * Tuned thresholds (gainLimit = 1.08f, attackMin = 0.25f) engage across
+ * transient onsets at full audio rates (>= 44.1 kHz) on LC profiles with
+ * adequate bitrate, while conservative hurdles (gainLimit = 1.40f, attackMin = 0.50f)
+ * protect narrow-band speech, SBR cores, and low-rate streams from bit starvation
+ * and formant whitening. */
+void TnsConfigure(TnsConfig *cfg, unsigned long sampleRate, unsigned long bitRatePerCh, unsigned long quantqual, int isHe)
+{
+    int tuned = !isHe && sampleRate >= 44100 &&
+                (bitRatePerCh == 0 ? quantqual >= 120 : bitRatePerCh >= 48000);
+
+    cfg->gainLimit = tuned ? 1.08f : 1.40f;
+    cfg->attackMin = tuned ? 0.25f : 0.50f;
 }
 
 void TnsInit(faacEncStruct* hEncoder)
@@ -218,7 +230,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter)
+                         float *spec, TnsFilterData *filter, float gain_limit)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -290,7 +302,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT)
+    if (gain < gain_limit)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
      * so a high gain can't mean an unstable filter; isfinite() catches the
@@ -314,7 +326,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
      * reversal, so both directions give the same LPC fit and prediction gain.
      * Picking the right one needs the time-domain transient position, which
      * this function never sees. */
-    filter->direction = 0;
+    filter->direction = 1;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */
@@ -344,7 +356,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
             filt_e += trial[i] * trial[i];
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
-        if (r[0] < TNS_MEASURED_GAIN * filt_e)
+        if (r[0] < gain_limit * filt_e)
             return 0;
     }
 
@@ -353,7 +365,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncode(CoderInfo *coderInfo, float *spec)
+void TnsEncode(CoderInfo *coderInfo, float *spec, const TnsConfig *cfg)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
     int numBands = coderInfo->sfbn;
@@ -374,7 +386,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0]))
+                       &tnsInfo->windowData.tnsFilter[0], cfg ? cfg->gainLimit : 1.40f))
         return;
 
 #ifdef FAAC_STATS
