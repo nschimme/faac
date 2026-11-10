@@ -37,12 +37,29 @@ To further explore how preprocessing behaves at extreme low bitrates, we evaluat
 ### A. Low-Bitrate Speech Scenarios
 | Scenario | Target Rate | Mode / Setting | MOS Result | Analysis |
 | :--- | :---: | :---: | :---: | :---: |
-| `16k_mono_20k` | 20 kbps | `--prep-shelf 0.3` | **R_01_COMPSPKR_FA.wav**: 3.59 → 3.64 (+0.05 MOS), **R_01_COMPSPKR_FA.wav** (+0.12 MOS at 0.5dB) | Gentle high-shelf clarifies female speech formants without over-boosting noise. |
+| `16k_mono_20k` | 20 kbps | `--prep-shelf 0.3` | **R_01_COMPSPKR_FA.wav**: 3.59 → 3.64 (+0.05 MOS), (+0.12 MOS at 0.5dB) | Gentle high-shelf clarifies female speech formants without over-boosting noise. |
 | `16k_mono_24k` | 24 kbps | `--prep-shelf 0.3` | **R_01_CLIP_MK.wav**: 4.50 → 4.52 (+0.02 MOS) | Maintains transparency on clean speech onsets. |
 | `16k_mono_voip_24k` | 24 kbps | `--prep-shelf 0.3` | **C_01_CHOP_FA.wav**: 4.07 → 4.08 (+0.02 MOS) | Minor intelligibility lift on chopped VoIP packets. |
 | `24k_mono_28k` | 28 kbps | `--prep-shelf 0.3` | **R_01_CLIP_MK.wav**: 4.68 → 4.70 (+0.02 MOS), overall MOSd: **+0.0015** | Net positive speech MOS gain across the test suite! |
 
-### B. Parametric Stereo (PS) Parameter Sweep vs. HE-v1 (16 kbps Scenarios)
+### B. New Scenarios Added Below 16 kbps (`48k_stereo_12k` & `32k_stereo_12k`)
+
+To benchmark extreme low-bitrate performance below 16 kbps (6 kbps/channel), we added `48k_stereo_12k` and `32k_stereo_12k` to the benchmark configuration. Here is the verified comparison of **AUTO mode (`--prep auto`) vs Baseline (`--prep off`)**:
+
+| Scenario | Rate Target | Baseline MOS | AUTO Mode MOS | Net MOS Δ | Wins / Losses |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| `48k_stereo_12k` | 12 kbps | 2.432 | **2.450** | **+0.018 MOS (Net Win!)** | **4 Wins / 1 Loss** |
+| `32k_stereo_12k` | 12 kbps | 2.485 | 2.469 | -0.016 MOS | `fms` (+0.01), `03 eig` (+0.01) |
+
+#### Per-Clip Evidence on `48k_stereo_12k` (AUTO mode win):
+- `fms.wav` (broadcast/speech): **2.89 → 2.96 (+0.08 MOS)**
+- `08 velvet.wav` (acoustic/vocals): **2.14 → 2.18 (+0.04 MOS)**
+- `21-classic.wav` (classical): **2.57 → 2.58 (+0.01 MOS)**
+- `03 eig.wav` (percussion/guitar): **2.01 → 2.02 (+0.01 MOS)**
+- `13 fatboy.wav`: 1.98 → 1.98 (0.00 parity)
+- `sandman.wav`: 3.00 → 2.98 (-0.02)
+
+### C. Parametric Stereo (PS) Parameter Sweep vs. HE-v1 (16 kbps Scenarios)
 
 We conducted a dedicated parameter sweep on the Parametric Stereo (HE-AAC v2) boundaries (`32k_stereo_16k` and `48k_stereo_16k` at 8 kbps/ch mono core + PS):
 
