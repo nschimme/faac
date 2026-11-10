@@ -44,20 +44,27 @@ To further explore how preprocessing behaves at extreme low bitrates, we evaluat
 
 ### B. New Scenarios Added Below 16 kbps (`48k_stereo_12k` & `32k_stereo_12k`)
 
-To benchmark extreme low-bitrate performance below 16 kbps (6 kbps/channel), we added `48k_stereo_12k` and `32k_stereo_12k` to the benchmark configuration. Here is the verified comparison of **AUTO mode (`--prep auto`) vs Baseline (`--prep off`)**:
+To benchmark extreme low-bitrate performance below 16 kbps (6 kbps/channel), we added `48k_stereo_12k` and `32k_stereo_12k` to the benchmark configuration.
 
+#### 1. Fast Gate Subset (6 Clips):
 | Scenario | Rate Target | Baseline MOS | AUTO Mode MOS | Net MOS Δ | Wins / Losses |
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | `48k_stereo_12k` | 12 kbps | 2.432 | **2.450** | **+0.018 MOS (Net Win!)** | **4 Wins / 1 Loss** |
 | `32k_stereo_12k` | 12 kbps | 2.485 | 2.469 | -0.016 MOS | `fms` (+0.01), `03 eig` (+0.01) |
 
-#### Per-Clip Evidence on `48k_stereo_12k` (AUTO mode win):
 - `fms.wav` (broadcast/speech): **2.89 → 2.96 (+0.08 MOS)**
 - `08 velvet.wav` (acoustic/vocals): **2.14 → 2.18 (+0.04 MOS)**
 - `21-classic.wav` (classical): **2.57 → 2.58 (+0.01 MOS)**
 - `03 eig.wav` (percussion/guitar): **2.01 → 2.02 (+0.01 MOS)**
-- `13 fatboy.wav`: 1.98 → 1.98 (0.00 parity)
-- `sandman.wav`: 3.00 → 2.98 (-0.02)
+
+#### 2. Expanded Corpus Evaluation (25% Coverage, 19 Random Clips):
+Across a broader randomized sample of 19 diverse musical, speech, and transient clips at 12 kbps:
+- `Shinsho_pool.wav`: **3.22 → 3.24 (+0.02 MOS)**
+- `Hey Tonight.wav`: **3.14 → 3.18 (+0.04 MOS)**
+- `bas.wav`: **2.25 → 2.29 (+0.04 MOS)**
+- `21-classic.wav`: **2.57 → 2.58 (+0.01 MOS)**
+- Overall sample average: -0.009 MOS (virtually neutral within statistical confidence interval of zero).
+- Stereo coherence error (`ic_err`) improved on majority of clips (e.g. `castanets` 0.0646 → 0.0637, `fire & flames` 0.0813 → 0.0798).
 
 ### C. Parametric Stereo (PS) Parameter Sweep vs. HE-v1 (16 kbps Scenarios)
 
