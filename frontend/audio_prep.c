@@ -147,22 +147,9 @@ audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
     pipe->channels = channels;
     pipe->bitrate_per_channel = bitrate_per_channel;
 
-    /* Bitrate scaling:
-     * Full strength at <= 20000 bps/ch (e.g. 40 kbps stereo).
-     * Linear taper to 0.0 at >= 48000 bps/ch (e.g. 96 kbps stereo).
-     */
-    float br_factor = 0.0f;
-    if (bitrate_per_channel <= 20000) {
-        br_factor = 1.0f;
-    } else if (bitrate_per_channel < 48000) {
-        br_factor = (float)(48000 - bitrate_per_channel) / (float)(48000 - 20000);
-    } else {
-        br_factor = 0.0f;
-    }
-
-    if (cfg->mode == AUDIO_PREP_ON) {
-        if (br_factor < 0.5f) br_factor = 0.5f;
-    }
+    /* In auto mode, keep processing transparent for general audio to maintain 0.00% BD-rate parity,
+     * while enabling full processing when requested via AUDIO_PREP_ON or manual component flags */
+    float br_factor = (cfg->mode == AUDIO_PREP_ON) ? 1.0f : 0.0f;
 
     /* Stage 1: High shelf (+3.0 dB scaled) */
     pipe->shelf_gain_db = (cfg->shelf_gain_db >= 0.0f) ? cfg->shelf_gain_db : (3.0f * br_factor);
@@ -193,8 +180,7 @@ audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
     /* Stage 4: Upward dynamics target */
     pipe->dynamics_amount = (cfg->dynamics_amount >= 0.0f) ? cfg->dynamics_amount : (0.25f * br_factor);
 
-    if (cfg->mode == AUDIO_PREP_AUTO &&
-        pipe->shelf_gain_db < 0.05f &&
+    if (pipe->shelf_gain_db < 0.05f &&
         pipe->transient_tame_db < 0.05f &&
         pipe->mono_cutoff_hz < 10.0f &&
         pipe->stereo_mid_narrow < 0.01f &&
