@@ -42,11 +42,21 @@ To further explore how preprocessing behaves at extreme low bitrates, we evaluat
 | `16k_mono_voip_24k` | 24 kbps | `--prep-shelf 0.3` | **C_01_CHOP_FA.wav**: 4.07 → 4.08 (+0.02 MOS) | Minor intelligibility lift on chopped VoIP packets. |
 | `24k_mono_28k` | 28 kbps | `--prep-shelf 0.3` | **R_01_CLIP_MK.wav**: 4.68 → 4.70 (+0.02 MOS), overall MOSd: **+0.0015** | Net positive speech MOS gain across the test suite! |
 
-### B. Ultra-Low Stereo / Parametric Stereo Scenarios (16 kbps)
-| Scenario | Target Rate | Mode / Setting | MOS Result | Analysis |
-| :--- | :---: | :---: | :---: | :---: |
-| `32k_stereo_16k` | 16 kbps | `--prep-shelf 0.5` | **fms.wav**: 3.00 → 3.04 (+0.04 MOS) | At 8 kbps/channel total bitrate, core AAC-LC is starved; pre-emphasis delivers more energy to speech articulation. |
-| `48k_stereo_16k` | 16 kbps | `--prep-shelf 0.5` | **sandman.16b48k.wav**: 3.17 → 3.18 (+0.02 MOS), **08 velvet.wav**: 2.25 → 2.28 (+0.03 MOS) | Slight intelligibility improvement on acoustic tracks. |
+### B. Parametric Stereo (PS) Parameter Sweep vs. HE-v1 (16 kbps Scenarios)
+
+We conducted a dedicated parameter sweep on the Parametric Stereo (HE-AAC v2) boundaries (`32k_stereo_16k` and `48k_stereo_16k` at 8 kbps/ch mono core + PS):
+
+| Sweep Arm | Preprocessing Setting | `32k_stereo_16k` MOS Δ | `48k_stereo_16k` MOS Δ | Per-Clip Wins / Observations |
+| :--- | :--- | :---: | :---: | :--- |
+| **B: Mild Shelf** | `--prep-shelf 0.3` | **-0.039** | **-0.009** (Near parity) | `fms.wav` (+0.05 MOS), `sandman` (+0.01 MOS) |
+| **C: Medium Shelf**| `--prep-shelf 0.7` | **-0.051** | **-0.028** | Higher boost over-accentuates high-frequency noise in PS synthesis. |
+| **D: Transient Tame**| `--prep-transient 0.5`| **-0.084** | **-0.025** | `13 fatboy` (+0.03 MOS); softens percussive attacks. |
+| **E: Narrow Width** | `--prep-stereo 0.04` | **-0.056** | **-0.043** | PS generates spatial cues (IID/IPD/ICC) parametrically; narrowing PCM upstream conflicts with PS spatial extraction. |
+
+#### Are PS optimums shared with HE-v1 or different?
+**They are distinctly different:**
+1. **Pre-emphasis:** PS benefits from a milder shelf boost ($\le 0.3$ dB) compared to discrete HE-v1 ($\approx 0.5-0.8$ dB). Because Parametric Stereo reconstructs the entire stereo field and top octave from a single mono downmix, aggressive pre-emphasis skews the mono downmix energy and distorts the spatial cue analysis.
+2. **Stereo Width Management:** HE-v1 relies on Mid/Side (M/S) matrixing in MDCT bands, where stereo narrowing directly saves bits in the Side channel. In contrast, PS transmits mono + spatial parameter bitstreams; pre-narrowing stereo upstream provides no bit savings (PS bitrate is fixed by cue quantization) and only degrades the inter-channel coherence parameter accuracy.
 
 ---
 
