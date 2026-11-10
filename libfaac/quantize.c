@@ -320,16 +320,14 @@ void QuantizeConfigureMask(AACQuantCfg *cfg, unsigned sample_rate,
     const int tuned = fit_rate >= masking_model.tune_min_rate
                    && (channels >= 2 || is_he);
     const unsigned profile = tuned ? MASKING_PROFILE_TUNED : MASKING_PROFILE_DEFAULT;
-    /* In LC frames, tilt knots span the full band. For low-rate HE-AAC (<= 24 kbps/ch),
-     * the core Nyquist is at half sample rate, so scale tilt_nyquist_khz to core bandwidth
-     * to protect upper-mid formants right below SBR crossover. */
-    cfg->mask_tuned = tuned;
+    /* The tilt knots are positioned for full-band LC frames. */
+    cfg->mask_tuned = tuned && !is_he;
     cfg->treble_slope = (bitrate_per_ch >= masking_model.rich_min_rate)
         ? masking_model.rich_slope : 1.0f;
-    if (sample_rate > masking_model.slope_rate_threshold && !is_he)
+    if (sample_rate > masking_model.slope_rate_threshold)
         cfg->treble_slope *= ((float)sample_rate / masking_model.slope_reference_rate);
 
-    cfg->tilt_nyquist_khz = is_he ? ((float)sample_rate / 4000.0f) : ((float)sample_rate / 2000.0f);
+    cfg->tilt_nyquist_khz = (float)sample_rate / 2000.0f;
     cfg->avg_weight = masking_model.profiles[profile].avg_weight;
     cfg->loud_exponent = masking_model.profiles[profile].loud_exponent;
     cfg->peak_floor = masking_model.profiles[profile].peak_floor;

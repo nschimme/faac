@@ -52,7 +52,7 @@ meson install -C build
 | `decoder-sbr` | true | Spectral Band Replication (HE-AAC v1) support in `libfaad` |
 | `encoder` | true | Build `libfaac` and the `faac` frontend |
 | `encoder-drc` | true | Dynamic range control metadata generation in `libfaac` (`--drc`) |
-| `encoder-ps` | true | Enable HE-AAC v2 Parametric Stereo encoding; needs `encoder-sbr` |
+| `encoder-ps` | false | Enable HE-AAC v2 Parametric Stereo encoding; needs `encoder-sbr` |
 | `encoder-sbr` | true | Spectral Band Replication (HE-AAC v1) support in `libfaac`; false builds an LC-only encoder |
 | `frontend` | true | Build the command-line tools |
 | `frontend-static` | false | Link the frontend executables to the static libraries |

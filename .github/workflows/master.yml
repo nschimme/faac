@@ -124,7 +124,7 @@ jobs:
             }
           - {
               name: macOS Clang,
-              os: macos-13,
+              os: macos-latest,
               compiler: clang,
               shell: bash,
             }
@@ -154,8 +154,12 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
         run: |
-          python3 -m pip install --break-system-packages meson ninja
+          brew update || true
+          brew install \
+            meson
 
       - name: Install dependencies (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'

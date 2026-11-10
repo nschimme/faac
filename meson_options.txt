@@ -70,7 +70,7 @@ option('encoder-sbr',
 option('encoder-ps',
     description: 'Enable Parametric Stereo (HE-AAC v2) encoding',
     type: 'boolean',
-    value: true)
+    value: false)
 
 # SBR spectral analysis density: analyze every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
