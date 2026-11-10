@@ -43,8 +43,8 @@ if get_option('encoder')
     libfaar_for_frontend = get_option('frontend-static') ? libfaar_static : libfaar
 
     libfrontend = static_library('frontend',
-        ['mp4write.c', 'output.c', 'encode_engine.c',
-         'mp4write.h', 'output.h', 'encode_engine.h'],
+        ['mp4write.c', 'output.c', 'encode_engine.c', 'audio_prep.c',
+         'mp4write.h', 'output.h', 'encode_engine.h', 'audio_prep.h'],
         link_with: [libfaac_for_frontend, libfaar_for_frontend],
         dependencies: [frontend_common_dep]
     )

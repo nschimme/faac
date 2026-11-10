@@ -25,6 +25,7 @@
 #include <faac.h>
 #include "progress.h"
 #include "mp4write.h"
+#include "audio_prep.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,6 +93,8 @@ typedef struct {
 
     enum faac_drc_profile drc_profile;
     float drc_ref_level;
+
+    audio_prep_config_t prep_cfg;
 
     bool ignore_wav_length;
     bool overwrite;
