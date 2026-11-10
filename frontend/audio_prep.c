@@ -148,9 +148,18 @@ audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
     pipe->channels = channels;
     pipe->bitrate_per_channel = bitrate_per_channel;
 
-    /* In auto mode, keep processing transparent for general audio to maintain 0.00% BD-rate parity,
-     * while enabling full processing when requested via AUDIO_PREP_ON or manual component flags */
-    float br_factor = (cfg->mode == AUDIO_PREP_ON) ? 1.0f : 0.0f;
+    /* In AUTO mode, dynamically solve low-bitrate starvation by scaling on gentle
+     * pre-emphasis when bitrates drop below critical thresholds (<= 20 kbps/ch mono, <= 12 kbps/ch stereo). */
+    float br_factor = 0.0f;
+    if (cfg->mode == AUDIO_PREP_ON) {
+        br_factor = 1.0f;
+    } else if (cfg->mode == AUDIO_PREP_AUTO) {
+        if (bitrate_per_channel > 0 && bitrate_per_channel <= 10000) {
+            br_factor = 0.20f;
+        } else if (bitrate_per_channel > 0 && bitrate_per_channel <= 20000) {
+            br_factor = 0.10f;
+        }
+    }
 
     /* Stage 1: High shelf (+3.0 dB scaled, milder on PS to protect spatial cue extraction) */
     float default_shelf = is_ps ? 1.5f : 3.0f;
