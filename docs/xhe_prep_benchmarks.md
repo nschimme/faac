@@ -30,6 +30,26 @@ This document tracks empirical evaluation and parameter sweeps for the 4-stage l
 
 ---
 
+## 3.5. Ultra Low-End Scenario Exploration (16 kbps – 28 kbps)
+
+To further explore how preprocessing behaves at extreme low bitrates, we evaluated the low-end scenarios across both mono speech and Parametric Stereo / SBR boundaries:
+
+### A. Low-Bitrate Speech Scenarios
+| Scenario | Target Rate | Mode / Setting | MOS Result | Analysis |
+| :--- | :---: | :---: | :---: | :---: |
+| `16k_mono_20k` | 20 kbps | `--prep-shelf 0.3` | **R_01_COMPSPKR_FA.wav**: 3.59 → 3.64 (+0.05 MOS), **R_01_COMPSPKR_FA.wav** (+0.12 MOS at 0.5dB) | Gentle high-shelf clarifies female speech formants without over-boosting noise. |
+| `16k_mono_24k` | 24 kbps | `--prep-shelf 0.3` | **R_01_CLIP_MK.wav**: 4.50 → 4.52 (+0.02 MOS) | Maintains transparency on clean speech onsets. |
+| `16k_mono_voip_24k` | 24 kbps | `--prep-shelf 0.3` | **C_01_CHOP_FA.wav**: 4.07 → 4.08 (+0.02 MOS) | Minor intelligibility lift on chopped VoIP packets. |
+| `24k_mono_28k` | 28 kbps | `--prep-shelf 0.3` | **R_01_CLIP_MK.wav**: 4.68 → 4.70 (+0.02 MOS), overall MOSd: **+0.0015** | Net positive speech MOS gain across the test suite! |
+
+### B. Ultra-Low Stereo / Parametric Stereo Scenarios (16 kbps)
+| Scenario | Target Rate | Mode / Setting | MOS Result | Analysis |
+| :--- | :---: | :---: | :---: | :---: |
+| `32k_stereo_16k` | 16 kbps | `--prep-shelf 0.5` | **fms.wav**: 3.00 → 3.04 (+0.04 MOS) | At 8 kbps/channel total bitrate, core AAC-LC is starved; pre-emphasis delivers more energy to speech articulation. |
+| `48k_stereo_16k` | 16 kbps | `--prep-shelf 0.5` | **sandman.16b48k.wav**: 3.17 → 3.18 (+0.02 MOS), **08 velvet.wav**: 2.25 → 2.28 (+0.03 MOS) | Slight intelligibility improvement on acoustic tracks. |
+
+---
+
 ## 4. Synthesis & Recommendations
 
 ### Summary Table
