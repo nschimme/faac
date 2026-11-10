@@ -218,8 +218,11 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         if (etot <= 0) continue;
 
         if (sfb < ms_end) {
-            /* es and ed are 4x the mid and side energies. */
-            if (es * ed < ms_test_factor * el * er) {
+            /* es and ed are 4x the mid and side energies.
+             * Below ~120 Hz (sfb < 2 in long windows), favor M/S coding to conserve
+             * Side-channel bits on non-directional bass. */
+            float tf = (sfb < 2 && !wstart) ? (ms_test_factor * 1.25f) : ms_test_factor;
+            if (es * ed < tf * el * er) {
                 apply_ms_full(sl0, sr0, start, len, wstart, wend);
                 element->msInfo.ms_used[band] = 1;
                 cl->msEl[band] = el;
