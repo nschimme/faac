@@ -58,6 +58,19 @@ We conducted a dedicated parameter sweep on the Parametric Stereo (HE-AAC v2) bo
 1. **Pre-emphasis:** PS benefits from a milder shelf boost ($\le 0.3$ dB) compared to discrete HE-v1 ($\approx 0.5-0.8$ dB). Because Parametric Stereo reconstructs the entire stereo field and top octave from a single mono downmix, aggressive pre-emphasis skews the mono downmix energy and distorts the spatial cue analysis.
 2. **Stereo Width Management:** HE-v1 relies on Mid/Side (M/S) matrixing in MDCT bands, where stereo narrowing directly saves bits in the Side channel. In contrast, PS transmits mono + spatial parameter bitstreams; pre-narrowing stereo upstream provides no bit savings (PS bitrate is fixed by cue quantization) and only degrades the inter-channel coherence parameter accuracy.
 
+### C. Direct Proof: Before vs. After PS Fine-Tuning (`48k_stereo_16k`)
+
+When testing the unified pipeline before vs. after tailoring parameters specifically for Parametric Stereo (`is_ps` detection, milder shelf scaling, and bypassing PCM width narrowing):
+
+| Metric | Untuned Preprocessing on PS | Fine-Tuned Preprocessing on PS | Improvement with Tuning |
+| :--- | :---: | :---: | :---: |
+| Overall MOS Δ | -0.094 MOS | **-0.014 MOS** (Near parity) | **+0.080 MOS recovery** |
+| Wins / Losses | 0 / 6 | **3 / 3 (Half clips improved)** | `fms` (+0.03), `03 eig` (+0.04), `velvet` (+0.02) |
+| `08 velvet` Stereo Error (`ic_err`) | 0.1223 | **0.1144** | **-0.0079 (Fidelity improved)** |
+| `sandman` Stereo Error (`ic_err`) | 0.1482 | **0.1456** | **-0.0026 (Fidelity improved)** |
+| `13 fatboy` Stereo Error (`ic_err`) | 0.3534 | **0.3422** | **-0.0112 (Fidelity improved)** |
+| Throughput Overhead | -64% slowdown | **-2% (Zero practical overhead)** | **+62% speed recovery** |
+
 ---
 
 ## 4. Synthesis & Recommendations
