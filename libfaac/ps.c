@@ -14,6 +14,7 @@
  */
 
 #include <math.h>
+#include <stdlib.h>
 #ifdef FAAC_STATS
 #include <stdio.h>
 #include "stats.h"
@@ -138,6 +139,18 @@ typedef struct {
 static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
                              const float crossImag[64], PsFrameParams *fd, int bands, int phases)
 {
+    /* Experiment-only knob: sweep IPD/OPD phase analysis mode.
+     * 0 or unset: baseline behavior (coherence >= 0.7f).
+     * 1: never enable phase (enable_phase stays 0, ipd/opd all 0).
+     * 2: enable phase only if at least 3 bands pass coherence >= 0.8f. */
+    static int s_phase_mode = -1;
+    if (s_phase_mode < 0) {
+        const char *env = getenv("FAAC_PS_PHASE_MODE");
+        s_phase_mode = env ? atoi(env) : 0;
+        if (s_phase_mode < 0)
+            s_phase_mode = 0;
+    }
+
     float l = 0, r = 0, cross = 0;
     for (int k = 0; k < PS_BANDS; k++) {
         l += energy[0][k];
@@ -147,6 +160,18 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
     float rho = cross / (sqrtf(l * r) + SBR_ENERGY_FLOOR);
     float w = 0.5f + 0.5f * fmaxf(0, fminf(1, -rho));
     fd->enable_phase = 0;
+
+    int allow_phase = (s_phase_mode != 1);
+    if (s_phase_mode == 2) {
+        int hi = 0;
+        for (int k = 0; k < phases; k++) {
+            float d = sqrtf(energy[0][k] * energy[1][k]) + SBR_ENERGY_FLOOR;
+            if (energy[0][k] + energy[1][k] >= 1e-6f * (l + r) &&
+                hypotf(crossReal[k], crossImag[k]) >= 0.8f * d)
+                hi++;
+        }
+        allow_phase = (hi >= 3);
+    }
 
     for (int b = 0; b < bands; b++) {
         float eL = energy[0][b], eR = energy[1][b];
@@ -163,7 +188,7 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
         float icc = eLR / denom;
         if (b < phases) {
             fd->ipd[b] = fd->opd[b] = 0;
-            if (eL + eR >= 1e-6f * (l + r)) {
+            if (allow_phase && (eL + eR >= 1e-6f * (l + r))) {
                 float coherence = hypotf(eLR, eLRi) / denom;
                 if (coherence >= 0.7f) {
                     int ipd = ps_phase(eLR, eLRi);
