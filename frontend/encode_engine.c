@@ -53,6 +53,7 @@ void init_encode_options(encode_options_t *opts)
     opts->mpeg_version = 4;
     opts->object_type = FAAC_OBJ_AUTO;
     opts->joint_mode = FAAC_STEREO_AUTO;
+    audio_prep_config_init(&opts->prep_cfg);
     opts->stream_format = FAAC_STREAM_ADTS;
     opts->shortctl = FAAC_SHORTCTL_NORMAL;
     opts->use_tns = true;
@@ -517,6 +518,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     float *pcmbuf = NULL;
     unsigned char *bitbuf = NULL;
     int *chanmap = NULL;
+    audio_prep_pipeline_t *prep_pipeline = NULL;
 
     int ret = 0;
     bool mp4_is_open = false;
@@ -704,7 +706,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
                  "Warning: the WAVE channel mask 0x%X does not match the %s order FAAC reads for %u channels.%s\n",
                  (unsigned)infile->channel_mask, wav_layout_name(num_channels), (unsigned)num_channels,
                  num_channels >= 6 ? " Channel 4 is coded as the LFE." : "");
-    bool native = standard_layout && wav_native_ok(infile) && !resample_active;
+    bool prep_active = (opts->prep_cfg.mode != AUDIO_PREP_OFF);
+    bool native = standard_layout && wav_native_ok(infile) && !resample_active && !prep_active;
     params.input_format = !native ? FAAC_INPUT_FLOAT :
                           infile->samplebytes == 2 ? FAAC_INPUT_16BIT : FAAC_INPUT_24BIT;
 
@@ -742,6 +745,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     faac_encoder_info info = { .struct_size = sizeof(info) };
     faac_encoder_get_info(hEncoder, &info);
+
+    uint32_t br_per_ch = info.bit_rate ? (info.bit_rate / num_channels) : 24000;
+    bool is_ps = (info.object_type == FAAC_OBJ_HE_AAC_V2);
+    if (opts->prep_cfg.mode != AUDIO_PREP_OFF) {
+        prep_pipeline = audio_prep_create(&opts->prep_cfg, sample_rate, num_channels, br_per_ch, is_ps);
+    }
 
     /* MPEG-2 AAC has no PNS. */
     bool mpeg2 = info.stream_format == FAAC_STREAM_ADTS_MPEG2 ||
@@ -979,6 +988,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 current_input_samples += (samples_read / num_channels);
         }
 
+        if (prep_pipeline && samples_read > 0)
+        {
+            audio_prep_process(prep_pipeline, (float *)input_pcm, (size_t)(samples_read / num_channels));
+        }
+
         uint32_t nbytes = 0;
         bool source_done = resample_active ? resampler_eof : input_eof;
         bool flush = source_done && (!resample_active || samples_read == 0);
@@ -1123,6 +1137,9 @@ cleanup:
 
     if (infile)
         wav_close(infile);
+
+    if (prep_pipeline)
+        audio_prep_free(prep_pipeline);
 
 #undef FAIL
     return ret;

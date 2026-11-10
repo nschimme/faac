@@ -54,11 +54,18 @@ if get_option('encoder') and not meson.is_cross_build()
     test_encode_engine = executable('test_encode_engine', 'test_encode_engine.c',
         c_args: c_args_list,
         include_directories: ['..', '../..', '../../include', common_inc, '../../tests'],
-        link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend],
-        dependencies: [frontend_common_dep])
+        link_with: [libfaac_for_frontend, libfrontend, libfaam_for_frontend, libfaar_for_frontend],
+        dependencies: [frontend_common_dep, cc.find_library('m', required: false)])
     test('test_integration_faac_encode_engine', test_encode_engine,
         args: [join_paths(meson.current_build_dir(), 'encode-engine-test.wav'),
                join_paths(meson.current_build_dir(), 'encode-engine-test.aac')])
+
+    test_audio_prep = executable('test_audio_prep', 'test_audio_prep.c',
+        c_args: c_args_list,
+        include_directories: ['..', '../..', '../../include', common_inc],
+        link_with: [libfrontend, libfaac_for_frontend, libfaar_for_frontend],
+        dependencies: [frontend_common_dep, cc.find_library('m', required: false)])
+    test('test_unit_audio_prep', test_audio_prep)
 endif
 
 if get_option('decoder') and not meson.is_cross_build()

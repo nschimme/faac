@@ -87,7 +87,12 @@ enum flags
     RATE_FLAG,
     STREAM_FORMAT_FLAG,
     OPT_DRC,
-    OPT_DRC_REF_LEVEL
+    OPT_DRC_REF_LEVEL,
+    OPT_XHE_PREP,
+    OPT_PREP_SHELF,
+    OPT_PREP_TRANSIENT,
+    OPT_PREP_STEREO,
+    OPT_PREP_DYNAMICS
 };
 
 static const help_t help_qual[] = {
@@ -232,6 +237,17 @@ static const help_t help_advanced[] = {
     {"--block-type <normal|noshort|nolong>",
      "Enforce block type (0=normal (both), 1=noshort, 2=nolong).",
      "Alias: --shortctl."},
+    {"--prep <auto|on|off>",
+     "Audio preprocessing mode (xHE-AAC inspired low-bitrate acoustic prep; default: off).",
+     "Applies pre-emphasis, transient softening, sub-band stereo width management, and dynamic compression. Alias: --xhe-prep."},
+    {"--prep-shelf <dB>",
+     "Override high-shelf pre-emphasis boost gain in dB (0.0 to 4.0 dB).", NULL},
+    {"--prep-transient <dB>",
+     "Override micro-transient peak softening attenuation in dB (0.0 to 3.0 dB).", NULL},
+    {"--prep-stereo <factor>",
+     "Override mid-band stereo narrowing factor (0.0 to 0.3).", NULL},
+    {"--prep-dynamics <amount>",
+     "Override upward dynamics compression amount (0.0 to 1.0).", NULL},
     {NULL, NULL, NULL}
 };
 
@@ -531,6 +547,12 @@ int main(int argc, char *argv[])
             {"rate", 1, 0, RATE_FLAG},
             {"drc", required_argument, 0, OPT_DRC},
             {"drc-ref-level", required_argument, 0, OPT_DRC_REF_LEVEL},
+            {"prep", required_argument, 0, OPT_XHE_PREP},
+            {"xhe-prep", required_argument, 0, OPT_XHE_PREP},
+            {"prep-shelf", required_argument, 0, OPT_PREP_SHELF},
+            {"prep-transient", required_argument, 0, OPT_PREP_TRANSIENT},
+            {"prep-stereo", required_argument, 0, OPT_PREP_STEREO},
+            {"prep-dynamics", required_argument, 0, OPT_PREP_DYNAMICS},
             {0, 0, 0, 0}
         };
 
@@ -836,6 +858,34 @@ int main(int argc, char *argv[])
                 }
                 opts.drc_ref_level = val;
             }
+            break;
+        case OPT_XHE_PREP:
+            if (!strcmp(optarg, "off") || !strcmp(optarg, "0")) {
+                opts.prep_cfg.mode = AUDIO_PREP_OFF;
+            } else if (!strcmp(optarg, "auto") || !strcmp(optarg, "1")) {
+                opts.prep_cfg.mode = AUDIO_PREP_AUTO;
+            } else if (!strcmp(optarg, "on") || !strcmp(optarg, "2")) {
+                opts.prep_cfg.mode = AUDIO_PREP_ON;
+            } else {
+                fprintf(stderr, "Invalid --prep mode '%s' (choose auto, on, or off)\n", optarg);
+                return 1;
+            }
+            break;
+        case OPT_PREP_SHELF:
+            opts.prep_cfg.shelf_gain_db = strtof(optarg, NULL);
+            if (opts.prep_cfg.mode == AUDIO_PREP_OFF) opts.prep_cfg.mode = AUDIO_PREP_ON;
+            break;
+        case OPT_PREP_TRANSIENT:
+            opts.prep_cfg.transient_tame_db = strtof(optarg, NULL);
+            if (opts.prep_cfg.mode == AUDIO_PREP_OFF) opts.prep_cfg.mode = AUDIO_PREP_ON;
+            break;
+        case OPT_PREP_STEREO:
+            opts.prep_cfg.stereo_mid_narrow = strtof(optarg, NULL);
+            if (opts.prep_cfg.mode == AUDIO_PREP_OFF) opts.prep_cfg.mode = AUDIO_PREP_ON;
+            break;
+        case OPT_PREP_DYNAMICS:
+            opts.prep_cfg.dynamics_amount = strtof(optarg, NULL);
+            if (opts.prep_cfg.mode == AUDIO_PREP_OFF) opts.prep_cfg.mode = AUDIO_PREP_ON;
             break;
         case HELP_QUAL:
         case HELP_IO:
