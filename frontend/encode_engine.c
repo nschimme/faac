@@ -747,8 +747,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder_get_info(hEncoder, &info);
 
     uint32_t br_per_ch = info.bit_rate ? (info.bit_rate / num_channels) : 24000;
+    bool is_ps = (info.object_type == FAAC_OBJ_HE_AAC_V2);
     if (opts->prep_cfg.mode != AUDIO_PREP_OFF) {
-        prep_pipeline = audio_prep_create(&opts->prep_cfg, sample_rate, num_channels, br_per_ch);
+        prep_pipeline = audio_prep_create(&opts->prep_cfg, sample_rate, num_channels, br_per_ch, is_ps);
     }
 
     /* MPEG-2 AAC has no PNS. */

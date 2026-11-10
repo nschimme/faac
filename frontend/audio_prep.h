@@ -45,7 +45,8 @@ void audio_prep_config_init(audio_prep_config_t *cfg);
 audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
                                          uint32_t sample_rate,
                                          uint16_t channels,
-                                         uint32_t bitrate_per_channel);
+                                         uint32_t bitrate_per_channel,
+                                         bool is_ps);
 
 /* Process interleaved float32 samples in place */
 void audio_prep_process(audio_prep_pipeline_t *pipe,

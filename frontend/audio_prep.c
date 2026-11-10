@@ -134,7 +134,8 @@ void audio_prep_config_init(audio_prep_config_t *cfg)
 audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
                                          uint32_t sample_rate,
                                          uint16_t channels,
-                                         uint32_t bitrate_per_channel)
+                                         uint32_t bitrate_per_channel,
+                                         bool is_ps)
 {
     if (!cfg || cfg->mode == AUDIO_PREP_OFF || channels == 0 || channels > MAX_CHANNELS) {
         return NULL;
@@ -151,8 +152,9 @@ audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
      * while enabling full processing when requested via AUDIO_PREP_ON or manual component flags */
     float br_factor = (cfg->mode == AUDIO_PREP_ON) ? 1.0f : 0.0f;
 
-    /* Stage 1: High shelf (+3.0 dB scaled) */
-    pipe->shelf_gain_db = (cfg->shelf_gain_db >= 0.0f) ? cfg->shelf_gain_db : (3.0f * br_factor);
+    /* Stage 1: High shelf (+3.0 dB scaled, milder on PS to protect spatial cue extraction) */
+    float default_shelf = is_ps ? 1.5f : 3.0f;
+    pipe->shelf_gain_db = (cfg->shelf_gain_db >= 0.0f) ? cfg->shelf_gain_db : (default_shelf * br_factor);
     for (uint16_t c = 0; c < channels; c++) {
         biquad_set_highshelf(&pipe->shelf_filter[c], (float)sample_rate, 4000.0f, pipe->shelf_gain_db, 1.0f);
     }
@@ -163,10 +165,12 @@ audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
         pipe->transient_gain[c] = 1.0f;
     }
 
-    /* Stage 3: Stereo width management (Stereo only) */
+    /* Stage 3: Stereo width management (Stereo only - bypass PCM narrowing in PS mode as PS transmits spatial parameters) */
     if (channels == 2) {
-        pipe->mono_cutoff_hz = (cfg->mono_cutoff_hz >= 0.0f) ? cfg->mono_cutoff_hz : (220.0f * br_factor);
-        pipe->stereo_mid_narrow = (cfg->stereo_mid_narrow >= 0.0f) ? cfg->stereo_mid_narrow : (0.15f * br_factor);
+        float default_mono = is_ps ? 0.0f : 220.0f;
+        float default_narrow = is_ps ? 0.0f : 0.15f;
+        pipe->mono_cutoff_hz = (cfg->mono_cutoff_hz >= 0.0f) ? cfg->mono_cutoff_hz : (default_mono * br_factor);
+        pipe->stereo_mid_narrow = (cfg->stereo_mid_narrow >= 0.0f) ? cfg->stereo_mid_narrow : (default_narrow * br_factor);
 
         if (pipe->mono_cutoff_hz > 20.0f) {
             biquad_set_lowpass(&pipe->bass_lowpass_left, (float)sample_rate, pipe->mono_cutoff_hz);

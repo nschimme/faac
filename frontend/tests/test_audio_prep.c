@@ -39,7 +39,7 @@ static void test_high_shelf_preemphasis(void)
     cfg.dynamics_amount = 0.0f;
 
     uint32_t rate = 48000;
-    audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 1, 16000);
+    audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 1, 16000, false);
     assert(pipe != NULL);
 
     const size_t N = TEST_SAMPLES_LEN;
@@ -53,7 +53,7 @@ static void test_high_shelf_preemphasis(void)
     audio_prep_process(pipe, low_tone, N);
     audio_prep_free(pipe);
 
-    pipe = audio_prep_create(&cfg, rate, 1, 16000);
+    pipe = audio_prep_create(&cfg, rate, 1, 16000, false);
     audio_prep_process(pipe, high_tone, N);
     audio_prep_free(pipe);
 
@@ -82,7 +82,7 @@ static void test_bass_mono_summing(void)
     cfg.dynamics_amount = 0.0f;
 
     uint32_t rate = 48000;
-    audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 2, 16000);
+    audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 2, 16000, false);
     assert(pipe != NULL);
 
     const size_t N = TEST_SAMPLES_LEN;
@@ -121,7 +121,7 @@ static void test_micro_transient_softening(void)
     cfg.dynamics_amount = 0.0f;
 
     uint32_t rate = 48000;
-    audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 1, 16000);
+    audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 1, 16000, false);
     assert(pipe != NULL);
 
     const size_t N = TEST_SAMPLES_LEN;
