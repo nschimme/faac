@@ -218,9 +218,19 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
              hEncoder->config.mpegVersion != MPEG2) ? HE_V1 : LOW;
 #if FAAC_ENCODER_PS
         /* Explicit-bitrate stereo uses PS up to the ceiling, below HE v1's
-         * floor too; just above it stays on HE v1 rather than falling to LC. */
-        unsigned long ps_ceiling = hEncoder->sampleRate == 48000 ? 8000 :
-            (hEncoder->sampleRate == 32000 || hEncoder->sampleRate == 44100) ? 6000 : 0;
+         * floor too; just above it stays on HE v1 rather than falling to LC.
+         * Experiment-only knob: override ps_ceiling for A/B benchmarking sweeps. */
+        unsigned long ps_ceiling = 0;
+        if (hEncoder->sampleRate == 32000 || hEncoder->sampleRate == 44100 ||
+            hEncoder->sampleRate == 48000) {
+            const char *env_ceiling = getenv("FAAC_PS_CEILING");
+            int env_val = env_ceiling ? atoi(env_ceiling) : 0;
+            if (env_val > 0) {
+                ps_ceiling = (unsigned long)env_val;
+            } else {
+                ps_ceiling = (hEncoder->sampleRate == 48000) ? 8000 : 6000;
+            }
+        }
         if (ps_ceiling && hEncoder->numChannels == 2 &&
             hEncoder->config.mpegVersion != MPEG2 && rate_per_ch > 0) {
             if (rate_per_ch <= ps_ceiling)
