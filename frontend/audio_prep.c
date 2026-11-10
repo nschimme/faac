@@ -166,13 +166,13 @@ audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
 
     /* Stage 1: High shelf (+3.0 dB scaled) */
     pipe->shelf_gain_db = (cfg->shelf_gain_db >= 0.0f) ? cfg->shelf_gain_db : (3.0f * br_factor);
-    for (int c = 0; c < channels; c++) {
+    for (uint16_t c = 0; c < channels; c++) {
         biquad_set_highshelf(&pipe->shelf_filter[c], (float)sample_rate, 4000.0f, pipe->shelf_gain_db, 1.0f);
     }
 
     /* Stage 2: Transient tame (2.5 dB scaled) */
     pipe->transient_tame_db = (cfg->transient_tame_db >= 0.0f) ? cfg->transient_tame_db : (2.5f * br_factor);
-    for (int c = 0; c < channels; c++) {
+    for (uint16_t c = 0; c < channels; c++) {
         pipe->transient_gain[c] = 1.0f;
     }
 
@@ -232,12 +232,9 @@ void audio_prep_process(audio_prep_pipeline_t *pipe,
          * Stage 1: High-Shelf Pre-Emphasis & Soft Limiting
          * ================================================================ */
         if (pipe->shelf_gain_db > 0.05f) {
-            for (int c = 0; c < chs; c++) {
+            for (uint16_t c = 0; c < chs; c++) {
                 float s = biquad_process(&pipe->shelf_filter[c], frame[c]);
-                float threshold = 0.92f;
-                if (fabsf(s) > 10.0f) {
-                    threshold = 30000.0f;
-                }
+                const float threshold = 0.92f;
                 if (fabsf(s) > threshold) {
                     float sign = (s > 0.0f) ? 1.0f : -1.0f;
                     float excess = fabsf(s) - threshold;
@@ -251,7 +248,7 @@ void audio_prep_process(audio_prep_pipeline_t *pipe,
          * Stage 2: Micro-Transient Softening (Zero Latency)
          * ================================================================ */
         if (pipe->transient_tame_db > 0.05f) {
-            for (int c = 0; c < chs; c++) {
+            for (uint16_t c = 0; c < chs; c++) {
                 float in_val = frame[c];
                 float abs_val = fabsf(in_val);
 
@@ -322,7 +319,7 @@ void audio_prep_process(audio_prep_pipeline_t *pipe,
          * Stage 4: Upward Dynamics Target Compression
          * ================================================================ */
         if (pipe->dynamics_amount > 0.01f) {
-            for (int c = 0; c < chs; c++) {
+            for (uint16_t c = 0; c < chs; c++) {
                 float s = frame[c];
                 float abs_val = fabsf(s);
 
@@ -331,9 +328,8 @@ void audio_prep_process(audio_prep_pipeline_t *pipe,
                 else
                     pipe->dynamics_env[c] = abs_val + dyn_release_coeff * (pipe->dynamics_env[c] - abs_val);
 
-                float norm_env = (abs_val > 10.0f) ? (pipe->dynamics_env[c] / 32768.0f) : pipe->dynamics_env[c];
-                if (norm_env > 0.001f && norm_env < 0.25f) {
-                    float lift = (0.25f - norm_env) / 0.25f;
+                if (pipe->dynamics_env[c] > 0.001f && pipe->dynamics_env[c] < 0.25f) {
+                    float lift = (0.25f - pipe->dynamics_env[c]) / 0.25f;
                     float gain = 1.0f + pipe->dynamics_amount * lift * 0.25f;
                     frame[c] = s * gain;
                 }

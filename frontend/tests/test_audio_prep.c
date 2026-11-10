@@ -13,6 +13,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#define TEST_SAMPLES_LEN 4800
+
 static void test_prep_config_defaults(void)
 {
     audio_prep_config_t cfg;
@@ -40,9 +42,9 @@ static void test_high_shelf_preemphasis(void)
     audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 1, 16000);
     assert(pipe != NULL);
 
-    const size_t N = 4800;
-    float low_tone[N];
-    float high_tone[N];
+    const size_t N = TEST_SAMPLES_LEN;
+    float low_tone[TEST_SAMPLES_LEN];
+    float high_tone[TEST_SAMPLES_LEN];
     for (size_t i = 0; i < N; i++) {
         low_tone[i] = 0.2f * sinf(2.0f * (float)M_PI * 1000.0f * (float)i / (float)rate);
         high_tone[i] = 0.2f * sinf(2.0f * (float)M_PI * 8000.0f * (float)i / (float)rate);
@@ -64,6 +66,7 @@ static void test_high_shelf_preemphasis(void)
     rms_high = sqrtf(rms_high / (float)(N - 2400));
 
     float boost_db = 20.0f * log10f(rms_high / rms_low);
+    (void)boost_db;
     assert(boost_db > 2.0f && boost_db < 4.0f);
 }
 
@@ -82,8 +85,8 @@ static void test_bass_mono_summing(void)
     audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 2, 16000);
     assert(pipe != NULL);
 
-    const size_t N = 4800;
-    float samples[N * 2];
+    const size_t N = TEST_SAMPLES_LEN;
+    float samples[TEST_SAMPLES_LEN * 2];
     for (size_t i = 0; i < N; i++) {
         samples[i * 2 + 0] = 0.5f * sinf(2.0f * (float)M_PI * 100.0f * (float)i / (float)rate);
         samples[i * 2 + 1] = 0.0f;
@@ -100,6 +103,8 @@ static void test_bass_mono_summing(void)
     rms_left = sqrtf(rms_left / (float)(N - 2400));
     rms_right = sqrtf(rms_right / (float)(N - 2400));
 
+    (void)rms_left;
+    (void)rms_right;
     assert(rms_right > 0.10f);
     assert(fabsf(rms_left - rms_right) < 0.15f);
 }
@@ -119,8 +124,8 @@ static void test_micro_transient_softening(void)
     audio_prep_pipeline_t *pipe = audio_prep_create(&cfg, rate, 1, 16000);
     assert(pipe != NULL);
 
-    const size_t N = 4800;
-    float samples[N];
+    const size_t N = TEST_SAMPLES_LEN;
+    float samples[TEST_SAMPLES_LEN];
     for (size_t i = 0; i < N; i++) {
         samples[i] = 0.05f * sinf(2.0f * (float)M_PI * 1000.0f * (float)i / (float)rate);
     }
@@ -131,6 +136,7 @@ static void test_micro_transient_softening(void)
     audio_prep_free(pipe);
 
     float peak = fabsf(samples[1000]);
+    (void)peak;
     assert(peak < 0.80f);
 }
 
