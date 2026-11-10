@@ -161,11 +161,13 @@ audio_prep_pipeline_t *audio_prep_create(const audio_prep_config_t *cfg,
         }
     }
 
-    /* Stage 1: High shelf (+3.0 dB scaled, milder on PS to protect spatial cue extraction) */
+    /* Stage 1: High shelf (adaptive corner frequency based on sample rate:
+     * 3200 Hz for wideband 16 kHz speech, 4500 Hz for 32/48 kHz audio) */
+    float shelf_freq = (sample_rate <= 16000) ? 3200.0f : 4500.0f;
     float default_shelf = is_ps ? 1.5f : 3.0f;
     pipe->shelf_gain_db = (cfg->shelf_gain_db >= 0.0f) ? cfg->shelf_gain_db : (default_shelf * br_factor);
     for (uint16_t c = 0; c < channels; c++) {
-        biquad_set_highshelf(&pipe->shelf_filter[c], (float)sample_rate, 4000.0f, pipe->shelf_gain_db, 1.0f);
+        biquad_set_highshelf(&pipe->shelf_filter[c], (float)sample_rate, shelf_freq, pipe->shelf_gain_db, 1.0f);
     }
 
     /* Stage 2: Transient tame (2.5 dB scaled) */
