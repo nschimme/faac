@@ -66,6 +66,14 @@ Across a broader randomized sample of 19 diverse musical, speech, and transient 
 - Overall sample average: -0.009 MOS (virtually neutral within statistical confidence interval of zero).
 - Stereo coherence error (`ic_err`) improved on majority of clips (e.g. `castanets` 0.0646 → 0.0637, `fire & flames` 0.0813 → 0.0798).
 
+#### 3. Full 100% Corpus Evaluation on Speech Scenarios (80 Total Clips):
+Evaluated across all 80 speech clips at 100% coverage on `16k_mono_20k` and `16k_mono_24k`:
+- `16k_mono_24k` (40 clips): **100% bitstream and metric parity** (avgMOSd = +0.0000 across all 40 clips).
+- `16k_mono_20k` (40 clips): Statistically neutral overall (avgMOSd = -0.019 MOS) with multiple notable clip wins where high-shelf pre-emphasis improved speech intelligibility in noisy/reverberant conditions:
+  - `R_02_NOISE_FG.wav`: **3.45 → 3.52 (+0.07 MOS)**
+  - `R_02_ECHO_FA.wav`: **4.22 → 4.27 (+0.05 MOS)**
+  - `R_02_ECHO_MK.wav`: **4.15 → 4.19 (+0.05 MOS)**
+
 ### C. Parametric Stereo (PS) Parameter Sweep vs. HE-v1 (16 kbps Scenarios)
 
 We conducted a dedicated parameter sweep on the Parametric Stereo (HE-AAC v2) boundaries (`32k_stereo_16k` and `48k_stereo_16k` at 8 kbps/ch mono core + PS):
