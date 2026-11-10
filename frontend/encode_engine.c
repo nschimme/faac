@@ -648,20 +648,31 @@ int run_encoding_session_ext(const encode_options_t *opts,
         const uint32_t lc_44k_bps = 11000;
         if (raw_sample_rate > 48000)
             target_rate = (raw_sample_rate % 44100 == 0) ? 44100 : 48000;
-        else if (raw_sample_rate > 32000 &&
-                 ((raw_sample_rate % 8000 == 0 && rate_per_channel <= lc_48k_bps) ||
-                  (raw_sample_rate % 11025 == 0 && rate_per_channel <= lc_44k_bps)))
+        else if (raw_sample_rate > 32000)
         {
-            enum faac_object_type native_type;
-            faac_status st = resolve_object_type(&params, &native_type);
-            if (st != FAAC_OK)
-                FAIL("Couldn't open encoder instance for %s: %s\n",
-                     opts->input_filename, open_error(st, &params));
-            if (native_type == FAAC_OBJ_LC)
+            const uint32_t ps_32k_bps = 6000;
+            enum faac_object_type native_type = FAAC_OBJ_AUTO;
+            bool should_probe = (num_channels == 2 && rate_per_channel <= ps_32k_bps) ||
+                                (raw_sample_rate % 8000 == 0 && rate_per_channel <= lc_48k_bps) ||
+                                (raw_sample_rate % 11025 == 0 && rate_per_channel <= lc_44k_bps);
+            if (should_probe)
             {
-                target_rate = 32000;
-                /* Keep AUTO from switching to HE at the new rate. */
-                params.object_type = FAAC_OBJ_LC;
+                faac_status st = resolve_object_type(&params, &native_type);
+                if (st != FAAC_OK)
+                    FAIL("Couldn't open encoder instance for %s: %s\n",
+                         opts->input_filename, open_error(st, &params));
+                if (native_type == FAAC_OBJ_LC)
+                {
+                    target_rate = 32000;
+                    /* Keep AUTO from switching to HE at the new rate. */
+                    params.object_type = FAAC_OBJ_LC;
+                }
+                else if (native_type == FAAC_OBJ_HE_AAC_V2 && num_channels == 2 &&
+                         rate_per_channel <= ps_32k_bps)
+                {
+                    target_rate = 32000;
+                    params.object_type = FAAC_OBJ_HE_AAC_V2;
+                }
             }
         }
         sample_rate = target_rate;

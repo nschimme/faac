@@ -99,7 +99,7 @@ matches a default Meson build:
 | `MAX_CHANNELS` | `max-channels` | 8 |
 | `FAAC_SBR_DECIMATION` | `sbr-decimation` | 1 |
 | `FAAC_ENCODER_SBR` | `encoder-sbr` | 1 |
-| `FAAC_ENCODER_PS` | `encoder-ps` (needs SBR) | 0 |
+| `FAAC_ENCODER_PS` | `encoder-ps` (needs SBR) | 1 |
 | `FAAC_ENCODER_DRC` | `encoder-drc` | 1 |
 | `FAAC_STATS` | `stats` | off |
 

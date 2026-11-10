@@ -90,7 +90,8 @@ def main():
         auto_output = auto_encoded + '.wav'
         run([faad, '--strict', '-q', '-o', auto_output, auto_encoded])
         with wave.open(auto_output, 'rb') as wav:
-            assert wav.getnchannels() == 2 and wav.getframerate() == 48000
+            # Under --rate auto, 48 kHz stereo at <= 12 kbps total downsamples to 32 kHz
+            assert wav.getnchannels() == 2 and wav.getframerate() == 32000
     print('PS frontend: ok')
 
 
