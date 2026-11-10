@@ -161,18 +161,16 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
     float w = 0.5f + 0.5f * fmaxf(0, fminf(1, -rho));
     fd->enable_phase = 0;
 
-    int high_coherence_count = 0;
+    int allow_phase = (s_phase_mode != 1);
     if (s_phase_mode == 2) {
-        for (int b = 0; b < phases; b++) {
-            float eL = energy[0][b], eR = energy[1][b];
-            if (eL + eR >= 1e-6f * (l + r)) {
-                float denom = sqrtf(eL * eR) + SBR_ENERGY_FLOOR;
-                float coherence = hypotf(crossReal[b], crossImag[b]) / denom;
-                if (coherence >= 0.8f) {
-                    high_coherence_count++;
-                }
-            }
+        int hi = 0;
+        for (int k = 0; k < phases; k++) {
+            float d = sqrtf(energy[0][k] * energy[1][k]) + SBR_ENERGY_FLOOR;
+            if (energy[0][k] + energy[1][k] >= 1e-6f * (l + r) &&
+                hypotf(crossReal[k], crossImag[k]) >= 0.8f * d)
+                hi++;
         }
+        allow_phase = (hi >= 3);
     }
 
     for (int b = 0; b < bands; b++) {
@@ -190,34 +188,15 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
         float icc = eLR / denom;
         if (b < phases) {
             fd->ipd[b] = fd->opd[b] = 0;
-            if (s_phase_mode == 1) {
-                /* Never enable phase; leave ipd/opd at 0, enable_phase stays 0 */
-            } else if (s_phase_mode == 2) {
-                /* Enable phase only if >= 3 bands pass coherence >= 0.8f */
-                if (high_coherence_count >= 3 && (eL + eR >= 1e-6f * (l + r))) {
-                    float coherence = hypotf(eLR, eLRi) / denom;
-                    if (coherence >= 0.7f) {
-                        int ipd = ps_phase(eLR, eLRi);
-                        if (ipd != 0 && ipd != 4) {
-                            fd->ipd[b] = ipd;
-                            fd->opd[b] = ps_phase(w * eL + (1 - w) * eLR, (1 - w) * eLRi);
-                            fd->enable_phase = 1;
-                            icc = coherence;
-                        }
-                    }
-                }
-            } else {
-                /* Baseline mode (mode 0 / unset) */
-                if (eL + eR >= 1e-6f * (l + r)) {
-                    float coherence = hypotf(eLR, eLRi) / denom;
-                    if (coherence >= 0.7f) {
-                        int ipd = ps_phase(eLR, eLRi);
-                        if (ipd != 0 && ipd != 4) {
-                            fd->ipd[b] = ipd;
-                            fd->opd[b] = ps_phase(w * eL + (1 - w) * eLR, (1 - w) * eLRi);
-                            fd->enable_phase = 1;
-                            icc = coherence;
-                        }
+            if (allow_phase && (eL + eR >= 1e-6f * (l + r))) {
+                float coherence = hypotf(eLR, eLRi) / denom;
+                if (coherence >= 0.7f) {
+                    int ipd = ps_phase(eLR, eLRi);
+                    if (ipd != 0 && ipd != 4) {
+                        fd->ipd[b] = ipd;
+                        fd->opd[b] = ps_phase(w * eL + (1 - w) * eLR, (1 - w) * eLRi);
+                        fd->enable_phase = 1;
+                        icc = coherence;
                     }
                 }
             }

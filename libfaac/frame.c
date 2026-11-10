@@ -225,11 +225,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder)
             hEncoder->sampleRate == 48000) {
             const char *env_ceiling = getenv("FAAC_PS_CEILING");
             int env_val = env_ceiling ? atoi(env_ceiling) : 0;
-            if (env_val > 0) {
-                ps_ceiling = (unsigned long)env_val;
-            } else {
-                ps_ceiling = (hEncoder->sampleRate == 48000) ? 8000 : 6000;
-            }
+            ps_ceiling = (env_val > 0) ? (unsigned long)env_val :
+                         ((hEncoder->sampleRate == 48000) ? 8000 : 6000);
         }
         if (ps_ceiling && hEncoder->numChannels == 2 &&
             hEncoder->config.mpegVersion != MPEG2 && rate_per_ch > 0) {
