@@ -55,6 +55,7 @@ static int write_checked(const SbrFrameData *fd, const PsRef *ref, int offset)
 static void test_ps_write(void)
 {
     SbrFrameData fd = {0};
+    fd.ps_iid_quant = 1;
 
     for (int band_mode = 0; band_mode <= 1; band_mode++) {
         fd.ps_band_mode = band_mode;
@@ -67,6 +68,7 @@ static void test_ps_write(void)
                     PsRef ref = {0};
                     ref.valid = 1;
                     ref.band_mode = band_mode;
+                    ref.iid_quant = 1;
                     for (int b = 0; b < PS_BANDS; b++) {
                         fd.iid[b] = ((seed + 7 * b) % 31) - 15;
                         fd.icc[b] = (seed + 3 * b) & 7;
@@ -122,6 +124,8 @@ static void test_ps_write(void)
 
     PsRef ref = {0};
     ref.valid = 1;
+    ref.iid_quant = 1;
+    fd.ps_iid_quant = 1;
     fd.ps_num_env = 1;
     fd.enable_phase = 1;
     for (int band_mode = 0; band_mode <= 1; band_mode++) {
@@ -171,6 +175,28 @@ static void test_ps_write(void)
         fd.enable_icc = 1;
         int icc_on = write_checked(&fd, &ref, 0);
         assert(icc_on > icc_off);
+
+        /* Coarse IID encoding check. */
+        fd.enable_icc = 0;
+        fd.enable_phase = 0;
+        fd.ps_iid_quant = 0;
+        ref.iid_quant = 0;
+        for (int b = 0; b < PS_BANDS; b++) {
+            fd.iid[b] = (b & 1) ? 7 : -7;
+            ref.iid[b] = fd.iid[b];
+        }
+        int coarse_stable_with_ref = write_checked(&fd, &ref, 0);
+        int coarse_stable_without_ref = write_checked(&fd, NULL, 0);
+        assert(coarse_stable_with_ref < coarse_stable_without_ref);
+
+        /* Reference with mismatched iid_quant forces df fallback */
+        ref.iid_quant = 1;
+        int coarse_with_fine_ref = write_checked(&fd, &ref, 0);
+        assert(coarse_with_fine_ref == coarse_stable_without_ref);
+
+        fd.ps_iid_quant = 1;
+        ref.iid_quant = 1;
+        fd.enable_phase = 1;
     }
 }
 
