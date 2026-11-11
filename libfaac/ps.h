@@ -35,7 +35,7 @@ struct BitStream;
 /* Preserve the preceding envelope for temporal deltas during rate-control retries. */
 typedef struct PsRef {
     int8_t iid[PS_BANDS], icc[PS_BANDS], ipd[PS_PHASE_BANDS], opd[PS_PHASE_BANDS];
-    uint8_t valid, band_mode;
+    uint8_t valid, band_mode, iid_quant;
 } PsRef;
 typedef struct PsHybrid {
     float history[2][3][6][2], coef[8][7][2];

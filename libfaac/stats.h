@@ -45,6 +45,7 @@ typedef struct faacEncStats {
 
     unsigned int psFrames;
     unsigned int psLowBandFrames;
+    unsigned int psCoarseIidFrames;
     unsigned int psOneEnvelopeFrames;
     unsigned int psIccFrames;
     unsigned int psPhaseFrames;
