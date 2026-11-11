@@ -316,6 +316,9 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     }
 
     /* Rate-distortion decision: evaluate coarse vs. fine IID quantization. */
+    /* The first analyzed frame follows the silent priming payloads, not nothing. */
+    if (sbr->psAnalyzed == 0 && !sbr->psPred.valid)
+        sbr->psPred.valid = 1;
     const PsRef *prev_ref = ps_usable_ref(&sbr->psPred, ps_header_due(sbr), fd);
 
     const PsRef *fine_ref = (prev_ref && prev_ref->iid_quant == 1) ? prev_ref : NULL;
@@ -647,7 +650,9 @@ void PsWriteExtension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
 #ifdef FAAC_STATS
 void PsCountFrame(const SBRInfo *sbr, const SbrFrameData *fd, int id_aac)
 {
-    if (!PsIsActive(sbr) || id_aac != ID_CPE) return;
+    /* The PS core is a mono SCE, so the element type says nothing about PS here. */
+    (void)id_aac;
+    if (!PsIsActive(sbr)) return;
     const PsRef *ref = ps_usable_ref(&sbr->psRef[~sbr->frameCount & 1], sbr->sendHeaderThisFrame, fd);
     g_faacStats.psFrames++;
     /* Analysis chose its quantizer against the predecessor it assumed; the writer must agree. */
