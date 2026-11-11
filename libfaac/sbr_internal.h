@@ -67,6 +67,7 @@ typedef struct SbrFrameData {
     uint8_t enable_phase;
     uint8_t ps_num_env;
     uint8_t ps_band_mode;
+    uint8_t ps_iid_quant;
     /* Second envelope; the first lives in the arrays above. */
     struct {
         int8_t iid[PS_BANDS], icc[PS_BANDS];
