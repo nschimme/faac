@@ -64,7 +64,9 @@ faam_status faam_atom_scan_top(const faam_io *io, faam_atom_ref *moov, faam_atom
         if (r < 0) return FAAM_ERR_IO_READ;
         if (!r || size < 8) break;
         if (size < (wide ? 16u : 8u) || size > UINT64_MAX - pos) return FAAM_ERR_BAD_CONTAINER;
-        if (memcmp(type, "moov", 4) == 0) {
+        /* Readers parse the first moov and ignore later ones, so an edit must land in the first
+         * too; the scan still runs to the end for file_size. */
+        if (memcmp(type, "moov", 4) == 0 && moov->size == 0) {
             /* Growing moov rewrites its 32-bit size field, which a wide header does not have. */
             if (wide) return FAAM_ERR_UNSUPPORTED;
             moov->offset = pos; moov->size = size;

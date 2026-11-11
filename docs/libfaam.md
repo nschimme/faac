@@ -459,7 +459,8 @@ back.
 files in place, with no remux. Supply only the entries to change; there is no need to
 open a demuxer and copy existing tags. Close any open demuxer and reopen it before
 reading the modified file. Only iTunes `ilst` metadata is handled; in-place editing
-rejects `mdta`.
+rejects `mdta`. A file with several top-level `moov` boxes is edited in the first one,
+the box the demuxer reads.
 
 A chapter edit that cannot be applied leaves the file untouched:
 
