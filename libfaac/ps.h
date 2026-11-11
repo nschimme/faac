@@ -65,6 +65,7 @@ void PsConfigure(struct SBRInfo *, bool, unsigned long, int);
 void PsPrepareCarrier(struct SBRContext *, float *[]);
 void PsCommitCarrier(struct SBRContext *, float *);
 void PsAnalyze(struct SBRInfo *, struct SignalAnalysis *, struct SbrFrameData *);
+void PsNoteSilence(struct SBRInfo *, const struct SbrFrameData *);
 void PsWriteExtension(struct SBRInfo *, const struct SbrFrameData *, struct BitStream *);
 #else
 static inline void PsConfigure(struct SBRInfo *sbr, bool active, unsigned long bitrate, int rateLimited)
@@ -82,6 +83,10 @@ static inline void PsCommitCarrier(struct SBRContext *ctx, float *output)
 static inline void PsAnalyze(struct SBRInfo *sbr, struct SignalAnalysis *sa, struct SbrFrameData *fd)
 {
     (void)sbr; (void)sa; (void)fd;
+}
+static inline void PsNoteSilence(struct SBRInfo *sbr, const struct SbrFrameData *fd)
+{
+    (void)sbr; (void)fd;
 }
 static inline void PsWriteExtension(struct SBRInfo *sbr, const struct SbrFrameData *fd, struct BitStream *bs)
 {

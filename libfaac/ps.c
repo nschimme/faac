@@ -241,6 +241,49 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
     }
 }
 
+/* The last envelope of a frame is what the next frame's temporal deltas reference. */
+static void ps_capture_ref(PsRef *cur, const SbrFrameData *fd)
+{
+    int e = fd->ps_num_env == 2;
+    memcpy(cur->iid, e ? fd->ps_env2.iid : fd->iid, sizeof(cur->iid));
+    if (fd->enable_icc)
+        memcpy(cur->icc, e ? fd->ps_env2.icc : fd->icc, sizeof(cur->icc));
+    else
+        memset(cur->icc, 0, sizeof(cur->icc));
+    if (fd->enable_phase) {
+        memcpy(cur->ipd, e ? fd->ps_env2.ipd : fd->ipd, sizeof(cur->ipd));
+        memcpy(cur->opd, e ? fd->ps_env2.opd : fd->opd, sizeof(cur->opd));
+    } else {
+        memset(cur->ipd, 0, sizeof(cur->ipd));
+        memset(cur->opd, 0, sizeof(cur->opd));
+    }
+    cur->band_mode = fd->ps_band_mode;
+    cur->iid_quant = fd->ps_iid_quant;
+    cur->valid = 1;
+}
+
+/* A payload is emitted SBR_FRAME_FIFO - 1 ticks after it is analyzed, but the core
+ * produces no access unit for the first LOOKAHEAD_DEPTH ticks, so frame k is written
+ * as access unit k + 1 and that is the frameCount whose header cadence it sees. */
+#define PS_WRITE_LAG (SBR_FRAME_FIFO - 1 - LOOKAHEAD_DEPTH)
+static int ps_header_due(const SBRInfo *sbr)
+{
+    return (sbr->psAnalyzed + PS_WRITE_LAG) % SBR_HEADER_PERIOD == 0;
+}
+
+/* A temporal reference is unusable across headers and band-mode changes. */
+static const PsRef *ps_usable_ref(const PsRef *ref, int header, const SbrFrameData *fd)
+{
+    return (ref->valid && !header && ref->band_mode == fd->ps_band_mode) ? ref : NULL;
+}
+
+/* Drain frames skip analysis but are still written and counted. */
+void PsNoteSilence(SBRInfo *sbr, const SbrFrameData *fd)
+{
+    ps_capture_ref(&sbr->psPred, fd);
+    sbr->psAnalyzed++;
+}
+
 void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     fd->ps_band_mode = sbr->psNumEnv == 1 ? 0 : 1;
@@ -273,13 +316,13 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     }
 
     /* Rate-distortion decision: evaluate coarse vs. fine IID quantization. */
-    const PsRef *prev_ref = &sbr->psRef[~sbr->frameCount & 1];
-    if (!prev_ref->valid || sbr->sendHeaderThisFrame || prev_ref->band_mode != fd->ps_band_mode)
-        prev_ref = NULL;
+    const PsRef *prev_ref = ps_usable_ref(&sbr->psPred, ps_header_due(sbr), fd);
 
     const PsRef *fine_ref = (prev_ref && prev_ref->iid_quant == 1) ? prev_ref : NULL;
     const PsRef *coarse_ref = (prev_ref && prev_ref->iid_quant == 0) ? prev_ref : NULL;
 
+    fd->ps_pred_used = prev_ref != NULL;
+    fd->ps_pred_quant = prev_ref ? prev_ref->iid_quant : 0;
     int fine_bits = 0;
     int coarse_bits = 0;
     float max_db_err = 0.0f;
@@ -323,6 +366,8 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     } else {
         fd->ps_iid_quant = 1;
     }
+    ps_capture_ref(&sbr->psPred, fd);
+    sbr->psAnalyzed++;
 }
 
 /* Avoid cancellation in the mono sum while preserving mean stereo energy. */
@@ -587,9 +632,7 @@ void PsWriteExtension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
 {
     /* Mirror the SBR envelope reference parity: dry runs and core retries
      * may overwrite the current slot but never the previous access unit. */
-    const PsRef *ref = &sbr->psRef[~sbr->frameCount & 1];
-    if (!ref->valid || sbr->sendHeaderThisFrame || ref->band_mode != fd->ps_band_mode)
-        ref = NULL;
+    const PsRef *ref = ps_usable_ref(&sbr->psRef[~sbr->frameCount & 1], sbr->sendHeaderThisFrame, fd);
     BitStream count;
     ps_counter(&count);
     int psBits = PsWrite(fd, &count, ref);
@@ -598,34 +641,18 @@ void PsWriteExtension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
     PutBit(bs, psBytes < 15 ? psBytes : 15, 4);
     if (psBytes >= 15) PutBit(bs, psBytes - 15, 8);
     PsWrite(fd, bs, ref);
-    PsRef *cur = &sbr->psRef[sbr->frameCount & 1];
-    int e = fd->ps_num_env == 2;
-    memcpy(cur->iid, e ? fd->ps_env2.iid : fd->iid, sizeof(cur->iid));
-    if (fd->enable_icc)
-        memcpy(cur->icc, e ? fd->ps_env2.icc : fd->icc, sizeof(cur->icc));
-    else
-        memset(cur->icc, 0, sizeof(cur->icc));
-    if (fd->enable_phase) {
-        memcpy(cur->ipd, e ? fd->ps_env2.ipd : fd->ipd, sizeof(cur->ipd));
-        memcpy(cur->opd, e ? fd->ps_env2.opd : fd->opd, sizeof(cur->opd));
-    } else {
-        memset(cur->ipd, 0, sizeof(cur->ipd));
-        memset(cur->opd, 0, sizeof(cur->opd));
-    }
-    cur->band_mode = fd->ps_band_mode;
-    cur->iid_quant = fd->ps_iid_quant;
-    cur->valid = 1;
+    ps_capture_ref(&sbr->psRef[sbr->frameCount & 1], fd);
 }
 
 #ifdef FAAC_STATS
 void PsCountFrame(const SBRInfo *sbr, const SbrFrameData *fd, int id_aac)
 {
     if (!PsIsActive(sbr) || id_aac != ID_CPE) return;
-    const PsRef *ref = &sbr->psRef[~sbr->frameCount & 1];
-    if (!ref->valid || sbr->sendHeaderThisFrame ||
-        ref->band_mode != fd->ps_band_mode)
-        ref = NULL;
+    const PsRef *ref = ps_usable_ref(&sbr->psRef[~sbr->frameCount & 1], sbr->sendHeaderThisFrame, fd);
     g_faacStats.psFrames++;
+    /* Analysis chose its quantizer against the predecessor it assumed; the writer must agree. */
+    if ((ref != NULL) != fd->ps_pred_used || (ref && ref->iid_quant != fd->ps_pred_quant))
+        g_faacStats.psRefMismatchFrames++;
     BitStream count;
     ps_counter(&count);
     g_faacStats.psPayloadBits += PsWrite(fd, &count, ref);
@@ -638,6 +665,9 @@ void PsCountFrame(const SBRInfo *sbr, const SbrFrameData *fd, int id_aac)
 
 void PsStatsPrint(void)
 {
+    if (g_faacStats.psRefMismatchFrames)
+        fprintf(stderr, " PS Reference Skew  : %u of %u frames analyzed against a different predecessor than written\n",
+                g_faacStats.psRefMismatchFrames, g_faacStats.psFrames);
     if (g_faacStats.psFrames > 0)
     {
         unsigned int psf = g_faacStats.psFrames;

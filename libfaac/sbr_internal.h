@@ -67,7 +67,10 @@ typedef struct SbrFrameData {
     uint8_t enable_phase;
     uint8_t ps_num_env;
     uint8_t ps_band_mode;
+    /* 1 = fine IID grid, 0 = coarse; matches iid_quant = iid_mode > 2 in the spec. */
     uint8_t ps_iid_quant;
+    /* Predecessor PsAnalyze costed against; PsCountFrame checks the writer agrees. */
+    uint8_t ps_pred_used, ps_pred_quant;
     /* Second envelope; the first lives in the arrays above. */
     struct {
         int8_t iid[PS_BANDS], icc[PS_BANDS];
@@ -85,6 +88,12 @@ struct SBRInfo {
     int is_he_v2;
     PsHybrid psHybrid;
     PsRef psRef[2];
+    /* Analysis-side predecessor: the frame analyzed just before this one. Payloads are
+     * written through the frame FIFO several access units later, so psRef (updated at
+     * write time) is stale by then; the writer emits in analysis order, so this is the
+     * reference it will use. psAnalyzed mirrors frameCount for the header cadence. */
+    PsRef psPred;
+    int psAnalyzed;
     int psNumEnv;
 #endif
     /* Coupled rendition of a conventional stereo SBR pair: level, then balance. */
