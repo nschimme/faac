@@ -9,8 +9,8 @@ Unreleased
 	  through libfaam and resamples through libfaar
 	* HE-AAC v2 encoding with Parametric Stereo behind -Dencoder-ps, off by
 	  default because the PS patents have not expired; stereo AUTO picks it
-	  only for explicit stereo bitrates up to 16 kbps total (12 kbps at 32
-	  and 44.1 kHz), below where it used to fall back to LC or HE-AAC v1;
+	  only for explicit stereo bitrates up to 16 kbps total (14 kbps at 44.1
+	  kHz, 12 kbps at 32 kHz), below where it used to fall back to LC or HE-AAC v1;
 	  --profile auto|lc|he-v1|he-v2 selects explicitly. -Dencoder-sbr=false
 	  builds an LC-only encoder
 	* HE-AAC v1 auto ceiling raised from 32 kbps per channel to 1 bit/s per
