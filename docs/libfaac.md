@@ -255,8 +255,8 @@ and `get_info()` reports the result:
   sample rate, capped at 48000 (32000 at 32 kHz, 44100 at 44.1 kHz, 48000 at 48 kHz
   and above). In VBR, when `quality` is 75 or lower.
 - **HE-AAC v2** (PS builds only) for stereo with an explicit bitrate at or below
-  8000 bit/s per channel at 48 kHz, or 6000 at 32 and 44.1 kHz. Just above those
-  ceilings but under 8000 it stays HE-AAC v1 instead of falling to LC.
+  8000 bit/s per channel at 48 kHz, 7000 at 44.1 kHz or 6000 at 32 kHz. Just above
+  those ceilings but under 8000 it stays HE-AAC v1 instead of falling to LC.
 - **LC** otherwise.
 
 An explicit `FAAC_OBJ_LC`, `FAAC_OBJ_HE_AAC_V1` or `FAAC_OBJ_HE_AAC_V2` is never
