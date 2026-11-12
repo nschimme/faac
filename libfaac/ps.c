@@ -544,7 +544,12 @@ static int ps_write_phase(const SbrFrameData *fd, BitStream *bs, const PsRef *re
     return bits;
 }
 
-int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
+/* Where the bits of one PS payload go; filled only when a caller asks (stats). */
+typedef struct {
+    int header, iid, icc, ext, pad;
+} PsBitSplit;
+
+static int ps_write(const SbrFrameData *fd, BitStream *bs, const PsRef *ref, PsBitSplit *split)
 {
     /* Index 0 would mean no envelope, i.e. hold the previous image. */
     int n_env = fd->ps_num_env ? fd->ps_num_env : 1;
@@ -562,6 +567,7 @@ int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
     header = (header << 4) | (1 << 3) | (n_env == 2 ? 2 : 1);
     PutBit(bs, header, header_bits + 4);
     int n = header_bits + 4;
+    if (split) split->header = n;
 
     const PsHuffPackedEntry *iid_df = iid_quant ? faac_ps_huff_iid_df_fine_packed : faac_ps_huff_iid_df_coarse_packed;
     const PsHuffPackedEntry *iid_dt = iid_quant ? faac_ps_huff_iid_dt_fine_packed : faac_ps_huff_iid_dt_coarse_packed;
@@ -578,6 +584,7 @@ int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
                              (fd->ps_band_mode ? PS_BANDS : PS_LOW_BANDS), 0,
                              iid_df, iid_dt,
                              iid_nsyms, iid_offset);
+    if (split) split->iid = n - split->header;
     if (fd->enable_icc)
         for (int e = 0; e < n_env; e++)
             n += write_ps_params(bs, e ? fd->ps_env2.icc : fd->icc,
@@ -588,12 +595,21 @@ int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
                                  faac_ps_huff_icc_df_packed, faac_ps_huff_icc_dt_packed,
                                  PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
 
-    n += ps_write_phase(fd, bs, ref);
+    if (split) split->icc = n - split->header - split->iid;
+    int ext = ps_write_phase(fd, bs, ref);
+    if (split) split->ext = ext;
+    n += ext;
 
     /* The extension size is byte-based, so pad the payload to a byte boundary. */
     int pad = (8 - (n & 7)) & 7;
     PutBit(bs, 0, pad);
+    if (split) split->pad = pad;
     return n + pad;
+}
+
+int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
+{
+    return ps_write(fd, bs, ref, NULL);
 }
 
 /* Configuration and carrier work run once per frame, outside the QMF kernels. */
@@ -660,7 +676,16 @@ void PsCountFrame(const SBRInfo *sbr, const SbrFrameData *fd, int id_aac)
         g_faacStats.psRefMismatchFrames++;
     BitStream count;
     ps_counter(&count);
-    g_faacStats.psPayloadBits += PsWrite(fd, &count, ref);
+    PsBitSplit split = {0};
+    int payload = ps_write(fd, &count, ref, &split);
+    g_faacStats.psPayloadBits += payload;
+    g_faacStats.psHdrBits += split.header;
+    g_faacStats.psIidBits += split.iid;
+    g_faacStats.psIccBits += split.icc;
+    g_faacStats.psExtBits += split.ext;
+    g_faacStats.psPadBits += split.pad;
+    /* bs_extended_data flag, 4-bit count, optional 8-bit escape: the SBR-side wrapper. */
+    g_faacStats.psWrapBits += (payload / 8 >= 15) ? 13 : 5;
     if (fd->ps_band_mode == 0) g_faacStats.psLowBandFrames++;
     if (fd->ps_iid_quant == 0) g_faacStats.psCoarseIidFrames++;
     if (fd->ps_num_env == 1) g_faacStats.psOneEnvelopeFrames++;
@@ -683,6 +708,10 @@ void PsStatsPrint(void)
                 100.0 * g_faacStats.psOneEnvelopeFrames / psf,
                 100.0 * g_faacStats.psIccFrames / psf,
                 100.0 * g_faacStats.psPhaseFrames / psf);
+        fprintf(stderr, " PS Bits/frame       : hdr %.1f | iid %.1f | icc %.1f | ext %.1f | pad %.1f | wrapper %.1f\n",
+                (double)g_faacStats.psHdrBits / psf, (double)g_faacStats.psIidBits / psf,
+                (double)g_faacStats.psIccBits / psf, (double)g_faacStats.psExtBits / psf,
+                (double)g_faacStats.psPadBits / psf, (double)g_faacStats.psWrapBits / psf);
     }
 }
 #endif
