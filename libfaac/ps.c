@@ -291,9 +291,21 @@ static const PsRef *ps_usable_ref(const PsRef *ref, int header, const SbrFrameDa
     return (ref->valid && !header && ref->band_mode == fd->ps_band_mode) ? ref : NULL;
 }
 
-/* Drain frames skip analysis but are still written and counted. */
-void PsNoteSilence(SBRInfo *sbr, const SbrFrameData *fd)
+/* Drain frames skip analysis but are still written and counted. A silent payload carries no
+ * header, so it must restate the state the decoder holds -- same grid and band count, ICC and
+ * extension as they stand -- with flat parameters and no phase, or the next frame's header-less
+ * bits would be read under the wrong layout. */
+void PsNoteSilence(SBRInfo *sbr, SbrFrameData *fd)
 {
+    const PsRef *held = &sbr->psPred;
+    if (held->valid) {
+        fd->ps_iid_quant = held->iid_quant;
+        fd->ps_band_mode = held->band_mode;
+        fd->enable_icc = held->icc_on;
+        fd->ps_ext = held->ext_on;
+    }
+    fd->enable_phase = 0;
+    fd->ps_send_header = 0;
     ps_capture_ref(&sbr->psPred, fd);
     sbr->psAnalyzed++;
 }
@@ -343,12 +355,16 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
 
     fd->ps_pred_used = prev_ref != NULL;
     fd->ps_pred_state = ps_state_of(&held);
+    /* Coarse can only take effect where a header is free or coarse is already held, so
+     * everywhere else the rate-distortion comparison is skipped outright. */
+    int mandatory = ps_header_due(sbr);
+    int rd = mandatory || !held.iid_quant;
     int fine_bits = 0;
     int coarse_bits = 0;
     float max_db_err = 0.0f;
 
     int8_t coarse_e1[PS_BANDS] = {0}, coarse_e2[PS_BANDS] = {0};
-    for (int e = 0; e < fd->ps_num_env; e++) {
+    for (int e = 0; rd && e < fd->ps_num_env; e++) {
         const int8_t *fine_iid = e ? fd->ps_env2.iid : fd->iid;
         int8_t *coarse_iid = e ? coarse_e2 : coarse_e1;
         for (int b = 0; b < bands; b++) {
@@ -377,10 +393,9 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     }
 
     int bit_savings = fine_bits - coarse_bits;
-    int mandatory = ps_header_due(sbr);
     /* A grid switch costs a header, which the saving cannot repay, so coarse is entered only
      * where the header is free (a random-access point) and left whenever it stops fitting. */
-    int coarse = bit_savings >= 4 && max_db_err <= 1.0f && (mandatory || !held.iid_quant);
+    int coarse = rd && bit_savings >= 4 && max_db_err <= 1.0f;
     fd->ps_iid_quant = !coarse;
     if (coarse) {
         memcpy(fd->iid, coarse_e1, sizeof(fd->iid));

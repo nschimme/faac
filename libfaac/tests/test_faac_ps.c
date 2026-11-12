@@ -458,6 +458,27 @@ static void test_carrier_blend(void)
     assert(pure_time && pure_spectral && mixed);
 }
 
+/* A drain payload carries no header, so it must restate whatever the decoder holds. */
+static void test_silence_holds_state(void)
+{
+    SBRInfo sbr = {0};
+    sbr.psPred.valid = 1;
+    sbr.psPred.band_mode = 1;
+    sbr.psPred.iid_quant = 0;
+    sbr.psPred.icc_on = 1;
+    sbr.psPred.ext_on = 1;
+    SbrFrameData fd = {0};
+    fd.ps_iid_quant = 1;
+    fd.enable_phase = 1;
+    fd.ps_send_header = 1;
+    PsNoteSilence(&sbr, &fd);
+    assert(fd.ps_band_mode == 1 && fd.ps_iid_quant == 0);
+    assert(fd.enable_icc == 1 && fd.ps_ext == 1);
+    assert(fd.enable_phase == 0 && fd.ps_send_header == 0);
+    assert(sbr.psPred.valid && sbr.psPred.band_mode == 1 && sbr.psPred.icc_on == 1);
+    assert(sbr.psAnalyzed == 1);
+}
+
 /* A frame without a header restates nothing: the flag is clear and the saved bits are real. */
 static void test_ps_header_omission(void)
 {
@@ -540,6 +561,7 @@ int main(void)
 {
     fft_init();
     test_ps_write();
+    test_silence_holds_state();
     test_ps_header_omission();
     test_extension_retry();
     test_spectral_carrier();
