@@ -50,7 +50,7 @@ typedef struct faacEncStats {
     unsigned int psPhaseFrames;
     unsigned long psPayloadBits;
     unsigned int psCoarseIidFrames;
-    unsigned int psRefMismatchFrames;
+    unsigned int psRefMismatchFrames, psHeaderFrames;
     unsigned long psHdrBits, psIidBits, psIccBits, psExtBits, psPadBits, psWrapBits;
 
     double totalAttack;

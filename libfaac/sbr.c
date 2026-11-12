@@ -211,6 +211,7 @@ static void sbr_frame_silence(SbrFrameData *fd, int channels)
 {
     memset(fd, 0, sizeof(*fd) + channels * sizeof(fd->ch[0]));
     fd->numEnvelopes = 1;
+    fd->ps_iid_quant = 1;
     fd->eff_amp_res  = 0;
     fd->frameClass   = SBR_FRAME_CLASS_FIXFIX;
     fd->tEnv[0]      = 0;

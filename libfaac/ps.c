@@ -259,8 +259,22 @@ static void ps_capture_ref(PsRef *cur, const SbrFrameData *fd)
     }
     cur->band_mode = fd->ps_band_mode;
     cur->iid_quant = fd->ps_iid_quant;
+    cur->icc_on = fd->enable_icc;
+    cur->ext_on = fd->ps_ext;
     cur->valid = 1;
 }
+
+/* What the decoder holds from the last header it saw, packed for comparison. */
+static uint8_t ps_state_of(const PsRef *ref)
+{
+    return (uint8_t)(ref->iid_quant | ref->icc_on << 1 | ref->ext_on << 2 | ref->band_mode << 3);
+}
+
+/* Turning ICC or the extension off costs a header now and another to turn it back on, while
+ * idling costs bits every frame; a few frames of idling is the break-even. The extension
+ * must also be seen idle with an explicit enable_phase = 0 first: decoders latch that flag. */
+#define PS_ICC_HOLD 3
+#define PS_EXT_HOLD 3
 
 /* A payload is emitted SBR_FRAME_FIFO - 1 ticks after it is analyzed, but the core
  * produces no access unit for the first LOOKAHEAD_DEPTH ticks, so frame k is written
@@ -317,15 +331,18 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
 
     /* Rate-distortion decision: evaluate coarse vs. fine IID quantization. */
     /* The first analyzed frame follows the silent priming payloads, not nothing. */
-    if (sbr->psAnalyzed == 0 && !sbr->psPred.valid)
+    if (sbr->psAnalyzed == 0 && !sbr->psPred.valid) {
         sbr->psPred.valid = 1;
+        sbr->psPred.iid_quant = 1; /* the silent priming payload is fine-grid, no ICC, no extension */
+    }
+    const PsRef held = sbr->psPred;
     const PsRef *prev_ref = ps_usable_ref(&sbr->psPred, ps_header_due(sbr), fd);
 
     const PsRef *fine_ref = (prev_ref && prev_ref->iid_quant == 1) ? prev_ref : NULL;
     const PsRef *coarse_ref = (prev_ref && prev_ref->iid_quant == 0) ? prev_ref : NULL;
 
     fd->ps_pred_used = prev_ref != NULL;
-    fd->ps_pred_quant = prev_ref ? prev_ref->iid_quant : 0;
+    fd->ps_pred_state = ps_state_of(&held);
     int fine_bits = 0;
     int coarse_bits = 0;
     float max_db_err = 0.0f;
@@ -360,15 +377,28 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     }
 
     int bit_savings = fine_bits - coarse_bits;
-    /* Use Coarse IID if bit savings exceed threshold and maximum distortion is bounded */
-    if (bit_savings >= 4 && max_db_err <= 1.0f) {
-        fd->ps_iid_quant = 0;
+    int mandatory = ps_header_due(sbr);
+    /* A grid switch costs a header, which the saving cannot repay, so coarse is entered only
+     * where the header is free (a random-access point) and left whenever it stops fitting. */
+    int coarse = bit_savings >= 4 && max_db_err <= 1.0f && (mandatory || !held.iid_quant);
+    fd->ps_iid_quant = !coarse;
+    if (coarse) {
         memcpy(fd->iid, coarse_e1, sizeof(fd->iid));
         if (fd->ps_num_env == 2)
             memcpy(fd->ps_env2.iid, coarse_e2, sizeof(fd->ps_env2.iid));
-    } else {
-        fd->ps_iid_quant = 1;
     }
+
+    /* ICC and the extension follow the frame, held a few frames past their last use. */
+    int want_icc = fd->enable_icc, want_ext = fd->enable_phase;
+    int icc = want_icc || (held.icc_on && sbr->psIccIdle < PS_ICC_HOLD);
+    int ext = want_ext || (held.ext_on && sbr->psExtIdle < PS_EXT_HOLD);
+    sbr->psIccIdle = icc && !want_icc ? sbr->psIccIdle + 1 : 0;
+    sbr->psExtIdle = ext && !want_ext ? sbr->psExtIdle + 1 : 0;
+    fd->enable_icc = icc;
+    fd->ps_ext = ext;
+    fd->ps_send_header = mandatory || fd->ps_iid_quant != held.iid_quant ||
+                         fd->ps_band_mode != held.band_mode || icc != held.icc_on ||
+                         ext != held.ext_on;
     ps_capture_ref(&sbr->psPred, fd);
     sbr->psAnalyzed++;
 }
@@ -549,24 +579,31 @@ typedef struct {
     int header, iid, icc, ext, pad;
 } PsBitSplit;
 
-static int ps_write(const SbrFrameData *fd, BitStream *bs, const PsRef *ref, PsBitSplit *split)
+static int ps_write(const SbrFrameData *fd, BitStream *bs, const PsRef *ref, PsBitSplit *split,
+                    int force_header)
 {
     /* Index 0 would mean no envelope, i.e. hold the previous image. */
     int n_env = fd->ps_num_env ? fd->ps_num_env : 1;
     int iid_quant = fd->ps_iid_quant != 0;
     int iid_mode = (iid_quant ? 3 : 0) + fd->ps_band_mode;
-    /* Extension ID, header flag, IID enable/mode, then ICC enable/mode. */
-    unsigned header = (SBR_EXT_ID_PS << 6) | (1 << 5) | (1 << 4) |
-                      (iid_mode << 1) | fd->enable_icc;
-    int header_bits = 8;
-    if (fd->enable_icc) {
-        header = (header << 3) | fd->ps_band_mode;
-        header_bits += 3;
+    /* Extension ID and header flag; the header restates the held state only when it changed. */
+    int send_header = fd->ps_send_header || force_header;
+    PutBit(bs, (SBR_EXT_ID_PS << 1) | send_header, 3);
+    int n = 3;
+    if (send_header) {
+        /* IID enable/mode, ICC enable (and mode), then the extension flag. */
+        PutBit(bs, (1 << 4) | (iid_mode << 1) | fd->enable_icc, 5);
+        n += 5;
+        if (fd->enable_icc) {
+            PutBit(bs, fd->ps_band_mode, 3);
+            n += 3;
+        }
+        PutBit(bs, fd->ps_ext, 1);
+        n += 1;
     }
-    /* Phase extension present, fixed frame class, and envelope count. */
-    header = (header << 4) | (1 << 3) | (n_env == 2 ? 2 : 1);
-    PutBit(bs, header, header_bits + 4);
-    int n = header_bits + 4;
+    /* Fixed frame class and the envelope count. */
+    PutBit(bs, n_env == 2 ? 2 : 1, 3);
+    n += 3;
     if (split) split->header = n;
 
     const PsHuffPackedEntry *iid_df = iid_quant ? faac_ps_huff_iid_df_fine_packed : faac_ps_huff_iid_df_coarse_packed;
@@ -596,7 +633,7 @@ static int ps_write(const SbrFrameData *fd, BitStream *bs, const PsRef *ref, PsB
                                  PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
 
     if (split) split->icc = n - split->header - split->iid;
-    int ext = ps_write_phase(fd, bs, ref);
+    int ext = fd->ps_ext ? ps_write_phase(fd, bs, ref) : 0;
     if (split) split->ext = ext;
     n += ext;
 
@@ -609,7 +646,7 @@ static int ps_write(const SbrFrameData *fd, BitStream *bs, const PsRef *ref, PsB
 
 int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
 {
-    return ps_write(fd, bs, ref, NULL);
+    return ps_write(fd, bs, ref, NULL, 0);
 }
 
 /* Configuration and carrier work run once per frame, outside the QMF kernels. */
@@ -654,12 +691,12 @@ void PsWriteExtension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
     const PsRef *ref = ps_usable_ref(&sbr->psRef[~sbr->frameCount & 1], sbr->sendHeaderThisFrame, fd);
     BitStream count;
     ps_counter(&count);
-    int psBits = PsWrite(fd, &count, ref);
+    int psBits = ps_write(fd, &count, ref, NULL, sbr->sendHeaderThisFrame);
     int psBytes = (psBits + 7) / 8;
     PutBit(bs, 1, 1); /* bs_extended_data */
     PutBit(bs, psBytes < 15 ? psBytes : 15, 4);
     if (psBytes >= 15) PutBit(bs, psBytes - 15, 8);
-    PsWrite(fd, bs, ref);
+    ps_write(fd, bs, ref, NULL, sbr->sendHeaderThisFrame);
     ps_capture_ref(&sbr->psRef[sbr->frameCount & 1], fd);
 }
 
@@ -672,12 +709,15 @@ void PsCountFrame(const SBRInfo *sbr, const SbrFrameData *fd, int id_aac)
     const PsRef *ref = ps_usable_ref(&sbr->psRef[~sbr->frameCount & 1], sbr->sendHeaderThisFrame, fd);
     g_faacStats.psFrames++;
     /* Analysis chose its quantizer against the predecessor it assumed; the writer must agree. */
-    if ((ref != NULL) != fd->ps_pred_used || (ref && ref->iid_quant != fd->ps_pred_quant))
+    const PsRef *raw = &sbr->psRef[~sbr->frameCount & 1];
+    if ((ref != NULL) != fd->ps_pred_used ||
+        (!sbr->sendHeaderThisFrame && raw->valid && ps_state_of(raw) != fd->ps_pred_state))
         g_faacStats.psRefMismatchFrames++;
+    if (fd->ps_send_header || sbr->sendHeaderThisFrame) g_faacStats.psHeaderFrames++;
     BitStream count;
     ps_counter(&count);
     PsBitSplit split = {0};
-    int payload = ps_write(fd, &count, ref, &split);
+    int payload = ps_write(fd, &count, ref, &split, sbr->sendHeaderThisFrame);
     g_faacStats.psPayloadBits += payload;
     g_faacStats.psHdrBits += split.header;
     g_faacStats.psIidBits += split.iid;
@@ -708,10 +748,11 @@ void PsStatsPrint(void)
                 100.0 * g_faacStats.psOneEnvelopeFrames / psf,
                 100.0 * g_faacStats.psIccFrames / psf,
                 100.0 * g_faacStats.psPhaseFrames / psf);
-        fprintf(stderr, " PS Bits/frame       : hdr %.1f | iid %.1f | icc %.1f | ext %.1f | pad %.1f | wrapper %.1f\n",
+        fprintf(stderr, " PS Bits/frame       : hdr %.1f | iid %.1f | icc %.1f | ext %.1f | pad %.1f | wrapper %.1f | PS headers %5.1f%%\n",
                 (double)g_faacStats.psHdrBits / psf, (double)g_faacStats.psIidBits / psf,
                 (double)g_faacStats.psIccBits / psf, (double)g_faacStats.psExtBits / psf,
-                (double)g_faacStats.psPadBits / psf, (double)g_faacStats.psWrapBits / psf);
+                (double)g_faacStats.psPadBits / psf, (double)g_faacStats.psWrapBits / psf,
+                100.0 * g_faacStats.psHeaderFrames / psf);
     }
 }
 #endif
