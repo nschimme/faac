@@ -235,15 +235,24 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
 static void ps_stereo_energy(const float *left, const float *right, int n, double *el,
                              double *er, double *ec)
 {
-    double l = 0, r = 0, cross = 0;
-    for (int i = 0; i < n; i++) {
-        l += (double)left[i] * left[i];
-        r += (double)right[i] * right[i];
-        cross += (double)left[i] * right[i];
+    /* The products are exact in double; the sums are what is latency-bound. Four independent
+     * accumulators break that chain and vectorize, at the cost of regrouping the rounding. */
+    double l[4] = {0}, r[4] = {0}, cross[4] = {0};
+    int i = 0;
+    for (; i + 4 <= n; i += 4)
+        for (int j = 0; j < 4; j++) {
+            l[j] += (double)left[i + j] * left[i + j];
+            r[j] += (double)right[i + j] * right[i + j];
+            cross[j] += (double)left[i + j] * right[i + j];
+        }
+    for (int j = 0; i < n; i++, j++) {
+        l[j] += (double)left[i] * left[i];
+        r[j] += (double)right[i] * right[i];
+        cross[j] += (double)left[i] * right[i];
     }
-    *el = l;
-    *er = r;
-    *ec = cross;
+    *el = (l[0] + l[1]) + (l[2] + l[3]);
+    *er = (r[0] + r[1]) + (r[2] + r[3]);
+    *ec = (cross[0] + cross[1]) + (cross[2] + cross[3]);
 }
 
 static float ps_downmix_gain(double l, double r, double cross, float *weight)
