@@ -356,7 +356,9 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     fd->ps_pred_state = ps_state_of(&held);
     /* Coarse can only take effect where a header is free or coarse is already held, so
      * everywhere else the rate-distortion comparison is skipped outright. */
-    int mandatory = ps_header_due(sbr);
+    /* The first analyzed frame also restates the state, so the chain never depends on the
+     * seed matching the priming payloads. */
+    int mandatory = ps_header_due(sbr) || sbr->psAnalyzed == 0;
     int rd = mandatory || !held.iid_quant;
     int fine_bits = 0;
     int coarse_bits = 0;
