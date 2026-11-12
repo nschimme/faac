@@ -270,11 +270,10 @@ static uint8_t ps_state_of(const PsRef *ref)
     return (uint8_t)(ref->iid_quant | ref->icc_on << 1 | ref->ext_on << 2 | ref->band_mode << 3);
 }
 
-/* Turning ICC or the extension off costs a header now and another to turn it back on, while
- * idling costs bits every frame; a few frames of idling is the break-even. The extension
- * must also be seen idle with an explicit enable_phase = 0 first: decoders latch that flag. */
-#define PS_ICC_HOLD 3
-#define PS_EXT_HOLD 3
+/* The extension is dropped only after a frame that carried an explicit enable_phase = 0:
+ * decoders latch that flag, so they must see it cleared before the extension disappears.
+ * Holding longer only wastes bits (corpus sweep over 1-8 frames: one is best). */
+#define PS_EXT_HOLD 1
 
 /* A payload is emitted SBR_FRAME_FIFO - 1 ticks after it is analyzed, but the core
  * produces no access unit for the first LOOKAHEAD_DEPTH ticks, so frame k is written
@@ -403,13 +402,11 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
             memcpy(fd->ps_env2.iid, coarse_e2, sizeof(fd->ps_env2.iid));
     }
 
-    /* ICC and the extension follow the frame, held a few frames past their last use. */
-    int want_icc = fd->enable_icc, want_ext = fd->enable_phase;
-    int icc = want_icc || (held.icc_on && sbr->psIccIdle < PS_ICC_HOLD);
+    /* ICC follows the frame outright (holding it on and sending zeros measured no better);
+     * the extension lingers one frame so the decoder sees phase cleared first. */
+    int icc = fd->enable_icc, want_ext = fd->enable_phase;
     int ext = want_ext || (held.ext_on && sbr->psExtIdle < PS_EXT_HOLD);
-    sbr->psIccIdle = icc && !want_icc ? sbr->psIccIdle + 1 : 0;
     sbr->psExtIdle = ext && !want_ext ? sbr->psExtIdle + 1 : 0;
-    fd->enable_icc = icc;
     fd->ps_ext = ext;
     fd->ps_send_header = mandatory || fd->ps_iid_quant != held.iid_quant ||
                          fd->ps_band_mode != held.band_mode || icc != held.icc_on ||

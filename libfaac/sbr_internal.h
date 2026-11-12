@@ -98,8 +98,8 @@ struct SBRInfo {
      * reference it will use. psAnalyzed mirrors frameCount for the header cadence. */
     PsRef psPred;
     int psAnalyzed;
-    /* Frames the held ICC / extension state went unused, for turn-off hysteresis. */
-    int psIccIdle, psExtIdle;
+    /* Frames the held extension went unused, for turn-off hysteresis. */
+    int psExtIdle;
     int psNumEnv;
 #endif
     /* Coupled rendition of a conventional stereo SBR pair: level, then balance. */
