@@ -14,6 +14,7 @@
  */
 
 #include <math.h>
+#include <stdlib.h>
 #ifdef FAAC_STATS
 #include <stdio.h>
 #include "stats.h"
@@ -26,6 +27,9 @@
 #include "bitstream.h"
 #include "util.h"
 #include "fft.h"
+
+/* Energy-weighted coherence-minus-real-ICC above which a frame sends IPD/OPD. */
+#define PS_PHASE_GAP 0.15f
 
 #define SBR_PS_BANDS PS_BANDS
 #define PHASE_BANDS PS_PHASE_BANDS
@@ -189,6 +193,9 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
     float rho = cross / (sqrtf(l * r) + SBR_ENERGY_FLOOR);
     float w = 0.5f + 0.5f * fmaxf(0, fminf(1, -rho));
     fd->enable_phase = 0;
+    float icc_real[PS_BANDS] = {0}, icc_coh[PS_BANDS] = {0};
+    int cand[PS_BANDS] = {0};
+    float gap = 0;
 
     for (int b = 0; b < bands; b++) {
         float eL = energy[0][b], eR = energy[1][b];
@@ -203,6 +210,8 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
 
         float denom = sqrtf(eL * eR) + SBR_ENERGY_FLOOR;
         float icc = eLR / denom;
+        icc_real[b] = fmaxf(-1.0f, fminf(icc, 1.0f));
+        icc_coh[b] = icc_real[b];
         if (b < phases) {
             fd->ipd[b] = fd->opd[b] = 0;
             if (eL + eR >= 1e-6f * (l + r)) {
@@ -212,13 +221,25 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
                     if (ipd != 0 && ipd != 4) {
                         fd->ipd[b] = ipd;
                         fd->opd[b] = ps_phase(w * eL + (1 - w) * eLR, (1 - w) * eLRi);
-                        fd->enable_phase = 1;
-                        icc = coherence;
+                        cand[b] = 1;
+                        icc_coh[b] = fmaxf(-1.0f, fminf(coherence, 1.0f));
+                        gap += (eL + eR) * (icc_coh[b] - icc_real[b]);
                     }
                 }
             }
         }
-        icc = fmaxf(-1.0f, fminf(icc, 1.0f));
+    }
+    /* The phase extension costs about 10 bits a frame, and without it the real-part ICC already
+     * expresses most phase offsets as lower coherence. It pays only where the coherence
+     * magnitude is far above the real part across the energetic bands (inter-channel delay,
+     * as in spaced-microphone speech), so a frame carries it only when that energy-weighted
+     * gap is large. */
+    int keep = gap >= PS_PHASE_GAP * (l + r + SBR_ENERGY_FLOOR);
+    for (int b = 0; b < bands; b++) {
+        int use = keep && cand[b];
+        if (b < phases && !use) fd->ipd[b] = fd->opd[b] = 0;
+        if (use) fd->enable_phase = 1;
+        float icc = use ? icc_coh[b] : icc_real[b];
         int best_icc = 0;
         float best_err = 2.0f;
         for (int i = 0; i <= SBR_PS_ICC_MAX_INDEX; i++) {
