@@ -14,7 +14,6 @@
  */
 
 #include <math.h>
-#include <stdlib.h>
 #ifdef FAAC_STATS
 #include <stdio.h>
 #include "stats.h"
@@ -181,6 +180,28 @@ typedef struct {
     int enable_icc, enable_phase;
 } PsFrameParams;
 
+/* Energy-weighted amount by which the coherence magnitude exceeds the real-part ICC over the
+ * bands that could carry a phase difference. The extension costs about 10 bits a frame, and the
+ * real-part ICC already turns most phase offsets into lower coherence, so it is worth sending
+ * only where this gap is large (inter-channel delay, as in spaced-microphone speech). */
+static float ps_phase_gap(const float energy[2][64], const float crossReal[64],
+                          const float crossImag[64], int phases, float l, float r)
+{
+    float gap = 0;
+    for (int b = 0; b < phases; b++) {
+        float eL = energy[0][b], eR = energy[1][b];
+        if (eL + eR < 1e-6f * (l + r))
+            continue;
+        float denom = sqrtf(eL * eR) + SBR_ENERGY_FLOOR;
+        float coherence = hypotf(crossReal[b], crossImag[b]) / denom;
+        int ipd = ps_phase(crossReal[b], crossImag[b]);
+        if (coherence < 0.7f || ipd == 0 || ipd == 4)
+            continue;
+        gap += (eL + eR) * (fminf(coherence, 1.0f) - fmaxf(-1.0f, fminf(crossReal[b] / denom, 1.0f)));
+    }
+    return gap;
+}
+
 static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
                              const float crossImag[64], PsFrameParams *fd, int bands, int phases)
 {
@@ -193,9 +214,8 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
     float rho = cross / (sqrtf(l * r) + SBR_ENERGY_FLOOR);
     float w = 0.5f + 0.5f * fmaxf(0, fminf(1, -rho));
     fd->enable_phase = 0;
-    float icc_real[PS_BANDS] = {0}, icc_coh[PS_BANDS] = {0};
-    int cand[PS_BANDS] = {0};
-    float gap = 0;
+    int keep_phase = ps_phase_gap(energy, crossReal, crossImag, phases, l, r) >=
+                     PS_PHASE_GAP * (l + r + SBR_ENERGY_FLOOR);
 
     for (int b = 0; b < bands; b++) {
         float eL = energy[0][b], eR = energy[1][b];
@@ -210,36 +230,22 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
 
         float denom = sqrtf(eL * eR) + SBR_ENERGY_FLOOR;
         float icc = eLR / denom;
-        icc_real[b] = fmaxf(-1.0f, fminf(icc, 1.0f));
-        icc_coh[b] = icc_real[b];
         if (b < phases) {
             fd->ipd[b] = fd->opd[b] = 0;
-            if (eL + eR >= 1e-6f * (l + r)) {
+            if (keep_phase && eL + eR >= 1e-6f * (l + r)) {
                 float coherence = hypotf(eLR, eLRi) / denom;
                 if (coherence >= 0.7f) {
                     int ipd = ps_phase(eLR, eLRi);
                     if (ipd != 0 && ipd != 4) {
                         fd->ipd[b] = ipd;
                         fd->opd[b] = ps_phase(w * eL + (1 - w) * eLR, (1 - w) * eLRi);
-                        cand[b] = 1;
-                        icc_coh[b] = fmaxf(-1.0f, fminf(coherence, 1.0f));
-                        gap += (eL + eR) * (icc_coh[b] - icc_real[b]);
+                        fd->enable_phase = 1;
+                        icc = coherence;
                     }
                 }
             }
         }
-    }
-    /* The phase extension costs about 10 bits a frame, and without it the real-part ICC already
-     * expresses most phase offsets as lower coherence. It pays only where the coherence
-     * magnitude is far above the real part across the energetic bands (inter-channel delay,
-     * as in spaced-microphone speech), so a frame carries it only when that energy-weighted
-     * gap is large. */
-    int keep = gap >= PS_PHASE_GAP * (l + r + SBR_ENERGY_FLOOR);
-    for (int b = 0; b < bands; b++) {
-        int use = keep && cand[b];
-        if (b < phases && !use) fd->ipd[b] = fd->opd[b] = 0;
-        if (use) fd->enable_phase = 1;
-        float icc = use ? icc_coh[b] : icc_real[b];
+        icc = fmaxf(-1.0f, fminf(icc, 1.0f));
         int best_icc = 0;
         float best_err = 2.0f;
         for (int i = 0; i <= SBR_PS_ICC_MAX_INDEX; i++) {
