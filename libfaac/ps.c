@@ -362,7 +362,7 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     int rd = mandatory || !held.iid_quant;
     int fine_bits = 0;
     int coarse_bits = 0;
-    float max_db_err = 0.0f;
+    int within = 1; /* every band lands within 1 dB of its fine level */
 
     int8_t coarse_e1[PS_BANDS] = {0}, coarse_e2[PS_BANDS] = {0};
     for (int e = 0; rd && e < fd->ps_num_env; e++) {
@@ -372,16 +372,15 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
             int fine_idx = fine_iid[b] + 15;
             if (fine_idx < 0) fine_idx = 0;
             if (fine_idx > 30) fine_idx = 30;
-            float f_db = (float)ps_iid_db_fine[fine_idx];
-            int clvl = 0;
-            while (clvl < 14 && f_db >= 0.5f * (ps_iid_db_coarse[clvl] + ps_iid_db_coarse[clvl + 1]))
-                clvl++;
-            coarse_iid[b] = (int8_t)(clvl - 7);
-            float c_db = (float)ps_iid_db_coarse[clvl];
-            float err = fabsf(f_db - c_db);
-            if (err > max_db_err) max_db_err = err;
+            coarse_iid[b] = ps_iid_coarse_of_fine[fine_idx];
+            within &= (int)((ps_iid_coarse_exact >> fine_idx) & 1u);
         }
+    }
 
+    /* The bit counts only matter where the distortion bound holds. */
+    for (int e = 0; rd && within && e < fd->ps_num_env; e++) {
+        const int8_t *fine_iid = e ? fd->ps_env2.iid : fd->iid;
+        const int8_t *coarse_iid = e ? coarse_e2 : coarse_e1;
         fine_bits += count_ps_param_bits(fine_iid, e ? fd->iid : (fine_ref ? fine_ref->iid : NULL),
                                         bands, 0, faac_ps_huff_iid_df_fine_packed,
                                         faac_ps_huff_iid_dt_fine_packed,
@@ -396,7 +395,7 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
     int bit_savings = fine_bits - coarse_bits;
     /* A grid switch costs a header, which the saving cannot repay, so coarse is entered only
      * where the header is free (a random-access point) and left whenever it stops fitting. */
-    int coarse = rd && bit_savings >= 4 && max_db_err <= 1.0f;
+    int coarse = rd && within && bit_savings >= 4;
     fd->ps_iid_quant = !coarse;
     if (coarse) {
         memcpy(fd->iid, coarse_e1, sizeof(fd->iid));

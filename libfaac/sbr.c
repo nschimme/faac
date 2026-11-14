@@ -218,6 +218,9 @@ static void sbr_frame_silence(SbrFrameData *fd, int channels)
     fd->frameClass   = SBR_FRAME_CLASS_FIXFIX;
     fd->tEnv[0]      = 0;
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
+#if FAAC_ENCODER_PS
+    fd->ps_iid_quant = 1; /* a silent payload is on the fine grid, as the priming ones are */
+#endif
 }
 
 SBRContext *SbrContextInit(int channels)

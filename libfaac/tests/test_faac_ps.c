@@ -557,9 +557,26 @@ static void test_extension_retry(void)
     }
 }
 
+/* The analysis uses a baked lookup for the nearest coarse IID level and its 1 dB bound; it has to
+ * match what the two dB tables say. */
+static void test_coarse_lookup(void)
+{
+    for (int i = 0; i < 31; i++) {
+        float f_db = (float)ps_iid_db_fine[i];
+        int c = 0;
+        while (c < 14 && f_db >= 0.5f * (ps_iid_db_coarse[c] + ps_iid_db_coarse[c + 1]))
+            c++;
+        assert(ps_iid_coarse_of_fine[i] == c - 7);
+        int exact = fabsf(f_db - (float)ps_iid_db_coarse[c]) <= 1.0f;
+        assert(((ps_iid_coarse_exact >> i) & 1u) == (unsigned)exact);
+    }
+    assert((ps_iid_coarse_exact >> 31) == 0);
+}
+
 int main(void)
 {
     fft_init();
+    test_coarse_lookup();
     test_ps_write();
     test_silence_holds_state();
     test_ps_header_omission();

@@ -35,6 +35,8 @@
 
 #define ps_iid_db_fine faac_ps_iid_db_fine
 #define ps_iid_db_coarse faac_ps_iid_db_coarse
+#define ps_iid_coarse_of_fine faac_ps_iid_coarse_of_fine
+#define ps_iid_coarse_exact faac_ps_iid_coarse_exact
 #define ps_icc_invq faac_ps_icc_invq
 
 typedef struct {
@@ -43,6 +45,11 @@ typedef struct {
 
 extern const int8_t ps_iid_db_fine[31];
 extern const int8_t ps_iid_db_coarse[15];
+/* Nearest coarse IID index for each fine index (the coarse grid starts at -7), and a bit per fine
+ * index set when that coarse level is within 1 dB of it. Both derive from the two dB tables above;
+ * the unit test recomputes them. */
+extern const int8_t ps_iid_coarse_of_fine[31];
+extern const uint32_t ps_iid_coarse_exact;
 extern const float ps_icc_invq[8];
 
 extern const PsHuffPackedEntry faac_ps_huff_iid_df_fine_packed[PS_HUFF_IID_DF_FINE_NSYMS];
