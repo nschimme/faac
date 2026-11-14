@@ -22,6 +22,8 @@ const int8_t ps_iid_db_fine[31] = {-50, -45, -40, -35, -30, -25, -22, -19, -16, 
                                    16,  19,  22,  25,  30,  35,  40,  45,  50};
 const int8_t ps_iid_db_coarse[15] = {-25, -18, -14, -10, -7, -4, -2, 0,
                                      2,   4,   7,   10,  14, 18, 25};
+const int8_t ps_iid_coarse_of_fine[31] = {-7, -7, -7, -7, -7, -7, -7, -6, -5, -5, -4, -3, -3, -2, -1, 0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7};
+const uint32_t ps_iid_coarse_exact = 0x02bffea0u;
 const float ps_icc_invq[8] = {1.0f, 0.937f, 0.84118f, 0.60092f, 0.36764f, 0.0f, -0.589f, -1.0f};
 
 const PsHuffPackedEntry faac_ps_huff_iid_df_fine_packed[PS_HUFF_IID_DF_FINE_NSYMS] = {
