@@ -235,15 +235,24 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
 static void ps_stereo_energy(const float *left, const float *right, int n, double *el,
                              double *er, double *ec)
 {
-    double l = 0, r = 0, cross = 0;
-    for (int i = 0; i < n; i++) {
-        l += (double)left[i] * left[i];
-        r += (double)right[i] * right[i];
-        cross += (double)left[i] * right[i];
+    /* The products are exact in double; the sums are what is latency-bound. Four independent
+     * accumulators break that chain and vectorize, at the cost of regrouping the rounding. */
+    double l[4] = {0}, r[4] = {0}, cross[4] = {0};
+    int i = 0;
+    for (; i + 4 <= n; i += 4)
+        for (int j = 0; j < 4; j++) {
+            l[j] += (double)left[i + j] * left[i + j];
+            r[j] += (double)right[i + j] * right[i + j];
+            cross[j] += (double)left[i + j] * right[i + j];
+        }
+    for (int j = 0; i < n; i++, j++) {
+        l[j] += (double)left[i] * left[i];
+        r[j] += (double)right[i] * right[i];
+        cross[j] += (double)left[i] * right[i];
     }
-    *el = l;
-    *er = r;
-    *ec = cross;
+    *el = (l[0] + l[1]) + (l[2] + l[3]);
+    *er = (r[0] + r[1]) + (r[2] + r[3]);
+    *ec = (cross[0] + cross[1]) + (cross[2] + cross[3]);
 }
 
 static float ps_downmix_gain(double l, double r, double cross, float *weight)
@@ -264,44 +273,64 @@ void PsDownmix(float *left, const float *right, int n)
         left[i] = gain * (w * left[i] + (1 - w) * right[i]);
 }
 
-static bool ps_carrier_spectrum(const float *lf, const float *rf, float *work, bool packed)
+/* Per-bin magnitude correction of the carrier spectrum. Squared magnitudes keep the loops free
+ * of libm calls and branches so they vectorize; every threshold stays in the normal float range
+ * (1e-20 squared would be subnormal, which is slow on x86 without FTZ). Returns 1 when
+ * cancellation makes the packed transform unreliable for this bin. */
+static inline int ps_carrier_bin(float lr, float li, float rr, float ri, float *__restrict re,
+                                 float *__restrict im, int packed)
 {
-    for (int k = 0; k < (packed ? 257 : 512); k++) {
-        int mirror = (512 - k) & 511;
-        float lr, li, rr, ri;
-        if (packed) {
-            lr = 0.5f * (lf[k] + lf[mirror]);
-            li = 0.5f * (lf[k + 512] - lf[mirror + 512]);
-            rr = 0.5f * (lf[k + 512] + lf[mirror + 512]);
-            ri = 0.5f * (lf[mirror] - lf[k]);
-        } else {
-            lr = lf[k];
-            li = lf[k + 512];
-            rr = rf[k];
-            ri = rf[k + 512];
-        }
-        float real = 0.5f * (lr + rr);
-        float imag = 0.5f * (li + ri);
-        float target = sqrtf(0.5f * (lr * lr + rr * rr + li * li + ri * ri));
-        float magnitude = hypotf(real, imag);
-        /* Cancelling channels amplify FFT rounding and can change the
-         * phase fallback below. Recompute this hop with separate FFTs. */
-        if (packed && magnitude < 1e-3f * target)
-            return false;
-        if (magnitude < 1e-5f * target) {
-            real = lr;
-            imag = li;
-            magnitude = hypotf(real, imag);
-        }
-        float gain = magnitude > 1e-20f ? target / magnitude : 0;
-        work[k] = real * gain;
-        work[k + 512] = -imag * gain;
-        if (packed && k > 0 && k < 256) {
-            work[mirror] = work[k];
-            work[mirror + 512] = -work[k + 512];
-        }
+    float real = 0.5f * (lr + rr);
+    float imag = 0.5f * (li + ri);
+    float target2 = 0.5f * (lr * lr + rr * rr + li * li + ri * ri);
+    float mag2 = real * real + imag * imag;
+    /* Cancelling channels amplify FFT rounding and can change the phase fallback below. */
+    int unreliable = packed & (mag2 < 1e-6f * target2);
+    int fallback = mag2 < 1e-10f * target2;
+    real = fallback ? lr : real;
+    imag = fallback ? li : imag;
+    mag2 = fallback ? lr * lr + li * li : mag2;
+    float gain = mag2 > 1e-30f ? sqrtf(target2) / sqrtf(mag2) : 0;
+    *re = real * gain;
+    *im = -imag * gain;
+    return unreliable;
+}
+
+/* Returns false, with work undefined, when the packed transform is unreliable; the caller then
+ * rebuilds work with separate transforms. */
+static bool ps_carrier_spectrum(const float *__restrict lf, const float *__restrict rf,
+                                float *__restrict work, bool packed)
+{
+    int unreliable = 0;
+    if (!packed) {
+        for (int k = 0; k < 512; k++)
+            unreliable |= ps_carrier_bin(lf[k], lf[k + 512], rf[k], rf[k + 512], &work[k],
+                                         &work[k + 512], 0);
+        return true;
     }
-    return true;
+    /* Bins 0 and 256 are their own mirrors: purely real and imaginary sums, no pairing. */
+    for (int k = 0; k <= 256; k += 256)
+        unreliable |= ps_carrier_bin(lf[k], 0.0f, lf[k + 512], 0.0f, &work[k], &work[k + 512], 1);
+    /* The rest pair k with 512 - k, and the output spectrum is conjugate-symmetric. The bins go
+     * through scratch so each loop has a single store stream and vectorizes. */
+    float re[256], im[256];
+    for (int k = 1; k < 256; k++) {
+        int m = 512 - k;
+        float lr = 0.5f * (lf[k] + lf[m]);
+        float li = 0.5f * (lf[k + 512] - lf[m + 512]);
+        float rr = 0.5f * (lf[k + 512] + lf[m + 512]);
+        float ri = 0.5f * (lf[m] - lf[k]);
+        unreliable |= ps_carrier_bin(lr, li, rr, ri, &re[k], &im[k], 1);
+    }
+    for (int k = 1; k < 256; k++) {
+        work[k] = re[k];
+        work[k + 512] = im[k];
+    }
+    for (int k = 1; k < 256; k++) {
+        work[512 - k] = re[k];
+        work[1024 - k] = -im[k];
+    }
+    return !unreliable;
 }
 
 void PsSpectralDownmix(PsCarrier *state, float *left, float *right, float *carrier, int n)
