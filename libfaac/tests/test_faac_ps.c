@@ -96,7 +96,6 @@ static void decode_df_iid(const unsigned char *d, int bands, const PsHuffPackedE
 static void test_ps_write(void)
 {
     SbrFrameData fd = {0};
-    fd.ps_iid_quant = 1;
     fd.ps_send_header = 1;
     fd.ps_ext = 1;
 
@@ -111,7 +110,6 @@ static void test_ps_write(void)
                     PsRef ref = {0};
                     ref.valid = 1;
                     ref.band_mode = band_mode;
-                    ref.iid_quant = 1;
                     for (int b = 0; b < PS_BANDS; b++) {
                         fd.iid[b] = ((seed + 7 * b) % 31) - 15;
                         fd.icc[b] = (seed + 3 * b) & 7;
@@ -167,8 +165,6 @@ static void test_ps_write(void)
 
     PsRef ref = {0};
     ref.valid = 1;
-    ref.iid_quant = 1;
-    fd.ps_iid_quant = 1;
     fd.ps_num_env = 1;
     fd.enable_phase = 1;
     for (int band_mode = 0; band_mode <= 1; band_mode++) {
@@ -219,17 +215,15 @@ static void test_ps_write(void)
         int icc_on = write_checked(&fd, &ref, 0);
         assert(icc_on > icc_off);
 
-        /* Coarse IID encoding check. */
+        /* Fine IID encoding check: the payload decodes back to what was written. */
         fd.enable_icc = 0;
         fd.enable_phase = 0;
-        fd.ps_iid_quant = 0;
-        ref.iid_quant = 0;
         for (int b = 0; b < PS_BANDS; b++) {
             fd.iid[b] = (b & 1) ? 7 : -7;
             ref.iid[b] = fd.iid[b];
         }
-        /* Coarse must really be emitted: modes 0/1 for coarse, 3/4 for fine. */
-        assert(emitted_iid_mode(&fd, NULL) == band_mode);
+        /* iid_mode 3 and 4 are the fine grid. */
+        assert(emitted_iid_mode(&fd, NULL) == 3 + band_mode);
         int bands = band_mode ? PS_BANDS : PS_LOW_BANDS;
         fd.ps_num_env = 1;
         {
@@ -238,22 +232,13 @@ static void test_ps_write(void)
             InitBitStream(&bs, data, sizeof(data));
             PsWrite(&fd, &bs, NULL);
             int8_t back[PS_BANDS] = {0};
-            decode_df_iid(data, bands, faac_ps_huff_iid_df_coarse_packed,
-                          PS_HUFF_IID_DF_COARSE_NSYMS, PS_HUFF_IID_DF_COARSE_OFFSET, back);
+            decode_df_iid(data, bands, faac_ps_huff_iid_df_fine_packed,
+                          PS_HUFF_IID_DF_FINE_NSYMS, PS_HUFF_IID_DF_FINE_OFFSET, back);
             assert(memcmp(back, fd.iid, bands) == 0);
         }
-        int coarse_stable_with_ref = write_checked(&fd, &ref, 0);
-        int coarse_stable_without_ref = write_checked(&fd, NULL, 0);
-        assert(coarse_stable_with_ref < coarse_stable_without_ref);
-
-        /* Reference with mismatched iid_quant forces df fallback */
-        ref.iid_quant = 1;
-        int coarse_with_fine_ref = write_checked(&fd, &ref, 0);
-        assert(coarse_with_fine_ref == coarse_stable_without_ref);
-
-        fd.ps_iid_quant = 1;
-        ref.iid_quant = 1;
-        assert(emitted_iid_mode(&fd, &ref) == 3 + band_mode);
+        int fine_with_ref = write_checked(&fd, &ref, 0);
+        int fine_without_ref = write_checked(&fd, NULL, 0);
+        assert(fine_with_ref < fine_without_ref);
         fd.enable_phase = 1;
     }
 }
@@ -464,15 +449,13 @@ static void test_silence_holds_state(void)
     SBRInfo sbr = {0};
     sbr.psPred.valid = 1;
     sbr.psPred.band_mode = 1;
-    sbr.psPred.iid_quant = 0;
     sbr.psPred.icc_on = 1;
     sbr.psPred.ext_on = 1;
     SbrFrameData fd = {0};
-    fd.ps_iid_quant = 1;
     fd.enable_phase = 1;
     fd.ps_send_header = 1;
     PsNoteSilence(&sbr, &fd);
-    assert(fd.ps_band_mode == 1 && fd.ps_iid_quant == 0);
+    assert(fd.ps_band_mode == 1);
     assert(fd.enable_icc == 1 && fd.ps_ext == 1);
     assert(fd.enable_phase == 0 && fd.ps_send_header == 0);
     assert(sbr.psPred.valid && sbr.psPred.band_mode == 1 && sbr.psPred.icc_on == 1);
@@ -483,7 +466,6 @@ static void test_silence_holds_state(void)
 static void test_ps_header_omission(void)
 {
     SbrFrameData fd = {0};
-    fd.ps_iid_quant = 1;
     fd.ps_num_env = 1;
     fd.enable_icc = 1;
     fd.ps_ext = 1;
@@ -557,26 +539,9 @@ static void test_extension_retry(void)
     }
 }
 
-/* The analysis uses a baked lookup for the nearest coarse IID level and its 1 dB bound; it has to
- * match what the two dB tables say. */
-static void test_coarse_lookup(void)
-{
-    for (int i = 0; i < 31; i++) {
-        float f_db = (float)ps_iid_db_fine[i];
-        int c = 0;
-        while (c < 14 && f_db >= 0.5f * (ps_iid_db_coarse[c] + ps_iid_db_coarse[c + 1]))
-            c++;
-        assert(ps_iid_coarse_of_fine[i] == c - 7);
-        int exact = fabsf(f_db - (float)ps_iid_db_coarse[c]) <= 1.0f;
-        assert(((ps_iid_coarse_exact >> i) & 1u) == (unsigned)exact);
-    }
-    assert((ps_iid_coarse_exact >> 31) == 0);
-}
-
 int main(void)
 {
     fft_init();
-    test_coarse_lookup();
     test_ps_write();
     test_silence_holds_state();
     test_ps_header_omission();

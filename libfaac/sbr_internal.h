@@ -67,8 +67,6 @@ typedef struct SbrFrameData {
     uint8_t enable_phase;
     uint8_t ps_num_env;
     uint8_t ps_band_mode;
-    /* 1 = fine IID grid, 0 = coarse; matches iid_quant = iid_mode > 2 in the spec. */
-    uint8_t ps_iid_quant;
     /* Predecessor PsAnalyze costed against; PsCountFrame checks the writer agrees. */
     uint8_t ps_pred_used, ps_pred_state;
     /* Decoder-held PS header state (IID grid, ICC data, extension) is restated only when
