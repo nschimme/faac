@@ -24,6 +24,7 @@
 #include "sbr_internal.h"
 #include "bitstream.h"
 #include "ps.h"
+#include "ps_huff_tables.h"
 #include "fft.h"
 #include "stats.h"
 
@@ -52,9 +53,50 @@ static int write_checked(const SbrFrameData *fd, const PsRef *ref, int offset)
     return count;
 }
 
+/* The IID mode field of the PS header: bits 3..1 of the first byte. */
+static int emitted_iid_mode(const SbrFrameData *fd, const PsRef *ref)
+{
+    unsigned char data[512] = {0};
+    BitStream bs;
+    InitBitStream(&bs, data, sizeof(data));
+    PsWrite(fd, &bs, ref);
+    return (data[0] >> 1) & 7;
+}
+
+static int get_bit(const unsigned char *d, int pos) { return (d[pos >> 3] >> (7 - (pos & 7))) & 1; }
+
+/* Decode one frequency-coded IID envelope (after the 12 header bits) with the packed
+ * table by prefix match, so a wrong codeword or length shows up as a wrong delta. */
+static void decode_df_iid(const unsigned char *d, int bands, const PsHuffPackedEntry *table,
+                          int nsyms, int offset, int8_t *out)
+{
+    int pos = 12;
+    assert(get_bit(d, pos++) == 0); /* iid_dt = 0 */
+    int prev = 0;
+    for (int b = 0; b < bands; b++) {
+        int found = -1;
+        for (int sym = 0; sym < nsyms && found < 0; sym++) {
+            int len = table[sym].byte[0] & 31;
+            uint32_t code = ((uint32_t)table[sym].byte[0] | ((uint32_t)table[sym].byte[1] << 8) |
+                             ((uint32_t)table[sym].byte[2] << 16)) >> 5;
+            uint32_t got = 0;
+            for (int i = 0; i < len; i++)
+                got = (got << 1) | get_bit(d, pos + i);
+            if (got == code) {
+                found = sym;
+                pos += len;
+            }
+        }
+        assert(found >= 0);
+        prev += found - offset;
+        out[b] = (int8_t)prev;
+    }
+}
+
 static void test_ps_write(void)
 {
     SbrFrameData fd = {0};
+    fd.ps_iid_quant = 1;
 
     for (int band_mode = 0; band_mode <= 1; band_mode++) {
         fd.ps_band_mode = band_mode;
@@ -67,6 +109,7 @@ static void test_ps_write(void)
                     PsRef ref = {0};
                     ref.valid = 1;
                     ref.band_mode = band_mode;
+                    ref.iid_quant = 1;
                     for (int b = 0; b < PS_BANDS; b++) {
                         fd.iid[b] = ((seed + 7 * b) % 31) - 15;
                         fd.icc[b] = (seed + 3 * b) & 7;
@@ -122,6 +165,8 @@ static void test_ps_write(void)
 
     PsRef ref = {0};
     ref.valid = 1;
+    ref.iid_quant = 1;
+    fd.ps_iid_quant = 1;
     fd.ps_num_env = 1;
     fd.enable_phase = 1;
     for (int band_mode = 0; band_mode <= 1; band_mode++) {
@@ -171,6 +216,43 @@ static void test_ps_write(void)
         fd.enable_icc = 1;
         int icc_on = write_checked(&fd, &ref, 0);
         assert(icc_on > icc_off);
+
+        /* Coarse IID encoding check. */
+        fd.enable_icc = 0;
+        fd.enable_phase = 0;
+        fd.ps_iid_quant = 0;
+        ref.iid_quant = 0;
+        for (int b = 0; b < PS_BANDS; b++) {
+            fd.iid[b] = (b & 1) ? 7 : -7;
+            ref.iid[b] = fd.iid[b];
+        }
+        /* Coarse must really be emitted: modes 0/1 for coarse, 3/4 for fine. */
+        assert(emitted_iid_mode(&fd, NULL) == band_mode);
+        int bands = band_mode ? PS_BANDS : PS_LOW_BANDS;
+        fd.ps_num_env = 1;
+        {
+            unsigned char data[512] = {0};
+            BitStream bs;
+            InitBitStream(&bs, data, sizeof(data));
+            PsWrite(&fd, &bs, NULL);
+            int8_t back[PS_BANDS] = {0};
+            decode_df_iid(data, bands, faac_ps_huff_iid_df_coarse_packed,
+                          PS_HUFF_IID_DF_COARSE_NSYMS, PS_HUFF_IID_DF_COARSE_OFFSET, back);
+            assert(memcmp(back, fd.iid, bands) == 0);
+        }
+        int coarse_stable_with_ref = write_checked(&fd, &ref, 0);
+        int coarse_stable_without_ref = write_checked(&fd, NULL, 0);
+        assert(coarse_stable_with_ref < coarse_stable_without_ref);
+
+        /* Reference with mismatched iid_quant forces df fallback */
+        ref.iid_quant = 1;
+        int coarse_with_fine_ref = write_checked(&fd, &ref, 0);
+        assert(coarse_with_fine_ref == coarse_stable_without_ref);
+
+        fd.ps_iid_quant = 1;
+        ref.iid_quant = 1;
+        assert(emitted_iid_mode(&fd, &ref) == 3 + band_mode);
+        fd.enable_phase = 1;
     }
 }
 
@@ -415,9 +497,26 @@ static void test_extension_retry(void)
     }
 }
 
+/* The analysis uses a baked lookup for the nearest coarse IID level and its 1 dB bound; it has to
+ * match what the two dB tables say. */
+static void test_coarse_lookup(void)
+{
+    for (int i = 0; i < 31; i++) {
+        float f_db = (float)ps_iid_db_fine[i];
+        int c = 0;
+        while (c < 14 && f_db >= 0.5f * (ps_iid_db_coarse[c] + ps_iid_db_coarse[c + 1]))
+            c++;
+        assert(ps_iid_coarse_of_fine[i] == c - 7);
+        int exact = fabsf(f_db - (float)ps_iid_db_coarse[c]) <= 1.0f;
+        assert(((ps_iid_coarse_exact >> i) & 1u) == (unsigned)exact);
+    }
+    assert((ps_iid_coarse_exact >> 31) == 0);
+}
+
 int main(void)
 {
     fft_init();
+    test_coarse_lookup();
     test_ps_write();
     test_extension_retry();
     test_spectral_carrier();

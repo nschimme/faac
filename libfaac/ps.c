@@ -51,6 +51,48 @@ static int put_huff(BitStream *bs, const PsHuffPackedEntry *table, int nsyms, in
     return len;
 }
 
+static int ps_param_bits(BitStream *bs, const int8_t *cur, const int8_t *prev, int bands, int wrap,
+                         const PsHuffPackedEntry *table, int nsyms, int offset)
+{
+    int bits = 0, ref = 0;
+    for (int b = 0; b < bands; b++) {
+        int delta = cur[b] - (prev ? prev[b] : ref);
+        if (wrap)
+            delta &= 7;
+        bits += put_huff(bs, table, nsyms, offset, delta);
+        ref = cur[b];
+    }
+    return bits;
+}
+
+/* Use temporal deltas only when they shorten the payload; headers stay self-contained. */
+static int write_ps_params(BitStream *bs, const int8_t *cur, const int8_t *prev, int bands, int wrap,
+                           const PsHuffPackedEntry *df, const PsHuffPackedEntry *dt, int nsyms,
+                           int offset)
+{
+    BitStream count;
+    ps_counter(&count);
+    int freq = ps_param_bits(&count, cur, NULL, bands, wrap, df, nsyms, offset);
+    int time = freq;
+    if (prev) {
+        ps_counter(&count);
+        time = ps_param_bits(&count, cur, prev, bands, wrap, dt, nsyms, offset);
+    }
+    bool temporal = prev && time < freq;
+    PutBit(bs, temporal, 1);
+    return 1 + ps_param_bits(bs, cur, temporal ? prev : NULL, bands, wrap, temporal ? dt : df,
+                             nsyms, offset);
+}
+
+static int count_ps_param_bits(const int8_t *cur, const int8_t *prev, int bands, int wrap,
+                               const PsHuffPackedEntry *df, const PsHuffPackedEntry *dt, int nsyms,
+                               int offset)
+{
+    BitStream count;
+    ps_counter(&count);
+    return write_ps_params(&count, cur, prev, bands, wrap, df, dt, nsyms, offset);
+}
+
 /* The low three QMF bands need finer stereo resolution (ISO/IEC 14496-3 8.6.4.3).
  * Six slots of look-ahead center the 13-tap bank. */
 void PsHybridAnalyze(PsHybrid *state, float in[2][3][44][2], float energy[2][4][64],
@@ -199,6 +241,49 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
     }
 }
 
+/* The last envelope of a frame is what the next frame's temporal deltas reference. */
+static void ps_capture_ref(PsRef *cur, const SbrFrameData *fd)
+{
+    int e = fd->ps_num_env == 2;
+    memcpy(cur->iid, e ? fd->ps_env2.iid : fd->iid, sizeof(cur->iid));
+    if (fd->enable_icc)
+        memcpy(cur->icc, e ? fd->ps_env2.icc : fd->icc, sizeof(cur->icc));
+    else
+        memset(cur->icc, 0, sizeof(cur->icc));
+    if (fd->enable_phase) {
+        memcpy(cur->ipd, e ? fd->ps_env2.ipd : fd->ipd, sizeof(cur->ipd));
+        memcpy(cur->opd, e ? fd->ps_env2.opd : fd->opd, sizeof(cur->opd));
+    } else {
+        memset(cur->ipd, 0, sizeof(cur->ipd));
+        memset(cur->opd, 0, sizeof(cur->opd));
+    }
+    cur->band_mode = fd->ps_band_mode;
+    cur->iid_quant = fd->ps_iid_quant;
+    cur->valid = 1;
+}
+
+/* A payload is emitted SBR_FRAME_FIFO - 1 ticks after it is analyzed, but the core
+ * produces no access unit for the first LOOKAHEAD_DEPTH ticks, so frame k is written
+ * as access unit k + 1 and that is the frameCount whose header cadence it sees. */
+#define PS_WRITE_LAG (SBR_FRAME_FIFO - 1 - LOOKAHEAD_DEPTH)
+static int ps_header_due(const SBRInfo *sbr)
+{
+    return (sbr->psAnalyzed + PS_WRITE_LAG) % SBR_HEADER_PERIOD == 0;
+}
+
+/* A temporal reference is unusable across headers and band-mode changes. */
+static const PsRef *ps_usable_ref(const PsRef *ref, int header, const SbrFrameData *fd)
+{
+    return (ref->valid && !header && ref->band_mode == fd->ps_band_mode) ? ref : NULL;
+}
+
+/* Drain frames skip analysis but are still written and counted. */
+void PsNoteSilence(SBRInfo *sbr, const SbrFrameData *fd)
+{
+    ps_capture_ref(&sbr->psPred, fd);
+    sbr->psAnalyzed++;
+}
+
 void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     fd->ps_band_mode = sbr->psNumEnv == 1 ? 0 : 1;
@@ -229,6 +314,62 @@ void PsAnalyze(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
         memcpy(e ? fd->ps_env2.ipd : fd->ipd, params.ipd, sizeof(params.ipd));
         memcpy(e ? fd->ps_env2.opd : fd->opd, params.opd, sizeof(params.opd));
     }
+
+    /* Rate-distortion decision: evaluate coarse vs. fine IID quantization. */
+    /* The first analyzed frame follows the silent priming payloads, not nothing. */
+    if (sbr->psAnalyzed == 0 && !sbr->psPred.valid)
+        sbr->psPred.valid = 1;
+    const PsRef *prev_ref = ps_usable_ref(&sbr->psPred, ps_header_due(sbr), fd);
+
+    const PsRef *fine_ref = (prev_ref && prev_ref->iid_quant == 1) ? prev_ref : NULL;
+    const PsRef *coarse_ref = (prev_ref && prev_ref->iid_quant == 0) ? prev_ref : NULL;
+
+    fd->ps_pred_used = prev_ref != NULL;
+    fd->ps_pred_quant = prev_ref ? prev_ref->iid_quant : 0;
+    int fine_bits = 0;
+    int coarse_bits = 0;
+    int within = 1; /* every band lands within 1 dB of its fine level */
+
+    int8_t coarse_e1[PS_BANDS] = {0}, coarse_e2[PS_BANDS] = {0};
+    for (int e = 0; e < fd->ps_num_env; e++) {
+        const int8_t *fine_iid = e ? fd->ps_env2.iid : fd->iid;
+        int8_t *coarse_iid = e ? coarse_e2 : coarse_e1;
+        for (int b = 0; b < bands; b++) {
+            int fine_idx = fine_iid[b] + 15;
+            if (fine_idx < 0) fine_idx = 0;
+            if (fine_idx > 30) fine_idx = 30;
+            coarse_iid[b] = ps_iid_coarse_of_fine[fine_idx];
+            within &= (int)((ps_iid_coarse_exact >> fine_idx) & 1u);
+        }
+    }
+
+    /* The bit counts only matter where the distortion bound holds. */
+    for (int e = 0; within && e < fd->ps_num_env; e++) {
+        const int8_t *fine_iid = e ? fd->ps_env2.iid : fd->iid;
+        const int8_t *coarse_iid = e ? coarse_e2 : coarse_e1;
+        fine_bits += count_ps_param_bits(fine_iid, e ? fd->iid : (fine_ref ? fine_ref->iid : NULL),
+                                        bands, 0, faac_ps_huff_iid_df_fine_packed,
+                                        faac_ps_huff_iid_dt_fine_packed,
+                                        PS_HUFF_IID_DF_FINE_NSYMS, PS_HUFF_IID_DF_FINE_OFFSET);
+
+        coarse_bits += count_ps_param_bits(coarse_iid, e ? coarse_e1 : (coarse_ref ? coarse_ref->iid : NULL),
+                                          bands, 0, faac_ps_huff_iid_df_coarse_packed,
+                                          faac_ps_huff_iid_dt_coarse_packed,
+                                          PS_HUFF_IID_DF_COARSE_NSYMS, PS_HUFF_IID_DF_COARSE_OFFSET);
+    }
+
+    int bit_savings = fine_bits - coarse_bits;
+    /* Use Coarse IID if bit savings exceed threshold and maximum distortion is bounded */
+    if (within && bit_savings >= 4) {
+        fd->ps_iid_quant = 0;
+        memcpy(fd->iid, coarse_e1, sizeof(fd->iid));
+        if (fd->ps_num_env == 2)
+            memcpy(fd->ps_env2.iid, coarse_e2, sizeof(fd->ps_env2.iid));
+    } else {
+        fd->ps_iid_quant = 1;
+    }
+    ps_capture_ref(&sbr->psPred, fd);
+    sbr->psAnalyzed++;
 }
 
 /* Avoid cancellation in the mono sum while preserving mean stereo energy. */
@@ -356,39 +497,6 @@ void PsSpectralDownmix(PsCarrier *state, float *left, float *right, float *carri
     }
 }
 
-static int ps_param_bits(BitStream *bs, const int8_t *cur, const int8_t *prev, int bands, int wrap,
-                         const PsHuffPackedEntry *table, int nsyms, int offset)
-{
-    int bits = 0, ref = 0;
-    for (int b = 0; b < bands; b++) {
-        int delta = cur[b] - (prev ? prev[b] : ref);
-        if (wrap)
-            delta &= 7;
-        bits += put_huff(bs, table, nsyms, offset, delta);
-        ref = cur[b];
-    }
-    return bits;
-}
-
-/* Use temporal deltas only when they shorten the payload; headers stay self-contained. */
-static int write_ps_params(BitStream *bs, const int8_t *cur, const int8_t *prev, int bands, int wrap,
-                           const PsHuffPackedEntry *df, const PsHuffPackedEntry *dt, int nsyms,
-                           int offset)
-{
-    BitStream count;
-    ps_counter(&count);
-    int freq = ps_param_bits(&count, cur, NULL, bands, wrap, df, nsyms, offset);
-    int time = freq;
-    if (prev) {
-        ps_counter(&count);
-        time = ps_param_bits(&count, cur, prev, bands, wrap, dt, nsyms, offset);
-    }
-    bool temporal = prev && time < freq;
-    PutBit(bs, temporal, 1);
-    return 1 + ps_param_bits(bs, cur, temporal ? prev : NULL, bands, wrap, temporal ? dt : df,
-                             nsyms, offset);
-}
-
 static int ps_phase_body(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
 {
     /* Two reserved zero bits, then the phase enable flag. */
@@ -439,9 +547,11 @@ int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
 {
     /* Index 0 would mean no envelope, i.e. hold the previous image. */
     int n_env = fd->ps_num_env ? fd->ps_num_env : 1;
+    int iid_quant = fd->ps_iid_quant != 0;
+    int iid_mode = (iid_quant ? 3 : 0) + fd->ps_band_mode;
     /* Extension ID, header flag, IID enable/mode, then ICC enable/mode. */
     unsigned header = (SBR_EXT_ID_PS << 6) | (1 << 5) | (1 << 4) |
-                      ((fd->ps_band_mode + 3) << 1) | fd->enable_icc;
+                      (iid_mode << 1) | fd->enable_icc;
     int header_bits = 8;
     if (fd->enable_icc) {
         header = (header << 3) | fd->ps_band_mode;
@@ -452,14 +562,21 @@ int PsWrite(const SbrFrameData *fd, BitStream *bs, const PsRef *ref)
     PutBit(bs, header, header_bits + 4);
     int n = header_bits + 4;
 
+    const PsHuffPackedEntry *iid_df = iid_quant ? faac_ps_huff_iid_df_fine_packed : faac_ps_huff_iid_df_coarse_packed;
+    const PsHuffPackedEntry *iid_dt = iid_quant ? faac_ps_huff_iid_dt_fine_packed : faac_ps_huff_iid_dt_coarse_packed;
+    int iid_nsyms = iid_quant ? PS_HUFF_IID_DF_FINE_NSYMS : PS_HUFF_IID_DF_COARSE_NSYMS;
+    int iid_offset = iid_quant ? PS_HUFF_IID_DF_FINE_OFFSET : PS_HUFF_IID_DF_COARSE_OFFSET;
+
+    const PsRef *iid_ref = (ref && ref->iid_quant == fd->ps_iid_quant) ? ref : NULL;
+
     for (int e = 0; e < n_env; e++)
         n += write_ps_params(bs, e ? fd->ps_env2.iid : fd->iid,
                              e     ? fd->iid
-                             : ref ? ref->iid
-                                   : NULL,
+                             : iid_ref ? iid_ref->iid
+                                       : NULL,
                              (fd->ps_band_mode ? PS_BANDS : PS_LOW_BANDS), 0,
-                             faac_ps_huff_iid_df_fine_packed, faac_ps_huff_iid_dt_fine_packed,
-                             PS_HUFF_IID_DF_FINE_NSYMS, PS_HUFF_IID_DF_FINE_OFFSET);
+                             iid_df, iid_dt,
+                             iid_nsyms, iid_offset);
     if (fd->enable_icc)
         for (int e = 0; e < n_env; e++)
             n += write_ps_params(bs, e ? fd->ps_env2.icc : fd->icc,
@@ -517,9 +634,7 @@ void PsWriteExtension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
 {
     /* Mirror the SBR envelope reference parity: dry runs and core retries
      * may overwrite the current slot but never the previous access unit. */
-    const PsRef *ref = &sbr->psRef[~sbr->frameCount & 1];
-    if (!ref->valid || sbr->sendHeaderThisFrame || ref->band_mode != fd->ps_band_mode)
-        ref = NULL;
+    const PsRef *ref = ps_usable_ref(&sbr->psRef[~sbr->frameCount & 1], sbr->sendHeaderThisFrame, fd);
     BitStream count;
     ps_counter(&count);
     int psBits = PsWrite(fd, &count, ref);
@@ -528,37 +643,25 @@ void PsWriteExtension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
     PutBit(bs, psBytes < 15 ? psBytes : 15, 4);
     if (psBytes >= 15) PutBit(bs, psBytes - 15, 8);
     PsWrite(fd, bs, ref);
-    PsRef *cur = &sbr->psRef[sbr->frameCount & 1];
-    int e = fd->ps_num_env == 2;
-    memcpy(cur->iid, e ? fd->ps_env2.iid : fd->iid, sizeof(cur->iid));
-    if (fd->enable_icc)
-        memcpy(cur->icc, e ? fd->ps_env2.icc : fd->icc, sizeof(cur->icc));
-    else
-        memset(cur->icc, 0, sizeof(cur->icc));
-    if (fd->enable_phase) {
-        memcpy(cur->ipd, e ? fd->ps_env2.ipd : fd->ipd, sizeof(cur->ipd));
-        memcpy(cur->opd, e ? fd->ps_env2.opd : fd->opd, sizeof(cur->opd));
-    } else {
-        memset(cur->ipd, 0, sizeof(cur->ipd));
-        memset(cur->opd, 0, sizeof(cur->opd));
-    }
-    cur->band_mode = fd->ps_band_mode;
-    cur->valid = 1;
+    ps_capture_ref(&sbr->psRef[sbr->frameCount & 1], fd);
 }
 
 #ifdef FAAC_STATS
 void PsCountFrame(const SBRInfo *sbr, const SbrFrameData *fd, int id_aac)
 {
-    if (!PsIsActive(sbr) || id_aac != ID_CPE) return;
-    const PsRef *ref = &sbr->psRef[~sbr->frameCount & 1];
-    if (!ref->valid || sbr->sendHeaderThisFrame ||
-        ref->band_mode != fd->ps_band_mode)
-        ref = NULL;
+    /* The PS core is a mono SCE, so the element type says nothing about PS here. */
+    (void)id_aac;
+    if (!PsIsActive(sbr)) return;
+    const PsRef *ref = ps_usable_ref(&sbr->psRef[~sbr->frameCount & 1], sbr->sendHeaderThisFrame, fd);
     g_faacStats.psFrames++;
+    /* Analysis chose its quantizer against the predecessor it assumed; the writer must agree. */
+    if ((ref != NULL) != fd->ps_pred_used || (ref && ref->iid_quant != fd->ps_pred_quant))
+        g_faacStats.psRefMismatchFrames++;
     BitStream count;
     ps_counter(&count);
     g_faacStats.psPayloadBits += PsWrite(fd, &count, ref);
     if (fd->ps_band_mode == 0) g_faacStats.psLowBandFrames++;
+    if (fd->ps_iid_quant == 0) g_faacStats.psCoarseIidFrames++;
     if (fd->ps_num_env == 1) g_faacStats.psOneEnvelopeFrames++;
     if (fd->enable_icc) g_faacStats.psIccFrames++;
     if (fd->enable_phase) g_faacStats.psPhaseFrames++;
@@ -566,12 +669,16 @@ void PsCountFrame(const SBRInfo *sbr, const SbrFrameData *fd, int id_aac)
 
 void PsStatsPrint(void)
 {
+    if (g_faacStats.psRefMismatchFrames)
+        fprintf(stderr, " PS Reference Skew  : %u of %u frames analyzed against a different predecessor than written\n",
+                g_faacStats.psRefMismatchFrames, g_faacStats.psFrames);
     if (g_faacStats.psFrames > 0)
     {
         unsigned int psf = g_faacStats.psFrames;
-        fprintf(stderr, " PS Allocation       : Payload = %.1f bits/frame | Low bands = %5.1f%% | 1 env = %5.1f%% | ICC = %5.1f%% | Phase = %5.1f%%\n",
+        fprintf(stderr, " PS Allocation       : Payload = %.1f bits/frame | Low bands = %5.1f%% | Coarse IID = %5.1f%% | 1 env = %5.1f%% | ICC = %5.1f%% | Phase = %5.1f%%\n",
                 (double)g_faacStats.psPayloadBits / psf,
                 100.0 * g_faacStats.psLowBandFrames / psf,
+                100.0 * g_faacStats.psCoarseIidFrames / psf,
                 100.0 * g_faacStats.psOneEnvelopeFrames / psf,
                 100.0 * g_faacStats.psIccFrames / psf,
                 100.0 * g_faacStats.psPhaseFrames / psf);

@@ -20,6 +20,10 @@
 const int8_t ps_iid_db_fine[31] = {-50, -45, -40, -35, -30, -25, -22, -19, -16, -13, -10,
                                    -8,  -6,  -4,  -2,  0,   2,   4,   6,   8,   10,  13,
                                    16,  19,  22,  25,  30,  35,  40,  45,  50};
+const int8_t ps_iid_db_coarse[15] = {-25, -18, -14, -10, -7, -4, -2, 0,
+                                     2,   4,   7,   10,  14, 18, 25};
+const int8_t ps_iid_coarse_of_fine[31] = {-7, -7, -7, -7, -7, -7, -7, -6, -5, -5, -4, -3, -3, -2, -1, 0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7};
+const uint32_t ps_iid_coarse_exact = 0x02bffea0u;
 const float ps_icc_invq[8] = {1.0f, 0.937f, 0.84118f, 0.60092f, 0.36764f, 0.0f, -0.589f, -1.0f};
 
 const PsHuffPackedEntry faac_ps_huff_iid_df_fine_packed[PS_HUFF_IID_DF_FINE_NSYMS] = {
@@ -148,6 +152,70 @@ const PsHuffPackedEntry faac_ps_huff_iid_dt_fine_packed[PS_HUFF_IID_DT_FINE_NSYM
     /*   28 */ PS_PACK(0x00004ed3u, 16),
     /*   29 */ PS_PACK(0x00004ed0u, 16),
     /*   30 */ PS_PACK(0x00004ed1u, 16),
+};
+
+const PsHuffPackedEntry faac_ps_huff_iid_df_coarse_packed[PS_HUFF_IID_DF_COARSE_NSYMS] = {
+    /*  -14 */ PS_PACK(0x0001fffbu, 17),
+    /*  -13 */ PS_PACK(0x0001fffcu, 17),
+    /*  -12 */ PS_PACK(0x0001fffdu, 17),
+    /*  -11 */ PS_PACK(0x0001fffau, 17),
+    /*  -10 */ PS_PACK(0x0000fffcu, 16),
+    /*   -9 */ PS_PACK(0x00007ffcu, 15),
+    /*   -8 */ PS_PACK(0x00001ffdu, 13),
+    /*   -7 */ PS_PACK(0x000003feu, 10),
+    /*   -6 */ PS_PACK(0x000001feu,  9),
+    /*   -5 */ PS_PACK(0x0000007eu,  7),
+    /*   -4 */ PS_PACK(0x0000003cu,  6),
+    /*   -3 */ PS_PACK(0x0000001du,  5),
+    /*   -2 */ PS_PACK(0x0000000du,  4),
+    /*   -1 */ PS_PACK(0x00000005u,  3),
+    /*    0 */ PS_PACK(0x00000000u,  1),
+    /*    1 */ PS_PACK(0x00000004u,  3),
+    /*    2 */ PS_PACK(0x0000000cu,  4),
+    /*    3 */ PS_PACK(0x0000001cu,  5),
+    /*    4 */ PS_PACK(0x0000003du,  6),
+    /*    5 */ PS_PACK(0x0000003eu,  6),
+    /*    6 */ PS_PACK(0x000000feu,  8),
+    /*    7 */ PS_PACK(0x000007feu, 11),
+    /*    8 */ PS_PACK(0x00001ffcu, 13),
+    /*    9 */ PS_PACK(0x00003ffcu, 14),
+    /*   10 */ PS_PACK(0x00003ffdu, 14),
+    /*   11 */ PS_PACK(0x00007ffdu, 15),
+    /*   12 */ PS_PACK(0x0001fffeu, 17),
+    /*   13 */ PS_PACK(0x0003fffeu, 18),
+    /*   14 */ PS_PACK(0x0003ffffu, 18),
+};
+
+const PsHuffPackedEntry faac_ps_huff_iid_dt_coarse_packed[PS_HUFF_IID_DT_COARSE_NSYMS] = {
+    /*  -14 */ PS_PACK(0x0007fff9u, 19),
+    /*  -13 */ PS_PACK(0x0007fffau, 19),
+    /*  -12 */ PS_PACK(0x0007fffbu, 19),
+    /*  -11 */ PS_PACK(0x000ffff8u, 20),
+    /*  -10 */ PS_PACK(0x000ffff9u, 20),
+    /*   -9 */ PS_PACK(0x000ffffau, 20),
+    /*   -8 */ PS_PACK(0x0001fffdu, 17),
+    /*   -7 */ PS_PACK(0x00007ffeu, 15),
+    /*   -6 */ PS_PACK(0x00000ffeu, 12),
+    /*   -5 */ PS_PACK(0x000003feu, 10),
+    /*   -4 */ PS_PACK(0x000000feu,  8),
+    /*   -3 */ PS_PACK(0x0000003eu,  6),
+    /*   -2 */ PS_PACK(0x0000000eu,  4),
+    /*   -1 */ PS_PACK(0x00000002u,  2),
+    /*    0 */ PS_PACK(0x00000000u,  1),
+    /*    1 */ PS_PACK(0x00000006u,  3),
+    /*    2 */ PS_PACK(0x0000001eu,  5),
+    /*    3 */ PS_PACK(0x0000007eu,  7),
+    /*    4 */ PS_PACK(0x000001feu,  9),
+    /*    5 */ PS_PACK(0x000007feu, 11),
+    /*    6 */ PS_PACK(0x00001ffeu, 13),
+    /*    7 */ PS_PACK(0x00003ffeu, 14),
+    /*    8 */ PS_PACK(0x0001fffcu, 17),
+    /*    9 */ PS_PACK(0x0007fff8u, 19),
+    /*   10 */ PS_PACK(0x000ffffbu, 20),
+    /*   11 */ PS_PACK(0x000ffffcu, 20),
+    /*   12 */ PS_PACK(0x000ffffdu, 20),
+    /*   13 */ PS_PACK(0x000ffffeu, 20),
+    /*   14 */ PS_PACK(0x000fffffu, 20),
 };
 
 const PsHuffPackedEntry faac_ps_huff_icc_df_packed[PS_HUFF_ICC_DF_NSYMS] = {

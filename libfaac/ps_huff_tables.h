@@ -22,6 +22,10 @@
 #define PS_HUFF_IID_DF_FINE_OFFSET 30
 #define PS_HUFF_IID_DF_FINE_NSYMS 61
 #define PS_HUFF_IID_DT_FINE_NSYMS 61
+#define PS_HUFF_IID_DF_COARSE_OFFSET 14
+#define PS_HUFF_IID_DF_COARSE_NSYMS 29
+#define PS_HUFF_IID_DT_COARSE_OFFSET 14
+#define PS_HUFF_IID_DT_COARSE_NSYMS 29
 #define PS_HUFF_ICC_DF_NSYMS 15
 #define PS_HUFF_ICC_DT_NSYMS 15
 #define PS_HUFF_IPD_DF_NSYMS 8
@@ -30,6 +34,9 @@
 #define PS_HUFF_OPD_DT_NSYMS 8
 
 #define ps_iid_db_fine faac_ps_iid_db_fine
+#define ps_iid_db_coarse faac_ps_iid_db_coarse
+#define ps_iid_coarse_of_fine faac_ps_iid_coarse_of_fine
+#define ps_iid_coarse_exact faac_ps_iid_coarse_exact
 #define ps_icc_invq faac_ps_icc_invq
 
 typedef struct {
@@ -37,10 +44,18 @@ typedef struct {
 } PsHuffPackedEntry;
 
 extern const int8_t ps_iid_db_fine[31];
+extern const int8_t ps_iid_db_coarse[15];
+/* Nearest coarse IID index for each fine index (the coarse grid starts at -7), and a bit per fine
+ * index set when that coarse level is within 1 dB of it. Both derive from the two dB tables above;
+ * the unit test recomputes them. */
+extern const int8_t ps_iid_coarse_of_fine[31];
+extern const uint32_t ps_iid_coarse_exact;
 extern const float ps_icc_invq[8];
 
 extern const PsHuffPackedEntry faac_ps_huff_iid_df_fine_packed[PS_HUFF_IID_DF_FINE_NSYMS];
 extern const PsHuffPackedEntry faac_ps_huff_iid_dt_fine_packed[PS_HUFF_IID_DT_FINE_NSYMS];
+extern const PsHuffPackedEntry faac_ps_huff_iid_df_coarse_packed[PS_HUFF_IID_DF_COARSE_NSYMS];
+extern const PsHuffPackedEntry faac_ps_huff_iid_dt_coarse_packed[PS_HUFF_IID_DT_COARSE_NSYMS];
 extern const PsHuffPackedEntry faac_ps_huff_icc_df_packed[PS_HUFF_ICC_DF_NSYMS];
 extern const PsHuffPackedEntry faac_ps_huff_icc_dt_packed[PS_HUFF_ICC_DT_NSYMS];
 extern const PsHuffPackedEntry faac_ps_huff_ipd_df_packed[PS_HUFF_IPD_DF_NSYMS];
