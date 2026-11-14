@@ -27,6 +27,9 @@
 #include "util.h"
 #include "fft.h"
 
+/* Energy-weighted coherence-minus-real-ICC above which a frame sends IPD/OPD. */
+#define PS_PHASE_GAP 0.15f
+
 #define SBR_PS_BANDS PS_BANDS
 #define PHASE_BANDS PS_PHASE_BANDS
 #define SBR_PS_ICC_LEVELS 8
@@ -177,6 +180,28 @@ typedef struct {
     int enable_icc, enable_phase;
 } PsFrameParams;
 
+/* Energy-weighted amount by which the coherence magnitude exceeds the real-part ICC over the
+ * bands that could carry a phase difference. The extension costs about 10 bits a frame, and the
+ * real-part ICC already turns most phase offsets into lower coherence, so it is worth sending
+ * only where this gap is large (inter-channel delay, as in spaced-microphone speech). */
+static float ps_phase_gap(const float energy[2][64], const float crossReal[64],
+                          const float crossImag[64], int phases, float l, float r)
+{
+    float gap = 0;
+    for (int b = 0; b < phases; b++) {
+        float eL = energy[0][b], eR = energy[1][b];
+        if (eL + eR < 1e-6f * (l + r))
+            continue;
+        float denom = sqrtf(eL * eR) + SBR_ENERGY_FLOOR;
+        float coherence = hypotf(crossReal[b], crossImag[b]) / denom;
+        int ipd = ps_phase(crossReal[b], crossImag[b]);
+        if (coherence < 0.7f || ipd == 0 || ipd == 4)
+            continue;
+        gap += (eL + eR) * (fminf(coherence, 1.0f) - fmaxf(-1.0f, fminf(crossReal[b] / denom, 1.0f)));
+    }
+    return gap;
+}
+
 static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
                              const float crossImag[64], PsFrameParams *fd, int bands, int phases)
 {
@@ -189,6 +214,8 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
     float rho = cross / (sqrtf(l * r) + SBR_ENERGY_FLOOR);
     float w = 0.5f + 0.5f * fmaxf(0, fminf(1, -rho));
     fd->enable_phase = 0;
+    int keep_phase = ps_phase_gap(energy, crossReal, crossImag, phases, l, r) >=
+                     PS_PHASE_GAP * (l + r + SBR_ENERGY_FLOOR);
 
     for (int b = 0; b < bands; b++) {
         float eL = energy[0][b], eR = energy[1][b];
@@ -205,7 +232,7 @@ static void ps_analyze_frame(float energy[2][64], const float crossReal[64],
         float icc = eLR / denom;
         if (b < phases) {
             fd->ipd[b] = fd->opd[b] = 0;
-            if (eL + eR >= 1e-6f * (l + r)) {
+            if (keep_phase && eL + eR >= 1e-6f * (l + r)) {
                 float coherence = hypotf(eLR, eLRi) / denom;
                 if (coherence >= 0.7f) {
                     int ipd = ps_phase(eLR, eLRi);
