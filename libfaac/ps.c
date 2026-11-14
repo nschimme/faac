@@ -297,39 +297,49 @@ static inline int ps_carrier_bin(float lr, float li, float rr, float ri, float *
 }
 
 /* Returns false, with work undefined, when the packed transform is unreliable; the caller then
- * rebuilds work with separate transforms. */
+ * rebuilds work with separate transforms. Gather, correct and scatter are separate loops so the
+ * correction body exists once and each loop has a single store stream (it vectorizes). */
 static bool ps_carrier_spectrum(const float *__restrict lf, const float *__restrict rf,
                                 float *__restrict work, bool packed)
 {
-    int unreliable = 0;
+    float a[512], b[512], c[512], d[512];
+    int n = 512, unreliable = 0;
     if (!packed) {
-        for (int k = 0; k < 512; k++)
-            unreliable |= ps_carrier_bin(lf[k], lf[k + 512], rf[k], rf[k + 512], &work[k],
-                                         &work[k + 512], 0);
-        return true;
+        for (int k = 0; k < 512; k++) {
+            a[k] = lf[k];
+            b[k] = lf[k + 512];
+            c[k] = rf[k];
+            d[k] = rf[k + 512];
+        }
+    } else {
+        /* Bins 0 and 256 are their own mirrors: purely real and imaginary sums. The rest pair k
+         * with 512 - k, and the output spectrum is conjugate-symmetric. */
+        n = 257;
+        for (int k = 0; k <= 256; k += 256) {
+            a[k] = lf[k];
+            b[k] = 0.0f;
+            c[k] = lf[k + 512];
+            d[k] = 0.0f;
+        }
+        for (int k = 1; k < 256; k++) {
+            int m = 512 - k;
+            a[k] = 0.5f * (lf[k] + lf[m]);
+            b[k] = 0.5f * (lf[k + 512] - lf[m + 512]);
+            c[k] = 0.5f * (lf[k + 512] + lf[m + 512]);
+            d[k] = 0.5f * (lf[m] - lf[k]);
+        }
     }
-    /* Bins 0 and 256 are their own mirrors: purely real and imaginary sums, no pairing. */
-    for (int k = 0; k <= 256; k += 256)
-        unreliable |= ps_carrier_bin(lf[k], 0.0f, lf[k + 512], 0.0f, &work[k], &work[k + 512], 1);
-    /* The rest pair k with 512 - k, and the output spectrum is conjugate-symmetric. The bins go
-     * through scratch so each loop has a single store stream and vectorizes. */
-    float re[256], im[256];
-    for (int k = 1; k < 256; k++) {
-        int m = 512 - k;
-        float lr = 0.5f * (lf[k] + lf[m]);
-        float li = 0.5f * (lf[k + 512] - lf[m + 512]);
-        float rr = 0.5f * (lf[k + 512] + lf[m + 512]);
-        float ri = 0.5f * (lf[m] - lf[k]);
-        unreliable |= ps_carrier_bin(lr, li, rr, ri, &re[k], &im[k], 1);
+    for (int k = 0; k < n; k++)
+        unreliable |= ps_carrier_bin(a[k], b[k], c[k], d[k], &a[k], &b[k], packed);
+    for (int k = 0; k < n; k++) {
+        work[k] = a[k];
+        work[k + 512] = b[k];
     }
-    for (int k = 1; k < 256; k++) {
-        work[k] = re[k];
-        work[k + 512] = im[k];
-    }
-    for (int k = 1; k < 256; k++) {
-        work[512 - k] = re[k];
-        work[1024 - k] = -im[k];
-    }
+    if (packed)
+        for (int k = 1; k < 256; k++) {
+            work[512 - k] = a[k];
+            work[1024 - k] = -b[k];
+        }
     return !unreliable;
 }
 
