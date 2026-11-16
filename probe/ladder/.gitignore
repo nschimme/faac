@@ -1,3 +1,6 @@
 __pycache__/
 reemit_tool
 survey/
+
+# reference streams are data, the root *.m4a rule must not drop them
+!ref/**/*.m4a
