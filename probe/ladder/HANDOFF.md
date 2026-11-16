@@ -1,5 +1,7 @@
 # Handoff: LC at high bitrates vs Apple (2026-10-16)
 
+> **2026-11-16 update:** the 48 kHz Apple references in section 1, 6.3 and the index are superseded by `ref/apple-48k/` (77 full-length clips, LC 128-320, HE 32-64, HE-v2 24-48; see its README). The old `apple-s11-367cf8dc` set (49 clips, <=10 s, no 256/320) is deleted from the tree. Apple 256/320 streams now exist. Re-baseline the gap on the new set before trusting any BD-rate number below.
+
 **Scope: LC only.** HE-AAC is at parity with Apple and FDK on the maintainer's base. nschimme/faac#78 (SBR two-region master table, unit test, lifted stop cap at 44.1-48 kHz) was closed without merging on 2026-10-17; its branch `sbr-two-region-table` still exists. Do not reopen it or open a replacement from this handoff unless the maintainer asks.
 This probe branch records research. **Never merge it.** Production changes go to `nschimme/faac` as small separate PRs from the base branch (`he-v1-retune`, which moves; LC output on it is bit-identical to master).
 **Read [EXPERIMENTS.md](EXPERIMENTS.md) first: every experiment tried so far, with results and verdicts, so you don't repeat dead ends.**
