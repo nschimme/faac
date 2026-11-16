@@ -55,3 +55,9 @@ rewritten from these numbers afterwards.
 - Status at writing: the `.m4a` streams of all three packaged sets are not in the repository (`.gitignore` drops
   `*.m4a`; only README/manifest were committed). Until they are force-added, Apple/packaged-FDK/xaac rows cannot be
   scored and those comparisons are reported as blocked; FAAC vs `fdk_local` proceeds.
+
+## Addendum 2 2026-11-16 (before any stage 1 row was read)
+Stage 0: 0/77 rebuilt WAVs match `src_sha256` even after ISFT normalization, so "matched clips only" is empty. The
+second headline set is the 36 clips whose length equals the manifest-implied source length (exclusion list
+`stage0/clips_length_mismatch.txt`, 41 clips that are exactly one frame longer). This is a proxy, not a hash match;
+every headline is reported for all 77 and for the 36.
