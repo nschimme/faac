@@ -22,11 +22,9 @@
    "duration_s": 6.63425,
    "rms_dbfs": -22.669729091730577,
    "peak": 0.904052734375,
-   "manifest_stream_duration_s": [
-    6.698667,
-    6.784,
-    6.848
-   ]
+   "manifest_stream_duration_s": 6.698667,
+   "stream_minus_local_samples": 3092,
+   "length_consistent": true
   },
   {
    "clip": "03 eig.wav",
@@ -43,11 +41,9 @@
    "duration_s": 15.000791666666666,
    "rms_dbfs": -14.780558185073671,
    "peak": 0.988067626953125,
-   "manifest_stream_duration_s": [
-    15.061333,
-    15.146667,
-    15.168
-   ]
+   "manifest_stream_duration_s": 15.061333,
+   "stream_minus_local_samples": 2906,
+   "length_consistent": true
   },
   {
    "clip": "04 Bachpsichord.wav",
@@ -64,11 +60,9 @@
    "duration_s": 25.0001875,
    "rms_dbfs": -22.777177018109835,
    "peak": 0.549835205078125,
-   "manifest_stream_duration_s": [
-    25.045333,
-    25.130667,
-    25.216
-   ]
+   "manifest_stream_duration_s": 25.045333,
+   "stream_minus_local_samples": 2167,
+   "length_consistent": true
   },
   {
    "clip": "05 Enola.wav",
@@ -85,11 +79,9 @@
    "duration_s": 28.302458333333334,
    "rms_dbfs": -18.383188703647722,
    "peak": 0.802642822265625,
-   "manifest_stream_duration_s": [
-    28.352,
-    28.416,
-    28.48
-   ]
+   "manifest_stream_duration_s": 28.352,
+   "stream_minus_local_samples": 2378,
+   "length_consistent": true
   },
   {
    "clip": "06 trumpet.wav",
@@ -106,11 +98,9 @@
    "duration_s": 10.031,
    "rms_dbfs": -17.23239381332298,
    "peak": 0.94683837890625,
-   "manifest_stream_duration_s": [
-    10.090667,
-    10.154667,
-    10.24
-   ]
+   "manifest_stream_duration_s": 10.090667,
+   "stream_minus_local_samples": 2864,
+   "length_consistent": true
   },
   {
    "clip": "07 applaud.wav",
@@ -127,11 +117,9 @@
    "duration_s": 8.252083333333333,
    "rms_dbfs": -11.595222968338302,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    8.298667,
-    8.362667,
-    8.448
-   ]
+   "manifest_stream_duration_s": 8.298667,
+   "stream_minus_local_samples": 2236,
+   "length_consistent": true
   },
   {
    "clip": "08 velvet.wav",
@@ -148,11 +136,9 @@
    "duration_s": 11.878583333333333,
    "rms_dbfs": -13.002518735608879,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    11.925333,
-    11.989333,
-    12.096
-   ]
+   "manifest_stream_duration_s": 11.925333,
+   "stream_minus_local_samples": 2244,
+   "length_consistent": true
   },
   {
    "clip": "09 Linchpin.wav",
@@ -169,11 +155,9 @@
    "duration_s": 15.471708333333334,
    "rms_dbfs": -12.777030643242371,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    15.530667,
-    15.616,
-    15.68
-   ]
+   "manifest_stream_duration_s": 15.530667,
+   "stream_minus_local_samples": 2830,
+   "length_consistent": true
   },
   {
    "clip": "10 Angels_Fall_First_ringing.wav",
@@ -190,11 +174,9 @@
    "duration_s": 30.113270833333335,
    "rms_dbfs": -17.148198688490016,
    "peak": 0.7720947265625,
-   "manifest_stream_duration_s": [
-    30.165333,
-    30.250667,
-    30.336
-   ]
+   "manifest_stream_duration_s": 30.165333,
+   "stream_minus_local_samples": 2499,
+   "length_consistent": true
   },
   {
    "clip": "10xh_.wav",
@@ -211,11 +193,9 @@
    "duration_s": 30.000041666666668,
    "rms_dbfs": -19.95270013871084,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    30.058667,
-    30.122667,
-    30.208
-   ]
+   "manifest_stream_duration_s": 30.058667,
+   "stream_minus_local_samples": 2814,
+   "length_consistent": true
   },
   {
    "clip": "11 You look good to me.wav",
@@ -232,11 +212,9 @@
    "duration_s": 22.053979166666668,
    "rms_dbfs": -20.441306014070207,
    "peak": 0.888671875,
-   "manifest_stream_duration_s": [
-    22.101333,
-    22.186667,
-    22.272
-   ]
+   "manifest_stream_duration_s": 22.101333,
+   "stream_minus_local_samples": 2273,
+   "length_consistent": true
   },
   {
    "clip": "11ff_.wav",
@@ -253,11 +231,9 @@
    "duration_s": 29.9085625,
    "rms_dbfs": -26.270802711403533,
    "peak": 0.304534912109375,
-   "manifest_stream_duration_s": [
-    29.973333,
-    30.037333,
-    30.08
-   ]
+   "manifest_stream_duration_s": 29.973333,
+   "stream_minus_local_samples": 3109,
+   "length_consistent": true
   },
   {
    "clip": "12-German-male-speech.441.16b48k.wav",
@@ -274,11 +250,9 @@
    "duration_s": 7.840145833333334,
    "rms_dbfs": -22.168553241796136,
    "peak": 0.840118408203125,
-   "manifest_stream_duration_s": [
-    7.893333,
-    7.978667,
-    8.064
-   ]
+   "manifest_stream_duration_s": 7.893333,
+   "stream_minus_local_samples": 2553,
+   "length_consistent": true
   },
   {
    "clip": "12at_.wav",
@@ -295,11 +269,9 @@
    "duration_s": 19.144354166666666,
    "rms_dbfs": -30.37642339968887,
    "peak": 0.30426025390625,
-   "manifest_stream_duration_s": [
-    19.2,
-    19.285333,
-    19.328
-   ]
+   "manifest_stream_duration_s": 19.2,
+   "stream_minus_local_samples": 2671,
+   "length_consistent": true
   },
   {
    "clip": "13 fatboy_30sec.wav",
@@ -316,11 +288,9 @@
    "duration_s": 29.206604166666665,
    "rms_dbfs": -19.065832826374457,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    29.269333,
-    29.354667,
-    29.376
-   ]
+   "manifest_stream_duration_s": 29.269333,
+   "stream_minus_local_samples": 3011,
+   "length_consistent": true
   },
   {
    "clip": "13by_.wav",
@@ -337,11 +307,9 @@
    "duration_s": 24.494,
    "rms_dbfs": -11.375269842727125,
    "peak": 0.999969482421875,
-   "manifest_stream_duration_s": [
-    24.554667,
-    24.618667,
-    24.704
-   ]
+   "manifest_stream_duration_s": 24.554667,
+   "stream_minus_local_samples": 2912,
+   "length_consistent": true
   },
   {
    "clip": "14fe_.wav",
@@ -358,11 +326,9 @@
    "duration_s": 20.0044375,
    "rms_dbfs": -13.88981386160362,
    "peak": 0.944854736328125,
-   "manifest_stream_duration_s": [
-    20.053333,
-    20.138667,
-    20.224
-   ]
+   "manifest_stream_duration_s": 20.053333,
+   "stream_minus_local_samples": 2347,
+   "length_consistent": true
   },
   {
    "clip": "15-Good-evening.441.16b48k.wav",
@@ -379,11 +345,9 @@
    "duration_s": 8.565791666666666,
    "rms_dbfs": -18.20002780471916,
    "peak": 0.842498779296875,
-   "manifest_stream_duration_s": [
-    8.618667,
-    8.704,
-    8.768
-   ]
+   "manifest_stream_duration_s": 8.618667,
+   "stream_minus_local_samples": 2538,
+   "length_consistent": true
   },
   {
    "clip": "15ma_.wav",
@@ -400,11 +364,9 @@
    "duration_s": 17.468041666666668,
    "rms_dbfs": -18.31186085371237,
    "peak": 0.989532470703125,
-   "manifest_stream_duration_s": [
-    17.514667,
-    17.578667,
-    17.664
-   ]
+   "manifest_stream_duration_s": 17.514667,
+   "stream_minus_local_samples": 2238,
+   "length_consistent": true
   },
   {
    "clip": "16mb_.wav",
@@ -421,11 +383,9 @@
    "duration_s": 20.3809375,
    "rms_dbfs": -12.985079524888523,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    20.437333,
-    20.522667,
-    20.544
-   ]
+   "manifest_stream_duration_s": 20.437333,
+   "stream_minus_local_samples": 2707,
+   "length_consistent": true
   },
   {
    "clip": "17qu_.wav",
@@ -442,11 +402,9 @@
    "duration_s": 28.230791666666665,
    "rms_dbfs": -16.07202618309246,
    "peak": 0.9967041015625,
-   "manifest_stream_duration_s": [
-    28.288,
-    28.373333,
-    28.416
-   ]
+   "manifest_stream_duration_s": 28.288,
+   "stream_minus_local_samples": 2746,
+   "length_consistent": true
   },
   {
    "clip": "18vr_.wav",
@@ -463,11 +421,9 @@
    "duration_s": 10.329895833333333,
    "rms_dbfs": -19.372560775930584,
    "peak": 0.831817626953125,
-   "manifest_stream_duration_s": [
-    10.389333,
-    10.453333,
-    10.496
-   ]
+   "manifest_stream_duration_s": 10.389333,
+   "stream_minus_local_samples": 2853,
+   "length_consistent": true
   },
   {
    "clip": "19am_.wav",
@@ -484,11 +440,9 @@
    "duration_s": 25.097979166666665,
    "rms_dbfs": -17.071513634471295,
    "peak": 0.952911376953125,
-   "manifest_stream_duration_s": [
-    25.152,
-    25.216,
-    25.28
-   ]
+   "manifest_stream_duration_s": 25.152,
+   "stream_minus_local_samples": 2593,
+   "length_consistent": true
   },
   {
    "clip": "20tt_.wav",
@@ -505,11 +459,9 @@
    "duration_s": 29.0189375,
    "rms_dbfs": -21.544415029091546,
    "peak": 0.73712158203125,
-   "manifest_stream_duration_s": [
-    29.077333,
-    29.141333,
-    29.184
-   ]
+   "manifest_stream_duration_s": 29.077333,
+   "stream_minus_local_samples": 2803,
+   "length_consistent": true
   },
   {
    "clip": "21-classic.441.16b48k.wav",
@@ -526,11 +478,9 @@
    "duration_s": 9.656125,
    "rms_dbfs": -15.529413566825024,
    "peak": 0.841766357421875,
-   "manifest_stream_duration_s": [
-    9.706667,
-    9.770667,
-    9.856
-   ]
+   "manifest_stream_duration_s": 9.706667,
+   "stream_minus_local_samples": 2426,
+   "length_consistent": true
   },
   {
    "clip": "21wa_.wav",
@@ -547,11 +497,9 @@
    "duration_s": 20.1549375,
    "rms_dbfs": -13.032704651066487,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    20.202667,
-    20.266667,
-    20.352
-   ]
+   "manifest_stream_duration_s": 20.202667,
+   "stream_minus_local_samples": 2291,
+   "length_consistent": true
   },
   {
    "clip": "22ex_.wav",
@@ -568,11 +516,9 @@
    "duration_s": 20.00675,
    "rms_dbfs": -12.97422117061458,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    20.053333,
-    20.138667,
-    20.224
-   ]
+   "manifest_stream_duration_s": 20.053333,
+   "stream_minus_local_samples": 2236,
+   "length_consistent": true
   },
   {
    "clip": "23ht_.wav",
@@ -589,11 +535,9 @@
    "duration_s": 28.4059375,
    "rms_dbfs": -12.612589871326596,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    28.458667,
-    28.544,
-    28.608
-   ]
+   "manifest_stream_duration_s": 28.458667,
+   "stream_minus_local_samples": 2531,
+   "length_consistent": true
   },
   {
    "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
@@ -610,11 +554,9 @@
    "duration_s": 8.72,
    "rms_dbfs": -24.00558919964402,
    "peak": 0.84283447265625,
-   "manifest_stream_duration_s": [
-    8.768,
-    8.832,
-    8.896
-   ]
+   "manifest_stream_duration_s": 8.768,
+   "stream_minus_local_samples": 2304,
+   "length_consistent": true
   },
   {
    "clip": "24td_.wav",
@@ -631,11 +573,9 @@
    "duration_s": 19.858333333333334,
    "rms_dbfs": -23.09194796279784,
    "peak": 0.56689453125,
-   "manifest_stream_duration_s": [
-    19.904,
-    19.968,
-    20.032
-   ]
+   "manifest_stream_duration_s": 19.904,
+   "stream_minus_local_samples": 2192,
+   "length_consistent": true
   },
   {
    "clip": "25-This-is-the-end.441.16b48k.wav",
@@ -652,11 +592,9 @@
    "duration_s": 9.184354166666667,
    "rms_dbfs": -17.058353602136776,
    "peak": 0.84326171875,
-   "manifest_stream_duration_s": [
-    9.237333,
-    9.301333,
-    9.408
-   ]
+   "manifest_stream_duration_s": 9.237333,
+   "stream_minus_local_samples": 2543,
+   "length_consistent": true
   },
   {
    "clip": "25rb_.wav",
@@ -673,11 +611,9 @@
    "duration_s": 30.0,
    "rms_dbfs": -24.143746739072572,
    "peak": 0.5615234375,
-   "manifest_stream_duration_s": [
-    30.058667,
-    30.122667,
-    30.208
-   ]
+   "manifest_stream_duration_s": 30.058667,
+   "stream_minus_local_samples": 2816,
+   "length_consistent": true
   },
   {
    "clip": "26fr_.wav",
@@ -694,11 +630,9 @@
    "duration_s": 29.542875,
    "rms_dbfs": -22.03588995788261,
    "peak": 0.647979736328125,
-   "manifest_stream_duration_s": [
-    29.589333,
-    29.653333,
-    29.76
-   ]
+   "manifest_stream_duration_s": 29.589333,
+   "stream_minus_local_samples": 2230,
+   "length_consistent": true
   },
   {
    "clip": "27-last-song-drums-and-trampets.441.16b48k.wav",
@@ -715,11 +649,9 @@
    "duration_s": 9.965625,
    "rms_dbfs": -22.012322702021198,
    "peak": 0.838897705078125,
-   "manifest_stream_duration_s": [
-    10.026667,
-    10.112,
-    10.176
-   ]
+   "manifest_stream_duration_s": 10.026667,
+   "stream_minus_local_samples": 2930,
+   "length_consistent": true
   },
   {
    "clip": "27ud_.wav",
@@ -736,11 +668,9 @@
    "duration_s": 27.4508125,
    "rms_dbfs": -11.240631611892173,
    "peak": 1.0,
-   "manifest_stream_duration_s": [
-    27.498667,
-    27.562667,
-    27.648
-   ]
+   "manifest_stream_duration_s": 27.498667,
+   "stream_minus_local_samples": 2297,
+   "length_consistent": true
   },
   {
    "clip": "28db_.wav",
@@ -757,11 +687,9 @@
    "duration_s": 19.886833333333332,
    "rms_dbfs": -13.700868365259284,
    "peak": 0.99566650390625,
-   "manifest_stream_duration_s": [
-    19.946667,
-    20.010667,
-    20.096
-   ]
+   "manifest_stream_duration_s": 19.946667,
+   "stream_minus_local_samples": 2872,
+   "length_consistent": true
   },
   {
    "clip": "29ru_.wav",
@@ -778,11 +706,9 @@
    "duration_s": 19.992958333333334,
    "rms_dbfs": -10.484276391190985,
    "peak": 0.995574951171875,
-   "manifest_stream_duration_s": [
-    20.053333,
-    20.138667,
-    20.16
-   ]
+   "manifest_stream_duration_s": 20.053333,
+   "stream_minus_local_samples": 2898,
+   "length_consistent": true
   },
   {
    "clip": "35_SQAM_glockenspiel_cut.16b48k.wav",
@@ -799,11 +725,9 @@
    "duration_s": 23.45025,
    "rms_dbfs": -26.308733587984833,
    "peak": 0.60345458984375,
-   "manifest_stream_duration_s": [
-    23.509333,
-    23.594667,
-    23.616
-   ]
+   "manifest_stream_duration_s": 23.509333,
+   "stream_minus_local_samples": 2836,
+   "length_consistent": true
   },
   {
    "clip": "4-Sound-English-male.441.16b48k.wav",
@@ -820,11 +744,9 @@
    "duration_s": 9.028145833333333,
    "rms_dbfs": -19.247445125811254,
    "peak": 0.84185791015625,
-   "manifest_stream_duration_s": [
-    9.088,
-    9.173333,
-    9.216
-   ]
+   "manifest_stream_duration_s": 9.088,
+   "stream_minus_local_samples": 2873,
+   "length_consistent": true
   },
   {
    "clip": "9-Have-big-expensive-car.441.16b48k.wav",
@@ -841,11 +763,9 @@
    "duration_s": 9.7068125,
    "rms_dbfs": -18.876582097953985,
    "peak": 0.8333740234375,
-   "manifest_stream_duration_s": [
-    9.770667,
-    9.856,
-    9.92
-   ]
+   "manifest_stream_duration_s": 9.770667,
+   "stream_minus_local_samples": 3065,
+   "length_consistent": true
   },
   {
    "clip": "Asleep__4.11-4.31_.16b48k.wav",
@@ -862,11 +782,9 @@
    "duration_s": 20.0,
    "rms_dbfs": -11.338008120626053,
    "peak": 0.7366943359375,
-   "manifest_stream_duration_s": [
-    20.053333,
-    20.138667,
-    20.224
-   ]
+   "manifest_stream_duration_s": 20.053333,
+   "stream_minus_local_samples": 2560,
+   "length_consistent": true
   },
   {
    "clip": "Berling Drug.wav",
@@ -883,11 +801,9 @@
    "duration_s": 13.094979166666667,
    "rms_dbfs": -13.859633982682025,
    "peak": 0.994659423828125,
-   "manifest_stream_duration_s": [
-    13.141333,
-    13.226667,
-    13.312
-   ]
+   "manifest_stream_duration_s": 13.141333,
+   "stream_minus_local_samples": 2225,
+   "length_consistent": true
   },
   {
    "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
@@ -904,11 +820,9 @@
    "duration_s": 29.933333333333334,
    "rms_dbfs": -20.264358063012793,
    "peak": 0.740020751953125,
-   "manifest_stream_duration_s": [
-    29.994667,
-    30.08,
-    30.144
-   ]
+   "manifest_stream_duration_s": 29.994667,
+   "stream_minus_local_samples": 2944,
+   "length_consistent": true
   },
   {
    "clip": "Changes.16b48k.wav",
@@ -925,11 +839,9 @@
    "duration_s": 29.931708333333333,
    "rms_dbfs": -25.425025693934685,
    "peak": 0.750518798828125,
-   "manifest_stream_duration_s": [
-    29.994667,
-    30.08,
-    30.144
-   ]
+   "manifest_stream_duration_s": 29.994667,
+   "stream_minus_local_samples": 3022,
+   "length_consistent": true
   },
   {
    "clip": "Coral.16b48k.wav",
@@ -946,11 +858,9 @@
    "duration_s": 12.7010625,
    "rms_dbfs": -16.170005662278445,
    "peak": 0.63299560546875,
-   "manifest_stream_duration_s": [
-    12.757333,
-    12.842667,
-    12.864
-   ]
+   "manifest_stream_duration_s": 12.757333,
+   "stream_minus_local_samples": 2701,
+   "length_consistent": true
   },
   {
    "clip": "ExitMusic.16b48k.wav",
@@ -967,11 +877,9 @@
    "duration_s": 20.1060625,
    "rms_dbfs": -19.98281561456608,
    "peak": 0.586944580078125,
-   "manifest_stream_duration_s": [
-    20.16,
-    20.224,
-    20.288
-   ]
+   "manifest_stream_duration_s": 20.16,
+   "stream_minus_local_samples": 2589,
+   "length_consistent": true
   },
   {
    "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
@@ -988,11 +896,9 @@
    "duration_s": 13.7423125,
    "rms_dbfs": -24.093669236434433,
    "peak": 0.355133056640625,
-   "manifest_stream_duration_s": [
-    13.802667,
-    13.866667,
-    13.952
-   ]
+   "manifest_stream_duration_s": 13.802667,
+   "stream_minus_local_samples": 2897,
+   "length_consistent": true
   },
   {
    "clip": "Greatest_Love_of_All_2min57.16b48k.wav",
@@ -1009,11 +915,9 @@
    "duration_s": 20.178145833333332,
    "rms_dbfs": -19.9460759798672,
    "peak": 0.610015869140625,
-   "manifest_stream_duration_s": [
-    20.224,
-    20.309333,
-    20.352
-   ]
+   "manifest_stream_duration_s": 20.224,
+   "stream_minus_local_samples": 2201,
+   "length_consistent": true
   },
   {
    "clip": "Hey Tonight.16b48k.wav",
@@ -1030,11 +934,9 @@
    "duration_s": 20.0,
    "rms_dbfs": -15.684240649479067,
    "peak": 0.777374267578125,
-   "manifest_stream_duration_s": [
-    20.053333,
-    20.138667,
-    20.224
-   ]
+   "manifest_stream_duration_s": 20.053333,
+   "stream_minus_local_samples": 2560,
+   "length_consistent": true
   },
   {
    "clip": "Hotel California.16b48k.wav",
@@ -1051,11 +953,9 @@
    "duration_s": 30.762166666666666,
    "rms_dbfs": -17.40815772111436,
    "peak": 0.875640869140625,
-   "manifest_stream_duration_s": [
-    30.826667,
-    30.890667,
-    30.976
-   ]
+   "manifest_stream_duration_s": 30.826667,
+   "stream_minus_local_samples": 3096,
+   "length_consistent": true
   },
   {
    "clip": "Jupiter, the Bringer of Jolity.16b48k.wav",
@@ -1072,11 +972,9 @@
    "duration_s": 29.234145833333333,
    "rms_dbfs": -25.237201752528602,
    "peak": 0.571075439453125,
-   "manifest_stream_duration_s": [
-    29.290667,
-    29.354667,
-    29.44
-   ]
+   "manifest_stream_duration_s": 29.290667,
+   "stream_minus_local_samples": 2713,
+   "length_consistent": true
   },
   {
    "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
@@ -1093,11 +991,9 @@
    "duration_s": 25.4811875,
    "rms_dbfs": -11.289783229772116,
    "peak": 0.997283935546875,
-   "manifest_stream_duration_s": [
-    25.536,
-    25.6,
-    25.664
-   ]
+   "manifest_stream_duration_s": 25.536,
+   "stream_minus_local_samples": 2631,
+   "length_consistent": true
   },
   {
    "clip": "NewYorkCity.16b48k.wav",
@@ -1114,11 +1010,9 @@
    "duration_s": 29.849229166666667,
    "rms_dbfs": -13.00986102524637,
    "peak": 0.892364501953125,
-   "manifest_stream_duration_s": [
-    29.909333,
-    29.994667,
-    30.016
-   ]
+   "manifest_stream_duration_s": 29.909333,
+   "stream_minus_local_samples": 2885,
+   "length_consistent": true
   },
   {
    "clip": "Only Time.16b48k.wav",
@@ -1135,11 +1029,9 @@
    "duration_s": 24.671104166666666,
    "rms_dbfs": -15.581670528970887,
    "peak": 0.84039306640625,
-   "manifest_stream_duration_s": [
-    24.725333,
-    24.789333,
-    24.896
-   ]
+   "manifest_stream_duration_s": 24.725333,
+   "stream_minus_local_samples": 2603,
+   "length_consistent": true
   },
   {
    "clip": "Robots_old.16b48k.wav",
@@ -1156,11 +1048,9 @@
    "duration_s": 30.0,
    "rms_dbfs": -22.758710869017065,
    "peak": 0.610260009765625,
-   "manifest_stream_duration_s": [
-    30.058667,
-    30.122667,
-    30.208
-   ]
+   "manifest_stream_duration_s": 30.058667,
+   "stream_minus_local_samples": 2816,
+   "length_consistent": true
   },
   {
    "clip": "Severance__1.31-1.51_.16b48k.wav",
@@ -1177,11 +1067,9 @@
    "duration_s": 20.0,
    "rms_dbfs": -22.638696760841746,
    "peak": 0.4539794921875,
-   "manifest_stream_duration_s": [
-    20.053333,
-    20.138667,
-    20.224
-   ]
+   "manifest_stream_duration_s": 20.053333,
+   "stream_minus_local_samples": 2560,
+   "length_consistent": true
   },
   {
    "clip": "Shinsho_pool_3min45_4min4.16b48k.wav",
@@ -1198,11 +1086,9 @@
    "duration_s": 18.9241875,
    "rms_dbfs": -23.40526474970836,
    "peak": 0.5223388671875,
-   "manifest_stream_duration_s": [
-    18.986667,
-    19.072,
-    19.136
-   ]
+   "manifest_stream_duration_s": 18.986667,
+   "stream_minus_local_samples": 2999,
+   "length_consistent": true
   },
   {
    "clip": "SinceAlways.16b48k.wav",
@@ -1219,11 +1105,9 @@
    "duration_s": 18.191354166666667,
    "rms_dbfs": -15.26385102072615,
    "peak": 0.918304443359375,
-   "manifest_stream_duration_s": [
-    18.24,
-    18.304,
-    18.368
-   ]
+   "manifest_stream_duration_s": 18.24,
+   "stream_minus_local_samples": 2335,
+   "length_consistent": true
   },
   {
    "clip": "SlavesOfFear.16b48k.wav",
@@ -1240,11 +1124,9 @@
    "duration_s": 22.0,
    "rms_dbfs": -11.620595724973064,
    "peak": 0.82537841796875,
-   "manifest_stream_duration_s": [
-    22.058667,
-    22.144,
-    22.208
-   ]
+   "manifest_stream_duration_s": 22.058667,
+   "stream_minus_local_samples": 2816,
+   "length_consistent": true
   },
   {
    "clip": "The Chastising of Renegade.16b48k.wav",
@@ -1261,11 +1143,9 @@
    "duration_s": 20.0,
    "rms_dbfs": -18.15146708862618,
    "peak": 0.757232666015625,
-   "manifest_stream_duration_s": [
-    20.053333,
-    20.138667,
-    20.224
-   ]
+   "manifest_stream_duration_s": 20.053333,
+   "stream_minus_local_samples": 2560,
+   "length_consistent": true
   },
   {
    "clip": "Through The Fire And Flames.16b48k.wav",
@@ -1282,11 +1162,9 @@
    "duration_s": 29.789229166666665,
    "rms_dbfs": -12.73547666747826,
    "peak": 0.898345947265625,
-   "manifest_stream_duration_s": [
-    29.845333,
-    29.909333,
-    29.952
-   ]
+   "manifest_stream_duration_s": 29.845333,
+   "stream_minus_local_samples": 2693,
+   "length_consistent": true
   },
   {
    "clip": "TrosYGareg.16b48k.wav",
@@ -1303,11 +1181,9 @@
    "duration_s": 22.304395833333334,
    "rms_dbfs": -11.837126754154086,
    "peak": 0.82080078125,
-   "manifest_stream_duration_s": [
-    22.357333,
-    22.442667,
-    22.528
-   ]
+   "manifest_stream_duration_s": 22.357333,
+   "stream_minus_local_samples": 2541,
+   "length_consistent": true
   },
   {
    "clip": "With Love (Outro).16b48k.wav",
@@ -1324,11 +1200,9 @@
    "duration_s": 16.403125,
    "rms_dbfs": -16.365955417995753,
    "peak": 0.8756103515625,
-   "manifest_stream_duration_s": [
-    16.448,
-    16.512,
-    16.576
-   ]
+   "manifest_stream_duration_s": 16.448,
+   "stream_minus_local_samples": 2154,
+   "length_consistent": true
   },
   {
    "clip": "bah.wav",
@@ -1345,11 +1219,9 @@
    "duration_s": 9.481333333333334,
    "rms_dbfs": -23.499795211543606,
    "peak": 0.50390625,
-   "manifest_stream_duration_s": [
-    9.536,
-    9.6,
-    9.664
-   ]
+   "manifest_stream_duration_s": 9.536,
+   "stream_minus_local_samples": 2624,
+   "length_consistent": true
   },
   {
    "clip": "bas.wav",
@@ -1366,11 +1238,9 @@
    "duration_s": 11.93025,
    "rms_dbfs": -21.875148435266002,
    "peak": 0.61981201171875,
-   "manifest_stream_duration_s": [
-    11.989333,
-    12.074667,
-    12.096
-   ]
+   "manifest_stream_duration_s": 11.989333,
+   "stream_minus_local_samples": 2836,
+   "length_consistent": true
   },
   {
    "clip": "bonhemian_rhapsody.16b48k.wav",
@@ -1387,11 +1257,9 @@
    "duration_s": 28.504958333333335,
    "rms_dbfs": -30.83263477564973,
    "peak": 0.251190185546875,
-   "manifest_stream_duration_s": [
-    28.565333,
-    28.629333,
-    28.672
-   ]
+   "manifest_stream_duration_s": 28.565333,
+   "stream_minus_local_samples": 2898,
+   "length_consistent": true
   },
   {
    "clip": "clapton_44k.16b48k.wav",
@@ -1408,11 +1276,9 @@
    "duration_s": 14.9864375,
    "rms_dbfs": -23.583761842666874,
    "peak": 0.66229248046875,
-   "manifest_stream_duration_s": [
-    15.04,
-    15.104,
-    15.168
-   ]
+   "manifest_stream_duration_s": 15.04,
+   "stream_minus_local_samples": 2571,
+   "length_consistent": true
   },
   {
    "clip": "fms.wav",
@@ -1429,11 +1295,9 @@
    "duration_s": 11.101729166666667,
    "rms_dbfs": -22.06841035920651,
    "peak": 0.6346435546875,
-   "manifest_stream_duration_s": [
-    11.157333,
-    11.221333,
-    11.264
-   ]
+   "manifest_stream_duration_s": 11.157333,
+   "stream_minus_local_samples": 2669,
+   "length_consistent": true
   },
   {
    "clip": "girl.16b48k.wav",
@@ -1450,11 +1314,9 @@
    "duration_s": 15.957479166666667,
    "rms_dbfs": -17.58074884696963,
    "peak": 0.840057373046875,
-   "manifest_stream_duration_s": [
-    16.021333,
-    16.085333,
-    16.128
-   ]
+   "manifest_stream_duration_s": 16.021333,
+   "stream_minus_local_samples": 3065,
+   "length_consistent": true
   },
   {
    "clip": "glk.wav",
@@ -1471,11 +1333,9 @@
    "duration_s": 15.293625,
    "rms_dbfs": -26.992620323884843,
    "peak": 0.705322265625,
-   "manifest_stream_duration_s": [
-    15.338667,
-    15.402667,
-    15.488
-   ]
+   "manifest_stream_duration_s": 15.338667,
+   "stream_minus_local_samples": 2162,
+   "length_consistent": true
   },
   {
    "clip": "hrp.wav",
@@ -1492,11 +1352,9 @@
    "duration_s": 8.7931875,
    "rms_dbfs": -25.05810436902465,
    "peak": 0.490264892578125,
-   "manifest_stream_duration_s": [
-    8.853333,
-    8.917333,
-    8.96
-   ]
+   "manifest_stream_duration_s": 8.853333,
+   "stream_minus_local_samples": 2887,
+   "length_consistent": true
   },
   {
    "clip": "liberate.16b48k.wav",
@@ -1513,11 +1371,9 @@
    "duration_s": 5.007145833333333,
    "rms_dbfs": -10.571765836890709,
    "peak": 0.9146728515625,
-   "manifest_stream_duration_s": [
-    5.056,
-    5.12,
-    5.184
-   ]
+   "manifest_stream_duration_s": 5.056,
+   "stream_minus_local_samples": 2345,
+   "length_consistent": true
   },
   {
    "clip": "lob.wav",
@@ -1534,11 +1390,9 @@
    "duration_s": 7.092229166666667,
    "rms_dbfs": -24.856809851634573,
    "peak": 0.798980712890625,
-   "manifest_stream_duration_s": [
-    7.146667,
-    7.210667,
-    7.296
-   ]
+   "manifest_stream_duration_s": 7.146667,
+   "stream_minus_local_samples": 2613,
+   "length_consistent": true
   },
   {
    "clip": "mof.wav",
@@ -1555,11 +1409,9 @@
    "duration_s": 10.648354166666667,
    "rms_dbfs": -22.79724484369146,
    "peak": 0.63897705078125,
-   "manifest_stream_duration_s": [
-    10.709333,
-    10.794667,
-    10.816
-   ]
+   "manifest_stream_duration_s": 10.709333,
+   "stream_minus_local_samples": 2927,
+   "length_consistent": true
   },
   {
    "clip": "qrt.wav",
@@ -1576,11 +1428,9 @@
    "duration_s": 12.271770833333333,
    "rms_dbfs": -20.973353079375986,
    "peak": 0.64044189453125,
-   "manifest_stream_duration_s": [
-    12.330667,
-    12.416,
-    12.48
-   ]
+   "manifest_stream_duration_s": 12.330667,
+   "stream_minus_local_samples": 2827,
+   "length_consistent": true
   },
   {
    "clip": "sandman.16b48k.wav",
@@ -1597,11 +1447,9 @@
    "duration_s": 30.002270833333334,
    "rms_dbfs": -17.39748182511127,
    "peak": 0.871124267578125,
-   "manifest_stream_duration_s": [
-    30.058667,
-    30.122667,
-    30.208
-   ]
+   "manifest_stream_duration_s": 30.058667,
+   "stream_minus_local_samples": 2707,
+   "length_consistent": true
   },
   {
    "clip": "take_your_finger_frin_my_head.16b48k.wav",
@@ -1618,11 +1466,9 @@
    "duration_s": 22.0920625,
    "rms_dbfs": -17.063044579246597,
    "peak": 0.737518310546875,
-   "manifest_stream_duration_s": [
-    22.144,
-    22.229333,
-    22.272
-   ]
+   "manifest_stream_duration_s": 22.144,
+   "stream_minus_local_samples": 2493,
+   "length_consistent": true
   }
  ]
 }

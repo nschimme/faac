@@ -1,0 +1,7 @@
+{
+ "faac":  {"kind": "faac",   "bin": "/home/user/work/faac-master/build/frontend/faac", "flags": [], "env": {}},
+ "faac2": {"kind": "faac",   "bin": "/home/user/work/faac-master/build/frontend/faac", "flags": [], "env": {}},
+ "fdk":   {"kind": "fdkaac", "bin": "/home/user/work/fdkaac-src/fdkaac", "flags": [], "env": {}},
+ "xaac":  {"kind": "xaac",   "bin": "/home/user/work/fb/bin/xaacenc", "flags": [], "env": {}},
+ "apple": {"kind": "apple",  "bin": "", "flags": [], "env": {}}
+}
