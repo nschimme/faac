@@ -46,3 +46,12 @@ No encoder change. Research only.
 ## Not done here
 No arms, no code. Results go to `RESULTS.md` with raw per-clip rows (`rows_*.jsonl`). HANDOFF sections 1-2 are
 rewritten from these numbers afterwards.
+
+## Addendum 2026-11-16 (before any scoring)
+- FDK and libxaac arms: use the packaged streams in `ref/fdk-48k/` (LC 128-320, HE 32-64, HE-v2 24-48) and
+  `ref/xaac-48k/` (HE 32-64, HE-v2 24-48), since those are what the leaderboard scored; check their `src_sha256`
+  against the rebuilt WAVs as for Apple. Locally encoded fdkaac rows (rungs outside the packaged set, CBR/VBR) are
+  labelled `fdk_local`.
+- Status at writing: the `.m4a` streams of all three packaged sets are not in the repository (`.gitignore` drops
+  `*.m4a`; only README/manifest were committed). Until they are force-added, Apple/packaged-FDK/xaac rows cannot be
+  scored and those comparisons are reported as blocked; FAAC vs `fdk_local` proceeds.
