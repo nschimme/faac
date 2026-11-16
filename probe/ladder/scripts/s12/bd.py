@@ -9,6 +9,9 @@ sys.path.insert(0, FB)
 from scripts.bd_rate import bd_rate_curve  # noqa: E402
 
 
+REFARMS = {'apple', 'fdkref', 'xaacref'}
+
+
 def load(files, mode, profile, decoder, metric='mos'):
     d = {}  # (arm, clip, rung) -> (kbps, metric)  (last row wins)
     for f in files:
@@ -16,7 +19,8 @@ def load(files, mode, profile, decoder, metric='mos'):
             r = json.loads(l)
             if r.get('decoder') != decoder or r.get('error') or r.get(metric) is None:
                 continue
-            if mode and r['mode'] != mode or profile and r['profile'] != profile:
+            # packaged refs have one stream set; match them in every mode
+            if mode and r['mode'] != mode and r['arm'] not in REFARMS or profile and r['profile'] != profile:
                 continue
             d[(r['arm'], r['clip'], int(r['rung']))] = (r['kbps_realized'], r[metric])
     return d

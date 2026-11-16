@@ -1,7 +1,58 @@
 {
- "faac":  {"kind": "faac",   "bin": "/home/user/work/faac-master/build/frontend/faac", "flags": [], "env": {}},
- "faac2": {"kind": "faac",   "bin": "/home/user/work/faac-master/build/frontend/faac", "flags": [], "env": {}},
- "fdk":   {"kind": "fdkaac", "bin": "/home/user/work/fdkaac-src/fdkaac", "flags": [], "env": {}},
- "xaac":  {"kind": "xaac",   "bin": "/home/user/work/fb/bin/xaacenc", "flags": [], "env": {}},
- "apple": {"kind": "apple",  "bin": "", "flags": [], "env": {}}
+ "faac": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build/frontend/faac",
+  "flags": [],
+  "env": {}
+ },
+ "faac2": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build/frontend/faac",
+  "flags": [],
+  "env": {}
+ },
+ "fdk": {
+  "kind": "fdkaac",
+  "bin": "/home/user/work/fdkaac-src/fdkaac",
+  "flags": [],
+  "env": {}
+ },
+ "xaac": {
+  "kind": "xaac",
+  "bin": "/home/user/work/fb/bin/xaacenc",
+  "flags": [],
+  "env": {}
+ },
+ "apple": {
+  "kind": "apple",
+  "bin": "",
+  "flags": [],
+  "env": {}
+ },
+ "fdk_local": {
+  "kind": "fdkaac",
+  "bin": "/home/user/work/fdkaac-src/fdkaac",
+  "flags": [],
+  "env": {}
+ },
+ "fdkref": {
+  "kind": "apple",
+  "root": "/home/user/faac/probe/ladder/ref/fdk-48k",
+  "bin": "",
+  "flags": [],
+  "env": {}
+ },
+ "xaacref": {
+  "kind": "apple",
+  "root": "/home/user/faac/probe/ladder/ref/xaac-48k",
+  "bin": "",
+  "flags": [],
+  "env": {}
+ },
+ "faacps": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build-ps/frontend/faac",
+  "flags": [],
+  "env": {}
+ }
 }

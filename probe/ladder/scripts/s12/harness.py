@@ -58,9 +58,9 @@ def encode_cmd(arm, clip_path, out, profile, mode, rung):
     return cmd
 
 
-def apple_path(clip, profile, rung):
-    d = {'lc': 'lc', 'he': 'he', 'hev2': 'hev2'}[profile]
-    return f'{APPLE}/{d}/{rung}k/{clip}.m4a'
+def apple_path(clip, profile, rung, root=None):
+    # packaged reference sets share one layout: <root>/{lc,he,hev2}/<rung>k/<clip>.m4a
+    return f'{root or APPLE}/{profile}/{rung}k/{clip}.m4a'
 
 
 def decode(dec, stream, raw, tmp):
@@ -137,7 +137,7 @@ def job(a):
         d = f'{outroot}/{arm_name}/{profile}/{mode}/{rung}'
         os.makedirs(d, exist_ok=True)
         if arm['kind'] == 'apple':
-            enc = apple_path(clip, profile, rung)
+            enc = apple_path(clip, profile, rung, arm.get('root'))
             if not os.path.exists(enc):
                 return [dict(base, decoder=x, error='apple_stream_missing') for x in decs]
         else:
