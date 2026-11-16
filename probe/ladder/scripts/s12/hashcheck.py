@@ -46,7 +46,7 @@ def main():
     exp, mdur = {}, {}
     for r in m['rows']:
         exp[r['clip']] = r['src_sha256']
-        mdur.setdefault(r['clip'], set()).add(round(r['duration_s'], 6))
+        if r['profile'] == 'lc': mdur.setdefault(r['clip'], set()).add(round(r['duration_s'], 6))
     good = []  # ISFT versions that matched so far (tried first)
     rows = []
     for clip in sorted(exp):
@@ -70,11 +70,14 @@ def main():
                 o = swap_isft(b, KNOWN[0])
                 row['sha256_norm'] = sha(o) if o else None
         row.update(info(p))
-        # manifest only has Apple-stream duration_s (not source frames)
+        # manifest has only Apple LC-stream duration_s (not source frames)
         md = sorted(mdur[clip])
         row['manifest_stream_duration_s'] = md[0] if len(md) == 1 else md
         if len(md) == 1:
-            row['stream_minus_local_samples'] = round((md[0] - row['duration_s']) * 48000, 1)
+            d = round(md[0] * 48000) - row['frames']
+            row['stream_minus_local_samples'] = d
+            # LC stream = source + 2112 priming + pad to 1024 multiple -> d in [2112, 3136)
+            row['length_consistent'] = 2112 <= d < 2112 + 1024
         rows.append(row)
     json.dump(dict(manifest=MAN, ffmpeg_used_to_build_corpus=m.get('ffmpeg_used_to_build_corpus'),
                    n=len(rows), present=sum(r['present'] for r in rows),
@@ -85,7 +88,7 @@ def main():
          f"Manifest: `{MAN}` (corpus built with ffmpeg {m.get('ffmpeg_used_to_build_corpus')}); local ffmpeg 6.1.1.", '',
          f"present {sum(r['present'] for r in rows)}/{len(rows)}; raw match {sum(bool(r.get('match_raw')) for r in rows)}; "
          f"match after ISFT normalization {sum(bool(r.get('match_norm')) for r in rows)}; ISFT versions that matched: {good or 'none'}", '',
-         'stream-local = (manifest Apple-stream duration_s - local duration) in samples @48k (not a source-length field; Apple adds priming/padding).', '',
+         'stream-local = (manifest Apple LC-stream duration_s - local duration) in samples @48k (not a source-length field; Apple adds 2112 priming + pad to 1024; consistent iff 2112<=d<3136).', f"length-consistent clips: {sum(bool(r.get('length_consistent')) for r in rows)}/{len(rows)}", '',
          '| clip | present | raw | norm | frames | dur s | rate/ch | RMS dBFS | stream-local smp | sha256 raw (16) | manifest (16) |',
          '|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
