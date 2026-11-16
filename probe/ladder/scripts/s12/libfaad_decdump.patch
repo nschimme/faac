@@ -1,0 +1,159 @@
+diff --git a/libfaad/decoder.c b/libfaad/decoder.c
+index 162a779..f37fa44 100644
+--- a/libfaad/decoder.c
++++ b/libfaad/decoder.c
+@@ -1031,6 +1031,65 @@ static void core_dump_ics(int ch, const ICSInfo *ics, const float *spec,
+ }
+ #endif
+ 
++
++/* FAAD_DECDUMP: one text record per decision; F/I/B per element, S/P in sbr.c */
++FILE *faad_decdump;
++int faad_decdump_frame = -1;
++static bool decdump_tried;
++
++static void decdump_frame_begin(void)
++{
++    if (!decdump_tried) {
++        decdump_tried = true;
++        const char *path = getenv("FAAD_DECDUMP");
++        if (path && *path) faad_decdump = fopen(path, "w");
++    }
++    faad_decdump_frame++;
++}
++
++static void decdump_rate(const faad_decoder *d)
++{
++    if (faad_decdump && faad_decdump_frame == 0)
++        fprintf(faad_decdump, "R %u %u %u\n", d->core_sample_rate, FRAME_IS_960(d) ? 960 : 1024,
++                d->core_channels);
++}
++
++static void decdump_elem(const char *type, int ch, const CPEInfo *cpe, const ICSInfo *ics, bool pair)
++{
++    FILE *f = faad_decdump;
++    int fr = faad_decdump_frame;
++    int msm = pair ? (int)cpe->ms_mask_present : 0;
++    if (ch == -1) {
++        fprintf(f, "F %d %s %d %d\n", fr, type, pair ? (int)cpe->common_window : 0, msm);
++        return;
++    }
++    int nwin = ics->window_sequence == EIGHT_SHORT_SEQUENCE ? 8 : 1;
++    fprintf(f, "I %d %d %u %u %u %u ", fr, ch, ics->window_sequence, ics->window_shape,
++            ics->max_sfb, ics->num_window_groups);
++    for (int g = 0; g < ics->num_window_groups && g < 8; g++)
++        fprintf(f, "%s%u", g ? "," : "", ics->window_group_length[g]);
++    fprintf(f, " %u %d ", ics->global_gain, (int)ics->tns_data_present);
++    for (int w = 0; w < nwin; w++)
++        fprintf(f, "%s%u", w ? "," : "", ics->tns_data_present ? ics->tns_n_filt[w] : 0);
++    fputc(' ', f);
++    bool any = false;
++    for (int w = 0; w < nwin && ics->tns_data_present; w++)
++        for (int k = 0; k < ics->tns_n_filt[w] && k < 4; k++) {
++            fprintf(f, "%sw%d:o%u/l%u", any ? "+" : "", w, ics->tns_order[w][k], ics->tns_length[w][k]);
++            any = true;
++        }
++    if (!any) fputc('-', f);
++    fprintf(f, " %d %d\n", (int)ics->pulse_data_present, (int)ics->gain_control_present);
++    for (int g = 0; g < ics->num_window_groups && g < 8; g++)
++        for (int sfb = 0; sfb < ics->max_sfb && sfb < MAX_SFB; sfb++) {
++            int ms = 0;
++            if (pair && cpe->ms_mask_present == MS_MASK_ALL) ms = 1;
++            else if (pair && cpe->ms_mask_present == MS_MASK_EXPLICIT) ms = cpe->ms_used[g][sfb] != 0;
++            fprintf(f, "B %d %d %d %d %u %u %u %d %d\n", fr, ch, g, sfb, ics->sfb_offsets[sfb],
++                    ics->sfb_offsets[sfb + 1], ics->sfb_cb[g][sfb], ics->scalefactors[g][sfb], ms);
++        }
++}
++
+ /* Clamp and round to nearest: truncating toward zero costs the output half
+  * an LSB of error against any rounding decoder, on every sample. */
+ static inline int16_t pcm_to_s16(float v)
+@@ -1125,6 +1184,8 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
+     }
+     *bytes_consumed = adts_frame_len;
+     decoder->num_channels = decoder->core_channels;
++    decdump_frame_begin();
++    decdump_rate(decoder);
+ #ifndef FAAD_DISABLE_DRC
+     decoder->drc.present = false;
+ #endif
+@@ -1202,6 +1263,10 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
+                 core_dump_ics(elem_ch, ics, decoder->spec[elem_ch], NULL,
+                               bits_get_consumed(&bs) - b0);
+ #endif
++                if (faad_decdump) {
++                    decdump_elem(syntax_id == ID_LFE ? "LFE" : "SCE", -1, NULL, ics, false);
++                    decdump_elem(NULL, (int)elem_ch, NULL, ics, false);
++                }
+                 decoder->win_seq[elem_ch] = ics->window_sequence;
+                 decoder->win_shape[elem_ch] = ics->window_shape;
+                 apply_pns(ics, decoder->spec[elem_ch], &decoder->pns_seed);
+@@ -1248,6 +1313,11 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *decoder,
+                     core_dump_ics(elem_ch + 1, &cpe->ics[1], decoder->spec[elem_ch + 1], ms, cpe->ms_mask_present);
+                 }
+ #endif
++                if (faad_decdump) {
++                    decdump_elem("CPE", -1, cpe, &cpe->ics[0], true);
++                    decdump_elem(NULL, (int)elem_ch, cpe, &cpe->ics[0], true);
++                    decdump_elem(NULL, (int)elem_ch + 1, cpe, &cpe->ics[1], true);
++                }
+                 for (uint32_t i = 0; i < 2; i++) {
+                     decoder->win_seq[elem_ch + i] = cpe->ics[i].window_sequence;
+                     decoder->win_shape[elem_ch + i] = cpe->ics[i].window_shape;
+diff --git a/libfaad/faad_internal.h b/libfaad/faad_internal.h
+index 868a776..4390fad 100644
+--- a/libfaad/faad_internal.h
++++ b/libfaad/faad_internal.h
+@@ -13,6 +13,7 @@
+  * Lesser General Public License for more details.
+  */
+ 
++#include <stdio.h>
+ #include "faad_symbols.h"
+ 
+ #ifndef FAAD_INTERNAL_H
+@@ -597,5 +598,8 @@ faad_status faad_ensure_ps(struct faad_decoder *dec);
+ #ifdef FAAD_STATS
+ FILE *faad_dump_file(void);
+ #endif
++/* Encoder-decision text dump, enabled by env FAAD_DECDUMP=<path>. */
++extern FILE *faad_decdump;
++extern int faad_decdump_frame;
+ 
+ #endif /* FAAD_INTERNAL_H */
+diff --git a/libfaad/sbr.c b/libfaad/sbr.c
+index ca353ff..3d981fe 100644
+--- a/libfaad/sbr.c
++++ b/libfaad/sbr.c
+@@ -804,6 +804,13 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
+                 uint32_t here = bits_get_consumed(bs);
+                 if (faad_ensure_ps(dec) != FAAD_OK) return FAAD_ERR_NO_MEMORY;
+                 ps_read_data(dec, bs, end > here ? end - here : 0);
++                if (faad_decdump && dec->ps) {
++                    const PSState *p = dec->ps;
++                    int im = -1;
++                    if (p->enable_iid) im = (p->nr_iid_par == 10 ? 0 : p->nr_iid_par == 20 ? 1 : 2) + (p->iid_quant ? 3 : 0);
++                    fprintf(faad_decdump, "P %d %d %d %u %d %d\n", faad_decdump_frame, (int)p->enable_iid,
++                            (int)p->enable_icc, p->num_env, im, p->enable_icc ? (int)p->icc_mode : -1);
++                }
+ #ifdef FAAD_STATS
+                 g_faadStats.framePsBits += bits_get_consumed(bs) - here;
+ #endif
+@@ -825,6 +832,17 @@ static faad_status sbr_read_extension(struct faad_decoder *dec, BitReader *bs, u
+         chs[c]->have_frame = true;
+         chs[c]->el_ch = (uint8_t)ch0;
+     }
++    if (faad_decdump) {
++        for (int c = 0; c < nch; c++) {
++            const SBRChannel *ch = chs[c];
++            fprintf(faad_decdump, "S %d %u %d %u %u %u %u %u %u %u ", faad_decdump_frame, ch0 + c,
++                    (int)el->amp_res, el->start_freq, el->stop_freq, el->xover_band, el->freq_scale,
++                    ch->L_E, ch->frame_class, ch->L_Q);
++            for (int k = 0; k < el->n_q && k < SBR_MAX_NQ; k++)
++                fprintf(faad_decdump, "%s%u", k ? "," : "", ch->invf_mode[k]);
++            fprintf(faad_decdump, " %d %d\n", (int)ch->add_harmonic_flag, (int)el->coupling);
++        }
++    }
+     dec->sbr_present = true;
+     return FAAD_OK;
+ }
