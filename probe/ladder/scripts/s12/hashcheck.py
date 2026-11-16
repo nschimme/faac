@@ -47,6 +47,12 @@ def main():
     for r in m['rows']:
         exp[r['clip']] = r['src_sha256']
         if r['profile'] == 'lc': mdur.setdefault(r['clip'], set()).add(round(r['duration_s'], 6))
+    other = {}
+    for nm in ('fdk-48k', 'xaac-48k'):
+        mm = json.load(open(MAN.replace('apple-48k', nm)))
+        other[nm] = {}
+        for r in mm['rows']:
+            other[nm].setdefault(r['clip'], set()).add(r['src_sha256'])
     good = []  # ISFT versions that matched so far (tried first)
     rows = []
     for clip in sorted(exp):
@@ -56,6 +62,10 @@ def main():
             rows.append(row); continue
         b = open(p, 'rb').read()
         row['sha256_raw'] = sha(b); row['match_raw'] = row['sha256_raw'] == exp[clip]
+        for nm in other:
+            hs = other[nm].get(clip, set())
+            row[nm.split('-')[0] + '_manifest_sha_same_as_apple'] = (hs == {exp[clip]}) if hs else None
+            row[nm.split('-')[0] + '_match_raw'] = row['sha256_raw'] in hs
         row['sha256_norm'] = None; row['match_norm'] = row['match_raw']; row['isft_matched'] = None
         if not row['match_raw']:
             for v in good + [c for c in cands() if c not in good]:
@@ -86,15 +96,16 @@ def main():
                    isft_versions_matched=good, rows=rows), open(os.path.join(a.out, 'hash_table.json'), 'w'), indent=1)
     L = ['# Corpus hash check', '',
          f"Manifest: `{MAN}` (corpus built with ffmpeg {m.get('ffmpeg_used_to_build_corpus')}); local ffmpeg 6.1.1.", '',
+         f"fdk/xaac manifests' src_sha256 identical to apple's for all clips: {all(r.get('fdk_manifest_sha_same_as_apple') and r.get('xaac_manifest_sha_same_as_apple') for r in rows if r['present'])}; raw match vs fdk manifest {sum(bool(r.get('fdk_match_raw')) for r in rows)}, vs xaac manifest {sum(bool(r.get('xaac_match_raw')) for r in rows)}", '',
          f"present {sum(r['present'] for r in rows)}/{len(rows)}; raw match {sum(bool(r.get('match_raw')) for r in rows)}; "
          f"match after ISFT normalization {sum(bool(r.get('match_norm')) for r in rows)}; ISFT versions that matched: {good or 'none'}", '',
          'stream-local = (manifest Apple LC-stream duration_s - local duration) in samples @48k (not a source-length field; Apple adds 2112 priming + pad to 1024; consistent iff 2112<=d<3136).', f"length-consistent clips: {sum(bool(r.get('length_consistent')) for r in rows)}/{len(rows)}", '',
-         '| clip | present | raw | norm | frames | dur s | rate/ch | RMS dBFS | stream-local smp | sha256 raw (16) | manifest (16) |',
-         '|---|---|---|---|---|---|---|---|---|---|---|']
+         '| clip | present | raw | raw fdk | raw xaac | norm | frames | dur s | rate/ch | RMS dBFS | stream-local smp | sha256 raw (16) | manifest (16) |',
+         '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
         if not r['present']:
-            L.append(f"| {r['clip']} | no | | | | | | | | | {r['manifest_sha256'][:16]} |"); continue
-        L.append(f"| {r['clip']} | y | {'Y' if r['match_raw'] else 'n'} | {'Y' if r['match_norm'] else 'n'} | {r['frames']} | {r['duration_s']:.4f} | "
+            L.append(f"| {r['clip']} | no | | | | | | | | | | | {r['manifest_sha256'][:16]} |"); continue
+        L.append(f"| {r['clip']} | y | {'Y' if r['match_raw'] else 'n'} | {'Y' if r['fdk_match_raw'] else 'n'} | {'Y' if r['xaac_match_raw'] else 'n'} | {'Y' if r['match_norm'] else 'n'} | {r['frames']} | {r['duration_s']:.4f} | "
                  f"{r['rate']}/{r['channels']} | {r['rms_dbfs']:.2f} | {r.get('stream_minus_local_samples','')} | {r['sha256_raw'][:16]} | {r['manifest_sha256'][:16]} |")
     open(os.path.join(a.out, 'hash_table.md'), 'w').write('\n'.join(L) + '\n')
     print(L[3])

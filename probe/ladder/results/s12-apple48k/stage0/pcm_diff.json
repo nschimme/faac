@@ -1,0 +1,3005 @@
+[
+ {
+  "clip": "01 castanets.wav",
+  "frames": 318444,
+  "header": {
+   "riff_size": 1273846,
+   "file_size": 1273854,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1273776
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 6.63425,
+  "manifest_frames": 318444,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/01 castanets.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 319424,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 26.226009852596977
+ },
+ {
+  "clip": "03 eig.wav",
+  "frames": 720038,
+  "header": {
+   "riff_size": 2880222,
+   "file_size": 2880230,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2880152
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 15.000792,
+  "manifest_frames": 720038,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/03 eig.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 720832,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 36.61883555821549
+ },
+ {
+  "clip": "04 Bachpsichord.wav",
+  "frames": 1200009,
+  "header": {
+   "riff_size": 4800106,
+   "file_size": 4800114,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     4800036
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 25.000167,
+  "manifest_frames": 1200008,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/04 Bachpsichord.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1200064,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 34.80183383478955
+ },
+ {
+  "clip": "05 Enola.wav",
+  "frames": 1358518,
+  "header": {
+   "riff_size": 5434142,
+   "file_size": 5434150,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5434072
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 28.302458,
+  "manifest_frames": 1358518,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/05 Enola.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1358784,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 34.227640013866115
+ },
+ {
+  "clip": "06 trumpet.wav",
+  "frames": 481488,
+  "header": {
+   "riff_size": 1926068,
+   "file_size": 1926076,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     72
+    ],
+    [
+     "data",
+     1925952
+    ]
+   ],
+   "isft": "INFOICMT%Don Ellis \"Just One Of Those Things\"ISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 10.031,
+  "manifest_frames": 481488,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/06 trumpet.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 482240,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.129458416794556
+ },
+ {
+  "clip": "07 applaud.wav",
+  "frames": 396100,
+  "header": {
+   "riff_size": 1584470,
+   "file_size": 1584478,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1584400
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 8.252083,
+  "manifest_frames": 396100,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/07 applaud.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 396224,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 25.291268684570277
+ },
+ {
+  "clip": "08 velvet.wav",
+  "frames": 570172,
+  "header": {
+   "riff_size": 2280758,
+   "file_size": 2280766,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2280688
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 11.878583,
+  "manifest_frames": 570172,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/08 velvet.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 570304,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 29.91113015930269
+ },
+ {
+  "clip": "09 Linchpin.wav",
+  "frames": 742642,
+  "header": {
+   "riff_size": 2970752,
+   "file_size": 2970760,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     140
+    ],
+    [
+     "data",
+     2970568
+    ]
+   ],
+   "isft": "INFOIART\rFear FactoryICRD\u00052001IGNR\u0011Industrial MetalINAM\f09 LinchpinIPRD\u000bDigimortalIPRT\u000309ISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 15.471708,
+  "manifest_frames": 742642,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/09 Linchpin.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 743360,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 29.091401700351547
+ },
+ {
+  "clip": "10 Angels_Fall_First_ringing.wav",
+  "frames": 1445437,
+  "header": {
+   "riff_size": 5781818,
+   "file_size": 5781826,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5781748
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 30.11325,
+  "manifest_frames": 1445436,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/10 Angels_Fall_First_ringing.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1445824,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 35.75097337115051
+ },
+ {
+  "clip": "10xh_.wav",
+  "frames": 1440002,
+  "header": {
+   "riff_size": 5760212,
+   "file_size": 5760220,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     160
+    ],
+    [
+     "data",
+     5760008
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #10; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlINAM\u001041_30sec hihatsISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 30.000042,
+  "manifest_frames": 1440002,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/10xh_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1440704,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 25.937602772809356
+ },
+ {
+  "clip": "11 You look good to me.wav",
+  "frames": 1058591,
+  "header": {
+   "riff_size": 4234468,
+   "file_size": 4234476,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     60
+    ],
+    [
+     "data",
+     4234364
+    ]
+   ],
+   "isft": "INFOICRD\u001a2020-07-05T00:17:04-03:00ISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 22.053958,
+  "manifest_frames": 1058590,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/11 You look good to me.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1058752,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.98370013994026
+ },
+ {
+  "clip": "11ff_.wav",
+  "frames": 1435611,
+  "header": {
+   "riff_size": 5742666,
+   "file_size": 5742674,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     178
+    ],
+    [
+     "data",
+     5742444
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #11; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\fHarpsichordINAM\rfinalfantasyISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.908542,
+  "manifest_frames": 1435610,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/11ff_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1436608,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 36.90632541669618
+ },
+ {
+  "clip": "12-German-male-speech.441.16b48k.wav",
+  "frames": 376327,
+  "header": {
+   "riff_size": 1505378,
+   "file_size": 1505386,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1505308
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 7.840125,
+  "manifest_frames": 376326,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample19/sound/12-German-male-speech.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 376768,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 46.2550285826542
+ },
+ {
+  "clip": "12at_.wav",
+  "frames": 918929,
+  "header": {
+   "riff_size": 3675926,
+   "file_size": 3675934,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     166
+    ],
+    [
+     "data",
+     3675716
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #12; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005JazzINAM\u0007ATrainISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 19.144333,
+  "manifest_frames": 918928,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/12at_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 919488,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.94417075828537
+ },
+ {
+  "clip": "13 fatboy_30sec.wav",
+  "frames": 1401917,
+  "header": {
+   "riff_size": 5607738,
+   "file_size": 5607746,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5607668
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.206583,
+  "manifest_frames": 1401916,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/13 fatboy_30sec.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1402816,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 25.86671060276075
+ },
+ {
+  "clip": "13by_.wav",
+  "frames": 1175712,
+  "header": {
+   "riff_size": 4703060,
+   "file_size": 4703068,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     168
+    ],
+    [
+     "data",
+     4702848
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #13; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005PopsINAM\nBigYellowISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 24.494,
+  "manifest_frames": 1175712,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/13by_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1176512,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 30.103431962142192
+ },
+ {
+  "clip": "14fe_.wav",
+  "frames": 960213,
+  "header": {
+   "riff_size": 3841070,
+   "file_size": 3841078,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     174
+    ],
+    [
+     "data",
+     3840852
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #14; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0007TechnoINAM\rFloorEssenceISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.004417,
+  "manifest_frames": 960212,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/14fe_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 960448,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 34.922399936278545
+ },
+ {
+  "clip": "15-Good-evening.441.16b48k.wav",
+  "frames": 411158,
+  "header": {
+   "riff_size": 1644702,
+   "file_size": 1644710,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1644632
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 8.565792,
+  "manifest_frames": 411158,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample20/sound/15-Good-evening.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 411584,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 34.01405458321382
+ },
+ {
+  "clip": "15ma_.wav",
+  "frames": 838466,
+  "header": {
+   "riff_size": 3354080,
+   "file_size": 3354088,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     172
+    ],
+    [
+     "data",
+     3353864
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #15; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u000bOrchestralINAM\bmacabreISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 17.468042,
+  "manifest_frames": 838466,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/15ma_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 838592,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 35.37266518265392
+ },
+ {
+  "clip": "16mb_.wav",
+  "frames": 978285,
+  "header": {
+   "riff_size": 3913342,
+   "file_size": 3913350,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     158
+    ],
+    [
+     "data",
+     3913140
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #16; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlINAM\rmybloodrustsISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.380917,
+  "manifest_frames": 978284,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/16mb_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 978880,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 29.102391141748907
+ },
+ {
+  "clip": "17qu_.wav",
+  "frames": 1355078,
+  "header": {
+   "riff_size": 5420522,
+   "file_size": 5420530,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     166
+    ],
+    [
+     "data",
+     5420312
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #17; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0006LatinINAM\u0007QuizasISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 28.230792,
+  "manifest_frames": 1355078,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/17qu_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1355712,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 34.74368747975408
+ },
+ {
+  "clip": "18vr_.wav",
+  "frames": 495835,
+  "header": {
+   "riff_size": 1983556,
+   "file_size": 1983564,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     172
+    ],
+    [
+     "data",
+     1983340
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #18; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0007TechnoINAM\fVelvetRealmISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 10.329875,
+  "manifest_frames": 495834,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/18vr_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 496576,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 29.99779757002017
+ },
+ {
+  "clip": "19am_.wav",
+  "frames": 1204703,
+  "header": {
+   "riff_size": 4819026,
+   "file_size": 4819034,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     170
+    ],
+    [
+     "data",
+     4818812
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #19; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005PopsINAM\fAmefuribanaISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 25.097958,
+  "manifest_frames": 1204702,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/19am_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1205184,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.94758996203776
+ },
+ {
+  "clip": "20tt_.wav",
+  "frames": 1392909,
+  "header": {
+   "riff_size": 5571846,
+   "file_size": 5571854,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     166
+    ],
+    [
+     "data",
+     5571636
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #20; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0007GospelINAM\u0006TrustISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.018917,
+  "manifest_frames": 1392908,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/20tt_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1393600,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 29.4553029271882
+ },
+ {
+  "clip": "21-classic.441.16b48k.wav",
+  "frames": 463494,
+  "header": {
+   "riff_size": 1854046,
+   "file_size": 1854054,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1853976
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 9.656125,
+  "manifest_frames": 463494,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample21/sound/21-classic.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 463808,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 41.88230432035462
+ },
+ {
+  "clip": "21wa_.wav",
+  "frames": 967437,
+  "header": {
+   "riff_size": 3869958,
+   "file_size": 3869966,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     166
+    ],
+    [
+     "data",
+     3869748
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #21; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005RockINAM\bWaitingISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.154917,
+  "manifest_frames": 967436,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/21wa_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 967616,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 31.901679572598376
+ },
+ {
+  "clip": "22ex_.wav",
+  "frames": 960324,
+  "header": {
+   "riff_size": 3841510,
+   "file_size": 3841518,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     170
+    ],
+    [
+     "data",
+     3841296
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #22; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0006LatinINAM\fexperienciaISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.00675,
+  "manifest_frames": 960324,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/22ex_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 960448,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.98411013001905
+ },
+ {
+  "clip": "23ht_.wav",
+  "frames": 1363485,
+  "header": {
+   "riff_size": 5454158,
+   "file_size": 5454166,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     174
+    ],
+    [
+     "data",
+     5453940
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #23; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005PopsINAM\u000fHeart to HeartISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 28.405917,
+  "manifest_frames": 1363484,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/23ht_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1363904,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 29.639315121992475
+ },
+ {
+  "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+  "frames": 418560,
+  "header": {
+   "riff_size": 1674310,
+   "file_size": 1674318,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1674240
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 8.72,
+  "manifest_frames": 418560,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample22/sound/24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 418752,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 35.349247742990585
+ },
+ {
+  "clip": "24td_.wav",
+  "frames": 953200,
+  "header": {
+   "riff_size": 3813014,
+   "file_size": 3813022,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     170
+    ],
+    [
+     "data",
+     3812800
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #24; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0006VocalINAM\fTom's DinarISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 19.858333,
+  "manifest_frames": 953200,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/24td_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 953280,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 35.73317321798542
+ },
+ {
+  "clip": "25-This-is-the-end.441.16b48k.wav",
+  "frames": 440849,
+  "header": {
+   "riff_size": 1763466,
+   "file_size": 1763474,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1763396
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 9.184333,
+  "manifest_frames": 440848,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample23/sound/25-This-is-the-end.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 441280,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 39.228492254895265
+ },
+ {
+  "clip": "25rb_.wav",
+  "frames": 1440000,
+  "header": {
+   "riff_size": 5760216,
+   "file_size": 5760224,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     172
+    ],
+    [
+     "data",
+     5760000
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #25; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005JazzINAM\u000eReunion BluesISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 30.0,
+  "manifest_frames": 1440000,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/25rb_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1440704,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 30.69433936231905
+ },
+ {
+  "clip": "26fr_.wav",
+  "frames": 1418058,
+  "header": {
+   "riff_size": 5672450,
+   "file_size": 5672458,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     174
+    ],
+    [
+     "data",
+     5672232
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #26; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0007SpeechINAM\u000eFrench SpeechISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.542875,
+  "manifest_frames": 1418058,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/26fr_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1418176,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 38.98703583468352
+ },
+ {
+  "clip": "27-last-song-drums-and-trampets.441.16b48k.wav",
+  "frames": 478350,
+  "header": {
+   "riff_size": 1913470,
+   "file_size": 1913478,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1913400
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 9.965625,
+  "manifest_frames": 478350,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample24/sound/27-last-song-drums-and-trampets.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 479168,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 33.55651511498686
+ },
+ {
+  "clip": "27ud_.wav",
+  "frames": 1317639,
+  "header": {
+   "riff_size": 5270768,
+   "file_size": 5270776,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     168
+    ],
+    [
+     "data",
+     5270556
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #27; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005PopsINAM\tundeleteISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 27.450792,
+  "manifest_frames": 1317638,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/27ud_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 1317824,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 36.34305033468179
+ },
+ {
+  "clip": "28db_.wav",
+  "frames": 954568,
+  "header": {
+   "riff_size": 3818474,
+   "file_size": 3818482,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     158
+    ],
+    [
+     "data",
+     3818272
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #28; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlINAM\rDimmu BorgirISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 19.886833,
+  "manifest_frames": 954568,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/28db_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 955328,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 33.542512797659015
+ },
+ {
+  "clip": "29ru_.wav",
+  "frames": 959662,
+  "header": {
+   "riff_size": 3838858,
+   "file_size": 3838866,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     166
+    ],
+    [
+     "data",
+     3838648
+    ]
+   ],
+   "isft": "INFOICMTfKamedo2 PLT 2012 sample #29; mirror of https://hydrogenaudio.org/index.php/topic,98003.msg815018.htmlIGNR\u0005PopsINAM\u0007Run upISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 19.992958,
+  "manifest_frames": 959662,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "Kamedo2PLT2012-Kamedo2PLT2012/29ru_.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 960448,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 31.53378875899886
+ },
+ {
+  "clip": "35_SQAM_glockenspiel_cut.16b48k.wav",
+  "frames": 1125612,
+  "header": {
+   "riff_size": 4502518,
+   "file_size": 4502526,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     4502448
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 23.45025,
+  "manifest_frames": 1125612,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample07/sound/35_SQAM_glockenspiel_cut.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1126336,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 36.37877341658827
+ },
+ {
+  "clip": "4-Sound-English-male.441.16b48k.wav",
+  "frames": 433351,
+  "header": {
+   "riff_size": 1733474,
+   "file_size": 1733482,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1733404
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 9.028125,
+  "manifest_frames": 433350,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample17/sound/4-Sound-English-male.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 434112,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 44.160357583433694
+ },
+ {
+  "clip": "9-Have-big-expensive-car.441.16b48k.wav",
+  "frames": 465927,
+  "header": {
+   "riff_size": 1863778,
+   "file_size": 1863786,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1863708
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 9.706792,
+  "manifest_frames": 465926,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample18/sound/9-Have-big-expensive-car.441.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 466880,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 34.38958555996618
+ },
+ {
+  "clip": "Asleep__4.11-4.31_.16b48k.wav",
+  "frames": 960000,
+  "header": {
+   "riff_size": 3840070,
+   "file_size": 3840078,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3840000
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.0,
+  "manifest_frames": 960000,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample09/sound/Asleep__4.11-4.31_.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 960448,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 36.80177038344399
+ },
+ {
+  "clip": "Berling Drug.wav",
+  "frames": 628559,
+  "header": {
+   "riff_size": 2514306,
+   "file_size": 2514314,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2514236
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 13.094958,
+  "manifest_frames": 628558,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "IgorCPBLT2020-IgorCPBLT2020/Berling Drug.flac",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "FLAC",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 628672,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 40.237342334989144
+ },
+ {
+  "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+  "frames": 1436800,
+  "header": {
+   "riff_size": 5747270,
+   "file_size": 5747278,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5747200
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.933333,
+  "manifest_frames": 1436800,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample06/sound/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1437632,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 33.88390471177381
+ },
+ {
+  "clip": "Changes.16b48k.wav",
+  "frames": 1436722,
+  "header": {
+   "riff_size": 5746958,
+   "file_size": 5746966,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5746888
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.931708,
+  "manifest_frames": 1436722,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample33/sound/Changes.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1437632,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.76844368489017
+ },
+ {
+  "clip": "Coral.16b48k.wav",
+  "frames": 609651,
+  "header": {
+   "riff_size": 2438674,
+   "file_size": 2438682,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2438604
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 12.701042,
+  "manifest_frames": 609650,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample27/sound/Coral.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 610240,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 36.37196486685237
+ },
+ {
+  "clip": "ExitMusic.16b48k.wav",
+  "frames": 965091,
+  "header": {
+   "riff_size": 3860434,
+   "file_size": 3860442,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3860364
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.106042,
+  "manifest_frames": 965090,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample28/sound/ExitMusic.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 965568,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 43.600466101527644
+ },
+ {
+  "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
+  "frames": 659631,
+  "header": {
+   "riff_size": 2638594,
+   "file_size": 2638602,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2638524
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 13.742292,
+  "manifest_frames": 659630,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample34/sound/Girl_In_The_Fire__Sample_.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 660416,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.59099021862139
+ },
+ {
+  "clip": "Greatest_Love_of_All_2min57.16b48k.wav",
+  "frames": 968551,
+  "header": {
+   "riff_size": 3874274,
+   "file_size": 3874282,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3874204
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.178125,
+  "manifest_frames": 968550,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample10/sound/Greatest_Love_of_All_2min57.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 968640,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.845568439373444
+ },
+ {
+  "clip": "Hey Tonight.16b48k.wav",
+  "frames": 960000,
+  "header": {
+   "riff_size": 3840070,
+   "file_size": 3840078,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3840000
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.0,
+  "manifest_frames": 960000,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample11/sound/Hey Tonight.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 960448,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.46079963745292
+ },
+ {
+  "clip": "Hotel California.16b48k.wav",
+  "frames": 1476584,
+  "header": {
+   "riff_size": 5906406,
+   "file_size": 5906414,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5906336
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 30.762167,
+  "manifest_frames": 1476584,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample35/sound/Hotel California.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1477568,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 33.05803187202333
+ },
+ {
+  "clip": "Jupiter, the Bringer of Jolity.16b48k.wav",
+  "frames": 1403239,
+  "header": {
+   "riff_size": 5613026,
+   "file_size": 5613034,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5612956
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.234125,
+  "manifest_frames": 1403238,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample36/sound/Jupiter, the Bringer of Jolity.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1403840,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.397107822066495
+ },
+ {
+  "clip": "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+  "frames": 1223097,
+  "header": {
+   "riff_size": 4892458,
+   "file_size": 4892466,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     4892388
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 25.481167,
+  "manifest_frames": 1223096,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample37/sound/Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1223616,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 33.41395406189328
+ },
+ {
+  "clip": "NewYorkCity.16b48k.wav",
+  "frames": 1432763,
+  "header": {
+   "riff_size": 5731122,
+   "file_size": 5731130,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5731052
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.849208,
+  "manifest_frames": 1432762,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample30/sound/NewYorkCity.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1433536,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 30.389265043973168
+ },
+ {
+  "clip": "Only Time.16b48k.wav",
+  "frames": 1184213,
+  "header": {
+   "riff_size": 4736922,
+   "file_size": 4736930,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     4736852
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 24.671083,
+  "manifest_frames": 1184212,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample38/sound/Only Time.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1184704,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 38.748219030054415
+ },
+ {
+  "clip": "Robots_old.16b48k.wav",
+  "frames": 1440000,
+  "header": {
+   "riff_size": 5760070,
+   "file_size": 5760078,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5760000
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 30.0,
+  "manifest_frames": 1440000,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample08/sound/Robots_old.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1440704,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 38.17128239229193
+ },
+ {
+  "clip": "Severance__1.31-1.51_.16b48k.wav",
+  "frames": 960000,
+  "header": {
+   "riff_size": 3840070,
+   "file_size": 3840078,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3840000
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.0,
+  "manifest_frames": 960000,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample12/sound/Severance__1.31-1.51_.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 960448,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 39.29993298279942
+ },
+ {
+  "clip": "Shinsho_pool_3min45_4min4.16b48k.wav",
+  "frames": 908361,
+  "header": {
+   "riff_size": 3633514,
+   "file_size": 3633522,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3633444
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 18.924167,
+  "manifest_frames": 908360,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample13/sound/Shinsho_pool_3min45_4min4.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 909248,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 36.79745766060883
+ },
+ {
+  "clip": "SinceAlways.16b48k.wav",
+  "frames": 873185,
+  "header": {
+   "riff_size": 3492810,
+   "file_size": 3492818,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3492740
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 18.191333,
+  "manifest_frames": 873184,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample01/sound/SinceAlways.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 873408,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 30.119122752519345
+ },
+ {
+  "clip": "SlavesOfFear.16b48k.wav",
+  "frames": 1056000,
+  "header": {
+   "riff_size": 4224070,
+   "file_size": 4224078,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     4224000
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 22.0,
+  "manifest_frames": 1056000,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample14/sound/SlavesOfFear.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1056704,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 28.59862490647586
+ },
+ {
+  "clip": "The Chastising of Renegade.16b48k.wav",
+  "frames": 960000,
+  "header": {
+   "riff_size": 3840070,
+   "file_size": 3840078,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3840000
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 20.0,
+  "manifest_frames": 960000,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample15/sound/The Chastising of Renegade.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 960448,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 31.732833302619774
+ },
+ {
+  "clip": "Through The Fire And Flames.16b48k.wav",
+  "frames": 1429883,
+  "header": {
+   "riff_size": 5719602,
+   "file_size": 5719610,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5719532
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 29.789208,
+  "manifest_frames": 1429882,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample39/sound/Through The Fire And Flames.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1430464,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 28.530767535866822
+ },
+ {
+  "clip": "TrosYGareg.16b48k.wav",
+  "frames": 1070611,
+  "header": {
+   "riff_size": 4282514,
+   "file_size": 4282522,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     4282444
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 22.304375,
+  "manifest_frames": 1070610,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample16/sound/TrosYGareg.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1071040,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 39.98616443418508
+ },
+ {
+  "clip": "With Love (Outro).16b48k.wav",
+  "frames": 787350,
+  "header": {
+   "riff_size": 3149470,
+   "file_size": 3149478,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3149400
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 16.403125,
+  "manifest_frames": 787350,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample40/sound/With Love (Outro).16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 787392,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 31.982722923548987
+ },
+ {
+  "clip": "bah.wav",
+  "frames": 455104,
+  "header": {
+   "riff_size": 1820486,
+   "file_size": 1820494,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1820416
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 9.481333,
+  "manifest_frames": 455104,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "SoundExpert-SoundExpert/bah.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 455616,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 34.36714747945758
+ },
+ {
+  "clip": "bas.wav",
+  "frames": 572652,
+  "header": {
+   "riff_size": 2290678,
+   "file_size": 2290686,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2290608
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 11.93025,
+  "manifest_frames": 572652,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "SoundExpert-SoundExpert/bas.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 573376,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.04929266268365
+ },
+ {
+  "clip": "bonhemian_rhapsody.16b48k.wav",
+  "frames": 1368238,
+  "header": {
+   "riff_size": 5473022,
+   "file_size": 5473030,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5472952
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 28.504958,
+  "manifest_frames": 1368238,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "PMLT2014-PMLT2014/sample25/sound/bonhemian_rhapsody.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1369024,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 35.36729415605638
+ },
+ {
+  "clip": "clapton_44k.16b48k.wav",
+  "frames": 719349,
+  "header": {
+   "riff_size": 2877466,
+   "file_size": 2877474,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2877396
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 14.986417,
+  "manifest_frames": 719348,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample26/sound/clapton_44k.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 719808,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 30.994132543814917
+ },
+ {
+  "clip": "fms.wav",
+  "frames": 532883,
+  "header": {
+   "riff_size": 2131626,
+   "file_size": 2131634,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     50
+    ],
+    [
+     "data",
+     2131532
+    ]
+   ],
+   "isft": "INFOICMT\u000fpurnhage@freyaISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 11.101708,
+  "manifest_frames": 532882,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "SoundExpert-SoundExpert/fms.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 533440,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.71401801008951
+ },
+ {
+  "clip": "girl.16b48k.wav",
+  "frames": 765959,
+  "header": {
+   "riff_size": 3063906,
+   "file_size": 3063914,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     3063836
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 15.957458,
+  "manifest_frames": 765958,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample05/sound/girl.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 766912,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.67569800958471
+ },
+ {
+  "clip": "glk.wav",
+  "frames": 734094,
+  "header": {
+   "riff_size": 2936446,
+   "file_size": 2936454,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2936376
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 15.293625,
+  "manifest_frames": 734094,
+  "frame_diff_local_minus_manifest": 0,
+  "length_match": true,
+  "source": "SoundExpert-SoundExpert/glk.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 734144,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 41.12340773203283
+ },
+ {
+  "clip": "hrp.wav",
+  "frames": 422073,
+  "header": {
+   "riff_size": 1688362,
+   "file_size": 1688370,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1688292
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 8.793167,
+  "manifest_frames": 422072,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "SoundExpert-SoundExpert/hrp.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 422848,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.52072565006486
+ },
+ {
+  "clip": "liberate.16b48k.wav",
+  "frames": 240343,
+  "header": {
+   "riff_size": 961442,
+   "file_size": 961450,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     961372
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 5.007125,
+  "manifest_frames": 240342,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample29/sound/liberate.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 240576,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 28.81816281222499
+ },
+ {
+  "clip": "lob.wav",
+  "frames": 340427,
+  "header": {
+   "riff_size": 1361778,
+   "file_size": 1361786,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     1361708
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 7.092208,
+  "manifest_frames": 340426,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "SoundExpert-SoundExpert/lob.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 340928,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 28.052418384371723
+ },
+ {
+  "clip": "mof.wav",
+  "frames": 511121,
+  "header": {
+   "riff_size": 2044554,
+   "file_size": 2044562,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     2044484
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 10.648333,
+  "manifest_frames": 511120,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "SoundExpert-SoundExpert/mof.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 511936,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 33.965480334399025
+ },
+ {
+  "clip": "qrt.wav",
+  "frames": 589045,
+  "header": {
+   "riff_size": 2356274,
+   "file_size": 2356282,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     50
+    ],
+    [
+     "data",
+     2356180
+    ]
+   ],
+   "isft": "INFOICMT\u000fpurnhage@freyaISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 12.27175,
+  "manifest_frames": 589044,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "SoundExpert-SoundExpert/qrt.wav",
+  "src_rate": 44100,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": true,
+  "resampled": true,
+  "apple320_decode_frames": 589760,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 37.691532587731004
+ },
+ {
+  "clip": "sandman.16b48k.wav",
+  "frames": 1440109,
+  "header": {
+   "riff_size": 5760506,
+   "file_size": 5760514,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     5760436
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 30.00225,
+  "manifest_frames": 1440108,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample31/sound/sandman.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1440704,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 33.670952417143795
+ },
+ {
+  "clip": "take_your_finger_frin_my_head.16b48k.wav",
+  "frames": 1060419,
+  "header": {
+   "riff_size": 4241746,
+   "file_size": 4241754,
+   "chunks": [
+    [
+     "fmt ",
+     16
+    ],
+    [
+     "LIST",
+     26
+    ],
+    [
+     "data",
+     4241676
+    ]
+   ],
+   "isft": "INFOISFT\u000eLavf60.16.100",
+   "data_size_ok": true
+  },
+  "xaac_duration_s": 22.092042,
+  "manifest_frames": 1060418,
+  "frame_diff_local_minus_manifest": 1,
+  "length_match": false,
+  "source": "PMLT2014-PMLT2014/sample32/sound/take_your_finger_frin_my_head.16b48k.wav",
+  "src_rate": 48000,
+  "src_channels": 2,
+  "src_subtype": "PCM_16",
+  "src_format": "WAV",
+  "converted": false,
+  "resampled": false,
+  "apple320_decode_frames": 1060800,
+  "apple320_rate": 48000,
+  "lag": 0,
+  "snr_db": 32.58239881350796
+ }
+]
