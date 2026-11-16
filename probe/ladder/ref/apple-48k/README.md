@@ -6,6 +6,7 @@ Replaces every earlier 48 kHz Apple set (`apple/`, `apple_*`, `apple-s11-367cf8d
 - Source: faac-benchmark 9f5f102, `data/external/audio` rebuilt with `setup_datasets.setup_audio` (full-length clips, 77, 5-30 s, 48 kHz stereo; ffmpeg 9.0.2).
 - Encoder: `/usr/bin/afconvert` on macOS 27.2 (26B123), argv from `AFConvertEncoder.get_encode_cmd`: `afconvert -f m4af -d {aac|aach|aacp} -s 0 -b BPS -c 2 IN OUT` (-s 0 = CBR).
   Exactly what the leaderboard scored, so these streams are what FAAC is compared against. Per-stream argv, sizes, durations, sha256 are in `manifest.json`.
+- Sibling sets: `../fdk-48k/` and `../xaac-48k/` (same corpus and rungs; libxaac is HE/HE-v2 only).
 - Layout: `{lc,he,hev2}/<kbps>k/<clip>.wav.m4a`. 924 streams, all strict-decode clean (`ffmpeg -xerror`).
 
 | Dir | Profile | Rungs | Why |
