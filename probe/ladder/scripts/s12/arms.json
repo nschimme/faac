@@ -68,5 +68,23 @@
   "bin": "/home/user/work/stns/build/frontend/faac",
   "flags": [],
   "env": {}
+ },
+ "c20": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build/frontend/faac",
+  "flags": [
+   "-c",
+   "20000"
+  ],
+  "env": {}
+ },
+ "c22": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build/frontend/faac",
+  "flags": [
+   "-c",
+   "22000"
+  ],
+  "env": {}
  }
 }
