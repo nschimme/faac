@@ -112,7 +112,7 @@ detector loop has no inner loop, and a direct nearest-step border computation in
 which is part of the Ir above); `put_grid` compaction (pointer + flags in one `PutBit`): 0. Tried and reverted: single-loop
 binning (+352), narrower `memset` of the slot rows (more Ir, no size gain). Remaining growth: `SbrAnalyze` +995 plus the new
 `qmf_transform` 651, `BuildFrame` (`put_grid` inlined) +399, `faacEncEncode` +148 (flush frame), `faac_encoder_open` +115 (env read).
-The detector loop alone is about 830 B uncompiled-out of the arm (LTO fully unrolls its 32 slots). No further offset elsewhere in
+The detector loop alone is about 830 B in a non-LTO object (its 32 slots are unrolled). No further offset elsewhere in
 libfaac was identified within this arm's scope.
 
 ## Notes
