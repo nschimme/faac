@@ -1,0 +1,42 @@
+01 castanets.wav
+03 eig.wav
+07 applaud.wav
+08 velvet.wav
+09 Linchpin.wav
+10 Angels_Fall_First_ringing.wav
+13 fatboy_30sec.wav
+13by_.wav
+15-Good-evening.441.16b48k.wav
+17qu_.wav
+18vr_.wav
+19am_.wav
+20tt_.wav
+25-This-is-the-end.441.16b48k.wav
+25rb_.wav
+27ud_.wav
+28db_.wav
+29ru_.wav
+Berling Drug.wav
+Changes.16b48k.wav
+Coral.16b48k.wav
+Jupiter, the Bringer of Jolity.16b48k.wav
+NewYorkCity.16b48k.wav
+Only Time.16b48k.wav
+Severance__1.31-1.51_.16b48k.wav
+Shinsho_pool_3min45_4min4.16b48k.wav
+SlavesOfFear.16b48k.wav
+The Chastising of Renegade.16b48k.wav
+Through The Fire And Flames.16b48k.wav
+TrosYGareg.16b48k.wav
+bah.wav
+bas.wav
+bonhemian_rhapsody.16b48k.wav
+clapton_44k.16b48k.wav
+fms.wav
+girl.16b48k.wav
+glk.wav
+hrp.wav
+liberate.16b48k.wav
+mof.wav
+qrt.wav
+sandman.16b48k.wav
