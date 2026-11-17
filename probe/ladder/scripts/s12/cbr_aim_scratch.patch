@@ -1,0 +1,44 @@
+diff --git a/libfaac/ratecontrol.c b/libfaac/ratecontrol.c
+index 2b7f656d..50626bed 100644
+--- a/libfaac/ratecontrol.c
++++ b/libfaac/ratecontrol.c
+@@ -16,6 +16,7 @@
+ 
+ #include <math.h>
+ #include <stdint.h>
++#include <stdlib.h>
+ 
+ #include "ratecontrol.h"
+ #include "coder.h"
+@@ -77,6 +78,10 @@ void RateControlReset(RateControl *rc, unsigned int numChannels,
+     rc->stuffedBits = 0;
+     rc->sbrBits = 0;
+     rc->prevWant = 0;
++    /* probe: CBR-only aim override; unset keeps master's aim */
++    rc->aim = RC_BALANCE_AIM;
++    if (cbr && getenv("FAAC_CBR_AIM"))
++        rc->aim = (float)atof(getenv("FAAC_CBR_AIM"));
+ }
+ 
+ int RateControlReservoirAfter(const RateControl *rc, int payloadBits)
+@@ -160,7 +165,7 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
+        however much each clip drew. One CORE setpoint serves the account and
+        `fix` alike -- the frame's budget less what SBR was charged, against
+        what the core actually spent. */
+-    int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
++    int coreTarget = (int)(desbits * rc->aim) - sbrCharge;
+     int coreBits = totalBits - sbrBits;
+     int lend;
+     int bound = RC_BALANCE_FRAMES * desbits;
+diff --git a/libfaac/ratecontrol.h b/libfaac/ratecontrol.h
+index 5b6988a8..44fcf44a 100644
+--- a/libfaac/ratecontrol.h
++++ b/libfaac/ratecontrol.h
+@@ -46,6 +46,7 @@ typedef struct {
+     int stuffedBits;   /* what BuildFrame stuffed into the last frame */
+     int sbrBits;       /* SBR payload BuildFrame wrote into the last frame */
+     int prevWant;      /* previous frame's core bits if it was stuffed, else 0 */
++    float aim;         /* probe: balance aim, FAAC_CBR_AIM under CBR */
+ } RateControl;
+ 
+ /* Opens the account and, for CBR, sizes the reservoir from the resolved rate. */
