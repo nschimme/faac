@@ -1,0 +1,314 @@
+diff --git a/libfaac/channels.c b/libfaac/channels.c
+index 979b86ce..5a75b0ca 100644
+--- a/libfaac/channels.c
++++ b/libfaac/channels.c
+@@ -22,6 +22,7 @@
+ 
+ _Static_assert(TNS_MAX_FILTERS <= (1 << LEN_TNS_NFILTL) - 1,
+                "TnsWindowData.tnsFilter[] holds more filters than numFilters can encode in LEN_TNS_NFILTL bits");
++_Static_assert(MAX_SHORT_WINDOWS == 8, "short TNS syntax is written per window for exactly 8 windows");
+ _Static_assert(TNS_MAX_ORDER <= (1 << LEN_TNS_ORDERL) - 1,
+                "TnsFilterData order exceeds what LEN_TNS_ORDERL bits can encode");
+ 
+@@ -143,10 +144,36 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
+     PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
+     bits += LEN_TNS_PRES;
+ 
+-    /* TNS is long-only (see tns.c): tnsDataPresent is never set for
+-     * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
+-     * to write, always at the long-window field widths. */
+-    if (tns->tnsDataPresent) {
++    if (tns->tnsDataPresent && coder->block_type == ONLY_SHORT_WINDOW) {
++        /* Per window: n_filt(1), then coef_res(1) and each filter if present. */
++        for (int w = 0; w < MAX_SHORT_WINDOWS; w++) {
++            TnsWindowData *win = &tns->shortWin[w];
++
++            PutBit(bs, win->numFilters, LEN_TNS_NFILTS);
++            bits += LEN_TNS_NFILTS;
++            if (win->numFilters == 0)
++                continue;
++            PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
++            bits += LEN_TNS_COEFF_RES;
++
++            TnsFilterData *flt = &win->tnsFilter[0];
++            PutBit(bs, flt->length, LEN_TNS_LENGTHS);
++            PutBit(bs, flt->order, LEN_TNS_ORDERS);
++            bits += LEN_TNS_LENGTHS + LEN_TNS_ORDERS;
++            if (flt->order > 0) {
++                PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
++                PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
++                bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
++
++                int res = win->coefResolution - flt->coefCompress;
++                for (int i = 1; i <= flt->order; i++) {
++                    PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
++                    bits += res;
++                }
++            }
++        }
++    } else if (tns->tnsDataPresent) {
++        /* Long block: exactly one window's worth of TNS data. */
+         TnsWindowData *win = &tns->windowData;
+ 
+         PutBit(bs, win->numFilters, LEN_TNS_NFILTL);
+diff --git a/libfaac/coder.h b/libfaac/coder.h
+index 10585cc3..46405af6 100644
+--- a/libfaac/coder.h
++++ b/libfaac/coder.h
+@@ -72,7 +72,16 @@ typedef struct {
+     int tnsMinBandNumberLong;
+     int tnsMaxBandsLong;
+     int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
+-    TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
++    TnsWindowData windowData;   /* long blocks: one window per frame */
++    /* Research short-window TNS (FAAC_STNS); inert unless shortEnabled. */
++    int shortEnabled;
++    int shortAtkOnly;       /* FAAC_STNS_ATK: filter only the attack window */
++    int shortOrder;
++    float shortGain;
++    int tnsMinBandNumberShort;
++    int tnsMaxBandsShort;
++    int tnsNumSwbShort;
++    TnsWindowData shortWin[MAX_SHORT_WINDOWS];
+ } TnsInfo;
+ 
+ typedef struct CoderInfo {
+diff --git a/libfaac/frame.c b/libfaac/frame.c
+index 6d291c65..025d561e 100644
+--- a/libfaac/frame.c
++++ b/libfaac/frame.c
+@@ -937,8 +937,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
+             }
+ 
+             TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
++        } else if (useTns && coderInfo[channel].block_type == ONLY_SHORT_WINDOW
++                   && coderInfo[channel].tnsInfo.shortEnabled
++#if MAX_CHANNELS >= 6
++                   && !hEncoder->isLfeChannel[channel]
++#endif
++                   ) {
++            TnsEncodeShort(&coderInfo[channel], hEncoder->freqBuff[channel]);
+         } else {
+-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
++            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or (unless FAAC_STNS) short blocks */
+         }
+     }
+ 
+diff --git a/libfaac/tns.c b/libfaac/tns.c
+index 756eb060..11b30895 100644
+--- a/libfaac/tns.c
++++ b/libfaac/tns.c
+@@ -14,6 +14,7 @@
+  */
+ 
+ #include <math.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include "frame.h"
+ #include "coder.h"
+@@ -200,6 +201,58 @@ static void filter_spec(int length, int order, const float * a, const float * sr
+     }
+ }
+ 
++/* RESEARCH (scratch): short-window TNS, all behind FAAC_STNS. Read once here
++ * (TnsInit runs once per open) so the per-frame path never touches the env.
++ * Master's long start band is a fixed sfb index per rate, not a frequency, so
++ * the short start is the first sfb at or above FAAC_STNS_HZ (default 1500). */
++static const uint8_t stns_max_bands[12] = { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
++
++static float stns_env_f(const char *name, float def)
++{
++    const char *v = getenv(name);
++    return (v && *v) ? (float)atof(v) : def;
++}
++
++static void stns_init(faacEncStruct *hEncoder, TnsInfo *info)
++{
++    const char *on = getenv("FAAC_STNS");
++    const char *prof = getenv("FAAC_STNS_PROFILE");
++    int he = IsSBR(hEncoder->config.aacObjectType);
++    int order, b, line = 0;
++    float hz, hz_per_line;
++
++    info->shortEnabled = 0;
++    info->shortAtkOnly = 0;
++    if (!on || on[0] != '1')
++        return;
++    if (prof && !strcmp(prof, "lc") && he)
++        return;
++    if (prof && !strcmp(prof, "he") && !he)
++        return;
++
++    order = (int)stns_env_f("FAAC_STNS_ORDER", 4.0f);
++    info->shortOrder = order < 1 ? 1 : (order > 7 ? 7 : order);
++    info->shortGain = stns_env_f("FAAC_STNS_GAIN", 1.4f);
++    hz = stns_env_f("FAAC_STNS_HZ", 1500.0f);
++
++    /* Core rate: sampleRate is already halved for the HE core. */
++    hz_per_line = (float)hEncoder->sampleRate / 2.0f / (float)BLOCK_LEN_SHORT;
++    /* sfbOffsetShort isn't built yet at TnsInit time, so walk the widths. */
++    for (b = 0; b < hEncoder->srInfo->num_cb_short; b++) {
++        if ((float)line * hz_per_line >= hz)
++            break;
++        line += hEncoder->srInfo->cb_width_short[b];
++    }
++    info->tnsMinBandNumberShort = b;
++    info->tnsMaxBandsShort = stns_max_bands[hEncoder->sampleRateIdx];
++    info->tnsNumSwbShort = hEncoder->srInfo->num_cb_short;
++    {
++        const char *atk = getenv("FAAC_STNS_ATK");
++        info->shortAtkOnly = atk && atk[0] == '1';
++    }
++    info->shortEnabled = 1;
++}
++
+ void TnsInit(faacEncStruct* hEncoder)
+ {
+     unsigned int ch;
+@@ -211,6 +264,7 @@ void TnsInit(faacEncStruct* hEncoder)
+         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
+         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
+         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
++        stns_init(hEncoder, info);
+     }
+ }
+ 
+@@ -218,7 +272,8 @@ void TnsInit(faacEncStruct* hEncoder)
+  * earns its place, whitens that range of `spec` in place and fills *filter.
+  * Returns 1 when a filter was written, 0 otherwise. */
+ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
+-                         float *spec, TnsFilterData *filter)
++                         float *spec, TnsFilterData *filter,
++                         int lpc_order, float gain_limit, float measured_gain)
+ {
+     int i_start = sfbOffsetTable[b_start];
+     int length = sfbOffsetTable[b_stop] - i_start;
+@@ -230,7 +285,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
+     float gain;
+     int order, limit, i;
+ 
+-    if (length <= TNS_LPC_ORDER)
++    if (length <= lpc_order)
+         return 0;
+ 
+     band = spec + i_start;
+@@ -288,9 +343,9 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
+         }
+     }
+ 
+-    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
+-    gain = compute_lpc(TNS_LPC_ORDER, r, k);
+-    if (gain < TNS_GAIN_LIMIT)
++    calc_autocorr_f(lpc_order, length, wspec, r);
++    gain = compute_lpc(lpc_order, r, k);
++    if (gain < gain_limit)
+         return 0;
+     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
+      * so a high gain can't mean an unstable filter; isfinite() catches the
+@@ -298,11 +353,11 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
+     if (!isfinite(gain))
+         return 0;
+ 
+-    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
++    quantize_coeffs(lpc_order, DEF_TNS_COEFF_RES, k, filter->index);
+ 
+     /* Drop trailing taps that quantized away to ~nothing: they cost bits
+      * without changing what the filter does. */
+-    order = TNS_LPC_ORDER;
++    order = lpc_order;
+     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
+         order--;
+     if (order == 0)
+@@ -344,7 +399,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
+             filt_e += trial[i] * trial[i];
+         if (filt_e < TNS_MIN_ENERGY)
+             filt_e = TNS_MIN_ENERGY;
+-        if (r[0] < TNS_MEASURED_GAIN * filt_e)
++        if (r[0] < measured_gain * filt_e)
+             return 0;
+     }
+ 
+@@ -374,7 +429,8 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
+         return;
+ 
+     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
+-                       &tnsInfo->windowData.tnsFilter[0]))
++                       &tnsInfo->windowData.tnsFilter[0],
++                       TNS_LPC_ORDER, TNS_GAIN_LIMIT, TNS_MEASURED_GAIN))
+         return;
+ 
+ #ifdef FAAC_STATS
+@@ -388,3 +444,61 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
+     tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
+     tnsInfo->tnsDataPresent = 1;
+ }
++
++/* One independent filter per short window (the syntax is per window, not per
++ * group). BlocGroup only decides group lengths; freqBuff still holds the 8
++ * windows as contiguous 128-line blocks here. */
++void TnsEncodeShort(CoderInfo *coderInfo, float *spec)
++{
++    TnsInfo *tnsInfo = &coderInfo->tnsInfo;
++    int b_start = min(tnsInfo->tnsMinBandNumberShort, coderInfo->sfbn);
++    int b_stop = min(tnsInfo->tnsMaxBandsShort, coderInfo->sfbn);
++    int w, atk = -1;
++
++    tnsInfo->tnsDataPresent = 0;
++    for (w = 0; w < MAX_SHORT_WINDOWS; w++)
++        tnsInfo->shortWin[w].numFilters = 0;
++    if (b_stop <= b_start)
++        return;
++
++    /* Attack window = largest E[w]/E[w-1] > 1 over w=1..7. w=0 is never chosen:
++     * the previous frame's last window isn't kept, and a frame whose rise is
++     * in window 0 is mostly a long-to-short transition artifact. */
++    if (tnsInfo->shortAtkOnly) {
++        float e[MAX_SHORT_WINDOWS], best = 1.0f;
++        int i;
++
++        for (w = 0; w < MAX_SHORT_WINDOWS; w++) {
++            const float *x = spec + w * BLOCK_LEN_SHORT;
++            float acc = 0.0f;
++            for (i = 0; i < BLOCK_LEN_SHORT; i++)
++                acc += x[i] * x[i];
++            e[w] = acc;
++        }
++        atk = -1;
++        for (w = 1; w < MAX_SHORT_WINDOWS; w++) {
++            float r = e[w] / (e[w - 1] > 1e-9f ? e[w - 1] : 1e-9f);
++            if (r > best) {
++                best = r;
++                atk = w;
++            }
++        }
++        if (atk < 0)
++            return;
++    }
++
++    for (w = 0; w < MAX_SHORT_WINDOWS; w++) {
++        TnsWindowData *win = &tnsInfo->shortWin[w];
++
++        if (atk >= 0 && w != atk)
++            continue;
++        if (!tns_fit_range(b_start, b_stop, coderInfo->sfb_offset,
++                           spec + w * BLOCK_LEN_SHORT, &win->tnsFilter[0],
++                           tnsInfo->shortOrder, tnsInfo->shortGain, tnsInfo->shortGain))
++            continue;
++        win->tnsFilter[0].length = tnsInfo->tnsNumSwbShort - b_start;
++        win->numFilters = 1;
++        win->coefResolution = DEF_TNS_COEFF_RES;
++        tnsInfo->tnsDataPresent = 1;
++    }
++}
+diff --git a/libfaac/tns.h b/libfaac/tns.h
+index 6116ca21..19950726 100644
+--- a/libfaac/tns.h
++++ b/libfaac/tns.h
+@@ -35,6 +35,7 @@ void TnsInit(faacEncStruct* hEncoder);
+ /* Analyze one channel and, if it pays off, whiten `spec` in place.
+  * Long blocks only -- the caller must not pass an ONLY_SHORT_WINDOW channel. */
+ void TnsEncode(CoderInfo *coderInfo, float *spec);
++void TnsEncodeShort(CoderInfo *coderInfo, float *spec);
+ 
+ #ifdef __cplusplus
+ }
