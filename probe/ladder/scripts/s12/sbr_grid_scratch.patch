@@ -1,5 +1,5 @@
 diff --git a/libfaac/sbr.c b/libfaac/sbr.c
-index 8618c2f7..7838d8bc 100644
+index 8618c2f7..c94c1119 100644
 --- a/libfaac/sbr.c
 +++ b/libfaac/sbr.c
 @@ -166,6 +166,14 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
@@ -10,8 +10,8 @@ index 8618c2f7..7838d8bc 100644
 +    const char *grid = getenv("FAAC_SBR_GRID");
 +    if (grid && grid[0] == '1') {
 +        const char *t = getenv("FAAC_SBR_T"), *l = getenv("FAAC_SBR_L");
-+        sbr->gridT = t ? (float)atof(t) : 4.0f;
-+        sbr->gridL = l ? atoi(l) : 0;
++        sbr->gridT = t ? (float)atof(t) : 6.0f;
++        sbr->gridL = l ? atoi(l) : 1;
 +    }
 +#endif
      SbrUpdate(sbr, bitRate);
@@ -31,6 +31,15 @@ index 8618c2f7..7838d8bc 100644
          if (PsIsActive(sCtx->sbrInfo)) PsNoteSilence(sCtx->sbrInfo, fd);
      } else {
          for (channel = 0; channel < (unsigned int)numChannels; channel++) {
+@@ -368,7 +383,7 @@ static inline float fast_log2(float x)
+  * Leverages conjugate symmetry to extract two 64-point real-subsequence
+  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
+  * a standard 128-point implementation. y receives the FFT spectrum. */
+-static inline void qmf_transform(const SBRInfo *sbr, const float *ovl_pos, float *y)
++static void qmf_transform(const SBRInfo *sbr, const float *ovl_pos, float *y)
+ {
+     float x[128];
+     float * restrict xr = x, * restrict xi = x + 64;
 @@ -442,8 +457,9 @@ static void sbr_adopt_envelope_grid(const struct SignalAnalysis *sa, SbrFrameDat
  {
      fd->numEnvelopes = sa->numEnvelopes;
@@ -43,7 +52,7 @@ index 8618c2f7..7838d8bc 100644
  
  static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
 diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
-index a64310b5..e11d08f5 100644
+index a64310b5..0ff3c398 100644
 --- a/libfaac/sbr_analysis.c
 +++ b/libfaac/sbr_analysis.c
 @@ -19,27 +19,24 @@
@@ -91,7 +100,7 @@ index a64310b5..e11d08f5 100644
          sa->tEnv[0] = 0;
          sa->tEnv[1] = innerSbr;
          sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-@@ -86,89 +84,203 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+@@ -86,89 +84,214 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
          for (int e = 0; e <= ne; e++)
              sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
      }
@@ -103,20 +112,27 @@ index a64310b5..e11d08f5 100644
 -        int n = (env_border(sa, e + 1, num_slots) + FAAC_SBR_DECIMATION - 1) / FAAC_SBR_DECIMATION
 -              - (env_border(sa, e, num_slots) + FAAC_SBR_DECIMATION - 1) / FAAC_SBR_DECIMATION;
 -        sa->envSampled[e] = n < 1 ? 1 : n;
-+/* The strongest onset of the frame in the high band (kx..k2 of the channel's
-+ * slot energies), as a slot in *onset (num_slots if none) with its ratio in *best. A slot is flagged when its energy
-+ * exceeds gridT times the mean of the 8 slots before it (history carried
-+ * across frames); an onset is the first flagged slot of a run, so a plateau
-+ * after an attack is not a new onset, and the one with the largest ratio wins
-+ * (a frame gets one border). Slots before `first` still update the state. */
++static inline float band_sum(const float *row, int kx, int kEnd)
++{
++    float e = 0.0f;
++    for (int k = kx; k < kEnd; k++) e += row[k];
++    return e;
++}
++
++/* The strongest onset of the frame as a slot in *onset (num_slots if none) with
++ * its ratio in *best, from the high-band energy per slot (hb). A slot is
++ * flagged when its energy exceeds gridT times the mean of the 8 slots before it
++ * (history carried across frames); an onset is the first flagged slot of a run,
++ * so a plateau after an attack is not a new onset, and the one with the largest
++ * ratio wins (a frame gets one border). Slots before `first` still update the
++ * state. */
 +static void find_onset(SBRChannel *c, const SBRInfo *sbr, int num_slots, int first, int *onset, float *best)
 +{
 +    float sum = 0.0f;
 +
 +    for (int i = 0; i < 8; i++) sum += c->hbHist[i];
 +    for (int slot = 0; slot < num_slots; slot++) {
-+        float e = 0.0f;
-+        for (int k = sbr->kx; k < sbr->k2; k++) e += c->slotE[slot][k];
++        float e = c->hb[slot];
 +        float *old = &c->hbHist[slot & 7];
 +        int flag = e > sbr->gridT * sum * 0.125f && e > SBR_ENERGY_FLOOR;
 +        if (flag && !c->hbFlag && slot >= first) {
@@ -126,11 +142,78 @@ index a64310b5..e11d08f5 100644
 +        c->hbFlag = flag;
 +        sum += e - *old;
 +        *old = e;
-     }
++    }
 +}
++
++/* The grid for an onset at time slot b (-1: none) given the leading border the
++ * previous frame's trailing one forces. Border positions reachable per class:
++ * VARFIX lead + 2..8 (even steps), FIXVAR/VARVAR trail - 2..8. The reachable
++ * border nearest b wins; ties go to the earlier border, then the class that
++ * carries no trailing border. */
++static void onset_grid(SignalAnalysis *sa, SBRInfo *sbr, int b)
++{
++    int lead = sbr->prevTrail;
++    int ne = sbr->numEnvFixFix;
++
++    if (b < 0 && !lead) {
++        sa->numEnvelopes = ne;
++        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
++        for (int e = 0; e <= ne; e++) sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
++        return;
+     }
++    if (b < 0) {
++        /* The previous frame ran past its end: this one has to open at the
++         * border it left, so a plain grid is VARFIX from there, in even steps. */
++        int step = 2 * ((SBR_NUM_TIME_SLOTS - lead + ne) / (2 * ne));
++        sa->numEnvelopes = ne;
++        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
++        sa->numRel0 = ne - 1;
++        for (int e = 0; e < ne; e++) sa->tEnv[e] = lead + e * step;
++        sa->tEnv[ne] = SBR_NUM_TIME_SLOTS;
++    } else {
++        int best = 99, pos = 0, trail = 0, fwd = 0;
++        /* d = -1: forward from the lead; d >= 0: backward from 16 + d. The
++         * step is the even one that lands nearest b, the earlier on a tie. */
++        for (int d = -1; d <= SBR_GRID_TRAIL; d++) {
++            int r = d < 0 ? (b - lead) & ~1 : (SBR_NUM_TIME_SLOTS + d - b + 1) & ~1;
++            r = r < 2 ? 2 : r > 8 ? 8 : r;
++            int p = d < 0 ? lead + r : SBR_NUM_TIME_SLOTS + d - r;
++            int dist = p > b ? p - b : b - p;
++            if (dist < best || (dist == best && p < pos)) {
++                best = dist;
++                pos = p;
++                fwd = d < 0;
++                trail = fwd ? 0 : d;
++            }
++        }
++        sa->numEnvelopes = 2;
++        sa->numRel0 = fwd;
++        sa->frameClass = fwd ? SBR_FRAME_CLASS_VARFIX : lead ? SBR_FRAME_CLASS_VARVAR : SBR_FRAME_CLASS_FIXVAR;
++        sa->tEnv[0] = lead;
++        sa->tEnv[1] = pos;
++        sa->tEnv[2] = SBR_NUM_TIME_SLOTS + trail;
++    }
++    sbr->prevTrail = sa->tEnv[sa->numEnvelopes] - SBR_NUM_TIME_SLOTS;
++}
++
++/* Multi-pass signal analysis: subband energies per QMF slot, the temporal
++ * grid, and the energies binned into the grid's envelopes. */
++void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
++{
++#if MAX_CHANNELS < 6
++    (void)isLfe;
++#endif
++    int num_slots = numSamples / SBR_QMF_BANDS_64;
++    float *workspace = sbr->workspace[0];
++    int kx = sbr->kx;
++    int kEnd = sbr->k2;
++    int nbin = nch;
++    /* A trailing border reaches into the next frame's slots, which the input
++     * buffer already holds. */
++    int store = num_slots + (sbr->gridT > 0 ? 2 * SBR_GRID_TRAIL : 0);
  
 -    if (sbr) {
--#if FAAC_ENCODER_PS
+ #if FAAC_ENCODER_PS
 -        if (sbr->is_he_v2) {
 -            float *right = sbr->workspace[1];
 -            memcpy(workspace, sbr->ch[0].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
@@ -172,79 +255,7 @@ index a64310b5..e11d08f5 100644
 -                    sa->psE[1][p][band] += rr[k]*rr[k]+ri[k]*ri[k];
 -                    sa->psCross[p][band] += lr[k]*rr[k]+li[k]*ri[k];
 -                    sa->psCrossIm[p][band] += li[k]*rr[k]-lr[k]*ri[k];
-+/* The grid for an onset at time slot b (-1: none) given the leading border the
-+ * previous frame's trailing one forces. Border positions reachable per class:
-+ * VARFIX lead + 2..8 (even steps), FIXVAR/VARVAR trail - 2..8. The reachable
-+ * border nearest b wins; ties go to the earlier border, then the class that
-+ * carries no trailing border. */
-+static void onset_grid(SignalAnalysis *sa, SBRInfo *sbr, int b)
-+{
-+    int lead = sbr->prevTrail;
-+    int ne = sbr->numEnvFixFix;
-+
-+    if (b < 0 && !lead) {
-+        sa->numEnvelopes = ne;
-+        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
-+        for (int e = 0; e <= ne; e++) sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
-+        return;
-+    }
-+    if (b < 0) {
-+        /* The previous frame ran past its end: this one has to open at the
-+         * border it left, so a plain grid is VARFIX from there, in even steps. */
-+        int step = 2 * ((SBR_NUM_TIME_SLOTS - lead + ne) / (2 * ne));
-+        sa->numEnvelopes = ne;
-+        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
-+        sa->numRel0 = ne - 1;
-+        for (int e = 0; e < ne; e++) sa->tEnv[e] = lead + e * step;
-+        sa->tEnv[ne] = SBR_NUM_TIME_SLOTS;
-+    } else {
-+        int best = 99, pos = 0, trail = 0, fwd = 0;
-+        /* d = -1: forward from the lead; d >= 0: backward from 16 + d. */
-+        for (int d = -1; d <= SBR_GRID_TRAIL; d++) {
-+            for (int r = 8; r >= 2; r -= 2) {
-+                int p = d < 0 ? lead + 10 - r : SBR_NUM_TIME_SLOTS + d - r;
-+                int dist = p > b ? p - b : b - p;
-+                if (dist < best || (dist == best && p < pos)) {
-+                    best = dist;
-+                    pos = p;
-+                    fwd = d < 0;
-+                    trail = fwd ? 0 : d;
-                 }
-             }
--            PsHybridAnalyze(&sbr->psHybrid, low, sa->psE, sa->psCross, sa->psCrossIm, num_slots);
--            for (int ch = 0; ch < 2; ch++)
--                for (int k = 0; k < 3; k++)
--                    memcpy(sbr->psHybrid.history[ch][k], low[ch][k] + num_slots,
--                           sizeof(sbr->psHybrid.history[ch][k]));
--            return;
-         }
-+        sa->numEnvelopes = 2;
-+        sa->numRel0 = fwd;
-+        sa->frameClass = fwd ? SBR_FRAME_CLASS_VARFIX : lead ? SBR_FRAME_CLASS_VARVAR : SBR_FRAME_CLASS_FIXVAR;
-+        sa->tEnv[0] = lead;
-+        sa->tEnv[1] = pos;
-+        sa->tEnv[2] = SBR_NUM_TIME_SLOTS + trail;
-+    }
-+    sbr->prevTrail = sa->tEnv[sa->numEnvelopes] - SBR_NUM_TIME_SLOTS;
-+}
-+
-+/* Multi-pass signal analysis: subband energies per QMF slot, the temporal
-+ * grid, and the energies binned into the grid's envelopes. */
-+void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
-+{
-+#if MAX_CHANNELS < 6
-+    (void)isLfe;
-+#endif
-+    int num_slots = numSamples / SBR_QMF_BANDS_64;
-+    float *workspace = sbr->workspace[0];
-+    int kx = sbr->kx;
-+    int kEnd = sbr->k2;
-+    int nbin = nch;
-+    /* A trailing border reaches into the next frame's slots, which the input
-+     * buffer already holds. */
-+    int store = num_slots + (sbr->gridT > 0 ? 2 * SBR_GRID_TRAIL : 0);
-+
-+#if FAAC_ENCODER_PS
+-                }
 +    if (sbr->is_he_v2) {
 +        float *right = sbr->workspace[1];
 +        memcpy(workspace, sbr->ch[0].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
@@ -267,7 +278,13 @@ index a64310b5..e11d08f5 100644
 +            for (int k = 0; k < 3; k++) {
 +                low[0][k][slot+6][0]=lr[k]; low[0][k][slot+6][1]=li[k];
 +                low[1][k][slot+6][0]=rr[k]; low[1][k][slot+6][1]=ri[k];
-+            }
+             }
+-            PsHybridAnalyze(&sbr->psHybrid, low, sa->psE, sa->psCross, sa->psCrossIm, num_slots);
+-            for (int ch = 0; ch < 2; ch++)
+-                for (int k = 0; k < 3; k++)
+-                    memcpy(sbr->psHybrid.history[ch][k], low[ch][k] + num_slots,
+-                           sizeof(sbr->psHybrid.history[ch][k]));
+-            return;
 +            if (!sampled) continue;
 +            int p = slot * 4 / num_slots;
 +            static const unsigned char edges[13] = {3,4,5,6,7,8,9,11,14,18,23,35,64};
@@ -285,14 +302,20 @@ index a64310b5..e11d08f5 100644
 +                sa->psCross[p][band] += lr[k]*rr[k]+li[k]*ri[k];
 +                sa->psCrossIm[p][band] += li[k]*rr[k]-lr[k]*ri[k];
 +            }
-+        }
++            sbr->ch[0].hb[slot] = band_sum(sbr->ch[0].slotE[slot], kx, kEnd);
+         }
 +        PsHybridAnalyze(&sbr->psHybrid, low, sa->psE, sa->psCross, sa->psCrossIm, num_slots);
 +        for (int ch = 0; ch < 2; ch++)
 +            for (int k = 0; k < 3; k++)
 +                memcpy(sbr->psHybrid.history[ch][k], low[ch][k] + num_slots,
 +                       sizeof(sbr->psHybrid.history[ch][k]));
 +    } else
-+#endif
+ #endif
+-    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
+-     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
+-        int kx = sbr->kx;
+-        int kEnd = sbr->k2;
+-        for (int ch = 0; ch < nch; ch++) {
 +    /* Subband analysis of every slot. Only [kx, k2) feeds the quantizer, so
 +     * skip bands below kx. */
 +    for (int ch = 0; ch < nch; ch++) {
@@ -305,13 +328,9 @@ index a64310b5..e11d08f5 100644
 +            memset(sbr->ch[ch].slotE[slot], 0, sizeof(sbr->ch[ch].slotE[slot]));
 +#if FAAC_SBR_DECIMATION > 1
 +            if (slot % FAAC_SBR_DECIMATION != 0) continue;
- #endif
--    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
--     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
--        int kx = sbr->kx;
--        int kEnd = sbr->k2;
--        for (int ch = 0; ch < nch; ch++) {
++#endif
 +            SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sbr->ch[ch].slotE[slot], kx, kEnd);
++            sbr->ch[ch].hb[slot] = band_sum(sbr->ch[ch].slotE[slot], kx, kEnd);
 +        }
 +    }
 +
@@ -360,7 +379,8 @@ index a64310b5..e11d08f5 100644
  #endif
 -                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->ch[ch].bandE[e], kx, kEnd);
 -                }
-+                for (int k = kx; k < kEnd; k++) sa->ch[ch].bandE[e][k] += sbr->ch[ch].slotE[slot][k];
++                /* Whole rows: a fixed trip count compiles to a fraction of the code. */
++                for (int k = 0; k < SBR_QMF_BANDS_64; k++) sa->ch[ch].bandE[e][k] += sbr->ch[ch].slotE[slot][k];
              }
          }
      }
@@ -377,10 +397,10 @@ index 72bef4b7..e430932a 100644
      int envSampled[SBR_MAX_ENVELOPES];
  
 diff --git a/libfaac/sbr_bitstream.c b/libfaac/sbr_bitstream.c
-index 0ad5e76a..9f1418d1 100644
+index 0ad5e76a..e0a4f233 100644
 --- a/libfaac/sbr_bitstream.c
 +++ b/libfaac/sbr_bitstream.c
-@@ -45,21 +45,37 @@ static void put_header(const SBRInfo *sbr, BitStream *bs)
+@@ -45,21 +45,33 @@ static void put_header(const SBRInfo *sbr, BitStream *bs)
      PutBit(bs, header, 21 + 6 * extra2);
  }
  
@@ -390,6 +410,8 @@ index 0ad5e76a..9f1418d1 100644
 + * Relative borders (even steps, 2 bits each) count forward from the leading
 + * border (numRel0 of them) and backward from the trailing one (the rest); a
 + * transient pointer of 0 leaves the noise floor border to the decoder. */
++_Static_assert(SBR_FREQ_RES_HIGH == 1 && SBR_GRID_POINTER == 0, "put_grid writes the pointer and resolution flags as constants");
++
  static void put_grid(const SbrFrameData *fd, BitStream *bs)
  {
 -    int num_env = fd->numEnvelopes;
@@ -403,34 +425,29 @@ index 0ad5e76a..9f1418d1 100644
 -        for (int i = 0; i < num_env; i++) PutBit(bs, SBR_FREQ_RES_HIGH, 1);
 -    } else {
 -        PutBit(bs, num_env >> 1, 2);
+-        PutBit(bs, SBR_FREQ_RES_HIGH, 1);
 +    int n = fd->numEnvelopes, cls = fd->frameClass;
 +    assert(n >= 1 && n <= SBR_MAX_ENVELOPES);
 +    PutBit(bs, cls, 2);
 +    if (cls == SBR_FRAME_CLASS_FIXFIX) {
-+        PutBit(bs, n >> 1, 2);
-         PutBit(bs, SBR_FREQ_RES_HIGH, 1);
++        PutBit(bs, n >> 1 << 1 | SBR_FREQ_RES_HIGH, 3);
 +        return;
-+    }
+     }
 +    int rel0 = cls == SBR_FRAME_CLASS_FIXVAR ? 0 : fd->numRel0, rel1 = n - 1 - rel0;
 +    /* The class numbers are bit flags: 2 = variable leading border, 1 = trailing. */
 +    if (cls & 2) PutBit(bs, fd->tEnv[0], 2);
 +    if (cls & 1) PutBit(bs, fd->tEnv[n] - SBR_NUM_TIME_SLOTS, 2);
-+    if (cls == SBR_FRAME_CLASS_VARVAR) {
-+        PutBit(bs, rel0, 2);
-+        PutBit(bs, rel1, 2);
-+    } else {
-+        PutBit(bs, n - 1, 2);
-     }
++    if (cls != SBR_FRAME_CLASS_FIXVAR) PutBit(bs, rel0, 2);
++    if (cls != SBR_FRAME_CLASS_VARFIX) PutBit(bs, rel1, 2);
 +    for (int i = 0; i < rel0; i++) PutBit(bs, (fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2);
 +    for (int i = 0; i < rel1; i++) PutBit(bs, (fd->tEnv[n - i] - fd->tEnv[n - i - 1] - 2) / 2, 2);
-+    /* ceil(log2(num_env + 1)) bits */
-+    PutBit(bs, SBR_GRID_POINTER, n == 1 ? 1 : n < 4 ? 2 : 3);
-+    for (int i = 0; i < n; i++) PutBit(bs, SBR_FREQ_RES_HIGH, 1);
++    /* A zero pointer of ceil(log2(num_env + 1)) bits, then one high-resolution flag per envelope. */
++    PutBit(bs, (1u << n) - 1, (n == 1 ? 1 : n < 4 ? 2 : 3) + n);
  }
  
  /* Where each book sits in sbr_env_codes: its frequency-delta code, then its
 diff --git a/libfaac/sbr_internal.h b/libfaac/sbr_internal.h
-index f5430d20..6eda7b01 100644
+index f5430d20..4b9358ee 100644
 --- a/libfaac/sbr_internal.h
 +++ b/libfaac/sbr_internal.h
 @@ -31,6 +31,10 @@ typedef struct {
@@ -444,20 +461,21 @@ index f5430d20..6eda7b01 100644
  /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
  typedef struct SBRChannel {
      float qmfOvl64[SBR_QMF_HIST_LEN]; /* QMF overlap plus analysis delay (carries across frames) */
-@@ -38,6 +42,12 @@ typedef struct SBRChannel {
+@@ -38,6 +42,13 @@ typedef struct SBRChannel {
       * its own, so a frame the rate loop writes again codes against the same
       * reference as the first time. */
      SbrEnvRef ref[2];
 +    /* Subband energy per QMF slot, binned into envelopes once the grid is set;
-+     * onset history: the last 8 slots' high-band energy and whether the last
-+     * slot was flagged. */
++     * onset detection: high-band energy per slot, the last 8 slots' of it
++     * from the frame before, and whether the last slot was flagged. */
 +    float slotE[SBR_ENV_SLOTS][SBR_MAX_BANDS];
++    float hb[SBR_ENV_SLOTS];
 +    float hbHist[8];
 +    int hbFlag;
  } SBRChannel;
  
  /* A channel's quantized envelopes, one level per band. */
-@@ -56,6 +66,7 @@ typedef struct SbrFrameData {
+@@ -56,6 +67,7 @@ typedef struct SbrFrameData {
      uint8_t numEnvelopes;
      uint8_t eff_amp_res;
      uint8_t frameClass;
@@ -465,7 +483,7 @@ index f5430d20..6eda7b01 100644
      uint8_t tEnv[SBR_MAX_ENVELOPES + 1];
      /* The noise floor and inverse-filter mode are stream constants
       * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
-@@ -117,6 +128,9 @@ struct SBRInfo {
+@@ -117,6 +129,9 @@ struct SBRInfo {
      int bs_stop_freq;
      int bs_alter_scale;
      int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
