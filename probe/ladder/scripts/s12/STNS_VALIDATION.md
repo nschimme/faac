@@ -79,3 +79,10 @@ Per-channel `TnsInfo` grows by about 230 bytes (8 short windows x one filter).
 - fdkdec `--strict` unusable here (fails on any stream); plain fdkdec used.
 - The synthetic burst test shows no pre-echo gain; real benefit has to be judged on corpus scoring.
 - Short-window TNS runs after `BlocGroup`, so grouping decisions see unfiltered spectra; the quantizer/rate loop is unchanged and unaware of the extra side-info bits.
+
+### Note on the +25.6 % instruction figure (orchestrator, 2026-11-17)
+Measured on the worst case for this arm: the 10 s fatboy excerpt at LC 64 kbps is 95 % EIGHT_SHORT (452 of 474
+ICS in the decision dump of the `FAAC_STNS=1` stream; TNS sent on 421 of them). The corpus-wide short share is 17.4 %
+(`results/s12-apple48k/decisions/stereo_shares.md`), so a per-short-frame cost would scale to roughly +4-5 % on a
+typical clip. Not yet measured on the benchmark's throughput clips; the analysis also runs on every short window, not
+only those at or before an attack. Both are follow-ups only if the screen passes.
