@@ -1,0 +1,74 @@
+{
+ "faac/32": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "15": 8458
+  },
+  "k0": 31,
+  "xover_hz": 11625.0
+ },
+ "faac/40": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "12": 8458
+  },
+  "k0": 22,
+  "xover_hz": 8250.0
+ },
+ "faac/48": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "12": 8458
+  },
+  "k0": 22,
+  "xover_hz": 8250.0
+ },
+ "fdk/32": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "7": 8466
+  },
+  "k0": 15,
+  "xover_hz": 5625.0
+ },
+ "fdk/40": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "10": 8466
+  },
+  "k0": 18,
+  "xover_hz": 6750.0
+ },
+ "fdk/48": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "12": 8466
+  },
+  "k0": 22,
+  "xover_hz": 8250.0
+ },
+ "apple/32": {
+  "rate": 32000,
+  "start_freq_hist": {
+   "11": 5666
+  },
+  "k0": 23,
+  "xover_hz": 5750.0
+ },
+ "apple/40": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "11": 8470
+  },
+  "k0": 20,
+  "xover_hz": 7500.0
+ },
+ "apple/48": {
+  "rate": 48000,
+  "start_freq_hist": {
+   "13": 8470
+  },
+  "k0": 24,
+  "xover_hz": 9000.0
+ }
+}
