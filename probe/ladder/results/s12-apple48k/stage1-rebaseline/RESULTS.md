@@ -83,6 +83,21 @@ Reading: at equal nominal rung Apple keeps a mean-MOS edge only at 192k (-0.0027
 
 Master matches the leaderboard build at LC 128-320 within 0.001 MOS; Apple and FDK reproduce exactly, so the local scorer reproduces the leaderboard. FAAC NPER is 0.06-0.09 dB lower locally at 160-320 (small build or pooling difference). Open: stereo fidelity is about 0.002 higher locally for every encoder (pooling not resolved), and the gist reports FAAC LC bitrate error 0.0-0.1 % while the harness measures -1.3 to -1.8 % with the same ES-bytes / source-duration definition as `phase1_encode` (not resolved). HE-v2 differs (anomaly item).
 
+
+### LC CBR (the leaderboard mode), 128-320: `rows_lc_cbr.jsonl`, `lc_cbr/`
+
+BD-rate FAAC CBR vs Apple, FAAD2 (FFmpeg and fdkdec within 0.1): 128-192 PCHIP -1.37 [-3.11, +0.53] (30 worse / 46 better), linear -1.18 [-2.81, +0.58]; 192-320 PCHIP -1.55 [-3.60, +0.42] (36/40), linear +0.14 [-1.80, +2.00]; 128-320 PCHIP -1.17 [-2.80, +0.40], linear -0.99 [-2.61, +0.59]. Length-matched 36: same signs, all CIs span 0. **Not resolved in any range** (parity). vs FDK: -14 to -21 %, resolved, both methods.
+
+| rung | FAAC kbps | Apple kbps | dMOS at nominal | dMOS at Apple's realized rate (FAAC curve, log-rate linear) | clips better / worse |
+|---|---|---|---|---|---|
+| 128 | 127.95 | 128.56 | +0.0197 | +0.0209 | 52 / 25 |
+| 160 | 160.05 | 160.64 | +0.0065 | +0.0072 | 47 / 30 |
+| 192 | 192.15 | 192.74 | -0.0030 | -0.0027 | 16 / 61 |
+| 256 | 256.31 | 256.98 | +0.0019 | +0.0020 | 44 / 33 |
+| 320 | 320.47 | 321.19 | -0.0012 | -0.0012 | 31 / 46 |
+
+CBR hits the nominal rate, so the ABR reading ("Apple's 192/320 edge is FAAC's lower realized rate") does **not** hold in the leaderboard mode: at equal realized rate FAAC still trails at 192k (61 of 77 clips) and 320k. Item 1's remaining gap is a small real coding gap at 192 and 320. FAAC ABR is more efficient than FAAC CBR against the same Apple streams (ABR 128-320 -2.5 to -2.7 %, CBR about -1 %, unresolved).
+
 ### Leaderboard rate mode
 faac-benchmark 9f5f1027d529fc780d226ad2d8fe250faaea6148, `compare_codecs.py` lines 759-765:
 
@@ -96,7 +111,7 @@ faac-benchmark 9f5f1027d529fc780d226ad2d8fe250faaea6148, `compare_codecs.py` lin
                 e.default_rate_control = "cbr"
 ```
 
-So the leaderboard's FAAC rows are CBR (`-b R --cbr`); the ABR rows above are not the leaderboard mode. LC CBR is queued; per-rung realized kbps, dMOS at nominal and dMOS at equal realized rate will be reported from it.
+So the leaderboard's FAAC rows are CBR (`-b R --cbr`); the ABR rows above are not the leaderboard mode. LC CBR results are in the section above.
 
 ## B. HE-v1 32/40/48/64 and HE-v2 24/32/48 (FAAC in CBR as the leaderboard runs it)
 

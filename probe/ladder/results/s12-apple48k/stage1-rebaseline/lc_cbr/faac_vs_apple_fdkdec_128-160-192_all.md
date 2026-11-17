@@ -1,0 +1,32 @@
+# faac vs apple  (decoder fdkdec, cbr/lc, rungs [128, 160, 192], metric mos)
+
+BD-rate mean **-1.271%** (95% clip-bootstrap CI [-3.031, +0.617], 10000 resamples, seed 0), median -1.621%; valid curves 76/77, no valid curve: 1
+PCHIP sign: 30 clips worse / 46 better. Linear (log-rate linear in MOS): **-1.087%** [-2.734, +0.668], n 76, 31 worse / 45 better.
+
+| rung | n | test MOS | ref MOS | dMOS | test kbps | ref kbps | test P1 | ref P1 | W/T/L |
+|---|---|---|---|---|---|---|---|---|---|
+| 128 | 77 | 4.8658 | 4.8466 | +0.0192 | 127.95 | 128.56 | 4.706 | 4.488 | 50/0/27 |
+| 160 | 77 | 4.9255 | 4.9192 | +0.0063 | 160.05 | 160.64 | 4.834 | 4.766 | 47/0/30 |
+| 192 | 77 | 4.9549 | 4.9580 | -0.0031 | 192.15 | 192.74 | 4.894 | 4.898 | 15/0/62 |
+
+Worst clip x rung dMOS (test - ref at equal nominal rung):
+
+| dMOS | rung | clip |
+|---|---|---|
+| -0.0812 | 160 | 24-Greensleeves-Korean-male-speech.441.16b48k.wav |
+| -0.0700 | 128 | 10xh_.wav |
+| -0.0577 | 128 | SinceAlways.16b48k.wav |
+| -0.0576 | 128 | take_your_finger_frin_my_head.16b48k.wav |
+| -0.0575 | 128 | 24-Greensleeves-Korean-male-speech.441.16b48k.wav |
+| -0.0491 | 128 | 18vr_.wav |
+| -0.0462 | 128 | fms.wav |
+| -0.0384 | 192 | 08 velvet.wav |
+| -0.0368 | 128 | Girl_In_The_Fire__Sample_.16b48k.wav |
+| -0.0365 | 192 | 24-Greensleeves-Korean-male-speech.441.16b48k.wav |
+| -0.0362 | 128 | 14fe_.wav |
+| -0.0340 | 160 | SinceAlways.16b48k.wav |
+| -0.0338 | 160 | take_your_finger_frin_my_head.16b48k.wav |
+| -0.0296 | 128 | 10 Angels_Fall_First_ringing.wav |
+| -0.0292 | 160 | 08 velvet.wav |
+
+No valid curve: girl.16b48k.wav (no valid curve)
