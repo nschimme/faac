@@ -43,7 +43,7 @@ index 8618c2f7..7838d8bc 100644
  
  static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
 diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
-index a64310b5..a55b943e 100644
+index a64310b5..e11d08f5 100644
 --- a/libfaac/sbr_analysis.c
 +++ b/libfaac/sbr_analysis.c
 @@ -19,27 +19,24 @@
@@ -91,7 +91,7 @@ index a64310b5..a55b943e 100644
          sa->tEnv[0] = 0;
          sa->tEnv[1] = innerSbr;
          sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-@@ -86,89 +84,202 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+@@ -86,89 +84,203 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
          for (int e = 0; e <= ne; e++)
              sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
      }
@@ -103,15 +103,14 @@ index a64310b5..a55b943e 100644
 -        int n = (env_border(sa, e + 1, num_slots) + FAAC_SBR_DECIMATION - 1) / FAAC_SBR_DECIMATION
 -              - (env_border(sa, e, num_slots) + FAAC_SBR_DECIMATION - 1) / FAAC_SBR_DECIMATION;
 -        sa->envSampled[e] = n < 1 ? 1 : n;
-+/* First slot of the frame that starts an onset in the high band (kx..k2 of the
-+ * channel's slot energies), or num_slots. A slot is flagged when its energy
++/* The strongest onset of the frame in the high band (kx..k2 of the channel's
++ * slot energies), as a slot in *onset (num_slots if none) with its ratio in *best. A slot is flagged when its energy
 + * exceeds gridT times the mean of the 8 slots before it (history carried
 + * across frames); an onset is the first flagged slot of a run, so a plateau
-+ * after an attack is not a new onset. Slots before `first` still update the
-+ * state. */
-+static int find_onset(SBRChannel *c, const SBRInfo *sbr, int num_slots, int first)
++ * after an attack is not a new onset, and the one with the largest ratio wins
++ * (a frame gets one border). Slots before `first` still update the state. */
++static void find_onset(SBRChannel *c, const SBRInfo *sbr, int num_slots, int first, int *onset, float *best)
 +{
-+    int onset = num_slots;
 +    float sum = 0.0f;
 +
 +    for (int i = 0; i < 8; i++) sum += c->hbHist[i];
@@ -120,12 +119,14 @@ index a64310b5..a55b943e 100644
 +        for (int k = sbr->kx; k < sbr->k2; k++) e += c->slotE[slot][k];
 +        float *old = &c->hbHist[slot & 7];
 +        int flag = e > sbr->gridT * sum * 0.125f && e > SBR_ENERGY_FLOOR;
-+        if (flag && !c->hbFlag && slot >= first && onset == num_slots) onset = slot;
++        if (flag && !c->hbFlag && slot >= first) {
++            float ratio = e / (sum * 0.125f + SBR_ENERGY_FLOOR);
++            if (ratio > *best) { *best = ratio; *onset = slot; }
++        }
 +        c->hbFlag = flag;
 +        sum += e - *old;
 +        *old = e;
      }
-+    return onset;
 +}
  
 -    if (sbr) {
@@ -233,12 +234,7 @@ index a64310b5..a55b943e 100644
 +{
 +#if MAX_CHANNELS < 6
 +    (void)isLfe;
- #endif
--    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
--     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
--        int kx = sbr->kx;
--        int kEnd = sbr->k2;
--        for (int ch = 0; ch < nch; ch++) {
++#endif
 +    int num_slots = numSamples / SBR_QMF_BANDS_64;
 +    float *workspace = sbr->workspace[0];
 +    int kx = sbr->kx;
@@ -309,20 +305,25 @@ index a64310b5..a55b943e 100644
 +            memset(sbr->ch[ch].slotE[slot], 0, sizeof(sbr->ch[ch].slotE[slot]));
 +#if FAAC_SBR_DECIMATION > 1
 +            if (slot % FAAC_SBR_DECIMATION != 0) continue;
-+#endif
+ #endif
+-    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
+-     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
+-        int kx = sbr->kx;
+-        int kEnd = sbr->k2;
+-        for (int ch = 0; ch < nch; ch++) {
 +            SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sbr->ch[ch].slotE[slot], kx, kEnd);
 +        }
 +    }
 +
 +    if (sbr->gridT > 0) {
 +        int onset = num_slots;
++        float best = 0.0f;
 +        for (int ch = 0; ch < nbin; ch++) {
  #if MAX_CHANNELS >= 6
              if (isLfe[ch]) continue;
  #endif
 -            memset(sa->ch[ch].bandE, 0, (size_t)sa->numEnvelopes * sizeof(sa->ch[ch].bandE[0]));
-+            int o = find_onset(&sbr->ch[ch], sbr, num_slots, 2 * sbr->prevTrail);
-+            if (o < onset) onset = o;
++            find_onset(&sbr->ch[ch], sbr, num_slots, 2 * sbr->prevTrail, &onset, &best);
 +        }
 +        /* Time slots are two QMF slots; the lead correction moves the border
 +         * later, the onset showing up before the slot its energy lands in. */

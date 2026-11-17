@@ -34,8 +34,10 @@ def run_one(enc, args, clip, env_extra, tmp, keep=None):
     env = dict(os.environ, **env_extra)
     subprocess.run([enc, "--overwrite"] + args + ["-o", m4a, AUDIO + "/" + clip], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+    # ADTS remux: an m4a decode applies the edit list, which would hide the codec delay (lag 3042)
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", m4a, "-c", "copy", "-f", "adts", tmp + "/o.aac"], check=True)
     denv = dict(os.environ, FAAD_DECDUMP=tmp + "/d.txt")
-    subprocess.run([DUMP, "-q", "--overwrite", "-o", tmp + "/o.wav", m4a], check=True, env=denv)
+    subprocess.run([DUMP, "-q", "--overwrite", "-o", tmp + "/o.wav", tmp + "/o.aac"], check=True, env=denv)
     x, sr = sf.read(tmp + "/o.wav", dtype="float64", always_2d=True)
     s, ssr = sf.read(AUDIO + "/" + clip, dtype="float64", always_2d=True)
     return dict(grid=parse_grid(tmp + "/d.txt"), lag48=est_lag(mono48(s, ssr), mono48(x, sr)),
@@ -52,4 +54,5 @@ def main():
         res = run_one(enc, shlex.split(args), clip, env_extra, tmp)
         json.dump(res, open(of, "w"))
     subprocess.run(["rm", "-rf", tmp])
-main()
+if __name__ == "__main__":
+    main()

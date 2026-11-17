@@ -36,3 +36,59 @@ HE-v1 CBR 24/32/40/48 and HE-v2 CBR 24/32/48, 77 clips, three decoders. Reading 
 stereo fidelity; BD-rate vs master (PCHIP and linear). Advance to the full-dataset pass if NPER CI is below 0 at >= 2
 HE-v1 rungs under all three decoders, no cell below -0.10, mean MOS not lower by more than 0.005 and P1 not lower at
 any rung (HE-v1 and HE-v2). Results are also split by calibration and evaluation half.
+
+
+## Addendum 2026-11-17 (calibration half only, before any evaluation-half clip, grid, MOS or NPER was read)
+
+Patch `scripts/s12/sbr_grid_scratch.patch` (against origin/master 3a656f7), runner `scripts/s12/sbrgrid_run.py`, metrics
+`scripts/s12/sbrgrid_metrics.py` (same conventions as `sbr_grid_analysis.py`: onsets merged within 64 samples, frame
+k = floor((onset + lag - 256) / 2048), position = remainder / 128 slots, near-N = any onset channel's interior border within N
+slots), table `scripts/s12/sbrgrid_calib_table.py`. 39 calibration clips, 429 scored onsets, HE-v1 40k CBR, decoded grids from the
+instrumented libfaad (ADTS remux, so the codec delay is kept: xcorr lag 3042 for all 39 streams, as in `sbr_grid_he.md`).
+
+Interpretation choices the prereg leaves open (fixed before the table was read, not tuned): the detector sums the QMF slot energy
+over the SBR range [kx, k2) per analysis slot (64 samples, 32 per frame); a flagged run counts as one onset (its first slot); when a
+frame has several onsets the one with the largest energy / mean ratio gets the border (the prereg grid has one border per
+frame); L is in SBR time slots (128 samples), added to the detected slot (the QMF analysis sees an attack before the slot its energy
+lands in) and clamped to slot 15; the border is the reachable position nearest to the corrected slot (VARFIX: lead + 2..8,
+FIXVAR/VARVAR: trail - 2..8, trail 16 or 17), ties to the earlier border, then to the class with no trailing border; frames
+without an onset keep master's FIXFIX (or, after a trailing border, a VARFIX from the carried lead border); the transient pointer
+stays 0. Master's frame-strength test is not used in the arm. A first-onset rule instead of the strongest was also run on the
+calibration half (T in {4,6,8}, L in {0,1,2}): within 2 slots 50.8-55.2 % against 54.8-57.8 % for strongest at the same cells;
+strongest was kept.
+
+Void first pass, recorded for the audit: the first calibration run read caches decoded from the .m4a (the edit list hides the
+codec delay, lag 0), so its alignment was wrong and its within-2 shares (31-51 %) are chance level; it was discarded and rerun
+after the lag was restored. The alignment re-check on the valid run peaks at delta = -256 samples again (T6 L1: within 2 slots
+at delta -384 / -256 / -128 / 0 = 52.4 / 57.8 / 55.2 / 42.7 %), so delta = -256 is kept.
+
+Calibration table (valid run):
+
+| T | L | onsets | within 2 % | within 1 % | FIXFIX at onset % | non-FIXFIX frames % |
+|---|---|---|---|---|---|---|
+| 2 | 0 | 429 | 52.68 | 35.20 | 0.00 | 64.76 |
+| 2 | 1 | 429 | 55.24 | 46.85 | 0.00 | 65.91 |
+| 2 | 2 | 429 | 55.01 | 29.84 | 0.00 | 66.54 |
+| 2 | 3 | 429 | 34.27 | 14.69 | 0.00 | 67.62 |
+| 3 | 0 | 429 | 53.15 | 36.13 | 0.00 | 42.75 |
+| 3 | 1 | 429 | 55.48 | 46.85 | 0.00 | 43.62 |
+| 3 | 2 | 429 | 53.85 | 29.14 | 0.00 | 44.72 |
+| 3 | 3 | 429 | 33.10 | 14.22 | 0.00 | 45.48 |
+| 4 | 0 | 429 | 55.01 | 37.53 | 0.00 | 33.90 |
+| 4 | 1 | 429 | 56.64 | 48.02 | 0.00 | 34.86 |
+| 4 | 2 | 429 | 54.78 | 27.74 | 0.00 | 35.71 |
+| 4 | 3 | 429 | 32.40 | 14.22 | 0.00 | 36.75 |
+| 6 | 0 | 429 | 55.94 | 38.46 | 0.23 | 25.89 |
+| 6 | 1 | 429 | 57.81 | 48.25 | 0.23 | 26.61 |
+| 6 | 2 | 429 | 55.48 | 27.51 | 0.23 | 27.30 |
+| 6 | 3 | 429 | 34.03 | 14.22 | 0.23 | 28.28 |
+| 8 | 0 | 429 | 55.94 | 38.00 | 0.93 | 21.36 |
+| 8 | 1 | 429 | 56.88 | 46.85 | 1.17 | 22.10 |
+| 8 | 2 | 429 | 55.48 | 26.81 | 0.93 | 22.62 |
+| 8 | 3 | 429 | 31.24 | 13.29 | 0.93 | 23.59 |
+
+
+Rule (max within-2 subject to non-FIXFIX <= 40 % of all frames; T = 2 and 3 are over 40 %; ties would go to fewer non-FIXFIX):
+**frozen (T, L) = (6, 1)**: within 2 slots 57.81 %, within 1 slot 48.25 %, FIXFIX at onset 0.23 %, non-FIXFIX 26.61 % of frames
+(VARFIX 5478, FIXVAR 3286, VARVAR 408 of 34470 frame-channels). These are the constants for the evaluation half.
+Calibration-half onset gates for reference (not the gate itself): within 2 slots 57.8 % < 70 %, within 1 slot 48.3 % < 60 %.
