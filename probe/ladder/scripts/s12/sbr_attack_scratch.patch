@@ -1,0 +1,81 @@
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index 8618c2f7..6576506b 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -166,6 +166,10 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+         sbr->oddCos[m] = (float)cos(M_PI_DOUBLE * (2 * m + 1) / 128.0);
+         sbr->oddSin[m] = (float)sin(M_PI_DOUBLE * (2 * m + 1) / 128.0);
+     }
++    {
++        const char *atk = getenv("FAAC_SBR_ATK");
++        sbr->attackBorder = atk && atk[0] == '1';
++    }
+     SbrUpdate(sbr, bitRate);
+     return sbr;
+ }
+diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
+index a64310b5..b3599640 100644
+--- a/libfaac/sbr_analysis.c
++++ b/libfaac/sbr_analysis.c
+@@ -41,6 +41,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+     float *workspace = sbr->workspace[0];
+ 
+     float frameStrength = 0.0f;
++    int frameAtkSlot = 0;
+ 
+     /* The strongest non-LFE transient selects the shared envelope grid. */
+     for (int ch = 0; ch < nch; ch++) {
+@@ -48,6 +49,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+         if (isLfe[ch]) continue;
+ #endif
+         float smax = 0.0f, ssum = 0.0f;
++        int atkSlot = 0;
+         for (int slot = 0; slot < num_slots; slot++) {
+             /* The analyzed frame starts SBR_ANALYSIS_DELAY back, in the saved history. */
+             int pos = slot * SBR_QMF_BANDS_64 - SBR_ANALYSIS_DELAY;
+@@ -62,6 +64,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+ 
+             if (stot > smax) {
+                 smax = stot;
++                atkSlot = slot;
+             }
+             ssum += stot;
+         }
+@@ -69,6 +72,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+         float strength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
+         if (strength > frameStrength) {
+             frameStrength = strength;
++            frameAtkSlot = atkSlot;
+         }
+     }
+ 
+@@ -78,6 +82,17 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
+         sa->frameClass = SBR_FRAME_CLASS_VARFIX;
+         sa->tEnv[0] = 0;
+         sa->tEnv[1] = innerSbr;
++        if (sbr->attackBorder) {
++            /* Analysis slots are already on the delayed grid the envelopes are
++             * binned in (env_border), so only the slot unit changes. The
++             * 2-bit relative border steps in 2s, and the leading border stays
++             * 0: a VARFIX frame starting later leaves slots before it without
++             * HF, as the previous frame's end is a fixed 16. So borders 2..8;
++             * an attack before slot 2 or after 8 keeps the mid-frame border. */
++            int border = (frameAtkSlot * SBR_NUM_TIME_SLOTS / num_slots) & ~1;
++            if (border >= 2 && border <= innerSbr)
++                sa->tEnv[1] = border;
++        }
+         sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
+     } else {
+         int ne = sbr->numEnvFixFix;
+diff --git a/libfaac/sbr_internal.h b/libfaac/sbr_internal.h
+index f5430d20..f0b134c5 100644
+--- a/libfaac/sbr_internal.h
++++ b/libfaac/sbr_internal.h
+@@ -117,6 +117,7 @@ struct SBRInfo {
+     int bs_stop_freq;
+     int bs_alter_scale;
+     int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
++    int attackBorder;      /* scratch: FAAC_SBR_ATK=1 puts the VARFIX border at the attack */
+     int numEnvFixFix;      /* envelopes in a frame without a transient: 1 or 4 */
+     int rich;              /* core has bits to spare: selects the SBR_*_RICH settings */
+ 
