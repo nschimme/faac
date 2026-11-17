@@ -92,3 +92,12 @@ Rule (max within-2 subject to non-FIXFIX <= 40 % of all frames; T = 2 and 3 are 
 **frozen (T, L) = (6, 1)**: within 2 slots 57.81 %, within 1 slot 48.25 %, FIXFIX at onset 0.23 %, non-FIXFIX 26.61 % of frames
 (VARFIX 5478, FIXVAR 3286, VARVAR 408 of 34470 frame-channels). These are the constants for the evaluation half.
 Calibration-half onset gates for reference (not the gate itself): within 2 slots 57.8 % < 70 %, within 1 slot 48.3 % < 60 %.
+
+
+## Addendum 2026-11-17 (pre-scoring gates, evaluation half; no MOS/NPER read)
+Details and tables: `scripts/s12/SBRGRID_VALIDATION.md`. Frozen (T, L) = (6, 1), HE-v1 CBR 32/40/48 and HE-v2 CBR 24/32/48,
+38 evaluation clips, 268 scored onsets: border within 2 slots 86.2-91.0 % (>= 70), within 1 slot 64.6-72.8 % (>= 60), FIXFIX at
+onset 0.7-2.6 % (<= 15). LC byte-exact vs master 54/54, unset payload-identical 288/288, strict decode 228/228 streams clean on
+FAAD2, in-tree faad --strict, ffmpeg -xerror and fdkdec, 0 grid-syntax violations. Onset gates, LC and decode gates pass. Footprint
+rule not met: LTO .text+.rodata+.data +2396 B net after offsets (+5392 B before); Ir +1.32 % unset, +2.61 % set (10 s HE-v1 32k).
+Scoring stage is the owner's call on the footprint.

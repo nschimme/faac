@@ -52,7 +52,7 @@ index 8618c2f7..c94c1119 100644
  
  static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
 diff --git a/libfaac/sbr_analysis.c b/libfaac/sbr_analysis.c
-index a64310b5..0ff3c398 100644
+index a64310b5..5ca1fbb5 100644
 --- a/libfaac/sbr_analysis.c
 +++ b/libfaac/sbr_analysis.c
 @@ -19,27 +19,24 @@
@@ -302,7 +302,7 @@ index a64310b5..0ff3c398 100644
 +                sa->psCross[p][band] += lr[k]*rr[k]+li[k]*ri[k];
 +                sa->psCrossIm[p][band] += li[k]*rr[k]-lr[k]*ri[k];
 +            }
-+            sbr->ch[0].hb[slot] = band_sum(sbr->ch[0].slotE[slot], kx, kEnd);
++            if (sbr->gridT > 0) sbr->ch[0].hb[slot] = band_sum(sbr->ch[0].slotE[slot], kx, kEnd);
          }
 +        PsHybridAnalyze(&sbr->psHybrid, low, sa->psE, sa->psCross, sa->psCrossIm, num_slots);
 +        for (int ch = 0; ch < 2; ch++)
@@ -330,7 +330,7 @@ index a64310b5..0ff3c398 100644
 +            if (slot % FAAC_SBR_DECIMATION != 0) continue;
 +#endif
 +            SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sbr->ch[ch].slotE[slot], kx, kEnd);
-+            sbr->ch[ch].hb[slot] = band_sum(sbr->ch[ch].slotE[slot], kx, kEnd);
++            if (sbr->gridT > 0) sbr->ch[ch].hb[slot] = band_sum(sbr->ch[ch].slotE[slot], kx, kEnd);
 +        }
 +    }
 +
