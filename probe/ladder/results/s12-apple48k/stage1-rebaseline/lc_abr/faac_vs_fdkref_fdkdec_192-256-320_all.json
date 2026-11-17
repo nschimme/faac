@@ -1,0 +1,309 @@
+{
+ "test": "faac",
+ "ref": "fdkref",
+ "rungs": [
+  192,
+  256,
+  320
+ ],
+ "decoder": "fdkdec",
+ "mode": "abr",
+ "profile": "lc",
+ "metric": "mos",
+ "n_clips": 77,
+ "n_valid": 49,
+ "n_no_curve": 28,
+ "no_curve": [
+  [
+   "03 eig.wav",
+   "no valid curve"
+  ],
+  [
+   "04 Bachpsichord.wav",
+   "no valid curve"
+  ],
+  [
+   "06 trumpet.wav",
+   "no valid curve"
+  ],
+  [
+   "10xh_.wav",
+   "no valid curve"
+  ],
+  [
+   "11 You look good to me.wav",
+   "no valid curve"
+  ],
+  [
+   "11ff_.wav",
+   "no valid curve"
+  ],
+  [
+   "12-German-male-speech.441.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "16mb_.wav",
+   "no valid curve"
+  ],
+  [
+   "17qu_.wav",
+   "no valid curve"
+  ],
+  [
+   "22ex_.wav",
+   "no valid curve"
+  ],
+  [
+   "23ht_.wav",
+   "no valid curve"
+  ],
+  [
+   "24td_.wav",
+   "no valid curve"
+  ],
+  [
+   "26fr_.wav",
+   "no valid curve"
+  ],
+  [
+   "29ru_.wav",
+   "no valid curve"
+  ],
+  [
+   "35_SQAM_glockenspiel_cut.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "4-Sound-English-male.441.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "ExitMusic.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "Hey Tonight.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "Last_Of_The_Mohicanz__Sample_.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "NewYorkCity.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "Robots_old.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "With Love (Outro).16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "clapton_44k.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "girl.16b48k.wav",
+   "no valid curve"
+  ],
+  [
+   "glk.wav",
+   "no valid curve"
+  ],
+  [
+   "hrp.wav",
+   "no valid curve"
+  ],
+  [
+   "lob.wav",
+   "no valid curve"
+  ]
+ ],
+ "bd_rate_mean": -21.586546511993205,
+ "bd_ci95": [
+  -24.701968015341166,
+  -18.413403918373564
+ ],
+ "bd_rate_median": -22.83302230117499,
+ "per_clip_bd": {
+  "01 castanets.wav": -30.80674996209235,
+  "05 Enola.wav": -40.0458800974711,
+  "07 applaud.wav": -27.938319950225264,
+  "08 velvet.wav": -38.07665403603354,
+  "09 Linchpin.wav": -37.71855630645933,
+  "10 Angels_Fall_First_ringing.wav": -24.482286553373033,
+  "12at_.wav": -28.214856157638245,
+  "13 fatboy_30sec.wav": -22.83826436029144,
+  "13by_.wav": -34.11905537160519,
+  "14fe_.wav": -39.30870330087416,
+  "15-Good-evening.441.16b48k.wav": -12.380491378824432,
+  "15ma_.wav": -37.623113942463895,
+  "18vr_.wav": -15.544676850366802,
+  "19am_.wav": -29.98488013573546,
+  "20tt_.wav": -22.916520280345765,
+  "21-classic.441.16b48k.wav": 3.5653283144157166,
+  "21wa_.wav": -39.53742222505667,
+  "24-Greensleeves-Korean-male-speech.441.16b48k.wav": -19.18176988494803,
+  "25-This-is-the-end.441.16b48k.wav": -27.604236272618255,
+  "25rb_.wav": -16.075113526877328,
+  "27-last-song-drums-and-trampets.441.16b48k.wav": -22.83302230117499,
+  "27ud_.wav": -8.928505827334543,
+  "28db_.wav": -18.723843539527607,
+  "9-Have-big-expensive-car.441.16b48k.wav": -28.55322316033143,
+  "Asleep__4.11-4.31_.16b48k.wav": -32.93636240202195,
+  "Berling Drug.wav": -5.812979435382271,
+  "Changes.16b48k.wav": -34.24498452977273,
+  "Coral.16b48k.wav": -13.949519491175511,
+  "Girl_In_The_Fire__Sample_.16b48k.wav": -12.926183314123318,
+  "Greatest_Love_of_All_2min57.16b48k.wav": -21.635072841025238,
+  "Hotel California.16b48k.wav": -33.34058937786312,
+  "Jupiter, the Bringer of Jolity.16b48k.wav": -28.756417744831964,
+  "Only Time.16b48k.wav": -5.525720401038403,
+  "Severance__1.31-1.51_.16b48k.wav": -8.136937852352254,
+  "Shinsho_pool_3min45_4min4.16b48k.wav": -5.367070800995433,
+  "SinceAlways.16b48k.wav": -23.001527605837822,
+  "SlavesOfFear.16b48k.wav": -19.133299480831322,
+  "The Chastising of Renegade.16b48k.wav": -34.5005494868871,
+  "Through The Fire And Flames.16b48k.wav": -29.44486949597165,
+  "TrosYGareg.16b48k.wav": -1.255862315294587,
+  "bah.wav": -6.137188920419234,
+  "bas.wav": -8.046294617417537,
+  "bonhemian_rhapsody.16b48k.wav": -10.65533435760454,
+  "fms.wav": -12.887393790660617,
+  "liberate.16b48k.wav": -22.04996816244239,
+  "mof.wav": -26.035105963466943,
+  "qrt.wav": -16.63673270368876,
+  "sandman.16b48k.wav": -13.044004025403378,
+  "take_your_finger_frin_my_head.16b48k.wav": -12.409992863906039
+ },
+ "rung_table": [
+  {
+   "rung": 192,
+   "n": 77,
+   "test_mos": 4.955201520548238,
+   "ref_mos": 4.926603366802265,
+   "test_kbps": 189.4114521753399,
+   "ref_kbps": 192.7410351686122,
+   "test_p1": 4.905107421875,
+   "ref_p1": 4.828345756530762,
+   "delta_mos": 0.028598153745973263,
+   "wins": 74,
+   "ties": 0,
+   "losses": 3
+  },
+  {
+   "rung": 256,
+   "n": 77,
+   "test_mos": 4.981522783056482,
+   "ref_mos": 4.952430353536235,
+   "test_kbps": 252.37972367159162,
+   "ref_kbps": 256.8993818648388,
+   "test_p1": 4.963499374389649,
+   "ref_p1": 4.886441802978515,
+   "delta_mos": 0.02909242952024782,
+   "wins": 76,
+   "ties": 0,
+   "losses": 1
+  },
+  {
+   "rung": 320,
+   "n": 77,
+   "test_mos": 4.990701099494835,
+   "ref_mos": 4.959774599446879,
+   "test_kbps": 314.27727288596515,
+   "ref_kbps": 321.10848743099575,
+   "test_p1": 4.980796432495117,
+   "ref_p1": 4.89627082824707,
+   "delta_mos": 0.030926500047956194,
+   "wins": 76,
+   "ties": 0,
+   "losses": 1
+  }
+ ],
+ "wins": {},
+ "worst": [
+  {
+   "delta": -0.023398876190185547,
+   "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+   "rung": 192
+  },
+  {
+   "delta": -0.005496025085449219,
+   "clip": "21-classic.441.16b48k.wav",
+   "rung": 192
+  },
+  {
+   "delta": -0.0029959678649902344,
+   "clip": "21-classic.441.16b48k.wav",
+   "rung": 256
+  },
+  {
+   "delta": -0.0020804405212402344,
+   "clip": "TrosYGareg.16b48k.wav",
+   "rung": 192
+  },
+  {
+   "delta": -0.00029754638671875,
+   "clip": "21-classic.441.16b48k.wav",
+   "rung": 320
+  },
+  {
+   "delta": 0.0003018379211425781,
+   "clip": "fms.wav",
+   "rung": 192
+  },
+  {
+   "delta": 0.0006237030029296875,
+   "clip": "TrosYGareg.16b48k.wav",
+   "rung": 256
+  },
+  {
+   "delta": 0.0022974014282226562,
+   "clip": "glk.wav",
+   "rung": 192
+  },
+  {
+   "delta": 0.0023326873779296875,
+   "clip": "Shinsho_pool_3min45_4min4.16b48k.wav",
+   "rung": 256
+  },
+  {
+   "delta": 0.0025238990783691406,
+   "clip": "TrosYGareg.16b48k.wav",
+   "rung": 320
+  },
+  {
+   "delta": 0.0025968551635742188,
+   "clip": "Berling Drug.wav",
+   "rung": 256
+  },
+  {
+   "delta": 0.002811431884765625,
+   "clip": "Berling Drug.wav",
+   "rung": 192
+  },
+  {
+   "delta": 0.0033469200134277344,
+   "clip": "Severance__1.31-1.51_.16b48k.wav",
+   "rung": 192
+  },
+  {
+   "delta": 0.0034809112548828125,
+   "clip": "Only Time.16b48k.wav",
+   "rung": 256
+  },
+  {
+   "delta": 0.003536701202392578,
+   "clip": "glk.wav",
+   "rung": 256
+  }
+ ]
+}

@@ -1,0 +1,254 @@
+{
+ "test": "faac",
+ "ref": "apple",
+ "rungs": [
+  128,
+  160,
+  192,
+  256,
+  320
+ ],
+ "decoder": "fdkdec",
+ "mode": "abr",
+ "profile": "lc",
+ "metric": "mos",
+ "n_clips": 77,
+ "n_valid": 77,
+ "n_no_curve": 0,
+ "no_curve": [],
+ "bd_rate_mean": -2.61787544747664,
+ "bd_ci95": [
+  -4.264429682304972,
+  -1.0114226394366708
+ ],
+ "bd_rate_median": -2.597533062290114,
+ "per_clip_bd": {
+  "01 castanets.wav": -9.392806663334563,
+  "03 eig.wav": -15.608220372684766,
+  "04 Bachpsichord.wav": 4.398137461496976,
+  "05 Enola.wav": 0.5813976585782088,
+  "06 trumpet.wav": -3.5587023304803456,
+  "07 applaud.wav": -5.45910368148591,
+  "08 velvet.wav": 1.5276163995692427,
+  "09 Linchpin.wav": -8.555222920782102,
+  "10 Angels_Fall_First_ringing.wav": -1.8810730611024673,
+  "10xh_.wav": 2.9865224656285827,
+  "11 You look good to me.wav": -2.705241223963617,
+  "11ff_.wav": -5.010764078332263,
+  "12-German-male-speech.441.16b48k.wav": -5.1565570065099315,
+  "12at_.wav": 4.192904504520101,
+  "13 fatboy_30sec.wav": -22.63783955331229,
+  "13by_.wav": -5.224540211271567,
+  "14fe_.wav": 8.400790739488052,
+  "15-Good-evening.441.16b48k.wav": 2.402611651686093,
+  "15ma_.wav": 0.9329717167383622,
+  "16mb_.wav": -2.061004836059266,
+  "17qu_.wav": -2.997692968230714,
+  "18vr_.wav": 0.2618790119462311,
+  "19am_.wav": -0.8915895556013242,
+  "20tt_.wav": -3.1093302700113568,
+  "21-classic.441.16b48k.wav": 5.945184481254739,
+  "21wa_.wav": -0.1438974491195455,
+  "22ex_.wav": -3.9665902658804986,
+  "23ht_.wav": -4.2400485942615145,
+  "24-Greensleeves-Korean-male-speech.441.16b48k.wav": 21.43273065274489,
+  "24td_.wav": -3.457146199767791,
+  "25-This-is-the-end.441.16b48k.wav": -2.043021933972289,
+  "25rb_.wav": -2.271732715919561,
+  "26fr_.wav": -2.597533062290114,
+  "27-last-song-drums-and-trampets.441.16b48k.wav": 1.5469634401850119,
+  "27ud_.wav": -1.6919136042341187,
+  "28db_.wav": -3.7699363760880233,
+  "29ru_.wav": -3.041472291156677,
+  "35_SQAM_glockenspiel_cut.16b48k.wav": -15.160795018602736,
+  "4-Sound-English-male.441.16b48k.wav": -4.909277329606931,
+  "9-Have-big-expensive-car.441.16b48k.wav": -3.2694831128958324,
+  "Asleep__4.11-4.31_.16b48k.wav": -2.578250746595423,
+  "Berling Drug.wav": -8.971104703676291,
+  "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": -1.8828715375258764,
+  "Changes.16b48k.wav": -7.181662767155239,
+  "Coral.16b48k.wav": -3.9890014001400687,
+  "ExitMusic.16b48k.wav": -3.111144967462831,
+  "Girl_In_The_Fire__Sample_.16b48k.wav": 2.4896054394501377,
+  "Greatest_Love_of_All_2min57.16b48k.wav": 0.14949513149253857,
+  "Hey Tonight.16b48k.wav": -4.902262161628923,
+  "Hotel California.16b48k.wav": -3.164524912247624,
+  "Jupiter, the Bringer of Jolity.16b48k.wav": -1.5329231183216052,
+  "Last_Of_The_Mohicanz__Sample_.16b48k.wav": -1.0071909152618796,
+  "NewYorkCity.16b48k.wav": -6.058102907096707,
+  "Only Time.16b48k.wav": 0.10793037317669008,
+  "Robots_old.16b48k.wav": -8.054771388175674,
+  "Severance__1.31-1.51_.16b48k.wav": -0.21394045679138385,
+  "Shinsho_pool_3min45_4min4.16b48k.wav": 0.256908741562345,
+  "SinceAlways.16b48k.wav": 18.834986619651662,
+  "SlavesOfFear.16b48k.wav": -7.293530648908786,
+  "The Chastising of Renegade.16b48k.wav": -4.515550941299152,
+  "Through The Fire And Flames.16b48k.wav": -2.1168771677754994,
+  "TrosYGareg.16b48k.wav": 0.6273463664738799,
+  "With Love (Outro).16b48k.wav": -3.971713231754792,
+  "bah.wav": -0.9322020772156492,
+  "bas.wav": -5.466672525040373,
+  "bonhemian_rhapsody.16b48k.wav": -2.04431377917329,
+  "clapton_44k.16b48k.wav": -2.6190691923469567,
+  "fms.wav": 6.721610088660057,
+  "girl.16b48k.wav": -35.212102961908045,
+  "glk.wav": -10.022814043744365,
+  "hrp.wav": -0.03831259642179674,
+  "liberate.16b48k.wav": -6.960360149625222,
+  "lob.wav": -6.7509620429569095,
+  "mof.wav": -0.2446613467073866,
+  "qrt.wav": -8.613686318892654,
+  "sandman.16b48k.wav": -0.8913543301184212,
+  "take_your_finger_frin_my_head.16b48k.wav": 9.78046962292185
+ },
+ "rung_table": [
+  {
+   "rung": 128,
+   "n": 77,
+   "test_mos": 4.86670717016443,
+   "ref_mos": 4.846587323523187,
+   "test_kbps": 126.3612267080483,
+   "ref_kbps": 128.5553362133568,
+   "test_p1": 4.7130228042602536,
+   "ref_p1": 4.488481521606445,
+   "delta_mos": 0.020119846641243277,
+   "wins": 52,
+   "ties": 0,
+   "losses": 25
+  },
+  {
+   "rung": 160,
+   "n": 77,
+   "test_mos": 4.925850490470985,
+   "ref_mos": 4.919204297003808,
+   "test_kbps": 157.84923052749636,
+   "ref_kbps": 160.6421832339212,
+   "test_p1": 4.835916519165039,
+   "ref_p1": 4.766203289031982,
+   "delta_mos": 0.006646193467177354,
+   "wins": 48,
+   "ties": 0,
+   "losses": 29
+  },
+  {
+   "rung": 192,
+   "n": 77,
+   "test_mos": 4.955201520548238,
+   "ref_mos": 4.957975511427049,
+   "test_kbps": 189.4114521753399,
+   "ref_kbps": 192.74370485417268,
+   "test_p1": 4.905107421875,
+   "ref_p1": 4.897676315307617,
+   "delta_mos": -0.0027739908788111303,
+   "wins": 17,
+   "ties": 0,
+   "losses": 60
+  },
+  {
+   "rung": 256,
+   "n": 77,
+   "test_mos": 4.981522783056482,
+   "ref_mos": 4.979533337927484,
+   "test_kbps": 252.37972367159162,
+   "ref_kbps": 256.9789809509002,
+   "test_p1": 4.963499374389649,
+   "ref_p1": 4.951679496765137,
+   "delta_mos": 0.001989445128998199,
+   "wins": 43,
+   "ties": 0,
+   "losses": 34
+  },
+  {
+   "rung": 320,
+   "n": 77,
+   "test_mos": 4.990701099494835,
+   "ref_mos": 4.991873611103404,
+   "test_kbps": 314.27727288596515,
+   "ref_kbps": 321.1945954174075,
+   "test_p1": 4.980796432495117,
+   "ref_p1": 4.981645622253418,
+   "delta_mos": -0.001172511608569653,
+   "wins": 33,
+   "ties": 0,
+   "losses": 44
+  }
+ ],
+ "wins": {},
+ "worst": [
+  {
+   "delta": -0.07393646240234375,
+   "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+   "rung": 160
+  },
+  {
+   "delta": -0.06131267547607422,
+   "clip": "10xh_.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.05794382095336914,
+   "clip": "take_your_finger_frin_my_head.16b48k.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.05632209777832031,
+   "clip": "SinceAlways.16b48k.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.05454063415527344,
+   "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.04578208923339844,
+   "clip": "18vr_.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.041629791259765625,
+   "clip": "fms.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.041594505310058594,
+   "clip": "24-Greensleeves-Korean-male-speech.441.16b48k.wav",
+   "rung": 192
+  },
+  {
+   "delta": -0.03766441345214844,
+   "clip": "Girl_In_The_Fire__Sample_.16b48k.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.03703594207763672,
+   "clip": "14fe_.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.033318519592285156,
+   "clip": "SinceAlways.16b48k.wav",
+   "rung": 160
+  },
+  {
+   "delta": -0.030786514282226562,
+   "clip": "take_your_finger_frin_my_head.16b48k.wav",
+   "rung": 160
+  },
+  {
+   "delta": -0.028797149658203125,
+   "clip": "10 Angels_Fall_First_ringing.wav",
+   "rung": 128
+  },
+  {
+   "delta": -0.027467727661132812,
+   "clip": "08 velvet.wav",
+   "rung": 160
+  },
+  {
+   "delta": -0.02355670928955078,
+   "clip": "SinceAlways.16b48k.wav",
+   "rung": 192
+  }
+ ]
+}
