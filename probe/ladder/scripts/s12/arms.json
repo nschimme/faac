@@ -86,5 +86,32 @@
    "22000"
   ],
   "env": {}
+ },
+ "jms": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build/frontend/faac",
+  "flags": [
+   "--joint",
+   "ms"
+  ],
+  "env": {}
+ },
+ "jlr": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build/frontend/faac",
+  "flags": [
+   "--joint",
+   "lr"
+  ],
+  "env": {}
+ },
+ "jis": {
+  "kind": "faac",
+  "bin": "/home/user/work/faac-master/build/frontend/faac",
+  "flags": [
+   "--joint",
+   "is"
+  ],
+  "env": {}
  }
 }
