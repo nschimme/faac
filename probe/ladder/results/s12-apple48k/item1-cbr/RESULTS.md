@@ -29,3 +29,26 @@ Passes the LC CBR prereg (no cell < -0.10, both BD methods' CIs below 0 under al
 22.5 % -> 71.5 % at 320k), which fails the throughput gate, and velvet itself loses 0.07 at 128k. Next: a CBR aim
 that steers the reservoir to its middle instead of a fixed 1.0 (`PREREG_v2.md`), meant to keep the fill recovery
 without the cap busts. HE CBR, 44.1/32 kHz and the full-dataset pass wait for the cheaper form.
+
+# Arm `cbrmid` (v2, `PREREG_v2.md`): reservoir-centred CBR aim, LC CBR 128-320
+
+Rows `rows_item1_cbr.jsonl` (arm cbrmid), control `stage1-rebaseline/rows_lc_cbr.jsonl`; `armcmp_mid.md`, `bd/cbrmid_*`.
+
+- Worst cells (all decoders): -0.0095 (fms, 160k), -0.0061 (Greensleeves, 160k), -0.0052 (27-last-song, 128k). None
+  below -0.10; none below -0.01.
+- Velvet (reservoir-starved; -0.070 under cbr100): dMOS vs master -0.002 / +0.010 / +0.023 / +0.004 /
+  +0.001 at 128 / 160 / 192 / 256 / 320 (FAAD2).
+- dMOS vs master (FAAD2): +0.0035 / +0.0014 / +0.0011 / +0.0006 / +0.0002; realized rate +0.12 / +0.07 / +0.04 / +0.01
+  / +0.00 %.
+- BD-rate vs master CBR 128-320: FAAD2 PCHIP -0.69 [-0.85, -0.51] (7 worse / 70 better), linear -0.72 [-0.88, -0.54];
+  FFmpeg -0.70 / -0.73; fdkdec -0.72 / -0.75; all CIs below 0.
+- vs Apple 128-320: PCHIP -1.81 [-3.42, -0.27], linear -1.63 [-3.25, -0.08] (FAAD2; FFmpeg/fdkdec within 0.03), resolved
+  (master CBR was not). dMOS vs Apple at nominal: +0.023 / +0.008 / -0.0019 / +0.0024 / -0.0010; 192k 19 better / 58 worse.
+- Mechanism (`reservoir_stats_mid.tsv`): stuffing 0.97 -> 0.32 % at 192k; bound retries 9.5 -> 4.9 %; 0 underflows.
+  callgrind 10 s 192k CBR: velvet -50 %, Bachpsichord +0.3 %.
+
+Verdict: **passes the LC CBR prereg** (no cell below -0.10, both BD methods below 0 under all three decoders, rate
+within 0.5 %, velvet Ir within +5 % of master: -50 %). PR candidate pending the prereg's follow-on passes (HE-v1/HE-v2
+CBR, 44.1/32 kHz stereo CBR, 16/24 kHz mono speech CBR, then the benchmark's full-dataset runner), which the parent has
+scheduled behind the transient arms. Item 1's 192k/320k cells are not closed by it: the gap to Apple there shrinks from
+-0.0027 to -0.0019 (192k) and stays -0.0010 (320k).
