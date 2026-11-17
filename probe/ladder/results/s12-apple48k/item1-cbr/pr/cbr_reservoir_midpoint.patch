@@ -1,0 +1,20 @@
+diff --git a/libfaac/ratecontrol.c b/libfaac/ratecontrol.c
+index 2b7f656d..fb5f3baf 100644
+--- a/libfaac/ratecontrol.c
++++ b/libfaac/ratecontrol.c
+@@ -159,8 +159,13 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
+        directions are kept: forgiving credit but not debt biases the loop by
+        however much each clip drew. One CORE setpoint serves the account and
+        `fix` alike -- the frame's budget less what SBR was charged, against
+-       what the core actually spent. */
+-    int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
++       what the core actually spent. Under CBR the reservoir floor already
++       forces the nominal rate, so an aim under budget only turns into stuffing;
++       aiming at the reservoir's midpoint spends that surplus as signal and keeps
++       the buffer clear of both the floor and the cap. */
++    int coreTarget = reservoir
++        ? desbits + (rc->resFill - rc->resCap / 2) / RC_BALANCE_AMORT - sbrCharge
++        : (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
+     int coreBits = totalBits - sbrBits;
+     int lend;
+     int bound = RC_BALANCE_FRAMES * desbits;

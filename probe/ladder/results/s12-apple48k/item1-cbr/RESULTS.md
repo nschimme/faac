@@ -52,3 +52,10 @@ within 0.5 %, velvet Ir within +5 % of master: -50 %). PR candidate pending the 
 CBR, 44.1/32 kHz stereo CBR, 16/24 kHz mono speech CBR, then the benchmark's full-dataset runner), which the parent has
 scheduled behind the transient arms. Item 1's 192k/320k cells are not closed by it: the gap to Apple there shrinks from
 -0.0027 to -0.0019 (192k) and stays -0.0010 (320k).
+
+## PR form (`pr/cbr_reservoir_midpoint.patch`, 7 lines in `ratecontrol.c`, no getenv, no new field)
+Keys off the existing CBR reservoir flag. Audio payload identical to the scratch `cbrmid` build on 21/21 CBR encodes
+(LC 64/128/192/320, HE-v1 32/48, HE-v2 24; velvet, 11ff_, fatboy) and to master on 18/18 ABR/VBR encodes.
+Footprint (gcc 13 LTO, `size -A` .text+.rodata+.data of libfaac.so): 83160 -> 83368 B (**+208 B**), against the
+owner's no-growth rule; an offset is still to be found. PR_BODY.md waits for the follow-on CBR passes and the
+full-dataset runner.
