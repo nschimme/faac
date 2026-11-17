@@ -1,0 +1,39 @@
+01 castanets.wav
+04 Bachpsichord.wav
+06 trumpet.wav
+08 velvet.wav
+10 Angels_Fall_First_ringing.wav
+11 You look good to me.wav
+12-German-male-speech.441.16b48k.wav
+13 fatboy_30sec.wav
+14fe_.wav
+15ma_.wav
+17qu_.wav
+19am_.wav
+21-classic.441.16b48k.wav
+22ex_.wav
+24-Greensleeves-Korean-male-speech.441.16b48k.wav
+25-This-is-the-end.441.16b48k.wav
+26fr_.wav
+27ud_.wav
+29ru_.wav
+4-Sound-English-male.441.16b48k.wav
+Asleep__4.11-4.31_.16b48k.wav
+Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav
+Coral.16b48k.wav
+Girl_In_The_Fire__Sample_.16b48k.wav
+Hey Tonight.16b48k.wav
+Jupiter, the Bringer of Jolity.16b48k.wav
+NewYorkCity.16b48k.wav
+Robots_old.16b48k.wav
+Shinsho_pool_3min45_4min4.16b48k.wav
+SlavesOfFear.16b48k.wav
+Through The Fire And Flames.16b48k.wav
+With Love (Outro).16b48k.wav
+bas.wav
+clapton_44k.16b48k.wav
+girl.16b48k.wav
+hrp.wav
+lob.wav
+qrt.wav
+take_your_finger_frin_my_head.16b48k.wav

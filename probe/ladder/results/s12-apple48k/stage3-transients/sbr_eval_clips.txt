@@ -1,0 +1,38 @@
+03 eig.wav
+05 Enola.wav
+07 applaud.wav
+09 Linchpin.wav
+10xh_.wav
+11ff_.wav
+12at_.wav
+13by_.wav
+15-Good-evening.441.16b48k.wav
+16mb_.wav
+18vr_.wav
+20tt_.wav
+21wa_.wav
+23ht_.wav
+24td_.wav
+25rb_.wav
+27-last-song-drums-and-trampets.441.16b48k.wav
+28db_.wav
+35_SQAM_glockenspiel_cut.16b48k.wav
+9-Have-big-expensive-car.441.16b48k.wav
+Berling Drug.wav
+Changes.16b48k.wav
+ExitMusic.16b48k.wav
+Greatest_Love_of_All_2min57.16b48k.wav
+Hotel California.16b48k.wav
+Last_Of_The_Mohicanz__Sample_.16b48k.wav
+Only Time.16b48k.wav
+Severance__1.31-1.51_.16b48k.wav
+SinceAlways.16b48k.wav
+The Chastising of Renegade.16b48k.wav
+TrosYGareg.16b48k.wav
+bah.wav
+bonhemian_rhapsody.16b48k.wav
+fms.wav
+glk.wav
+liberate.16b48k.wav
+mof.wav
+sandman.16b48k.wav
