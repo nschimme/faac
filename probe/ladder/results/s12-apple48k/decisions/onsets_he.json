@@ -1,0 +1,1650 @@
+{
+ "streams": {
+  "faac-he32": {
+   "label": "FAAC HE 32k",
+   "n": 697,
+   "class_counts": {
+    "short": 662,
+    "long": 35
+   },
+   "class_share": {
+    "short": 0.9497847919655668,
+    "long+tns": 0.0,
+    "long": 0.05021520803443329,
+    "other": 0.0
+   },
+   "short_by_offset": {
+    "-2": 0.9311334289813487,
+    "-1": 1.0,
+    "0": 0.9497847919655668,
+    "1": 0.8995695839311334,
+    "2": 0.8780487804878049
+   },
+   "short_any_pm1": 1.0,
+   "start_k_short_k1": 0.0
+  },
+  "faac-he48": {
+   "label": "FAAC HE 48k",
+   "n": 697,
+   "class_counts": {
+    "short": 662,
+    "long": 35
+   },
+   "class_share": {
+    "short": 0.9497847919655668,
+    "long+tns": 0.0,
+    "long": 0.05021520803443329,
+    "other": 0.0
+   },
+   "short_by_offset": {
+    "-2": 0.9311334289813487,
+    "-1": 1.0,
+    "0": 0.9497847919655668,
+    "1": 0.8995695839311334,
+    "2": 0.8780487804878049
+   },
+   "short_any_pm1": 1.0,
+   "start_k_short_k1": 0.0
+  },
+  "apple-he32": {
+   "label": "Apple HE 32k",
+   "n": 697,
+   "class_counts": {
+    "long": 213,
+    "short": 227,
+    "long+tns": 257
+   },
+   "class_share": {
+    "short": 0.32568149210903874,
+    "long+tns": 0.36872309899569583,
+    "long": 0.30559540889526543,
+    "other": 0.0
+   },
+   "short_by_offset": {
+    "-2": 0.4949784791965567,
+    "-1": 0.6527977044476327,
+    "0": 0.32568149210903874,
+    "1": 0.35724533715925394,
+    "2": 0.4131994261119082
+   },
+   "short_any_pm1": 0.787661406025825,
+   "start_k_short_k1": 0.0975609756097561
+  },
+  "apple-he48": {
+   "label": "Apple HE 48k",
+   "n": 697,
+   "class_counts": {
+    "short": 153,
+    "long+tns": 256,
+    "long": 288
+   },
+   "class_share": {
+    "short": 0.21951219512195122,
+    "long+tns": 0.3672883787661406,
+    "long": 0.4131994261119082,
+    "other": 0.0
+   },
+   "short_by_offset": {
+    "-2": 0.33428981348637016,
+    "-1": 0.6786226685796269,
+    "0": 0.21951219512195122,
+    "1": 0.18651362984218078,
+    "2": 0.30703012912482064
+   },
+   "short_any_pm1": 0.7216642754662841,
+   "start_k_short_k1": 0.035868005738880916
+  },
+  "fdk-he32": {
+   "label": "FDK HE 32k",
+   "n": 697,
+   "class_counts": {
+    "long": 255,
+    "short": 85,
+    "long+tns": 357
+   },
+   "class_share": {
+    "short": 0.12195121951219512,
+    "long+tns": 0.5121951219512195,
+    "long": 0.36585365853658536,
+    "other": 0.0
+   },
+   "short_by_offset": {
+    "-2": 0.24820659971305595,
+    "-1": 0.642754662840746,
+    "0": 0.12195121951219512,
+    "1": 0.10329985652797705,
+    "2": 0.2539454806312769
+   },
+   "short_any_pm1": 0.6657101865136298,
+   "start_k_short_k1": 0.020086083213773313
+  },
+  "fdk-he48": {
+   "label": "FDK HE 48k",
+   "n": 697,
+   "class_counts": {
+    "long+tns": 363,
+    "long": 249,
+    "short": 85
+   },
+   "class_share": {
+    "short": 0.12195121951219512,
+    "long+tns": 0.5208034433285509,
+    "long": 0.35724533715925394,
+    "other": 0.0
+   },
+   "short_by_offset": {
+    "-2": 0.24820659971305595,
+    "-1": 0.642754662840746,
+    "0": 0.12195121951219512,
+    "1": 0.10329985652797705,
+    "2": 0.2539454806312769
+   },
+   "short_any_pm1": 0.6657101865136298,
+   "start_k_short_k1": 0.020086083213773313
+  }
+ },
+ "tns": {
+  "faac-he32": {
+   "short": {
+    "ics": 39756,
+    "tns_on": 0,
+    "share": 0.0,
+    "mean_filters": null,
+    "mean_order": null
+   },
+   "long": {
+    "ics": 30378,
+    "tns_on": 1,
+    "share": 3.2918559483836984e-05,
+    "mean_filters": 1.0,
+    "mean_order": 5.0
+   }
+  },
+  "faac-he48": {
+   "short": {
+    "ics": 39756,
+    "tns_on": 0,
+    "share": 0.0,
+    "mean_filters": null,
+    "mean_order": null
+   },
+   "long": {
+    "ics": 30378,
+    "tns_on": 1,
+    "share": 3.2918559483836984e-05,
+    "mean_filters": 1.0,
+    "mean_order": 7.0
+   }
+  },
+  "apple-he32": {
+   "short": {
+    "ics": 5564,
+    "tns_on": 2723,
+    "share": 0.4893961179007908,
+    "mean_filters": 1.369812706573632,
+    "mean_order": 3.2847184986595175
+   },
+   "long": {
+    "ics": 41402,
+    "tns_on": 2530,
+    "share": 0.061108159026134,
+    "mean_filters": 1.0,
+    "mean_order": 7.170750988142292
+   }
+  },
+  "apple-he48": {
+   "short": {
+    "ics": 6028,
+    "tns_on": 2732,
+    "share": 0.45321831453218314,
+    "mean_filters": 1.247437774524158,
+    "mean_order": 2.8843896713615025
+   },
+   "long": {
+    "ics": 64184,
+    "tns_on": 3366,
+    "share": 0.05244297644272716,
+    "mean_filters": 1.0,
+    "mean_order": 7.865418894830659
+   }
+  },
+  "fdk-he32": {
+   "short": {
+    "ics": 3988,
+    "tns_on": 2698,
+    "share": 0.6765295887662989,
+    "mean_filters": 1.7260934025203856,
+    "mean_order": 2.4919476057547776
+   },
+   "long": {
+    "ics": 66216,
+    "tns_on": 6161,
+    "share": 0.09304397728645644,
+    "mean_filters": 1.2877779581236812,
+    "mean_order": 6.992563650113436
+   }
+  },
+  "fdk-he48": {
+   "short": {
+    "ics": 3988,
+    "tns_on": 2976,
+    "share": 0.7462387161484454,
+    "mean_filters": 1.7184139784946237,
+    "mean_order": 2.6605396949550255
+   },
+   "long": {
+    "ics": 66216,
+    "tns_on": 7186,
+    "share": 0.10852361966896218,
+    "mean_filters": 1.2502087392151406,
+    "mean_order": 6.78906945681211
+   }
+  }
+ },
+ "per_clip": {
+  "01 castanets.wav": {
+   "n": 14,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.6428571428571429,
+    "long+tns": 0.0,
+    "long": 0.35714285714285715,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.6428571428571429,
+    "long+tns": 0.07142857142857142,
+    "long": 0.2857142857142857,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.5714285714285714,
+    "long+tns": 0.0,
+    "long": 0.42857142857142855,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.5714285714285714,
+    "long+tns": 0.07142857142857142,
+    "long": 0.35714285714285715,
+    "other": 0.0
+   }
+  },
+  "03 eig.wav": {
+   "n": 65,
+   "faac-he32": {
+    "short": 0.7846153846153846,
+    "long+tns": 0.0,
+    "long": 0.2153846153846154,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.7846153846153846,
+    "long+tns": 0.0,
+    "long": 0.2153846153846154,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.8,
+    "long+tns": 0.015384615384615385,
+    "long": 0.18461538461538463,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.4153846153846154,
+    "long+tns": 0.26153846153846155,
+    "long": 0.3230769230769231,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.2923076923076923,
+    "long+tns": 0.3384615384615385,
+    "long": 0.36923076923076925,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.2923076923076923,
+    "long+tns": 0.4461538461538462,
+    "long": 0.26153846153846155,
+    "other": 0.0
+   }
+  },
+  "04 Bachpsichord.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "08 velvet.wav": {
+   "n": 19,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.6842105263157895,
+    "long+tns": 0.10526315789473684,
+    "long": 0.21052631578947367,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.3684210526315789,
+    "long+tns": 0.0,
+    "long": 0.631578947368421,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.3684210526315789,
+    "long": 0.631578947368421,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.3684210526315789,
+    "long": 0.631578947368421,
+    "other": 0.0
+   }
+  },
+  "09 Linchpin.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "11 You look good to me.wav": {
+   "n": 3,
+   "faac-he32": {
+    "short": 0.3333333333333333,
+    "long+tns": 0.0,
+    "long": 0.6666666666666666,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.3333333333333333,
+    "long+tns": 0.0,
+    "long": 0.6666666666666666,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "11ff_.wav": {
+   "n": 5,
+   "faac-he32": {
+    "short": 0.4,
+    "long+tns": 0.0,
+    "long": 0.6,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.4,
+    "long+tns": 0.0,
+    "long": 0.6,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.4,
+    "long+tns": 0.0,
+    "long": 0.6,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "13 fatboy_30sec.wav": {
+   "n": 312,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.18269230769230768,
+    "long+tns": 0.6987179487179487,
+    "long": 0.11858974358974358,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.1891025641025641,
+    "long+tns": 0.7147435897435898,
+    "long": 0.09615384615384616,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.09935897435897435,
+    "long+tns": 0.8878205128205128,
+    "long": 0.01282051282051282,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.09935897435897435,
+    "long+tns": 0.8878205128205128,
+    "long": 0.01282051282051282,
+    "other": 0.0
+   }
+  },
+  "13by_.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "17qu_.wav": {
+   "n": 11,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.09090909090909091,
+    "long+tns": 0.18181818181818182,
+    "long": 0.7272727272727273,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.09090909090909091,
+    "long+tns": 0.18181818181818182,
+    "long": 0.7272727272727273,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.09090909090909091,
+    "long": 0.9090909090909091,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.36363636363636365,
+    "long": 0.6363636363636364,
+    "other": 0.0
+   }
+  },
+  "18vr_.wav": {
+   "n": 2,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.5,
+    "long+tns": 0.5,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.5,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.5,
+    "long": 0.5,
+    "other": 0.0
+   }
+  },
+  "19am_.wav": {
+   "n": 3,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.3333333333333333,
+    "long+tns": 0.3333333333333333,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.3333333333333333,
+    "long+tns": 0.0,
+    "long": 0.6666666666666666,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.3333333333333333,
+    "long+tns": 0.3333333333333333,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.3333333333333333,
+    "long+tns": 0.3333333333333333,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   }
+  },
+  "23ht_.wav": {
+   "n": 3,
+   "faac-he32": {
+    "short": 0.6666666666666666,
+    "long+tns": 0.0,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.6666666666666666,
+    "long+tns": 0.0,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.6666666666666666,
+    "long+tns": 0.0,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.6666666666666666,
+    "long+tns": 0.0,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.6666666666666666,
+    "long+tns": 0.0,
+    "long": 0.3333333333333333,
+    "other": 0.0
+   }
+  },
+  "24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 1.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   }
+  },
+  "24td_.wav": {
+   "n": 13,
+   "faac-he32": {
+    "short": 0.8461538461538461,
+    "long+tns": 0.0,
+    "long": 0.15384615384615385,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.8461538461538461,
+    "long+tns": 0.0,
+    "long": 0.15384615384615385,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.15384615384615385,
+    "long+tns": 0.0,
+    "long": 0.8461538461538461,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.07692307692307693,
+    "long": 0.9230769230769231,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.07692307692307693,
+    "long+tns": 0.23076923076923078,
+    "long": 0.6923076923076923,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.07692307692307693,
+    "long+tns": 0.23076923076923078,
+    "long": 0.6923076923076923,
+    "other": 0.0
+   }
+  },
+  "25rb_.wav": {
+   "n": 7,
+   "faac-he32": {
+    "short": 0.5714285714285714,
+    "long+tns": 0.0,
+    "long": 0.42857142857142855,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.5714285714285714,
+    "long+tns": 0.0,
+    "long": 0.42857142857142855,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.2857142857142857,
+    "long+tns": 0.14285714285714285,
+    "long": 0.5714285714285714,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.14285714285714285,
+    "long": 0.8571428571428571,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.14285714285714285,
+    "long": 0.8571428571428571,
+    "other": 0.0
+   }
+  },
+  "26fr_.wav": {
+   "n": 12,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.08333333333333333,
+    "long+tns": 0.25,
+    "long": 0.6666666666666666,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.16666666666666666,
+    "long+tns": 0.25,
+    "long": 0.5833333333333334,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.08333333333333333,
+    "long+tns": 0.3333333333333333,
+    "long": 0.5833333333333334,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.08333333333333333,
+    "long+tns": 0.5,
+    "long": 0.4166666666666667,
+    "other": 0.0
+   }
+  },
+  "27-last-song-drums-and-trampets.441.16b48k.wav": {
+   "n": 7,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.7142857142857143,
+    "long": 0.2857142857142857,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.14285714285714285,
+    "long+tns": 0.14285714285714285,
+    "long": 0.7142857142857143,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.2857142857142857,
+    "long": 0.7142857142857143,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.2857142857142857,
+    "long": 0.7142857142857143,
+    "other": 0.0
+   }
+  },
+  "35_SQAM_glockenspiel_cut.16b48k.wav": {
+   "n": 8,
+   "faac-he32": {
+    "short": 0.375,
+    "long+tns": 0.0,
+    "long": 0.625,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.375,
+    "long+tns": 0.0,
+    "long": 0.625,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.125,
+    "long+tns": 0.0,
+    "long": 0.875,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.375,
+    "long": 0.625,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.25,
+    "long": 0.75,
+    "other": 0.0
+   }
+  },
+  "4-Sound-English-male.441.16b48k.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 1.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 1.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 1.0,
+    "long": 0.0,
+    "other": 0.0
+   }
+  },
+  "9-Have-big-expensive-car.441.16b48k.wav": {
+   "n": 2,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+   "n": 7,
+   "faac-he32": {
+    "short": 0.8571428571428571,
+    "long+tns": 0.0,
+    "long": 0.14285714285714285,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.8571428571428571,
+    "long+tns": 0.0,
+    "long": 0.14285714285714285,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.2857142857142857,
+    "long+tns": 0.0,
+    "long": 0.7142857142857143,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.14285714285714285,
+    "long": 0.8571428571428571,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.14285714285714285,
+    "long": 0.8571428571428571,
+    "other": 0.0
+   }
+  },
+  "Changes.16b48k.wav": {
+   "n": 102,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.43137254901960786,
+    "long+tns": 0.0784313725490196,
+    "long": 0.49019607843137253,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.3235294117647059,
+    "long+tns": 0.00980392156862745,
+    "long": 0.6666666666666666,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.18627450980392157,
+    "long+tns": 0.23529411764705882,
+    "long": 0.5784313725490197,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.18627450980392157,
+    "long+tns": 0.18627450980392157,
+    "long": 0.6274509803921569,
+    "other": 0.0
+   }
+  },
+  "ExitMusic.16b48k.wav": {
+   "n": 2,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.5,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.5,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.5,
+    "long": 0.5,
+    "other": 0.0
+   }
+  },
+  "Last_Of_The_Mohicanz__Sample_.16b48k.wav": {
+   "n": 33,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.15151515151515152,
+    "long+tns": 0.30303030303030304,
+    "long": 0.5454545454545454,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.15151515151515152,
+    "long+tns": 0.0,
+    "long": 0.8484848484848485,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "Only Time.16b48k.wav": {
+   "n": 2,
+   "faac-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   }
+  },
+  "Robots_old.16b48k.wav": {
+   "n": 23,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.8695652173913043,
+    "long+tns": 0.0,
+    "long": 0.13043478260869565,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.043478260869565216,
+    "long+tns": 0.13043478260869565,
+    "long": 0.8260869565217391,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.043478260869565216,
+    "long+tns": 0.13043478260869565,
+    "long": 0.8260869565217391,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.043478260869565216,
+    "long+tns": 0.08695652173913043,
+    "long": 0.8695652173913043,
+    "other": 0.0
+   }
+  },
+  "Shinsho_pool_3min45_4min4.16b48k.wav": {
+   "n": 7,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.2857142857142857,
+    "long+tns": 0.0,
+    "long": 0.7142857142857143,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.14285714285714285,
+    "long": 0.8571428571428571,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.14285714285714285,
+    "long": 0.8571428571428571,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.14285714285714285,
+    "long": 0.8571428571428571,
+    "other": 0.0
+   }
+  },
+  "SinceAlways.16b48k.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 1.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "clapton_44k.16b48k.wav": {
+   "n": 2,
+   "faac-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "girl.16b48k.wav": {
+   "n": 11,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.18181818181818182,
+    "long+tns": 0.2727272727272727,
+    "long": 0.5454545454545454,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.09090909090909091,
+    "long": 0.9090909090909091,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.18181818181818182,
+    "long": 0.8181818181818182,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.18181818181818182,
+    "long": 0.8181818181818182,
+    "other": 0.0
+   }
+  },
+  "glk.wav": {
+   "n": 2,
+   "faac-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "lob.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "mof.wav": {
+   "n": 10,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.3,
+    "long+tns": 0.0,
+    "long": 0.7,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.1,
+    "long+tns": 0.1,
+    "long": 0.8,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.1,
+    "long": 0.9,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.2,
+    "long": 0.8,
+    "other": 0.0
+   }
+  },
+  "sandman.16b48k.wav": {
+   "n": 2,
+   "faac-he32": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 0.5,
+    "long+tns": 0.0,
+    "long": 0.5,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  },
+  "take_your_finger_frin_my_head.16b48k.wav": {
+   "n": 1,
+   "faac-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "faac-he48": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he32": {
+    "short": 1.0,
+    "long+tns": 0.0,
+    "long": 0.0,
+    "other": 0.0
+   },
+   "apple-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he32": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   },
+   "fdk-he48": {
+    "short": 0.0,
+    "long+tns": 0.0,
+    "long": 1.0,
+    "other": 0.0
+   }
+  }
+ }
+}
