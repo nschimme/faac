@@ -6,7 +6,7 @@
    mono 20k: 4 clips > +0.10, 7 < -0.10), i.e. low-rate rate-control chaos, not a mean loss -- still fails the gate.
 2. Scoped per the prereg's fallback: the rule runs only for CBR stereo at >= 64 kbps/ch (`resSpend`). Every
    scenario below that (all mono, all stereo <= 96k, HE-v2 at any rate) is PCM-identical to master: 0 gate cells by
-   construction (spot-checked 79/79 encodes, FAAD2 decode cmp).
+   construction (85/85 encodes checked, FAAD2 decode cmp).
 3. Where it runs (48k stereo 128/192, LC and HE-v1), FAAD3 runner vs master: LC +0.0030 [+0.0023,+0.0037] at 128k,
    +0.0010 [+0.0008,+0.0011] at 192k, HE-v1 +0.0008 / +0.0001; worst clip -0.011; no cell below -0.05.
 4. ABR/VBR PCM-identical to master (16/16); realized rate +0.07..+0.15 kbps; callgrind 10 s CBR velvet 192k +4.4 %,
