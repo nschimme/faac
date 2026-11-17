@@ -61,3 +61,9 @@ Stage 0: 0/77 rebuilt WAVs match `src_sha256` even after ISFT normalization, so 
 second headline set is the 36 clips whose length equals the manifest-implied source length (exclusion list
 `stage0/clips_length_mismatch.txt`, 41 clips that are exactly one frame longer). This is a proxy, not a hash match;
 every headline is reported for all 77 and for the 36.
+
+## Addendum 3 2026-11-17 (before any HE row was read)
+The leaderboard runner forces FAAC to CBR wherever it supports `--cbr` (`compare_codecs.py` ~line 765), so the gist's
+FAAC column is CBR. HE-v1 and HE-v2 FAAC rows are therefore scored in CBR (`rows_he_cbr.jsonl`, `rows_hev2_cbr.jsonl`)
+as the primary comparison with Apple/FDK/xaac; the LC section reports ABR (already scored) and CBR (queued), and the
+LC master-vs-gist comparison is repeated on CBR. FAAC HE ABR is secondary and may be skipped for CPU.
