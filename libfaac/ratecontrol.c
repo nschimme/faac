@@ -159,8 +159,12 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
        directions are kept: forgiving credit but not debt biases the loop by
        however much each clip drew. One CORE setpoint serves the account and
        `fix` alike -- the frame's budget less what SBR was charged, against
-       what the core actually spent. */
+       what the core actually spent. A stuffed CBR frame left the under-aim
+       as fill elements, so past half full the aim rises to spend it as signal.
+       Without stuffing a different aim only moves bits between frames. */
     int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
+    if (reservoir && rc->stuffedBits > 0 && rc->resFill > rc->resCap / 2)
+        coreTarget += (rc->resFill - rc->resCap / 2) / RC_BALANCE_AMORT;
     int coreBits = totalBits - sbrBits;
     int lend;
     int bound = RC_BALANCE_FRAMES * desbits;
