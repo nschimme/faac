@@ -13,3 +13,10 @@ Measurement and decision as in `PREREG.md` (LC ABR 32/40/64/96/128, HE-v1 CBR 24
 difference CI; MOS, P1, BD-rate both methods). Advance only if: NPER CI below 0 at >= 2 targeted rungs under all three
 decoders, no cell below -0.10, mean MOS not lower by more than 0.005 at any rung, P1 not lower. Instruction and size
 deltas reported.
+
+## Addendum 2026-11-17 (before any v2 row is read)
+The attack-window rule was fixed from the mechanism (TNS only helps where a short window holds a rise in energy; v1
+filtered 1.1-4.2 windows per short frame, most without a rise), not fitted to v1's losers. Gates are v1's, unchanged.
+Reporting additions: the four v1 losers (13 fatboy, bas.wav, 24-Greensleeves, 14fe_) are listed separately at every
+rung as a check, not a gate; and the result states the share of v1's NPER gain that v2 keeps per rung
+((control - v2) / (control - v1)), e.g. LC 128k v1 moved 5.12 -> 4.12 dB.
