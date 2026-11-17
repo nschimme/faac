@@ -6,7 +6,7 @@ Status: open / PR candidate ready / closed negative. Numbers are local measureme
 | # | item | rungs | FAAC | Apple | FDK | status | notes |
 |---|---|---|---|---|---|---|---|
 | 1 | LC BD-rate / mean MOS | 128-320 | pending | pending | pending | open | stage 1 LC ABR scoring running |
-| 2 | pre-echo NPER | LC 96/128; LC<=40; HE-v1 24-48; HE-v2 24/32 | pending | pending | pending | open | lead: FAAC has no TNS on short windows (tns.c long only); Apple TNS on 36 % of short ICS, FDK 76 % (`decisions/stereo_shares.md`); onset classification running |
+| 2 | pre-echo NPER | LC 96/128; LC<=40; HE-v1 24-48; HE-v2 24/32 | pending | pending | pending | open | lead: FAAC has no TNS on short windows (tns.c long only); Apple TNS on 36 % of short ICS, FDK 76 % (`decisions/stereo_shares.md`); onsets: FAAC short at 95 % of scored onsets (Apple 85 %, FDK 56 %), so windows are not the gap; short-window TNS arm preregistered (`stage3-transients/PREREG.md`), patch in progress |
 | 3 | stereo fidelity | LC 16-48; HE-v1 24-64 | pending | pending | pending | open | Apple uses IS on 11 % (128k) / 4 % (192k) of CPE bands, FAAC 3.5 % / 0 % |
 | 4 | P1 HE-v1/HE-v2 | 24-64 | pending | pending | pending | open | stage 1 HE queued |
 | 5 | HE-v2 collapse >=192k | 96-320 | flat 3.636 (22 clips) | n/a | gist flat 3.775 | closed (not on master) | `anomaly-hev2-high/RESULTS.md`; master caps HE-v2 ABR at ~107 kbps; gist build a7d2f755 unavailable |
