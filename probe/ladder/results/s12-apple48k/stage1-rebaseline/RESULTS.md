@@ -98,4 +98,46 @@ faac-benchmark 9f5f1027d529fc780d226ad2d8fe250faaea6148, `compare_codecs.py` lin
 
 So the leaderboard's FAAC rows are CBR (`-b R --cbr`); the ABR rows above are not the leaderboard mode. LC CBR is queued; per-rung realized kbps, dMOS at nominal and dMOS at equal realized rate will be reported from it.
 
-## B. HE-v1 / HE-v2, C. band split: pending (queued).
+## B. HE-v1 32/40/48/64 and HE-v2 24/32/48 (FAAC in CBR as the leaderboard runs it)
+
+Rows: `rows_he_ref.jsonl`, `rows_hev2_ref.jsonl` (apple/fdkref/xaacref), `rows_he_cbr.jsonl` (faac), `rows_hev2_cbr.jsonl` (faacps = master with `-Dencoder-ps=true`; LC output of that build is byte-identical to the default build). 0 errors. `rows_he_ref.jsonl` also holds 147 partial FAAC HE ABR rows (49 clips at 32k) from an aborted run; they are ignored (ABR is secondary per addendum 3). Apple HE 32k streams declare 32 kHz output and are resampled to 48 kHz as the benchmark does.
+
+### Per rung, FAAD2 (all decoders: `he/rungsum_all.md`, `hev2/rungsum_all.md`; length-matched subset: `*_len36.md`)
+
+| profile | rung | MOS FAAC / Apple / FDK / xaac | P1 FAAC / Apple / FDK / xaac | NPER dB FAAC / Apple / FDK / xaac | stereo fid FAAC / Apple / FDK / xaac | kbps FAAC / Apple |
+|---|---|---|---|---|---|---|
+| he | 32 | 3.8431 / 3.7958 / 3.8356 / 3.7968 | 3.132 / 2.676 / 2.932 / 2.811 | 21.140 / 16.999 / 15.437 / 17.031 | 0.9174 / 0.9679 / 0.9725 / 0.9120 | 31.88 / 32.48 |
+| he | 40 | 4.1673 / 4.0403 / 4.1342 / 4.0881 | 3.375 / 2.871 / 3.422 / 3.519 | 18.360 / 15.455 / 14.815 / 15.682 | 0.9577 / 0.9727 / 0.9822 / 0.9245 | 39.90 / 40.46 |
+| he | 48 | 4.3485 / 4.2146 / 4.2673 / 4.2010 | 3.718 / 3.369 / 3.836 / 3.804 | 16.482 / 14.907 / 14.415 / 14.677 | 0.9765 / 0.9772 / 0.9851 / 0.9365 | 47.93 / 48.52 |
+| he | 64 | 4.5695 / 4.4619 / 4.5247 / 4.4978 | 4.143 / 3.492 / 4.152 / 4.140 | 13.789 / 14.097 / 13.783 / 13.137 | 0.9841 / 0.9819 / 0.9894 / 0.9879 | 63.96 / 64.61 |
+| hev2 | 24 | 3.2889 / 3.2573 / 3.2969 / 3.3036 | 2.164 / 2.074 / 2.160 / 2.274 | 20.998 / 16.711 / 14.568 / 17.601 | 0.8894 / 0.8759 / 0.8567 / 0.8765 | 24.07 / 24.30 |
+| hev2 | 32 | 3.4640 / 3.4405 / 3.5133 / 3.5168 | 2.287 / 2.176 / 2.286 / 2.355 | 16.951 / 16.004 / 13.400 / 15.268 | 0.8889 / 0.8767 / 0.8569 / 0.8766 | 32.06 / 32.36 |
+| hev2 | 48 | 3.7014 / 3.6878 / 3.6639 / 3.6484 | 2.472 / 2.434 / 2.362 / 2.403 | 13.269 / 13.599 / 11.928 / 12.583 | 0.8886 / 0.8767 / 0.8576 / 0.8768 | 48.11 / 48.43 |
+
+### BD-rate, FAAC vs reference (P = PCHIP, L = linear; mean [95 % CI]; PCHIP clips worse/better)
+
+| profile | vs | clips | FAAD2 | FFmpeg | fdkdec |
+|---|---|---|---|---|---|
+| he | Apple | all | P -8.4 [-11.5,-5.4] 19/56; L -7.8 [-10.8,-5.0] | P -8.4 [-11.5,-5.3] 21/55; L -8.0 [-11.1,-5.1] | P -7.0 [-10.3,-3.8] 26/50; L -6.7 [-9.9,-3.7] |
+| he | Apple | len36 | P -10.2 [-14.8,-5.5] 6/30; L -10.1 [-14.3,-5.9] | P -10.2 [-14.7,-5.4] 7/29; L -10.0 [-14.3,-5.8] | P -9.2 [-13.9,-4.5] 9/27; L -9.0 [-13.3,-4.6] |
+| he | FDK | all | P -5.5 [-7.9,-3.2] 19/58; L -5.7 [-7.9,-3.5] | P -5.4 [-7.8,-3.1] 19/58; L -5.6 [-7.8,-3.3] | P -4.5 [-7.0,-2.1] 24/53; L -4.7 [-7.1,-2.3] |
+| he | FDK | len36 | P -6.9 [-10.0,-3.7] 7/29; L -6.8 [-9.9,-3.7] | P -6.8 [-10.0,-3.6] 7/29; L -6.7 [-9.8,-3.7] | P -5.5 [-8.9,-2.1] 11/25; L -5.6 [-9.0,-2.2] |
+| he | xaac | all | P -10.1 [-12.4,-8.0] 11/66; L -9.7 [-11.8,-7.6] | P -10.0 [-12.2,-7.8] 11/66; L -9.6 [-11.7,-7.5] | P -9.3 [-11.7,-7.1] 12/65; L -8.7 [-10.9,-6.5] |
+| he | xaac | len36 | P -9.8 [-13.1,-6.6] 6/30; L -9.5 [-12.5,-6.6] | P -9.8 [-13.1,-6.6] 6/30; L -9.5 [-12.5,-6.5] | P -9.4 [-12.6,-6.1] 5/31; L -8.7 [-11.8,-5.6] |
+| hev2 | Apple | all | P +0.9 [-4.2,+6.2] 38/38; L +1.0 [-3.8,+6.1] | P +1.3 [-3.5,+6.1] 42/34; L +1.2 [-3.4,+5.9] | P +0.5 [-4.4,+5.3] 41/35; L +0.6 [-4.0,+5.3] |
+| hev2 | Apple | len36 | P -0.9 [-7.0,+5.8] 15/21; L -0.9 [-7.0,+5.8] | P -0.5 [-6.6,+6.0] 17/19; L -0.7 [-6.8,+5.7] | P -1.2 [-7.6,+5.3] 17/19; L -1.3 [-7.5,+5.3] |
+| hev2 | FDK | all | P +4.6 [-0.6,+10.1] 43/32; L +2.1 [-2.7,+7.2] | P +5.0 [+0.3,+9.7] 44/31; L +2.2 [-2.1,+6.6] | P +4.3 [-0.5,+9.1] 44/31; L +1.5 [-2.8,+5.9] |
+| hev2 | FDK | len36 | P +1.1 [-5.9,+8.0] 19/16; L -0.4 [-7.0,+6.3] | P +2.6 [-4.2,+9.2] 19/16; L +0.7 [-5.8,+7.2] | P +1.2 [-5.5,+7.8] 18/17; L -0.3 [-6.7,+6.1] |
+| hev2 | xaac | all | P +7.2 [+1.8,+12.8] 50/25; L +4.1 [-1.2,+9.5] | P +9.2 [+4.0,+14.7] 51/24; L +6.0 [+1.0,+11.4] | P +8.6 [+3.3,+14.0] 50/25; L +5.6 [+0.6,+10.9] |
+| hev2 | xaac | len36 | P +4.3 [-3.5,+12.4] 22/14; L +1.4 [-6.6,+9.7] | P +6.1 [-1.6,+14.3] 22/13; L +3.9 [-3.9,+11.9] | P +5.7 [-2.0,+13.7] 21/14; L +3.4 [-4.2,+11.4] |
+
+Calls (both methods, all three decoders must agree):
+- **HE-v1: FAAC leads Apple (-7 to -8 %), FDK (-4.5 to -5.7 %) and xaac (-9 to -10 %)** in BD-rate and in mean MOS at every rung.
+- **HE-v1 P1:** FAAC leads at 32k (3.132 vs Apple 2.676, FDK 2.932, xaac 2.811); trails FDK and xaac at 40k (3.375 vs 3.422 / 3.519) and 48k (3.718 vs 3.836 / 3.804); parity with FDK at 64k (4.143 vs 4.152). Reproduces the gist (48k FDK 3.836 vs FAAC 3.720).
+- **HE-v1 NPER:** FAAC worst at 32-48 (21.1 / 18.4 / 16.5 dB vs Apple 17.0 / 15.5 / 14.9, FDK 15.4 / 14.8 / 14.4); parity at 64.
+- **HE-v1 stereo fidelity:** FAAC 0.917 / 0.958 at 32 / 40k vs Apple 0.968 / 0.973 and FDK 0.973 / 0.982; FDK ahead through 64k.
+- **HE-v2:** BD-rate parity with Apple and FDK (CIs span 0, both methods); vs xaac PCHIP says FAAC trails (+7 to +9 %) but linear excludes 0 only under FFmpeg and fdkdec: not resolved. P1 FAAC 2.164 / 2.287 / 2.472 vs xaac 2.274 / 2.355 / 2.403, FDK 2.160 / 2.286 / 2.362, Apple 2.074 / 2.176 / 2.434. NPER FAAC 21.0 / 17.0 / 13.3 vs FDK 14.6 / 13.4 / 11.9. Stereo fidelity under PS is ~0.86-0.89 for every encoder (FAAC highest).
+
+Priority from these numbers: the largest gaps are HE pre-echo (item 2, 2-6 dB) and HE stereo fidelity at 32-40k (item 3); HE-v1 P1 at 40-48k (item 4) is a 0.05-0.14 gap.
+
+## C. band split: pending (deprioritized; item 1 now uses the 192-320 group analysis and the cutoff screen).

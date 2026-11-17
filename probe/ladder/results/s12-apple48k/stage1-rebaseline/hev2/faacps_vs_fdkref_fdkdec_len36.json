@@ -1,0 +1,234 @@
+{
+ "test": "faacps",
+ "ref": "fdkref",
+ "rungs": [
+  24,
+  32,
+  48
+ ],
+ "decoder": "fdkdec",
+ "mode": "cbr",
+ "profile": "hev2",
+ "metric": "mos",
+ "n_clips": 36,
+ "n_valid": 35,
+ "n_no_curve": 1,
+ "no_curve": [
+  [
+   "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+   "no valid curve"
+  ]
+ ],
+ "bd_rate_mean": 1.1786499036738578,
+ "bd_ci95": [
+  -5.475171428507166,
+  7.80659087829189
+ ],
+ "bd_rate_median": 1.2813557303150258,
+ "n_pos": 18,
+ "n_neg": 17,
+ "bd_lin_mean": -0.27305453365401544,
+ "bd_lin_ci95": [
+  -6.6751074293707955,
+  6.077826149318722
+ ],
+ "n_lin": 35,
+ "lin_pos": 18,
+ "lin_neg": 17,
+ "per_clip_lin": {
+  "01 castanets.wav": 34.30400234712621,
+  "03 eig.wav": 19.881918843964108,
+  "05 Enola.wav": -7.05118297600097,
+  "06 trumpet.wav": -0.6701927578246725,
+  "07 applaud.wav": 1.68657590442709,
+  "08 velvet.wav": 1.0034134970919872,
+  "09 Linchpin.wav": 0.85182976682463,
+  "10xh_.wav": 30.304742645011128,
+  "13by_.wav": -5.8565600848566435,
+  "15-Good-evening.441.16b48k.wav": 12.130856448500605,
+  "15ma_.wav": -20.19411071701206,
+  "17qu_.wav": 8.110104309790845,
+  "21-classic.441.16b48k.wav": -31.32708801004156,
+  "22ex_.wav": 10.638036667940165,
+  "24-Greensleeves-Korean-male-speech.441.16b48k.wav": -18.898060797577287,
+  "24td_.wav": 20.297824264906893,
+  "25rb_.wav": 31.018053953752233,
+  "26fr_.wav": 5.905163637215205,
+  "27-last-song-drums-and-trampets.441.16b48k.wav": -15.143228179741264,
+  "28db_.wav": -17.444715110720054,
+  "29ru_.wav": 14.562510573696464,
+  "35_SQAM_glockenspiel_cut.16b48k.wav": -19.540745867509514,
+  "Asleep__4.11-4.31_.16b48k.wav": 8.281203364271494,
+  "Changes.16b48k.wav": 33.713463111750855,
+  "Hey Tonight.16b48k.wav": 31.637241451031528,
+  "Hotel California.16b48k.wav": 3.1500774910998786,
+  "Robots_old.16b48k.wav": -9.932483593025133,
+  "Severance__1.31-1.51_.16b48k.wav": -11.189181326746034,
+  "SlavesOfFear.16b48k.wav": -4.438960235718747,
+  "The Chastising of Renegade.16b48k.wav": 0.3295902101880799,
+  "With Love (Outro).16b48k.wav": -6.459564262125617,
+  "bah.wav": -37.44965622244057,
+  "bas.wav": -10.890107368223834,
+  "bonhemian_rhapsody.16b48k.wav": -20.074048127957,
+  "glk.wav": -40.80363152895898
+ },
+ "per_clip_bd": {
+  "01 castanets.wav": 33.693007499082526,
+  "03 eig.wav": 21.889205117886345,
+  "05 Enola.wav": -4.5851374549514485,
+  "06 trumpet.wav": -1.1695806061258196,
+  "07 applaud.wav": 2.3883463923106696,
+  "08 velvet.wav": 4.861120515766659,
+  "09 Linchpin.wav": 1.2813557303150258,
+  "10xh_.wav": 33.04177248093658,
+  "13by_.wav": -2.850556691564543,
+  "15-Good-evening.441.16b48k.wav": 17.677115259726662,
+  "15ma_.wav": -20.646154776021287,
+  "17qu_.wav": 11.685384890826246,
+  "21-classic.441.16b48k.wav": -31.878893820219467,
+  "22ex_.wav": 13.656081434863099,
+  "24-Greensleeves-Korean-male-speech.441.16b48k.wav": -14.60158902061066,
+  "24td_.wav": 22.735359453756733,
+  "25rb_.wav": 32.27520944159315,
+  "26fr_.wav": 8.98863910930352,
+  "27-last-song-drums-and-trampets.441.16b48k.wav": -12.33848680910894,
+  "28db_.wav": -17.12755553655795,
+  "29ru_.wav": 22.0245421128082,
+  "35_SQAM_glockenspiel_cut.16b48k.wav": -21.73496010838435,
+  "Asleep__4.11-4.31_.16b48k.wav": 8.252727399984217,
+  "Changes.16b48k.wav": 33.560634190914215,
+  "Hey Tonight.16b48k.wav": 32.0329825293022,
+  "Hotel California.16b48k.wav": 4.847780424532666,
+  "Robots_old.16b48k.wav": -8.293038409406684,
+  "Severance__1.31-1.51_.16b48k.wav": -9.966791054212054,
+  "SlavesOfFear.16b48k.wav": -0.2927548154887383,
+  "The Chastising of Renegade.16b48k.wav": 1.4102789387692605,
+  "With Love (Outro).16b48k.wav": -4.626960734550146,
+  "bah.wav": -37.468416950519575,
+  "bas.wav": -11.761703378259137,
+  "bonhemian_rhapsody.16b48k.wav": -25.030576986978957,
+  "glk.wav": -40.67563914113321
+ },
+ "rung_table": [
+  {
+   "rung": 24,
+   "n": 36,
+   "test_mos": 3.2995658715566,
+   "ref_mos": 3.323623253239526,
+   "test_kbps": 24.064575894296983,
+   "ref_kbps": 24.36650992402496,
+   "test_p1": 2.5069101810455323,
+   "ref_p1": 2.4750054121017455,
+   "delta_mos": -0.024057381682925753,
+   "wins": 18,
+   "ties": 0,
+   "losses": 18
+  },
+  {
+   "rung": 32,
+   "n": 36,
+   "test_mos": 3.494130882951948,
+   "ref_mos": 3.5428744422064886,
+   "test_kbps": 32.05469825940892,
+   "ref_kbps": 32.413755198676995,
+   "test_p1": 2.7037070751190186,
+   "ref_p1": 2.7241477012634276,
+   "delta_mos": -0.04874355925454034,
+   "wins": 13,
+   "ties": 0,
+   "losses": 23
+  },
+  {
+   "rung": 48,
+   "n": 36,
+   "test_mos": 3.727018117904663,
+   "ref_mos": 3.6962826450665793,
+   "test_kbps": 48.10456992909613,
+   "ref_kbps": 48.54132822856331,
+   "test_p1": 2.835923099517822,
+   "ref_p1": 2.862463426589966,
+   "delta_mos": 0.030735472838083904,
+   "wins": 25,
+   "ties": 0,
+   "losses": 11
+  }
+ ],
+ "wins": {},
+ "worst": [
+  {
+   "delta": -0.5697259902954102,
+   "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+   "rung": 32
+  },
+  {
+   "delta": -0.5656001567840576,
+   "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+   "rung": 48
+  },
+  {
+   "delta": -0.5443539619445801,
+   "clip": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+   "rung": 24
+  },
+  {
+   "delta": -0.3519434928894043,
+   "clip": "24td_.wav",
+   "rung": 24
+  },
+  {
+   "delta": -0.31092381477355957,
+   "clip": "01 castanets.wav",
+   "rung": 24
+  },
+  {
+   "delta": -0.29677438735961914,
+   "clip": "24td_.wav",
+   "rung": 32
+  },
+  {
+   "delta": -0.27704596519470215,
+   "clip": "03 eig.wav",
+   "rung": 24
+  },
+  {
+   "delta": -0.2603573799133301,
+   "clip": "Changes.16b48k.wav",
+   "rung": 48
+  },
+  {
+   "delta": -0.2505979537963867,
+   "clip": "06 trumpet.wav",
+   "rung": 24
+  },
+  {
+   "delta": -0.23702168464660645,
+   "clip": "01 castanets.wav",
+   "rung": 32
+  },
+  {
+   "delta": -0.2272186279296875,
+   "clip": "29ru_.wav",
+   "rung": 24
+  },
+  {
+   "delta": -0.2169198989868164,
+   "clip": "29ru_.wav",
+   "rung": 32
+  },
+  {
+   "delta": -0.2077317237854004,
+   "clip": "Changes.16b48k.wav",
+   "rung": 32
+  },
+  {
+   "delta": -0.19554829597473145,
+   "clip": "Hey Tonight.16b48k.wav",
+   "rung": 24
+  },
+  {
+   "delta": -0.1945807933807373,
+   "clip": "Changes.16b48k.wav",
+   "rung": 24
+  }
+ ]
+}
