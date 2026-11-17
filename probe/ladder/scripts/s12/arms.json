@@ -121,5 +121,14 @@
   "env": {
    "FAAC_CBR_AIM": "1.0"
   }
+ },
+ "stns2": {
+  "kind": "faac",
+  "bin": "/home/user/work/stns2/build/frontend/faac",
+  "flags": [],
+  "env": {
+   "FAAC_STNS": "1",
+   "FAAC_STNS_ATK": "1"
+  }
  }
 }
