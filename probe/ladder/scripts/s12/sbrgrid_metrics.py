@@ -17,7 +17,7 @@ def merged(events):
         else: out.append([s, {c}])
     return [(s, sorted(cs)) for s, cs in out]
 
-def metrics(d, tag, clips, delta=-256, lagfix=None):
+def metrics(d, tag, clips, delta=-256, lagfix=None, mono_grid=False):
     n = nogrid = near2 = near1 = ffo = 0
     nfr = nvar = 0; cls = {}; trans = {}; dist = []; off = {}
     for clip in clips:
@@ -36,7 +36,8 @@ def metrics(d, tag, clips, delta=-256, lagfix=None):
         for s, chs in merged(ONS[clip]["events"]):
             p = (s + lag + delta) * r["out_rate"] // 48000
             k = p // L; pos = (p - k * L) / float(SLOT)
-            gl = [g[(k, ch)] for ch in chs if (k, ch) in g]
+            # HE-v2: one SBR channel (the mono carrier) serves both onset channels
+            gl = [g[(k, 0 if mono_grid else ch)] for ch in chs if (k, 0 if mono_grid else ch) in g]
             if not gl: nogrid += 1; continue
             n += 1
             ffo += gl[0][2] == 0
