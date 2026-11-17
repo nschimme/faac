@@ -146,5 +146,11 @@
   "env": {
    "FAAC_SBR_GRID": "1"
   }
+ },
+ "cbrv2": {
+  "kind": "faac",
+  "bin": "/home/user/work/cbrv2s-build/frontend/faac",
+  "flags": [],
+  "env": {}
  }
 }

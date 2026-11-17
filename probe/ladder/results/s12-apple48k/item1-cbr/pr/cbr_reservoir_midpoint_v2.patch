@@ -1,8 +1,19 @@
 diff --git a/libfaac/ratecontrol.c b/libfaac/ratecontrol.c
-index 2b7f656d..ff76705f 100644
+index 2b7f656d..c93cee1f 100644
 --- a/libfaac/ratecontrol.c
 +++ b/libfaac/ratecontrol.c
-@@ -159,8 +159,13 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
+@@ -65,6 +65,10 @@ void RateControlReset(RateControl *rc, unsigned int numChannels,
+     rc->resMean = 0;
+     rc->resCap = 0;
+     rc->resFill = 0;
++    /* Only where the surplus is stuffed, not needed for bursts: at low rates
++       and in mono the extra spend moved single clips by +-0.2 MOS with no mean
++       gain (PR #208 gate). */
++    rc->resSpend = cbr && numChannels == 2 && bitRate >= 64000;
+     if (cbr)
+     {
+         rc->resMean = rc->frameBudget;
+@@ -159,8 +163,13 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
         directions are kept: forgiving credit but not debt biases the loop by
         however much each clip drew. One CORE setpoint serves the account and
         `fix` alike -- the frame's budget less what SBR was charged, against
@@ -11,9 +22,21 @@ index 2b7f656d..ff76705f 100644
 +       headed for the stuffing floor, so that surplus is spent as signal; below
 +       half the aim stays under budget, keeping the buffer for bursts. */
      int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
-+    if (reservoir && rc->resFill > rc->resCap / 2)
++    if (rc->resSpend && rc->resFill > rc->resCap / 2)
 +        coreTarget += desbits - (int)(desbits * RC_BALANCE_AIM)
 +                      + (rc->resFill - rc->resCap / 2) / RC_BALANCE_AMORT;
      int coreBits = totalBits - sbrBits;
      int lend;
      int bound = RC_BALANCE_FRAMES * desbits;
+diff --git a/libfaac/ratecontrol.h b/libfaac/ratecontrol.h
+index 5b6988a8..1c6294fd 100644
+--- a/libfaac/ratecontrol.h
++++ b/libfaac/ratecontrol.h
+@@ -42,6 +42,7 @@ typedef struct {
+     int resMean;       /* bits arriving per frame */
+     int resCap;        /* capacity: 6144 * channels - resMean */
+     int resFill;       /* fill after the last frame, [0, resCap] */
++    int resSpend;      /* spend the fill above half capacity (stereo >= 64 kbps/ch) */
+     int resMinBits;    /* floor BuildFrame stuffs this frame up to; 0 = none */
+     int stuffedBits;   /* what BuildFrame stuffed into the last frame */
+     int sbrBits;       /* SBR payload BuildFrame wrote into the last frame */
