@@ -15,3 +15,8 @@ methods vs master CBR and vs Apple) plus the mechanism table on the same 10 clip
 fill) and callgrind on velvet and Bachpsichord 10 s at 192k. Advance to HE CBR, 44.1/32 kHz, mono speech CBR and the
 full-dataset runner only if: no cell below -0.10, both BD methods below 0 vs master CBR under all three decoders, rate
 within 0.5 %, and velvet Ir within +5 % of master.
+
+## Addendum (mechanism data before any v2 MOS row): `reservoir_stats_mid.tsv`, same 10 clips, CBR
+192k: stuffing 0.32 % (master 0.97, aim1.0 0.16), bound retries 4.9 % (9.5 / 38.0), min fill 7.4 %, 0 underflows.
+320k: stuffing 0.87 % (1.41 / 0.80), retries 24.2 % (22.5 / 71.5), 0 underflows. callgrind 10 s 192k CBR: velvet
+252.8M Ir (master 504.2M, -50 %: fewer cap retries), Bachpsichord 171.8M (+0.3 %). Unset payload-identical 12/12.

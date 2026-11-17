@@ -130,5 +130,13 @@
    "FAAC_STNS": "1",
    "FAAC_STNS_ATK": "1"
   }
+ },
+ "cbrmid": {
+  "kind": "faac",
+  "bin": "/home/user/work/cbraim/build/frontend/faac",
+  "flags": [],
+  "env": {
+   "FAAC_CBR_MID": "1"
+  }
  }
 }

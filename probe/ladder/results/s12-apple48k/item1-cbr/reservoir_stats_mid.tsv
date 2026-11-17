@@ -1,0 +1,21 @@
+clip	rate	stuff_pct	bound_retry_pct	fill_min_pct	underflows	bytes
+01 castanets.wav	192	0.31	2.6	0.0	0	161524
+01 castanets.wav	320	0.85	46.8	0.0	0	268097
+10 Angels_Fall_First_ringing.wav	192	0.27	3.0	0.0	0	729819
+10 Angels_Fall_First_ringing.wav	320	0.45	18.7	0.0	0	1211928
+14fe_.wav	192	0.33	3.3	0.0	0	485247
+14fe_.wav	320	0.27	11.5	0.1	0	805592
+21-classic.441.16b48k.wav	192	0.00	0.0	33.7	0	234859
+21-classic.441.16b48k.wav	320	1.23	28.4	0.0	0	389826
+26fr_.wav	192	0.82	13.0	0.0	0	716166
+26fr_.wav	320	3.80	28.6	0.0	0	1189031
+Asleep__4.11-4.31_.16b48k.wav	192	0.00	0.0	21.3	0	485300
+Asleep__4.11-4.31_.16b48k.wav	320	0.15	9.3	0.1	0	805592
+Hey Tonight.16b48k.wav	192	0.00	0.0	19.4	0	485253
+Hey Tonight.16b48k.wav	320	0.08	0.3	0.3	0	805593
+08 velvet.wav	192	1.25	26.0	0.0	0	289080
+08 velvet.wav	320	1.10	69.2	0.0	0	479152
+13 fatboy_30sec.wav	192	0.13	0.7	0.0	0	707900
+13 fatboy_30sec.wav	320	0.40	16.3	0.0	0	1175924
+11ff_.wav	192	0.04	0.5	0.0	0	724841
+11ff_.wav	320	0.34	13.3	0.0	0	1203631
