@@ -27,3 +27,15 @@ range keep master's mid-frame border. No threshold change, no new envelope count
   arm-control difference, full band and the >12 kHz band; P1 and mean MOS per rung; BD-rate vs control (PCHIP + linear).
 - Advance to the full-dataset pass only if NPER improves with CI wholly below 0 at >= 2 of the 4 rungs under all three
   decoders, no MOS cell below -0.10, mean MOS not lower by more than 0.005 at any rung, and P1 not lower. Otherwise close.
+
+## Addendum 2026-11-17 (before any scoring): mechanism check failed, arm closed unscored
+Patch `scripts/s12/sbr_attack_scratch.patch`, validation `scripts/s12/SBRATK_VALIDATION.md`: unset byte-exact
+261/261, set decodes clean 24/24 on four decoders, +160 B, +0.03 % Ir. But the arm does not do what the hypothesis
+needs: border within 2 slots of a scored onset on 6 clips 74 -> 59 / 392 (32k) and 256 -> 246 / 392 (40/48k).
+Reasons: (1) the unchanged transient test flags only 27 % (32k) / 2.3 % (40/48k) of frames, so most onsets never get
+a variable border; (2) the leading border must stay 0 (the decoder generates no HF before t_E[0]), so the inner border
+is limited to slots 2-8 and only 26-34 % of VARFIX frames move; (3) the energy argmax lands 2-3 slots before the
+benchmark's refined onset. Scoring it would test a grid that is not closer to the onsets, so it is not scored.
+Status: closed negative at the mechanism level. An SBR-grid fix would need a redesigned detector (onset-level, per
+slot), trailing-border classes (FIXVAR/VARVAR) for late attacks and a placement rule validated against the onset list
+before any MOS/NPER scoring; that is a larger design, not a scoped scratch arm, and is parked behind the core arms.
