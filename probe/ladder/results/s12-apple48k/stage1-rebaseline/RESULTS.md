@@ -83,4 +83,19 @@ Reading: at equal nominal rung Apple keeps a mean-MOS edge only at 192k (-0.0027
 
 Master matches the leaderboard build at LC 128-320 within 0.001 MOS; Apple and FDK reproduce exactly, so the local scorer reproduces the leaderboard. FAAC NPER is 0.06-0.09 dB lower locally at 160-320 (small build or pooling difference). Open: stereo fidelity is about 0.002 higher locally for every encoder (pooling not resolved), and the gist reports FAAC LC bitrate error 0.0-0.1 % while the harness measures -1.3 to -1.8 % with the same ES-bytes / source-duration definition as `phase1_encode` (not resolved). HE-v2 differs (anomaly item).
 
+### Leaderboard rate mode
+faac-benchmark 9f5f1027d529fc780d226ad2d8fe250faaea6148, `compare_codecs.py` lines 759-765:
+
+```python
+        # CBR wherever the encoder offers it, so "bitrate" means the same thing
+        # across the field; set here so the capability probe and the real
+        # encode build the same command. faac defaults to ABR and older builds
+        # lack --cbr. (exhale has no rate control beyond its presets.)
+        for e in encoders:
+            if isinstance(e, FAACEncoder) and e.supports_cbr:
+                e.default_rate_control = "cbr"
+```
+
+So the leaderboard's FAAC rows are CBR (`-b R --cbr`); the ABR rows above are not the leaderboard mode. LC CBR is queued; per-rung realized kbps, dMOS at nominal and dMOS at equal realized rate will be reported from it.
+
 ## B. HE-v1 / HE-v2, C. band split: pending (queued).
