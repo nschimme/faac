@@ -20,3 +20,14 @@ within 0.5 %, and velvet Ir within +5 % of master.
 192k: stuffing 0.32 % (master 0.97, aim1.0 0.16), bound retries 4.9 % (9.5 / 38.0), min fill 7.4 %, 0 underflows.
 320k: stuffing 0.87 % (1.41 / 0.80), retries 24.2 % (22.5 / 71.5), 0 underflows. callgrind 10 s 192k CBR: velvet
 252.8M Ir (master 504.2M, -50 %: fewer cap retries), Bachpsichord 171.8M (+0.3 %). Unset payload-identical 12/12.
+
+## Addendum 2 2026-11-17 (v2 one-sided rule, written before any v2 MOS row was read)
+PR #208 (the midpoint rule, unconditional under CBR) failed the CI mos gate: 35 CBR cells below -0.10 at low rates
+(16k mono speech 20/24, VoIP 24, 24k mono 28/32, 48k stereo 16/24/40, 32k stereo 16). Reading: below half full the
+midpoint rule aims under the frame budget by up to resCap/(2*AMORT), which at low rates is a large share of the frame
+and starves bursts. v2 keeps master's aim below half full and only spends the surplus above half:
+`if (resFill > resCap/2) coreTarget += desbits - desbits*AIM + (resFill - resCap/2)/AMORT` (no env gate; ABR/VBR
+untouched). Validation (benchmark runner, FAAD3, all three FAAC profiles, master vs v2): the 12 failing/neighbour
+scenarios 16k_mono_20k/24k, 16k_mono_voip_24k, 24k_mono_28k/32k, 32k_stereo_16k, 48k_stereo_16k/24k/40k/80k/128k/192k.
+Pass: no clip cell below -0.10 in any scenario x profile; 48k_stereo_128k/192k LC mean dMOS >= 0; ABR and VBR
+payloads identical to master. Fail on any low-rate cell -> scope to stereo LC >= 64 kbps/ch as the owner allowed.
