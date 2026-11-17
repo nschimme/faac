@@ -1,0 +1,20 @@
+--- a/libfaad/sbr.c
++++ b/libfaad/sbr.c
+@@ -841,6 +841,17 @@
+             for (int k = 0; k < el->n_q && k < SBR_MAX_NQ; k++)
+                 fprintf(faad_decdump, "%s%u", k ? "," : "", ch->invf_mode[k]);
+             fprintf(faad_decdump, " %d %d\n", (int)ch->add_harmonic_flag, (int)el->coupling);
++            /* E <frame> <ch> <class> <L_E> <t_E,> <freq_res,> <L_Q> <t_Q,> <bs_pointer> <l_A> */
++            fprintf(faad_decdump, "E %d %u %u %u ", faad_decdump_frame, ch0 + c, ch->frame_class, ch->L_E);
++            for (int k = 0; k <= ch->L_E && k <= SBR_MAX_ENV; k++)
++                fprintf(faad_decdump, "%s%u", k ? "," : "", ch->t_E[k]);
++            fputc(' ', faad_decdump);
++            for (int k = 0; k < ch->L_E && k < SBR_MAX_ENV; k++)
++                fprintf(faad_decdump, "%s%u", k ? "," : "", ch->freq_res[k]);
++            fprintf(faad_decdump, " %u ", ch->L_Q);
++            for (int k = 0; k <= ch->L_Q && k < 3; k++)
++                fprintf(faad_decdump, "%s%u", k ? "," : "", ch->t_Q[k]);
++            fprintf(faad_decdump, " %u %d\n", ch->bs_pointer, (int)ch->l_A);
+         }
+     }
+     dec->sbr_present = true;
