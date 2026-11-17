@@ -114,6 +114,10 @@ def score(dec, stream, ref48, tmp, metrics):
             v = [max(0.0, float(x)) for x in pe['pre_echo_db']]
             out['nper'] = sum(v) / len(v) if v else None
             out['nper_events'] = len(v)
+            # post-onset HF residual on the same events; pooled as a plain mean like NPER
+            h = [float(x) for x in pe.get('post_onset_residual_db', []) if x is not None]
+            out['hfres'] = sum(h) / len(h) if h else None
+            out['hfres_n'] = len(h)
         except Exception as e:
             out['nper_error'] = str(e)
     if 'stfid' in metrics:
