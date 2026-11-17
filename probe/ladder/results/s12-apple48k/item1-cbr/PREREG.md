@@ -25,3 +25,19 @@ active; unset = master (audio payload md5 identical on 30/30 LC ABR/CBR/VBR, HE-
 - Advance to HE CBR, 44.1/32 kHz CBR and the full-dataset pass only if: no cell below -0.10, both BD methods vs control
   have CIs wholly below 0 under all three decoders (or, if realized rate rises, dMOS at equal realized rate is positive
   with CI above 0), and mean realized rate stays within 0.5 % of nominal. Otherwise close as negative.
+
+## Addendum 2026-11-17 (mechanism data, before any MOS row was read)
+Stats build of the scratch patch, 10 clips (`reservoir_stats.tsv`), CBR, mean over clips:
+
+| rate | aim | stuffing % of stream | bound retries % of frames | min reservoir fill % | underflows |
+|---|---|---|---|---|---|
+| 192 | 0.99 | 0.97 | 9.5 | 11.6 | 0 |
+| 192 | 1.0 | 0.16 | 38.0 | 5.2 | 0 |
+| 320 | 0.99 | 1.41 | 22.5 | 0.1 | 0 |
+| 320 | 1.0 | 0.80 | 71.5 | 0.0 | 0 |
+
+Aim 1.0 recovers most of the fill at 192k but makes 4x as many frames bust the reservoir cap and re-quantize.
+callgrind (10 s, 192k CBR): velvet 504.2M -> 873.8M Ir (+73 %); Bachpsichord 171.3M -> 171.6M (+0.2 %). No frame
+exceeded the legal buffer (0 underflows). The retry cost alone fails the throughput gate on reservoir-starved clips,
+so even a MOS pass would need a cheaper form (e.g. aim at the reservoir's fill target instead of a fixed ratio, or a
+first-pass quality correction from the cap) before any PR; that would be a new arm with its own prereg.
