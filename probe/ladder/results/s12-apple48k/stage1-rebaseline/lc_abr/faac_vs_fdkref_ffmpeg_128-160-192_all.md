@@ -1,6 +1,7 @@
 # faac vs fdkref  (decoder ffmpeg, abr/lc, rungs [128, 160, 192], metric mos)
 
 BD-rate mean **-16.159%** (95% clip-bootstrap CI [-18.559, -13.610], 10000 resamples, seed 0), median -16.293%; valid curves 73/77, no valid curve: 4
+PCHIP sign: 3 clips worse / 70 better. Linear (log-rate linear in MOS): **-15.214%** [-17.490, -12.805], n 73, 3 worse / 70 better.
 
 | rung | n | test MOS | ref MOS | dMOS | test kbps | ref kbps | test P1 | ref P1 | W/T/L |
 |---|---|---|---|---|---|---|---|---|---|

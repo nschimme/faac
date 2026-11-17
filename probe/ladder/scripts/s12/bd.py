@@ -35,15 +35,34 @@ def boot_ci(x, n=10000, seed=0):
     return float(np.percentile(m, 2.5)), float(np.percentile(m, 97.5))
 
 
+def bd_linear(bp, cp):
+    """Second BD method: log10(rate) linear in MOS per curve, mean gap over the shared MOS range."""
+    def curve(p):
+        p = sorted(p, key=lambda x: x[1])
+        m = np.array([x[1] for x in p]); r = np.log10([x[0] for x in p])
+        return (m, r) if np.all(np.diff(m) > 0) else None
+    b, c = curve(bp), curve(cp)
+    if b is None or c is None:
+        return None
+    lo, hi = max(b[0][0], c[0][0]), min(b[0][-1], c[0][-1])
+    if hi <= lo:
+        return None
+    g = np.linspace(lo, hi, 200)
+    return float((10 ** np.mean(np.interp(g, *c) - np.interp(g, *b)) - 1) * 100)
+
+
 def analyze(files, test, ref, rungs, decoder, mode=None, profile=None, exclude=(), metric='mos', top=15):
     d = load(files, mode, profile, decoder, metric)
     clips = sorted({k[1] for k in d if k[0] in (test, ref)} - set(exclude))
-    per_clip, invalid = {}, []
+    per_clip, invalid, per_lin = {}, [], {}
     for c in clips:
         bp = [d.get((ref, c, r)) for r in rungs]
         cp = [d.get((test, c, r)) for r in rungs]
         if any(p is None for p in bp + cp):
             invalid.append((c, 'missing rung')); continue
+        lin = bd_linear(bp, cp)
+        if lin is not None:
+            per_lin[c] = lin
         bd = bd_rate_curve(bp, cp)
         if bd is None:
             invalid.append((c, 'no valid curve')); continue
@@ -53,7 +72,12 @@ def analyze(files, test, ref, rungs, decoder, mode=None, profile=None, exclude=(
     out = dict(test=test, ref=ref, rungs=rungs, decoder=decoder, mode=mode, profile=profile, metric=metric,
                n_clips=len(clips), n_valid=len(v), n_no_curve=len(invalid), no_curve=invalid,
                bd_rate_mean=float(v.mean()) if len(v) else None, bd_ci95=[lo, hi],
-               bd_rate_median=float(np.median(v)) if len(v) else None, per_clip_bd=per_clip, rung_table=[], wins={}, worst=[])
+               bd_rate_median=float(np.median(v)) if len(v) else None,
+               n_pos=int((v > 0).sum()), n_neg=int((v < 0).sum()),
+               bd_lin_mean=float(np.mean(list(per_lin.values()))) if per_lin else None,
+               bd_lin_ci95=list(boot_ci(np.array(list(per_lin.values())))), n_lin=len(per_lin),
+               lin_pos=int(sum(x > 0 for x in per_lin.values())), lin_neg=int(sum(x < 0 for x in per_lin.values())),
+               per_clip_lin=per_lin, per_clip_bd=per_clip, rung_table=[], wins={}, worst=[])
     for r in rungs:
         t = [d[(test, c, r)] for c in clips if (test, c, r) in d and (ref, c, r) in d]
         b = [d[(ref, c, r)] for c in clips if (test, c, r) in d and (ref, c, r) in d]
@@ -82,6 +106,10 @@ def md(o):
     L.append(f"BD-rate mean **{o['bd_rate_mean']:+.3f}%** (95% clip-bootstrap CI [{ci[0]:+.3f}, {ci[1]:+.3f}], 10000 resamples, seed 0), "
              f"median {o['bd_rate_median']:+.3f}%; valid curves {o['n_valid']}/{o['n_clips']}, no valid curve: {o['n_no_curve']}" if o['n_valid'] else
              f"no valid BD curves ({o['n_no_curve']}/{o['n_clips']} clips)")
+    if o.get('n_lin'):
+        lc = o['bd_lin_ci95']
+        L.append(f"PCHIP sign: {o['n_pos']} clips worse / {o['n_neg']} better. Linear (log-rate linear in MOS): **{o['bd_lin_mean']:+.3f}%** "
+                 f"[{lc[0]:+.3f}, {lc[1]:+.3f}], n {o['n_lin']}, {o['lin_pos']} worse / {o['lin_neg']} better.")
     L += ['', '| rung | n | test MOS | ref MOS | dMOS | test kbps | ref kbps | test P1 | ref P1 | W/T/L |', '|---|---|---|---|---|---|---|---|---|---|']
     for t in o['rung_table']:
         L.append(f"| {t['rung']} | {t['n']} | {t['test_mos']:.4f} | {t['ref_mos']:.4f} | {t['delta_mos']:+.4f} | {t['test_kbps']:.2f} | "

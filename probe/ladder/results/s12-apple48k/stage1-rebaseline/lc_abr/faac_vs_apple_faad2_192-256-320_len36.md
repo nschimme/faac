@@ -1,6 +1,7 @@
 # faac vs apple  (decoder faad2, abr/lc, rungs [192, 256, 320], metric mos)
 
 BD-rate mean **-3.645%** (95% clip-bootstrap CI [-6.812, -1.077], 10000 resamples, seed 0), median -3.621%; valid curves 35/36, no valid curve: 1
+PCHIP sign: 12 clips worse / 23 better. Linear (log-rate linear in MOS): **-2.055%** [-5.248, +0.439], n 35, 16 worse / 19 better.
 
 | rung | n | test MOS | ref MOS | dMOS | test kbps | ref kbps | test P1 | ref P1 | W/T/L |
 |---|---|---|---|---|---|---|---|---|---|
