@@ -54,5 +54,19 @@
   "bin": "/home/user/work/faac-master/build-ps/frontend/faac",
   "flags": [],
   "env": {}
+ },
+ "stns": {
+  "kind": "faac",
+  "bin": "/home/user/work/stns/build/frontend/faac",
+  "flags": [],
+  "env": {
+   "FAAC_STNS": "1"
+  }
+ },
+ "stns_off": {
+  "kind": "faac",
+  "bin": "/home/user/work/stns/build/frontend/faac",
+  "flags": [],
+  "env": {}
  }
 }
