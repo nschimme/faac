@@ -929,7 +929,7 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
             if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
         }
 
-        if (onset_votes > onset_quorum)
+        if (onset_votes > onset_quorum && !cfg->mergeGroups)
         {
             coderInfo->groups.len[coderInfo->groups.n++] = win - group_start;
             group_start = win;

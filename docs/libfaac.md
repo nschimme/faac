@@ -588,7 +588,8 @@ peak_bit_rate = payload_bytes * 8 * params.sample_rate / info.frame_samples
 
 The cap is a ceiling, not a second average: frames that already fit are untouched
 (the stream stays ABR, not CBR), and a frame re-quantized to fit does not pull
-down later ones.
+down later ones. The one carry-over is that a frame right after a band cut codes
+its short windows as a single group.
 
 The cap holds for every frame. Quality is backed off first; a frame that still
 does not fit loses its top bands, so a tight cap costs bandwidth before it

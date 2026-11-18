@@ -940,7 +940,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (a)
         {
-            BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
+                        BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
 #ifdef FAAC_STATS
             /* Everything downstream scales with groups.n * sfbn, so this one
              * number covers both the throughput and the bitrate axis. */
@@ -1137,6 +1137,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * bitRate == 0 nothing below ever claws the quality back. */
     hEncoder->aacquantCfg.quality = baseQuality;
 
+    hEncoder->aacquantCfg.mergeGroups = cutting;
 #ifdef FAAC_STATS
     if (cutting) g_faacStats.peakZeroFrames++;
     if (attempt > 0)
