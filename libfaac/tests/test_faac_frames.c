@@ -22,6 +22,8 @@
  *    what an empty frame costs;
  *  - a CBR stream's running total never strays from the nominal rate by more than the decoder
  *    buffer holds, even on noise that quality alone cannot bring down to the target;
+ *  - a CBR stream whose budget is not a whole number of bits per frame still averages to it,
+ *    which a reservoir that truncates the budget does not;
  *  - window_sequence only moves along legal transitions (long -> start -> short -> stop),
  *    and a full-scale click in a tonal background does switch to short blocks. */
 #include <stdio.h>
@@ -215,6 +217,36 @@ static void test_cbr_stays_in_buffer(void)
     free(pcm);
 }
 
+/* Silence fills the reservoir and the encoder then stuffs every frame up to the budget,
+ * so the payload over a long run must equal the nominal rate. 20 kbit/s of mono at 44.1 kHz
+ * is 464.4 bits per frame: dropping the fraction would lose about 240 bits in 600 frames. */
+static void test_cbr_budget_fraction(void)
+{
+    enum { FRAMES = 1024 * 640, RUN = 600, PER_CH = 20000 };
+    int16_t *pcm = calloc(FRAMES, sizeof(*pcm));
+    FT_REQUIRE(pcm);
+    stream s = encode(1, FAAC_RC_CBR, PER_CH, 0, 0, pcm, FRAMES);
+    unsigned lens[1024], n = 0;
+    size_t pos = 0;
+    while (pos < s.len) {
+        const uint8_t *h = s.data + pos;
+        FT_REQUIRE(h[0] == 0xFF && (h[1] & 0xF0) == 0xF0);
+        size_t header = (h[1] & 1) ? 7 : 9;
+        size_t length = ((size_t)(h[3] & 3) << 11) | ((size_t)h[4] << 3) | (h[5] >> 5);
+        FT_REQUIRE(length > header && length <= s.len - pos);
+        FT_REQUIRE(n < 1024);
+        lens[n++] = (unsigned)(length - header) * 8;
+        pos += length;
+    }
+    FT_REQUIRE(n > RUN + 32);
+    double bits = 0, nominal = (double)PER_CH * 1024.0 / RATE * RUN;
+    for (unsigned i = n - RUN - 1; i < n - 1; i++) bits += lens[i]; /* the last frame is the flush */
+    if (bits < nominal - 64 || bits > nominal + 64) fprintf(stderr, "%.0f bits in %d frames, nominal %.0f: ", bits, RUN, nominal);
+    FT_CHECK(bits >= nominal - 64 && bits <= nominal + 64);
+    free(s.data);
+    free(pcm);
+}
+
 static void test_lfe_narrow_bandwidth(void)
 {
     enum { CHANNELS = 6 };
@@ -262,6 +294,7 @@ int main(void)
     test_channel_limit(lib.max_channels);
     test_ceiling(lib.max_channels);
     test_window_transitions();
+    test_cbr_budget_fraction();
     if (lib.max_channels >= 2) test_cbr_stays_in_buffer();
     if (lib.max_channels >= 2) test_peak_cap_holds();
     if (lib.max_channels >= 6) test_lfe_narrow_bandwidth();
