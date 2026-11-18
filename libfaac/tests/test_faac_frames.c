@@ -18,6 +18,8 @@
  *    lengths sum to the bytes written);
  *  - no raw data block exceeds 6144 bits per channel, the ISO/IEC 14496-3 limit, in any
  *    rate-control mode;
+ *  - a CBR stream's running total never strays from the nominal rate by more than the decoder
+ *    buffer holds, even on noise that quality alone cannot bring down to the target;
  *  - window_sequence only moves along legal transitions (long -> start -> short -> stop),
  *    and a full-scale click in a tonal background does switch to short blocks. */
 #include <stdio.h>
@@ -158,6 +160,33 @@ static void test_window_transitions(void)
     free(pcm);
 }
 
+/* A decoder's buffer holds 6144 bits per channel less one mean frame, so the running total
+ * of bits sent against bits nominal must stay inside a window that wide. */
+static void test_cbr_stays_in_buffer(void)
+{
+    enum { FRAMES = RATE * 3, CHANNELS = 2, PER_CH = 6000 };
+    int16_t *pcm = pcm_make_noise(CHANNELS, FRAMES);
+    stream s = encode(CHANNELS, FAAC_RC_CBR, PER_CH, 0, pcm, FRAMES);
+    double nominal = (double)PER_CH * CHANNELS * 1024.0 / RATE, ahead = 0, high = 0, low = 0;
+    size_t pos = 0;
+    while (pos < s.len) {
+        const uint8_t *h = s.data + pos;
+        FT_REQUIRE(h[0] == 0xFF && (h[1] & 0xF0) == 0xF0);
+        size_t header = (h[1] & 1) ? 7 : 9;
+        size_t length = ((size_t)(h[3] & 3) << 11) | ((size_t)h[4] << 3) | (h[5] >> 5);
+        FT_REQUIRE(length > header && length <= s.len - pos);
+        ahead += (double)(length - header) * 8 - nominal;
+        if (ahead > high) high = ahead;
+        if (ahead < low) low = ahead;
+        pos += length;
+    }
+    double window = 6144.0 * CHANNELS - nominal;
+    if (high - low > window) fprintf(stderr, "strayed %.0f bits from nominal, window %.0f: ", high - low, window);
+    FT_CHECK(high - low <= window);
+    free(s.data);
+    free(pcm);
+}
+
 static void test_lfe_narrow_bandwidth(void)
 {
     enum { CHANNELS = 6 };
@@ -205,6 +234,7 @@ int main(void)
     test_channel_limit(lib.max_channels);
     test_ceiling(lib.max_channels);
     test_window_transitions();
+    if (lib.max_channels >= 2) test_cbr_stays_in_buffer();
     if (lib.max_channels >= 6) test_lfe_narrow_bandwidth();
     return ft_done();
 }

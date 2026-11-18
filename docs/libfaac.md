@@ -590,10 +590,12 @@ The cap is a ceiling, not a second average: frames that already fit are untouche
 (the stream stays ABR, not CBR), and a frame re-quantized to fit does not pull
 down later ones.
 
-Enforcement is best effort, because a frame cannot shrink below its side info and
-scalefactors. On transient-heavy stereo the cap held at and above about 64 kbit/s
-and slipped on a few percent of frames near 48. If the packet must fit, check
-`bytes_written` and drop the frame yourself.
+The cap holds for every frame. Quality is backed off first; a frame that still
+does not fit loses its top bands, so a tight cap costs bandwidth before it
+costs the cap. The one limit is the empty frame: the headers, section data and,
+for HE-AAC, SBR that no frame can drop. That is about 290 bits for stereo LC and
+470 for stereo HE-AAC, so a stereo LC cap below about 12 kbit/s at 44.1 kHz (13.5
+at 48 kHz) can still be exceeded. The same holds for the bit reservoir under CBR.
 
 ## Porting
 

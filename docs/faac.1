@@ -166,9 +166,9 @@ an oversized frame rather than splitting it, and for bounding VBR. Must be at
 least the
 .B -b
 bitrate. A ceiling, not a second average: frames that already fit are left
-alone, so the stream stays ABR or VBR. Best-effort \(em a frame cannot shrink below the
-cost of its own side info, so a low enough cap is still exceeded on a few
-percent of frames.
+alone, so the stream stays ABR or VBR. Every frame fits: quality is backed off
+first, then the top bands are dropped. Only a cap below an empty frame's headers,
+section data and SBR (about 290 bits stereo LC, 470 HE) can be exceeded.
 .TP
 .BR -c ,\  --bandwidth\ <\fIfreq\fP>
 Cut the audio off above <freq> Hz. Left out, the encoder chooses the cutoff

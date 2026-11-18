@@ -149,6 +149,10 @@ Unreleased
 	  `--block-type` now reject unknown values instead of reading them as 0
 	* Rate control: signed bit account for ABR; a real bit reservoir for CBR
 	  behind `--cbr`
+	* Every frame now fits its cap: the CBR reservoir, `--cap-rate` and the ISO
+	  frame limit. A frame still too big at minimum quality drops its top bands
+	  instead of being written over the limit; only a cap below an empty frame
+	  (about 290 bits stereo LC, 470 HE) can be exceeded
 	* Refit the ABR bandwidth curve from a sweep: a wider core at 24-56 kbps
 	  stereo and every cutoff on the band grid reachable, where a double
 	  snap had left seven

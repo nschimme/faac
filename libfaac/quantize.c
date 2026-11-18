@@ -594,6 +594,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 #endif
 
         band_sf[sb] = INT_MIN;
+        if (sb >= ci->zeroFrom)
+        {
+            ci->book[band] = HCB_ZERO;
+            continue;
+        }
         if (ci->book[band] != HCB_NONE)
             continue;
 
@@ -698,6 +703,7 @@ void ResetCoderSections(CoderInfo *coder)
 {
     int i, n = coder->groups.n * coder->sfbn;
     coder->partner = NULL;
+    coder->zeroFrom = MAX_SCFAC_BANDS;
     coder->useRef = 0;
     coder->msUsed = NULL;
     coder->msPeer = NULL;

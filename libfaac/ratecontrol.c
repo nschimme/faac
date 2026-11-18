@@ -293,6 +293,12 @@ void RateControlStatsPrint(FILE *out)
                 100.0 * g_faacStats.peakRetryFrames / g_faacStats.totalFrames,
                 g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
     }
+    /* Not under balanceFrames: capped VBR cuts bands without ever updating the balance. */
+    if (g_faacStats.totalFrames > 0)
+    {
+        fprintf(out, " Band Cuts           : %u of %u frames | refits = %u\n",
+                g_faacStats.peakZeroFrames, g_faacStats.totalFrames, g_faacStats.peakRefits);
+    }
     if (g_faacStats.resFrames > 0)
     {
         fprintf(out, " Bit Reservoir (CBR) : Fill min = %5.1f%% | Bound Retries = %5.1f%% (%u/%u) | Underflows = %u | Stuffing = %5.2f%% of stream\n",
