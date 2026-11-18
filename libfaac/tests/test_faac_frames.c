@@ -18,6 +18,8 @@
  *    lengths sum to the bytes written);
  *  - no raw data block exceeds 6144 bits per channel, the ISO/IEC 14496-3 limit, in any
  *    rate-control mode;
+ *  - no frame exceeds peak_bit_rate, however hard the material, so long as the cap is above
+ *    what an empty frame costs;
  *  - a CBR stream's running total never strays from the nominal rate by more than the decoder
  *    buffer holds, even on noise that quality alone cannot bring down to the target;
  *  - window_sequence only moves along legal transitions (long -> start -> short -> stop),
@@ -35,7 +37,7 @@ typedef struct { uint8_t *data; size_t len; } stream;
 #define ADTS_SPARE 8192
 
 static stream encode(uint32_t channels, enum faac_rate_control rc, uint32_t bit_rate, uint32_t quality,
-                     const int16_t *pcm, uint32_t frames)
+                     uint32_t peak_bit_rate, const int16_t *pcm, uint32_t frames)
 {
     faac_params p;
     faac_encoder *enc = NULL;
@@ -48,6 +50,7 @@ static stream encode(uint32_t channels, enum faac_rate_control rc, uint32_t bit_
     p.rate_control = rc;
     p.bit_rate = bit_rate * channels; /* callers pass a per-channel rate */
     p.quality = quality;
+    p.peak_bit_rate = peak_bit_rate; /* whole-stream; 0 = no cap */
     p.stream_format = FAAC_STREAM_ADTS;
     p.input_format = FAAC_INPUT_16BIT;
     FT_REQUIRE(faac_encoder_open(&p, &enc) == FAAC_OK);
@@ -107,7 +110,7 @@ static void test_ceiling(uint32_t max_channels)
         uint32_t frames = RATE * 2;
         if (modes[i].channels > max_channels) continue; /* build has fewer channels */
         int16_t *pcm = modes[i].noise ? pcm_make_noise(modes[i].channels, frames) : pcm_make(RATE, modes[i].channels, frames);
-        stream s = encode(modes[i].channels, modes[i].rc, modes[i].bit_rate, modes[i].quality, pcm, frames);
+        stream s = encode(modes[i].channels, modes[i].rc, modes[i].bit_rate, modes[i].quality, 0, pcm, frames);
         FT_CHECK(walk(&s, modes[i].channels, NULL, 0) > 0);
         free(s.data);
         free(pcm);
@@ -142,7 +145,7 @@ static void test_window_transitions(void)
 {
     enum { FRAMES = RATE * 3 };
     int16_t *pcm = pcm_make(RATE, 1, FRAMES);
-    stream s = encode(1, FAAC_RC_ABR, 64000, 0, pcm, FRAMES);
+    stream s = encode(1, FAAC_RC_ABR, 64000, 0, 0, pcm, FRAMES);
     int seq[256];
     unsigned n = walk(&s, 1, seq, 256), shorts = 0;
     int prev = -1; /* the first frame has no overlap partner, so any sequence is legal */
@@ -160,13 +163,38 @@ static void test_window_transitions(void)
     free(pcm);
 }
 
+/* The cap is a guarantee, not a target: noise at a quality the cap cannot afford must
+ * still fit every frame. The cap sits above the cost of an empty stereo frame, below
+ * which nothing can shrink a frame further. */
+static void test_peak_cap_holds(void)
+{
+    enum { FRAMES = RATE * 3, CHANNELS = 2, PEAK = 28000 };
+    int16_t *pcm = pcm_make_noise(CHANNELS, FRAMES);
+    stream s = encode(CHANNELS, FAAC_RC_VBR, 0, 100, PEAK, pcm, FRAMES);
+    size_t cap_bits = (size_t)PEAK * 1024 / RATE, pos = 0, over = 0, n = 0;
+    while (pos < s.len) {
+        const uint8_t *h = s.data + pos;
+        FT_REQUIRE(h[0] == 0xFF && (h[1] & 0xF0) == 0xF0);
+        size_t header = (h[1] & 1) ? 7 : 9;
+        size_t length = ((size_t)(h[3] & 3) << 11) | ((size_t)h[4] << 3) | (h[5] >> 5);
+        FT_REQUIRE(length > header && length <= s.len - pos);
+        over += (length - header) * 8 > cap_bits;
+        pos += length;
+        n++;
+    }
+    if (over) fprintf(stderr, "%zu of %zu frames over %zu bits: ", over, n, cap_bits);
+    FT_CHECK(n > 0 && over == 0);
+    free(s.data);
+    free(pcm);
+}
+
 /* A decoder's buffer holds 6144 bits per channel less one mean frame, so the running total
  * of bits sent against bits nominal must stay inside a window that wide. */
 static void test_cbr_stays_in_buffer(void)
 {
     enum { FRAMES = RATE * 3, CHANNELS = 2, PER_CH = 6000 };
     int16_t *pcm = pcm_make_noise(CHANNELS, FRAMES);
-    stream s = encode(CHANNELS, FAAC_RC_CBR, PER_CH, 0, pcm, FRAMES);
+    stream s = encode(CHANNELS, FAAC_RC_CBR, PER_CH, 0, 0, pcm, FRAMES);
     double nominal = (double)PER_CH * CHANNELS * 1024.0 / RATE, ahead = 0, high = 0, low = 0;
     size_t pos = 0;
     while (pos < s.len) {
@@ -235,6 +263,7 @@ int main(void)
     test_ceiling(lib.max_channels);
     test_window_transitions();
     if (lib.max_channels >= 2) test_cbr_stays_in_buffer();
+    if (lib.max_channels >= 2) test_peak_cap_holds();
     if (lib.max_channels >= 6) test_lfe_narrow_bandwidth();
     return ft_done();
 }
