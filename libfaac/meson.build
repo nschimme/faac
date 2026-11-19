@@ -5,7 +5,8 @@ if config_h.get('HAVE_SSE2')
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
         c_args: c_args + sse2_flag,
-        gnu_symbol_visibility: 'hidden'
+        gnu_symbol_visibility: 'hidden',
+        override_options: ['b_lto=false'],
     )
     quantize_simd_libs += quantize_sse
 endif

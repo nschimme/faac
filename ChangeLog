@@ -1,3 +1,10 @@
+Unreleased
+
+	[ Nils Schimmelmann ]
+	* libfaac.a no longer carries the SSE2 quantizer as compiler bytecode, so
+	  a program linking the installed static library with another compiler
+	  no longer fails with an undefined quantize_sse2
+
 3.0 (Nov 18, 2026)
 
 	[ Nils Schimmelmann ]
