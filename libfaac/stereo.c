@@ -61,7 +61,7 @@ static int band_at(const int *sfbOffset, int sfbn, int hz, int n2, int sampleRat
     return sfb;
 }
 
-void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned long bitRatePerCh, unsigned int channels, int sbr, const int *sfbOffset[2], const int sfbn[2])
+void StereoConfigure(StereoConfig *cfg, enum faac_stereo_mode mode, int sampleRate, unsigned long bitRatePerCh, unsigned int channels, int sbr, const int *sfbOffset[2], const int sfbn[2])
 {
     int starved = bitRatePerCh && bitRatePerCh < IS_ONLY_BITRATE;
     /* The M/S bias was measured on two-channel LC only. */
@@ -70,9 +70,9 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
     /* Highest M/S frequency per window type (0 long, 1 short); sampleRate
      * means every band. */
     int msHz[2] = {0, 0};
-    if (mode == JOINT_MS) {
+    if (mode == FAAC_STEREO_MS) {
         msHz[0] = msHz[1] = sampleRate;
-    } else if (mode == JOINT_MIXED) {
+    } else if (mode == FAAC_STEREO_AUTO) {
         if (!starved) {
             msHz[0] = sampleRate;
             if (bitRatePerCh >= MS_SHORT_BITRATE)
@@ -93,7 +93,7 @@ void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned
      * L/R between. A window type without M/S takes intensity on every band past
      * the lowest. */
     cfg->mode = mode;
-    cfg->msTestFactor = 4.0f * ((mode == JOINT_MIXED && plainStereo &&
+    cfg->msTestFactor = 4.0f * ((mode == FAAC_STEREO_AUTO && plainStereo &&
                            bitRatePerCh >= MS_BIAS_BITRATE) ? MS_BIAS : 1.0f);
     for (int w = 0; w < 2; w++) {
         int n = sfbn[w], n2 = 2 * (w ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG);
@@ -275,13 +275,13 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
     float isthr;
 
     switch (cfg->mode) {
-        case JOINT_MIXED:
+        case FAAC_STEREO_AUTO:
             isthr = 0.18f * inv_quality + 1.0f;
             break;
-        case JOINT_IS:
+        case FAAC_STEREO_IS:
             isthr = 0.18f * (inv_quality * inv_quality) + 1.0f;
             break;
-        case JOINT_MS:
+        case FAAC_STEREO_MS:
             isthr = 1.0f;
             break;
         default:

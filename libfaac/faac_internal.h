@@ -24,6 +24,7 @@
 #define FAAC_INTERNAL_H
 
 #include <stdint.h>
+#include "faac.h"
 #include "build_defaults.h"
 
 /* meson_options.txt defaults for a build without Meson's config.h. */
@@ -71,14 +72,6 @@ static inline unsigned long CoreBitrate(unsigned int obj, unsigned long perChann
 /* Perceptual noise substitution aggressiveness (see assign_band_codebooks). */
 enum { PNSLEVEL_NARROWBAND_MONO = 2, PNSLEVEL_DEFAULT = 4 };
 
-/* PCM input sample format. Named distinctly from the public faac_input_format
- * enumerators (<faac.h>) so the facade can include both headers; faac.c
- * _Static_asserts the two enumerations agree value-for-value. */
-enum { INPUT_NULL = 0, INPUT_16BIT, INPUT_24BIT, INPUT_32BIT, INPUT_FLOAT };
-
-/* Block-type control */
-enum { SHORTCTL_NORMAL = 0, SHORTCTL_NOSHORT = 1, SHORTCTL_NOLONG = 2 };
-
 enum stream_format { RAW_STREAM = 0, ADTS_STREAM = 1 };
 
 /* Mirrors enum faac_rate_control; faac.c asserts the values agree. */
@@ -87,13 +80,11 @@ enum rate_control_mode { RATE_AUTO = 0, RATE_VBR, RATE_ABR, RATE_CBR };
 /* 0 is off; the other values are enum faac_drc_profile. */
 #define DRC_OFF 0
 
-typedef enum { JOINT_NONE = 0, JOINT_MS, JOINT_IS, JOINT_MIXED } JointMode;
-
 typedef struct faacEncConfiguration
 {
     unsigned int mpegVersion;
     unsigned int aacObjectType;
-    unsigned int jointmode;
+    enum faac_stereo_mode jointmode;
     unsigned int useLfe;
     unsigned int useTns;
     unsigned int usePns;             /* level resolved on apply; MPEG-2 forces it off */
@@ -102,12 +93,12 @@ typedef struct faacEncConfiguration
     unsigned long quantqual;
     unsigned long maxBitRate;        /* per channel, hard per-frame ceiling; 0 = unlimited */
     unsigned int outputFormat;       /* 0 = raw, 1 = ADTS */
-    unsigned int inputFormat;
-    int shortctl;
+    enum faac_input_format inputFormat;
+    enum faac_shortctl_mode shortctl;
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolved by facade */
 #if FAAC_ENCODER_DRC
-    unsigned int drcProfile;         /* enum faac_drc_profile */
+    enum faac_drc_profile drcProfile;
     float drcRefLevel;               /* LUFS program reference level */
 #endif
 } faacEncConfiguration, *faacEncConfigurationPtr;
